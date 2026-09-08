@@ -1,6 +1,8 @@
 # SPESIFIKASI TEKNIS & IMPLEMENTASI MAMET OS ECOSYSTEM (v2)
 
 > **Perubahan dari v1:** Menambahkan rasional keamanan untuk SystemGovernor, severity classification, notification strategy untuk pola pakai on-demand, no-silent-state-transition principle, validasi struktural MAEF allowlist, dan spesifikasi FAILED_DETERMINISTIC. Lihat changelog di akhir dokumen.
+>
+> **Revisi 2026-09-08:** §2.1 dirombak total setelah audit membuktikan implementasi saat ini (`engineer.js:2438-2480`) BUKAN scoped snippet extraction seperti spesifikasi asli — melainkan potongan char-count kasar (head+tail 8000 karakter) yang bisa membuang kode target kalau posisinya di tengah file besar. Algoritma pengganti dirancang berbasis identifier + brace-matching yang string-aware, mengikuti prinsip "satu file satu tanggung jawab" (rujukan: **ADR-0009 index.ts Decomposition**, preseden yang sudah terbukti berhasil — `agent-process/index.ts` 2301 baris berhasil jadi thin coordinator ~145 baris via dekomposisi bertahap).
 
 ---
 
@@ -34,17 +36,96 @@ Sebelum masuk ke spesifikasi teknis, penting untuk mendokumentasikan **kenapa**,
 
 ## 2. SPESIFIKASI TEKNIS: `engineer.js` (REFACTORING)
 
-### 2.1. Scoped Snippet Extraction (Mengganti Full-File Reading)
-Hapus logika pembacaan file utuh. Implementasi fungsi deterministik baru:
+### 2.1. Scoped Snippet Extraction (Mengganti Full-File Reading) *(dirombak total v2.1 — 2026-09-08)*
+
+#### 2.1.0 Temuan Audit (Kondisi Saat Ini)
+
+`_buildPatchPrompt()` di `engineer.js:2438-2480` **bukan** snippet extraction — cuma potongan berbasis jumlah karakter:
+
+| Ukuran file | Yang dikirim ke LLM |
+|---|---|
+| ≤ 6000 karakter | File utuh |
+| > 6000 karakter | 4000 karakter awal + 4000 karakter akhir (tengah dibuang), lalu diminta jawab format search-replace |
+
+**Risiko fungsional nyata:** kalau kode yang perlu diubah ada di tengah file besar, potongan awal+akhir bisa sama sekali tidak menyertakan area target. LLM diminta bikin `search-replace` untuk kode yang tidak pernah dia lihat — `search` string tidak ketemu di file asli, patch gagal apply (ada fallback warning di baris 2299, tapi itu artinya gagal diam-diam saat runtime, bukan dicegah sejak desain). Mode search-replace-nya sendiri **sudah fungsional penuh** (apply logic di baris 2278-2299) — masalahnya murni di sisi *apa yang ditunjukkan ke LLM*, bukan di cara patch diterapkan.
+
+#### 2.1.1 Prinsip Desain Pengganti
+
+Mengikuti arahan Owner: sistem **powerful tapi bertanggung jawab per file** (filosofi Linux), bukan menambah method baru ke `engineer.js` yang sudah 2978 baris. Fungsi ekstraksi menjadi **modul baru terpisah**, pure/stateless, tidak bergantung pada instance `Engineer` — mengikuti pola persis `ADR-0009` (`lib/*.ts` sebagai modul stateless yang diimpor oleh coordinator tipis).
+
+**Lokasi modul baru:** `frontend/src/core/runtime/services/engineer/CodeSnippetExtractor.js`
+
+#### 2.1.2 Algoritma
+
 ```javascript
-_extractRelevantSnippet(fileContent, targetIdentifier, contextLines = 5) {
-  // 1. Parse file untuk menemukan baris start/end dari targetIdentifier (fungsi/kelas).
-  // 2. Ekstrak baris 1-10 (Imports/Signature).
-  // 3. Ekstrak targetIdentifier + contextLines sebelum dan sesudah.
-  // 4. Return object: { snippet, startLine, endLine, totalLines }
+// engineer/CodeSnippetExtractor.js — PURE MODULE, tanpa dependency ke Engineer instance
+
+/**
+ * @param {string} fileContent - Isi file lengkap (dibaca sekali, tetap disimpan utuh di memori
+ *   untuk keperluan apply search-replace nanti — HANYA payload prompt yang dipangkas).
+ * @param {string[]} targetIdentifiers - Nama fungsi/method/class dari task (lihat 2.1.3).
+ * @param {number} contextLines - Baris konteks di sekitar target (default 5).
+ * @returns {{ snippet: string, startLine: number, endLine: number, totalLines: number,
+ *             identifierFound: boolean, method: 'identifier'|'keyword-scan'|'full-file' }}
+ */
+export function extractRelevantSnippet(fileContent, targetIdentifiers, contextLines = 5) {
+  const lines = fileContent.split('\n');
+  const totalLines = lines.length;
+
+  // File kecil: tidak perlu dipangkas sama sekali, kirim utuh (tetap murah).
+  if (fileContent.length <= 3000) {
+    return { snippet: fileContent, startLine: 1, endLine: totalLines, totalLines,
+             identifierFound: true, method: 'full-file' };
+  }
+
+  // 1. Header — import & deklarasi teratas (dinamis, bukan hardcode 10 baris:
+  //    berhenti di baris kosong pertama setelah blok import/const-require).
+  const headerEndLine = _detectHeaderEnd(lines);
+
+  // 2. Cari deklarasi tiap identifier via pattern JS/TS/JSX-aware:
+  //    function NAME(  |  async function NAME(  |  class NAME
+  //    const/let NAME = (...) =>  |  NAME(...) {  (class method, indented, tanpa keyword)
+  const blocks = [];
+  for (const id of targetIdentifiers) {
+    const startLine = _findDeclarationLine(lines, id);
+    if (startLine === -1) continue;
+    // 3. Cari baris akhir blok via brace-matching STRING-AWARE (lihat 2.1.4 —
+    //    wajib, karena banyak method di engineer.js membangun prompt lewat
+    //    template literal berisi karakter '{' '}' literal, mis. _buildPatchPrompt()).
+    const endLine = _findBlockEnd(lines, startLine);
+    blocks.push({ id, startLine, endLine });
+  }
+
+  // 4. Fallback kalau tidak ada identifier yang match sama sekali (task berbahasa
+  //    natural tanpa nama fungsi eksplisit): keyword-density scan per window 50 baris.
+  if (blocks.length === 0) {
+    return _keywordDensityFallback(lines, targetIdentifiers, headerEndLine, totalLines);
+  }
+
+  // 5. Susun: header + tiap blok (±contextLines) + penanda "... N baris dilewati ...".
+  const snippet = _assembleSnippet(lines, headerEndLine, blocks, contextLines);
+  return { snippet, startLine: blocks[0].startLine, endLine: blocks[blocks.length - 1].endLine,
+           totalLines, identifierFound: true, method: 'identifier' };
 }
 ```
-*Constraint:* Payload ke LLM maksimal hanya berisi snippet ini + instruksi patch.
+
+#### 2.1.3 Sumber `targetIdentifiers`
+
+Diekstrak dari `task.title`/`task.description` via regex kata benda kode (camelCase/PascalCase/snake_case/`_prefixed`), **divalidasi ulang** terhadap identifier yang benar-benar ada di file (buang kandidat yang cuma kebetulan mirip kata biasa). Contoh dari `PR8-linux-style-dispatch.md`: task *"refactor fungsi parseIntent di engineer.js"* → kandidat `parseIntent` → dicek eksistensinya di file target sebelum dipakai.
+
+#### 2.1.4 Brace-Matching Harus String-Aware (Wajib, Bukan Opsional)
+
+Brace counter naif (`{` +1, `}` -1) akan salah pada file seperti `engineer.js` sendiri — method macam `_buildPatchPrompt()` menulis puluhan baris `prompt += `...{...}...`;` berisi karakter `{`/`}` **literal di dalam string**, bukan pembuka blok kode. Implementasi wajib melacak state: `NORMAL | IN_STRING_SINGLE | IN_STRING_DOUBLE | IN_TEMPLATE_LITERAL | IN_LINE_COMMENT | IN_BLOCK_COMMENT`, hanya menghitung brace saat state `NORMAL`, termasuk menangani escape character dan interpolasi `${...}` di dalam template literal (yang membuka konteks JS normal bersarang sampai `}` penutup interpolasi ditemukan).
+
+#### 2.1.5 Integrasi ke `_buildPatchPrompt`
+
+Ganti seluruh percabangan `isLargeFile` (char-count threshold) di `engineer.js:2438-2480` dengan satu pemanggilan `extractRelevantSnippet()` per file — **selalu** format search-replace sebagai output yang diminta (bukan cuma untuk file besar), karena apply logic (`.replace()` di baris 2278-2299) bekerja terhadap **isi file utuh yang tetap disimpan di memori**, bukan terhadap snippet. Snippet cuma memangkas apa yang *ditunjukkan* ke LLM — pemangkasan ini sekarang presisi ke identifier target, bukan potongan buta awal-akhir.
+
+*Constraint tetap berlaku:* payload ke LLM maksimal hanya berisi snippet hasil ekstraksi ini + instruksi patch, tidak pernah seluruh file (kecuali file memang ≤3000 karakter, di mana pemangkasan tidak perlu/tidak menghemat apa-apa).
+
+#### 2.1.6 Catatan Terpisah — `engineer.js` Sendiri adalah Kandidat Dekomposisi
+
+`engineer.js` (2978 baris) melanggar prinsip yang sama seperti `index.ts` sebelum ADR-0009 — satu file menampung `SessionArtifact`, intent detection, capability guard, reasoning report, patch generation, prompt building, compliance checking, dst. Modul `CodeSnippetExtractor.js` di atas adalah potongan pertama yang keluar dari file ini. **Di luar scope revisi §2.1 ini** — kalau Owner mau, dekomposisi penuh `engineer.js` ala ADR-0009 (peta tanggung jawab lengkap + fase ekstraksi berurutan) layak jadi ADR terpisah, bukan bagian dari dokumen ini.
 
 ### 2.2. Pre-Send Verification & Payload Separation
 Ubah struktur payload yang dikirim ke Supabase Edge Function untuk mencegah *false positive* di Verification Engine.
@@ -212,6 +293,12 @@ Dijatah ketat — **hanya** untuk item severity HIGH (3.2.1) yang tidak bisa dit
 ---
 
 ## 7. CHANGELOG DOKUMEN
+
+**v2.1 (revisi 2026-09-08 — audit §2.1 vs implementasi aktual):**
+- §2.1 dirombak total: audit membuktikan `engineer.js:2438-2480` bukan scoped snippet extraction, melainkan potongan char-count kasar (head+tail 8000 karakter) yang berisiko membuang kode target di file besar.
+- Algoritma pengganti dirancang: ekstraksi berbasis identifier + brace-matching string-aware (wajib, karena banyak method `engineer.js` membangun prompt via template literal berisi `{`/`}` literal).
+- Modul baru diusulkan terpisah dari `engineer.js` (`engineer/CodeSnippetExtractor.js`, pure/stateless) — mengikuti prinsip satu-file-satu-tanggung-jawab, preseden **ADR-0009 index.ts Decomposition** yang sudah terbukti berhasil.
+- Dicatat: `engineer.js` (2978 baris) sendiri adalah kandidat dekomposisi ala ADR-0009 — di luar scope revisi ini, diusulkan jadi ADR terpisah jika Owner setuju.
 
 **v2 (revisi dari diskusi lanjutan):**
 - Tambah Bagian 0: rasional keamanan SystemGovernor sebagai prasyarat struktural, bukan fitur opsional.
