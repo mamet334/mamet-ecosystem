@@ -2,7 +2,7 @@
 
 **ID:** ADR-0017
 **Judul:** Pemecahan Monolith `engineer.js` — Roadmap Extraction Bertahap
-**Status:** 🟡 IN PROGRESS — Fase 5/8 selesai & terverifikasi (2026-09-08)
+**Status:** 🟡 IN PROGRESS — Fase 6/8 selesai & terverifikasi (2026-09-08)
 **Tanggal:** 2026-09-08
 **Penulis:** Sesi diskusi arsitektur (Owner + Claude)
 **Metodologi:** Direplikasi dari **ADR-0009 (`index.ts` Decomposition)** — preseden yang sudah terbukti berhasil dieksekusi (`agent-process/index.ts` 2301 baris → thin coordinator ~145 baris).
@@ -247,13 +247,27 @@ Mitigasi: Tes end-to-end skenario approve & reject & timeout.
 - Wrapper `_emitRecommendation()` (masih dipakai 21x tanpa diubah): dikonfirmasi tetap memicu event `Engineer:Recommendation` dengan benar lewat delegasi ke modul baru
 - Console bersih, tanpa error
 
-### Fase 6 — Read-Only Task Handlers (Risiko Sedang)
+### Fase 6 — Read-Only Task Handlers (Risiko Sedang) ✅ SELESAI (2026-09-08)
 ```
 Ekstrak: engineer/TaskHandlers.js
 Isi: Kelompok F
 Dependency: FileSystemGateway (Fase 4), CapabilityGuard (Fase 2)
 Kenapa sedang: Banyak jalur (analysis/review/read-repo/read-files/list-dir/search) — permukaan tes luas.
 ```
+**Koreksi ditemukan saat eksekusi:** `_handleAnalysisTask` dan `_handleReviewTask` ternyata masih bergantung pada `_analyze`/`_review`/`_calculateConfidence` — belum diekstrak (target Fase 7/8) — dan memutasi `this.metrics` langsung. Bukan murni read-only seperti asumsi awal ADR. Diselesaikan dengan deps-injection: `engineer.js` meneruskan `analyze`/`review`/`calculateConfidence`/`updateArtifact` sebagai fungsi ter-bind, dan `metrics`/`brain` diteruskan **by-reference** (sama seperti pola Map di fase sebelumnya) — `metrics.tasksAnalyzed++` dan `brain.dynamic = ...` di dalam modul tetap termutasi di instance Engineer asli.
+
+Sembilan method (`_buildDynamicContext`, `_handleAnalysisTask`, `_handleReviewTask`, `_handleReadRepoTask`, `_handleReadFiles`, `_handleListDirectory`, `_handleSearchFiles`, `_extractPathsFromPrompt`, `_extractDirectoryFromPrompt`, `_extractSearchQueryFromPrompt`) dipindah. Fungsi-fungsi yang saling memanggil dalam alur READ_REPO (mis. `handleReadRepoTask` memanggil `handleListDirectory`/`handleSearchFiles`/`handleReadFiles`) memanggil langsung sebagai fungsi lokal di dalam modul, bukan lewat `deps` — deps hanya membawa dependensi eksternal sungguhan (`repositoryReader`, `emitRecommendation`, `fileIndexService`, `sessionArtifact`, `eventBus`). Ketiga method `_extractPathsFromPrompt`/`_extractDirectoryFromPrompt`/`_extractSearchQueryFromPrompt` dihapus total dari `engineer.js` (tanpa wrapper) karena tidak ada pemanggil lain di luar `_handleReadRepoTask` yang juga sudah pindah ke modul.
+
+**Hasil:** `engineer.js` 1908 → **1680 baris** (−228 baris). Modul baru: `engineer/TaskHandlers.js` (~300 baris). Total sejak Fase 1: 2978 → 1680 (**−1298 baris, ~44%**).
+
+**Verifikasi (evidence-based, live, terhadap instance Engineer sungguhan):**
+- Build production: ✅ sukses (10.69s, exit 0)
+- `_buildDynamicContext`: dipanggil langsung, struktur hasil benar (`task.id`, `projectContext`, `timestamp`)
+- `_handleReadRepoTask` jalur LIST (`"list folder frontend/src/core"`): event `READ_REPO_EMPTY` ter-emit dengan `dirPath` yang benar diekstrak dari prompt via `extractDirectoryFromPrompt` — repositoryReader mengembalikan kosong karena panggilan GitHub API diblokir CSP di sandbox dev lokal (bukan regresi Fase 6, `repositoryReader` sendiri tidak disentuh)
+- `_handleReadRepoTask` jalur SEARCH (`"cari file engineer"`) dan jalur READ default (`"baca file engineer.js"`): keduanya routing dengan benar ke `handleSearchFiles`/`handleReadFiles`, event `READ_REPO_NOT_FOUND` ter-emit (repositoryReader gagal fetch GitHub, sama seperti di atas)
+- `_handleAnalysisTask`: event `ANALYSIS` ter-emit lengkap dengan `analysis`/`confidence` — rantai `this._analyze`→`this._calculateConfidence`→`this._updateArtifact` (belum diekstrak) tetap utuh lewat deps ter-bind
+- **Mutasi by-reference dikonfirmasi:** setelah pemanggilan, `engineer.metrics.tasksAnalyzed === 1` dan `engineer.brain.dynamic.task.id === 't6'` — objek `metrics`/`brain` asli termutasi dari dalam modul, sama seperti Map di fase sebelumnya
+- Console bersih dari error selain CSP GitHub API (pra-eksisting, tidak terkait ekstraksi)
 
 ### Fase 7 — Patch Generator + CodeSnippetExtractor §2.1 (Risiko Tinggi — Digabung Sengaja)
 ```

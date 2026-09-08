@@ -7,6 +7,7 @@ import { savePendingPatch, clearPendingPatch, restorePersistedPatches, saveVerif
 import { readFile, findFiles, extractFileNamesFromTask, findRelevantADR, tryReadFile } from './engineer/FileSystemGateway.js'; // [ADR-0017 Fase 4]
 import { emitReasoningReport, waitForUserConfirmation, handleUserConfirmation } from './engineer/ReasoningLock.js'; // [ADR-0017 Fase 5]
 import { handleApprovalResponse, requestApproval, emitRecommendation } from './engineer/ApprovalGateway.js'; // [ADR-0017 Fase 5]
+import { buildDynamicContext, handleAnalysisTask, handleReviewTask, handleReadRepoTask, handleReadFiles, handleListDirectory, handleSearchFiles } from './engineer/TaskHandlers.js'; // [ADR-0017 Fase 6]
 
 /**
  * Engineer.js — Engineering Brain Mamet AI (Real Analysis Engine + Core Protection)
@@ -431,76 +432,40 @@ class Engineer {
   // DYNAMIC CONTEXT (Brain 2) & TASK HANDLING
   // =============================================
 
-  /**
-   * [FIX #5] _buildDynamicContext() diperkaya dengan metadata task dan file list.
-   * Sebelumnya hampir kosong — sekarang menyediakan konteks yang berguna untuk analisis.
-   * @param {Object} task - Task yang sedang diproses
-   * @returns {Object} Dynamic context object
-   */
+  // [ADR-0017 Fase 6] _buildDynamicContext, _handleAnalysisTask, _handleReviewTask,
+  // _handleReadRepoTask, _handleReadFiles, _handleListDirectory, _handleSearchFiles,
+  // dan ketiga _extract*FromPrompt diekstrak ke ./engineer/TaskHandlers.js
+
   async _buildDynamicContext(task) {
-    const targetFiles = task.files || extractFileNamesFromTask(task);
-    let availableFiles = [];
-
-    try {
-      if (this.fileIndexService && this.fileIndexService.isReady) {
-        availableFiles = this.fileIndexService.getAllFiles?.() || [];
-      }
-    } catch (e) {
-      console.warn('[Engineer] Gagal mengambil file list dari FileIndexService:', e.message);
-    }
-
-    return {
-      task: {
-        id: task.id,
-        title: task.title,
-        description: task.description,
-        files: targetFiles,
-        requestedModel: task.requestedModel || null
-      },
-      projectContext: {
-        totalIndexedFiles: availableFiles.length,
-        targetFileCount: targetFiles.length,
-        staticKnowledgeLoaded: this.brain.static?.loadedFiles?.length || 0
-      },
-      sessionContext: this.sessionArtifact ? this.sessionArtifact.getSummary() : null,
-      timestamp: new Date().toISOString()
-    };
+    return buildDynamicContext(task, {
+      fileIndexService: this.fileIndexService,
+      brain: this.brain,
+      sessionArtifact: this.sessionArtifact
+    });
   }
 
   async _handleAnalysisTask(task) {
-    this.metrics.tasksAnalyzed++;
-    console.log(`[Engineer] Analyzing task: ${task.title || task.id}`);
-    this.brain.dynamic = await this._buildDynamicContext(task);
-    const analysis = await this._analyze(task);
-
-    // FASE 4: Update Session Artifact
-    this._updateArtifact('ANALYSIS', {
-      taskId: task.id,
-      files: Object.keys(analysis.rawContext || {}),
-      violations: analysis.compliance?.violations || [],
-      summary: analysis.summary
-    });
-
-    this._emitRecommendation({
-      type: 'ANALYSIS',
-      taskId: task.id,
-      analysis,
-      confidence: this._calculateConfidence(analysis),
-      requiresApproval: false
+    return handleAnalysisTask(task, {
+      metrics: this.metrics,
+      brain: this.brain,
+      fileIndexService: this.fileIndexService,
+      sessionArtifact: this.sessionArtifact,
+      analyze: (t) => this._analyze(t),
+      updateArtifact: (type, data) => this._updateArtifact(type, data),
+      emitRecommendation: (r) => this._emitRecommendation(r),
+      calculateConfidence: (a) => this._calculateConfidence(a)
     });
   }
 
   async _handleReviewTask(task) {
-    this.metrics.recommendationsMade++;
-    console.log(`[Engineer] Reviewing changes for: ${task.title || task.id}`);
-    this.brain.dynamic = await this._buildDynamicContext(task);
-    const review = await this._review(task);
-    this._emitRecommendation({
-      type: 'REVIEW',
-      taskId: task.id,
-      review,
-      confidence: this._calculateConfidence(review),
-      requiresApproval: false
+    return handleReviewTask(task, {
+      metrics: this.metrics,
+      brain: this.brain,
+      fileIndexService: this.fileIndexService,
+      sessionArtifact: this.sessionArtifact,
+      review: (t) => this._review(t),
+      emitRecommendation: (r) => this._emitRecommendation(r),
+      calculateConfidence: (a) => this._calculateConfidence(a)
     });
   }
 
@@ -514,232 +479,39 @@ class Engineer {
    * dan dari listener Engineer:ReadRepo.
    */
   async _handleReadRepoTask(task) {
-    const taskText = `${task.title || ''} ${task.description || ''}`;
-    console.log(`[Engineer] 📂 READ_REPO task: ${task.title || task.id}`);
-
-    if (!this.repositoryReader) {
-      this._emitRecommendation({
-        type: 'READ_REPO_ERROR',
-        taskId: task.id,
-        message: '❌ **RepositoryReaderService** belum tersedia. Coba restart OS.',
-        requiresApproval: false
-      });
-      return;
-    }
-
-    // Deteksi apakah LIST atau READ
-    const isListRequest = /list|daftar|struktur|tree|folder|direktori|directory/i.test(taskText);
-    const isSearchRequest = /cari|search|find|dimana|where/i.test(taskText);
-
-    if (isListRequest) {
-      const dirPath = this._extractDirectoryFromPrompt(taskText);
-      await this._handleListDirectory(task, dirPath);
-    } else if (isSearchRequest) {
-      const query = this._extractSearchQueryFromPrompt(taskText);
-      await this._handleSearchFiles(task, query);
-    } else {
-      // Default: baca konten file
-      const paths = this._extractPathsFromPrompt(taskText);
-      if (paths.length === 0) {
-        this._emitRecommendation({
-          type: 'READ_REPO_CLARIFICATION',
-          taskId: task.id,
-          message: '❓ **Engineer** — Sebutkan nama file atau path yang ingin dibaca.\n\nContoh:\n- `baca file Kernel.js`\n- `tampilkan isi engineer.js`\n- `list folder frontend/src/core`\n- `cari file BrainService`',
-          requiresApproval: false
-        });
-        return;
-      }
-      await this._handleReadFiles(task, paths);
-    }
+    return handleReadRepoTask(task, this._taskHandlerDeps());
   }
 
   /**
    * Membaca satu atau beberapa file dan emit hasilnya ke UI.
    */
   async _handleReadFiles(task, paths) {
-    const results = [];
-    const errors = [];
-
-    for (const requestedPath of paths) {
-      // Coba resolve path via FileIndexService (jika hanya nama file)
-      let resolvedPath = requestedPath;
-      if (!requestedPath.includes('/') && this.fileIndexService?.isReady) {
-        const resolved = this.fileIndexService.resolvePath(requestedPath);
-        if (resolved) {
-          resolvedPath = resolved;
-          console.log(`[Engineer] 🔍 Path resolved: ${requestedPath} → ${resolvedPath}`);
-        }
-      }
-
-      const result = await this.repositoryReader.readFile(resolvedPath);
-      if (result) {
-        results.push(result);
-        this.sessionArtifact?.addAnalyzedFile(resolvedPath);
-      } else {
-        // Coba search sebagai fallback
-        const searchResults = await this.repositoryReader.searchFiles(requestedPath);
-        if (searchResults.length > 0) {
-          const firstMatch = searchResults[0];
-          const fallback = await this.repositoryReader.readFile(firstMatch);
-          if (fallback) {
-            results.push(fallback);
-            this.sessionArtifact?.addAnalyzedFile(firstMatch);
-          } else {
-            errors.push(requestedPath);
-          }
-        } else {
-          errors.push(requestedPath);
-        }
-      }
-    }
-
-    if (results.length === 0) {
-      this._emitRecommendation({
-        type: 'READ_REPO_NOT_FOUND',
-        taskId: task.id,
-        message: `❌ **Engineer** — File tidak ditemukan: ${errors.join(', ')}\n\nGunakan \`cari file [nama]\` untuk mencari file yang dimaksud.`,
-        requiresApproval: false
-      });
-      return;
-    }
-
-    // Emit setiap file sebagai FileContent event ke UI
-    for (const file of results) {
-      this.eventBus.emit('Engineer:FileContent', {
-        taskId: task.id,
-        path: file.path,
-        content: file.content,
-        size: file.size,
-        backend: file.backend,
-        from: 'Engineer',
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    // Juga emit summary sebagai Recommendation
-    const summary = results.map(r => `📄 \`${r.path}\` (${r.size} chars)`).join('\n');
-    const errorNote = errors.length > 0 ? `\n\n⚠️ Tidak ditemukan: ${errors.join(', ')}` : '';
-
-    this._emitRecommendation({
-      type: 'READ_REPO_RESULT',
-      taskId: task.id,
-      message: `✅ **Engineer** — ${results.length} file berhasil dibaca:\n\n${summary}${errorNote}`,
-      files: results.map(r => ({ path: r.path, size: r.size, content: r.content })),
-      requiresApproval: false
-    });
+    return handleReadFiles(task, paths, this._taskHandlerDeps());
   }
 
   /**
    * Mendaftar isi direktori dan emit hasilnya.
    */
   async _handleListDirectory(task, dirPath) {
-    const entries = await this.repositoryReader.listDirectory(dirPath);
-
-    if (entries.length === 0) {
-      this._emitRecommendation({
-        type: 'READ_REPO_EMPTY',
-        taskId: task.id,
-        message: `📁 **Engineer** — Direktori \`${dirPath || '(root)'}\` kosong atau tidak ditemukan.`,
-        requiresApproval: false
-      });
-      return;
-    }
-
-    const dirs = entries.filter(e => e.type === 'dir');
-    const files = entries.filter(e => e.type !== 'dir');
-    let listing = `📁 **Isi direktori:** \`${dirPath || '(root)'}\`\n\n`;
-    if (dirs.length) listing += `**Folder (${dirs.length}):**\n` + dirs.map(d => `  📁 ${d.name}`).join('\n') + '\n\n';
-    if (files.length) listing += `**File (${files.length}):**\n` + files.map(f => `  📄 ${f.name}`).join('\n');
-
-    this._emitRecommendation({
-      type: 'READ_REPO_LISTING',
-      taskId: task.id,
-      message: listing,
-      entries,
-      dirPath,
-      requiresApproval: false
-    });
+    return handleListDirectory(task, dirPath, this._taskHandlerDeps());
   }
 
   /**
    * Mencari file berdasarkan query dan emit hasilnya.
    */
   async _handleSearchFiles(task, query) {
-    const matches = await this.repositoryReader.searchFiles(query);
-
-    if (matches.length === 0) {
-      this._emitRecommendation({
-        type: 'READ_REPO_NOT_FOUND',
-        taskId: task.id,
-        message: `🔍 **Engineer** — Tidak ada file yang cocok dengan: \`${query}\``,
-        requiresApproval: false
-      });
-      return;
-    }
-
-    const listing = matches.slice(0, 30).map(p => `  📄 ${p}`).join('\n');
-    const note = matches.length > 30 ? `\n\n_...dan ${matches.length - 30} file lainnya._` : '';
-
-    this._emitRecommendation({
-      type: 'READ_REPO_SEARCH_RESULT',
-      taskId: task.id,
-      message: `🔍 **Engineer** — Ditemukan **${matches.length} file** untuk: \`${query}\`\n\n${listing}${note}\n\nGunakan \`baca file [nama lengkap]\` untuk membaca isinya.`,
-      matches,
-      query,
-      requiresApproval: false
-    });
+    return handleSearchFiles(task, query, this._taskHandlerDeps());
   }
 
-  /**
-   * Mengekstrak path/nama file dari teks prompt.
-   * Contoh: "baca file Kernel.js" → ["Kernel.js"]
-   *         "tampilkan engineer.js dan BrainService.js" → ["engineer.js", "BrainService.js"]
-   */
-  _extractPathsFromPrompt(text) {
-    const paths = [];
-
-    // Pattern 1: kata dengan ekstensi file (.js, .jsx, .ts, .tsx, .css, .md, .json, dll)
-    const extPattern = /[\w\-./]+\.(js|jsx|ts|tsx|css|scss|md|json|html|txt|yaml|yml|cjs|mjs|env)/gi;
-    const extMatches = text.match(extPattern) || [];
-    paths.push(...extMatches);
-
-    // Pattern 2: path dengan slash (e.g., "frontend/src/Kernel.js")
-    const pathPattern = /(?:file|path|dari|of|di|in)\s+([\w\-./]+)/gi;
-    let m;
-    while ((m = pathPattern.exec(text)) !== null) {
-      if (!paths.includes(m[1])) paths.push(m[1]);
-    }
-
-    // Deduplicate & filter terlalu pendek
-    return [...new Set(paths)].filter(p => p.length > 2);
+  _taskHandlerDeps() {
+    return {
+      repositoryReader: this.repositoryReader,
+      emitRecommendation: (r) => this._emitRecommendation(r),
+      fileIndexService: this.fileIndexService,
+      sessionArtifact: this.sessionArtifact,
+      eventBus: this.eventBus
+    };
   }
-
-  /**
-   * Mengekstrak nama direktori dari teks prompt.
-   */
-  _extractDirectoryFromPrompt(text) {
-    // Coba ekstrak path eksplisit (e.g., "frontend/src/core")
-    const pathPattern = /(?:folder|direktori|directory|di|in|of)\s+([\w\-./]+)/i;
-    const m = text.match(pathPattern);
-    if (m) return m[1].replace(/\\/g, '/');
-
-    // Cari path-like string
-    const pathLike = text.match(/[\w]+\/[\w./\-]*/);
-    if (pathLike) return pathLike[0];
-
-    return ''; // root
-  }
-
-  /**
-   * Mengekstrak query pencarian dari teks prompt.
-   */
-  _extractSearchQueryFromPrompt(text) {
-    const m = text.match(/(?:cari|search|find|dimana|where(?:\s+is)?)\s+(?:file\s+)?(.+)/i);
-    if (m) return m[1].trim().replace(/\?$/, '');
-    return text.replace(/cari|search|find|file/gi, '').trim();
-  }
-
-
 
   async _handlePatchTask(task) {
     // =============================================
