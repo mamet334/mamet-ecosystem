@@ -211,12 +211,13 @@ Setiap kali sebuah dokumen di folder ini selesai dikerjakan (Exit Criteria terpe
       2. `frontend/src/services/ExecutionTraceService.js` terpisah sendirian dari 26 service lain yang semuanya di `core/runtime/services/` — dipakai oleh `useDashboardData.js`, kemungkinan besar cuma salah taruh.
       3. `frontend/src/hooks/useDashboardData.js` terpisah dari `core/runtime/hooks/useService.js` — awalnya diduga disengaja (hook inti vs hook fitur), Owner memutuskan disatukan.
       4. `frontend/src/lib/` kosong total — dikonfirmasi via `git log` bahwa isinya dulu (`TokenSaverAgent.js`, `MainOrchestrator.js`) sudah dihapus sebagai dead code di commit `b434238` (2026-09-03); folder fisik tersisa tidak terlacak git (git tidak melacak folder kosong).
-    - **Status:** 📋 **Keputusan Owner diambil, EKSEKUSI DITUNDA** (*"jangan ubah dulu"*) — dicatat di sini agar tidak hilang, siap dikerjakan kapan pun diminta.
-    - **Keputusan Owner:**
-      1. `hooks/` → disatukan seluruhnya ke `core/runtime/hooks/`.
-      2. `core/workspace/` + `core/workspaces/` → digabung jadi satu nama **`workspaces/`** (jamak).
-      3. `frontend/src/lib/` → aman dihapus (kosong, terkonfirmasi via git log).
-      4. `services/ExecutionTraceService.js` → pindah ke `core/runtime/services/`, update import di `useDashboardData.js`.
+    - **Status:** ✅ **Selesai & Diverifikasi Live (2026-09-08)** ([`2026-09-08-housekeeping-frontend-src-folder-structure.md`](../project-memory/changelog/2026-09-08-housekeeping-frontend-src-folder-structure.md)).
+    - **Keputusan Owner (semua dieksekusi):**
+      1. `hooks/` → disatukan seluruhnya ke `core/runtime/hooks/` (`useDashboardData.js` dipindah via `git mv`).
+      2. `core/workspace/` + `core/workspaces/` → digabung jadi satu nama **`workspaces/`** (jamak) — 4 file kode digabung dengan `README.md` yang sudah ada di sana.
+      3. `frontend/src/lib/` → dihapus (sudah kosong, terkonfirmasi via git log).
+      4. `services/ExecutionTraceService.js` → pindah ke `core/runtime/services/`, import di `useDashboardData.js` disesuaikan.
+    - **Catatan eksekusi:** selain 5 importer `core/workspace/WorkspaceContext` yang tercatat di audit awal, ditemukan 3 importer tambahan yang memakai path relatif berbeda (`../workspace/...` dari `Kernel.js` dan `AppRegistry.js`) yang tidak tertangkap pencarian string literal pertama — build sempat gagal karenanya, langsung diperbaiki di sesi yang sama sebelum verifikasi live. Total 8 file importer diperbarui. Diverifikasi: build production sukses, boot aplikasi live tanpa error (Kernel.js berhasil resolve `WidgetRegistry`/`WorkspaceManager`/`lazyLoadWithRetry` dari lokasi baru — kegagalan resolve di sini akan meng-crash seluruh boot), instance `WidgetRegistry`/`WorkspaceManager` terkonfirmasi ter-instansiasi lewat `serviceManager`, dan ketiga modul yang dipindah (`ExecutionTraceService.js`, `useDashboardData.js`, `WorkspaceContext.jsx`) dikonfirmasi resolve & mengekspor simbol yang benar via dynamic import langsung di browser.
     - **Catatan terkait (bukan bagian housekeeping ini, sengaja ditunda Owner):** Audit yang sama menemukan penyaringan tool per-mode saat ini cuma satu saklar besar `toolsEnabled` (`policy_middleware.ts`) — hanya 3 dari 6 tool terdaftar (`cron_manager`, `file_analyzer`, `knowledge_manager`) yang punya aturan spesifik, itu pun *hardcoded* sebagai `if` terpisah per tool, bukan konfigurasi data-driven. Owner ingin kontrol manual penuh (mis. "Assistant boleh web search, Engineer tidak") tapi belum menentukan daftar tool final yang perlu dipisah izinnya — didiskusikan lagi nanti, kemungkinan bersamaan dengan pembuatan folder `tools/` (data terpisah dari kode, sejalan pola `skills/` yang sudah ada) yang juga muncul dalam diskusi yang sama.
 
 15. **Dekomposisi Penuh `engineer.js` (2978 Baris) — [`ADR-0017-engineer-js-decomposition.md`](../adr/ADR-0017-engineer-js-decomposition.md):**

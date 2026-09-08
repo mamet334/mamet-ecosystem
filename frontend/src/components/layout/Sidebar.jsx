@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { MessageCircle, Plus, Menu, X, Zap, Settings, LogOut, User, Terminal, Clock, BrainCircuit } from 'lucide-react';
 import { supabase } from '../../supabase';
-import { useWorkspace } from '../../core/workspace/WorkspaceContext';
+import { useWorkspace } from '../../core/workspaces/WorkspaceContext';
 
 export default function Sidebar({
   user,

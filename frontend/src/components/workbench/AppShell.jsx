@@ -1,7 +1,7 @@
 import React from 'react';
 import WorkbenchZone from './WorkbenchZone';
 import FloatingWindowManager from '../os/FloatingWindowManager';
-import { useWorkspace } from '../../core/workspace/WorkspaceContext';
+import { useWorkspace } from '../../core/workspaces/WorkspaceContext';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 

@@ -10,7 +10,7 @@ import ChatMessages from '../chat/ChatMessages';
 import ChatInput from '../chat/ChatInput';
 
 // --- PERBAIKAN: Tambahkan WorkspaceProvider ---
-import { WorkspaceProvider } from '../../core/workspace/WorkspaceContext';
+import { WorkspaceProvider } from '../../core/workspaces/WorkspaceContext';
 
 export default function AIAgent() {
   const generateUUID = () => {

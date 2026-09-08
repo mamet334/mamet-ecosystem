@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import useDashboardData from '../../hooks/useDashboardData';
+import useDashboardData from '../../core/runtime/hooks/useDashboardData';
 import ActivityGraph from './ActivityGraph';
 import NodeInspector from './NodeInspector';
 import ObservabilityPanel from './ObservabilityPanel';

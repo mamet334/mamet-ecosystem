@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react';
-import { WorkspaceProvider } from '../workspace/WorkspaceContext';
+import { WorkspaceProvider } from '../workspaces/WorkspaceContext';
 import AppShell from '../../components/workbench/AppShell';
 
 // [FIX: Unmount Loop] Komponen pembungkus Suspense yang STATIS.

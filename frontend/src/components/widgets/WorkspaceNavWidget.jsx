@@ -1,6 +1,6 @@
 import React from 'react';
 import { LayoutDashboard, Code, Zap } from 'lucide-react';
-import { useWorkspace } from '../../core/workspace/WorkspaceContext';
+import { useWorkspace } from '../../core/workspaces/WorkspaceContext';
 
 export default function WorkspaceNavWidget() {
   const { osState, manager } = useWorkspace();

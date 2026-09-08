@@ -9,7 +9,7 @@
 // - No backend refactor
 // - No synthetic/mock events
 
-import { supabase } from '../supabase';
+import { supabase } from '../../../supabase';
 
 const PIPELINE_STEPS = [
   { key: 'intent', label: 'Intent' },

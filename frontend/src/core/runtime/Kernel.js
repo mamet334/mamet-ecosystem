@@ -1,9 +1,9 @@
 import React from 'react';
 import { ApplicationManager } from '../application/ApplicationManager';
 import { WindowManager } from '../window/WindowManager';
-import { WidgetRegistry } from '../workspace/WidgetRegistry';
-import { WorkspaceManager } from '../workspace/WorkspaceManager';
-import { lazyLoadWithRetry } from '../workspace/lazyLoadWithRetry';
+import { WidgetRegistry } from '../workspaces/WidgetRegistry';
+import { WorkspaceManager } from '../workspaces/WorkspaceManager';
+import { lazyLoadWithRetry } from '../workspaces/lazyLoadWithRetry';
 import { EventBus } from './EventBus';
 import { VaultService } from './services/VaultService';
 import { BrainService } from './services/BrainService';

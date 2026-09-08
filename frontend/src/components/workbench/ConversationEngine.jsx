@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Loader2, Globe } from 'lucide-react';
-import { useWorkspace } from '../../core/workspace/WorkspaceContext';
+import { useWorkspace } from '../../core/workspaces/WorkspaceContext';
 import { supabase } from '../../supabase';
 import { kernel } from '../../core/runtime/Kernel';
 import FolderSelector from '../FolderSelector';
