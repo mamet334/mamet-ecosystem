@@ -2,7 +2,7 @@
 
 **ID:** ADR-0017
 **Judul:** Pemecahan Monolith `engineer.js` — Roadmap Extraction Bertahap
-**Status:** 🟡 IN PROGRESS — Fase 6/8 selesai & terverifikasi (2026-09-08)
+**Status:** 🟡 IN PROGRESS — Fase 7/8 selesai & terverifikasi (2026-09-08)
 **Tanggal:** 2026-09-08
 **Penulis:** Sesi diskusi arsitektur (Owner + Claude)
 **Metodologi:** Direplikasi dari **ADR-0009 (`index.ts` Decomposition)** — preseden yang sudah terbukti berhasil dieksekusi (`agent-process/index.ts` 2301 baris → thin coordinator ~145 baris).
@@ -269,7 +269,7 @@ Sembilan method (`_buildDynamicContext`, `_handleAnalysisTask`, `_handleReviewTa
 - **Mutasi by-reference dikonfirmasi:** setelah pemanggilan, `engineer.metrics.tasksAnalyzed === 1` dan `engineer.brain.dynamic.task.id === 't6'` — objek `metrics`/`brain` asli termutasi dari dalam modul, sama seperti Map di fase sebelumnya
 - Console bersih dari error selain CSP GitHub API (pra-eksisting, tidak terkait ekstraksi)
 
-### Fase 7 — Patch Generator + CodeSnippetExtractor §2.1 (Risiko Tinggi — Digabung Sengaja)
+### Fase 7 — Patch Generator + CodeSnippetExtractor §2.1 (Risiko Tinggi — Digabung Sengaja) ✅ SELESAI (2026-09-08)
 ```
 Ekstrak: engineer/PatchGenerator.js + engineer/CodeSnippetExtractor.js (§2.1)
 Isi: Kelompok I + rancangan snippet extraction dari SPESIFIKASI-TEKNIS-MAMET-OS-v2.md §2.1
@@ -277,6 +277,28 @@ Dependency: StaticCodeAnalyzer (Fase 3), BrainService (LLM call)
 Kenapa tinggi & digabung: _buildPatchPrompt adalah tempat modifikasi §2.1 terjadi — kalau dipisah jadi 2 sesi terpisah, PR kedua akan konflik dengan struktur baru dari PR pertama. Kerjakan sekali, verifikasi sekali.
 Mitigasi: Test dengan file kecil (≤3000 char, full-file mode) DAN file besar (identifier-based snippet mode) — dua jalur §2.1.
 ```
+
+**`CodeSnippetExtractor.js` — implementasi §2.1 (logika baru, bukan pemindahan kode):** modul PURE tanpa dependency ke instance Engineer. `extractRelevantSnippet(fileContent, targetIdentifiers, contextLines=5)` punya 3 jalur (`method` di hasil): **`full-file`** (file ≤3000 char, tidak dipangkas sama sekali), **`identifier`** (identifier dari task match deklarasi sungguhan — function/class/const-arrow/class-method — di file, dipangkas ke ±contextLines di sekitar tiap blok, digabung kalau overlap), dan **`keyword-scan`** (fallback saat tidak ada identifier yang match deklarasi apa pun — window 50-baris dengan densitas kemunculan identifier tertinggi dipilih). `extractTargetIdentifiers(task, fileContent)` mengekstrak kandidat camelCase/PascalCase/snake_case/`_prefixed` dari `task.title`/`description` lalu memvalidasi ulang keberadaannya di file (word-boundary match) — membuang kandidat yang cuma kebetulan mirip kata biasa.
+
+**Brace-matching string-aware (§2.1.4, bagian tersulit):** `_findBlockEnd()` memindai karakter-demi-karakter dengan stack konteks (`STRING_SINGLE`/`STRING_DOUBLE`/`TEMPLATE`/`INTERP`/`LINE_COMMENT`/`BLOCK_COMMENT`) — brace HANYA dihitung ke `braceDepth` terluar saat stack kosong (kode normal). Interpolasi template literal `${...}` membuka frame `INTERP` dengan `localDepth` sendiri, sehingga brace di dalam interpolasi (termasuk object-literal bersarang seperti `${ (function(){ return {a:1}; })() }`) tidak pernah menyentuh `braceDepth` terluar — diverifikasi live persis terhadap kasus yang disebut spec: fungsi yang membangun prompt lewat template literal berisi `{`/`}` literal (`_buildPatchPrompt`/`buildPatchPrompt` sendiri adalah contoh nyatanya).
+
+**Integrasi ke `buildPatchPrompt` (§2.1.5):** percabangan lama `isLargeFile` (char-count: file >6000 char dapat 4000 awal+4000 akhir, tengah dibuang) dihapus total, diganti satu pemanggilan `extractRelevantSnippet()` per file. Format output yang diminta ke LLM sekarang **SELALU search-replace** untuk semua ukuran file (sebelumnya hanya file besar yang diminta search-replace, file kecil diminta konten penuh) — bagian "FORMAT JSON WAJIB", "CONTOH OUTPUT YANG BENAR", dan "ATURAN KODE" di prompt diperbarui konsisten dengan perubahan ini. Apply logic (`__mode: 'search_replace'` handling di `generatePatch()`) **tidak berubah** dari sebelumnya — sudah fungsional penuh, snippet cuma memangkas apa yang *ditunjukkan* ke LLM, bukan cara patch diterapkan (fileContents utuh tetap disimpan di memori).
+
+**Modul `PatchGenerator.js`:** empat fungsi — `generatePatch(task, deps)`, `buildPatchPrompt(task, fileContents, deps)`, `extractCodeFromResponse(response)` (pure), `generateFallbackPatch(task, fileContents)` (pure). `deps` untuk `generatePatch`: `{ storageManager, fileIndexService, serviceManager, eventBus, brain, injectArtifactIntoPrompt }` — `brain` diteruskan by-reference read-only (dibaca untuk `verifiedApproaches`/`rejectedPatterns`, tidak dimutasi di fase ini), `injectArtifactIntoPrompt` fungsi ter-bind ke instance (method kecil yang tetap tinggal di `engineer.js`, tidak diekstrak).
+
+**Hasil:** `engineer.js` 1680 → **1261 baris** (−419 baris). Modul baru: `engineer/PatchGenerator.js` (~340 baris), `engineer/CodeSnippetExtractor.js` (~330 baris). Total sejak Fase 1: 2978 → 1261 (**−1717 baris, ~58%**). `_buildPatchPrompt`/`_extractCodeFromResponse`/`_generateFallbackPatch` dihapus total dari `engineer.js` tanpa wrapper (tidak ada pemanggil eksternal di luar `_generatePatch` yang juga sudah pindah) — hanya `_generatePatch` yang dipertahankan sebagai wrapper tipis karena dipanggil dari `_handlePatchTask` (orchestrator, Fase 8).
+
+**Verifikasi (evidence-based, live, terhadap instance Engineer sungguhan + import langsung modul):**
+- Build production: ✅ sukses (19.24s, exit 0)
+- **Jalur `full-file`:** file ≤3000 char → `snippet === fileContent` persis, tidak dipangkas
+- **Jalur `identifier`:** file besar (>3000 char) dengan identifier target sungguhan → snippet berhenti tepat di closing brace fungsi target, TIDAK meluber ke fungsi berikutnya (`afterFunction` dikonfirmasi TIDAK ikut ter-include)
+- **String-awareness dikonfirmasi dengan kasus sulit:** fungsi yang mengandung template literal berisi `{nested}` literal DAN interpolasi bersarang `${ (function(){ return {a:1}; })() }` — brace-matching tetap menemukan closing brace fungsi yang benar, tidak salah hitung akibat brace di dalam string/interpolasi
+- **Jalur `keyword-scan`:** identifier diberikan tapi tidak match deklarasi apa pun (cuma muncul di komentar) → window 50-baris dengan densitas tertinggi terpilih, `identifierFound: true`, kata kunci target ada di snippet
+- **`buildPatchPrompt` end-to-end** (impor langsung dari browser, bukan cuma unit logic): prompt untuk file kecil DAN file besar dua-duanya sekarang mengandung instruksi "SEARCH-REPLACE" SELALU, percabangan char-count lama (`isLargeFile`) dikonfirmasi hilang total dari output prompt, padding besar TIDAK ikut ter-dump mentah ke prompt (dipangkas ke snippet)
+- **`_generatePatch` wrapper:** dipanggil langsung terhadap instance Engineer live, deps (`storageManager`/`fileIndexService`/`serviceManager`/`eventBus`/`brain`/`injectArtifactIntoPrompt`) terbukti tersambung benar — jalur "tidak ada file terbaca" mengembalikan struktur error yang identik dengan versi lama
+- **`extractCodeFromResponse`/`generateFallbackPatch`** (pure): diuji langsung, hasil sesuai kontrak lama tanpa perubahan
+- Instance method `_buildPatchPrompt` dikonfirmasi TIDAK ADA lagi di `engineer.js` (`typeof engineer._buildPatchPrompt === 'undefined'`) — sesuai keputusan "tanpa wrapper" karena tidak ada pemanggil eksternal
+- Console bersih, tanpa error dari perubahan ini
 
 ### Fase 8 — Patch Applier & Orchestrator Final Cleanup (Risiko Tinggi — Terakhir)
 ```

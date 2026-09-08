@@ -129,6 +129,8 @@ Ganti seluruh percabangan `isLargeFile` (char-count threshold) di `engineer.js:2
 
 **Update 2026-09-08:** dekomposisi penuh ini sudah dirancang sebagai **[`ADR-0017-engineer-js-decomposition.md`](../adr/ADR-0017-engineer-js-decomposition.md)** — peta tanggung jawab lengkap (12 modul target) + 8 fase ekstraksi berurutan berdasarkan risiko, mengikuti metodologi ADR-0009. Fase 7 di ADR-0017 secara eksplisit menggabungkan ekstraksi `PatchGenerator.js` dengan implementasi `CodeSnippetExtractor.js` (§2.1 ini) dalam satu sesi kerja, karena keduanya menyentuh `_buildPatchPrompt()` yang sama.
 
+**Update 2026-09-08 (selesai diimplementasikan):** §2.1 ini sudah **diimplementasikan penuh** sebagai bagian dari ADR-0017 Fase 7 — lihat [`2026-09-08-adr-0017-fase7-patch-generator-snippet-extraction.md`](../project-memory/changelog/2026-09-08-adr-0017-fase7-patch-generator-snippet-extraction.md). Modul `frontend/src/core/runtime/services/engineer/CodeSnippetExtractor.js` berisi algoritma di atas persis (`extractRelevantSnippet`, `extractTargetIdentifiers`, brace-matching string-aware §2.1.4), diintegrasikan ke `_buildPatchPrompt` (kini `buildPatchPrompt` di `PatchGenerator.js`) sesuai §2.1.5 — percabangan `isLargeFile` lama sudah dihapus total. Diverifikasi live termasuk kasus interpolasi template literal bersarang.
+
 ### 2.2. Pre-Send Verification & Payload Separation
 Ubah struktur payload yang dikirim ke Supabase Edge Function untuk mencegah *false positive* di Verification Engine.
 ```javascript
