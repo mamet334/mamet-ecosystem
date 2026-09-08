@@ -74,6 +74,11 @@ export async function callAgentSimple(
     message,
     tools: effectiveTools,
     model: 'gemini-2.5-flash', // Model default untuk mametlite
+    // [FIX 2026-09-08] Wajib kirim provider eksplisit. Tanpa ini, backend
+    // (request_pipeline.ts) default ke 'openrouter' terlepas dari model yang
+    // diminta, sehingga user tanpa BYOK key diam-diam memakai OPENROUTER_API_KEY
+    // milik Owner di server — bukan kuota gratis Gemini yang dimaksud.
+    provider: 'gemini',
     appSource: 'mametlite',
     userId,
     userName,

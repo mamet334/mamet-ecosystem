@@ -13,8 +13,17 @@ export async function parseRequestParams(req: Request, user: any) {
   console.log('[RequestParser] Mode diterima:', mode);
 
   const jwtAppSource = user.user_metadata?.app_source as string | undefined;
-  const ALLOWED_CLIENT_SOURCES = ['assistant', 'mametlite'];
-  const resolvedAppSource: string = jwtAppSource ?? (ALLOWED_CLIENT_SOURCES.includes(clientAppSource) ? clientAppSource : 'assistant');
+  const ALLOWED_CLIENT_SOURCES = ['assistant', 'mametlite', 'engineer'];
+  // [FIX 2026-09-08] Client yang aktif mendeklarasikan appSource SELALU menang atas
+  // user_metadata.app_source. Metadata akun hanya dipakai sebagai fallback jika client
+  // tidak mengirim nilai yang dikenali. Sebelumnya urutan ini terbalik (metadata selalu
+  // menang), sehingga tag 'app_source' lama yang tersisa di akun (mis. dari sesi Engineer
+  // sebelumnya) "menempel" permanen dan salah mengklasifikasikan request dari aplikasi
+  // lain yang memakai akun Supabase yang sama — menyebabkan Mamet Lite ditolak dengan
+  // error ENGINEER_NO_API_KEY walau mengirim appSource: 'mametlite' dengan benar.
+  const resolvedAppSource: string = ALLOWED_CLIENT_SOURCES.includes(clientAppSource)
+    ? clientAppSource
+    : (jwtAppSource ?? 'assistant');
   const appSource = resolvedAppSource;
   
   if (message && (message.includes('[LOCAL FOLDER CONTENT]') || message.includes('[DESKTOP DIRECTORY ABSOLUTE PATH]'))) {
