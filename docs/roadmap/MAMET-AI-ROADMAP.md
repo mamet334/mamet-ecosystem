@@ -1,7 +1,16 @@
 # Mamet AI Roadmap
 
-Status: Baseline
+Status: Baseline — seluruh fase (0–8 + Post-Baseline) terverifikasi selesai per 2026-09-08
 Owner: Mamet AI Project
+
+> [!NOTE]
+> **Rekonsiliasi 2026-09-08:** Klaim "Done" pada seluruh fase dokumen ini terverifikasi akurat terhadap kode aktual:
+> - **Phase 2/6/7/Post-Baseline (ADR):** `ADR-0003` s/d `ADR-0007` seluruhnya ada di `docs/adr/`.
+> - **Phase 3 (Project Memory Service):** tabel `project_memory_entries`, `engineering_tasks`, dan `architecture_gaps` aktif dipakai di `engineer_context.ts`, `EngineerDashboard.jsx`, `ArchitectureGapsWidget.jsx`, dan `EngineeringTasksWidget.jsx`.
+> - **Phase 4 (Capability Separation):** enum `MametCapabilityMode = "AI" | "LITE" | "ENGINEER"` beserta matriks kebijakan lengkap di `supabase/functions/agent-process/lib/request/types.ts:1,31`.
+> - **Phase 5 (UI & Observability):** `EngineerDashboard.jsx` beserta widget gap/task tersedia.
+>
+> **Catatan skema penomoran:** dokumen ini memakai skema `TASK-000x`/`ADR-000x` serta istilah "MametLite" dan "BRAIN 1-2" yang berbeda dari skema `PR#` di dokumen roadmap lain. Perbedaan ini bersifat historis (dokumen baseline) dan **tidak menandakan konflik implementasi** — pemetaannya: capability "Assistant" di dokumen ini setara nilai enum `"AI"` di kode. Gunakan `INDEX-ROADMAP.md` sebagai rujukan status aktif.
 
 ## North Star
 

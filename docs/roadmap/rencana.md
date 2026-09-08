@@ -2,7 +2,12 @@
 
 **Versi:** 2.0.0  
 **Tanggal:** 28 Juli 2026  
-**Status:** Disetujui untuk Implementasi
+**Status:** ✅ Selesai Diimplementasikan (Fase 1–5) — diverifikasi terhadap kode aktual 2026-09-08
+
+> [!NOTE]
+> **Rekonsiliasi 2026-09-08:** Dokumen ini sebelumnya mengandung kontradiksi internal — baris status menyatakan Fase 1–5 selesai, tetapi tabel gap analysis dan judul Fase 3/4/5 masih menandai `📌`/`❌ Tidak ada`. Verifikasi langsung ke kode membuktikan **seluruh Fase 1–5 sudah terimplementasi**; penanda usang telah dikoreksi di bawah dengan rujukan baris kode.
+>
+> **Catatan klaim belum terverifikasi:** klaim *"54/54 test passed"* tidak dapat diverifikasi — repositori ini tidak memiliki satu pun berkas test (`*.test.*` / `*.spec.*` = 0 hasil, tidak ada direktori `test/`). Kemungkinan pengujian dijalankan ad-hoc tanpa di-commit.
 
 ---
 
@@ -132,19 +137,21 @@ Agar perubahan terstruktur, kita akan mengerjakan dalam urutan berikut:
 
 ## Ringkasan Gap Analysis
 
-Dari 5 fase rencana, komponen yang **sudah ada** vs **perlu dibangun**:
+> [!NOTE]
+> Tabel di bawah adalah **kondisi awal per 28 Juli 2026** (saat dokumen ini ditulis), dipertahankan sebagai catatan sejarah. Kolom terakhir menunjukkan hasil verifikasi kode per 2026-09-08 — seluruh gap sudah tertutup.
 
-| Fase | Sudah Ada | Perlu Dibangun |
-|:-----|:----------|:---------------|
-| 1. Intent Detection | Parsial (implisit di ConversationEngine) | Method `_detectIntent()`, state `ASK_CLARIFICATION` |
-| 2. Capability Guard | Immutable/Protected file check | Confidence threshold, ADR wajib check, prompt clarity check |
-| 3. Reasoning Lock | ❌ Tidak ada | `_emitReasoningReport()`, `_waitForUserConfirmation()`, Reasoning UI |
-| 4. Session Artifact | ❌ Tidak ada | Class `SessionArtifact`, `_updateArtifact()`, `_injectArtifactIntoPrompt()` |
-| 5. UI Integration | Granular Approval dialog | Reasoning Block UI, Session Artifact Viewer |
+| Fase | Kondisi Awal (28 Jul 2026) | Yang Dibangun | Status Kode (2026-09-08) |
+|:-----|:----------|:---------------|:---|
+| 1. Intent Detection | Parsial (implisit di ConversationEngine) | Method `_detectIntent()`, state `ASK_CLARIFICATION` | ✅ `engineer.js:1000`, `intentState` `:199` |
+| 2. Capability Guard | Immutable/Protected file check | Confidence threshold, ADR wajib check, prompt clarity check | ✅ `engineer.js:655` |
+| 3. Reasoning Lock | ❌ Tidak ada | `_emitReasoningReport()`, `_waitForUserConfirmation()`, Reasoning UI | ✅ `engineer.js:893` & `:933`, UI `ConversationEngine.jsx:449`/`:467` |
+| 4. Session Artifact | ❌ Tidak ada | Class `SessionArtifact`, `_updateArtifact()`, `_injectArtifactIntoPrompt()` | ✅ `engineer.js:43`, `:256`, `:355` (dipakai di `_buildPatchPrompt` `:2370`) |
+| 5. UI Integration | Granular Approval dialog | Reasoning Block UI, Session Artifact Viewer | ✅ `ConversationEngine.jsx:1194`/`:1206` (tombol confirm/cancel) |
 
 ---
 
-> **Status Implementasi: ✅ SELESAI & TESTED (Fase 1-5) — 54/54 test passed + UI Integration**
+> **Status Implementasi: ✅ SELESAI (Fase 1–5) — diverifikasi terhadap kode aktual 2026-09-08.**
+> Klaim *"54/54 test passed"* pada versi sebelumnya tidak dapat diverifikasi (tidak ada berkas test di repositori) — lihat catatan rekonsiliasi di bagian atas dokumen.
 
 ## ✅ FASE 1: Intent Detection & Klarifikasi (SELESAI)
 
@@ -184,11 +191,13 @@ Dari 5 fase rencana, komponen yang **sudah ada** vs **perlu dibangun**:
 
 ---
 
-## 📌 FASE 3: Reasoning Lock & Laporan (CRITICAL - Gap Terbesar)
+## ✅ FASE 3: Reasoning Lock & Laporan (SELESAI)
+
+> Terverifikasi di kode 2026-09-08: `_emitReasoningReport()` di `engineer.js:893`, `_waitForUserConfirmation()` di `:933` (dengan timeout 10 menit), restrukturisasi `_handlePatchTask()` di `:1415–1546`, serta listener UI `Engineer:ReasoningReport` (`ConversationEngine.jsx:449`) dan `Engineer:RequestConfirmation` (`:467`).
 
 ### File Target: `frontend/src/core/runtime/services/engineer.js`
 
-**Langkah 3.1 — Buat method `_emitReasoningReport(task, analysis)`**
+**Langkah 3.1 ✅ Method `_emitReasoningReport(task, analysis)`**
 - Method ini akan menghasilkan object report yang berisi:
   
 ```javascript
@@ -210,13 +219,13 @@ Dari 5 fase rencana, komponen yang **sudah ada** vs **perlu dibangun**:
 ```
 - Method ini akan **emit event `Engineer:ReasoningReport`** (bukan langsung approval)
 
-**Langkah 3.2 — Buat method `_waitForUserConfirmation()`**
+**Langkah 3.2 ✅ Method `_waitForUserConfirmation()`**
 - Method ini mengembalikan Promise yang di-resolve ketika user memberikan konfirmasi
 - Implementasi mirip `_requestApproval()` — menggunakan Map `pendingConfirmations`
 - Emit event `Engineer:RequestConfirmation` dengan data report
 - Tunggu event `Engineer:UserConfirmation` dari UI
 
-**Langkah 3.3 — Restruktur `_handlePatchTask()`**
+**Langkah 3.3 ✅ Restruktur `_handlePatchTask()`**
 - Alur baru:
   1. Detect intent → `_detectIntent(task)`
   2. Check capability → `_checkCapabilityAndDeclare(task)`
@@ -230,7 +239,7 @@ Dari 5 fase rencana, komponen yang **sudah ada** vs **perlu dibangun**:
 
 ### File Target: `frontend/src/components/workbench/ConversationEngine.jsx`
 
-**Langkah 3.4 — Tambahkan listener `Engineer:ReasoningReport`**
+**Langkah 3.4 ✅ Listener `Engineer:ReasoningReport`**
 - Di useEffect yang sudah ada, tambahkan handler untuk event baru:
   - `Engineer:ReasoningReport` → tampilkan reasoning block di chat
   - `Engineer:RequestConfirmation` → tampilkan tombol "✅ Lanjutkan" / "❌ Batalkan"
@@ -238,11 +247,13 @@ Dari 5 fase rencana, komponen yang **sudah ada** vs **perlu dibangun**:
 
 ---
 
-## 📌 FASE 4: Session Artifact
+## ✅ FASE 4: Session Artifact (SELESAI)
+
+> Terverifikasi di kode 2026-09-08: class `SessionArtifact` di `engineer.js:43`, `_initializeSessionArtifact()` di `:245` (dipanggil dari `initialize()` `:227` — sesuai Catatan Penting no. 1 di bawah), `_updateArtifact()` di `:256`, dan `_injectArtifactIntoPrompt()` di `:355` yang disuntikkan ke prompt via `_buildPatchPrompt()` `:2370`.
 
 ### File Target: `frontend/src/core/runtime/services/engineer.js`
 
-**Langkah 4.1 — Buat class `SessionArtifact` (atau inner class)**
+**Langkah 4.1 ✅ Class `SessionArtifact` (atau inner class)**
 ```javascript
 class SessionArtifact {
   constructor(sessionId) {
@@ -303,11 +314,13 @@ class SessionArtifact {
 
 ---
 
-## 📌 FASE 5: UI Integration
+## ✅ FASE 5: UI Integration (SELESAI)
+
+> Terverifikasi di kode 2026-09-08: blok Reasoning Report dan tombol konfirmasi aktif di `ConversationEngine.jsx` — listener `:449`/`:467`, tombol "Lanjutkan"/"Batalkan" yang memancarkan `Engineer:UserConfirmation` di `:1194` dan `:1206`, serta tombol Apply Patch di `:1234–1252`.
 
 ### File Target: `frontend/src/components/workbench/ConversationEngine.jsx`
 
-**Langkah 5.1 — Reasoning Block UI Component**
+**Langkah 5.1 ✅ Reasoning Block UI Component**
 - Buat komponen baru inline atau terpisah untuk menampilkan Reasoning Report
 - Elemen-elemen:
   - Header "🧠 Reasoning Analysis"

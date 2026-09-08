@@ -2,6 +2,11 @@
 
 **Format:** `[TANGGAL] [FILE] — Deskripsi`
 
+> [!NOTE]
+> **Rekonsiliasi 2026-09-08:** Kedua fix di dokumen ini terverifikasi masih aktif di kode.
+> - Fix #1 (BYOK header) — `Settings.jsx:71–73` menggunakan `` `x-byok-${aiProvider}` `` sebagai header. ✅
+> - Fix #2 (adaptive verification profile) — `synthesis_handler.ts:94–111`. ✅ Catatan: nama variabel telah di-refactor dari `isJsonPatchResponse` menjadi `looksLikeJsonPatch`, logikanya tetap sama.
+
 ---
 
 ## 2026-08-07 — Fix: Settings API Key Tidak Terkirim ke OpenRouter

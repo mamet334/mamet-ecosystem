@@ -1,7 +1,10 @@
 # 🧠 Engineer Chat Upgrade — Seperti Antigravity
 
 **Tanggal:** 2026-08-07
-**Status:** ✅ Diimplementasikan
+**Status:** ✅ Diimplementasikan — diverifikasi terhadap kode aktual 2026-09-08
+
+> [!NOTE]
+> **Rekonsiliasi 2026-09-08:** Perilaku yang dijelaskan dokumen ini terbukti akurat, namun **lokasi implementasinya sudah berpindah** sejak dokumen ditulis. Deteksi marker `[MAMET_PATCH_READY]` kini berada di `AssistantService.js:846–847` dan `:919–921` (bukan lagi di `ConversationEngine.jsx`); `ConversationEngine.jsx` kini hanya merender tombol Apply Patch berdasarkan flag `hasPatchProposal` (`:1234–1252`). Lihat koreksi rinci di bagian "Perubahan yang Dilakukan".
 
 ---
 
@@ -73,6 +76,11 @@ lalu tutup dengan marker supaya frontend bisa deteksi dan tampilkan tombol Apply
 a. **Hapus early-return** — Engineer mode tidak lagi memotong alur ke LLM.
 b. **Tambah patch detector** — setelah LLM merespons, cek ada `[MAMET_PATCH_READY]`.
 c. **Tambah Apply Patch button** — di pesan yang mengandung patch proposal.
+
+> **Koreksi lokasi kode (verifikasi 2026-09-08):**
+> - (a) ✅ Terverifikasi — early-return sudah tidak ada. `Engineer:GeneratePatch` kini hanya dipancarkan satu kali di `ConversationEngine.jsx:1240`, yaitu di dalam handler klik tombol Apply Patch, bukan sebagai pemotong alur sebelum LLM dipanggil.
+> - (b) ⚠️ **Pindah lokasi** — patch detector kini berada di `AssistantService.js:846–847` (jalur streaming) dan `:919–921` (jalur non-streaming). Keduanya menghapus marker dari teks lalu menyetel flag `hasPatch`/`hasPatchProposal`.
+> - (c) ✅ Terverifikasi — tombol Apply Patch dirender di `ConversationEngine.jsx:1234–1252` berdasarkan flag `m.hasPatchProposal`.
 
 ---
 

@@ -28,7 +28,7 @@
 | `ROADMAP-KNOWLEDGE-GALAXY-COSMIC-ORBITS.md` | 🟡 **PROPOSED (Menunggu Review Owner)** | Visualisasi Galaksi: Orbit Lengkung (Cosmic Filaments) & Pijaran Bintang Aktif Chat (Live Thought Pulse) |
 | `ROADMAP-RUNTIME-CHAT-SESSION-STABILITY-AND-HISTORY.md` | ✅ **COMPLETED, LIVE-ACCEPTED & VERIFIED (2026-09-04 — Kedipan 0, Riwayat Realtime & Terisolasi Antar Workspace)** | Stabilitas Reconciler React (0 Unmount), Isolasi Kunci Workspace Chat, & Realtime EventBus Sync ChatHistory |
 | `ROADMAP-PR6-TOKEN-EFFICIENCY.md` | ✅ **COMPLETED & LIVE-VERIFIED (2026-09-04 — Cloud Confirmed)** | Prompt Caching Gemini (Implicit Caching via Static/Dynamic Split systemInstruction) + Web Search Summarization Guard (threshold 6.000 chars, maks 800 chars/artikel) + Token Metrics Logging across all adapters |
-| `MAMET-AI-ROADMAP.md`, `engineer-autonomous-mode.md`, `engineer-chat-upgrade.md`, `fix-log.md`, `rencana.md`, `roadmap-lanjutan.md` | 📋 Belum direview ulang dalam sesi ini — **catatan:** `MAMET-AI-ROADMAP.md` memakai skema penomoran (`TASK-000x`, `ADR-000x`, istilah "MametLite"/"BRAIN 1-2") yang berbeda dari skema PR# di dokumen lain — perlu direkonsiliasi sebelum dipakai sebagai rujukan aktif | — |
+| `MAMET-AI-ROADMAP.md`, `engineer-autonomous-mode.md`, `engineer-chat-upgrade.md`, `fix-log.md`, `rencana.md`, `roadmap-lanjutan.md` | ✅ **Selesai Direkonsiliasi terhadap Kode Aktual (2026-09-08)** — seluruh klaim diverifikasi baris-per-baris; 4 dokumen akurat, `rencana.md` kontradiksi internal dikoreksi (Fase 3–5 ternyata sudah selesai), `roadmap-lanjutan.md` diberi status per fase (3 dari 4 fase sudah jalan), atribusi file usang di `engineer-chat-upgrade.md` dikoreksi. Skema penomoran `TASK-000x`/`ADR-000x` dikonfirmasi hanya perbedaan historis, bukan konflik implementasi. Menyisakan 3 gap kode kecil → Backlog Item 11–13 | Engineer pipeline, Kernel graceful degradation, Observability UI, BYOK header |
 
 ---
 
@@ -186,3 +186,20 @@ Setiap kali sebuah dokumen di folder ini selesai dikerjakan (Exit Criteria terpe
     - **Isu:** Pada desktop Electron, Tier 3 Web Comparison berfungsi 100% via native IPC bridge (`window.electronAPI.fetchWeb`). Namun pada browser web Google Chrome (deployment Vercel), pencarian web gagal total karena baris `const { supabase } = await import('../../../supabase.js')` di `WebComparisonService.js:359` memicu browser request ke `https://mamet-ecosystem.vercel.app/supabase.js` yang menghasilkan HTTP 404 Not Found. Kegagalan import memicu exception sebelum Edge Function `proxy_fetch` terpanggil, dan fallback `fetch()` langsung browser diblokir oleh kebijakan CORS Chromium (`No 'Access-Control-Allow-Origin' header`).
     - **Status:** ✅ **Selesai & Live-Verified (2026-09-08)** ([`PENDING-tier3-web-search-chrome-cors-proxy-fix.md`](./PENDING-tier3-web-search-chrome-cors-proxy-fix.md), [`2026-09-08-fix-tier3-web-search-chrome-vercel-static-import.md`](../project-memory/changelog/2026-09-08-fix-tier3-web-search-chrome-vercel-static-import.md)).
     - **Solusi:** Ubah dynamic import menjadi static import di header `WebComparisonService.js` (`import { supabase } from '../../../supabase.js'`), sesuai pola yang sudah dipakai `AssistantService.js`. Build Vite production bersih (2663 modul, 0 error). Live test di Chrome/Vercel dengan query "berita ai terbaru" mengonfirmasi `proxy_fetch` terpanggil sukses (Bing News RSS, 4 hasil, 920ms), tanpa error 404/CORS, jawaban AI menampilkan `[STATUS: VERIFIED]`.
+
+11. **System Diagnostic App ("Event Viewer" ala `dmesg`) — `roadmap-lanjutan.md` §4.2:**
+    - **Isu:** Tidak ada aplikasi terdaftar di *AppRegistry* untuk menampilkan riwayat error/warning kernel. Fungsi `kernel.getHealth()` (`Kernel.js:647`) dan `getLogs()` (`:430`) sudah tersedia, namun saat ini hanya dirender di `Settings.jsx:19,37`.
+    - **Status:** 📋 **BACKLOG (Menunggu Penjadwalan Owner)** — teridentifikasi saat rekonsiliasi dokumen roadmap lama 2026-09-08.
+    - **Rencana Solusi:** Bangun `SystemLogsApp` di AppRegistry yang memanggil `kernel.getHealth()` dan merender `health.errors` + `health.warnings`. Melengkapi `SystemNotificationCenter.jsx` (§4.1, sudah selesai) yang hanya menampilkan notifikasi transien.
+
+12. **Distilasi Pengetahuan Arsip (`00_EXPERIMENT_HISTORY.md`) — `roadmap-lanjutan.md` §1.2:**
+    - **Isu:** Folder `_knowledge_archive/` sudah terisi, tetapi berkas indeksnya (`00_INDEX.md`) hanya berupa inventaris folder — bukan ringkasan 1–2 paragraf per eksperimen gagal seperti spesifikasi. Akibatnya Engineer internal tidak punya sumber ringkas untuk belajar dari kegagalan masa lalu tanpa membaca kode usang.
+    - **Status:** 📋 **BACKLOG (Menunggu Penjadwalan Owner)** — teridentifikasi saat rekonsiliasi dokumen roadmap lama 2026-09-08.
+    - **Rencana Solusi:** Susun `_knowledge_archive/00_EXPERIMENT_HISTORY.md` berisi ringkasan tujuan, masalah, dan kesimpulan tiap eksperimen yang dibatalkan. Prasyarat untuk Item 13 poin 2.
+
+13. **Dua Aturan Prompt Pengaman Belum Ditambahkan — `roadmap-lanjutan.md` §3.1:**
+    - **Isu:** Blok `### ATURAN KODE (WAJIB DIPATUHI) ###` di `engineer.js:2483–2491` sudah memuat larangan `eval()`/`new Function()`, panggilan API vendor langsung, dan modifikasi file core — namun dua aturan dari spesifikasi belum ada.
+    - **Status:** 📋 **BACKLOG (Menunggu Penjadwalan Owner)** — teridentifikasi saat rekonsiliasi dokumen roadmap lama 2026-09-08.
+    - **Rencana Solusi:**
+      1. Tambahkan larangan menulis `eventBus.emit("Engineer:GeneratePatch", ...)` di file yang diubah (proteksi anti *infinite loop*, melengkapi Circuit Breaker `engineer.js:1389–1398` yang sudah aktif).
+      2. Tambahkan larangan membaca kode raw dari `_knowledge_archive/` — hanya boleh membaca berkas ringkasan (bergantung pada Item 12).

@@ -1,7 +1,14 @@
 # 🤖 Engineer Autonomous Mode — Plan Eksekusi
 
 **Tanggal:** 2026-08-07
-**Status:** ✅ Diimplementasikan
+**Status:** ✅ Diimplementasikan — diverifikasi terhadap kode aktual 2026-09-08
+
+> [!NOTE]
+> **Rekonsiliasi 2026-09-08:** Seluruh klaim dokumen ini terverifikasi akurat di kode.
+> - `engineerCmdStates` — `ConversationEngine.jsx:74`
+> - `handleRunCommand()` — `ConversationEngine.jsx:735`
+> - Parser marker `[MAMET_CMD:]` & `[MAMET_CRITICAL:]` — `ConversationEngine.jsx:1037–1076`
+> - Instruksi LLM untuk ketiga marker — `engineer_context.ts:184–228`
 
 ---
 
