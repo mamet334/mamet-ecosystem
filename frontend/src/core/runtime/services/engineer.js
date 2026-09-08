@@ -5,6 +5,8 @@ import { detectIntent } from './engineer/IntentClassifier.js'; // [ADR-0017 Fase
 import { extractExports, extractFunctionSignatures, findUsages, detectBreakingChanges, verifySemanticDiff } from './engineer/StaticCodeAnalyzer.js'; // [ADR-0017 Fase 3]
 import { savePendingPatch, clearPendingPatch, restorePersistedPatches, saveVerifiedApproach, saveRejectedApproach, loadVerifiedApproaches } from './engineer/EngineerMemoryStore.js'; // [ADR-0017 Fase 4]
 import { readFile, findFiles, extractFileNamesFromTask, findRelevantADR, tryReadFile } from './engineer/FileSystemGateway.js'; // [ADR-0017 Fase 4]
+import { emitReasoningReport, waitForUserConfirmation, handleUserConfirmation } from './engineer/ReasoningLock.js'; // [ADR-0017 Fase 5]
+import { handleApprovalResponse, requestApproval, emitRecommendation } from './engineer/ApprovalGateway.js'; // [ADR-0017 Fase 5]
 
 /**
  * Engineer.js — Engineering Brain Mamet AI (Real Analysis Engine + Core Protection)
@@ -38,8 +40,8 @@ import { readFile, findFiles, extractFileNamesFromTask, findRelevantADR, tryRead
 // CONSTANTS
 // =============================================
 
-const CONFIRMATION_TIMEOUT_MS = 10 * 60 * 1000; // 10 menit
-const APPROVAL_TIMEOUT_MS = 10 * 60 * 1000;      // 10 menit
+// CONFIRMATION_TIMEOUT_MS [ADR-0017 Fase 5] diimpor dari ./engineer/ReasoningLock.js
+// APPROVAL_TIMEOUT_MS [ADR-0017 Fase 5] diimpor dari ./engineer/ApprovalGateway.js
 // MAX_FILES_PER_PATCH [ADR-0017 Fase 2] diimpor dari ./engineer/CapabilityGuard.js
 
 // [ADR-0017 Fase 1] Class SessionArtifact diekstrak ke ./engineer/SessionArtifact.js
@@ -389,13 +391,13 @@ class Engineer {
 
     this.eventBus.on('Engineer:ApprovalResponse', (wrappedPayload) => {
       const response = wrappedPayload?.data || wrappedPayload;
-      this._handleApprovalResponse(response);
+      handleApprovalResponse(response, { pendingPatches: this.pendingPatches, storageManager: this.storageManager });
     });
 
     // FASE 3: Reasoning Lock listener
     this.eventBus.on('Engineer:UserConfirmation', (wrappedPayload) => {
       const response = wrappedPayload?.data || wrappedPayload;
-      this._handleUserConfirmation(response);
+      handleUserConfirmation(response, { pendingConfirmations: this.pendingConfirmations });
     });
 
     // READ_REPO: Membaca file/folder dari repository
@@ -412,116 +414,8 @@ class Engineer {
     });
   }
 
-  // =============================================
-  // FASE 3: REASONING LOCK & LAPORAN
-  // =============================================
-
-  /**
-   * Menghasilkan laporan reasoning komprehensif sebelum eksekusi patch.
-   * Prinsip: Tidak ada kode yang dihasilkan tanpa analisis yang ditunjukkan.
-   * @param {Object} task - Task yang sedang diproses
-   * @param {Object} analysis - Hasil analisis dari _analyze()
-   * @param {Object} options - Opsi tambahan (intent, capabilityCheck, modelName)
-   * @returns {Object} Reasoning report object
-   */
-  _emitReasoningReport(task, analysis, options = {}) {
-    const { intent = 'MODIFY_CODE', capabilityCheck = null, modelName = 'unknown' } = options;
-    const targetFiles = task.files || extractFileNamesFromTask(task);
-
-    const report = {
-      taskId: task.id,
-      summary: analysis.summary || `Analisis selesai untuk task: ${task.title || task.id}`,
-      findings: analysis.findings || [],
-      adrReferenced: analysis.metrics?.adrReferenced || 'None',
-      filesAnalyzed: Object.keys(analysis.rawContext || {}),
-      recommendedFiles: targetFiles,
-      compliance: analysis.compliance || { violations: [], warnings: [] },
-      confidence: this._calculateConfidence(analysis),
-      intent: intent,
-      capabilityCheck: capabilityCheck || { pass: true, checks: [] },
-      recommendation: analysis.recommendation || 'Lanjutkan dengan implementasi fitur',
-      modelName: modelName,
-      timestamp: new Date().toISOString()
-    };
-
-    console.log(`[Engineer] 🧠 Emitting Reasoning Report for task: ${task.id}`);
-    console.log(`[Engineer] 📋 Report summary: ${report.summary}`);
-    console.log(`[Engineer] 🎯 Intent: ${intent}, Model: ${modelName}`);
-
-    this.eventBus.emit('Engineer:ReasoningReport', {
-      ...report,
-      from: 'Engineer',
-      capability: this.capability,
-      requiresApproval: false, // Reasoning report hanya perlu konfirmasi, bukan approval
-    });
-
-    return report;
-  }
-
-  /**
-   * [FIX #2] Menunggu konfirmasi eksplisit dari user sebelum melanjutkan ke generasi patch.
-   * Sekarang memiliki timeout otomatis 10 menit untuk mencegah memory leak.
-   * @param {Object} report - Reasoning report yang akan dikonfirmasi
-   * @returns {Promise<boolean>} true jika user mengkonfirmasi, false jika dibatalkan atau timeout
-   */
-  _waitForUserConfirmation(report) {
-    return new Promise((resolve) => {
-      const confirmationId = report.taskId || `CONFIRM-${Date.now()}`;
-
-      // [FIX #2] Timeout otomatis untuk mencegah memory leak
-      const timeout = setTimeout(() => {
-        if (this.pendingConfirmations.has(confirmationId)) {
-          console.warn(`[Engineer] ⏰ Confirmation timeout for ID: ${confirmationId}. Auto-cancelling.`);
-          this.pendingConfirmations.delete(confirmationId);
-          resolve(false);
-        }
-      }, CONFIRMATION_TIMEOUT_MS);
-
-      // Simpan resolver + timeout di Map
-      this.pendingConfirmations.set(confirmationId, {
-        report,
-        resolver: (result) => {
-          clearTimeout(timeout); // Bersihkan timeout saat user merespons
-          resolve(result);
-        }
-      });
-
-      // Emit event ke UI untuk menampilkan tombol konfirmasi
-      this.eventBus.emit('Engineer:RequestConfirmation', {
-        confirmationId: confirmationId,
-        report: report,
-        summary: report.summary,
-        findings: report.findings,
-        confidence: report.confidence,
-        intent: report.intent,
-        modelName: report.modelName,
-        filesAnalyzed: report.filesAnalyzed,
-        recommendedFiles: report.recommendedFiles,
-        timeoutMs: CONFIRMATION_TIMEOUT_MS,
-        timestamp: new Date().toISOString()
-      });
-
-      console.log(`[Engineer] ⏳ Waiting for user confirmation (ID: ${confirmationId}, timeout: ${CONFIRMATION_TIMEOUT_MS / 1000}s)...`);
-    });
-  }
-
-  /**
-   * Handler untuk response konfirmasi dari user.
-   * Dipanggil dari event listener Engineer:UserConfirmation.
-   */
-  _handleUserConfirmation(response) {
-    const { confirmationId, confirmed } = response;
-    const pending = this.pendingConfirmations.get(confirmationId);
-
-    if (pending) {
-      console.log(`[Engineer] ${confirmed ? '✅' : '❌'} User confirmation received for: ${confirmationId}`);
-      pending.resolver(confirmed === true);
-      this.pendingConfirmations.delete(confirmationId);
-    } else {
-      console.warn(`[Engineer] ⚠️ No pending confirmation found for ID: ${confirmationId} (mungkin sudah timeout)`);
-    }
-  }
-
+  // [ADR-0017 Fase 5] _emitReasoningReport, _waitForUserConfirmation, _handleUserConfirmation
+  // diekstrak ke ./engineer/ReasoningLock.js
   // =============================================
   // FASE 1: INTENT DETECTION & KLARIFIKASI
   // =============================================
@@ -954,10 +848,15 @@ class Engineer {
     const analysis = await this._analyze(task);
 
     // === FASE 3: REASONING LOCK ===
-    const reasoningReport = this._emitReasoningReport(task, analysis, {
+    const reasoningReport = emitReasoningReport(task, analysis, {
       intent: 'MODIFY_CODE',
       capabilityCheck,
       modelName
+    }, {
+      calculateConfidence: (a) => this._calculateConfidence(a),
+      eventBus: this.eventBus,
+      capability: this.capability,
+      extractFileNamesFromTask
     });
 
     // FASE 4: Update Session Artifact — Reasoning
@@ -968,7 +867,7 @@ class Engineer {
     });
 
     // Tunggu konfirmasi user (Reasoning Lock)
-    const userConfirmed = await this._waitForUserConfirmation(reasoningReport);
+    const userConfirmed = await waitForUserConfirmation(reasoningReport, { pendingConfirmations: this.pendingConfirmations, eventBus: this.eventBus });
 
     if (!userConfirmed) {
       console.log(`[Engineer] 🚫 User membatalkan task: ${task.title || task.id}`);
@@ -1098,7 +997,12 @@ class Engineer {
         console.warn('[Engineer] Breaking change detector error (non-blocking):', bcErr.message);
       }
 
-      const approvalResult = await this._requestApproval(patch, analysis);
+      const approvalResult = await requestApproval(patch, analysis, {
+        pendingPatches: this.pendingPatches,
+        eventBus: this.eventBus,
+        storageManager: this.storageManager,
+        calculateConfidence: (a) => this._calculateConfidence(a)
+      });
 
       if (approvalResult.approved) {
         await this._executePatchApplication(patch, approvalResult.approvedFiles);
@@ -1195,20 +1099,7 @@ class Engineer {
   // [ADR-0017 Fase 3] _extractExports, _extractFunctionSignatures, _findUsages, _detectBreakingChanges,
   // _verifySemanticDiff diekstrak ke ./engineer/StaticCodeAnalyzer.js
 
-  _handleApprovalResponse(response) {
-    const { patchId, approved, approvedFiles } = response;
-    const pending = this.pendingPatches.get(patchId);
-
-    if (pending) {
-      pending.resolver({
-        approved,
-        approvedFiles: approvedFiles || []
-      });
-      this.pendingPatches.delete(patchId);
-      // Hapus dari persistent storage — patch sudah diselesaikan (approve/reject)
-      clearPendingPatch(patchId, { storageManager: this.storageManager });
-    }
-  }
+  // [ADR-0017 Fase 5] _handleApprovalResponse diekstrak ke ./engineer/ApprovalGateway.js (handleApprovalResponse)
 
   // [ADR-0017 Fase 4] readFile, findFiles, _extractFileNamesFromTask, _findRelevantADR
   // diekstrak ke ./engineer/FileSystemGateway.js
@@ -1978,95 +1869,16 @@ this.eventBus.emit('Engineer:PatchApplied', result);
 
   // [ADR-0017 Fase 4] _tryReadFile diekstrak ke ./engineer/FileSystemGateway.js (tryReadFile)
 
-  /**
-   * [FIX #2] _requestApproval() sekarang memiliki timeout otomatis 10 menit
-   * untuk mencegah memory leak jika user menutup dialog tanpa merespons.
-   */
-  async _requestApproval(patch, analysis = null) {
-    // Simpan ke persistent storage SEBELUM menunggu — tidak hilang jika timeout/restart
-    await savePendingPatch(patch, { storageManager: this.storageManager });
-
-    return new Promise((resolve) => {
-      const timeout = setTimeout(() => {
-        if (this.pendingPatches.has(patch.id)) {
-          console.warn(`[Engineer] ⏰ Approval timeout: ${patch.id}. Persisting, tidak di-reject.`);
-          this.pendingPatches.delete(patch.id); // bebas memori, data sudah di storage
-          this.eventBus.emit('Engineer:Recommendation', {
-            type: 'PATCH_PERSISTED',
-            patchId: patch.id,
-            message: `⏰ **Waktu Habis** — Patch \`${patch.id}\` belum disetujui dalam 10 menit.\n\n💾 Patch **disimpan otomatis** — tidak hilang. Saat Anda membuka kembali aplikasi, patch akan tampil kembali untuk persetujuan.\n\nAtau ketik: **"lanjutkan patch ${patch.id}"** untuk melanjutkan sekarang.`,
-            requiresApproval: false,
-            from: 'Engineer',
-            timestamp: new Date().toISOString()
-          });
-          resolve({ approved: false, approvedFiles: [], persisted: true });
-        }
-      }, APPROVAL_TIMEOUT_MS);
-
-      this.pendingPatches.set(patch.id, {
-        patch,
-        resolver: (result) => {
-          clearTimeout(timeout);
-          resolve(result);
-        }
-      });
-
-      const fallbackWarning = patch.isFallback
-        ? `⚠️ **PERINGATAN: Patch Cadangan (Fallback)** — Pemanggilan LLM gagal (${patch.llmError || 'unknown error'}). Patch ini dibuat oleh template darurat, BUKAN hasil analisis AI penuh. Tinjau dengan lebih hati-hati sebelum menyetujui.\n\n`
-        : '';
-
-      // [FIX #6-B] Patch fallback tidak boleh membawa skor confidence yang
-      // dihitung dari analysis normal — itu akan bertentangan dengan
-      // fallbackWarning di atas (mis. tampil "HIGH confidence" pada patch
-      // yang sebenarnya kosong secara substansi). Saat isFallback true,
-      // confidence dipaksa ke LOW/0 tanpa mengubah _calculateConfidence()
-      // itu sendiri (masih dipakai apa adanya di jalur analysis lain).
-      const computedConfidence = analysis
-        ? this._calculateConfidence(analysis)
-        : { level: 'UNKNOWN', coverage: 0, evidence: 0 };
-
-      const confidence = patch.isFallback
-        ? { level: 'LOW', coverage: 0, evidence: 0, forcedByFallback: true }
-        : computedConfidence;
-
-      this.eventBus.emit('Engineer:RequestApproval', {
-        patchId: patch.id,
-        summary: fallbackWarning + (patch.description || 'Patch generated'),
-        isFallback: patch.isFallback || false,
-        llmError: patch.llmError || null,
-        files: patch.files.map(f => ({
-          path: f.path,
-          status: f.status,
-          size: f.size || 0,
-          newContent: f.newContent,
-          originalContent: f.originalContent,
-          isImmutable: isImmutableFile(f.path),
-          isProtected: isProtectedFile(f.path)
-        })),
-        diff: patch.diff || '',
-        verification: patch.verification || null,
-        confidence: confidence,
-        compliance: analysis?.compliance || { violations: [], warnings: [] },
-        timeoutMs: APPROVAL_TIMEOUT_MS,
-        timestamp: new Date().toISOString()
-      });
-    });
-  }
+  // [ADR-0017 Fase 5] _requestApproval diekstrak ke ./engineer/ApprovalGateway.js (requestApproval)
 
   /**
-   * [FIX #1] _emitRecommendation() tidak lagi memaksa requiresApproval: true.
-   * Menggunakan nullish coalescing (??) agar caller bisa set requiresApproval: false.
+   * [ADR-0017 Fase 5] Wrapper tipis — logika sesungguhnya ada di
+   * ./engineer/ApprovalGateway.js (emitRecommendation). Dipertahankan sebagai
+   * method instance karena dipanggil dari ~21 tempat di dalam _handlePatchTask;
+   * mengubah semua titik panggil sekaligus berisiko tidak sepadan manfaatnya.
    */
   _emitRecommendation(recommendation) {
-    this.eventBus.emit('Engineer:Recommendation', {
-      ...recommendation,
-      from: 'Engineer',
-      capability: this.capability,
-      // [FIX #1] Sebelumnya: requiresApproval: true (selalu override)
-      // Sekarang: pakai nilai dari caller, default true hanya jika tidak di-set
-      requiresApproval: recommendation.requiresApproval ?? true,
-      timestamp: new Date().toISOString()
-    });
+    emitRecommendation(recommendation, { eventBus: this.eventBus, capability: this.capability });
   }
 
   upgradeCapability(newCapability) {

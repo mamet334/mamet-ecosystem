@@ -2,7 +2,7 @@
 
 **ID:** ADR-0017
 **Judul:** Pemecahan Monolith `engineer.js` — Roadmap Extraction Bertahap
-**Status:** 🟡 IN PROGRESS — Fase 4/8 selesai & terverifikasi (2026-09-08)
+**Status:** 🟡 IN PROGRESS — Fase 5/8 selesai & terverifikasi (2026-09-08)
 **Tanggal:** 2026-09-08
 **Penulis:** Sesi diskusi arsitektur (Owner + Claude)
 **Metodologi:** Direplikasi dari **ADR-0009 (`index.ts` Decomposition)** — preseden yang sudah terbukti berhasil dieksekusi (`agent-process/index.ts` 2301 baris → thin coordinator ~145 baris).
@@ -227,7 +227,7 @@ Kenapa sedang: Menyentuh I/O nyata (baca/tulis storage), perlu verifikasi tidak 
 - Boot log bersih, tanpa error
 - **Temuan sampingan (bukan bug ekstraksi):** `storageManager.write(key, null)` ternyata menyimpan string literal `"null"`, bukan benar-benar menghapus key — dikonfirmasi ini **perilaku asli StorageManager**, baris kode `clearPendingPatch` sama persis dengan `_clearPendingPatch` sebelum diekstrak. Dicatat untuk kesadaran, di luar scope untuk diperbaiki di sini.
 
-### Fase 5 — Reasoning Lock & Approval Gateway (Risiko Sedang)
+### Fase 5 — Reasoning Lock & Approval Gateway (Risiko Sedang) ✅ SELESAI (2026-09-08)
 ```
 Ekstrak: engineer/ReasoningLock.js, engineer/ApprovalGateway.js
 Isi: Kelompok E
@@ -235,6 +235,17 @@ Dependency: EventBus, pendingConfirmations Map (state yang perlu dipindah bersih
 Kenapa sedang: Timing-sensitive (timeout 10 menit), UI-facing — regresi di sini terasa langsung oleh Owner.
 Mitigasi: Tes end-to-end skenario approve & reject & timeout.
 ```
+**Keputusan desain — `_emitRecommendation` dipertahankan sebagai wrapper tipis:** fungsi ini dipanggil dari **~21 tempat** di dalam `_handlePatchTask` (orchestrator utama, belum diekstrak sampai Fase 8). Logika sesungguhnya dipindah ke `ApprovalGateway.js` (`emitRecommendation`), tapi `engineer.js` mempertahankan method `_emitRecommendation()` satu baris yang mendelegasikan ke sana — menghindari mengubah 21 titik panggil dengan pola closing-brace berbeda-beda sekaligus (risiko tidak sepadan manfaatnya untuk fungsi 6 baris). `pendingConfirmations` dan `pendingPatches` (kedua Map) tetap jadi state di instance Engineer, diteruskan ke modul via `deps` by-reference — mutasi tetap terlihat di Map yang sama.
+
+**Hasil:** `engineer.js` 2096 → **1908 baris** (−188 baris). Modul baru: `engineer/ReasoningLock.js` (~115 baris), `engineer/ApprovalGateway.js` (~140 baris). Konstanta `CONFIRMATION_TIMEOUT_MS`/`APPROVAL_TIMEOUT_MS` dipindah jadi satu sumber kebenaran di modul masing-masing.
+
+**Verifikasi (evidence-based, live, siklus Promise+Map penuh):**
+- Build production: ✅ sukses (10.82s, exit 0)
+- `waitForUserConfirmation` + `handleUserConfirmation` round-trip dengan `pendingConfirmations` Map **live** milik instance Engineer sungguhan: Map ter-set benar, resolver terpanggil benar (`confirmed: true` → resolve `true`), Map dibersihkan setelah selesai
+- `requestApproval` + `handleApprovalResponse` round-trip dengan `pendingPatches` Map live: diverifikasi 2 panggilan terpisah (karena `savePendingPatch` async, race condition ditemukan di skrip tes saya sendiri saat percobaan pertama — bukan di kode — diperbaiki dengan jeda eksplisit sebelum trigger response), approval resolve dengan `approvedFiles` benar, Map dibersihkan
+- `emitReasoningReport`: struktur report benar (`taskId`, `summary`, `intent` sesuai input)
+- Wrapper `_emitRecommendation()` (masih dipakai 21x tanpa diubah): dikonfirmasi tetap memicu event `Engineer:Recommendation` dengan benar lewat delegasi ke modul baru
+- Console bersih, tanpa error
 
 ### Fase 6 — Read-Only Task Handlers (Risiko Sedang)
 ```
