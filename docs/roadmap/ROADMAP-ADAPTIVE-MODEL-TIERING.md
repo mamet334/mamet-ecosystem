@@ -1,9 +1,9 @@
 # ROADMAP — Adaptive Model Tiering (Kecil / Sedang / Thinking)
 
 **Status:** 🟡 PROPOSED — arah desain disetujui Owner lewat diskusi, menunggu implementasi
-**Tanggal Disusun:** 2026-09-08
+**Tanggal Disusun:** 2026-09-08 (diperbarui via diskusi lanjutan — scope Assistant-only & override client-side-only dikonfirmasi)
 **Owner:** Andre
-**Scope:** `BrainService.js`, `RequestClassifierService.js` (referensi pola), Settings UI, `ConversationEngine.jsx`, tabel `chats`, sinkronisasi Supabase `user_metadata`
+**Scope:** `BrainService.js`, `RequestClassifierService.js` (referensi pola), Settings UI, `ConversationEngine.jsx`, sinkronisasi Supabase `user_metadata`. **Hanya berlaku untuk mode Assistant** — Engineer TIDAK termasuk (lihat §3).
 **Referensi Terkait:** [`INDEX-ROADMAP.md`](./INDEX-ROADMAP.md), [`PR8-linux-style-dispatch.md`](./PR8-linux-style-dispatch.md) (pola classifier deterministik tanpa panggilan LLM)
 
 ---
@@ -34,6 +34,8 @@ Membangun sistem **3 tingkat model (Kecil / Sedang / Thinking)** yang:
 - **Dwibahasa dari awal:** daftar kata kunci memuat versi Indonesia **dan** Inggris digabung dalam satu pencarian (Owner menulis campuran ID/EN) — tidak perlu deteksi bahasa terpisah.
 - **Default Auto, override eksplisit:** setiap percakapan baru mulai di mode Auto (tingkat berubah otomatis per pesan). Owner bisa mengunci satu model untuk seluruh sisa percakapan lewat kontrol di area kolom chat. Chat baru selalu kembali ke Auto.
 - **Tidak perlu tombol "upgrade jawaban ini"** — diputuskan eksplisit oleh Owner: cukup override manual per-percakapan sebagai jalan keluar kalau classifier salah tebak, tidak perlu mekanisme koreksi per-pesan yang lebih rumit.
+- **Scope: Assistant-only, Engineer pakai jalur terpisah.** Engineer sudah punya jalur model sendiri (validasi BYOK key di `request_pipeline.ts`) — di luar sistem tiering ini sepenuhnya. Kalau sebuah thread berpindah mode dari Assistant ke Engineer, tier/override yang aktif di Assistant **tidak ikut terbawa**; Engineer tetap pakai jalur BYOK-nya sendiri seperti sekarang.
+- **Override manual bersifat client-side-only, tidak persisten.** Berlaku hanya untuk sisa sesi thread yang sedang aktif di tab/browser saat itu — state React biasa, bukan disimpan ke database. Menutup chat, reload halaman, atau membuka chat yang sama dari device lain akan mengembalikannya ke Auto. **Konsekuensi:** tidak perlu kolom `chats.model_override` atau migrasi skema apa pun untuk fitur ini (lihat §4.4 & §5 yang sudah direvisi).
 
 ## 4. Arsitektur & Komponen
 
@@ -45,17 +47,24 @@ Membangun sistem **3 tingkat model (Kecil / Sedang / Thinking)** yang:
 Service baru, pola sama seperti `RequestClassifierService.js:20` (deterministik, tanpa LLM). Input: pesan terbaru + N pesan riwayat terakhir. Output: `'KECIL' | 'SEDANG' | 'THINKING'`.
 Heuristik awal:
 - Panjang pesan (pendek → cenderung Kecil)
-- Daftar kata kunci ringan (ID: halo, oke, makasih, gimana — EN: hi, thanks, ok, sure)
-- Daftar kata kunci berat/analitis (ID: analisis, bandingkan, rencanakan, kenapa — EN: analyze, compare, strategy, explain in detail)
+- Daftar kata kunci ringan dan berat/analitis (draf disetujui Owner 2026-09-08, lihat tabel di bawah)
 - Sinyal dari riwayat: kalau 1-2 pesan terakhir di thread bertingkat Sedang/Thinking, pesan pendek berikutnya tidak otomatis turun ke Kecil (heuristik smoothing sederhana)
+- Tidak match kata kunci ringan maupun berat, dan bukan sinyal smoothing dari riwayat → default tier **Sedang**
+
+**Daftar kata kunci (draf disetujui, siap dipakai sebagai titik awal implementasi):**
+
+| Tier | ID | EN |
+|---|---|---|
+| Kecil (ringan) | halo, hai, oke, ok, makasih, terima kasih, gimana, siap, lanjut, boleh, iya, ya, sip, mantap | hi, hey, hello, thanks, thank you, ok, okay, sure, got it, alright, cool, nice |
+| Thinking (berat/analitis) | analisis, analisa, bandingkan, rencanakan, rancang, kenapa, jelaskan detail, strategi, evaluasi, optimalkan, pertimbangkan, trade-off, dampak, konsekuensi | analyze, compare, strategy, explain in detail, evaluate, optimize, design, architecture, pros and cons, implications, deep dive |
 
 ### 4.3 `BrainService.js` — routing per tingkat
 **Sekarang:** `state = { provider, model }` tunggal (`BrainService.js:24-27`).
 **Rencana:** `state.tiers = { KECIL: {provider, model}, SEDANG: {...}, THINKING: {...} }`. `getActiveBrainContext()` menerima parameter tingkat (dari `TierClassifierService` atau dari override manual) dan mengembalikan provider/model/key sesuai slot itu.
 
-### 4.4 Override Manual Per-Percakapan
+### 4.4 Override Manual Per-Percakapan (Client-Side-Only, Sesi Aktif Saja)
 **UI:** kontrol pil/dropdown di dekat kolom input chat (`ConversationEngine.jsx`), mirip pola tombol Database RAG/Web Search yang sudah ada di Mamet Lite — menunjukkan status "Auto" atau nama model yang sedang dipin.
-**Penyimpanan:** kolom baru `model_override` (nullable text) di tabel `chats` — dicek: skema tabel ini saat ini tidak punya kolom metadata JSONB (`AssistantService.js:1040-1046` cuma punya `user_id, title, messages, updated_at, workspace_type`), jadi kolom baru perlu migrasi SQL eksplisit yang **wajib dicatat sebagai file migrasi versi-terkontrol** (lihat Catatan §6 — belajar dari bug `verification_audit_logs.metadata` yang terjadi karena skema tidak ter-version-control).
+**Penyimpanan:** **TIDAK disimpan ke database.** Cukup React state biasa di `ConversationEngine.jsx` (atau context lokal), di-scope ke thread yang sedang di-mount di tab itu. Reset otomatis ke Auto saat: chat baru dibuka, halaman di-reload, chat yang sama dibuka lagi nanti (termasuk dari device lain), atau thread berpindah mode dari Assistant ke Engineer. **Tidak perlu kolom `chats.model_override` atau migrasi skema apa pun** — keputusan ini sekaligus menghindari risiko skema tak-terlacak seperti bug `verification_audit_logs.metadata` sebelumnya, karena memang tidak ada skema baru yang ditambah.
 
 ### 4.5 Sinkronisasi Lintas Device
 Ikuti pola yang **sudah terbukti jalan**: `WorkspaceManager.js:212` (`_syncLayoutToSupabase`) memakai `supabase.auth.updateUser({ data: {...} })` untuk sinkron `workspace_layouts` ke `user_metadata`. Tiering config disinkron dengan pola identik, key baru `model_tiers` di `user_metadata`. `BrainService.initialize()` baca dari `user_metadata` dulu (fallback ke `localStorage` kalau offline/gagal fetch).
@@ -64,21 +73,22 @@ Ikuti pola yang **sudah terbukti jalan**: `WorkspaceManager.js:212` (`_syncLayou
 
 ## 5. Rencana Implementasi Bertahap
 
-1. **Migrasi skema:** tambah kolom `chats.model_override` (SQL migration file tersimpan di repo, bukan cuma dijalankan manual — pelajaran dari insiden skema tak-terlacak hari ini).
-2. **`TierClassifierService`:** bangun + unit-test manual dengan contoh pesan campuran ID/EN dari gaya chat Owner sendiri.
-3. **`BrainService` multi-tier:** ubah `state` jadi 3 slot, sinkron ke `user_metadata`.
-4. **Settings UI:** 3 slot input + catatan opsional.
-5. **`ConversationEngine.jsx`:** kontrol override manual di kolom chat + baca/tulis `model_override` per chat.
-6. **Verifikasi live:** kirim beberapa pesan campur ringan-berat dalam satu thread, konfirmasi tier berpindah sesuai; kirim pesan setelah override manual aktif, konfirmasi tetap terkunci ke model yang dipilih; buka dari device lain, konfirmasi 3 slot tersinkron.
+1. **`TierClassifierService`:** bangun + unit-test manual dengan contoh pesan campuran ID/EN dari gaya chat Owner sendiri.
+2. **`BrainService` multi-tier:** ubah `state` jadi 3 slot, sinkron ke `user_metadata`. Pastikan jalur Engineer (BYOK) tidak tersentuh perubahan ini sama sekali.
+3. **Settings UI:** 3 slot input + catatan opsional.
+4. **`ConversationEngine.jsx`:** kontrol override manual di kolom chat — state lokal React saja (lihat §4.4), reset saat thread berganti mode ke Engineer.
+5. **Verifikasi live:** kirim beberapa pesan campur ringan-berat dalam satu thread, konfirmasi tier berpindah sesuai; kirim pesan setelah override manual aktif, konfirmasi tetap terkunci ke model yang dipilih sepanjang sesi itu; reload halaman / buka chat yang sama dari device lain, konfirmasi override sudah kembali ke Auto; pindah mode ke Engineer di thread yang sama, konfirmasi Engineer tetap pakai jalur BYOK-nya sendiri tanpa terpengaruh tier/override Assistant; buka Settings dari device lain, konfirmasi 3 slot model tersinkron.
 
 ## 6. Item yang Masih Perlu Keputusan Owner
 
-- Kurasi model aktual untuk tiap slot (Kecil/Sedang/Thinking) — riset eksternal Owner, di luar scope teknis dokumen ini.
-- Daftar awal kata kunci ringan/berat ID+EN — draft awal bisa dibuat AI, tapi perlu direview Owner karena sangat bergantung gaya bahasa personal Owner.
+- **Kurasi model aktual untuk tiap slot (Kecil/Sedang/Thinking)** — riset eksternal Owner, di luar scope teknis dokumen ini. **Masih terbuka** — implementasi `BrainService` multi-tier (§5 langkah 2) menunggu ini.
+- ~~Daftar awal kata kunci ringan/berat ID+EN~~ — **Selesai.** Draf disetujui Owner 2026-09-08, lihat tabel di §4.2.
 
 ## 7. Kriteria Sukses
 
 - [ ] 3 slot model tersinkron identik di HP dan laptop (dites langsung oleh Owner).
 - [ ] Pesan ringan (sapaan) terverifikasi log memakai slot Kecil; pesan analitis memakai slot Thinking.
-- [ ] Override manual per-percakapan berfungsi dan tidak "lepas sendiri" sebelum chat baru dibuka.
+- [ ] Override manual per-percakapan berfungsi dan tidak "lepas sendiri" selama sesi thread masih aktif di tab yang sama.
+- [ ] Override otomatis kembali ke Auto saat: chat baru dibuka, halaman di-reload, chat lama dibuka ulang (device mana pun), atau thread berpindah mode ke Engineer.
+- [ ] Engineer tidak pernah menerima model dari slot Kecil/Sedang/Thinking — jalur BYOK-nya tetap terpisah total dan tidak berubah perilaku.
 - [ ] Tidak ada panggilan LLM tambahan yang dipakai semata-mata untuk menentukan tingkat (classifier 100% lokal/gratis).
