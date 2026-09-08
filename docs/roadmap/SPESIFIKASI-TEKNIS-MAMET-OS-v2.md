@@ -125,7 +125,9 @@ Ganti seluruh percabangan `isLargeFile` (char-count threshold) di `engineer.js:2
 
 #### 2.1.6 Catatan Terpisah — `engineer.js` Sendiri adalah Kandidat Dekomposisi
 
-`engineer.js` (2978 baris) melanggar prinsip yang sama seperti `index.ts` sebelum ADR-0009 — satu file menampung `SessionArtifact`, intent detection, capability guard, reasoning report, patch generation, prompt building, compliance checking, dst. Modul `CodeSnippetExtractor.js` di atas adalah potongan pertama yang keluar dari file ini. **Di luar scope revisi §2.1 ini** — kalau Owner mau, dekomposisi penuh `engineer.js` ala ADR-0009 (peta tanggung jawab lengkap + fase ekstraksi berurutan) layak jadi ADR terpisah, bukan bagian dari dokumen ini.
+`engineer.js` (2978 baris) melanggar prinsip yang sama seperti `index.ts` sebelum ADR-0009 — satu file menampung `SessionArtifact`, intent detection, capability guard, reasoning report, patch generation, prompt building, compliance checking, dst. Modul `CodeSnippetExtractor.js` di atas adalah potongan pertama yang keluar dari file ini.
+
+**Update 2026-09-08:** dekomposisi penuh ini sudah dirancang sebagai **[`ADR-0017-engineer-js-decomposition.md`](../adr/ADR-0017-engineer-js-decomposition.md)** — peta tanggung jawab lengkap (12 modul target) + 8 fase ekstraksi berurutan berdasarkan risiko, mengikuti metodologi ADR-0009. Fase 7 di ADR-0017 secara eksplisit menggabungkan ekstraksi `PatchGenerator.js` dengan implementasi `CodeSnippetExtractor.js` (§2.1 ini) dalam satu sesi kerja, karena keduanya menyentuh `_buildPatchPrompt()` yang sama.
 
 ### 2.2. Pre-Send Verification & Payload Separation
 Ubah struktur payload yang dikirim ke Supabase Edge Function untuk mencegah *false positive* di Verification Engine.
