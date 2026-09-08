@@ -2,7 +2,7 @@
 
 **ID:** ADR-0017
 **Judul:** Pemecahan Monolith `engineer.js` — Roadmap Extraction Bertahap
-**Status:** 🟡 IN PROGRESS — Fase 3/8 selesai & terverifikasi (2026-09-08)
+**Status:** 🟡 IN PROGRESS — Fase 4/8 selesai & terverifikasi (2026-09-08)
 **Tanggal:** 2026-09-08
 **Penulis:** Sesi diskusi arsitektur (Owner + Claude)
 **Metodologi:** Direplikasi dari **ADR-0009 (`index.ts` Decomposition)** — preseden yang sudah terbukti berhasil dieksekusi (`agent-process/index.ts` 2301 baris → thin coordinator ~145 baris).
@@ -206,13 +206,26 @@ Catatan: Kerjakan bareng dengan CodeSnippetExtractor.js (§2.1) — keduanya sam
 - `verifySemanticDiff`: alur eksekusi terbukti identik dengan versi lama — melaporkan "File kosong" untuk path source code asli karena `storageManager` di app ini memang bukan backend pembaca file repo (itu tugas `RepositoryReaderService` terpisah) — perilaku ini **sama persis** dengan kode sebelum diekstrak, bukan regresi
 - Console bersih, tanpa error
 
-### Fase 4 — File System Gateway & Memory Store (Risiko Rendah-Sedang)
+### Fase 4 — File System Gateway & Memory Store (Risiko Rendah-Sedang) ✅ SELESAI (2026-09-08)
 ```
 Ekstrak: engineer/FileSystemGateway.js, engineer/EngineerMemoryStore.js
 Isi: Kelompok H, Kelompok B
 Dependency: StorageManager, RepositoryReaderService
 Kenapa sedang: Menyentuh I/O nyata (baca/tulis storage), perlu verifikasi tidak ada perubahan urutan read/write.
 ```
+**Tantangan tambahan dibanding Fase 2-3:** `loadVerifiedApproaches` (dari `_loadVerifiedApproaches`) di versi lama **memutasi `this.brain` langsung** — tidak bisa sekadar dependency-injection seperti fase sebelumnya. Diselesaikan dengan mengubah fungsi jadi mengembalikan `{ verifiedApproaches, rejectedPatterns }`, dan `engineer.js` (di `initialize()`) yang menugaskan hasilnya ke `this.brain` — modul tetap tidak butuh instance Engineer sama sekali.
+
+**Hasil:** `engineer.js` 2452 → **2096 baris** (−356 baris). Modul baru: `engineer/EngineerMemoryStore.js` (~250 baris), `engineer/FileSystemGateway.js` (~155 baris). `findFiles` dipindah apa adanya walau ternyata tidak dipanggil dari mana pun di codebase (kode mati sejak sebelum dekomposisi — dibiarkan, bukan tugas fase ini untuk menghapus kode).
+
+**Verifikasi (evidence-based, live, dengan dependency instance Engineer sungguhan):**
+- Build production: ✅ sukses (11.49s, exit 0)
+- `extractFileNamesFromTask`/`findRelevantADR` (murni): benar mengekstrak path & memetakan ke ADR yang relevan
+- `readFile`/`tryReadFile` dengan `storageManager`/`fileIndexService` live: berhasil tulis-lalu-baca file uji lewat kedua fungsi
+- `savePendingPatch`/`clearPendingPatch` round-trip dengan `storageManager` live: patch tersimpan benar, terkonfirmasi lewat baca key mentah
+- `approachKey` deterministik: urutan file berbeda menghasilkan key yang sama (karena di-sort secara internal), sesuai desain asli
+- `engineer.brain.verifiedApproaches`/`rejectedPatterns` tetap terisi via pola return-value setelah `initialize()` — bukan lagi mutasi internal modul
+- Boot log bersih, tanpa error
+- **Temuan sampingan (bukan bug ekstraksi):** `storageManager.write(key, null)` ternyata menyimpan string literal `"null"`, bukan benar-benar menghapus key — dikonfirmasi ini **perilaku asli StorageManager**, baris kode `clearPendingPatch` sama persis dengan `_clearPendingPatch` sebelum diekstrak. Dicatat untuk kesadaran, di luar scope untuk diperbaiki di sini.
 
 ### Fase 5 — Reasoning Lock & Approval Gateway (Risiko Sedang)
 ```

@@ -3,6 +3,8 @@ import { SessionArtifact } from './engineer/SessionArtifact.js'; // [ADR-0017 Fa
 import { MAX_FILES_PER_PATCH, checkCapabilityAndDeclare, isImmutableFile, isProtectedFile } from './engineer/CapabilityGuard.js'; // [ADR-0017 Fase 2]
 import { detectIntent } from './engineer/IntentClassifier.js'; // [ADR-0017 Fase 2]
 import { extractExports, extractFunctionSignatures, findUsages, detectBreakingChanges, verifySemanticDiff } from './engineer/StaticCodeAnalyzer.js'; // [ADR-0017 Fase 3]
+import { savePendingPatch, clearPendingPatch, restorePersistedPatches, saveVerifiedApproach, saveRejectedApproach, loadVerifiedApproaches } from './engineer/EngineerMemoryStore.js'; // [ADR-0017 Fase 4]
+import { readFile, findFiles, extractFileNamesFromTask, findRelevantADR, tryReadFile } from './engineer/FileSystemGateway.js'; // [ADR-0017 Fase 4]
 
 /**
  * Engineer.js — Engineering Brain Mamet AI (Real Analysis Engine + Core Protection)
@@ -86,7 +88,9 @@ class Engineer {
     await this._loadStaticKnowledge();
 
     // ✅ VERIFIED APPROACH MEMORY: Load pendekatan terbukti dari sesi sebelumnya ke Brain
-    await this._loadVerifiedApproaches();
+    const { verifiedApproaches, rejectedPatterns } = await loadVerifiedApproaches({ storageManager: this.storageManager });
+    this.brain.verifiedApproaches = verifiedApproaches;
+    this.brain.rejectedPatterns = rejectedPatterns;
 
     // ✅ Inisialisasi FileIndexService menggunakan static import di atas, dan tunggu selesai
     this.fileIndexService = new FileIndexService(this.storageManager);
@@ -98,7 +102,7 @@ class Engineer {
     this._initializeSessionArtifact();
 
     // ✅ PERSISTENT PENDING: Restore patch yang belum diapprove dari sesi sebelumnya
-    await this._restorePersistedPatches();
+    await restorePersistedPatches({ storageManager: this.storageManager, eventBus: this.eventBus });
 
     this._registerListeners(); // Pastikan terjadi SETELAH indeks siap!
     console.log(`[Engineer] Initialized as ${this.capability}`);
@@ -286,232 +290,8 @@ class Engineer {
       return null;
     }
   }
-
-  // =============================================
-  // PERSISTENT PENDING PATCH
-  // Patch tidak hilang saat timeout/restart — disimpan ke StorageManager
-  // =============================================
-
-  _pendingKey(patchId) { return `eng:pending:${patchId}`; }
-
-  async _savePendingPatch(patch) {
-    try {
-      const payload = JSON.stringify({
-        patchId: patch.id,
-        patch,
-        savedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 hari
-      });
-      await this.storageManager.write(this._pendingKey(patch.id), payload);
-      console.log(`[Engineer] 💾 Pending patch saved: ${patch.id}`);
-    } catch (e) {
-      console.warn('[Engineer] Gagal menyimpan pending patch:', e.message);
-    }
-  }
-
-  async _clearPendingPatch(patchId) {
-    try {
-      await this.storageManager.write(this._pendingKey(patchId), null);
-      console.log(`[Engineer] 🗑️ Pending patch cleared: ${patchId}`);
-    } catch (e) {
-      console.warn('[Engineer] Gagal menghapus pending patch:', e.message);
-    }
-  }
-
-  async _restorePersistedPatches() {
-    try {
-      const allKeys = await this.storageManager.list('.');
-      const pendingKeys = (allKeys || []).filter(k => String(k).includes('eng:pending:'));
-      if (pendingKeys.length === 0) return;
-
-      console.log(`[Engineer] 🔄 Menemukan ${pendingKeys.length} pending patch dari sesi sebelumnya`);
-      for (const key of pendingKeys) {
-        try {
-          const raw = await this.storageManager.read(key);
-          if (!raw) continue;
-          const saved = JSON.parse(raw);
-          if (new Date(saved.expiresAt) < new Date()) {
-            await this.storageManager.write(key, null); // expired, hapus
-            continue;
-          }
-          this.eventBus.emit('Engineer:PatchPersisted', {
-            patchId: saved.patchId,
-            patch: saved.patch,
-            savedAt: saved.savedAt,
-            message: `📋 Ada patch yang menunggu dari sesi sebelumnya (${new Date(saved.savedAt).toLocaleString('id-ID')}). Ketik "lanjutkan patch ${saved.patchId}" untuk melanjutkan, atau "batalkan patch ${saved.patchId}" untuk membatalkan.`
-          });
-          console.log(`[Engineer] 📋 Restored pending patch: ${saved.patchId}`);
-        } catch (e) {
-          console.warn('[Engineer] Gagal restore patch:', key, e.message);
-        }
-      }
-    } catch (e) {
-      console.warn('[Engineer] _restorePersistedPatches error:', e.message);
-    }
-  }
-
-  // =============================================
-  // VERIFIED APPROACH MEMORY
-  // Engineer belajar dari setiap sesi: pendekatan yang berhasil disimpan
-  // dan di-inject ke Brain 1 pada sesi berikutnya.
-  // Storage: StorageManager lokal (eng:approach:* / eng:rejected:*)
-  // =============================================
-
-  _approachKey(taskType, files) {
-    // Hash sederhana dari taskType + file list untuk key unik tapi deterministik
-    const raw = `${taskType}:${(files || []).sort().join(',')}`;
-    let h = 5381;
-    for (let i = 0; i < raw.length; i++) h = ((h << 5) + h) ^ raw.charCodeAt(i);
-    return `eng:approach:${(h >>> 0).toString(16).padStart(8, '0')}`;
-  }
-
-  /**
-   * Simpan pendekatan yang BERHASIL (patch approved) ke persistent memory.
-   * Dipanggil setelah _executePatchApplication berhasil.
-   */
-  async _saveVerifiedApproach(task, patch) {
-    try {
-      const taskType  = task.intent || task.type || 'MODIFY_CODE';
-      const files     = patch.files?.map(f => f.path) || [];
-      const key       = this._approachKey(taskType, files);
-
-      // Load existing entry jika ada (untuk increment approvalCount)
-      let existing = null;
-      try {
-        const raw = await this.storageManager.read(key);
-        if (raw) existing = JSON.parse(raw);
-      } catch (_) {}
-
-      const entry = {
-        taskType,
-        files,
-        taskSummary: (task.description || task.title || '').slice(0, 200),
-        approvalCount: (existing?.approvalCount || 0) + 1,
-        lastApprovedAt: new Date().toISOString(),
-        // Simpan confidence terakhir sebagai sinyal kualitas
-        confidence: patch.confidence?.level || 'MEDIUM',
-        // Simpan garis besar approach: file mana yang diubah + status
-        fileChanges: files.map(f => {
-          const pf = patch.files?.find(p => p.path === f);
-          return { path: f, status: pf?.status || 'MODIFIED' };
-        })
-      };
-
-      await this.storageManager.write(key, JSON.stringify(entry));
-      console.log(`[Engineer] 🧠 Verified approach saved: ${taskType} (count: ${entry.approvalCount})`);
-
-      // Bersihkan jika terlalu banyak (max 50 entries)
-      await this._pruneApproachMemory('eng:approach:', 50);
-    } catch (e) {
-      console.warn('[Engineer] _saveVerifiedApproach error (non-blocking):', e.message);
-    }
-  }
-
-  /**
-   * Simpan pola yang DITOLAK user ke memory, agar Engineer hindari di masa depan.
-   */
-  async _saveRejectedApproach(task, reason = '') {
-    try {
-      const taskType = task.intent || task.type || 'MODIFY_CODE';
-      const files    = task.files || [];
-      const key      = `eng:rejected:${this._approachKey(taskType, files).replace('eng:approach:', '')}`;
-
-      let existing = null;
-      try {
-        const raw = await this.storageManager.read(key);
-        if (raw) existing = JSON.parse(raw);
-      } catch (_) {}
-
-      const entry = {
-        taskType,
-        files,
-        taskSummary: (task.description || task.title || '').slice(0, 200),
-        rejectionCount: (existing?.rejectionCount || 0) + 1,
-        lastRejectedAt: new Date().toISOString(),
-        reason: reason.slice(0, 300)
-      };
-
-      await this.storageManager.write(key, JSON.stringify(entry));
-      console.log(`[Engineer] ⚠️ Rejected pattern saved: ${taskType} (count: ${entry.rejectionCount})`);
-
-      await this._pruneApproachMemory('eng:rejected:', 30);
-    } catch (e) {
-      console.warn('[Engineer] _saveRejectedApproach error (non-blocking):', e.message);
-    }
-  }
-
-  /**
-   * Load semua verified approaches ke brain.verifiedApproaches[].
-   * Dipanggil di initialize() — menjadi bagian Brain 1 (Static Knowledge).
-   */
-  async _loadVerifiedApproaches() {
-    try {
-      const allKeys = await this.storageManager.list('.');
-      if (!allKeys?.length) return;
-
-      const approachKeys  = allKeys.filter(k => String(k).includes('eng:approach:'));
-      const rejectedKeys  = allKeys.filter(k => String(k).includes('eng:rejected:'));
-
-      // Load approaches
-      const approaches = [];
-      for (const key of approachKeys) {
-        try {
-          const raw = await this.storageManager.read(key);
-          if (raw) approaches.push(JSON.parse(raw));
-        } catch (_) {}
-      }
-      // Sort by approvalCount desc — yang paling sering berhasil tampil duluan
-      this.brain.verifiedApproaches = approaches
-        .sort((a, b) => (b.approvalCount || 0) - (a.approvalCount || 0))
-        .slice(0, 10); // max 10 untuk dijadikan konteks LLM
-
-      // Load rejected patterns
-      const rejected = [];
-      for (const key of rejectedKeys) {
-        try {
-          const raw = await this.storageManager.read(key);
-          if (raw) rejected.push(JSON.parse(raw));
-        } catch (_) {}
-      }
-      this.brain.rejectedPatterns = rejected
-        .sort((a, b) => (b.rejectionCount || 0) - (a.rejectionCount || 0))
-        .slice(0, 5); // max 5 pola yang paling sering ditolak
-
-      if (this.brain.verifiedApproaches.length > 0 || this.brain.rejectedPatterns.length > 0) {
-        console.log(`[Engineer] 🧠 Loaded ${this.brain.verifiedApproaches.length} verified approaches + ${this.brain.rejectedPatterns.length} rejected patterns from memory`);
-      }
-    } catch (e) {
-      console.warn('[Engineer] _loadVerifiedApproaches error (non-blocking):', e.message);
-    }
-  }
-
-  /**
-   * Hapus entries lama jika jumlah melebihi batas.
-   * Strategi: hapus yang paling jarang diapprove / paling lama.
-   */
-  async _pruneApproachMemory(prefix, maxCount) {
-    try {
-      const allKeys = await this.storageManager.list('.');
-      const matching = (allKeys || []).filter(k => String(k).includes(prefix));
-      if (matching.length <= maxCount) return;
-
-      // Load semua, sort, hapus yang paling tidak berguna
-      const entries = [];
-      for (const key of matching) {
-        try {
-          const raw = await this.storageManager.read(key);
-          if (raw) entries.push({ key, ...JSON.parse(raw) });
-        } catch (_) {}
-      }
-      const sortedByScore = entries.sort((a, b) =>
-        ((b.approvalCount || b.rejectionCount || 0)) - ((a.approvalCount || a.rejectionCount || 0))
-      );
-      const toDelete = sortedByScore.slice(maxCount);
-      for (const e of toDelete) {
-        await this.storageManager.write(e.key, null);
-      }
-    } catch (_) {}
-  }
+  // [ADR-0017 Fase 4] Pending Patch Persistence & Verified/Rejected Approach Memory
+  // diekstrak ke ./engineer/EngineerMemoryStore.js
 
   // [ADR-0017 Fase 2] _checkCapabilityAndDeclare, _isImmutableFile, _isProtectedFile
   // diekstrak ke ./engineer/CapabilityGuard.js (checkCapabilityAndDeclare, isImmutableFile, isProtectedFile)
@@ -646,7 +426,7 @@ class Engineer {
    */
   _emitReasoningReport(task, analysis, options = {}) {
     const { intent = 'MODIFY_CODE', capabilityCheck = null, modelName = 'unknown' } = options;
-    const targetFiles = task.files || this._extractFileNamesFromTask(task);
+    const targetFiles = task.files || extractFileNamesFromTask(task);
 
     const report = {
       taskId: task.id,
@@ -764,7 +544,7 @@ class Engineer {
    * @returns {Object} Dynamic context object
    */
   async _buildDynamicContext(task) {
-    const targetFiles = task.files || this._extractFileNamesFromTask(task);
+    const targetFiles = task.files || extractFileNamesFromTask(task);
     let availableFiles = [];
 
     try {
@@ -1149,8 +929,8 @@ class Engineer {
     }
 
     const capabilityCheck = checkCapabilityAndDeclare(task, { modelName }, {
-      extractFileNamesFromTask: (t) => this._extractFileNamesFromTask(t),
-      findRelevantADR: (t) => this._findRelevantADR(t),
+      extractFileNamesFromTask,
+      findRelevantADR,
       calculateConfidence: (a) => this._calculateConfidence(a)
     });
 
@@ -1370,7 +1150,7 @@ class Engineer {
         });
 
         // 🧠 VERIFIED APPROACH MEMORY: simpan pendekatan yang berhasil
-        this._saveVerifiedApproach(task, patch); // fire-and-forget
+        saveVerifiedApproach(task, patch, { storageManager: this.storageManager }); // fire-and-forget
 
       } else {
         this.metrics.patchesRejected++;
@@ -1382,7 +1162,7 @@ class Engineer {
         });
 
         // 🧠 VERIFIED APPROACH MEMORY: simpan pola yang ditolak
-        this._saveRejectedApproach(task, 'User menolak patch'); // fire-and-forget
+        saveRejectedApproach(task, 'User menolak patch', { storageManager: this.storageManager }); // fire-and-forget
 
         this._emitRecommendation({
           type: 'PATCH_REJECTED',
@@ -1426,102 +1206,12 @@ class Engineer {
       });
       this.pendingPatches.delete(patchId);
       // Hapus dari persistent storage — patch sudah diselesaikan (approve/reject)
-      this._clearPendingPatch(patchId);
+      clearPendingPatch(patchId, { storageManager: this.storageManager });
     }
   }
 
-  // =============================================
-  // FILE OPERATIONS
-  // =============================================
-
-  async readFile(filePath) {
-    try {
-      const content = await this.storageManager.read(filePath);
-      if (content === null) {
-        console.warn(`[Engineer] File tidak ditemukan: ${filePath}`);
-        return null;
-      }
-      console.log(`[Engineer] File dibaca: ${filePath} (${content.length} karakter)`);
-      return content;
-    } catch (error) {
-      console.error(`[Engineer] Gagal membaca file ${filePath}:`, error);
-      return null;
-    }
-  }
-
-  async findFiles(pattern, dir = '.') {
-    try {
-      const allFiles = await this.storageManager.list(dir);
-      if (pattern === '*') return allFiles;
-      if (pattern.endsWith('*')) {
-        const prefix = pattern.replace('*', '');
-        return allFiles.filter(f => f.startsWith(dir + prefix) || f.includes(prefix));
-      }
-      if (pattern.startsWith('*.')) {
-        const ext = pattern.replace('*', '');
-        return allFiles.filter(f => f.endsWith(ext));
-      }
-      return allFiles.filter(f => f.includes(pattern));
-    } catch (error) {
-      console.error(`[Engineer] Gagal mencari file:`, error);
-      return [];
-    }
-  }
-
-  // =============================================
-  // REAL ANALYSIS ENGINE (MAEF 4.5 Compliant)
-  // =============================================
-
-  _extractFileNamesFromTask(task) {
-    const text = `${task.title || ''} ${task.description || ''}`;
-    console.log('[Engineer] Task text for extraction:', text);
-
-    const fullPathRegex = /(frontend\/[a-zA-Z0-9_\-./]+\.(jsx?|tsx?|ts|json|md))/gi;
-    const fullPathMatches = [...text.matchAll(fullPathRegex)];
-    if (fullPathMatches.length > 0) {
-      const extracted = [...new Set(fullPathMatches.map(m => m[0]))];
-      console.log('[Engineer] Extracted full paths:', extracted);
-      return extracted;
-    }
-
-    const srcPathRegex = /(src\/[a-zA-Z0-9_\-./]+\.(jsx?|tsx?|ts|json|md))/gi;
-    const srcPathMatches = [...text.matchAll(srcPathRegex)];
-    if (srcPathMatches.length > 0) {
-      const extracted = [...new Set(srcPathMatches.map(m => m[0]))];
-      console.log('[Engineer] Extracted src paths:', extracted);
-      return extracted;
-    }
-
-    const nameRegex = /([a-zA-Z0-9_\-]+\.(jsx?|tsx?|ts|json|md))/gi;
-    const nameMatches = [...text.matchAll(nameRegex)];
-    const extracted = [...new Set(nameMatches.map(m => m[1]))];
-    console.log('[Engineer] Extracted filenames (fallback):', extracted);
-    return extracted;
-  }
-
-  _findRelevantADR(task) {
-    const text = `${task.title || ''} ${task.description || ''}`.toLowerCase();
-
-    const adrMapping = [
-      { keywords: ['event', 'bus', 'emit', 'listener'], file: 'constitution/11_MAEF_EVENT_SYSTEM.md' },
-      { keywords: ['kernel', 'boot', 'phase', 'service'], file: 'constitution/02_MAEF_KERNEL.md' },
-      { keywords: ['adapter', 'vendor', 'openrouter', 'gemini'], file: 'constitution/12_CAPABILITY_ADAPTER_SPEC.md' },
-      { keywords: ['verification', 'confidence', 'evidence'], file: 'constitution/13_VERIFICATION_ENGINE_SPEC.md' },
-      { keywords: ['memory', 'user_memory', 'project_memory'], file: 'constitution/06_MEMORY_SYSTEM.md' },
-      { keywords: ['rag', 'embedding', 'vector', 'chunk'], file: 'constitution/05_KNOWLEDGE_SYSTEM.md' },
-      { keywords: ['engineer', 'patch', 'self-maintenance'], file: 'constitution/07_ENGINEERING_SYSTEM.md' },
-      { keywords: ['logging', 'telemetry', 'observability'], file: 'constitution/15_LOGGING_OBSERVABILITY_SYSTEM.md' },
-      { keywords: ['metric', 'health', 'shi'], file: 'constitution/16_ENGINEERING_METRICS_SYSTEM.md' }
-    ];
-
-    for (const mapping of adrMapping) {
-      if (mapping.keywords.some(kw => text.includes(kw))) {
-        return { title: mapping.file, path: mapping.file };
-      }
-    }
-
-    return null;
-  }
+  // [ADR-0017 Fase 4] readFile, findFiles, _extractFileNamesFromTask, _findRelevantADR
+  // diekstrak ke ./engineer/FileSystemGateway.js
 
   _checkCompliance(fileContents) {
     const violations = [];
@@ -1591,14 +1281,14 @@ class Engineer {
   async _analyze(task) {
     console.log(`[Engineer] Memulai Real Analysis untuk: ${task.title || task.id}`);
 
-    const targetFiles = this._extractFileNamesFromTask(task);
+    const targetFiles = extractFileNamesFromTask(task);
     console.log(`[Engineer] File terdeteksi: ${targetFiles.join(', ')}`);
 
     const fileContents = {};
     const readResults = [];
 
     for (const filePath of targetFiles.slice(0, MAX_FILES_PER_PATCH)) {
-      const result = await this._tryReadFile(filePath);
+      const result = await tryReadFile(filePath, { storageManager: this.storageManager, fileIndexService: this.fileIndexService });
       if (result) {
         fileContents[result.path] = result.content;
         readResults.push({ file: result.path, status: 'SUCCESS', size: result.content.length });
@@ -1607,10 +1297,10 @@ class Engineer {
       }
     }
 
-    const relevantADR = this._findRelevantADR(task);
+    const relevantADR = findRelevantADR(task);
     let adrContent = null;
     if (relevantADR) {
-      adrContent = await this.readFile(relevantADR.path);
+      adrContent = await readFile(relevantADR.path, { storageManager: this.storageManager });
     }
 
     const compliance = this._checkCompliance(fileContents);
@@ -1673,13 +1363,13 @@ class Engineer {
 
       const targetFiles = relevantFiles.length > 0
         ? relevantFiles
-        : this._extractFileNamesFromTask(task);
+        : extractFileNamesFromTask(task);
 
       console.log(`[Engineer] 📂 Target files: ${targetFiles.join(', ')}`);
 
       // [FIX #4] Disamakan dengan MAX_FILES_PER_PATCH (10), sebelumnya hanya slice(0, 5)
       for (const filePath of targetFiles.slice(0, MAX_FILES_PER_PATCH)) {
-        const result = await this._tryReadFile(filePath);
+        const result = await tryReadFile(filePath, { storageManager: this.storageManager, fileIndexService: this.fileIndexService });
         if (result) {
           fileContents[result.path] = result.content;
           console.log(`[Engineer] ✅ Read: ${result.path} (${result.content.length} chars)`);
@@ -2286,53 +1976,7 @@ this.eventBus.emit('Engineer:PatchApplied', result);
     return { coverage, evidence, level };
   }
 
-  async _tryReadFile(basePath) {
-    const normalizedBase = basePath.replace(/\\/g, '/');
-
-    if (this.fileIndexService && !this.fileIndexService.isReady) {
-      console.log('[Engineer] Menunggu FileIndexService selesai membangun indeks...');
-      let attempts = 0;
-      while (!this.fileIndexService.isReady && attempts < 100) {
-        await new Promise(r => setTimeout(r, 100));
-        attempts++;
-      }
-    }
-
-    let content = await this.storageManager.read(normalizedBase);
-    if (content !== null && content !== undefined) {
-      return { content, path: normalizedBase };
-    }
-
-    const extensions = ['.js', '.jsx', '.ts', '.tsx', '.json', '.md'];
-    const baseName = normalizedBase.replace(/\.[^.]+$/, '');
-
-    for (const ext of extensions) {
-      const candidate = baseName + ext;
-      try {
-        const content = await this.storageManager.read(candidate);
-        if (content !== null && content !== undefined) {
-          console.log(`[Engineer:_tryReadFile] ✅ BERHASIL membaca: "${candidate}"`);
-          return { content, path: candidate };
-        }
-      } catch (_) {}
-    }
-
-    if (this.fileIndexService && this.fileIndexService.isReady) {
-      const fileName = normalizedBase.split('/').pop();
-      console.log(`[Engineer:_tryReadFile] 🔍 Mencari "${fileName}" via FileIndexService...`);
-      const resolvedPath = this.fileIndexService.resolvePath(fileName);
-      if (resolvedPath) {
-        console.log(`[Engineer:_tryReadFile] 📍 FileIndexService meresolve ke: "${resolvedPath}"`);
-        const content = await this.storageManager.read(resolvedPath);
-        if (content !== null && content !== undefined) {
-          return { content, path: resolvedPath };
-        }
-      }
-    }
-
-    console.log(`[Engineer:_tryReadFile] ❌ GAGAL: Semua metode gagal untuk "${normalizedBase}"`);
-    return null;
-  }
+  // [ADR-0017 Fase 4] _tryReadFile diekstrak ke ./engineer/FileSystemGateway.js (tryReadFile)
 
   /**
    * [FIX #2] _requestApproval() sekarang memiliki timeout otomatis 10 menit
@@ -2340,7 +1984,7 @@ this.eventBus.emit('Engineer:PatchApplied', result);
    */
   async _requestApproval(patch, analysis = null) {
     // Simpan ke persistent storage SEBELUM menunggu — tidak hilang jika timeout/restart
-    await this._savePendingPatch(patch);
+    await savePendingPatch(patch, { storageManager: this.storageManager });
 
     return new Promise((resolve) => {
       const timeout = setTimeout(() => {
