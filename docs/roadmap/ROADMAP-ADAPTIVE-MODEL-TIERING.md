@@ -1,7 +1,7 @@
 # ROADMAP — Adaptive Model Tiering (Kecil / Sedang / Thinking)
 
-**Status:** 🟡 PROPOSED — arah desain disetujui Owner lewat diskusi, menunggu implementasi
-**Tanggal Disusun:** 2026-09-08 (diperbarui via diskusi lanjutan — scope Assistant-only & override client-side-only dikonfirmasi)
+**Status:** 🟢 SIAP DIEKSEKUSI — semua keputusan desain & kurasi model selesai, menunggu perintah mulai coding
+**Tanggal Disusun:** 2026-09-08 (diperbarui via diskusi lanjutan — scope Assistant-only, override client-side-only, dan kurasi model DeepSeek V4 semuanya dikonfirmasi)
 **Owner:** Andre
 **Scope:** `BrainService.js`, `RequestClassifierService.js` (referensi pola), Settings UI, `ConversationEngine.jsx`, sinkronisasi Supabase `user_metadata`. **Hanya berlaku untuk mode Assistant** — Engineer TIDAK termasuk (lihat §3).
 **Referensi Terkait:** [`INDEX-ROADMAP.md`](./INDEX-ROADMAP.md), [`PR8-linux-style-dispatch.md`](./PR8-linux-style-dispatch.md) (pola classifier deterministik tanpa panggilan LLM)
@@ -60,7 +60,17 @@ Heuristik awal:
 
 ### 4.3 `BrainService.js` — routing per tingkat
 **Sekarang:** `state = { provider, model }` tunggal (`BrainService.js:24-27`).
-**Rencana:** `state.tiers = { KECIL: {provider, model}, SEDANG: {...}, THINKING: {...} }`. `getActiveBrainContext()` menerima parameter tingkat (dari `TierClassifierService` atau dari override manual) dan mengembalikan provider/model/key sesuai slot itu.
+**Rencana:** `state.tiers = { KECIL: {provider, model, thinking}, SEDANG: {...}, THINKING: {...} }`. `getActiveBrainContext()` menerima parameter tingkat (dari `TierClassifierService` atau dari override manual) dan mengembalikan provider/model/key/**thinking** sesuai slot itu.
+
+**Kurasi model awal (disetujui Owner, 2026-09-08 — riset web, lihat §6):** DeepSeek V4 dipilih karena kedua variannya (`Flash`/`Pro`) mendukung parameter `thinking: enabled|disabled` di **model ID yang sama** — Kecil dan Sedang jadi persis model yang sama (`deepseek-v4-flash`), cuma beda toggle reasoning, sebelum baru lompat ke `deepseek-v4-pro` di tier Thinking:
+
+| Tier | Model | `thinking` |
+|---|---|---|
+| Kecil | `deepseek-v4-flash` | `disabled` |
+| Sedang | `deepseek-v4-flash` | `enabled` |
+| Thinking | `deepseek-v4-pro` | `enabled`, `reasoning_effort: high` |
+
+**Ini bukan kunci mati** — Owner eksplisit ingin tetap bisa ganti manual ke model/provider lain kapan saja dari slot mana pun di Settings (§4.1), risiko/konsekuensi pilihan itu ditanggung Owner sendiri. Kurasi di atas cuma *default* awal, bukan batasan sistem. Implikasi teknis: `state.tiers[X]` perlu field `thinking` (boolean) terpisah dari `model` — bukan diasumsikan dari nama model — supaya penggantian ke provider lain yang tidak punya toggle reasoning (mis. `gpt-4o-mini`) tetap valid (field `thinking` diabaikan kalau providernya tidak mendukung).
 
 ### 4.4 Override Manual Per-Percakapan (Client-Side-Only, Sesi Aktif Saja)
 **UI:** kontrol pil/dropdown di dekat kolom input chat (`ConversationEngine.jsx`), mirip pola tombol Database RAG/Web Search yang sudah ada di Mamet Lite — menunjukkan status "Auto" atau nama model yang sedang dipin.
@@ -81,8 +91,10 @@ Ikuti pola yang **sudah terbukti jalan**: `WorkspaceManager.js:212` (`_syncLayou
 
 ## 6. Item yang Masih Perlu Keputusan Owner
 
-- **Kurasi model aktual untuk tiap slot (Kecil/Sedang/Thinking)** — riset eksternal Owner, di luar scope teknis dokumen ini. **Masih terbuka** — implementasi `BrainService` multi-tier (§5 langkah 2) menunggu ini.
+- ~~Kurasi model aktual untuk tiap slot (Kecil/Sedang/Thinking)~~ — **Selesai (2026-09-08).** Riset harga/benchmark dibantu web search, keluarga **DeepSeek V4** dipilih Owner (Flash untuk Kecil+Sedang via toggle `thinking`, Pro untuk Thinking) — lihat tabel lengkap di §4.3. Eksplisit **bukan kunci permanen**: Owner bisa ganti manual ke provider/model lain kapan saja dari slot mana pun, konsekuensi ditanggung sendiri.
 - ~~Daftar awal kata kunci ringan/berat ID+EN~~ — **Selesai.** Draf disetujui Owner 2026-09-08, lihat tabel di §4.2.
+
+Semua item keputusan terbuka di dokumen ini sudah selesai — implementasi (§5) siap dimulai kapan pun diminta.
 
 ## 7. Kriteria Sukses
 
