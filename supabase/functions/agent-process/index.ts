@@ -12,6 +12,13 @@ const REQUIRED_ENV_VARS = [
   'SUPABASE_ANON_KEY'
 ];
 
+// DEPLOYMENT DRIFT DETECTION: Metadata commit di-set via `supabase secrets set`
+// oleh script deploy (lihat scripts/deploy-agent-process.ps1), bukan file statis,
+// agar tidak terikat pada satu mekanisme deploy (CLI atau MCP tool).
+const DEPLOYED_COMMIT_SHA = Deno.env.get('DEPLOYED_COMMIT_SHA') || 'unknown';
+const DEPLOYED_BRANCH = Deno.env.get('DEPLOYED_BRANCH') || 'unknown';
+const DEPLOYED_AT = Deno.env.get('DEPLOYED_AT') || null;
+
 let envValidationStatus = 'OK';
 let missingEnvs: string[] = [];
 
@@ -34,6 +41,9 @@ serve(async (req) => {
          status: envValidationStatus === 'OK' ? 'HEALTHY' : envValidationStatus,
          timestamp: new Date().toISOString(),
          missing_env: missingEnvs,
+         deployed_commit_sha: DEPLOYED_COMMIT_SHA,
+         deployed_branch: DEPLOYED_BRANCH,
+         deployed_at: DEPLOYED_AT,
          services: {
             backend: 'UP',
             edge_function: 'UP',
@@ -48,7 +58,7 @@ serve(async (req) => {
 
       return new Response(JSON.stringify(healthReport), {
         status: envValidationStatus === 'OK' ? 200 : 503,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'x-deployed-commit-sha': DEPLOYED_COMMIT_SHA },
       });
     }
 
