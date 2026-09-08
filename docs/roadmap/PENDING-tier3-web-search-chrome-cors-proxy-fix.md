@@ -1,7 +1,8 @@
 # PENDING — Remediasi Tier 3 Web Search pada Web Browser (Chrome/Vercel) via Proxy Bridge & Static Import
 
-**Status:** 📋 **PENDING / BACKLOG (Menunggu Eksekusi Remediasi Sesuai Arahan Owner)**  
+**Status:** ✅ **Selesai & Live-Verified (2026-09-08)** — Lihat [`2026-09-08-fix-tier3-web-search-chrome-vercel-static-import.md`](../project-memory/changelog/2026-09-08-fix-tier3-web-search-chrome-vercel-static-import.md)  
 **Tanggal Pencatatan:** 2026-09-05  
+**Tanggal Resolusi:** 2026-09-08  
 **Komponen Terkait:** 
 - `frontend/src/core/runtime/services/WebComparisonService.js` (Method `_safeFetch`)
 - `supabase/functions/agent-process/request_pipeline.ts` (Action `proxy_fetch`)
@@ -59,14 +60,14 @@ Di aplikasi Desktop Electron (`window.electronAPI.fetchWeb`):
 
 ---
 
-## 3. Rencana Solusi Permanen (Untuk Dikerjakan Nanti)
+## 3. Rencana Solusi Permanen (Diterapkan 2026-09-08)
 
-> [!IMPORTANT]
-> **Status saat ini:** Dokumen ini HANYA mencatat analisis dan rencana perbaikan. Sesuai arahan eksplisit Owner (*"update catatan saja agar di perbaiki nanti, jangan ubah code"*), **TIDAK ADA PERUBAHAN KODE SUMBER** yang dilakukan pada sesi ini.
+> [!NOTE]
+> **Status:** Langkah 1 di bawah ini telah diimplementasikan dan diverifikasi live. Langkah 2 (Dependency Injection) dan sebagian Langkah 3 tidak diperlukan karena Langkah 1 sudah menuntaskan root cause. Detail lengkap lihat changelog: [`2026-09-08-fix-tier3-web-search-chrome-vercel-static-import.md`](../project-memory/changelog/2026-09-08-fix-tier3-web-search-chrome-vercel-static-import.md).
 
-Saat nanti dijadwalkan untuk diperbaiki, berikut langkah teknis yang perlu diterapkan:
+Berikut langkah teknis yang diterapkan:
 
-### Langkah 1: Ubah Dynamic Import Menjadi Static Import di `WebComparisonService.js`
+### Langkah 1: Ubah Dynamic Import Menjadi Static Import di `WebComparisonService.js` ✅ Diterapkan
 Seperti halnya implementasi pada `frontend/src/core/runtime/services/AssistantService.js:23`:
 ```javascript
 import { supabase } from '../../../supabase.js';
@@ -92,14 +93,14 @@ Pastikan endpoint Edge Function `agent-process` dengan action `proxy_fetch`:
 
 ---
 
-## 4. Kriteria Verifikasi (Future Verification Checklist)
+## 4. Kriteria Verifikasi (Verified 2026-09-08)
 
-Pekerjaan remediasi ini akan dianggap selesai apabila:
-
-1. [ ] Build Vite production (`npm run build`) berjalan bersih tanpa warning unresolved import.
-2. [ ] Di browser Google Chrome pada deployment web (Vercel atau localhost web):
+1. [x] Build Vite production (`npm run build`) berjalan bersih tanpa warning unresolved import. (2663 modul, 0 error, 3m 7s)
+2. [x] Di browser Google Chrome pada deployment web (Vercel):
    - Console log **tidak lagi** mencatat error `GET /supabase.js 404 (Not Found)`.
-   - Console log mencatat: `[WebComparisonService] Menggunakan Edge Function proxy_fetch untuk: https://news.google.com/rss/...`
-   - Console log mencatat: `[WebComparisonService] Proxy fetch sukses (...) chars`.
-3. [ ] Query temporal/berita (misal: *"berita terbaru tentang ai gemini"*) pada antarmuka web menghasilkan dokumen web valid di RAG block (`[DOC-XXXX]`).
-4. [ ] Jawaban AI menampilkan fakta terkini dari hasil web comparison dengan status epistemik yang sesuai (`[STATUS: HYPOTHESIS - Rekomendasi AI]` atau `[STATUS: VERIFIED]`).
+   - Console log mencatat: `[WebComparisonService] Menggunakan Edge Function proxy_fetch untuk: https://www.bing.com/news/search?q=...`
+   - Console log mencatat: `[WebComparisonService] Proxy fetch sukses (4015 chars)`.
+3. [x] Query temporal/berita (*"berita ai terbaru"*) pada antarmuka web menghasilkan dokumen web valid, diangkat ke RAG (Bing News RSS, 4 hasil).
+4. [x] Jawaban AI menampilkan fakta terkini dari hasil web comparison dengan status epistemik yang sesuai (`[STATUS: VERIFIED]`).
+
+Detail lengkap live test: [`2026-09-08-fix-tier3-web-search-chrome-vercel-static-import.md`](../project-memory/changelog/2026-09-08-fix-tier3-web-search-chrome-vercel-static-import.md).

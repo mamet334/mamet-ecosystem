@@ -2,7 +2,7 @@
 
 **Tujuan dokumen ini:** Titik masuk pertama untuk Antigravity (atau AI mana pun) sebelum membaca dokumen lain di folder `docs/roadmap/`. Berisi status, urutan pengerjaan, dan ringkasan tiap dokumen — bukan pengganti isi dokumen aslinya.
 
-**Update terakhir:** 2026-09-04
+**Update terakhir:** 2026-09-08
 **Prinsip folder ini:** Satu file, satu tanggung jawab. Dokumen ini HANYA index — jangan tambahkan detail teknis di sini, cukup rujukan ke file terkait.
 
 ---
@@ -19,7 +19,7 @@
 | `ZERO-LEAKAGE-RAG-TENANT-ISOLATION.md` | ✅ **Selesai Penuh & Live-Verified (2026-09-04)** (Audit kepemilikan 45 dokumen 2 akun, PostgREST inner join `documents!inner(user_id)` di `KnowledgeService.js`, guard `userId`, propagasi `userId` di seluruh runtime pipeline & Edge Function, serta live test desktop 100% pass) | `KnowledgeService.js`, `RetrievalOrchestrator.js`, `AssistantService.js`, `context_builder.ts`, `useDashboardData.js` |
 
 | `PENDING-supabase-security-advisor-findings.md` | ✅ **Selesai Remediasi RPC (8/9) — 1 item deferred: upgrade plan** (8 fungsi `SECURITY DEFINER` aman via migrasi; Leaked Password ditunda keputusan Owner karena batasan Pro plan) | Supabase RPC Permissions & Security |
-| `PENDING-tier3-web-search-chrome-cors-proxy-fix.md` | 📋 **PENDING / BACKLOG (Menunggu Keputusan Owner)** (Remediasi 404 dynamic import `supabase.js` pada browser Chrome/Vercel via static import / ServiceManager DI) | `WebComparisonService.js`, `proxy_fetch`, Tier 3 Web Search |
+| `PENDING-tier3-web-search-chrome-cors-proxy-fix.md` | ✅ **Selesai & Live-Verified (2026-09-08)** (Remediasi 404 dynamic import `supabase.js` pada browser Chrome/Vercel via static import; live test Bing News RSS 4 hasil, 0 error) | `WebComparisonService.js`, `proxy_fetch`, Tier 3 Web Search |
 | `PENDING-live-verification-runtime-gaps.md` | ✅ **Selesai Remediasi Gap Runtime (5/5 — 100%)** (Trace ID, Match Memories schema, Escaped ilike, UUID storage target, CHECK_002/003 Source Trace) | `agent-process` Edge Function & RAG |
 | `CHECK-P02-json-patch-schema-alignment.md` | ✅ **Selesai & Tervalidasi (Live Production Confirmed)** (Defensive Unwrap Layer di `_extractJSONPatch` + Standardisasi Prompt Engineer) | `verification_engine.ts`, `request_pipeline.ts` |
 | `FIX-assistant-session-finalization-and-autosave-throttle.md` | ✅ **Selesai & Tervalidasi (Confirmed Desktop + Unit Test)** (Pemisahan `finalizeAssistantSession` dari auto-save loop & throttling DB I/O) | `AssistantService.js`, `ConversationEngine.jsx` |
@@ -182,8 +182,5 @@ Setiap kali sebuah dokumen di folder ini selesai dikerjakan (Exit Criteria terpe
      5. Remediasi kolom query `verification_audit_logs` di `useDashboardData.js` untuk mengeliminasi siklus error HTTP 400 di background.
 10. **Tier 3 Web Search pada Web Browser (Chrome/Vercel) — Dynamic Import 404 (`supabase.js`) & CORS Fallback (`PENDING-tier3-web-search-chrome-cors-proxy-fix.md`):**
     - **Isu:** Pada desktop Electron, Tier 3 Web Comparison berfungsi 100% via native IPC bridge (`window.electronAPI.fetchWeb`). Namun pada browser web Google Chrome (deployment Vercel), pencarian web gagal total karena baris `const { supabase } = await import('../../../supabase.js')` di `WebComparisonService.js:359` memicu browser request ke `https://mamet-ecosystem.vercel.app/supabase.js` yang menghasilkan HTTP 404 Not Found. Kegagalan import memicu exception sebelum Edge Function `proxy_fetch` terpanggil, dan fallback `fetch()` langsung browser diblokir oleh kebijakan CORS Chromium (`No 'Access-Control-Allow-Origin' header`).
-    - **Status:** 📋 **PENDING / BACKLOG (Menunggu Keputusan Owner)** ([`PENDING-tier3-web-search-chrome-cors-proxy-fix.md`](./PENDING-tier3-web-search-chrome-cors-proxy-fix.md)).
-    - **Rencana Solusi:**
-      1. Ubah dynamic import menjadi static import di header `WebComparisonService.js` (`import { supabase } from '../../../supabase.js'`) agar terdaftar dalam bundle graph Vite dan tidak memicu URL 404 pada browser runtime.
-      2. Atau gunakan pola Dependency Injection via `ServiceManager` (`this.serviceManager.get('supabaseClient')`) saat bootstrap kernel.
-      3. Verifikasi ketersediaan CORS headers pada Edge Function `proxy_fetch` di Supabase Cloud.
+    - **Status:** ✅ **Selesai & Live-Verified (2026-09-08)** ([`PENDING-tier3-web-search-chrome-cors-proxy-fix.md`](./PENDING-tier3-web-search-chrome-cors-proxy-fix.md), [`2026-09-08-fix-tier3-web-search-chrome-vercel-static-import.md`](../project-memory/changelog/2026-09-08-fix-tier3-web-search-chrome-vercel-static-import.md)).
+    - **Solusi:** Ubah dynamic import menjadi static import di header `WebComparisonService.js` (`import { supabase } from '../../../supabase.js'`), sesuai pola yang sudah dipakai `AssistantService.js`. Build Vite production bersih (2663 modul, 0 error). Live test di Chrome/Vercel dengan query "berita ai terbaru" mengonfirmasi `proxy_fetch` terpanggil sukses (Bing News RSS, 4 hasil, 920ms), tanpa error 404/CORS, jawaban AI menampilkan `[STATUS: VERIFIED]`.
