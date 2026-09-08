@@ -18,6 +18,8 @@
  *    Mengembalikan data seragam dengan field chunks, strategy, sufficiency, tier: 3.
  */
 
+import { supabase } from '../../../supabase.js';
+
 export const WEB_SEARCH_TIMEOUT_MS = 8000; // 8 detik batas waktu standar
 export const WEB_SUFFICIENCY_SCORE = 0.7; // Skor kecukupan bila web comparison berhasil
 
@@ -356,7 +358,6 @@ export class WebComparisonService {
     // Gunakan Supabase Edge Function proxy bridge untuk membypass batasan CORS Chromium pada Google News & RSS
     if (typeof window !== 'undefined') {
       try {
-        const { supabase } = await import('../../../supabase.js');
         if (supabase?.functions) {
           console.log(`[WebComparisonService] Menggunakan Edge Function proxy_fetch untuk: ${url}`);
           const { data, error } = await supabase.functions.invoke('agent-process', {
