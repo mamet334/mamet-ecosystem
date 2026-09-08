@@ -2,7 +2,7 @@
 
 **ID:** ADR-0017
 **Judul:** Pemecahan Monolith `engineer.js` — Roadmap Extraction Bertahap
-**Status:** 🟡 IN PROGRESS — Fase 2/8 selesai & terverifikasi (2026-09-08)
+**Status:** 🟡 IN PROGRESS — Fase 3/8 selesai & terverifikasi (2026-09-08)
 **Tanggal:** 2026-09-08
 **Penulis:** Sesi diskusi arsitektur (Owner + Claude)
 **Metodologi:** Direplikasi dari **ADR-0009 (`index.ts` Decomposition)** — preseden yang sudah terbukti berhasil dieksekusi (`agent-process/index.ts` 2301 baris → thin coordinator ~145 baris).
@@ -186,13 +186,25 @@ Kenapa aman: Pure function — input task/config, output keputusan. Pola identik
 - `isImmutableFile`/`isProtectedFile`: file core terdeteksi benar, file biasa tidak
 - Instance Engineer live tetap sehat (`intentState`, `capability`, `sessionArtifact` semua normal), console bersih tanpa error
 
-### Fase 3 — Static Code Analyzer (Risiko Rendah)
+### Fase 3 — Static Code Analyzer (Risiko Rendah) ✅ SELESAI (2026-09-08)
 ```
 Ekstrak: engineer/StaticCodeAnalyzer.js
 Isi: Kelompok G (_extractExports, _extractFunctionSignatures, _findUsages, _detectBreakingChanges, _verifySemanticDiff)
 Dependency: Tidak ada I/O langsung (menerima content sebagai parameter)
 Catatan: Kerjakan bareng dengan CodeSnippetExtractor.js (§2.1) — keduanya sama-sama utilitas parsing kode, berbagi teknik brace-matching string-aware.
 ```
+**Koreksi ditemukan saat eksekusi (pola sama seperti Fase 2):** `_findUsages` dan `_verifySemanticDiff` **bukan** tanpa-I/O seperti diasumsikan — `_findUsages` butuh `this.fileIndexService`+`this.storageManager`, `_verifySemanticDiff` butuh `this.storageManager`. `extractExports`/`extractFunctionSignatures` memang murni. Diselesaikan dengan pola dependency-injection yang sama seperti Fase 2 (`deps` parameter), termasuk pada `detectBreakingChanges` yang meneruskan `deps` ke `findUsages` internal.
+
+**Catatan implementasi §2.1:** ekstraksi ini murni memindahkan 5 method yang SUDAH ADA — belum membangun algoritma baru `CodeSnippetExtractor.js` dari §2.1 (itu logika baru, belum ada di kode manapun). Keputusan bundling §2.1 tetap di Fase 7 (bersama `PatchGenerator.js`), sesuai rencana awal di §4.
+
+**Hasil:** `engineer.js` 2666 → **2452 baris** (−214 baris). Modul baru `engineer/StaticCodeAnalyzer.js` (~230 baris).
+
+**Verifikasi (evidence-based, live):**
+- Build production: ✅ sukses (11.35s, exit 0)
+- `extractExports`/`extractFunctionSignatures`: benar mengekstrak nama & arity dari sample kode uji
+- `detectBreakingChanges` (dengan `fileIndexService`/`storageManager` live dari instance Engineer sungguhan): benar mendeteksi export yang dihapus, severity `LOW` benar (tidak ada caller ditemukan untuk symbol uji unik)
+- `verifySemanticDiff`: alur eksekusi terbukti identik dengan versi lama — melaporkan "File kosong" untuk path source code asli karena `storageManager` di app ini memang bukan backend pembaca file repo (itu tugas `RepositoryReaderService` terpisah) — perilaku ini **sama persis** dengan kode sebelum diekstrak, bukan regresi
+- Console bersih, tanpa error
 
 ### Fase 4 — File System Gateway & Memory Store (Risiko Rendah-Sedang)
 ```
