@@ -2,7 +2,7 @@
 
 **ID:** ADR-0017
 **Judul:** Pemecahan Monolith `engineer.js` — Roadmap Extraction Bertahap
-**Status:** 🟡 IN PROGRESS — Fase 7/8 selesai & terverifikasi (2026-09-08)
+**Status:** ✅ SELESAI — Semua 8 fase selesai & terverifikasi live (2026-09-08). `engineer.js` 2978 → 1133 baris (−62%).
 **Tanggal:** 2026-09-08
 **Penulis:** Sesi diskusi arsitektur (Owner + Claude)
 **Metodologi:** Direplikasi dari **ADR-0009 (`index.ts` Decomposition)** — preseden yang sudah terbukti berhasil dieksekusi (`agent-process/index.ts` 2301 baris → thin coordinator ~145 baris).
@@ -300,7 +300,7 @@ Mitigasi: Test dengan file kecil (≤3000 char, full-file mode) DAN file besar (
 - Instance method `_buildPatchPrompt` dikonfirmasi TIDAK ADA lagi di `engineer.js` (`typeof engineer._buildPatchPrompt === 'undefined'`) — sesuai keputusan "tanpa wrapper" karena tidak ada pemanggil eksternal
 - Console bersih, tanpa error dari perubahan ini
 
-### Fase 8 — Patch Applier & Orchestrator Final Cleanup (Risiko Tinggi — Terakhir)
+### Fase 8 — Patch Applier & Orchestrator Final Cleanup (Risiko Tinggi — Terakhir) ✅ SELESAI (2026-09-08)
 ```
 Ekstrak: engineer/PatchApplier.js
 Isi: Kelompok J
@@ -308,6 +308,33 @@ Sisa di engineer.js: Kelompok K (constructor, _handlePatchTask, _analyze, _revie
 Kenapa terakhir: Ini hard gate — bug di sini = patch tidak pernah ter-apply ke file sungguhan. Lakukan setelah 7 modul lain sudah stabil & teruji sendiri-sendiri.
 Mitigasi: Test end-to-end penuh — dari task masuk sampai file benar-benar berubah di disk, minimal 3 skenario (file kecil, file besar/search-replace, patch ditolak Owner).
 ```
+
+**Koreksi ditemukan saat eksekusi — primitif tidak bisa by-reference:** `this.suspiciousAttempts` (number) dan `this.capability` (string) di instance Engineer, berbeda dari `pendingConfirmations`/`pendingPatches` (Map) atau `metrics`/`brain` (object) di fase-fase sebelumnya, adalah **primitif** — di JS, primitif TIDAK bisa diteruskan by-reference ke modul lain untuk dimutasi. Solusi: mutasi keamanan (`suspiciousAttempts++`, downgrade `capability` ke `OBSERVER` setelah 3x percobaan, emit `Engineer:EmergencyLockdown`) tetap tinggal sebagai closure di `engineer.js`, diteruskan ke `PatchApplier.js` sebagai satu callback `onImmutableFileBlocked()` — modul baru tidak perlu tahu apa pun soal `this`. `metrics` (object) tetap memakai pola by-reference biasa seperti fase-fase sebelumnya (`metrics.coreModificationsBlocked++`).
+
+**Modul `PatchApplier.js`:** satu fungsi `executePatchApplication(patch, approvedFiles, deps)`. `deps`: `{ metrics, eventBus, storageManager, serviceManager, emitRecommendation, finalizeSession, onImmutableFileBlocked }`. `isImmutableFile`/`isProtectedFile` diimpor langsung dari `CapabilityGuard.js` (pola sama seperti `ApprovalGateway.js` di Fase 5) — pure functions, tidak butuh `this`. `finalizeSession` dan `emitRecommendation` diteruskan sebagai fungsi ter-bind ke instance (keduanya tetap tinggal di `engineer.js` — `_finalizeSession` bergantung `this.sessionArtifact`, `_emitRecommendation` tetap wrapper tipis dari Fase 5).
+
+**`_executePatchApplication` dipertahankan sebagai wrapper tipis** di `engineer.js` (dipanggil sekali dari `_handlePatchTask`) — konsisten dengan pola `_generatePatch` di Fase 7, meminimalkan sentuhan ke orchestrator `_handlePatchTask` yang sudah teruji sepenuhnya di fase-fase sebelumnya (prinsip kehati-hatian untuk fase risiko tertinggi: ubah sesedikit mungkin selain yang benar-benar diekstrak).
+
+`isImmutableFile`/`isProtectedFile` dihapus dari import `engineer.js` (sudah tidak ada pemanggil lain di file ini setelah `_executePatchApplication` dipindah).
+
+**Hasil:** `engineer.js` 1261 → **1133 baris** (−128 baris). Modul baru: `engineer/PatchApplier.js` (~180 baris). Total sejak Fase 1: 2978 → 1133 (**−1845 baris, ~62%**). Lebih besar dari estimasi awal ~650-700 baris di §5 (Target State) — karena `_handlePatchTask` (orchestrator, ~365 baris), `_analyze`/`_review`/`_checkCompliance`, `_registerListeners`, `_loadStaticKnowledge`, dan Session Artifact plumbing (Kelompok K) memang secara sah tetap tinggal sebagai bagian coordinator, bukan kandidat ekstraksi lebih lanjut — estimasi §5 bersifat aspirasional, bukan target keras.
+
+**Verifikasi (evidence-based, live, end-to-end sampai file BENAR-BENAR berubah — bukan cuma mock):**
+- Build production: ✅ sukses (11.23s, exit 0)
+- **Skenario 1 (file kecil, approved):** `_executePatchApplication` dipanggil langsung terhadap instance Engineer live dengan patch 1 file → `status: APPLIED`, file dibaca ulang dari `storageManager` dan **isinya cocok persis** dengan `newContent` yang dikirim — bukti tulisan sungguhan, bukan simulasi
+- **Skenario 2 (file besar/hasil search-replace, 2 file — satu approved satu tidak):** file yang di-approve → `APPLIED` dan isi tertulis benar; file yang tidak di-approve → `SKIPPED`, dikonfirmasi TIDAK ada di storage sama sekali
+- **Skenario 3 (file IMMUTABLE diblokir):** `success: false`, `error: 'Core file modification blocked'`, `metrics.coreModificationsBlocked` naik 1, `suspiciousAttempts` naik 1 via closure `onImmutableFileBlocked` — dikonfirmasi mutasi tembus ke instance asli meski primitif
+- **Emergency lockdown di percobaan ke-3:** dipicu 2x percobaan immutable tambahan → `suspiciousAttempts === 3`, `capability` berubah jadi `OBSERVER`, event `Engineer:EmergencyLockdown` ter-emit dengan `attempts: 3` — perilaku identik dengan kode asli
+- **Safety-check anti-truncation:** file dengan `newContent` <50% ukuran `originalContent` → `status: FAILED`, pesan error persis sama format dengan kode asli (`"Konten terlalu kecil: 5 vs 1000 chars (1%)..."`)
+- **Skenario "patch ditolak Owner":** diverifikasi via pembacaan kode — cabang `!approvalResult.approved` di `_handlePatchTask` (tidak disentuh sama sekali di Fase 8) tidak pernah memanggil `_executePatchApplication`; jalur ini sudah diverifikasi live di Fase 5 (`ApprovalGateway.js`, `approved: false`)
+- Console bersih dari error tak terduga — error yang muncul (`MemoryService: User not authenticated`) adalah keterbatasan sandbox dev tanpa user login (kode `memoryService.storeMemory` dipindah verbatim, sama seperti sebelum diekstrak), dan `🚫 BLOCKED`/`🚫 DITOLAK` adalah `console.error` yang MEMANG bagian dari skenario yang sengaja dipicu
+- State test (`suspiciousAttempts`, `capability`, data di localStorage test) dibersihkan/direset setelah verifikasi selesai
+
+## 4.1 Ringkasan Akhir — Dekomposisi Selesai
+
+Semua 8 fase selesai. `engineer.js`: **2978 → 1133 baris (−1845, ~62%)**. 8 modul baru di `frontend/src/core/runtime/services/engineer/`: `SessionArtifact.js`, `CapabilityGuard.js`, `IntentClassifier.js`, `StaticCodeAnalyzer.js`, `EngineerMemoryStore.js`, `FileSystemGateway.js`, `ReasoningLock.js`, `ApprovalGateway.js`, `TaskHandlers.js`, `PatchGenerator.js`, `CodeSnippetExtractor.js`, `PatchApplier.js` (12 modul, sesuai peta awal). `engineer.js` sekarang berperan sebagai thin coordinator (Kelompok K): constructor, lifecycle (`initialize`, `_loadStaticKnowledge`, `_registerListeners`), Session Artifact plumbing, `_handlePatchTask` (orchestrator utama yang memanggil seluruh modul), `_analyze`/`_review`/`_checkCompliance`, `_calculateConfidence`, `_emitRecommendation` (wrapper tipis, Fase 5), `upgradeCapability`, `getMetrics`.
+
+Metodologi yang bertahan konsisten di semua 8 fase: baca baris & dependensi sungguhan setiap fase (bukan percaya asumsi ADR begitu saja — koreksi ditemukan & didokumentasikan di Fase 2, 3, 4, 6, 8), deps-injection untuk fungsi yang belum diekstrak, object/Map diteruskan by-reference untuk state bersama, primitif diteruskan lewat closure/callback (bukan by-reference — koreksi Fase 8), wrapper tipis hanya dipertahankan saat ada banyak titik panggil (`_emitRecommendation` 21x, Fase 5) atau untuk meminimalkan sentuhan ke orchestrator berisiko tinggi (`_generatePatch`, `_executePatchApplication`), verifikasi build + live functional test terhadap instance Engineer sungguhan di setiap fase, dokumentasi (ADR + changelog + roadmap) di setiap fase sebelum commit+push.
 
 ---
 

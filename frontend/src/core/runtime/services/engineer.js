@@ -1,6 +1,6 @@
 import { FileIndexService } from './FileIndexService.js';
 import { SessionArtifact } from './engineer/SessionArtifact.js'; // [ADR-0017 Fase 1] Diekstrak dari file ini
-import { MAX_FILES_PER_PATCH, checkCapabilityAndDeclare, isImmutableFile, isProtectedFile } from './engineer/CapabilityGuard.js'; // [ADR-0017 Fase 2]
+import { MAX_FILES_PER_PATCH, checkCapabilityAndDeclare } from './engineer/CapabilityGuard.js'; // [ADR-0017 Fase 2]
 import { detectIntent } from './engineer/IntentClassifier.js'; // [ADR-0017 Fase 2]
 import { extractExports, extractFunctionSignatures, findUsages, detectBreakingChanges, verifySemanticDiff } from './engineer/StaticCodeAnalyzer.js'; // [ADR-0017 Fase 3]
 import { savePendingPatch, clearPendingPatch, restorePersistedPatches, saveVerifiedApproach, saveRejectedApproach, loadVerifiedApproaches } from './engineer/EngineerMemoryStore.js'; // [ADR-0017 Fase 4]
@@ -9,6 +9,7 @@ import { emitReasoningReport, waitForUserConfirmation, handleUserConfirmation } 
 import { handleApprovalResponse, requestApproval, emitRecommendation } from './engineer/ApprovalGateway.js'; // [ADR-0017 Fase 5]
 import { buildDynamicContext, handleAnalysisTask, handleReviewTask, handleReadRepoTask, handleReadFiles, handleListDirectory, handleSearchFiles } from './engineer/TaskHandlers.js'; // [ADR-0017 Fase 6]
 import { generatePatch } from './engineer/PatchGenerator.js'; // [ADR-0017 Fase 7 + SPESIFIKASI-TEKNIS §2.1]
+import { executePatchApplication } from './engineer/PatchApplier.js'; // [ADR-0017 Fase 8]
 
 /**
  * Engineer.js — Engineering Brain Mamet AI (Real Analysis Engine + Core Protection)
@@ -1034,158 +1035,29 @@ class Engineer {
     });
   }
 
+  // [ADR-0017 Fase 8] _executePatchApplication diekstrak ke ./engineer/PatchApplier.js.
+  // `suspiciousAttempts`/`capability` adalah primitif di instance ini (bukan reference
+  // type seperti Map/object di fase-fase sebelumnya) — mutasinya tetap tinggal di sini
+  // sebagai closure `onImmutableFileBlocked`, diteruskan sebagai satu callback ke modul.
   async _executePatchApplication(patch, approvedFiles = []) {
-    try {
-      console.log(`[Engineer] 🔧 Menerapkan patch: ${patch.id}`);
-      console.log(`[Engineer] 📋 Files to process: ${patch.files.length}, Approved: ${approvedFiles.length}`);
-
-      for (const file of patch.files) {
-        if (isImmutableFile(file.path)) {
-          console.error(`[Engineer] 🚫 BLOCKED: Attempt to modify IMMUTABLE core file: ${file.path}`);
-          this.metrics.coreModificationsBlocked++;
-          this.suspiciousAttempts++;
-
-          if (this.suspiciousAttempts >= 3) {
-            this.capability = 'OBSERVER';
-            this.eventBus.emit('Engineer:EmergencyLockdown', {
-              reason: 'Suspicious core modification attempts detected',
-              attempts: this.suspiciousAttempts
-            });
-          }
-
-          this._emitRecommendation({
-            type: 'CORE_MODIFICATION_BLOCKED',
-            taskId: patch.taskId,
-            message: `🚫 BLOKIR: File "${file.path}" adalah CORE IMMUTABLE.`,
-            severity: 'CRITICAL',
-            requiresApproval: false
+    return executePatchApplication(patch, approvedFiles, {
+      metrics: this.metrics,
+      eventBus: this.eventBus,
+      storageManager: this.storageManager,
+      serviceManager: this.serviceManager,
+      emitRecommendation: (r) => this._emitRecommendation(r),
+      finalizeSession: (p) => this._finalizeSession(p),
+      onImmutableFileBlocked: () => {
+        this.suspiciousAttempts++;
+        if (this.suspiciousAttempts >= 3) {
+          this.capability = 'OBSERVER';
+          this.eventBus.emit('Engineer:EmergencyLockdown', {
+            reason: 'Suspicious core modification attempts detected',
+            attempts: this.suspiciousAttempts
           });
-
-          return { success: false, error: 'Core file modification blocked' };
         }
       }
-
-      let successCount = 0;
-      let failCount = 0;
-      let skippedCount = 0;
-
-      // =============================================
-      // ROLLBACK CHECKPOINT — git stash sebelum write
-      // Dilakukan sekali sebelum semua file ditulis.
-      // Jika ada error, user bisa rollback dengan aman.
-      // =============================================
-      let checkpointRef = null;
-      if (window.electronAPI?.gitCheckpoint) {
-        try {
-          const cp = await window.electronAPI.gitCheckpoint(
-            patch.taskId || patch.id,
-            patch.files.map(f => f.path)
-          );
-          if (cp?.success) {
-            checkpointRef = cp.ref || `ENG-CHECKPOINT-${patch.taskId || patch.id}`;
-            console.log(`[Engineer] 💾 Checkpoint dibuat: ${checkpointRef}`);
-          } else {
-            console.warn('[Engineer] ⚠️ Checkpoint gagal dibuat:', cp?.error || cp?.message);
-          }
-        } catch (cpErr) {
-          console.warn('[Engineer] Checkpoint error (non-blocking):', cpErr.message);
-        }
-      }
-
-      for (const file of patch.files) {
-        try {
-          if (approvedFiles.length > 0 && !approvedFiles.includes(file.path)) {
-            console.log(`[Engineer] ⏭️ Skipping (not approved): ${file.path}`);
-            file.status = 'SKIPPED';
-            skippedCount++;
-            continue;
-          }
-
-          if (isProtectedFile(file.path)) {
-            console.warn(`[Engineer] ⚠️ WARNING: Modifying PROTECTED file: ${file.path}`);
-          }
-
-          // Safety Check: Cegah LLM truncation overwrite file
-          const originalSize = file.originalContent ? file.originalContent.length : 0;
-          const newSize = file.newContent.length;
-          if (originalSize > 500 && newSize < originalSize * 0.5) {
-            console.error(`[Engineer] 🚫 DITOLAK: Konten baru (${newSize} chars) < 50% dari asli (${originalSize} chars). LLM kemungkinan truncate response!`);
-            file.status = 'FAILED';
-            file.error = `Konten terlalu kecil: ${newSize} vs ${originalSize} chars (${Math.round(newSize / originalSize * 100)}%). Kemungkinan LLM truncate response.`;
-            failCount++;
-
-            this.eventBus.emit('Engineer:Recommendation', {
-              taskId: patch.taskId,
-              message: `⚠️ **Patch Ditolak Otomatis**: File \`${file.path}\` tidak ditulis karena LLM mengembalikan konten yang terpotong (${newSize} dari ${originalSize} karakter). Coba lagi dengan instruksi yang lebih spesifik.`,
-              type: 'SAFETY_REJECTION',
-              requiresApproval: false
-            });
-            continue;
-          }
-
-          console.log(`[Engineer] ✍️ Menulis file: ${file.path} (${newSize} karakter, asli: ${originalSize} karakter)`);
-          const writeResult = await this.storageManager.write(file.path, file.newContent);
-
-          if (writeResult) {
-            file.status = 'APPLIED';
-            successCount++;
-            console.log(`[Engineer] ✅ File berhasil ditulis: ${file.path}`);
-          } else {
-            file.status = 'FAILED';
-            file.error = 'StorageManager.write() mengembalikan false';
-            failCount++;
-            console.error(`[Engineer] ❌ Gagal menulis file: ${file.path}`);
-          }
-        } catch (e) {
-          file.status = 'FAILED';
-          file.error = e.message;
-          failCount++;
-          console.error(`[Engineer] ❌ Error menulis file ${file.path}:`, e);
-        }
-      }
-
-      try {
-        const memoryService = this.serviceManager.get('MemoryService');
-          await memoryService.storeMemory(
-            `Patch ${patch.id} applied`,
-            `Patch ${patch.id}: ${successCount} applied, ${skippedCount} skipped, ${failCount} failed.`,
-            {
-              source_type: 'engineer_patch',
-              source_reference: `patch_${patch.id}`,
-              version_code: `PATCH-${Date.now()}`,
-              category: 'engineering',
-              useGovernor: true
-            }
-          );
-      } catch (e) {
-        console.warn('[Engineer] Gagal menyimpan ke Project Memory:', e);
-      }
-
-      const result = {
-        success: failCount === 0,
-        patchId: patch.id,
-        successCount,
-        skippedCount,
-        failCount,
-        files: patch.files,
-        checkpointRef  // dikirim ke UI untuk tombol Rollback
-      };
-
-this.eventBus.emit('Engineer:PatchApplied', result);
-      console.log(`[Engineer] 🎯 Patch selesai: ${successCount} applied, ${skippedCount} skipped, ${failCount} failed`);
-
-      // [FASE 1] Finalisasi sesi: verifikasi ringkasan memori terhadap golden source
-      try {
-        await this._finalizeSession(patch);
-      } catch (e) {
-        console.warn('[Engineer] Finalisasi sesi gagal (tidak memblokir patch):', e.message);
-      }
-
-      return result;
-    } catch (error) {
-      console.error('[Engineer] ❌ Patch execution gagal total:', error);
-      return { success: false, error: error.message };
-    }
+    });
   }
 
   _calculateConfidence(result) {
