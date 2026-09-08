@@ -204,3 +204,17 @@ Setiap kali sebuah dokumen di folder ini selesai dikerjakan (Exit Criteria terpe
     - **Solusi:** Kedua aturan ditambahkan ke blok `ATURAN KODE` di `_buildPatchPrompt()`:
       1. Larangan menulis `eventBus.emit("Engineer:GeneratePatch", ...)` di file yang diubah (proteksi anti *infinite loop*, melengkapi Circuit Breaker `engineer.js:1389–1398`).
       2. Larangan membaca/menyalin kode raw dari `_knowledge_archive/`; Engineer diarahkan hanya membaca `00_EXPERIMENT_HISTORY.md` yang dibuat pada Item 12.
+
+14. **Housekeeping Struktur Folder `frontend/src/` — Ditemukan saat Diskusi Arsitektur (2026-09-08):**
+    - **Isu:** Audit struktur `frontend/src/core/` (dipicu diskusi soal filosofi Linux "satu folder satu tanggung jawab") menemukan beberapa penyimpangan dari prinsip yang sudah diterapkan rapi di tempat lain (`core/application/`, `core/metadata/`, `core/window/` masing-masing 1-2 file, bersih):
+      1. `core/workspace/` (4 file, aktif) vs `core/workspaces/` (cuma `README.md`, stub *"pending Step 4 approval"* untuk Engineer Workspace UI yang tidak pernah dibangun) — nama nyaris identik, berisiko file salah taruh.
+      2. `frontend/src/services/ExecutionTraceService.js` terpisah sendirian dari 26 service lain yang semuanya di `core/runtime/services/` — dipakai oleh `useDashboardData.js`, kemungkinan besar cuma salah taruh.
+      3. `frontend/src/hooks/useDashboardData.js` terpisah dari `core/runtime/hooks/useService.js` — awalnya diduga disengaja (hook inti vs hook fitur), Owner memutuskan disatukan.
+      4. `frontend/src/lib/` kosong total — dikonfirmasi via `git log` bahwa isinya dulu (`TokenSaverAgent.js`, `MainOrchestrator.js`) sudah dihapus sebagai dead code di commit `b434238` (2026-09-03); folder fisik tersisa tidak terlacak git (git tidak melacak folder kosong).
+    - **Status:** 📋 **Keputusan Owner diambil, EKSEKUSI DITUNDA** (*"jangan ubah dulu"*) — dicatat di sini agar tidak hilang, siap dikerjakan kapan pun diminta.
+    - **Keputusan Owner:**
+      1. `hooks/` → disatukan seluruhnya ke `core/runtime/hooks/`.
+      2. `core/workspace/` + `core/workspaces/` → digabung jadi satu nama **`workspaces/`** (jamak).
+      3. `frontend/src/lib/` → aman dihapus (kosong, terkonfirmasi via git log).
+      4. `services/ExecutionTraceService.js` → pindah ke `core/runtime/services/`, update import di `useDashboardData.js`.
+    - **Catatan terkait (bukan bagian housekeeping ini, sengaja ditunda Owner):** Audit yang sama menemukan penyaringan tool per-mode saat ini cuma satu saklar besar `toolsEnabled` (`policy_middleware.ts`) — hanya 3 dari 6 tool terdaftar (`cron_manager`, `file_analyzer`, `knowledge_manager`) yang punya aturan spesifik, itu pun *hardcoded* sebagai `if` terpisah per tool, bukan konfigurasi data-driven. Owner ingin kontrol manual penuh (mis. "Assistant boleh web search, Engineer tidak") tapi belum menentukan daftar tool final yang perlu dipisah izinnya — didiskusikan lagi nanti, kemungkinan bersamaan dengan pembuatan folder `tools/` (data terpisah dari kode, sejalan pola `skills/` yang sudah ada) yang juga muncul dalam diskusi yang sama.
