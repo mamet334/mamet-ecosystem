@@ -2,7 +2,7 @@
 
 **ID:** ADR-0017
 **Judul:** Pemecahan Monolith `engineer.js` — Roadmap Extraction Bertahap
-**Status:** 🟡 IN PROGRESS — Fase 1/8 selesai & terverifikasi (2026-09-08)
+**Status:** 🟡 IN PROGRESS — Fase 2/8 selesai & terverifikasi (2026-09-08)
 **Tanggal:** 2026-09-08
 **Penulis:** Sesi diskusi arsitektur (Owner + Claude)
 **Metodologi:** Direplikasi dari **ADR-0009 (`index.ts` Decomposition)** — preseden yang sudah terbukti berhasil dieksekusi (`agent-process/index.ts` 2301 baris → thin coordinator ~145 baris).
@@ -169,12 +169,22 @@ Kenapa duluan: Sudah class terpisah, nol coupling ke instance Engineer.
 - **Instance live di aplikasi berjalan** (`kernel.serviceManager.get('Engineer').sessionArtifact instanceof SessionArtifact`): `true` — dikonfirmasi lewat dev server sungguhan, bukan cuma build pass
 - Log boot: `[Engineer] 📦 Session Artifact initialized: ENG-SESSION-...` muncul normal, tanpa error
 
-### Fase 2 — Utilitas Deterministik Tanpa I/O (Risiko Sangat Rendah)
+### Fase 2 — Utilitas Deterministik Tanpa I/O (Risiko Sangat Rendah) ✅ SELESAI (2026-09-08)
 ```
 Ekstrak: engineer/IntentClassifier.js, engineer/CapabilityGuard.js
 Isi: Kelompok D, Kelompok C (minus _checkCompliance yang butuh fileContents dari I/O)
 Kenapa aman: Pure function — input task/config, output keputusan. Pola identik RequestClassifierService.js yang sudah terbukti.
 ```
+**Koreksi ditemukan saat eksekusi:** `_checkCapabilityAndDeclare` ternyata **bukan** murni self-contained seperti diasumsikan di rencana awal — dia memanggil `this._extractFileNamesFromTask`, `this._findRelevantADR`, `this._calculateConfidence` (milik Kelompok H & J, belum diekstrak). Diselesaikan dengan pola dependency-injection: `checkCapabilityAndDeclare(task, options, deps)` menerima ketiga helper itu lewat parameter `deps`, dipanggil dari `engineer.js` dengan `this.method.bind` — perilaku identik, modul tetap murni testable tanpa instance Engineer.
+
+**Hasil:** `engineer.js` 2846 → **2666 baris** (−180 baris). Modul baru: `engineer/IntentClassifier.js` (77 baris), `engineer/CapabilityGuard.js` (137 baris). `MAX_FILES_PER_PATCH` dipindah jadi satu sumber kebenaran di `CapabilityGuard.js` (sebelumnya duplikat komentar "harus sama dengan Capability Guard" — sekarang benar-benar dijamin sama secara struktural).
+
+**Verifikasi (evidence-based, live, 11 skenario):**
+- Build production: ✅ sukses (44.41s, exit 0)
+- `detectIntent`: 5 skenario (greeting→CLARIFICATION, analysis→ANALYSIS, kata "perbaiki"→MODIFY_CODE paksa, read-repo→READ_REPO, teks kosong→CLARIFICATION) — semua cocok logika asli
+- `checkCapabilityAndDeclare`: prompt <20 kata → `pass:false` ✅; prompt cukup+file dalam batas+ADR ada+confidence tinggi → `pass:true` ✅
+- `isImmutableFile`/`isProtectedFile`: file core terdeteksi benar, file biasa tidak
+- Instance Engineer live tetap sehat (`intentState`, `capability`, `sessionArtifact` semua normal), console bersih tanpa error
 
 ### Fase 3 — Static Code Analyzer (Risiko Rendah)
 ```

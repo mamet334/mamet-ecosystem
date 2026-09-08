@@ -1,5 +1,7 @@
 import { FileIndexService } from './FileIndexService.js';
 import { SessionArtifact } from './engineer/SessionArtifact.js'; // [ADR-0017 Fase 1] Diekstrak dari file ini
+import { MAX_FILES_PER_PATCH, checkCapabilityAndDeclare, isImmutableFile, isProtectedFile } from './engineer/CapabilityGuard.js'; // [ADR-0017 Fase 2]
+import { detectIntent } from './engineer/IntentClassifier.js'; // [ADR-0017 Fase 2]
 
 /**
  * Engineer.js — Engineering Brain Mamet AI (Real Analysis Engine + Core Protection)
@@ -35,7 +37,7 @@ import { SessionArtifact } from './engineer/SessionArtifact.js'; // [ADR-0017 Fa
 
 const CONFIRMATION_TIMEOUT_MS = 10 * 60 * 1000; // 10 menit
 const APPROVAL_TIMEOUT_MS = 10 * 60 * 1000;      // 10 menit
-const MAX_FILES_PER_PATCH = 10;                   // Harus sama dengan Capability Guard
+// MAX_FILES_PER_PATCH [ADR-0017 Fase 2] diimpor dari ./engineer/CapabilityGuard.js
 
 // [ADR-0017 Fase 1] Class SessionArtifact diekstrak ke ./engineer/SessionArtifact.js
 
@@ -510,125 +512,8 @@ class Engineer {
     } catch (_) {}
   }
 
-  // =============================================
-  // FASE 2: CAPABILITY GUARD
-  // =============================================
-
-  /**
-   * Memeriksa apakah task memenuhi syarat untuk diproses Engineer.
-   * @param {Object} task - Task yang akan diperiksa
-   * @param {Object} options - Opsi tambahan (analysis, modelName)
-   * @returns {{ pass: boolean, reason?: string, suggestBatch?: boolean }}
-   */
-  _checkCapabilityAndDeclare(task, options = {}) {
-    const { analysis, modelName } = options;
-    const text = `${task.title || ''} ${task.description || ''}`;
-    const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
-    const targetFiles = task.files || this._extractFileNamesFromTask(task);
-
-    const checks = [];
-
-    // 1. Prompt Clarity Check — minimal 20 kata
-    if (wordCount < 20) {
-      checks.push({
-        pass: false,
-        reason: `Prompt terlalu pendek (${wordCount} kata). Minimal 20 kata untuk menghasilkan patch yang akurat. Silakan berikan instruksi yang lebih detail.`
-      });
-    }
-
-    // 2. File Limit Check — maksimal MAX_FILES_PER_PATCH file
-    // [FIX #4] Menggunakan konstanta MAX_FILES_PER_PATCH agar konsisten dengan _generatePatch()
-    if (targetFiles.length > MAX_FILES_PER_PATCH) {
-      checks.push({
-        pass: false,
-        reason: `Terlalu banyak file (${targetFiles.length} file). Maksimal ${MAX_FILES_PER_PATCH} file per patch. Sarankan memecah tugas menjadi beberapa batch.`,
-        suggestBatch: true
-      });
-    }
-
-    // 3. ADR Wajib Check — untuk perubahan struktur/core
-    const relevantADR = this._findRelevantADR(task);
-    if (!relevantADR) {
-      const adrRequiredPhrases = [
-        'perubahan arsitektur', 'arsitektur baru', 'service baru', 'module baru',
-        'new architecture', 'new service', 'new module', 'restruktur', 'restrukturisasi',
-        'mengubah flow', 'merubah flow', 'mengubah alur', 'merubah alur',
-        'pipeline baru', 'integration baru', 'integrasi baru',
-        'architectural change', 'structural change'
-      ];
-      const needsADR = adrRequiredPhrases.some(phrase => text.toLowerCase().includes(phrase));
-      if (needsADR) {
-        checks.push({
-          pass: false,
-          reason: `Perubahan ini menyentuh area arsitektur yang membutuhkan ADR (Architecture Decision Record). Silakan buat ADR terlebih dahulu atau arahkan saya ke ADR yang relevan.`
-        });
-      }
-    }
-
-    // 4. Confidence Threshold Check — jika analysis tersedia
-    if (analysis) {
-      const confidence = this._calculateConfidence(analysis);
-      if (confidence.level === 'LOW' || confidence.evidence < 70) {
-        checks.push({
-          pass: false,
-          reason: `Confidence terlalu rendah (${confidence.level}, evidence: ${confidence.evidence}/100) untuk auto-patch. Saya sarankan analisis manual terlebih dahulu.`,
-          confidenceDetails: confidence
-        });
-      }
-    }
-
-    // Jika ada pelanggaran, return detail pelanggaran pertama
-    if (checks.length > 0) {
-      const failedCheck = checks.find(c => c.pass === false);
-      console.log(`[Engineer] 🚫 Capability check failed: ${failedCheck?.reason}`);
-      return {
-        pass: false,
-        checks: checks,
-        reason: failedCheck?.reason || 'Capability check gagal',
-        suggestBatch: checks.some(c => c.suggestBatch),
-        modelName: modelName || 'unknown'
-      };
-    }
-
-    console.log(`[Engineer] ✅ Capability check passed`);
-    return {
-      pass: true,
-      checks: [],
-      modelName: modelName || 'unknown'
-    };
-  }
-
-  // =============================================
-  // CORE PROTECTION LAYER (MAEF 4.2 Compliant)
-  // =============================================
-
-  _isImmutableFile(filePath) {
-    const IMMUTABLE_PATTERNS = [
-      '/core/runtime/Kernel.js',
-      '/core/runtime/EventBus.js',
-      '/core/runtime/ServiceManager.js',
-      '/core/runtime/ProcessManager.js',
-      '/core/runtime/StorageManager.js',
-      '/core/runtime/ModuleLoader.js',
-      '/core/runtime/DiscoveryManager.js',
-      '/electron/main.js',
-      '/electron/preload.cjs',
-      '/constitution/00_CONSTITUTION.md',
-      '/constitution/01_VISION.md',
-      '/constitution/09_DNA.md'
-    ];
-    return IMMUTABLE_PATTERNS.some(pattern => filePath.includes(pattern));
-  }
-
-  _isProtectedFile(filePath) {
-    const PROTECTED_PATTERNS = [
-      '/core/runtime/services/',
-      '/supabase/functions/agent-process/index.ts',
-      '/supabase/functions/agent-process/lib/',
-      '/frontend/src/core/runtime/services/engineer.js'
-    ];
-    return PROTECTED_PATTERNS.some(pattern => filePath.includes(pattern));
-  }
+  // [ADR-0017 Fase 2] _checkCapabilityAndDeclare, _isImmutableFile, _isProtectedFile
+  // diekstrak ke ./engineer/CapabilityGuard.js (checkCapabilityAndDeclare, isImmutableFile, isProtectedFile)
 
   // =============================================
   // STATIC KNOWLEDGE (Brain 1)
@@ -865,76 +750,7 @@ class Engineer {
    * @param {Object} task - Task object dengan title & description
    * @returns {string} 'ANALYSIS' | 'MODIFY_CODE' | 'CLARIFICATION' | 'UNKNOWN'
    */
-  _detectIntent(task) {
-    const text = `${task.title || ''} ${task.description || ''}`.toLowerCase().trim();
-
-    if (!text) {
-      console.log('[Engineer] Task text kosong, return CLARIFICATION');
-      return 'CLARIFICATION';
-    }
-
-    const readRepoKeywords = [
-      'baca file', 'baca kode', 'baca code', 'tampilkan file', 'tampilkan kode', 'tampilkan code',
-      'read file', 'show file', 'show code', 'open file', 'lihat file', 'lihat kode', 'lihat code',
-      'isi file', 'isi dari', 'content of', 'content dari',
-      'list file', 'list folder', 'daftar file', 'daftar folder', 'list directory',
-      'cari file', 'search file', 'find file', 'dimana file', 'where is file',
-      'struktur folder', 'struktur direktori', 'tree folder', 'tree directory'
-    ];
-
-    const analysisKeywords = [
-      'analisis', 'review', 'telaah', 'evaluasi', 'cek', 'laporan',
-      'analyze', 'analyse', 'check', 'examine', 'inspect',
-      'audit', 'lihat', 'baca', 'pelajari', 'cari tahu',
-      'what is', 'how does', 'explain', 'describe', 'tunjukkan',
-      'diagnosa', 'diagnose'
-    ];
-
-    const modifyKeywords = [
-      'ubah', 'tambah', 'hapus', 'perbaiki', 'refactor', 'implementasi',
-      'change', 'add', 'remove', 'delete', 'fix', 'implement',
-      'modify', 'update', 'create', 'buat', 'tulis', 'write',
-      'patch', 'edit', 'ganti', 'masukkan', 'insert',
-      'migrate', 'pindahkan', 'move','perubahan','patch'
-    ];
-
-    if (text.includes('patch') || text.includes('perbaiki') || text.includes('perubahan')) {
-    console.log('[Engineer] Intent forced: MODIFY_CODE (keyword patch/perbaiki/perubahan)');
-    return 'MODIFY_CODE';
-    }
-
-    const isReadRepo = readRepoKeywords.some(kw => text.includes(kw));
-    const isAnalysis = analysisKeywords.some(kw => text.includes(kw));
-    const isModify = modifyKeywords.some(kw => text.includes(kw));
-
-    // 0. READ_REPO — prioritas tertinggi sebelum ambiguity check
-    if (isReadRepo && !isModify) {
-      console.log('[Engineer] Intent detected: READ_REPO');
-      return 'READ_REPO';
-    }
-
-    // 1. Jika ambiguous (kedua kategori terdeteksi)
-    if (isAnalysis && isModify) {
-      console.log('[Engineer] Intent ambiguous: analysis + modify detected');
-      return 'CLARIFICATION';
-    }
-
-    // 2. Jika tidak ada kategori yang terdeteksi
-    if (!isAnalysis && !isModify) {
-      console.log('[Engineer] Intent unknown: no keywords matched');
-      return 'CLARIFICATION';
-    }
-
-    // 3. Analisis murni
-    if (isAnalysis && !isModify) {
-      console.log('[Engineer] Intent detected: ANALYSIS');
-      return 'ANALYSIS';
-    }
-
-    // 4. Modifikasi kode murni
-    console.log('[Engineer] Intent detected: MODIFY_CODE');
-    return 'MODIFY_CODE';
-  }
+  // [ADR-0017 Fase 2] _detectIntent diekstrak ke ./engineer/IntentClassifier.js (detectIntent)
 
   // =============================================
   // DYNAMIC CONTEXT (Brain 2) & TASK HANDLING
@@ -1281,7 +1097,7 @@ class Engineer {
 
     // === FASE 1: INTENT DETECTION ===
     this.intentState = 'ANALYZING';
-    const intent = this._detectIntent(task);
+    const intent = detectIntent(task);
     console.log(`[Engineer] 🎯 Intent detected: ${intent} (task: ${task.title || task.id})`);
 
     if (intent === 'READ_REPO') {
@@ -1331,7 +1147,11 @@ class Engineer {
       console.warn('[Engineer] Gagal mendapatkan model name:', e.message);
     }
 
-    const capabilityCheck = this._checkCapabilityAndDeclare(task, { modelName });
+    const capabilityCheck = checkCapabilityAndDeclare(task, { modelName }, {
+      extractFileNamesFromTask: (t) => this._extractFileNamesFromTask(t),
+      findRelevantADR: (t) => this._findRelevantADR(t),
+      calculateConfidence: (a) => this._calculateConfidence(a)
+    });
 
     if (!capabilityCheck.pass) {
       console.log(`[Engineer] 🚫 Capability check blocked task: ${task.title || task.id}`);
@@ -2500,7 +2320,7 @@ class Engineer {
       console.log(`[Engineer] 📋 Files to process: ${patch.files.length}, Approved: ${approvedFiles.length}`);
 
       for (const file of patch.files) {
-        if (this._isImmutableFile(file.path)) {
+        if (isImmutableFile(file.path)) {
           console.error(`[Engineer] 🚫 BLOCKED: Attempt to modify IMMUTABLE core file: ${file.path}`);
           this.metrics.coreModificationsBlocked++;
           this.suspiciousAttempts++;
@@ -2561,7 +2381,7 @@ class Engineer {
             continue;
           }
 
-          if (this._isProtectedFile(file.path)) {
+          if (isProtectedFile(file.path)) {
             console.warn(`[Engineer] ⚠️ WARNING: Modifying PROTECTED file: ${file.path}`);
           }
 
@@ -2790,8 +2610,8 @@ this.eventBus.emit('Engineer:PatchApplied', result);
           size: f.size || 0,
           newContent: f.newContent,
           originalContent: f.originalContent,
-          isImmutable: this._isImmutableFile(f.path),
-          isProtected: this._isProtectedFile(f.path)
+          isImmutable: isImmutableFile(f.path),
+          isProtected: isProtectedFile(f.path)
         })),
         diff: patch.diff || '',
         verification: patch.verification || null,
