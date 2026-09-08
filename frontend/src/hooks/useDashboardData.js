@@ -113,7 +113,7 @@ export default function useDashboardData() {
           supabase.from('ai_system_logs').select('*').order('created_at', { ascending: false }).limit(100),
           supabase.from('checks').select('status_code,response_time_ms,checked_at').order('checked_at', { ascending: false }).limit(100),
           supabase.from('incidents').select('status,started_at,resolved_at').order('started_at', { ascending: false }).limit(100),
-          supabase.from('verification_audit_logs').select('decision,status,failures,execution_time_ms,timestamp,metadata').order('timestamp', { ascending: false }).limit(100),
+          supabase.from('verification_audit_logs').select('decision,status,failures,execution_time_ms,timestamp').order('timestamp', { ascending: false }).limit(100),
           supabase.from('agent_logs').select('*').order('created_at', { ascending: false }).limit(100),
           supabase.from('api_usage').select('*').order('created_at', { ascending: false }).limit(100)
         ]);
@@ -690,13 +690,10 @@ export default function useDashboardData() {
         // ---- Execution Trace ----
         let activeTraceId = selectedNode?.data?.trace_id || selectedNode?.data?.metadata?.trace_id;
         if (!activeTraceId) {
-          // Auto-load latest trace from agent_logs or verificationItems on initial render (0 Token, realtime DB read)
+          // Auto-load latest trace from agent_logs on initial render (0 Token, realtime DB read)
           const latestAgentWithTrace = agentLogs.find(l => l.metadata?.trace_id || l.metadata?.traceId);
-          const latestVerWithTrace = verificationItems.find(v => v.metadata?.trace_id || v.metadata?.traceId);
           activeTraceId = latestAgentWithTrace?.metadata?.trace_id ||
                           latestAgentWithTrace?.metadata?.traceId ||
-                          latestVerWithTrace?.metadata?.trace_id ||
-                          latestVerWithTrace?.metadata?.traceId ||
                           null;
         }
         if (activeTraceId) {
