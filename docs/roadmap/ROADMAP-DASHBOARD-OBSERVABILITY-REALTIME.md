@@ -3,8 +3,10 @@
 **Tipe Dokumen:** Engineering Roadmap & Architecture Specification  
 **Area:** Frontend OS Dashboard & Observability Subsystem  
 **Authority:** MAEF Constitution (22_MUS_UI_SPECIFICATION.md & 23_HOME_DASHBOARD_SPEC.md)  
-**Status:** PROPOSED (Menunggu Persetujuan Eksekusi)  
-**Tanggal:** 2026-09-03  
+**Status:** ✅ **SELESAI — Sudah Terimplementasi Penuh (dikonfirmasi via audit ulang kode 2026-09-08)**
+**Tanggal:** 2026-09-03 (diaudit ulang 2026-09-08 — lihat [`2026-09-08-dashboard-observability-already-implemented.md`](../project-memory/changelog/2026-09-08-dashboard-observability-already-implemented.md))
+
+> **Catatan penting:** dokumen ini sempat berstatus "PROPOSED (Menunggu Persetujuan Eksekusi)" selama 5 hari, padahal implementasinya sudah selesai sejak commit `adaff68` (2026-09-04) — commit yang SAMA yang membuat dokumen ini. Kemungkinan besar desain & implementasi menyatu dalam satu sesi kerja besar ("modernisasi knowledge graph obsidian..."), tapi status header lupa di-update. Semua path di dokumen ini yang menyebut `frontend/src/hooks/useDashboardData.js` sudah berubah menjadi `frontend/src/core/runtime/hooks/useDashboardData.js` sejak housekeeping struktur folder (Backlog Item 14, 2026-09-08) — isi §3 di bawah tetap akurat secara logika, hanya path filenya yang perlu disesuaikan saat dibaca.
 
 ---
 
@@ -109,4 +111,4 @@ Sesuai arahan Konstitusi (Observability First & Small Kernel), subsistem pemanta
 
 ## 5. Status Dokumen
 
-Dokumen ini disusun sebagai kontrak kerja rekayasa (*Engineering Contract*). Eksekusi kode ke file proyek **hanya akan dimulai setelah Owner memberikan persetujuan eksplisit**.
+Dokumen ini disusun sebagai kontrak kerja rekayasa (*Engineering Contract*). ~~Eksekusi kode ke file proyek hanya akan dimulai setelah Owner memberikan persetujuan eksplisit.~~ **Update 2026-09-08:** seluruh scope §3 dikonfirmasi sudah terimplementasi di `frontend/src/core/runtime/hooks/useDashboardData.js` dan `frontend/src/components/dashboard/ObservabilityPanel.jsx` — verifikasi dilakukan dengan membaca kode aktual baris-per-baris dan mencocokkan tiap item, bukan asumsi dari status commit. Tidak ada eksekusi lanjutan yang diperlukan untuk dokumen ini.
