@@ -483,6 +483,20 @@ export default function ConversationEngine({ sessionId }) {
     return unsubscribeMemory;
   }, []);
 
+  // [ROADMAP-KNOWLEDGE-GALAXY-COSMIC-ORBITS §3.B] LIVE THOUGHT PULSING
+  // Memancarkan ID memori yang sedang aktif di percakapan ini ke EventBus,
+  // supaya ActivityGraph (Home Dashboard) bisa menyalakan denyut cahaya pada
+  // simpul bintang yang bersangkutan. Zero-cost — cuma re-emit state yang
+  // sudah ada (activeMemories), tidak ada panggilan LLM/DB tambahan.
+  useEffect(() => {
+    const eventBus = kernel.serviceManager?.get('EventBus');
+    if (!eventBus) return;
+    eventBus.emit('Brain:ActiveThoughts', {
+      memoryIds: (activeMemories || []).map(m => m.id).filter(Boolean),
+      timestamp: Date.now()
+    });
+  }, [activeMemories]);
+
   // PR#1: COMMAND CONFIRMATION REQUIRED
   // Listener ini menangkap event dari AssistantService.runCommand() saat command butuh konfirmasi user.
   // UI bertanggung jawab menampilkan dialog yang sesuai berdasarkan tipe command.

@@ -1,7 +1,11 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
+import { kernel } from '../../core/runtime/Kernel';
 
 const FALLBACK_COLOR = '#475569';
+// [ROADMAP-KNOWLEDGE-GALAXY-COSMIC-ORBITS §3.A] Lengkungan orbit gravitasi kosmik
+// menggantikan garis lurus polygonal — nilai 0.12-0.16 sesuai spesifikasi desain.
+const ORBIT_CURVATURE = 0.14;
 
 export default function ActivityGraph({
   graphData,
@@ -17,6 +21,22 @@ export default function ActivityGraph({
   const [isExplorerOpen, setIsExplorerOpen] = useState(true);
   const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL' | 'CONFLICTS' | 'RAG' | 'MEMORY' | 'CHAT'
   const [searchQuery, setSearchQuery] = useState('');
+  // [ROADMAP-KNOWLEDGE-GALAXY-COSMIC-ORBITS §3.B] Simpul memori yang sedang "dipikirkan"
+  // AI di percakapan aktif — didorong dari event Brain:ActiveThoughts (ConversationEngine.jsx).
+  const [activeThoughtIds, setActiveThoughtIds] = useState(() => new Set());
+
+  useEffect(() => {
+    const eventBus = kernel.serviceManager?.get('EventBus');
+    if (!eventBus) return;
+    const handler = (payload) => {
+      // EventBus.emit() selalu membungkus payload asli di dalam payload.data
+      // (lihat EventBus.js:73-77, "Anti-Spoofing: Wrap payload with metadata").
+      const memoryIds = payload?.data?.memoryIds || [];
+      setActiveThoughtIds(new Set(memoryIds.map(id => `mem-${id}`)));
+    };
+    const unsubscribe = eventBus.on('Brain:ActiveThoughts', handler);
+    return unsubscribe;
+  }, []);
 
   const leafNodes = useMemo(() => {
     return (graphData?.nodes || []).filter(n => !n.isCategory && n.group !== 'core');
@@ -110,6 +130,24 @@ export default function ActivityGraph({
               ctx.stroke();
             }
 
+            // [ROADMAP-KNOWLEDGE-GALAXY-COSMIC-ORBITS §3.B] LIVE THOUGHT PULSING —
+            // Cincin pendaran semantik pada simpul yang sedang aktif dipikirkan AI
+            // (memori yang baru dipanggil ke Memory Context percakapan). Digambar
+            // TERPISAH dari cabang konflik/orphan di atas supaya tetap tampil
+            // bersamaan dengan status lain (mis. memori konflik yang juga aktif).
+            if (activeThoughtIds.has(node.id)) {
+              const thoughtPulseScale = 1.3 + 0.35 * Math.sin(time / 200);
+              const ringColor = getNodeColor(node) || '#38bdf8';
+              ctx.beginPath();
+              ctx.arc(node.x, node.y, size * thoughtPulseScale, 0, 2 * Math.PI, false);
+              ctx.strokeStyle = ringColor;
+              ctx.lineWidth = 2;
+              ctx.shadowColor = ringColor;
+              ctx.shadowBlur = 12;
+              ctx.stroke();
+              ctx.shadowBlur = 0; // reset agar tidak bocor ke elemen kanvas berikutnya
+            }
+
             // Render node labels directly on canvas (Constitution 23 Knowledge Graph)
             if (node.name) {
               const isCategory = node.isCategory || node.group === 'core';
@@ -135,6 +173,7 @@ export default function ActivityGraph({
               }
             }
           }}
+          linkCurvature={ORBIT_CURVATURE}
           linkColor={(link) => {
             if (!link || !link.source || !link.target) return 'rgba(255,255,255,0.35)';
             const sourceId = (link.source && (link.source.id || link.source)) || '';
@@ -217,6 +256,7 @@ export default function ActivityGraph({
           <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#eab308] shadow-[0_0_6px_rgba(234,179,8,0.6)]"></div> Conversations</div>
           <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)]"></div> Core / Infra</div>
           <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#ef4444] animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div> Conflict</div>
+          <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full border-2 border-[#38bdf8] animate-pulse shadow-[0_0_8px_rgba(56,189,248,0.8)]"></div> Berpijar: Simpul Aktif Percakapan (Live Thought)</div>
         </div>
       </div>
 
