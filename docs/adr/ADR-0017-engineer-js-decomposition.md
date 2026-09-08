@@ -2,7 +2,7 @@
 
 **ID:** ADR-0017
 **Judul:** Pemecahan Monolith `engineer.js` — Roadmap Extraction Bertahap
-**Status:** PROPOSED — menunggu persetujuan Owner untuk mulai eksekusi
+**Status:** 🟡 IN PROGRESS — Fase 1/8 selesai & terverifikasi (2026-09-08)
 **Tanggal:** 2026-09-08
 **Penulis:** Sesi diskusi arsitektur (Owner + Claude)
 **Metodologi:** Direplikasi dari **ADR-0009 (`index.ts` Decomposition)** — preseden yang sudah terbukti berhasil dieksekusi (`agent-process/index.ts` 2301 baris → thin coordinator ~145 baris).
@@ -155,12 +155,19 @@ Menerapkan patch (termasuk mode `search_replace` yang sudah diverifikasi fungsio
 
 Prinsip sama seperti ADR-0009: ekstrak yang paling stateless & tanpa dependency dulu, tiap extraction **zero behavioral change**, pola **extract → import → verify → next**.
 
-### Fase 1 — Struktur Data Murni (Risiko Sangat Rendah)
+### Fase 1 — Struktur Data Murni (Risiko Sangat Rendah) ✅ SELESAI (2026-09-08)
 ```
 Ekstrak: engineer/SessionArtifact.js
 Isi: Class SessionArtifact utuh (Kelompok A)
 Kenapa duluan: Sudah class terpisah, nol coupling ke instance Engineer.
 ```
+**Hasil:** `engineer.js` 2978 → **2846 baris** (−132 baris). Modul baru `engineer/SessionArtifact.js` (137 baris). Tidak ada file lain yang perlu diubah — 2 referensi tekstual di `AssistantService.js`/`MemoryGovernorService.js` ternyata cuma komentar/JSDoc, bukan `import`.
+
+**Verifikasi (evidence-based, live):**
+- Build production: ✅ sukses (1m 12s, exit 0)
+- Import modul terisolasi: instance baru berfungsi penuh (`addAnalyzedFile`, `addDecision`, `getSummary()`, `toPromptContext()` semua benar)
+- **Instance live di aplikasi berjalan** (`kernel.serviceManager.get('Engineer').sessionArtifact instanceof SessionArtifact`): `true` — dikonfirmasi lewat dev server sungguhan, bukan cuma build pass
+- Log boot: `[Engineer] 📦 Session Artifact initialized: ENG-SESSION-...` muncul normal, tanpa error
 
 ### Fase 2 — Utilitas Deterministik Tanpa I/O (Risiko Sangat Rendah)
 ```
