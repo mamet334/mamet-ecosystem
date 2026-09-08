@@ -50,7 +50,9 @@ if (bucket) { this.health[bucket].push(logEntry); }
 - `frontend/public/metadata/system.json` — entri `{ "id": "app:kernel", "name": "System Logs", "icon": "ScrollText", "component": "SystemLogsApp" }`.
 - `frontend/src/core/application/AppRegistry.js` — pemetaan `'SystemLogsApp'` ke lazy import.
 
-Slot navigasinya **sudah tersedia sejak lama**: `navigation.json` memuat grup **System Observability** berisi `app:verification`, `app:event-stream`, dan `app:kernel` — ketiganya sebelumnya menunjuk app yang tidak pernah didefinisikan. Item ini mengisi `app:kernel`; dua entri lain masih menjadi placeholder tanpa app.
+Slot navigasinya **sudah tersedia sejak lama**: `navigation.json` memuat grup **System Observability** berisi `app:verification`, `app:event-stream`, dan `app:kernel` — ketiganya sebelumnya menunjuk app yang tidak pernah didefinisikan. Item ini mengisi `app:kernel`.
+
+**Pembersihan lanjutan (atas keputusan Owner, 2026-09-08):** dua entri sisa (`app:verification`, `app:event-stream`) dihapus dari `navigation.json` karena tidak pernah memiliki aplikasi di baliknya. Keduanya selama ini tidak menimbulkan kerusakan — `ActivityBar.jsx:61` melakukan `if (!app) return null` sehingga entri tanpa app dilewati diam-diam (tidak dirender, tidak error) — namun menyisakan konfigurasi yang menjanjikan fitur tak berwujud. Setelah pembersihan, **seluruh entri navigasi terkonfirmasi memiliki app terdefinisi (nol entri yatim)**.
 
 ---
 
@@ -103,6 +105,7 @@ Tampilan akhir `SystemLogsApp` **belum dilihat langsung di browser** karena bera
 | 3 | `frontend/src/core/application/AppRegistry.js` | Registrasi lazy component `SystemLogsApp` |
 | 4 | `frontend/public/metadata/system.json` | Definisi app `app:kernel` |
 | 5 | `frontend/src/core/runtime/services/engineer.js` | 2 aturan prompt pengaman |
+| 5b | `frontend/public/metadata/navigation.json` | Hapus 2 entri navigasi yatim (`app:verification`, `app:event-stream`) |
 | 6 | `_knowledge_archive/00_EXPERIMENT_HISTORY.md` | **Baru** — distilasi eksperimen arsip |
 | 7 | `_knowledge_archive/00_INDEX.md` | Koreksi daftar isi arsip yang tidak akurat |
 | 8 | `docs/roadmap/roadmap-lanjutan.md` | Fase 1–4 seluruhnya ditandai selesai |
