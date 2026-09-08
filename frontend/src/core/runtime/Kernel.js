@@ -70,8 +70,11 @@ class Kernel {
   log(level, message, data = null) {
     const timestamp = new Date().toISOString();
     const logEntry = { timestamp, level, message, data };
-    if (this.health[level + 's']) {
-      this.health[level + 's'].push(logEntry);
+    // Level dipakai dalam huruf besar ('ERROR'/'WARN'), sedangkan bucket health
+    // bernama huruf kecil — pemetaan eksplisit mencegah entri jatuh ke key yang tidak ada.
+    const bucket = level === 'ERROR' ? 'errors' : level === 'WARN' ? 'warnings' : null;
+    if (bucket) {
+      this.health[bucket].push(logEntry);
     }
     console.log(`[${timestamp}] [Kernel] [${level}] ${message}`, data || '');
   }

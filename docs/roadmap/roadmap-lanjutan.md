@@ -1,21 +1,21 @@
 # ROADMAP MAMET OS ECOSYSTEM: FASE FINALISASI
 **Filosofi Utama:** *"Ringan, Bebas, dan Tangguh seperti Linux"*
 
-**Status keseluruhan:** ✅ Sebagian besar selesai — diverifikasi terhadap kode aktual 2026-09-08
+**Status keseluruhan:** ✅ **Selesai Penuh (seluruh Fase 1–4)** — dituntaskan & diverifikasi 2026-09-08
 
 > [!NOTE]
-> **Rekonsiliasi 2026-09-08:** Dokumen ini semula ditulis sebagai proposal tanpa penanda status sama sekali, padahal 3 dari 4 fase ternyata sudah diimplementasikan. Status per fase kini ditambahkan berdasarkan verifikasi langsung ke kode.
+> **Rekonsiliasi 2026-09-08:** Dokumen ini semula ditulis sebagai proposal tanpa penanda status sama sekali, padahal 3 dari 4 fase ternyata sudah diimplementasikan. Setelah rekonsiliasi, 3 gap tersisa dikerjakan pada hari yang sama sehingga seluruh fase kini tuntas.
 >
 > | Fase | Status |
 > |---|---|
-> | 1. Cleanup & Konsolidasi | ⚠️ Sebagian — arsip ada, berkas ringkasan eksperimen belum |
+> | 1. Cleanup & Konsolidasi | ✅ Selesai — arsip ada, `00_EXPERIMENT_HISTORY.md` dibuat 2026-09-08 |
 > | 2. Anti-Kernel Panic (Graceful Degradation) | ✅ Selesai (2.1 & 2.2) |
-> | 3. Pencegahan AI Coding Berbahaya | ⚠️ Sebagian — 2 aturan belum ditambahkan |
-> | 4. Observability UI | ⚠️ Sebagian — 4.1 selesai, 4.2 belum |
+> | 3. Pencegahan AI Coding Berbahaya | ✅ Selesai — 2 aturan sisa ditambahkan 2026-09-08 |
+> | 4. Observability UI | ✅ Selesai — 4.1 & 4.2 (`SystemLogsApp` dibangun 2026-09-08) |
 
 ---
 
-## FASE 1: CLEANUP & KONSOLIDASI KODE ("Spring Cleaning") — ⚠️ SEBAGIAN SELESAI
+## FASE 1: CLEANUP & KONSOLIDASI KODE ("Spring Cleaning") — ✅ SELESAI
 **Tujuan:** Menghilangkan *noise* (gangguan) dari folder proyek agar *Engineer* AI tidak membaca data usang dan Vercel build menjadi lebih cepat.
 
 ### 1.1 Strategi Pengarsipan Pengetahuan (Bukan Menghapus)
@@ -25,8 +25,10 @@ Karena *Engineer* internal butuh belajar dari masa lalu, kita tidak akan menghap
 3. **Pindahkan file mesin memori usang:** `chaos_memory_v3.ts`, `memory_hardening_v2.ts`, `behaviorMemoryEngine.ts`, `semantic_memory_v4.ts`.
 4. **Pindahkan script audit/tes sekali pakai:** `check_agent_logs.js`, `check_db.js`, `audit_supabase.mjs`, `convert_pdf.mjs`, `fix_memory.js`, `read_pdf.js`, `test_groq.js`, `test_rag.mjs`, `test_health.js`, `python.py`, `python1.py`, dll.
 
-### 1.2 Membuat Indeks Pengetahuan (Knowledge Distillation) — ❌ BELUM
-> **Verifikasi 2026-09-08:** Folder `_knowledge_archive/` **sudah ada** beserta isinya (`changelog/`, `handoff/`, `lib_deprecated_cognition/`, `scripts/`, `mametlite/`, dll) sehingga §1.1 terpenuhi. Namun berkas indeksnya bernama `00_INDEX.md`, dan isinya berupa **inventaris folder** — bukan ringkasan 1–2 paragraf per eksperimen gagal seperti yang dispesifikasikan di bawah. Distilasi pengetahuan ini masih menjadi gap terbuka.
+### 1.2 Membuat Indeks Pengetahuan (Knowledge Distillation) — ✅ SELESAI
+> **Verifikasi & penyelesaian 2026-09-08:** `_knowledge_archive/00_EXPERIMENT_HISTORY.md` telah dibuat, memuat ringkasan tujuan / alasan ditinggalkan / kesimpulan untuk klaster eksperimen yang benar-benar ada di arsip (**Legacy Cognition Layer** — 18 berkas + 3 route API), lengkap dengan tabel peran per berkas agar Engineer tidak perlu membuka kode usang.
+>
+> **Koreksi terhadap §1.1 di atas:** berkas yang disebut di sana (`chaos_memory_v3.ts`, `memory_hardening_v2.ts`, `semantic_memory_v4.ts`) beserta folder `scratch/` dan `mametlite/` **tidak ada di arsip** — kemungkinan dihapus permanen atau tidak pernah dibuat. `00_INDEX.md` juga ikut dikoreksi karena sebelumnya mendaftarkan folder-folder yang tidak eksis.
 
 Agar AI tidak bingung membaca kode usang, buatlah satu file `_knowledge_archive/00_EXPERIMENT_HISTORY.md`. Isinya adalah ringkasan 1-2 paragraf untuk setiap eksperimen yang gagal.
 > *Contoh:* "Semantic Memory v4: Dikembangkan pada Juli 2026. Tujuan: Menggantikan memoryEngine dengan grafik berbasis vektor. Masalah: Memory leak parah di lingkungan browser. Kesimpulan: Dibatalkan."
@@ -87,15 +89,13 @@ if (this._apiCallCount > 5) { // Maks 5 panggilan per menit
 
 ---
 
-## FASE 3: SISTEM PENCEGAHAN AI CODING BERBAHAYA & BIAS — ⚠️ SEBAGIAN SELESAI
+## FASE 3: SISTEM PENCEGAHAN AI CODING BERBAHAYA & BIAS — ✅ SELESAI
 **Tujuan:** Mencegah AI (Otak Pinjaman) menulis kode yang merusak sistem core atau terjebak dalam *Hallucination* (halusinasi).
 
-### 3.1 Memperketat ATURAN KODE dalam `_buildPatchPrompt()` — ⚠️ SEBAGIAN
-> **Verifikasi 2026-09-08:** Blok `### ATURAN KODE (WAJIB DIPATUHI) ###` sudah ada di `engineer.js:2483–2491`, mencakup 3 dari 4 aturan di bawah: larangan `eval()`/`new Function()` (`:2488`), larangan panggil API vendor langsung (`:2490`), dan larangan modifikasi file core Kernel/EventBus/ServiceManager (`:2491`).
->
-> **Belum ada (gap terbuka):**
-> 1. Larangan menambahkan `eventBus.emit("Engineer:GeneratePatch", ...)` di file yang diubah (proteksi anti *infinite loop*).
-> 2. Larangan membaca kode raw dari `_knowledge_archive/` (hanya boleh baca berkas ringkasan) — bergantung pada §1.2 yang juga belum selesai.
+### 3.1 Memperketat ATURAN KODE dalam `_buildPatchPrompt()` — ✅ SELESAI
+> **Verifikasi & penyelesaian 2026-09-08:** Blok `### ATURAN KODE (WAJIB DIPATUHI) ###` di `engineer.js` kini memuat keempat aturan spesifikasi. Tiga sudah ada sebelumnya (larangan `eval()`/`new Function()`, larangan panggil API vendor langsung, larangan modifikasi file core), dan dua aturan sisa ditambahkan pada 2026-09-08:
+> 1. Larangan menulis `eventBus.emit("Engineer:GeneratePatch", ...)` di file yang diubah — proteksi anti *infinite loop*, melengkapi Circuit Breaker §2.2.
+> 2. Larangan membaca/menyalin kode raw dari `_knowledge_archive/`; Engineer diarahkan hanya membaca `00_EXPERIMENT_HISTORY.md` (dibuat di §1.2).
 Di dalam `engineer.js` -> `_buildPatchPrompt`, perkuat bagian **`### ATURAN KODE (WAJIB DIPATUHI) ###`** dengan instruksi berikut (ini adalah pancingan untuk mencegah AI membuat patch berbahaya):
 
 ```text
@@ -110,7 +110,7 @@ Sistem `VerificationEngine.js` yang sudah Anda buat adalah tameng utama. Pastika
 
 ---
 
-## FASE 4: OBSERVABILITY UI (SISTEM NOTIFIKASI INTERNAL) — ⚠️ SEBAGIAN SELESAI
+## FASE 4: OBSERVABILITY UI (SISTEM NOTIFIKASI INTERNAL) — ✅ SELESAI
 **Tujuan:** Memberikan visibilitas penuh kepada User mengenai status OS dan error tanpa harus membuka *Console Web* (DevTools/F12).
 
 ### 4.1 Buat Komponen `SystemNotificationCenter.jsx` — ✅ SELESAI
@@ -169,8 +169,10 @@ export const SystemNotificationCenter = () => {
 ```
 *(Masukkan komponen ini ke `OSDesktopShell.jsx` Anda agar selalu aktif di layar).*
 
-### 4.2 Bangun "System Diagnostic App" — ❌ BELUM
-> **Verifikasi 2026-09-08:** Tidak ada aplikasi `SystemLogsApp` (atau sejenisnya) yang terdaftar di *AppRegistry*. Fungsi `kernel.getHealth()` sudah tersedia (`Kernel.js:647`, dengan `getLogs()` yang menggabungkan `health.errors` + `health.warnings` di `:430`) dan saat ini hanya dirender di `Settings.jsx:19,37`. Aplikasi "Event Viewer" tersendiri seperti spesifikasi di bawah masih menjadi gap terbuka.
+### 4.2 Bangun "System Diagnostic App" — ✅ SELESAI
+> **Penyelesaian 2026-09-08:** `frontend/src/components/system/SystemLogsApp.jsx` dibangun dan didaftarkan sebagai `app:kernel` ("System Logs") di `frontend/public/metadata/system.json` + `AppRegistry.js`. Slot navigasinya sudah tersedia sejak lama di grup **System Observability** pada `navigation.json`. Aplikasi menampilkan status/fase/uptime/total event kernel, penghitung error & peringatan, filter Semua/Error/Peringatan, serta detail `data` tiap entri yang dapat dibuka.
+>
+> **Bug yang ditemukan & diperbaiki saat pengerjaan:** `Kernel.log()` menyimpan entri ke `this.health[level + 's']`, sedangkan level dipakai dalam huruf besar (`'ERROR'`/`'WARN'`) sementara bucket bernama huruf kecil (`errors`/`warnings`). Akibatnya `health['ERRORs']`/`health['WARNs']` selalu `undefined` sehingga **kedua bucket tidak pernah terisi sejak awal** — `getLogs()` (`Kernel.js:430`) dan tampilan health di `Settings.jsx` selalu kosong. Diperbaiki dengan pemetaan level→bucket eksplisit, dan diverifikasi live di dev server: `errors 0→1`, `warnings 0→1`, sedangkan `INFO` benar tidak masuk bucket mana pun.
 
 Buat sebuah aplikasi di dalam *AppRegistry* (misalnya bernama `SystemLogsApp`). Di dalamnya, panggil `kernel.getHealth()` dan render daftar `health.errors` dan `health.warnings` yang ada. Ini akan menjadi "Event Viewer" Mamet OS, persis seperti `dmesg` di Linux.
 
@@ -190,11 +192,8 @@ Dengan mengikuti roadmap finalisasi di atas, Mamet OS Ecosystem akan memiliki ka
 ---
 
 > [!NOTE]
-> **Pembaruan Rekonsiliasi 2026-09-08:** Arahan di paragraf pengantar di atas **sudah dikerjakan** — lapisan Graceful Degradation (Fase 2.1 & 2.2) dan notifikasi UI (Fase 4.1) kini aktif di kode.
+> **Pembaruan Rekonsiliasi 2026-09-08:** Arahan di paragraf pengantar di atas **sudah dikerjakan sepenuhnya**. Lapisan Graceful Degradation (Fase 2.1 & 2.2) dan notifikasi UI (Fase 4.1) sudah aktif sebelum rekonsiliasi; tiga gap yang tersisa (§1.2, §3.1, §4.2) dituntaskan pada hari yang sama — lihat changelog [`2026-09-08-backlog-11-13-system-logs-archive-history-prompt-rules.md`](../project-memory/changelog/2026-09-08-backlog-11-13-system-logs-archive-history-prompt-rules.md).
 >
-> **Sisa gap terbuka dari dokumen ini (3 item):**
-> 1. §1.2 — Berkas distilasi `00_EXPERIMENT_HISTORY.md` (ringkasan per eksperimen gagal) belum dibuat.
-> 2. §3.1 — Dua aturan prompt belum ditambahkan: larangan emit `Engineer:GeneratePatch` (anti infinite loop) & larangan baca kode raw dari `_knowledge_archive/`.
-> 3. §4.2 — Aplikasi "System Diagnostic App" (Event Viewer ala `dmesg`) belum dibangun di AppRegistry.
+> **Status akhir: seluruh Fase 1–4 selesai.** Tidak ada gap terbuka tersisa dari dokumen ini.
 >
-> Ketiganya terdaftar di Bagian 6 [`INDEX-ROADMAP.md`](./INDEX-ROADMAP.md).
+> Satu temuan sampingan tercatat saat pengerjaan §4.2: bug pemetaan level log di `Kernel.log()` yang membuat `health.errors`/`health.warnings` tidak pernah terisi sejak awal — sudah diperbaiki dan diverifikasi live.

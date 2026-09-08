@@ -189,17 +189,17 @@ Setiap kali sebuah dokumen di folder ini selesai dikerjakan (Exit Criteria terpe
 
 11. **System Diagnostic App ("Event Viewer" ala `dmesg`) — `roadmap-lanjutan.md` §4.2:**
     - **Isu:** Tidak ada aplikasi terdaftar di *AppRegistry* untuk menampilkan riwayat error/warning kernel. Fungsi `kernel.getHealth()` (`Kernel.js:647`) dan `getLogs()` (`:430`) sudah tersedia, namun saat ini hanya dirender di `Settings.jsx:19,37`.
-    - **Status:** 📋 **BACKLOG (Menunggu Penjadwalan Owner)** — teridentifikasi saat rekonsiliasi dokumen roadmap lama 2026-09-08.
-    - **Rencana Solusi:** Bangun `SystemLogsApp` di AppRegistry yang memanggil `kernel.getHealth()` dan merender `health.errors` + `health.warnings`. Melengkapi `SystemNotificationCenter.jsx` (§4.1, sudah selesai) yang hanya menampilkan notifikasi transien.
+    - **Status:** ✅ **Selesai & Diverifikasi Live (2026-09-08)** ([`2026-09-08-backlog-11-13-system-logs-archive-history-prompt-rules.md`](../project-memory/changelog/2026-09-08-backlog-11-13-system-logs-archive-history-prompt-rules.md)).
+    - **Solusi:** `frontend/src/components/system/SystemLogsApp.jsx` dibangun & didaftarkan sebagai `app:kernel` di `system.json` + `AppRegistry.js` (slot navigasinya sudah tersedia di grup System Observability). **Bug prasyarat ikut ditemukan & diperbaiki:** `Kernel.log()` menulis ke `this.health[level + 's']` sehingga `'ERROR'`→`health['ERRORs']` (undefined) — kedua bucket tidak pernah terisi sejak awal, membuat `getLogs()` dan health di `Settings.jsx` selalu kosong. Diverifikasi live di dev server: registrasi `app:kernel` muncul di console boot, dan `errors 0→1`/`warnings 0→1` setelah perbaikan.
 
 12. **Distilasi Pengetahuan Arsip (`00_EXPERIMENT_HISTORY.md`) — `roadmap-lanjutan.md` §1.2:**
     - **Isu:** Folder `_knowledge_archive/` sudah terisi, tetapi berkas indeksnya (`00_INDEX.md`) hanya berupa inventaris folder — bukan ringkasan 1–2 paragraf per eksperimen gagal seperti spesifikasi. Akibatnya Engineer internal tidak punya sumber ringkas untuk belajar dari kegagalan masa lalu tanpa membaca kode usang.
-    - **Status:** 📋 **BACKLOG (Menunggu Penjadwalan Owner)** — teridentifikasi saat rekonsiliasi dokumen roadmap lama 2026-09-08.
-    - **Rencana Solusi:** Susun `_knowledge_archive/00_EXPERIMENT_HISTORY.md` berisi ringkasan tujuan, masalah, dan kesimpulan tiap eksperimen yang dibatalkan. Prasyarat untuk Item 13 poin 2.
+    - **Status:** ✅ **Selesai (2026-09-08)** ([`2026-09-08-backlog-11-13-system-logs-archive-history-prompt-rules.md`](../project-memory/changelog/2026-09-08-backlog-11-13-system-logs-archive-history-prompt-rules.md)).
+    - **Solusi:** `_knowledge_archive/00_EXPERIMENT_HISTORY.md` dibuat — memuat tujuan, alasan ditinggalkan, kesimpulan, gagasan yang tetap hidup, dan tabel peran per berkas untuk klaster **Legacy Cognition Layer** (18 berkas + 3 route API). **Temuan:** berkas yang disebut `roadmap-lanjutan.md` §1.1 (`chaos_memory_v3.ts`, `semantic_memory_v4.ts`, folder `scratch/`, `mametlite/`) ternyata tidak ada di arsip; `00_INDEX.md` yang mendaftarkan folder-folder tak-eksis itu ikut dikoreksi agar tidak menyesatkan Engineer.
 
 13. **Dua Aturan Prompt Pengaman Belum Ditambahkan — `roadmap-lanjutan.md` §3.1:**
     - **Isu:** Blok `### ATURAN KODE (WAJIB DIPATUHI) ###` di `engineer.js:2483–2491` sudah memuat larangan `eval()`/`new Function()`, panggilan API vendor langsung, dan modifikasi file core — namun dua aturan dari spesifikasi belum ada.
-    - **Status:** 📋 **BACKLOG (Menunggu Penjadwalan Owner)** — teridentifikasi saat rekonsiliasi dokumen roadmap lama 2026-09-08.
-    - **Rencana Solusi:**
-      1. Tambahkan larangan menulis `eventBus.emit("Engineer:GeneratePatch", ...)` di file yang diubah (proteksi anti *infinite loop*, melengkapi Circuit Breaker `engineer.js:1389–1398` yang sudah aktif).
-      2. Tambahkan larangan membaca kode raw dari `_knowledge_archive/` — hanya boleh membaca berkas ringkasan (bergantung pada Item 12).
+    - **Status:** ✅ **Selesai (2026-09-08)** ([`2026-09-08-backlog-11-13-system-logs-archive-history-prompt-rules.md`](../project-memory/changelog/2026-09-08-backlog-11-13-system-logs-archive-history-prompt-rules.md)).
+    - **Solusi:** Kedua aturan ditambahkan ke blok `ATURAN KODE` di `_buildPatchPrompt()`:
+      1. Larangan menulis `eventBus.emit("Engineer:GeneratePatch", ...)` di file yang diubah (proteksi anti *infinite loop*, melengkapi Circuit Breaker `engineer.js:1389–1398`).
+      2. Larangan membaca/menyalin kode raw dari `_knowledge_archive/`; Engineer diarahkan hanya membaca `00_EXPERIMENT_HISTORY.md` yang dibuat pada Item 12.

@@ -18,6 +18,7 @@
     { "id": "app:memory-graph", "name": "Memory", "icon": "Database", "component": "MemoryApp" },
     { "id": "app:file-explorer", "name": "File Explorer", "icon": "FolderOpen", "workspace": "global", "component": "FileExplorer" },
     { "id": "app:agent-forge", "name": "Agent Forge", "icon": "Bot", "component": "AgentForge" },
+    { "id": "app:kernel", "name": "System Logs", "icon": "ScrollText", "component": "SystemLogsApp" },
     { "id": "app:settings", "name": "Settings", "icon": "Settings", "component": "Settings" }
   ]
 }

@@ -47,7 +47,8 @@ export const AppComponents = {
   'MemoryApp': lazy(() => import('../../components/memory/MemoryApp')),
   'FileExplorer': lazy(() => import('../../components/explorer/FileExplorer')),
   'Settings': lazy(() => import('../../components/Settings')),
-  
+  'SystemLogsApp': lazy(() => import('../../components/system/SystemLogsApp')),
+
   // Widgets
   'WorkspaceOverviewWidget': lazy(() => import('../../components/dashboard/widgets/WorkspaceOverviewWidget')),
   'SystemStatusWidget': lazy(() => import('../../components/dashboard/widgets/SystemStatusWidget')),

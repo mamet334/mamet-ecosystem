@@ -2487,8 +2487,10 @@ class Engineer {
     prompt += `- Ikuti standar ESModules\n`;
     prompt += `- JANGAN gunakan eval() atau new Function()\n`;
     prompt += `- Event EventBus HARUS pakai format Kategori:Nama (contoh: Engineer:Ready)\n`;
+    prompt += `- DILARANG KERAS menulis eventBus.emit("Engineer:GeneratePatch", ...) di file yang Anda ubah (memicu infinite loop patch)\n`;
     prompt += `- Jangan panggil API vendor langsung (OpenAI, Gemini, dll)\n`;
-    prompt += `- JANGAN modifikasi file core (Kernel.js, EventBus.js, ServiceManager.js, dll)\n\n`;
+    prompt += `- JANGAN modifikasi file core (Kernel.js, EventBus.js, ServiceManager.js, dll)\n`;
+    prompt += `- Untuk belajar dari eksperimen lama, HANYA baca _knowledge_archive/00_EXPERIMENT_HISTORY.md. DILARANG membaca atau menyalin kode raw dari _knowledge_archive/\n\n`;
 
     prompt += `### MULAI OUTPUT JSON SEKARANG ###\n`;
 
