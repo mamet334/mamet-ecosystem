@@ -35,7 +35,7 @@ class BrainService {
     this.eventBus = serviceManager.get('EventBus');
     this.state = {
       provider: 'gemini',         // [SECURITY FIX] Default ke Gemini (free tier tersedia), bukan OpenRouter yang berbayar
-      model: 'gemini-2.0-flash',  // [SECURITY FIX] Model ringan sebagai default aman
+      model: 'gemini-2.5-flash',  // [SECURITY FIX] Model ringan sebagai default aman. 2.0-flash dipensiunkan Google 2026-09-09.
       tiers: null                 // Diisi saat initialize(): { KECIL: {...}, SEDANG: {...}, THINKING: {...} }
     };
   }

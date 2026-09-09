@@ -66,8 +66,13 @@ export const initializeToolSubscriber = () => {
                     chatHistory: hist,
                     payload: adapterPayload,
                     forceDefaultModel: false,
+                    // 'google/gemini-2.0-flash-exp:free' dipakai di sini sampai 2026-09-09,
+                    // padahal model itu sudah TIDAK ADA di katalog OpenRouter (diverifikasi
+                    // langsung ke https://openrouter.ai/api/v1/models). Artinya setiap sub-agent
+                    // yang jatuh ke OpenRouterAdapter pasti gagal — dan kegagalannya ditelan
+                    // `catch` di bawah yang hanya console.warn. Lihat Item 38.
                     model: adapter.name === 'GroqAdapter' ? 'llama-3.1-8b-instant' : 
-                           adapter.name === 'OpenRouterAdapter' ? 'google/gemini-2.0-flash-exp:free' : 
+                           adapter.name === 'OpenRouterAdapter' ? 'google/gemini-3.5-flash-lite' : 
                            'gemini-2.5-flash'
                 };
                 const result = await adapter.execute(adapterInput, { trace_id: event.trace_id });

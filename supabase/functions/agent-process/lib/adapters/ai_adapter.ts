@@ -55,6 +55,30 @@ async function* processOpenAIStream(res: Response): AsyncGenerator<string, void,
 // pengguna eksternal mametlite. Perilaku bawaan wajib tidak berubah sedikit pun
 // bagi siapa pun yang tidak menyalakan toggle ini.
 
+/**
+ * Model Gemini bawaan, dipakai kapan pun pemanggil tidak menentukan model Gemini.
+ *
+ * DISENTRALKAN 2026-09-09. Sebelumnya 'gemini-2.0-flash' di-hardcode terpisah di
+ * jalur execute() dan stream(), dan Google sudah MEMENSIUNKANNYA. Terbukti dari
+ * jawaban API-nya sendiri di log produksi 15:56:
+ *   "This model models/gemini-2.0-flash is no longer available.
+ *    Please update your code to use models/gemini-3.6-flash"
+ * Dokumentasi resmi (ai.google.dev/gemini-api/docs/models, dicek 2026-09-09)
+ * mencantumkannya di bagian "Previous models" dengan status "(Shut down)".
+ *
+ * Akibatnya Intent Router mati total tanpa gejala yang terlihat Owner — lihat Item 38.
+ * Perbaikan pertama Item 38 sudah menghentikan model provider LAIN masuk ke
+ * GeminiAdapter, tapi model cadangannya sendiri ternyata sudah mati.
+ *
+ * Dipilih 'gemini-2.5-flash' karena masih aktif dan SUDAH dipakai lima tempat lain
+ * di repo ini (deep_research, cron-agent, check-keys, context_compressor,
+ * tool_subscriber) — konsisten, bukan menambah variasi baru. Keluarga 3.x
+ * (gemini-3.5-flash-lite dan seterusnya) tersedia kalau nanti ingin lebih murah.
+ *
+ * SATU tempat saja yang perlu diubah saat migrasi berikutnya. Itulah gunanya.
+ */
+const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
+
 type ThinkingProvider = 'openrouter' | 'openai' | 'groq';
 
 /**
@@ -283,7 +307,9 @@ export class OpenRouterAdapter implements CapabilityAdapter {
         'gpt-4o-mini': 'openai/gpt-4o-mini',
         'gpt-4o': 'openai/gpt-4o',
         'openrouter-llama-3': 'meta-llama/llama-3.1-8b-instruct',
-        'openrouter-google-gemini-2.0-flash-exp': 'google/gemini-2.0-flash-exp:free',
+        // Model lama sudah hilang dari katalog OpenRouter (dicek 2026-09-09) — dipetakan
+        // ke penerus termurah yang tersedia agar key lawas tidak menghasilkan 404.
+        'openrouter-google-gemini-2.0-flash-exp': 'google/gemini-3.5-flash-lite',
         'claude-3.5-sonnet': 'anthropic/claude-3.5-sonnet:beta',
       };
 
@@ -468,7 +494,7 @@ export class GeminiAdapter implements CapabilityAdapter {
     let lastError = 'Unknown error';
 
     const userId = this.rctx.userId || 'anonymous';
-    const targetModel = model || 'gemini-2.0-flash';
+    const targetModel = model || DEFAULT_GEMINI_MODEL;
     await checkGuardrails(
       this.rctx.env.supabaseUrl || '',
       this.rctx.env.supabaseServiceKey || '',
@@ -608,7 +634,7 @@ export class GeminiAdapter implements CapabilityAdapter {
 
 
     const allKeys = this.rctx.keys.allGemini;
-    const model = this.rctx.model.model && this.rctx.model.model.includes('gemini') ? this.rctx.model.model : 'gemini-2.0-flash';
+    const model = this.rctx.model.model && this.rctx.model.model.includes('gemini') ? this.rctx.model.model : DEFAULT_GEMINI_MODEL;
     let res: Response | null = null;
     let lastErr = '';
 

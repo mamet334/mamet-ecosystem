@@ -79,7 +79,7 @@ export interface StreamConfig {
 export interface ModelConfig {
   /**
    * Model string dari request client.
-   * Contoh: 'gemini-2.0-flash', 'groq/llama-3.1-8b-instant',
+   * Contoh: 'gemini-2.5-flash', 'groq/llama-3.1-8b-instant',
    *         'openrouter/anthropic/claude-sonnet-4.6'
    * Undefined = gunakan default cascade.
    */

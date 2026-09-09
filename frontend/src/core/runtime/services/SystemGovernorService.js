@@ -573,7 +573,7 @@ Reply ONLY with a raw valid JSON object matching exactly this schema:
     if (brainService && typeof brainService.executeLLM === 'function') {
       console.log('[SystemGovernorService] ☁️ Executing Cloud LLM Triage Fallback via BrainService...');
       try {
-        const rawResponse = await brainService.executeLLM(microPrompt, { model: 'gemini-2.0-flash' });
+        const rawResponse = await brainService.executeLLM(microPrompt, { model: 'gemini-2.5-flash' });
         return this._parseMicroPromptResponse(rawResponse);
       } catch (err) {
         console.error('[SystemGovernorService] Cloud LLM Triage failed:', err.message);

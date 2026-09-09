@@ -114,7 +114,7 @@ export const callLLMWithMetadata = async (
       // 3 key × 3 percobaan × 2 panggilan koordinator = 18 request gagal per pesan,
       // membuang ±6,5 detik sebelum panggilan utama jalan. Lihat Item 38.
       //
-      // GeminiAdapter.execute() memakai 'gemini-2.0-flash' kalau model undefined —
+      // GeminiAdapter.execute() memakai DEFAULT_GEMINI_MODEL kalau model undefined —
       // sama seperti yang sudah dilakukan jalur stream()-nya.
       const modelCocokUntukAdapter =
         adapter.name === 'GeminiAdapter' && rctx.model.model && !/gemini/i.test(rctx.model.model)
