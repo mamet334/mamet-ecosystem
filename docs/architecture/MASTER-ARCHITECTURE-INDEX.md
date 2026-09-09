@@ -27,19 +27,10 @@ Last Updated: 2026-09-09 (ADR-0018 — Constitution v3 supersedes MAEF v2 hierar
 
 ---
 
-## Hirarki Otoritas Dokumen (per ADR-0018, menggantikan MAEF v2 §5)
+## Hirarki Otoritas Dokumen
 
-| Urutan | Dokumen | Lokasi |
-|---|---|---|
-| 1 | Constitution | `constitution/00_CONSTITUTION.md` (+ seluruh folder `constitution/`) |
-| 2 | Vision | `constitution/01_VISION.md` |
-| 3 | Core Architecture & System Specification | `constitution/02-19` |
-| 4 | Master Architecture Index (dokumen ini) | `docs/architecture/MASTER-ARCHITECTURE-INDEX.md` |
-| 5 | Architecture Decision Records (ADR) | `docs/adr/` |
-| 6 | Technical Specification / RFC / Blueprints | `docs/architecture/`, `docs/blueprints/` |
-| 7 | Engineering Tasks | `docs/tasks/` |
-| 8 | Repository (implementasi) | `supabase/`, `frontend/`, `mametlite/` |
-| 9 | Runtime System | Supabase Edge Functions (deployed) |
+> [!NOTE]
+> Daftar resmi (satu-satunya salinan) ada di **`constitution/00_CONSTITUTION.md` §10 (Single Source of Truth)**. Tidak disalin ulang di sini agar tidak ada dua daftar yang bisa saling drift (persis masalah yang ditutup ADR-0018). Ringkasan: Constitution → Vision → Core Architecture → System Specification → Operational Policy → ADR → Technical Specification/RFC (dokumen ini + `docs/blueprints/`) → Roadmap (`docs/roadmap/` + `docs/tasks/`) → Repository → Runtime.
 
 ---
 
@@ -79,7 +70,7 @@ Mamet AI is a personal AI Operating System. LLM providers are replaceable reason
 
 ## Architecture Rule
 
-Any implementation that conflicts with MAEF v2, Vision Constitution v2, or this index must be recorded in `docs/architecture/ARCHITECTURE-GAPS.md` before being changed.
+Any implementation that conflicts with `constitution/` or this index must be recorded in `docs/architecture/ARCHITECTURE-GAPS.md` before being changed.
 
 ## Active Architecture Gaps
 

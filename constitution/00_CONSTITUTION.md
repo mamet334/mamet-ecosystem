@@ -278,15 +278,18 @@ Berisi aktivitas operasional sehari-hari.
 
 # 10. SINGLE SOURCE OF TRUTH
 
-Urutan otoritas dokumen:
+Urutan otoritas dokumen (per ADR-0018, 2026-09-09 — versi ini adalah **satu-satunya salinan resmi**; dokumen lain yang menyebut hierarki ini wajib merujuk ke sini, bukan menyalin ulang):
 
-1. Constitution
-2. Vision
-3. Core Architecture
-4. System Specification
-5. ADR
-6. Repository
-7. Runtime
+1. Constitution (`00_CONSTITUTION.md`, dan seluruh folder `constitution/`)
+2. Vision (`01_VISION.md`)
+3. Core Architecture (`constitution/02-09`)
+4. System Specification (`constitution/10-19`)
+5. Operational Policy (`constitution/20-27`, `ENGINEERING_CONTRACT.md`)
+6. ADR (`docs/adr/`)
+7. Technical Specification / RFC (`docs/architecture/`)
+8. Roadmap (`docs/roadmap/`, `docs/tasks/`)
+9. Repository (implementasi)
+10. Runtime
 
 Apabila terjadi konflik, dokumen dengan otoritas lebih tinggi selalu menjadi acuan.
 

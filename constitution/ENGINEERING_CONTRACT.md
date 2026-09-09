@@ -127,7 +127,7 @@ WAJIB membaca dokumen secara berurutan:
 27_DECISION_HEURISTICS.md
 
 > [!NOTE]
-> Untuk navigasi cepat berdasarkan jenis tugas (tanpa harus membaca semua 27 dokumen sekaligus), gunakan `INIT.md` di root repository — berisi Peta Navigasi Tugas (trigger → dokumen wajib dibuka) dan Buku Saku Teknis Eksekutif. `INIT.md` adalah index operasional; urutan baca di atas tetap otoritas untuk onboarding menyeluruh.
+> Untuk navigasi cepat berdasarkan jenis tugas (tanpa harus membaca semua 28 dokumen sekaligus), gunakan `INIT.md` di root repository — berisi Peta Navigasi Tugas (trigger → dokumen wajib dibuka) dan Buku Saku Teknis Eksekutif. `INIT.md` adalah index operasional; urutan baca di atas tetap otoritas untuk onboarding menyeluruh.
 
 ---
 

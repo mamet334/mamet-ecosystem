@@ -29,7 +29,7 @@ Didukung oleh: `docs/project-memory/MAEF V2.md`, `docs/project-memory/MAMET AI V
 Constitution → Vision → Architecture → Engineering Specifications
              → Repository → Runtime
 ```
-MAEF direduksi menjadi dokumen Level 1 (`constitution/02_MAEF_KERNEL.md`) — deskripsi Kernel, bukan lagi otoritas dokumen tersendiri. Didukung oleh: seluruh `constitution/` (27 dokumen), `AGENTS.md`, `constitution/ENGINEERING_CONTRACT.md`, `INIT.md`.
+MAEF direduksi menjadi dokumen Level 1 (`constitution/02_MAEF_KERNEL.md`) — deskripsi Kernel, bukan lagi otoritas dokumen tersendiri. Didukung oleh: seluruh `constitution/` (28 dokumen), `AGENTS.md`, `constitution/ENGINEERING_CONTRACT.md`, `INIT.md`.
 
 ### 1.2 Bukti Bahwa Ini Bukan Sekadar Dokumen Usang
 
@@ -50,22 +50,9 @@ Karena ADR-0001 belum pernah di-supersede secara formal, seorang Engineer/AI yan
 
 ### 2.1 Penetapan Otoritas Tertinggi
 
-**`constitution/00_CONSTITUTION.md` v3.0 (beserta seluruh folder `constitution/`, 27 dokumen) adalah Source of Truth tertinggi Mamet Ecosystem, menggantikan hierarki yang dipimpin MAEF v2 / Vision Constitution v2.**
+**`constitution/00_CONSTITUTION.md` v3.0 (beserta seluruh folder `constitution/`, 28 dokumen) adalah Source of Truth tertinggi Mamet Ecosystem, menggantikan hierarki yang dipimpin MAEF v2 / Vision Constitution v2.**
 
-Hierarki otoritas resmi mulai ADR ini:
-
-```
-1. constitution/00_CONSTITUTION.md (dan seluruh folder constitution/)
-2. constitution/01_VISION.md
-3. Core Architecture (constitution/02-09)
-4. System Specification (constitution/10-19)
-5. Operational Policy (constitution/20-27, ENGINEERING_CONTRACT.md)
-6. ADR (docs/adr/)
-7. Technical Specification / RFC (docs/architecture/)
-8. Roadmap (docs/roadmap/)
-9. Repository (implementasi)
-10. Runtime System
-```
+Hierarki otoritas resmi mulai ADR ini tercatat di **`constitution/00_CONSTITUTION.md` §10 (Single Source of Truth)** — bukan disalin ulang di sini, agar tidak ada dua salinan yang bisa drift satu sama lain (persis masalah yang ditutup ADR ini). Ringkasannya: Constitution → Vision → Core Architecture → System Specification → Operational Policy → ADR → Technical Specification/RFC → Roadmap → Repository → Runtime.
 
 ### 2.2 Status MAEF v2, MAEF v3, dan Vision Constitution v2
 

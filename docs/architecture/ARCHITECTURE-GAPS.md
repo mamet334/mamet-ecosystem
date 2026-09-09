@@ -266,11 +266,12 @@ Status: Open
 
 ## GAP-NEW-018: `docs/blueprints/` dan `docs/monetisasi/` Tidak Direferensi dari Mana Pun
 
-Status: Open
+Status: **Partially Resolved** (2026-09-09)
 
 **Severity:** Informational
 **Lokasi:** `docs/` root
 **Dampak:** Perlu audit isi dan integrasi ke hirarki dokumen.
+**Resolusi:** `docs/blueprints/` sudah masuk hierarki resmi (`constitution/00_CONSTITUTION.md` §10, level 7 "Technical Specification/RFC"). `docs/monetisasi/` masih tidak direferensikan — dikonfirmasi (dibahas dengan Owner) sebagai riset bisnis era lama ("AI Agent"/Web3, Juni 2026), bukan dokumen governance aktif, tidak perlu diintegrasikan ke hierarki. Gap ditutup sebagian; sisanya bukan masalah, hanya konteks historis.
 **Rencana:** Masuk backlog.
 
 ---
