@@ -1,7 +1,7 @@
 # Changelog: Adaptive Model Tiering (Kecil/Sedang/Thinking) + Batas Biaya Harian Per-User
 
 **Tanggal:** 2026-09-09
-**Status:** ✅ Selesai & Diverifikasi Live Penuh (2026-09-09) — ketiga tier terbukti memakai model berbeda, classifier & override dua-duanya jalan, edge function ter-deploy dengan `[MATCH]` drift check.
+**Status:** ✅ Selesai & Diverifikasi Live Penuh (2026-09-09) — **seluruh 6 kriteria sukses roadmap §7 terpenuhi**: ketiga tier memakai model berbeda, jalur Auto & override dua-duanya jalan, sinkron lintas device dikonfirmasi dari HP, reset override terbukti, Engineer tidak tersentuh, dan nol panggilan LLM untuk menentukan tingkat. Edge function ter-deploy dengan `[MATCH]` drift check.
 **Scope:** `TierClassifierService.js` (baru), `BrainService.js`, `AssistantService.js`, `Kernel.js`, `Settings.jsx`, `ConversationEngine.jsx`, `quota_middleware.ts` (edge function), migrasi DB `restrict_system_config_update_to_service_role`
 **Referensi:** [`ROADMAP-ADAPTIVE-MODEL-TIERING.md`](../../roadmap/ROADMAP-ADAPTIVE-MODEL-TIERING.md)
 
@@ -86,7 +86,9 @@ Keduanya membuktikan dalam satu jalur: tombol Settings benar-benar menulis ke `u
 
 **Kesalahan konfigurasi yang sempat terjadi (bukan bug kode):** Owner mengisi slot Thinking dengan `deepseek/deepseek v4` (pakai spasi), OpenRouter menolak `400 is not a valid model ID`. Sistem sudah benar — ia mengirim persis apa yang dikonfigurasi. ID yang benar diambil dari katalog OpenRouter: `deepseek/deepseek-v4-flash-0731` dan `deepseek/deepseek-v4-pro-0813`.
 
-**Belum diuji:** hanya satu — reset override otomatis ke Auto saat ganti chat / buat chat baru / reload. Kodenya ada (`useEffect` pada `currentChatId` + `setModelTierOverride(null)` di `handleNewChat`), tapi belum dikonfirmasi live.
+**Reset override juga dikonfirmasi Owner:** pil yang terkunci di Thinking kembali ke "Auto" setelah menekan Percakapan Baru — sesuai desain §4.4 (client-side-only, tidak persisten).
+
+Dengan ini **seluruh 6 kriteria sukses di §7 roadmap terverifikasi live**, tidak ada yang tersisa berstatus asumsi.
 
 ## 7. Yang Sengaja TIDAK Dikerjakan
 

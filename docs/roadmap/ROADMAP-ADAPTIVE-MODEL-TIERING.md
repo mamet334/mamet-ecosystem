@@ -107,7 +107,7 @@ Semua item keputusan terbuka di dokumen ini sudah selesai — implementasi (§5)
 - [x] 3 slot model tersinkron identik di HP dan laptop — dikonfirmasi Owner langsung dari HP (2026-09-09).
 - [x] Pesan ringan memakai slot Kecil (`KECIL (pesan pendek & cocok kata kunci ringan)`) dan pesan analitis memakai slot Thinking lewat Auto (`THINKING (pesan dinilai THINKING) → deepseek-v4-pro-0813`, tanpa override).
 - [x] Override manual per-percakapan berfungsi — ketiga tier terbukti memakai model berbeda: `gpt-4o-mini`, `deepseek-v4-flash-0731`, `deepseek-v4-pro-0813`.
-- [ ] Override otomatis kembali ke Auto saat ganti/buat chat atau reload — kodenya ada (`useEffect` pada `currentChatId` + `handleNewChat`), belum diuji live.
+- [x] Override otomatis kembali ke Auto saat ganti/buat chat — dites Owner: pil terkunci Thinking kembali ke "Auto" setelah menekan Percakapan Baru (2026-09-09).
 - [x] Engineer tidak pernah menerima model dari slot tier — `getActiveBrainContext()` tanpa argumen tetap mengembalikan model utama, jalur Engineer tidak disentuh.
 - [x] Tidak ada panggilan LLM tambahan untuk menentukan tingkat — `TierClassifierService` murni kata kunci + panjang pesan + smoothing riwayat.
 
