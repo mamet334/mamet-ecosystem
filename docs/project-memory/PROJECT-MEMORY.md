@@ -164,19 +164,29 @@ Ref: `docs/adr/ADR-0011-project-memory-canonical-source.md`
 
 ## Architecture Decision Records (Index)
 
+> [!NOTE]
+> Tabel ini diperbaiki 2026-09-09 — judul ADR-0003/0004/0005 sebelumnya tidak cocok dengan isi file asli (kemungkinan drift dari revisi ADR yang tidak diikuti update index ini). Lihat `docs/adr/` untuk daftar dan isi lengkap terkini, termasuk ADR-0012 s/d ADR-0019 yang belum tercatat di tabel ini sebelumnya.
+
 | ADR | Judul | Status |
 |---|---|---|
-| ADR-0001 | MAEF as Highest Authority | APPROVED |
+| ADR-0001 | MAEF as Highest Authority | Superseded by ADR-0018 |
 | ADR-0002 | Mamet Engineer as Internal Capability | APPROVED |
-| ADR-0003 | Auth Binding Layer | APPROVED |
-| ADR-0004 | Evidence-First Engineering | APPROVED |
-| ADR-0005 | Unified Execution Policy | APPROVED |
+| ADR-0003 | Engineer Capability Mode in Agent Process | APPROVED |
+| ADR-0004 | Engineer as Reviewer & Engineering Confidence | APPROVED |
+| ADR-0005 | Engineer as Implementer & Safety Flow | Superseded by ADR-015 |
 | ADR-0006 | Two-Brain Context Model | APPROVED |
 | ADR-0007 | Engineering Metrics Derived | APPROVED |
 | ADR-0008 | Single Context Pipeline | APPROVED |
 | ADR-0009 | index.ts Decomposition Plan | APPROVED |
 | ADR-0010 | Verification Engine Hard Gate Spec | APPROVED |
 | ADR-0011 | Project Memory Canonical Source | APPROVED |
+| ADR-0012 | Verification Engine Double Source of Truth | ACCEPTED |
+| ADR-0013 | Multi-Profile Verification Architecture | ACCEPTED |
+| ADR-015 | Engineer Self-Maintenance Pipeline | ACCEPTED (supersedes ADR-0005) |
+| ADR-0016 | Terminal Command Isolation Roadmap | Proposed (belum diimplementasi) |
+| ADR-0017 | engineer.js Decomposition | Selesai |
+| ADR-0018 | Constitution v3 Supreme Authority | APPROVED |
+| ADR-0019 | Application Bootstrap Architecture | ACCEPTED (direnumerasi dari "ADR-008", lihat catatan di file) |
 
 ---
 

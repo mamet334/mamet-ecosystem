@@ -1,6 +1,6 @@
 # TASK-0003: Enforce MametLite Source Boundary
 
-Status: In Progress
+Status: Done ✅ (disinkronkan 2026-09-09 — status "In Progress" tidak pernah diperbarui sejak dibuat 2026-06-27; `PROJECT-MEMORY.md` mencatat task ini Done, dan boundary `appSource: "mametlite"` sudah lama aktif di kode)
 Owner: Mamet Engineer
 
 ## Goal

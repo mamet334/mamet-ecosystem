@@ -1,8 +1,11 @@
-# ADR-008 Application Bootstrap Architecture
+# ADR-0019: Application Bootstrap Architecture
 
 **Status:** ACCEPTED  
 **Tanggal:** 2026-07-05  
 **Konteks:** Mamet Ecosystem - MAEF UI Specification (MUS)
+
+> [!NOTE]
+> **Direnumerasi 2026-09-09.** Dokumen ini semula berada di `docs/project-memory/ADR-008-Application-Bootstrap-Architecture.md` dengan nomor "ADR-008" — bertabrakan dengan `docs/adr/ADR-0008-single-context-pipeline.md` yang merupakan ADR berbeda topik dengan nomor sama. Dipindahkan ke lokasi kanonis `docs/adr/` dan diberi nomor unik berikutnya (ADR-0019, setelah ADR-0018). Isi keputusan tidak berubah. Rujukan lama ke "ADR-008" di beberapa changelog historis (`docs/project-memory/2026-07-05-phase3-changelog.md`, `docs/project-memory/changelog/2026-07-05.md`) tidak diedit — dipertahankan sebagai jejak sejarah, tapi sekarang mengarah ke dokumen yang sudah pindah lokasi/nomor.
 
 ## 1. Konteks
 Pada saat eksekusi **Phase 2** (Transisi ke arsitektur navigasi MUS), ditemukan adanya **Architecture Gap** yang krusial:
