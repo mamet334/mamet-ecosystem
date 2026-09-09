@@ -7,48 +7,6 @@
   "updatedAt": "2026-07-05T00:00:00Z",
   "widgets": [
     {
-      "id": "widget:workspace-overview",
-      "name": "Workspace Overview",
-      "component": "WorkspaceOverviewWidget",
-      "capabilities": ["cap:core-apps"]
-    },
-    {
-      "id": "widget:system-status",
-      "name": "System Status",
-      "component": "SystemStatusWidget",
-      "capabilities": ["cap:core-apps"]
-    },
-    {
-      "id": "widget:current-activity",
-      "name": "Current Activity",
-      "component": "CurrentActivityWidget",
-      "capabilities": ["cap:core-apps"]
-    },
-    {
-      "id": "widget:recent-events",
-      "name": "Recent Events",
-      "component": "RecentEventsWidget",
-      "capabilities": ["cap:core-apps"]
-    },
-    {
-      "id": "widget:pending-approval",
-      "name": "Pending Approvals",
-      "component": "PendingApprovalWidget",
-      "capabilities": ["cap:core-apps"]
-    },
-    {
-      "id": "widget:verification-summary",
-      "name": "Verification Summary",
-      "component": "VerificationSummaryWidget",
-      "capabilities": ["cap:core-apps"]
-    },
-    {
-      "id": "widget:quick-actions",
-      "name": "Quick Actions",
-      "component": "QuickActionsWidget",
-      "capabilities": ["cap:core-apps"]
-    },
-    {
       "id": "widget:engineering-tasks",
       "name": "Engineering Tasks",
       "component": "EngineeringTasksWidget",

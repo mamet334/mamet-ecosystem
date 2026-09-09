@@ -8,8 +8,7 @@ export class MetadataService {
       workspaces: [],
       appToCapability: {},
       capabilities: [],
-      widgets: [],
-      dashboard: null
+      widgets: []
     };
   }
 
@@ -52,10 +51,6 @@ export class MetadataService {
       this.validateSchema(widgetData, 'widgets');
       this.metadata.widgets = widgetData.widgets;
 
-      const dashData = await fetchJson('dashboard.json');
-      this.validateSchema(dashData, 'dashboard');
-      this.metadata.dashboard = dashData.dashboard;
-
       console.log('[MetadataService] Successfully validated and loaded all metadata');
     } catch (e) {
       console.error('[MetadataService] CRITICAL ERROR: Failed to load metadata:', e.message);
@@ -78,10 +73,6 @@ export class MetadataService {
 
   getWidgets() {
     return this.metadata.widgets;
-  }
-
-  getDashboardLayout() {
-    return this.metadata.dashboard;
   }
 
   getSystemConfig() {

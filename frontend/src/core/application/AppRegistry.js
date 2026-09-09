@@ -49,15 +49,6 @@ export const AppComponents = {
   'Settings': lazy(() => import('../../components/Settings')),
   'SystemLogsApp': lazy(() => import('../../components/system/SystemLogsApp')),
 
-  // Widgets
-  'WorkspaceOverviewWidget': lazy(() => import('../../components/dashboard/widgets/WorkspaceOverviewWidget')),
-  'SystemStatusWidget': lazy(() => import('../../components/dashboard/widgets/SystemStatusWidget')),
-  'CurrentActivityWidget': lazy(() => import('../../components/dashboard/widgets/CurrentActivityWidget')),
-  'RecentEventsWidget': lazy(() => import('../../components/dashboard/widgets/RecentEventsWidget')),
-  'PendingApprovalWidget': lazy(() => import('../../components/dashboard/widgets/PendingApprovalWidget')),
-  'VerificationSummaryWidget': lazy(() => import('../../components/dashboard/widgets/VerificationSummaryWidget')),
-  'QuickActionsWidget': lazy(() => import('../../components/dashboard/widgets/QuickActionsWidget')),
-  
   // Engineer Widgets
   'EngineeringTasksWidget': lazy(() => import('../../components/widgets/EngineeringTasksWidget')),
   'ArchitectureGapsWidget': lazy(() => import('../../components/widgets/ArchitectureGapsWidget')),
