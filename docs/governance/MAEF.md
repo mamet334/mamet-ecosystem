@@ -3,14 +3,14 @@
 > [!CAUTION]
 > **STATUS: DEPRECATED — Dokumen ini TIDAK LAGI berlaku.**
 >
-> Dokumen ini adalah MAEF v1.0 dan telah digantikan oleh **MAEF v2.0**.
+> Dokumen ini adalah MAEF v1.0. MAEF v2.0 dan v3.0 (yang sempat menggantikannya) sudah dihapus 2026-09-09 per ADR-0018 — konsep uniknya diserap ke `constitution/`.
 >
 > **Source of Truth yang berlaku:**
-> `docs/project-memory/MAEF V2.md`
+> `constitution/00_CONSTITUTION.md`
 >
-> Jangan gunakan dokumen ini sebagai referensi arsitektur. Semua keputusan harus mengacu ke MAEF v2.
+> Jangan gunakan dokumen ini sebagai referensi arsitektur. Semua keputusan harus mengacu ke `constitution/`.
 >
-> Deprecated on: 2026-06-29 | Superseded by: MAEF v2.0
+> Deprecated on: 2026-06-29 | Superseded by: `constitution/00_CONSTITUTION.md` v3.0 (lihat ADR-0018)
 
 ---
 

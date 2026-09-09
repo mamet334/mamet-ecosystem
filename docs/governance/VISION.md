@@ -3,14 +3,14 @@
 > [!CAUTION]
 > **STATUS: DEPRECATED — Dokumen ini TIDAK LAGI berlaku.**
 >
-> Dokumen ini adalah Vision v1.0 (Draft) dan telah digantikan oleh **Vision Constitution v2.0**.
+> Dokumen ini adalah Vision v1.0 (Draft). Vision Constitution v2.0 (yang sempat menggantikannya) sudah dihapus 2026-09-09 per ADR-0018 — konsep uniknya diserap ke `constitution/`.
 >
 > **Source of Truth yang berlaku:**
-> `docs/project-memory/MAMET AI VISION CONSTITUTION V2.md`
+> `constitution/01_VISION.md`
 >
-> Jangan gunakan dokumen ini sebagai referensi arsitektur atau capability model. Semua keputusan harus mengacu ke Vision Constitution v2.
+> Jangan gunakan dokumen ini sebagai referensi arsitektur atau capability model. Semua keputusan harus mengacu ke `constitution/01_VISION.md`.
 >
-> Deprecated on: 2026-06-29 | Superseded by: Vision Constitution v2.0
+> Deprecated on: 2026-06-29 | Superseded by: `constitution/01_VISION.md` (lihat ADR-0018)
 
 ---
 

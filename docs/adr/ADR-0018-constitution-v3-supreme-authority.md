@@ -67,11 +67,18 @@ Hierarki otoritas resmi mulai ADR ini:
 10. Runtime System
 ```
 
-### 2.2 Status MAEF v2 dan Vision Constitution v2
+### 2.2 Status MAEF v2, MAEF v3, dan Vision Constitution v2
 
-`docs/project-memory/MAEF V2.md` dan `docs/project-memory/MAMET AI VISION CONSTITUTION V2.md` **tidak dihapus** — keduanya tetap berharga sebagai referensi historis dan memuat beberapa konsep yang belum punya padanan persis di `constitution/` v3 (Two-Brain Model detail, Engineering Confidence dua dimensi, Self Engineering Lifecycle 9 tahap). Status kedua dokumen ini diubah menjadi **SUPERSEDED** oleh `constitution/` v3, dengan pointer eksplisit ditambahkan ke masing-masing file.
+> [!NOTE]
+> **Update 2026-09-09 (revisi kedua):** Bagian ini awalnya menyatakan ketiga dokumen "tidak dihapus, cukup ditandai SUPERSEDED". Owner meminta pendekatan yang lebih hemat dokumen: konten unik diserap langsung ke `constitution/`, lalu file sumber **dihapus** (bukan disimpan dengan label) — karena Git history sudah cukup jadi arsip, dan repository yang lebih sedikit filenya lebih mudah dinavigasi AI/Engineer. Bagian di bawah ini diperbarui mencerminkan itu.
 
-Konsep unik yang belum tercakup di `constitution/` v3 (Two-Brain Model, Self Engineering Lifecycle, Engineering Confidence) **tetap berlaku sebagai referensi operasional** sampai ada dokumen `constitution/` yang secara eksplisit menyerapnya — bukan otomatis batal.
+Konsep unik dari `MAEF V2.md`/`MAMET AI VISION CONSTITUTION V2.md` yang belum punya padanan di `constitution/` v3 sudah diserap:
+- **Two-Brain Model** dan **Self Engineering Lifecycle** → dipindahkan ke `constitution/07_ENGINEERING_SYSTEM.md`.
+- **Engineering Confidence** (dua dimensi: Coverage + Evidence) → dipindahkan ke `constitution/16_ENGINEERING_METRICS_SYSTEM.md`.
+
+`MAEF V3.md` tidak punya konsep unik (isinya tumpang tindih penuh dengan `constitution/00_CONSTITUTION.md`) — tidak ada yang perlu diserap.
+
+Setelah penyerapan selesai, ketiga file (`docs/project-memory/MAEF V2.md`, `MAEF V3.md`, `MAMET AI VISION CONSTITUTION V2.md`) **dihapus** dari repository. Isinya tetap dapat ditelusuri lewat `git log`/`git show` bila diperlukan di masa depan.
 
 ### 2.3 Status MAEF Sebagai Konsep
 
@@ -83,10 +90,10 @@ MAEF (Mamet Artificial Executive Framework / Kernel) **tetap ada dan tetap penti
 
 | Dokumen | Aksi |
 |---|---|
-| `docs/adr/ADR-0001-maef-as-highest-authority.md` | Ditandai **Superseded by ADR-0018**, isi asli dipertahankan sebagai sejarah |
-| `docs/project-memory/MAEF V2.md` | Ditambah header status SUPERSEDED, pointer ke `constitution/00_CONSTITUTION.md` |
-| `docs/project-memory/MAMET AI VISION CONSTITUTION V2.md` | Ditambah header status SUPERSEDED, pointer ke `constitution/01_VISION.md` |
-| `docs/project-memory/MAEF V3.md` | **(Ditemukan 2026-09-09, setelah revisi awal ADR ini)** Ditambah header status SUPERSEDED, pointer ke ADR ini. Draft paralel yang ditulis di tanggal sama dengan Constitution v3 (2026-06-30), mengklaim MAEF sebagai otoritas tertinggi — isinya tumpang tindih penuh dengan `constitution/00_CONSTITUTION.md`, tidak ada konsep unik yang perlu diselamatkan |
+| `docs/adr/ADR-0001-maef-as-highest-authority.md` | Ditandai **Superseded by ADR-0018**, isi asli dipertahankan sebagai sejarah (ADR memang tidak boleh dihapus per `10_ADR_SYSTEM.md`) |
+| `docs/project-memory/MAEF V2.md` | Konsep unik (Two-Brain Model, Self Engineering Lifecycle) diserap ke `constitution/07_ENGINEERING_SYSTEM.md`, file **dihapus** |
+| `docs/project-memory/MAMET AI VISION CONSTITUTION V2.md` | Konsep unik (Engineering Confidence) diserap ke `constitution/16_ENGINEERING_METRICS_SYSTEM.md`, file **dihapus** |
+| `docs/project-memory/MAEF V3.md` | **(Ditemukan 2026-09-09, setelah revisi awal ADR ini)** Tidak ada konsep unik untuk diserap — isinya tumpang tindih penuh dengan `constitution/00_CONSTITUTION.md`. File **dihapus** |
 | `docs/architecture/MASTER-ARCHITECTURE-INDEX.md` | Diperbarui: entri konstitusi tertinggi mengarah ke `constitution/`, bukan lagi MAEF v2/Vision v2; baris MAEF V3 ditambahkan |
 | `docs/adr/ADR-0011-project-memory-canonical-source.md` | Ditambah catatan referensi ke ADR-0018 di §9 (isi ADR tidak diubah — keputusan `project_memory_entries` sebagai canonical source Project Memory tetap berlaku, tidak terpengaruh oleh perubahan hierarki dokumen ini) |
 | `constitution/ENGINEERING_CONTRACT.md` | Reading order diperluas mencakup dokumen 20-27, dengan pointer ke `INIT.md` sebagai index navigasi tugas |
@@ -101,15 +108,16 @@ MAEF (Mamet Artificial Executive Framework / Kernel) **tetap ada dan tetap penti
 ### Positif
 - Satu rantai otoritas yang jelas dan konsisten dengan apa yang sudah dipraktikkan mayoritas dokumen aktif (`AGENTS.md`, `ENGINEERING_CONTRACT.md`, `INIT.md`).
 - Menutup celah di mana dua dokumen "tertinggi" bisa memberi jawaban berbeda untuk pertanyaan governance yang sama.
-- Tidak ada isi filosofi yang hilang — MAEF v2/Vision v2 tetap tersimpan dan bisa dirujuk untuk detail yang belum diserap `constitution/` v3.
+- Tidak ada isi filosofi yang hilang secara permanen — konsep unik sudah dipindahkan ke `constitution/`, dan isi lengkap file lama tetap tersedia lewat Git history.
+- Jumlah dokumen governance hidup berkurang (3 file dihapus) — lebih sedikit yang perlu dibaca/disinkronkan Engineer/AI ke depan, konsisten dengan prinsip "jangan bikin dokumen baru untuk masalah yang bisa diselesaikan dengan menggabungkan yang sudah ada".
 
 ### Risiko / Negatif
-- Konsep unik di MAEF v2/Vision v2 (Two-Brain Model, Self Engineering Lifecycle, Engineering Confidence) untuk sementara "menggantung" — berstatus SUPERSEDED tapi belum sepenuhnya diserap sebagai dokumen `constitution/` baru. Ini backlog terpisah, bukan bagian dari ADR ini.
 - `docs/architecture/` (Master Architecture Index, ARCHITECTURE-GAPS.md, ADR lama) butuh audit lanjutan untuk memastikan tidak ada rujukan lain ke hierarki lama yang terlewat.
+- Beberapa changelog historis (`docs/project-memory/changelog/`) mungkin masih menyebut nama file yang sekarang sudah dihapus — sengaja tidak diedit (kebijakan proyek: changelog lama tidak diubah), jadi rujukan itu akan mengarah ke file yang tidak ada lagi kalau ditelusuri manual di masa depan (tetap bisa ditemukan lewat `git log`).
 
 ### Mitigasi
-- ADR ini eksplisit tidak menghapus konten apa pun — hanya mengubah status dan menambah pointer.
-- Backlog terpisah direkomendasikan untuk menyerap Two-Brain Model, Self Engineering Lifecycle, dan Engineering Confidence ke dalam dokumen `constitution/` yang relevan (`07_ENGINEERING_SYSTEM.md`, `16_ENGINEERING_METRICS_SYSTEM.md`).
+- Konsep unik (Two-Brain Model, Self Engineering Lifecycle, Engineering Confidence) sudah diserap penuh ke `constitution/07_ENGINEERING_SYSTEM.md` dan `constitution/16_ENGINEERING_METRICS_SYSTEM.md` sebelum file sumber dihapus — bukan dihapus mentah tanpa migrasi.
+- `00_CONSTITUTION.md` §11 ditambah aturan eksplisit: dokumen baru dilarang mengklaim otoritas tertinggi; suksesi hanya lewat ADR yang men-supersede dokumen yang sudah ada — mencegah pola drift yang sama (4 draf otoritas paralel) terulang di masa depan.
 
 ---
 

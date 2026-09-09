@@ -158,6 +158,17 @@ Mengukur kualitas konteks.
 
 ---
 
+# ENGINEERING CONFIDENCE MODEL
+
+Confidence bukan skor tunggal — ia memiliki dua dimensi terpisah:
+
+* **Coverage** — sumber apa saja yang tersedia (checklist per Brain: Brain 1 static, Brain 2 dynamic, RAG, memory).
+* **Evidence Strength** — seberapa kuat bukti yang dimiliki (STRONG/MEDIUM/WEAK/UNVERIFIED, lihat `13_VERIFICATION_ENGINE_SPEC.md`).
+
+Engineer tidak boleh memberikan keyakinan tinggi hanya karena semua kotak checklist Coverage tercentang — Evidence Strength yang lemah tetap harus menurunkan confidence akhir, walau Coverage-nya lengkap.
+
+---
+
 # METRIC AGGREGATION
 
 Semua metrics digabung menjadi:

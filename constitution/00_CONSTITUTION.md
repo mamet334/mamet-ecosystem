@@ -318,6 +318,10 @@ Contoh:
 
 tidak mengubah Constitution.
 
+Tidak boleh ada dokumen baru yang mendeklarasikan dirinya sebagai otoritas tertinggi setara atau di atas Constitution ini.
+
+Perubahan otoritas atau suksesi dokumen hanya sah melalui ADR yang secara eksplisit men-supersede dokumen yang sudah ada — bukan dengan menulis dokumen paralel baru yang mengklaim jadi "konstitusi" tersendiri.
+
 ---
 
 # 12. END GOAL

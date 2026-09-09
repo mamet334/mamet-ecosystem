@@ -131,12 +131,58 @@ Engineer bukan executor langsung tanpa MAEF.
 
 ---
 
+# TWO-BRAIN KNOWLEDGE MODEL
+
+Engineer memiliki dua jenis pengetahuan yang dipisahkan tegas agar tidak tercampur.
+
+## Brain 1 — Static Engineering Knowledge
+
+Dimuat sekali (per-boot/per-sesi), tidak berubah selama sesi berjalan.
+
+Berisi:
+
+* Vision
+* Constitution
+* Architecture
+* ADR
+* Coding Rules
+* Verified Project Memory
+
+## Brain 2 — Dynamic Engineering Context
+
+Dimuat sesuai tugas, berubah setiap request.
+
+Berisi:
+
+* Current Task
+* Git Diff
+* Affected Files
+* Runtime Logs
+* Verification
+* Test Result
+* Build Result
+* Workspace
+
+## Review Flow
+
+Static Knowledge + Dynamic Context → Analysis → Engineering Decision → Recommendation.
+
+---
+
+# SELF ENGINEERING LIFECYCLE (Kematangan Sistem)
+
+Berbeda dari **Engineer Lifecycle** di bawah (siklus per-tugas), ini adalah siklus **kematangan Engineer sebagai sistem** — mengukur seberapa jauh Engineer sudah berkembang secara keseluruhan, bukan langkah dalam satu task:
+
+Observer → Reviewer → Architect → Planner → Implementer → Verifier → Self Maintenance → Self Engineering System
+
+**Status implementasi:** belum ada state machine runtime yang melacak posisi Engineer di siklus ini (lihat GAP-NEW-009, `docs/architecture/ARCHITECTURE-GAPS.md`, status APPROVED_FOR_DESIGN).
+
+---
+
 # ENGINEER LIFECYCLE
 
 > [!NOTE]
-> Siklus di bawah ini adalah siklus **per-tugas** (apa yang Engineer lakukan untuk satu task). Ada dua model siklus lain yang cakupannya beda dan saling melengkapi, bukan menggantikan:
-> - `21 Engineer Capability.md` §5 — siklus operasional serupa dengan langkah lebih rinci (termasuk Owner Approval eksplisit sebagai gerbang).
-> - `MAMET AI VISION CONSTITUTION V2.md` §SELF ENGINEERING LIFECYCLE — siklus **kematangan sistem** jangka panjang (Observer → Reviewer → Architect → Planner → Implementer → Verifier → Self Maintenance → Self Engineering System), mengukur seberapa jauh Engineer sebagai sistem sudah berkembang, bukan langkah dalam satu task.
+> Siklus di bawah ini adalah siklus **per-tugas** (apa yang Engineer lakukan untuk satu task) — berbeda dari Self Engineering Lifecycle di atas (kematangan sistem). Lihat juga `21 Engineer Capability.md` §5 untuk versi lebih rinci (termasuk Owner Approval eksplisit sebagai gerbang).
 
 ## 1. Onboarding
 
