@@ -175,6 +175,9 @@ Hapus `_generateFallbackPatch` yang hanya menghasilkan `// TODO`.
 
 ## 3. SPESIFIKASI TEKNIS: `SystemGovernorService.js` (NEW MODULE)
 
+> [!NOTE]
+> **Update 2026-09-09 (audit dokumentasi menyeluruh):** Seluruh Bagian 3 (Tangga Eskalasi 4 Level, §3.2.1 Severity Classification, §3.3 Cache/TTL) sudah **diimplementasikan penuh dan diuji** — lihat [`2026-09-03-tahap2-system-governor-service.md`](../project-memory/changelog/2026-09-03-tahap2-system-governor-service.md) (17/17 test pass, terdaftar resmi di `Kernel.js` Phase 3). Dokumen ini sebelumnya tidak menandai status implementasi bagian ini — hanya §2.1 yang punya anotasi serupa, padahal Bagian 3 sudah selesai sejak 2026-09-03 (5 hari lebih dulu dari §2.1).
+
 ### 3.1. Inisialisasi & Registrasi
 *   Buat file baru: `frontend/src/core/runtime/services/SystemGovernorService.js`.
 *   Daftarkan di `Kernel.js` pada Phase 3 (bersama service inti lainnya).
@@ -244,6 +247,9 @@ Anomali ukuran file generik (>500 baris) di folder non-kritis tetap default LOW.
 
 ### 4.2. MAEF Compliance Rules (Deterministic) *(direvisi v2)*
 
+> [!NOTE]
+> **Update 2026-09-09:** Sudah diimplementasikan sebagai bagian dari Level 1 di `SystemGovernorService.js` — lihat [`2026-09-03-tahap2-system-governor-service.md`](../project-memory/changelog/2026-09-03-tahap2-system-governor-service.md) §2.A ("Gate Validasi Struktural MAEF").
+
 Allowlist untuk `*Adapter.js` / `*Provider.js` (bebas dari Adapter Isolation, boleh direct vendor import) **tidak lagi berbasis nama file saja** — nama file bukan kontrol akses yang aman, terutama karena Engineer/Antigravity (AI) cenderung menamai file sesuai pola umum, bukan selalu sesuai substansi arsitektural.
 
 **Validasi struktural tambahan (Level 1, deterministic, 0 token):**
@@ -272,6 +278,9 @@ Pastikan 7 file di `frontend/src/core/runtime/` (`Kernel`, `EventBus`, `ServiceM
 ---
 
 ## 6. NOTIFICATION STRATEGY *(bagian baru v2)*
+
+> [!NOTE]
+> **Update 2026-09-09:** Sudah diimplementasikan penuh (3 mode) sebagai bagian dari `SystemGovernorService.js` + `ObservabilityPanel.jsx` — lihat [`2026-09-03-tahap2-system-governor-service.md`](../project-memory/changelog/2026-09-03-tahap2-system-governor-service.md) §2.B, Group 5 test (2/2 pass).
 
 Ekosistem ini adalah asisten pribadi dengan pola pakai **on-demand** — Owner tidak standby memantau aplikasi. Desain notifikasi real-time konvensional (toast per-event) tidak efektif untuk pola ini. Tiga mode operasi:
 
