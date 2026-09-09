@@ -57,7 +57,10 @@ export const IntentRouterHandler = {
              ctx.state.processingSteps.push('⚡ Keputusan: Butuh aksi → Mempersiapkan sub-agent...');
           }
         } catch (err) {
+          // Jangan ditelan diam-diam. Sebelum Item 38, kegagalan di sini hanya muncul di
+          // konsol server — Owner tidak punya cara tahu bahwa Intent Router praktis mati.
           console.warn("Intent router error, mengabaikan intent check:", err);
+          ctx.state.processingSteps.push(`⚠️ Intent Router gagal, dilewati (jawaban tetap jalan): ${String((err as any)?.message || err).substring(0, 120)}`);
         }
       }
     } 
@@ -81,7 +84,11 @@ export const IntentRouterHandler = {
         try {
           planText = await runCoordinatorLLM(`Permintaan User: "${ctx.request.finalMessage}"`, coordinatorSystemPrompt, false, rctx);
         } catch (err) {
+          // Sama seperti di atas: kegagalan perencanaan wajib terlihat Owner, bukan hanya
+          // di log server. Tanpa ini sistem tampak "memutuskan tidak butuh sub-agent",
+          // padahal sebenarnya tidak pernah sempat memutuskan apa pun.
           console.error("Coordinator LLM Error:", err);
+          ctx.state.processingSteps.push(`⚠️ Coordinator gagal merencanakan, lanjut tanpa sub-agent: ${String((err as any)?.message || err).substring(0, 120)}`);
         }
 
         const parseResult = executeResponsePipeline('parse_plan', planText, rctx);

@@ -103,13 +103,35 @@ export const callLLMWithMetadata = async (
     console.log(`📍 Executing Capability Adapter: ${adapter.name}`);
     
     try {
+      // Model pilihan Owner belum tentu cocok dengan adapter yang sedang dicoba.
+      // Pola penjagaan ini sudah ada untuk OpenRouterAdapter lewat `forceDefaultModel`
+      // (baris di bawah), tapi GeminiAdapter tidak punya padanannya — sehingga model ID
+      // provider lain ikut terkirim ke endpoint Google.
+      //
+      // Akibatnya terukur di log produksi 2026-09-09: runCoordinatorLLM() mematok
+      // provider 'gemini' tapi tetap meneruskan model Owner, jadi GeminiAdapter menembak
+      // .../models/deepseek%2Fdeepseek-v4-flash-0731:generateContent → 404, diulang
+      // 3 key × 3 percobaan × 2 panggilan koordinator = 18 request gagal per pesan,
+      // membuang ±6,5 detik sebelum panggilan utama jalan. Lihat Item 38.
+      //
+      // GeminiAdapter.execute() memakai 'gemini-2.0-flash' kalau model undefined —
+      // sama seperti yang sudah dilakukan jalur stream()-nya.
+      const modelCocokUntukAdapter =
+        adapter.name === 'GeminiAdapter' && rctx.model.model && !/gemini/i.test(rctx.model.model)
+          ? undefined
+          : rctx.model.model;
+
+      if (modelCocokUntukAdapter !== rctx.model.model) {
+        console.log(`[Cascade] "${rctx.model.model}" bukan model Gemini — GeminiAdapter memakai model bawaannya`);
+      }
+
       const adapterInput = {
         promptText,
         systemPromptText,
         chatHistory,
         payload,
         forceDefaultModel: (adapter.name === 'OpenRouterAdapter' && preferredProvider !== 'openrouter') ? true : false,
-        model: rctx.model.model
+        model: modelCocokUntukAdapter
       };
 
         const result = await adapter.execute(adapterInput, { trace_id: rctx.traceId || rctx.tasks?.traceId || 'unknown' });
