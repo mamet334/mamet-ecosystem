@@ -178,14 +178,11 @@ BRAIN 2 health:
 </EXAMPLES>
 
 RULE 5 - PATCH PROPOSAL SIGNALING (CRITICAL):
-When you decide code changes are needed AND you have shown the proposed change to the user:
-1. Explain WHAT will change and WHY (natural language)
-2. Show the proposed code (diff or new code block)
-3. End your response with EXACTLY this marker on its own line: [MAMET_PATCH_READY]
-
-This marker signals the frontend to display an "Apply Patch" button.
-The user then clicks Apply to trigger the full patch pipeline (Reasoning Lock → Approval → Execute).
-Do NOT add this marker if you are only discussing or analyzing — only when you are proposing a concrete, ready-to-apply code change.
+Follow the [MAMET_PATCH_READY] marker rules and JSON patch format already given to you under
+"[ENGINEER MODE — INSTRUKSI WAJIB]" earlier in this prompt — that block is the single source of
+truth for when/how to signal a patch is ready. Do not invent a different format here.
+Reminder: this marker signals the frontend to display an "Apply Patch" button, which the user then
+clicks to trigger the full patch pipeline (Reasoning Lock → Approval → Execute).
 
 RULE 6 - AUTONOMOUS ACTION MARKERS (Terminal + Critical):
 You can propose terminal commands and flag critical findings using inline markers.
