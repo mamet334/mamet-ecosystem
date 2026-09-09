@@ -83,7 +83,7 @@ export async function checkGuardrails(
 }
 
 export async function recordUsage(usage: UsageData): Promise<void> {
-  const { supabaseUrl, supabaseServiceKey, userId, adapter, model, promptTokens, completionTokens, callerContext, traceId } = usage;
+  const { supabaseUrl, supabaseServiceKey, userId, adapter, model, promptTokens, completionTokens, callerContext, traceId, actualCostUsd } = usage as any;
   if (!supabaseUrl || !supabaseServiceKey) return;
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -104,7 +104,12 @@ export async function recordUsage(usage: UsageData): Promise<void> {
   }
 
   // Calculate cost per 1M tokens
-  const estimatedCostUsd = ((promptTokens / 1_000_000) * inputPrice) + ((completionTokens / 1_000_000) * outputPrice);
+  // Biaya sesungguhnya dari provider mengalahkan tabel model_pricing. Tabel itu tidak
+  // pernah lengkap — pada 2026-09-09 ia sama sekali tidak punya baris DeepSeek, sehingga
+  // semua panggilan DeepSeek tercatat berbiaya nol. Lihat Item 42.
+  const estimatedCostUsd = (typeof actualCostUsd === 'number' && isFinite(actualCostUsd) && actualCostUsd >= 0)
+    ? actualCostUsd
+    : ((promptTokens / 1_000_000) * inputPrice) + ((completionTokens / 1_000_000) * outputPrice);
 
   await supabase.from('cost_ledger').insert({
     user_id: userId,

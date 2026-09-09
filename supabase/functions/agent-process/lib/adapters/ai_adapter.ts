@@ -318,7 +318,25 @@ export class OpenRouterAdapter implements CapabilityAdapter {
     const promptTokens = usage.prompt_tokens || Math.ceil(JSON.stringify(messages || []).length / 4);
     const completionTokens = usage.completion_tokens || Math.ceil(answer.length / 4);
     const cachedTokens = usage.prompt_tokens_details?.cached_tokens || usage.cache_read_input_tokens || 0;
-    console.log(`[PR#6 TOKEN METRICS] OpenRouter (${openRouterModel}): prompt=${promptTokens}t completion=${completionTokens}t cached=${cachedTokens}t`);
+
+    // Biaya SESUNGGUHNYA yang ditagihkan OpenRouter. Selalu dikirim di setiap respons
+    // tanpa parameter tambahan (docs: openrouter.ai/docs/use-cases/usage-accounting,
+    // diverifikasi 2026-09-09) — tidak menambah biaya maupun latensi.
+    //
+    // Ini menggantikan DUA lapis tebakan yang sebelumnya dipakai dan sama-sama meleset:
+    // tabel tarif hardcoded di runtime_context.ts (yang menagih gpt-4o-mini dengan tarif
+    // gpt-4o, 28x lipat) dan tabel model_pricing di database (yang tidak punya baris
+    // DeepSeek sama sekali, sehingga DeepSeek tercatat nol). Lihat Item 42.
+    const actualCostUsd = typeof usage.cost === 'number' ? usage.cost : undefined;
+
+    // Token reasoning ditagih tapi tidak muncul di teks jawaban — inilah sebab perkiraan
+    // berbasis panjang teks selalu terlalu kecil untuk model yang bernalar.
+    const reasoningTokens = usage.completion_tokens_details?.reasoning_tokens || 0;
+
+    console.log(
+      `[PR#6 TOKEN METRICS] OpenRouter (${openRouterModel}): prompt=${promptTokens}t completion=${completionTokens}t ` +
+      `cached=${cachedTokens}t reasoning=${reasoningTokens}t biaya=${actualCostUsd !== undefined ? '$' + actualCostUsd : '(tidak dilaporkan)'}`
+    );
 
     this.rctx.tasks.fire('RecordUsage', recordUsage({
       userId,
@@ -326,17 +344,19 @@ export class OpenRouterAdapter implements CapabilityAdapter {
       model: openRouterModel,
       promptTokens,
       completionTokens,
+      actualCostUsd,
       callerContext: context.trace_id,
       traceId: context.trace_id,
       supabaseUrl: this.rctx.env.supabaseUrl || '',
       supabaseServiceKey: this.rctx.env.supabaseServiceKey || ''
-    }));
+    } as any));
 
     return {
       result: answer,
       confidence: 0.9,
       source: 'openrouter',
-      trace_id: context.trace_id
+      trace_id: context.trace_id,
+      usageCostUsd: actualCostUsd
     };
   }
 

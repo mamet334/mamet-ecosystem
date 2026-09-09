@@ -48,7 +48,7 @@ export interface RequestLogger {
    * Mencatat pemakaian API ke tabel `api_usage`.
    * Dipanggil setelah setiap LLM call non-streaming.
    */
-  logApiUsage: (provider: string, modelName: string, inputText: string, outputText: string) => void;
+  logApiUsage: (provider: string, modelName: string, inputText: string, outputText: string, actualCostUsd?: number) => void;
 
   /**
    * Mencatat event agent ke tabel `agent_logs`.
@@ -309,7 +309,7 @@ export function createRuntimeLogger(
 ): RequestLogger {
 
   return {
-    logApiUsage(provider: string, modelName: string, inputText: string, outputText: string): void {
+    logApiUsage(provider: string, modelName: string, inputText: string, outputText: string, actualCostUsd?: number): void {
       if (isStream) return; // streaming: skip per-call logging
       if (!userId) return;
 
@@ -318,8 +318,16 @@ export function createRuntimeLogger(
         const inputTokens = Math.ceil(inputText.length / 4);
         const outputTokens = Math.ceil(outputText.length / 4);
 
-        const { costIn, costOut } = resolveModelPricing(modelName);
-        const totalCost = ((inputTokens / 1000) * costIn) + ((outputTokens / 1000) * costOut);
+        // Biaya sesungguhnya dari provider selalu menang. Perkiraan tabel tarif hanya
+        // cadangan untuk provider yang tidak melaporkan biaya. Ini yang membuat angka
+        // circuit breaker akhirnya cocok dengan tagihan nyata — lihat Item 42.
+        let totalCost: number;
+        if (typeof actualCostUsd === 'number' && isFinite(actualCostUsd) && actualCostUsd >= 0) {
+          totalCost = actualCostUsd;
+        } else {
+          const { costIn, costOut } = resolveModelPricing(modelName);
+          totalCost = ((inputTokens / 1000) * costIn) + ((outputTokens / 1000) * costOut);
+        }
         const supClient = createClient(
           env.supabaseUrl,
           env.supabaseServiceKey

@@ -138,7 +138,9 @@ export const callLLMWithMetadata = async (
       
       if (result && result.result) {
         if (!rctx.stream.isStream) {
-          rctx.logger.logApiUsage(result.source, rctx.model.model || 'auto', promptText + systemPromptText, result.result);
+          // result.usageCostUsd = biaya sesungguhnya dari provider kalau dilaporkan.
+          // Kalau undefined, logApiUsage jatuh ke perkiraan tabel tarif.
+          rctx.logger.logApiUsage(result.source, rctx.model.model || 'auto', promptText + systemPromptText, result.result, result.usageCostUsd);
         }
         console.log(`✅ ${adapter.name} succeeded`);
         eventBus.emit({ type: 'Capability.Executed', source: adapter.name, payload: { success: true, rctx } });

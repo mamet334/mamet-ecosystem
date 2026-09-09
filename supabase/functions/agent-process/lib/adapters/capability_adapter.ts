@@ -10,6 +10,13 @@ export interface AdapterResult {
   source: string;
   trace_id: string;
   metadata?: any;
+  /**
+   * Biaya SESUNGGUHNYA yang ditagihkan provider untuk panggilan ini, dalam USD.
+   * Hanya diisi kalau provider melaporkannya — OpenRouter selalu mengirim
+   * `usage.cost` di setiap respons (tanpa parameter tambahan, tanpa biaya atau
+   * latensi ekstra). Kalau undefined, pemanggil jatuh ke perkiraan tabel tarif.
+   */
+  usageCostUsd?: number;
 }
 
 export interface CapabilityAdapter {
