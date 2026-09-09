@@ -1,6 +1,12 @@
 # ROADMAP — Adaptive Model Tiering (Kecil / Sedang / Thinking)
 
-**Status:** 🟢 SIAP DIEKSEKUSI — semua keputusan desain & kurasi model selesai, menunggu perintah mulai coding
+**Status:** ✅ **SELESAI & DIVERIFIKASI LIVE (2026-09-09)** — kecuali plumbing parameter `thinking` yang sengaja ditunda (lihat catatan di bawah). Changelog: [`2026-09-09-adaptive-model-tiering-and-per-user-daily-cap.md`](../project-memory/changelog/2026-09-09-adaptive-model-tiering-and-per-user-daily-cap.md)
+
+> **Koreksi penting terhadap §4.3 dokumen ini (ditemukan saat implementasi):** rencana "Kecil dan Sedang = model sama, beda toggle `thinking`" **tidak bisa dijalankan apa adanya** — parameter `thinking`/`reasoning_effort` tidak punya jalur sama sekali di pipeline (nol kemunculan di seluruh edge function `agent-process`; adapter hanya meneruskan `model` dengan `temperature`/`max_tokens` hardcoded). Owner memutuskan tiering dikerjakan dulu tanpa `thinking`; konsekuensinya tiap tier harus diisi **model ID berbeda** untuk benar-benar terasa bedanya. Plumbing `thinking` = pekerjaan terpisah yang belum dijadwalkan.
+>
+> **Cakupan final:** CONVERSATION (lewat classifier) + LOOKUP (dipatok Kecil). SKILL tidak termasuk.
+>
+> **Penyimpangan lain dari rencana (disetujui Owner):** field Provider+Model tunggal di Settings **tidak dihapus** — tetap jadi sumber model Engineer, karena `executeLLM()` memanggil `getActiveBrainContext()` tanpa tier. Pil override diletakkan di toolbar atas (bukan dekat kolom input) agar konsisten dengan panel Tools.
 **Tanggal Disusun:** 2026-09-08 (diperbarui via diskusi lanjutan — scope Assistant-only, override client-side-only, dan kurasi model DeepSeek V4 semuanya dikonfirmasi)
 **Owner:** Andre
 **Scope:** `BrainService.js`, `RequestClassifierService.js` (referensi pola), Settings UI, `ConversationEngine.jsx`, sinkronisasi Supabase `user_metadata`. **Hanya berlaku untuk mode Assistant** — Engineer TIDAK termasuk (lihat §3).
@@ -98,9 +104,13 @@ Semua item keputusan terbuka di dokumen ini sudah selesai — implementasi (§5)
 
 ## 7. Kriteria Sukses
 
-- [ ] 3 slot model tersinkron identik di HP dan laptop (dites langsung oleh Owner).
-- [ ] Pesan ringan (sapaan) terverifikasi log memakai slot Kecil; pesan analitis memakai slot Thinking.
-- [ ] Override manual per-percakapan berfungsi dan tidak "lepas sendiri" selama sesi thread masih aktif di tab yang sama.
-- [ ] Override otomatis kembali ke Auto saat: chat baru dibuka, halaman di-reload, chat lama dibuka ulang (device mana pun), atau thread berpindah mode ke Engineer.
-- [ ] Engineer tidak pernah menerima model dari slot Kecil/Sedang/Thinking — jalur BYOK-nya tetap terpisah total dan tidak berubah perilaku.
-- [ ] Tidak ada panggilan LLM tambahan yang dipakai semata-mata untuk menentukan tingkat (classifier 100% lokal/gratis).
+- [~] 3 slot model tersinkron identik di HP dan laptop — jalur sinkron terbukti (`Model tiers disinkron dari user_metadata` saat boot & `tersinkron ke Supabase` saat disimpan), tapi belum dibuka langsung dari device kedua.
+- [~] Pesan ringan (sapaan) terverifikasi log memakai slot Kecil ✅ (`KECIL (pesan pendek & cocok kata kunci ringan)`); pesan analitis lewat Auto **belum diuji** — tier Thinking baru terbukti lewat override manual.
+- [x] Override manual per-percakapan berfungsi — ketiga tier terbukti memakai model berbeda: `gpt-4o-mini`, `deepseek-v4-flash-0731`, `deepseek-v4-pro-0813`.
+- [ ] Override otomatis kembali ke Auto saat ganti/buat chat atau reload — kodenya ada (`useEffect` pada `currentChatId` + `handleNewChat`), belum diuji live.
+- [x] Engineer tidak pernah menerima model dari slot tier — `getActiveBrainContext()` tanpa argumen tetap mengembalikan model utama, jalur Engineer tidak disentuh.
+- [x] Tidak ada panggilan LLM tambahan untuk menentukan tingkat — `TierClassifierService` murni kata kunci + panjang pesan + smoothing riwayat.
+
+## 8. Fitur Turunan yang Ikut Lahir dari Live Test
+
+Saat pengujian, Owner kena circuit breaker biaya harian dan meminta tombol pengaturannya. Ini melahirkan pekerjaan terpisah yang selesai di sesi yang sama: batas biaya harian per-user (`user_metadata.daily_budget_cap_usd`, efektif = min dengan plafon sistem), penggantian `DAILY_LIMIT = 1` yang hardcoded di `quota_middleware.ts`, plus penutupan celah RLS `system_config` yang mengizinkan setiap user terautentikasi mengubah plafon biaya & kill switch. Detail lengkap ada di changelog yang sama.
