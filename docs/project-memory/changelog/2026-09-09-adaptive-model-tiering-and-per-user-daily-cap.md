@@ -66,12 +66,15 @@ Pemakaian $1,29 sudah melewati keduanya, artinya cap $0,50 tidak benar-benar men
 **Sudah terbukti (log Owner):**
 ```
 Model tier: KECIL    (pesan pendek & cocok kata kunci ringan) → openrouter/openai/gpt-4o-mini
+Model tier: THINKING (pesan dinilai THINKING)                 → openrouter/deepseek/deepseek-v4-pro-0813
 Model tier: KECIL    (override manual Owner)                  → openrouter/openai/gpt-4o-mini
 Model tier: SEDANG   (override manual Owner)                  → openrouter/deepseek/deepseek-v4-flash-0731
 Model tier: THINKING (override manual Owner)                  → openrouter/deepseek/deepseek-v4-pro-0813
 [BrainService] Model tiers disinkron dari user_metadata (lintas device)
 [BrainService] Model tiers tersinkron ke Supabase user_metadata
 ```
+
+Jalur **Auto** terbukti di kedua ujung spektrum: pesan ringan ("hai") turun ke Kecil, dan pesan analitis 196 karakter berisi kata kunci berat ("kenapa", "bandingkan", "analisis", "evaluasi", "rancang") naik ke Thinking — tanpa override sama sekali. **Sinkronisasi lintas device dikonfirmasi Owner:** ketiga slot tampil sama di HP.
 Ketiga tier memakai model berbeda, semuanya HTTP 200. Deploy edge function diverifikasi `[MATCH]` terhadap commit `9025c20` lewat `scripts/verify-deployment-drift.ps1`.
 
 **Rantai batas biaya per-user juga terbukti langsung, bukan cuma tersirat — di kedua arah:**
@@ -83,10 +86,7 @@ Keduanya membuktikan dalam satu jalur: tombol Settings benar-benar menulis ke `u
 
 **Kesalahan konfigurasi yang sempat terjadi (bukan bug kode):** Owner mengisi slot Thinking dengan `deepseek/deepseek v4` (pakai spasi), OpenRouter menolak `400 is not a valid model ID`. Sistem sudah benar — ia mengirim persis apa yang dikonfigurasi. ID yang benar diambil dari katalog OpenRouter: `deepseek/deepseek-v4-flash-0731` dan `deepseek/deepseek-v4-pro-0813`.
 
-**Belum diuji:**
-1. Jalur **Auto** untuk pesan analitis (baru terbukti untuk pesan ringan) — kriteria §7 butir 2 setengah terpenuhi.
-2. Reset override otomatis saat ganti chat / reload.
-3. Sinkronisasi 3 slot terlihat identik di device kedua (butuh HP Owner).
+**Belum diuji:** hanya satu — reset override otomatis ke Auto saat ganti chat / buat chat baru / reload. Kodenya ada (`useEffect` pada `currentChatId` + `setModelTierOverride(null)` di `handleNewChat`), tapi belum dikonfirmasi live.
 
 ## 7. Yang Sengaja TIDAK Dikerjakan
 
