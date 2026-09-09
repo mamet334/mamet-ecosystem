@@ -82,8 +82,10 @@ Setelah eliminasi konsep kabut/nebula (Pilar 1) guna mempertahankan kejernihan d
 
 ## 5. Kriteria Keberhasilan (Definition of Done)
 
-- [ ] Seluruh garis penghubung di kanvas graf melengkung secara elegan dan alami tanpa tumpang tindih berlebih.
-- [ ] Partikel stardust mengalir lembut mengikuti lengkungan orbit pada kecepatan optimal (60 FPS, tidak memberatkan CPU).
-- [ ] Ketika pengguna berpindah dari obrolan chat yang memiliki memori aktif ke Home Dashboard, bintang memori terkait terlihat berdenyut terang.
-- [ ] Lolos verifikasi build produksi (`npm run build` sukses 0 error).
-- [ ] Tidak ada pelanggaran Konstitusi 23 dan tidak ada biaya token LLM ($0.00).
+> Status per 2026-09-09 (checkbox di bawah dulu dibiarkan kosong padahal header dokumen sudah "SELESAI" — dirapikan sekarang, ditandai sesuai bukti yang benar-benar ada, bukan diasumsikan).
+
+- [x] Seluruh garis penghubung di kanvas graf melengkung — `linkCurvature={ORBIT_CURVATURE}` di [`ActivityGraph.jsx:176`](../../frontend/src/components/dashboard/ActivityGraph.jsx); terlihat melengkung pada screenshot Home Dashboard Owner (2026-09-09).
+- [x] Partikel stardust mengalir mengikuti lengkungan orbit — `linkDirectionalParticles` di [`ActivityGraph.jsx:196`](../../frontend/src/components/dashboard/ActivityGraph.jsx) (sudah ada sebelumnya, memakai warna semantik node sumber). **Catatan jujur:** klaim "60 FPS, tidak memberatkan CPU" tidak pernah diukur — tidak ada profiling yang dilakukan.
+- [ ] Bintang memori terkait terlihat **berdenyut** saat berpindah dari chat ke Home Dashboard — jalur datanya terbukti (round-trip EventBus live: `memoryIds` → `activeThoughtIds` dengan konvensi `mem-${id}` yang benar) dan legenda "Berpijar: Simpul Aktif Percakapan" terlihat di screenshot Owner, tapi **efek denyutnya sendiri belum pernah dikonfirmasi secara visual**.
+- [x] Lolos verifikasi build produksi — sukses dua kali (sebelum & sesudah perbaikan bug unwrap payload EventBus).
+- [x] Tidak ada pelanggaran Konstitusi 23 dan tidak ada biaya token LLM — seluruh mekanisme berjalan lewat EventBus browser lokal, nol panggilan LLM.
