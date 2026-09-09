@@ -74,7 +74,12 @@ Model tier: THINKING (override manual Owner)                  → openrouter/dee
 ```
 Ketiga tier memakai model berbeda, semuanya HTTP 200. Deploy edge function diverifikasi `[MATCH]` terhadap commit `9025c20` lewat `scripts/verify-deployment-drift.ps1`.
 
-**Rantai batas biaya per-user juga terbukti langsung, bukan cuma tersirat:** Owner menaikkan batas pribadinya ke **$1,50** lewat tombol baru di Settings, lalu chat berjalan normal padahal pemakaian hari itu sudah $1,29. Ini membuktikan tiga hal sekaligus dalam satu jalur: tombol Settings benar-benar menulis ke `user_metadata`, `quota_middleware` yang ter-deploy benar-benar membacanya (di bawah aturan lama `$1` hardcoded, $1,29 pasti tetap diblokir), dan aturan min(pribadi, plafon) menghasilkan $1,50 karena masih di bawah plafon sistem $2,00.
+**Rantai batas biaya per-user juga terbukti langsung, bukan cuma tersirat — di kedua arah:**
+
+1. **Arah menaikkan:** Owner menaikkan batas pribadinya ke **$1,50** lewat tombol baru di Settings, lalu chat berjalan normal padahal pemakaian hari itu sudah $1,29. Di bawah aturan lama (`$1` hardcoded), $1,29 pasti tetap diblokir.
+2. **Arah memperketat:** Owner mengubah batas ke **$0,50**, dan circuit breaker langsung menyala dengan pesan `[CIRCUIT BREAKER AKTIF] ($1.46 / $0.5)` — angka pembanding yang muncul adalah **batas pribadi**, bukan `$1` hardcoded lama maupun plafon sistem $2,00.
+
+Keduanya membuktikan dalam satu jalur: tombol Settings benar-benar menulis ke `user_metadata`, `quota_middleware` yang ter-deploy benar-benar membacanya, dan aturan min(pribadi, plafon) menghasilkan angka yang benar di kedua arah.
 
 **Kesalahan konfigurasi yang sempat terjadi (bukan bug kode):** Owner mengisi slot Thinking dengan `deepseek/deepseek v4` (pakai spasi), OpenRouter menolak `400 is not a valid model ID`. Sistem sudah benar — ia mengirim persis apa yang dikonfigurasi. ID yang benar diambil dari katalog OpenRouter: `deepseek/deepseek-v4-flash-0731` dan `deepseek/deepseek-v4-pro-0813`.
 
@@ -82,7 +87,6 @@ Ketiga tier memakai model berbeda, semuanya HTTP 200. Deploy edge function diver
 1. Jalur **Auto** untuk pesan analitis (baru terbukti untuk pesan ringan) — kriteria §7 butir 2 setengah terpenuhi.
 2. Reset override otomatis saat ganti chat / reload.
 3. Sinkronisasi 3 slot terlihat identik di device kedua (butuh HP Owner).
-4. Arah "memperketat" (batas pribadi DI BAWAH pemakaian hari ini → breaker menyala lagi). Yang sudah terbukti baru arah menaikkan, dari $1 ke $1,50.
 
 ## 7. Yang Sengaja TIDAK Dikerjakan
 
