@@ -42,12 +42,20 @@ MametLite `ragTopK=10` vs AI mode `ragTopK=5` ditandai "counterintuitive, perlu 
 - `WorkbenchZone.jsx`/`WidgetHost.jsx` — istilah "Workbench" (bukan "Dock") sesuai `20_WORKSPACE_ARCHITECTURE.md` §6, bukan istilah "Dock Zone" dari `ARCHITECTURE-UI-OS.md`.
 - `ApplicationManager.js`/`WindowManager.js` — nama class dan state (`REGISTERED`/`BACKGROUND`/`RUNNING`) cocok persis dengan yang diusulkan `ARCHITECTURE-OS-NAVIGATION-V2.md`, divalidasi `ARCHITECTURE-VALIDATION-V2.md`/`ARCHITECTURE-ACCEPTANCE-TEST-V2.md` (keduanya CERTIFIED/PASS).
 
-**Resolusi:**
+**Resolusi (tahap 1, header saja):**
 - `20_WORKSPACE_ARCHITECTURE.md` → ditandai **dokumen master/otoritatif**.
 - `ARCHITECTURE-OS-NAVIGATION-V2.md` → ditandai **"sebagian terserap ke implementasi"** (konsep ApplicationManager/WindowManager valid dan terpakai, tapi untuk desain Workspace/Workbench/Manifest yang lebih detail rujuk dokumen master).
 - `ARCHITECTURE-UI-OS.md` → ditandai **superseded** (istilah "Dock Zone" tidak pernah dipakai kode; dipertahankan sebagai jejak evolusi desain, bukan acuan implementasi).
 
-**Catatan:** Tidak ada file yang dipindah/dihapus — konsolidasi fisik (gabung jadi satu file, arsipkan yang lain ke `history-archive/`) belum dieksekusi, menunggu keputusan lebih lanjut dari Owner soal bentuk akhirnya.
+**Resolusi (tahap 2, penggabungan fisik — Owner meminta "gabung total jadi satu file"):**
+`20_WORKSPACE_ARCHITECTURE.md` ditulis ulang (v1.0.0 → v1.1.0) menyerap konten dari kedua dokumen lain:
+- **§2 baru "Hierarki Sistem Penuh: dari Kernel sampai Widget"** — diserap dari `ARCHITECTURE-OS-NAVIGATION-V2.md` (hierarki Kernel→Runtime Layer→Service Manager→Application Manager→Window Manager→Application→Workspace→Session→Conversation, Matrix Aplikasi & Workspace, Navigation Flow, diagram mermaid), karena bagian ini terbukti terimplementasi (`ApplicationManager.js`, `WindowManager.js`).
+- **§1 (Architecture Gap)** ditambah 2 poin dari `ARCHITECTURE-UI-OS.md` (Sidebar Overload, Context Mixing) yang belum tercakup di 4 poin asli.
+- **§7 (Workbench System)** ditambah subsection "Responsive Strategy" (Desktop/Tablet/Mobile fallback) dari `ARCHITECTURE-UI-OS.md`, dengan catatan bahwa istilah asli dokumen itu ("Dock Zone") tidak dipakai kode.
+- **§11 (Implementation Roadmap)** ditambah catatan status implementasi terverifikasi (Anti-Hallucination Protocol: tidak mengklaim selesai tanpa observasi runtime untuk Phase 4-5).
+- **§13 baru "Sejarah & Evolusi Desain"** — tabel ringkas menjelaskan kontribusi & nasib masing-masing dokumen sumber, alasan konsolidasi, dan metode cross-check kode yang dipakai.
+
+`ARCHITECTURE-OS-NAVIGATION-V2.md` dan `ARCHITECTURE-UI-OS.md` dipindahkan (`git mv`) ke `docs/project-memory/history-archive/` — isi lengkap tetap bisa dibaca di sana, mengikuti pola yang sama seperti arsip `NORTH_STAR.md`. Tidak ada isi yang dihapus permanen.
 
 ### 2.5 Seri Audit Wave 5.2E.2 → 5.2F → 5.2G.1 (+FINAL) — Tidak Diubah
 
@@ -75,6 +83,5 @@ Murni perubahan Markdown. Klaim cross-check kode diverifikasi dengan membaca lan
 
 ## 5. Tidak Dikerjakan / Di Luar Scope
 
-- Konsolidasi fisik tiga dokumen UI/OS (gabung jadi satu file / arsipkan yang superseded ke `history-archive/`) — menunggu keputusan Owner soal bentuk akhir yang diinginkan.
 - Tabrakan penomoran `docs/architecture/20_WORKSPACE_ARCHITECTURE.md` vs `constitution/20_ENGINEERING POLICY.md` (folder beda, nomor sama) — dicatat sebagai observasi, belum ada tindakan.
 - GAP-NEW-017 (MAEF tidak sebut DeepSeek/Qwen) dan GAP-NEW-018 (`docs/blueprints/`/`docs/monetisasi/` tidak direferensi) — masih Open, di luar scope sesi ini.
