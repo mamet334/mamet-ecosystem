@@ -283,22 +283,66 @@ export class VerificationEngine {
       message: "No hallucination or forbidden phrases detected."
     };
 
-    const forbiddenPhrases = [
-      "berdasarkan pengetahuan umum saya",
+    // Daftar larangan sengaja DIPISAH DUA. Sebelum 2026-09-09 keduanya satu daftar
+    // tanpa syarat, dan itu membuat sistem menghukum model karena MEMATUHI perintahnya
+    // sendiri. Tiga sumber saling bertentangan pada frasa yang sama:
+    //
+    //   1. evidence_validator.ts (gateVerdictText) MEMERINTAHKAN, saat RAG & Memory kosong:
+    //      "Jawab dari pengetahuan umum dan sampaikan bahwa tidak ada data spesifik
+    //       project ditemukan."
+    //   2. CHECK_002B di berkas INI (lihat disclaimerRegex di atas) MEMBERI NILAI untuk
+    //      frasa "pengetahuan umum" — ketiadaannya justru diberi status WARN.
+    //   3. CHECK_007 di bawah MELARANGNYA dan menjatuhkan FAIL -50, memblokir seluruh
+    //      jawaban dengan pesan "Verification Failed" ke Owner.
+    //
+    // Terbukti live 2026-09-09 15:46: pertanyaan santai "apa game changer?" (mode LOOKUP,
+    // totalEvidence = 0) dijawab dengan disclaimer yang benar, lolos CHECK_002B, lalu
+    // diblokir CHECK_007. Owner tidak menerima jawaban apa pun.
+    //
+    // universal_contract.ts:136 menuliskan aturan aslinya sebagai
+    // 'Menyebut "berdasarkan pengetahuan umum saya" DI ENGINEER MODE' — jadi memang
+    // selalu dimaksudkan bersyarat. CHECK_007 yang kehilangan syaratnya.
+    //
+    // Pemisahannya mengikuti maksud asli: mengaku memakai pengetahuan umum itu
+    // TRANSPARANSI (diwajibkan 24_ANTI_HALLUCINATION_PROTOCOL) ketika memang tidak ada
+    // evidence. Itu baru jadi pelanggaran kalau evidence TERSEDIA namun diabaikan —
+    // di situlah model benar-benar mengarang alih-alih membaca sumbernya.
+
+    /** Selalu dilarang: sikap ragu-ragu dan bahasa robot. Tidak pernah jadi kepatuhan. */
+    const alwaysForbidden = [
       "saya kurang yakin",
       "saya tidak tahu pasti",
       "mungkin saja",
       "sebagai model bahasa ai"
     ];
 
+    /** Dilarang HANYA kalau evidence sebenarnya tersedia — artinya sumber diabaikan. */
+    const forbiddenWhenEvidenceExists = [
+      "berdasarkan pengetahuan umum saya"
+    ];
+
     const responseLower = (context.responseText || "").toLowerCase();
-    const foundForbidden = forbiddenPhrases.find(phrase => responseLower.includes(phrase));
+    const totalEvidence = (context as any)?.evidenceReport?.totalEvidence ?? 0;
+
+    let foundForbidden = alwaysForbidden.find(phrase => responseLower.includes(phrase));
+
+    if (!foundForbidden && totalEvidence > 0) {
+      foundForbidden = forbiddenWhenEvidenceExists.find(phrase => responseLower.includes(phrase));
+      if (foundForbidden) {
+        check007.message = `Model mengaku memakai pengetahuan umum ("${foundForbidden}") padahal ${totalEvidence} evidence tersedia — sumber yang ada diabaikan.`;
+      }
+    }
 
     if (foundForbidden) {
       check007.status = "FAIL";
-      check007.message = `Detected forbidden phrase indicating hallucination or rule violation: "${foundForbidden}"`;
+      if (!check007.message.startsWith("Model mengaku")) {
+        check007.message = `Detected forbidden phrase indicating hallucination or rule violation: "${foundForbidden}"`;
+      }
       overallStatus = "FAIL";
       overallScore = Math.max(0, overallScore - 50);
+    } else if (totalEvidence === 0 && forbiddenWhenEvidenceExists.some(ph => responseLower.includes(ph))) {
+      // Bukan pelanggaran — ini justru kepatuhan pada perintah Evidence Gate.
+      check007.message = "Disclaimer pengetahuan umum dipakai saat evidence kosong — sesuai instruksi Evidence Gate, bukan pelanggaran.";
     }
 
     checks.push(check007);
