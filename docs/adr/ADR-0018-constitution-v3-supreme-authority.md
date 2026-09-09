@@ -86,9 +86,13 @@ MAEF (Mamet Artificial Executive Framework / Kernel) **tetap ada dan tetap penti
 | `docs/adr/ADR-0001-maef-as-highest-authority.md` | Ditandai **Superseded by ADR-0018**, isi asli dipertahankan sebagai sejarah |
 | `docs/project-memory/MAEF V2.md` | Ditambah header status SUPERSEDED, pointer ke `constitution/00_CONSTITUTION.md` |
 | `docs/project-memory/MAMET AI VISION CONSTITUTION V2.md` | Ditambah header status SUPERSEDED, pointer ke `constitution/01_VISION.md` |
-| `docs/architecture/MASTER-ARCHITECTURE-INDEX.md` | Diperbarui: entri konstitusi tertinggi mengarah ke `constitution/`, bukan lagi MAEF v2/Vision v2 |
+| `docs/project-memory/MAEF V3.md` | **(Ditemukan 2026-09-09, setelah revisi awal ADR ini)** Ditambah header status SUPERSEDED, pointer ke ADR ini. Draft paralel yang ditulis di tanggal sama dengan Constitution v3 (2026-06-30), mengklaim MAEF sebagai otoritas tertinggi — isinya tumpang tindih penuh dengan `constitution/00_CONSTITUTION.md`, tidak ada konsep unik yang perlu diselamatkan |
+| `docs/architecture/MASTER-ARCHITECTURE-INDEX.md` | Diperbarui: entri konstitusi tertinggi mengarah ke `constitution/`, bukan lagi MAEF v2/Vision v2; baris MAEF V3 ditambahkan |
 | `docs/adr/ADR-0011-project-memory-canonical-source.md` | Ditambah catatan referensi ke ADR-0018 di §9 (isi ADR tidak diubah — keputusan `project_memory_entries` sebagai canonical source Project Memory tetap berlaku, tidak terpengaruh oleh perubahan hierarki dokumen ini) |
 | `constitution/ENGINEERING_CONTRACT.md` | Reading order diperluas mencakup dokumen 20-27, dengan pointer ke `INIT.md` sebagai index navigasi tugas |
+
+> [!NOTE]
+> **Update 2026-09-09 (audit lanjutan):** `MAEF V3.md` ditemukan setelah ADR ini pertama kali dibuat — dokumen keempat (setelah MAEF v1, v2, dan Constitution v3) yang mengklaim jadi otoritas tertinggi, ditulis tanggal sama persis dengan Constitution v3. Ini konfirmasi bahwa pola drift "banyak draft otoritas paralel tanpa suksesi formal" lebih parah dari yang awalnya terdeteksi — kemungkinan besar terjadi karena beberapa AI/sesi coding berbeda menulis ulang konstitusi secara independen pada periode transisi 2026-06-30 tanpa saling tahu draft mana yang final.
 
 ---
 

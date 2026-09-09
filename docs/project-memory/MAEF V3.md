@@ -1,11 +1,16 @@
 # MAMET ARCHITECTURE & ENGINEERING FRAMEWORK (MAEF)
 
 Version      : 3.0
-Status       : ACTIVE
-Document Type: Engineering Constitution
-Authority    : Highest
+Status       : **SUPERSEDED** — lihat catatan di bawah
+Document Type: Engineering Constitution (Historical)
+Authority    : Highest (saat dokumen ini ditulis; sudah digantikan — lihat catatan)
 Owner        : Mamet Ecosystem
 Last Updated : 2026-06-30
+
+> [!IMPORTANT]
+> **Digantikan oleh `constitution/00_CONSTITUTION.md` v3.0** (tanggal sama, 2026-06-30) per [ADR-0018](../adr/ADR-0018-constitution-v3-supreme-authority.md) (ditemukan dan ditandai 2026-09-09, setelah ADR-0018 pertama kali dibuat).
+> Dokumen ini adalah draft paralel/kompetitor yang ditulis di hari yang sama dengan Constitution v3, mengklaim "MAEF" (bukan "Constitution") sebagai otoritas tertinggi — namun tidak pernah masuk ke reading order resmi manapun (`INIT.md`, `ENGINEERING_CONTRACT.md`, `MASTER-ARCHITECTURE-INDEX.md` tidak menyebutnya). Isinya secara substansi hampir sepenuhnya tumpang tindih dengan `constitution/00_CONSTITUTION.md` — tidak ditemukan konsep unik yang perlu diselamatkan (berbeda dari `MAEF V2.md`/`MAMET AI VISION CONSTITUTION V2.md` yang punya Two-Brain Model/Self Engineering Lifecycle unik).
+> Jangan gunakan dokumen ini sebagai rujukan hierarki otoritas — gunakan `constitution/00_CONSTITUTION.md`.
 
 ---
 

@@ -21,6 +21,7 @@ Last Updated: 2026-09-09 (ADR-0018 — Constitution v3 supersedes MAEF v2 hierar
 | Master Index navigasi tugas | — | `INIT.md` | ✅ AKTIF — index 28 dokumen constitution + peta navigasi tugas |
 | MAMET AI ENGINEERING FRAMEWORK (MAEF) | v2.0 | `docs/project-memory/MAEF V2.md` | ⛔ SUPERSEDED — lihat `constitution/02_MAEF_KERNEL.md` + ADR-0018 |
 | MAMET AI VISION CONSTITUTION | v2.0 | `docs/project-memory/MAMET AI VISION CONSTITUTION V2.md` | ⛔ SUPERSEDED — lihat `constitution/01_VISION.md` + ADR-0018 |
+| MAMET ARCHITECTURE & ENGINEERING FRAMEWORK (MAEF) | v3.0 | `docs/project-memory/MAEF V3.md` | ⛔ SUPERSEDED — draft paralel tanggal sama dengan Constitution v3, lihat ADR-0018 |
 | MAEF v1.0 | 1.0 | `docs/governance/MAEF.md` | ⛔ DEPRECATED — Lihat MAEF v2 (juga superseded) |
 | Vision v1.0 | 1.0 Draft | `docs/governance/VISION.md` | ⛔ DEPRECATED — Lihat Vision Constitution v2 (juga superseded) |
 

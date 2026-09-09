@@ -1,5 +1,8 @@
 # 🚀 AI Agent - Quick Start Guide
 
+> [!WARNING]
+> **USANG (ditandai 2026-09-09).** Panduan ini untuk stack era awal proyek ("AI Agent" — folder `ai-agent-complete/`, Express backend polos `npm start` di port 3000, React `npm run dev` di port 5173). Ini bukan cara menjalankan Mamet Ecosystem saat ini. Untuk setup development terkini, rujuk skrip dan dokumentasi di `frontend/`, `supabase/functions/`, dan `constitution/` — bukan panduan ini.
+
 Setup & jalankan AI Agent dalam 5 menit!
 
 ## ✅ Prerequisites

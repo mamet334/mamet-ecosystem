@@ -1,5 +1,9 @@
 # 🏗️ AI Agent - Architecture Guide
 
+> [!WARNING]
+> **USANG (ditandai 2026-09-09).** Dokumen ini mendeskripsikan stack era awal proyek ("AI Agent" — Express backend polos + React di `localhost:3000`/`5173`, `backend/tools-config.js`) yang sudah sepenuhnya digantikan oleh arsitektur Mamet Ecosystem saat ini (Supabase Edge Functions, Electron Desktop, MAEF Kernel, `constitution/`). `backend/tools-config.js` yang disebut di bawah dikonfirmasi **dead code** — tidak pernah di-`require()` oleh `server.js` (lihat `verification_report.md`).
+> **Gunakan sebagai gantinya:** `docs/architecture/MASTER-ARCHITECTURE-INDEX.md` (index arsitektur resmi) dan `constitution/` (source of truth). Dokumen ini dipertahankan sebagai jejak sejarah proyek, bukan acuan implementasi.
+
 Dokumentasi teknis arsitektur AI Agent.
 
 ## 📊 System Architecture
