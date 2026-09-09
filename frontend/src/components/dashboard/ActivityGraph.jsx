@@ -25,6 +25,13 @@ export default function ActivityGraph({
   // AI di percakapan aktif — didorong dari event Brain:ActiveThoughts (ConversationEngine.jsx).
   const [activeThoughtIds, setActiveThoughtIds] = useState(() => new Set());
 
+  // Handler event di bawah dipasang sekali (deps []), jadi tidak boleh membaca prop graphData
+  // langsung — nilainya akan terkunci pada saat mount (kemungkinan besar masih kosong).
+  const graphDataRef = useRef(graphData);
+  useEffect(() => {
+    graphDataRef.current = graphData;
+  }, [graphData]);
+
   useEffect(() => {
     const eventBus = kernel.serviceManager?.get('EventBus');
     if (!eventBus) return;
@@ -32,7 +39,21 @@ export default function ActivityGraph({
       // EventBus.emit() selalu membungkus payload asli di dalam payload.data
       // (lihat EventBus.js:73-77, "Anti-Spoofing: Wrap payload with metadata").
       const memoryIds = payload?.data?.memoryIds || [];
-      setActiveThoughtIds(new Set(memoryIds.map(id => `mem-${id}`)));
+      const nextIds = new Set(memoryIds.map(id => `mem-${id}`));
+
+      // Diagnostik: bandingkan langsung dengan ID simpul yang benar-benar ada di kanvas.
+      // Tanpa ini, kegagalan "denyut tidak muncul" tidak bisa dibedakan antara event tidak
+      // sampai, ID tidak cocok, atau simpulnya memang di luar layar.
+      if (nextIds.size > 0) {
+        const existingNodeIds = new Set((graphDataRef.current?.nodes || []).map(n => n.id));
+        const matched = [...nextIds].filter(id => existingNodeIds.has(id));
+        console.log(
+          `[LiveThought] terima ${nextIds.size} ID → ${matched.length} cocok dengan simpul di graf`,
+          { diterima: [...nextIds], cocok: matched }
+        );
+      }
+
+      setActiveThoughtIds(nextIds);
     };
     const unsubscribe = eventBus.on('Brain:ActiveThoughts', handler);
     return unsubscribe;

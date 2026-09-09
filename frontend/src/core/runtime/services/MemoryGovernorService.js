@@ -448,24 +448,34 @@ export class MemoryGovernorService {
    *
    * @param {Object} params
    * @param {string} params.userId
-   * @param {string[]} [params.categories] - Kategori relevan berdasarkan task context. Default: ['general']
    * @param {boolean} [params.includeSensitive=false] - Hanya true jika ada flag eksplisit dari user
    * @param {number} [params.candidatePoolSize=30] - Batas Tahap 1
    * @param {number} [params.topK=10] - Hasil akhir setelah ranking Tahap 2
    * @returns {Promise<Array>} Memori yang sudah di-ranking
    */
-  async retrieveMemory({ userId, categories = ['general'], includeSensitive = false, candidatePoolSize = 30, topK = 10 }) {
+  async retrieveMemory({ userId, includeSensitive = false, candidatePoolSize = 30, topK = 10 }) {
     if (!this.isInitialized) throw new Error('MemoryGovernorService not initialized');
     if (!userId) throw new Error('MemoryGovernorService.retrieveMemory: userId required');
 
     try {
-      // TAHAP 1: Category + status + access_tier filter
-      // Tidak boleh full-table scan — candidate pool dibatasi
+      // TAHAP 1: status + access_tier filter, pool dibatasi (tidak boleh full-table scan)
+      //
+      // Filter `.in('category', categories)` SENGAJA DIHAPUS (2026-09-09). Kategori kandidat
+      // ditebak dari kata-kata di PERTANYAAN (`MemoryService._inferCategories`), sedangkan
+      // kategori memori ditetapkan saat PENYIMPANAN — dua sumber yang tidak pernah sinkron.
+      // Akibatnya memori jadi tak terlihat kecuali Owner kebetulan memakai kata kunci yang
+      // benar: "nama panggilan saya adalah pak slamet" tersimpan sebagai 'preference', tapi
+      // pertanyaan "siapa nama panggilan saya?" hanya menghasilkan ['general'] karena tidak
+      // memuat kata "suka"/"ingin"/"preferens" — memorinya tidak pernah masuk kandidat.
+      // Itulah sebabnya AI berulang kali "lupa" fakta yang jelas-jelas ada di database.
+      //
+      // Semangat kontrak Addendum Fase 1 tetap dijaga: pool tetap dibatasi (candidatePoolSize),
+      // hanya status aktif, dan access_tier tetap menyaring memori sensitif. Yang dilepas cuma
+      // pembuangan berbasis tebakan kata kunci — relevansi diserahkan ke Tahap 2.
       let query = supabase
         .from('user_memories')
         .select('id, summary, memory_type, category, confidence, access_tier, status, created_at, source_reference, last_verified_at')
         .eq('user_id', userId)
-        .in('category', categories)
         .eq('status', 'active')
         .order('created_at', { ascending: false })
         .limit(candidatePoolSize);
@@ -483,7 +493,7 @@ export class MemoryGovernorService {
       }
 
       if (!candidates || candidates.length === 0) {
-        console.log('[MemoryGovernorService] Two-Stage Tahap 1: 0 kandidat untuk categories:', categories);
+        console.log('[MemoryGovernorService] Two-Stage Tahap 1: 0 kandidat aktif untuk user ini');
         return [];
       }
 

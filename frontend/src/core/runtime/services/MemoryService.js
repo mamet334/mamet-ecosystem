@@ -29,7 +29,6 @@ export class MemoryService {
    *
    * @param {string} query
    * @param {Object} [options]
-   * @param {string[]} [options.categories] - Kategori untuk two-stage filter. Default: ['general']
    * @param {boolean} [options.includeSensitive] - Hanya true jika flag eksplisit dari user
    */
   async getMemory(query, options = {}) {
@@ -48,11 +47,8 @@ export class MemoryService {
         : null;
 
       if (governor && typeof governor.retrieveMemory === 'function' && userId) {
-        // Tentukan kategori dari query jika tidak disediakan
-        const categories = options.categories || this._inferCategories(query);
         result = await governor.retrieveMemory({
           userId,
-          categories,
           includeSensitive: options.includeSensitive || false,
           topK: 10
         });
@@ -99,21 +95,6 @@ export class MemoryService {
 
     this.eventBus.emit('Memory:Retrieved', { query, result });
     return result;
-  }
-
-  /**
-   * Infer kategori dari query text — mapping sederhana untuk Two-Stage Filter.
-   * Kategori default 'general' selalu disertakan.
-   * @private
-   */
-  _inferCategories(query = '') {
-    const q = query.toLowerCase();
-    const categories = ['general'];
-    if (q.includes('engineer') || q.includes('file') || q.includes('kode') || q.includes('code')) categories.push('engineering');
-    if (q.includes('preferens') || q.includes('suka') || q.includes('ingin')) categories.push('preference');
-    if (q.includes('lokasi') || q.includes('alamat') || q.includes('tempat')) categories.push('location');
-    if (q.includes('proyek') || q.includes('project') || q.includes('fitur')) categories.push('project');
-    return [...new Set(categories)];
   }
 
 

@@ -568,8 +568,14 @@ export default function ConversationEngine({ sessionId }) {
   useEffect(() => {
     const eventBus = kernel.serviceManager?.get('EventBus');
     if (!eventBus) return;
+    const memoryIds = (activeMemories || []).map(m => m.id).filter(Boolean);
+    // Hanya dicatat saat ada isinya — tanpa guard ini boot memancarkan beberapa kali "0 memori"
+    // dan menenggelamkan log yang berguna.
+    if (memoryIds.length > 0) {
+      console.log(`[LiveThought] emit Brain:ActiveThoughts — ${memoryIds.length} memori aktif`, memoryIds);
+    }
     eventBus.emit('Brain:ActiveThoughts', {
-      memoryIds: (activeMemories || []).map(m => m.id).filter(Boolean),
+      memoryIds,
       timestamp: Date.now()
     });
   }, [activeMemories]);
