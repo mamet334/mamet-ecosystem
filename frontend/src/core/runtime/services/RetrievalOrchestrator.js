@@ -107,75 +107,82 @@ export class RetrievalOrchestrator {
 
     // ========================================================
     // TIER 1: LOKAL (KnowledgeService + RetrievalStrategyService)
+    // Dilewati kalau options.skipLocalKnowledge (RAG dimatikan Owner untuk workspace ini) —
+    // supaya Web Search (Tier 3) tetap bisa jalan independen tanpa dokumen pribadi Owner.
     // ========================================================
-    try {
-      const ks = this.knowledgeService || (this.serviceManager?.has('KnowledgeService') ? this.serviceManager.get('KnowledgeService') : null);
-      const strat = this.retrievalStrategyService || (this.serviceManager?.has('RetrievalStrategyService') ? this.serviceManager.get('RetrievalStrategyService') : null);
+    if (options.skipLocalKnowledge) {
+      console.log('[RetrievalOrchestrator] RAG dimatikan (skipLocalKnowledge) — melewati Tier 1, lanjut ke Tier 2/3.');
+      tier1Result = { chunks: [], strategy: 'skipped_rag_off', sufficiency: 0.0, caseType: 'NONE', tier: 1, isFallback: false };
+    } else {
+      try {
+        const ks = this.knowledgeService || (this.serviceManager?.has('KnowledgeService') ? this.serviceManager.get('KnowledgeService') : null);
+        const strat = this.retrievalStrategyService || (this.serviceManager?.has('RetrievalStrategyService') ? this.serviceManager.get('RetrievalStrategyService') : null);
 
-      let rawChunks = [];
-      if (ks) {
-        rawChunks = await ks.queryKnowledge(query, {
-          supabaseClient: options.supabaseClient,
-          userId: options.userId,
-          spaceId: options.spaceId,
-          limit: options.limit || 10
-        });
-      }
-
-      tier1Result = { chunks: rawChunks, strategy: 'passthrough', sufficiency: 0.5, caseType: 'NONE', tier: 1, isFallback: false };
-      if (strat && rawChunks.length > 0) {
-        tier1Result = await strat.apply(rawChunks, options.supabaseClient, query);
-        tier1Result.isFallback = false;
-      } else if (rawChunks.length === 0) {
-        tier1Result = { chunks: [], strategy: 'empty', sufficiency: 0.0, caseType: 'NONE', tier: 1, isFallback: false };
-      }
-
-      // Deteksi kueri temporal / berita terkini: dokumen lokal statis tidak dapat memuaskan fakta terkini
-      const isTemporal = this.isTemporalQuery(query);
-      if (isTemporal && tier1Result) {
-        console.log('[RetrievalOrchestrator] Temporal/recency query detected. Dokumen statis lokal ditandai insufficient (0.15).');
-        tier1Result.sufficiency = Math.min(tier1Result.sufficiency, 0.15);
-        options.needWebComparison = true;
-      }
-
-      // Jika Tier 1 CUKUP (sufficiency >= 0.4 dan ada chunks), kembalikan langsung Tier 1
-      if (!isTemporal && tier1Result.sufficiency >= SUFFICIENCY_THRESHOLD && tier1Result.chunks && tier1Result.chunks.length > 0) {
-        const formattedContext = this.formatAsContext(tier1Result.chunks);
-
-        if (this.eventBus?.emit) {
-          this.eventBus.emit('Retrieval:Completed', {
-            tier: 1,
-            strategy: tier1Result.strategy,
-            sufficiency: tier1Result.sufficiency,
-            chunksCount: tier1Result.chunks.length
+        let rawChunks = [];
+        if (ks) {
+          rawChunks = await ks.queryKnowledge(query, {
+            supabaseClient: options.supabaseClient,
+            userId: options.userId,
+            spaceId: options.spaceId,
+            limit: options.limit || 10
           });
         }
 
-        return {
-          chunks: tier1Result.chunks,
-          formattedContext,
-          strategy: tier1Result.strategy,
-          caseType: tier1Result.caseType,
-          sufficiency: tier1Result.sufficiency,
+        tier1Result = { chunks: rawChunks, strategy: 'passthrough', sufficiency: 0.5, caseType: 'NONE', tier: 1, isFallback: false };
+        if (strat && rawChunks.length > 0) {
+          tier1Result = await strat.apply(rawChunks, options.supabaseClient, query);
+          tier1Result.isFallback = false;
+        } else if (rawChunks.length === 0) {
+          tier1Result = { chunks: [], strategy: 'empty', sufficiency: 0.0, caseType: 'NONE', tier: 1, isFallback: false };
+        }
+
+        // Deteksi kueri temporal / berita terkini: dokumen lokal statis tidak dapat memuaskan fakta terkini
+        const isTemporal = this.isTemporalQuery(query);
+        if (isTemporal && tier1Result) {
+          console.log('[RetrievalOrchestrator] Temporal/recency query detected. Dokumen statis lokal ditandai insufficient (0.15).');
+          tier1Result.sufficiency = Math.min(tier1Result.sufficiency, 0.15);
+          options.needWebComparison = true;
+        }
+
+        // Jika Tier 1 CUKUP (sufficiency >= 0.4 dan ada chunks), kembalikan langsung Tier 1
+        if (!isTemporal && tier1Result.sufficiency >= SUFFICIENCY_THRESHOLD && tier1Result.chunks && tier1Result.chunks.length > 0) {
+          const formattedContext = this.formatAsContext(tier1Result.chunks);
+
+          if (this.eventBus?.emit) {
+            this.eventBus.emit('Retrieval:Completed', {
+              tier: 1,
+              strategy: tier1Result.strategy,
+              sufficiency: tier1Result.sufficiency,
+              chunksCount: tier1Result.chunks.length
+            });
+          }
+
+          return {
+            chunks: tier1Result.chunks,
+            formattedContext,
+            strategy: tier1Result.strategy,
+            caseType: tier1Result.caseType,
+            sufficiency: tier1Result.sufficiency,
+            tier: 1,
+            isFallback: false
+          };
+        }
+      } catch (err) {
+        console.warn('[RetrievalOrchestrator] Tier 1 retrieval failed:', err.message);
+
+        if (this.eventBus?.emit) {
+          this.eventBus.emit('Retrieval:Failed', { tier: 1, error: err.message });
+        }
+
+        tier1Result = {
+          chunks: [],
+          strategy: 'failed',
+          sufficiency: 0.0,
           tier: 1,
-          isFallback: false
+          isFallback: true,
+          error: err.message
         };
       }
-    } catch (err) {
-      console.warn('[RetrievalOrchestrator] Tier 1 retrieval failed:', err.message);
-
-      if (this.eventBus?.emit) {
-        this.eventBus.emit('Retrieval:Failed', { tier: 1, error: err.message });
-      }
-
-      tier1Result = {
-        chunks: [],
-        strategy: 'failed',
-        sufficiency: 0.0,
-        tier: 1,
-        isFallback: true,
-        error: err.message
-      };
     }
 
     // ========================================================

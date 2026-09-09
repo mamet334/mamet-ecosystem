@@ -50,17 +50,48 @@ export default function ConversationEngine({ sessionId }) {
     ? `mamet_v4_${osState.workspaceId}_current_chat_id`
     : null;
 
-  // --- Tool Preferences (RAG & Web Search toggle langsung dari toolbar chat) ---
+  // --- Tool Preferences (RAG & tool registry toggle langsung dari toolbar chat) ---
   // toolTogglesVersion cuma pemicu re-render manual — nilai sesungguhnya selalu dibaca
-  // live dari ToolPreferencesService di setiap render lewat ragEnabledHere/webSearchEnabledHere.
+  // live dari ToolPreferencesService di setiap render lewat ragEnabledHere/getToolEnabled().
   const [toolTogglesVersion, setToolTogglesVersion] = useState(0);
   const toolPreferencesService = kernel.serviceManager?.get('ToolPreferencesService');
   const ragEnabledHere = (toolPreferencesService && osState?.workspaceId)
     ? toolPreferencesService.getEffective(osState.workspaceId, 'rag')
     : true;
-  const webSearchEnabledHere = (toolPreferencesService && osState?.workspaceId)
-    ? toolPreferencesService.getEffective(osState.workspaceId, 'web_search')
+
+  // Chip tool selain RAG dibuat generik dari ToolRegistryService — bukan hardcode 'web_search'
+  // saja — supaya tool baru yang di-drop ke folder tools/ otomatis dapat chip toggle tanpa
+  // perlu ubah kode di sini (konsisten dengan konsep folder-scan "seperti modul Linux").
+  const toolRegistryService = kernel.serviceManager?.get('ToolRegistryService');
+  const registeredTools = toolRegistryService ? toolRegistryService.listTools() : [];
+  const KNOWN_TOOL_LABELS = {
+    web_search: 'Web',
+    memory_manager: 'Memory',
+    file_reader: 'File Reader',
+    deep_research: 'Deep Research'
+  };
+  const formatToolLabel = (name) => KNOWN_TOOL_LABELS[name]
+    || name.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  const getToolEnabled = (toolName) => (toolPreferencesService && osState?.workspaceId)
+    ? toolPreferencesService.getEffective(osState.workspaceId, toolName)
     : true;
+  const toolsEnabledCount = (ragEnabledHere ? 1 : 0)
+    + registeredTools.filter(tool => getToolEnabled(tool.name)).length;
+
+  // Panel Tools — satu tombol yang buka daftar toggle, supaya toolbar tidak penuh
+  // walau jumlah tool di registry terus bertambah (bukan satu chip per tool lagi).
+  const [showToolsPanel, setShowToolsPanel] = useState(false);
+  const toolsPanelRef = useRef(null);
+  useEffect(() => {
+    if (!showToolsPanel) return;
+    const handleClickOutside = (e) => {
+      if (toolsPanelRef.current && !toolsPanelRef.current.contains(e.target)) {
+        setShowToolsPanel(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showToolsPanel]);
 
   // --- UI State ---
   const [messages, setMessages] = useState([]);
@@ -937,42 +968,69 @@ export default function ConversationEngine({ sessionId }) {
             <span className="material-symbols-outlined text-[20px]">add</span>
           </button>
 
-          {/* Toggle RAG & Web Search — override langsung untuk workspace yang sedang aktif,
-              supaya tidak perlu bolak-balik ke Settings. Klik = set override workspace ini;
-              tampilan mengikuti nilai efektif (override kalau ada, kalau tidak ikut default global). */}
+          {/* Panel Tools — satu tombol untuk RAG + semua tool dari registry, override langsung
+              untuk workspace yang sedang aktif (supaya tidak perlu bolak-balik ke Settings).
+              Bentuk dropdown (bukan satu chip per tool) supaya toolbar tidak penuh walau
+              jumlah tool di folder tools/ terus bertambah. */}
           {osState?.workspaceId && (
-            <>
+            <div className="relative" ref={toolsPanelRef}>
               <button
-                onClick={() => {
-                  const svc = kernel.serviceManager?.get('ToolPreferencesService');
-                  if (!svc) return;
-                  const current = svc.getEffective(osState.workspaceId, 'rag');
-                  svc.setWorkspaceOverride(osState.workspaceId, 'rag', !current);
-                  setToolTogglesVersion(v => v + 1);
-                }}
-                title={`RAG (pengetahuan) untuk workspace ini: ${ragEnabledHere ? 'Nyala' : 'Mati'} — klik untuk ubah`}
+                onClick={() => setShowToolsPanel(v => !v)}
+                title={`${toolsEnabledCount} tool aktif untuk workspace ini — klik untuk kelola`}
                 className={`h-10 px-3 flex items-center gap-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm active:scale-95
-                  ${ragEnabledHere ? 'bg-primary/15 border-primary/50 text-primary' : 'bg-surface-container-low border-outline-variant text-on-surface-variant'}`}
+                  ${showToolsPanel ? 'bg-primary/15 border-primary/50 text-primary' : 'bg-surface-container-low border-outline-variant text-on-surface-variant'}`}
               >
-                <span className="material-symbols-outlined text-[18px]">{ragEnabledHere ? 'toggle_on' : 'toggle_off'}</span>
-                RAG
+                <span className="material-symbols-outlined text-[18px]">bolt</span>
+                Tools
+                <span className="text-[10px] opacity-70">{toolsEnabledCount}</span>
               </button>
-              <button
-                onClick={() => {
-                  const svc = kernel.serviceManager?.get('ToolPreferencesService');
-                  if (!svc) return;
-                  const current = svc.getEffective(osState.workspaceId, 'web_search');
-                  svc.setWorkspaceOverride(osState.workspaceId, 'web_search', !current);
-                  setToolTogglesVersion(v => v + 1);
-                }}
-                title={`Web Search untuk workspace ini: ${webSearchEnabledHere ? 'Nyala (auto)' : 'Mati'} — klik untuk ubah`}
-                className={`h-10 px-3 flex items-center gap-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm active:scale-95
-                  ${webSearchEnabledHere ? 'bg-primary/15 border-primary/50 text-primary' : 'bg-surface-container-low border-outline-variant text-on-surface-variant'}`}
-              >
-                <span className="material-symbols-outlined text-[18px]">{webSearchEnabledHere ? 'toggle_on' : 'toggle_off'}</span>
-                Web
-              </button>
-            </>
+
+              {showToolsPanel && (
+                <div className="absolute left-0 top-12 z-50 w-64 rounded-xl border border-outline-variant bg-surface-container-low shadow-lg p-2">
+                  <div className="px-2 py-1 text-[11px] font-bold text-on-surface-variant uppercase tracking-wide">
+                    Tools untuk workspace ini
+                  </div>
+                  <button
+                    onClick={() => {
+                      const svc = kernel.serviceManager?.get('ToolPreferencesService');
+                      if (!svc) return;
+                      const current = svc.getEffective(osState.workspaceId, 'rag');
+                      svc.setWorkspaceOverride(osState.workspaceId, 'rag', !current);
+                      setToolTogglesVersion(v => v + 1);
+                    }}
+                    title="RAG (pengetahuan)"
+                    className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-surface-variant text-left text-xs font-semibold text-on-surface transition-all"
+                  >
+                    <span className={`material-symbols-outlined text-[18px] ${ragEnabledHere ? 'text-primary' : 'text-on-surface-variant'}`}>
+                      {ragEnabledHere ? 'toggle_on' : 'toggle_off'}
+                    </span>
+                    RAG (pengetahuan)
+                  </button>
+                  {registeredTools.map(tool => {
+                    const enabled = getToolEnabled(tool.name);
+                    return (
+                      <button
+                        key={tool.name}
+                        onClick={() => {
+                          const svc = kernel.serviceManager?.get('ToolPreferencesService');
+                          if (!svc) return;
+                          const current = svc.getEffective(osState.workspaceId, tool.name);
+                          svc.setWorkspaceOverride(osState.workspaceId, tool.name, !current);
+                          setToolTogglesVersion(v => v + 1);
+                        }}
+                        title={tool.description || tool.name}
+                        className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-surface-variant text-left text-xs font-semibold text-on-surface transition-all"
+                      >
+                        <span className={`material-symbols-outlined text-[18px] ${enabled ? 'text-primary' : 'text-on-surface-variant'}`}>
+                          {enabled ? 'toggle_on' : 'toggle_off'}
+                        </span>
+                        {formatToolLabel(tool.name)}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           )}
         </div>
 
