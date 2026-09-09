@@ -856,9 +856,10 @@ export class AssistantService {
 
       onDone?.(cleanContent, jsonData.processingSteps || [], jsonData, { hasPatch, patchOriginalTask: hasPatch ? userMsg : undefined });
 
-      if (workspaceManager?.openWidgetInWorkbench) {
-        workspaceManager.openWidgetInWorkbench('right', 'widget:maef-monitor', { focusStep: 'execution', logs: jsonData });
-      }
+      // MAEF Monitor TIDAK lagi dibuka otomatis di sini — dulu tiap respons AI memaksa panel
+      // ini terbuka kembali walau Owner baru saja menutupnya (minimize jadi terasa tidak
+      // berfungsi). Sekarang murni dikendalikan manual lewat tombol "Monitor" di toolbar chat
+      // (ConversationEngine.jsx handleToggleMaefMonitor).
 
       // Verifikasi integritas memori sesi Assistant (golden source alignment) tepat 1x di akhir turn
       if (userId) {

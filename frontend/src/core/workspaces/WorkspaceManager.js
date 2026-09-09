@@ -6,6 +6,13 @@
 import { supabase } from '../../supabase';
 import { EventBus } from '../runtime/EventBus';
 
+// Data widget sengaja disimpan di level modul, bukan per-instance: ada lebih dari satu
+// WorkspaceManager hidup bersamaan (satu dibuat Kernel, satu per WorkspaceProvider), sementara
+// widgetId bersifat global. Kalau disimpan per-instance, widget yang membaca lewat instance
+// Kernel tidak akan menemukan data yang ditulis lewat instance provider (mis. trace MAEF Monitor
+// hilang setiap panel dibuka ulang).
+const widgetDataStore = {};
+
 export class WorkspaceManager {
   constructor(appId = 'global', serviceManager) {
     this.appId = appId;
@@ -340,20 +347,31 @@ export class WorkspaceManager {
     }
 
     if (widgetData) {
-      this.widgetDataStore = this.widgetDataStore || {};
-      this.widgetDataStore[widgetId] = widgetData;
+      this.injectWidgetData(widgetId, widgetData);
+    }
+  }
 
-      if (this.serviceManager && this.serviceManager.has('EventBus')) {
-        const eventBus = this.serviceManager.get('EventBus');
-        // Let the widget mount first if it was just added (for already mounted widgets)
-        setTimeout(() => {
-          eventBus.emit('Widget:DataInjected', {
-            source: 'WorkspaceManager',
-            widgetId,
-            data: widgetData
-          });
-        }, 100);
-      }
+  /**
+   * Widget Data: Kirim data ke widget TANPA memaksa panelnya terbuka.
+   * Dipakai untuk telemetri berkala (mis. trace eksekusi ke MAEF Monitor) supaya panel yang
+   * sudah ditutup Owner tidak dibuka paksa tiap kali ada data baru. Widget yang sedang terbuka
+   * menerimanya lewat event; widget yang dibuka belakangan membacanya lewat getWidgetData().
+   */
+  injectWidgetData(widgetId, widgetData) {
+    if (!widgetData) return;
+
+    widgetDataStore[widgetId] = widgetData;
+
+    if (this.serviceManager && this.serviceManager.has('EventBus')) {
+      const eventBus = this.serviceManager.get('EventBus');
+      // Let the widget mount first if it was just added (for already mounted widgets)
+      setTimeout(() => {
+        eventBus.emit('Widget:DataInjected', {
+          source: 'WorkspaceManager',
+          widgetId,
+          data: widgetData
+        });
+      }, 100);
     }
   }
 
@@ -361,6 +379,6 @@ export class WorkspaceManager {
    * Retrieves data injected into a widget, useful for widgets that mount AFTER the data was injected.
    */
   getWidgetData(widgetId) {
-    return this.widgetDataStore ? this.widgetDataStore[widgetId] : null;
+    return widgetDataStore[widgetId] || null;
   }
 }

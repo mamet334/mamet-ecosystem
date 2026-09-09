@@ -757,8 +757,16 @@ export default function ConversationEngine({ sessionId }) {
             }]);
           }
           setIsLoading(false);
-          if (jsonMetadata && workspaceManager?.openWidgetInWorkbench) {
-            openLifecycleInspector('execution', jsonMetadata);
+          // Trace eksekusi tetap dikirim ke MAEF Monitor, tapi lewat injectWidgetData yang TIDAK
+          // memaksa panelnya terbuka — dulu tiap respons AI memanggil openWidgetInWorkbench()
+          // sehingga panel yang baru saja ditutup Owner terbuka lagi sendiri. Panel sekarang
+          // dibuka/ditutup manual lewat tombol "Monitor" (handleToggleMaefMonitor), dan saat
+          // dibuka akan langsung menampilkan trace terakhir dari getWidgetData().
+          if (jsonMetadata && workspaceManager?.injectWidgetData) {
+            workspaceManager.injectWidgetData('widget:maef-monitor', {
+              focusStep: 'execution',
+              logs: jsonMetadata
+            });
           }
         },
 
