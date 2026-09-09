@@ -1,8 +1,11 @@
 # MAMET OS: APPLICATION MANAGER ARCHITECTURE
 
-**Status:** Proposed Design
+**Status:** Proposed Design — **Sebagian Terserap ke Implementasi** (dikonfirmasi 2026-09-09)
 **Version:** 2.0.0
 **Target:** Transform Mamet OS from "Web Page Routing" to "Persistent Desktop Application"
+
+> [!NOTE]
+> **Cross-check kode (2026-09-09):** Konsep `ApplicationManager` dan `WindowManager` yang diusulkan di dokumen ini **memang menjadi nama class asli** di `frontend/src/core/application/ApplicationManager.js` dan `frontend/src/core/window/WindowManager.js` (state `REGISTERED`/`BACKGROUND`/`RUNNING` cocok persis, divalidasi `ARCHITECTURE-VALIDATION-V2.md`/`ARCHITECTURE-ACCEPTANCE-TEST-V2.md`, keduanya CERTIFIED/PASS). Namun untuk desain Workspace/Workbench/Manifest yang lebih detail dan benar-benar dirujuk kode, lihat `20_WORKSPACE_ARCHITECTURE.md` (dokumen master).
 
 ---
 

@@ -1,5 +1,8 @@
 # ARCHITECTURE ANALYSIS: GAP-007 (Legacy Plugin Dispatcher Monolith)
 
+> [!NOTE]
+> **Resolved ✅ (Wave 5-3, 29-30 Juni 2026).** Delegasi ke Capability Adapter di bawah ini sudah diimplementasikan — lihat `ARCHITECTURE-GAPS.md` (tabel "Legacy Gap Series"). Isi asli dipertahankan sebagai jejak analisis.
+
 ## 1. Analisis Arsitektur
 Pemeriksaan pada `lib/orchestration/handlers/execution_handler.ts` menunjukkan pelanggaran arsitektur (*Architecture Gap*) yang serius:
 1. **Tight LLM Coupling**: Modul ini menyuntikkan fungsi `customRunLLM` ke setiap plugin yang secara paksa memanggil `runLLM` dari orchestrator lawas, lengkap dengan identifikasi model *hardcoded* (seperti `groq-llama-3.1` atau `openrouter-google-gemini-2.0-flash-exp`). Ini merusak abstraksi `CapabilityRegistry` (ADR-012).

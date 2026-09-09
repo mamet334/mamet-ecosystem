@@ -1,5 +1,8 @@
 # MAMET ECOSYSTEM UI/UX ARCHITECTURE MISSION
 
+> [!WARNING]
+> **Superseded (dikonfirmasi 2026-09-09).** Draft awal — terminologi "Dock Zone" (Left/Right/Bottom Dock) yang diusulkan di sini **tidak dipakai kode**. Implementasi nyata memakai istilah "Workbench" (`WorkbenchZone.jsx`, `WidgetHost.jsx`) sesuai `20_WORKSPACE_ARCHITECTURE.md` (dokumen master, dirujuk langsung oleh `WorkspaceManager.js`). Isi dokumen ini dipertahankan sebagai jejak evolusi desain, bukan acuan implementasi.
+
 ## 1. UI/UX Audit (Kondisi Saat Ini)
 Mamet AI saat ini berevolusi dari sekadar aplikasi *AI Chatbot* menjadi sebuah *AI Operating System*, namun antarmuka penggunanya masih terjebak dalam paradigma lama (Chatbot dengan panel tambahan).
 

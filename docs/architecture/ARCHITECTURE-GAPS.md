@@ -244,12 +244,12 @@ Status: Open
 
 ## GAP-NEW-016: MametLite ragTopK=10 Lebih Tinggi dari AI Mode ragTopK=5
 
-Status: Open
+Status: **Resolved** ✅ (2026-09-09 — dikonfirmasi disengaja)
 
 **Severity:** Informational
 **Lokasi:** `supabase/functions/agent-process/index.ts` L309
 **Dampak:** Counterintuitive. Lite seharusnya lebih ringan. Perlu verifikasi apakah ini disengaja.
-**Rencana:** Masuk backlog — perlu verifikasi dengan owner apakah disengaja.
+**Resolusi:** Bukan bug — ini keputusan desain sengaja, sudah terdokumentasi di `mantra.txt` §11 "RAG Identity Separation (MametLite vs AI)" (v2.1.0, 26 Juni 2026): MametLite mengambil 10 dokumen untuk bacaan holistik/riset luas (dan diproteksi *Strict Read-Only Identity* tanpa akses ke `user_memories`), sedangkan AI mode 5 dokumen demi efisiensi memori chat. Owner mengonfirmasi alasan ini masih berlaku.
 
 ---
 
@@ -294,6 +294,26 @@ Status: **Resolved** ✅ (ADR-0018, 2026-09-09)
 **Lokasi:** `constitution/00_CONSTITUTION.md` v3 vs `docs/project-memory/MAEF V2.md` + `MAMET AI VISION CONSTITUTION V2.md` vs `docs/adr/ADR-0001` vs `docs/architecture/MASTER-ARCHITECTURE-INDEX.md`
 **Dampak:** Sama persis dengan pola GAP-NEW-001/002 (dua sumber kebenaran aktif tanpa suksesi jelas), tapi terulang satu lapis lebih tinggi dan melibatkan seluruh ekosistem dokumen (ADR-0001, ADR-0011, Master Architecture Index tidak tahu `constitution/` v3 eksis).
 **Resolusi:** ADR-0018 dibuat, men-supersede ADR-0001. `MAEF V2.md`, `MAMET AI VISION CONSTITUTION V2.md`, `MASTER-ARCHITECTURE-INDEX.md`, `ADR-0011` diberi pointer status SUPERSEDED/catatan referensi. `constitution/ENGINEERING_CONTRACT.md` reading order dilengkapi sampai dokumen 27. `INIT.md` diperbarui mencantumkan status kedua dokumen v2.
+
+---
+
+## LEGACY GAP SERIES (GAP-004 s/d GAP-010) — Resolved via Wave 5-3
+
+Status: **Resolved** ✅ (Wave 5-3, 29-30 Juni 2026 — dikonfirmasi `mantra.txt` §15, ditemukan & disatukan ke register ini 2026-09-09)
+
+Sistem penomoran gap terpisah yang sebelumnya **tidak pernah tercatat di register ini**, masing-masing didokumentasikan sebagai file audit/plan tersendiri. Semuanya sudah diimplementasikan lewat Wave 5-3 (`ARCHITECTURE-RESTRUCTURE-WAVE-5-3.md`), dikonfirmasi oleh narasi selesai di `mantra.txt` §15 "RAG Pipeline Scatter-Gather & MAEF Hardening". Ketujuh file sumber sudah diberi header status Resolved (2026-09-09).
+
+| ID | Judul | File Sumber | Bukti Resolusi |
+|---|---|---|---|
+| GAP-004 | RAG Pipeline Monolith → Scatter-Gather | `ARCHITECTURE-AUDIT-RAG-PIPELINE.md` | `context_builder.ts` menjalankan RAG/Project Memory/Engineer Context paralel via `Promise.all` |
+| GAP-005 | Memory Audit Bypass → Verification Gate | `ARCHITECTURE-AUDIT-MEMORY-BYPASS.md` | `memory_manager.ts` melempar event `Memory.WriteRequested`, `memory_write_worker.ts` jadi Hard Gate via `PolicyEngine` |
+| GAP-006 | Context Compressor → Capability Adapter | `ARCHITECTURE-GAP-006-PLAN.md` | `context_compressor.ts` migrasi ke `CapabilityRegistry`, hardcoded fetch dihapus |
+| GAP-007 | Legacy Plugin Dispatcher Monolith | `ARCHITECTURE-GAP-007-PLAN.md` | `execution_handler.ts` delegasi ke `CapabilityRegistry`, `customRunLLM`/`customRunResearch` tidak lagi hardcode |
+| GAP-008 | LLM Orchestrator Procedural Bypasses | `ARCHITECTURE-GAP-008-PLAN.md` | `runLLM` tidak lagi bypass `CapabilityRegistry`, `preferredProvider` dinamis di `callLLMWithCascade` |
+| GAP-009 | Execution Phase Dispatcher Tight Coupling | `ARCHITECTURE-GAP-009-PLAN.md` | `execution_handler.ts` murni memancarkan `Tool.Requested`, `tool_subscriber.ts` jadi worker independen |
+| GAP-010 | Telemetry Leakage via Event Bus | `ARCHITECTURE-GAP-010-PLAN.md` | `audit_subscriber.ts` menangkap `Capability.Executed`/`Tool.*`, ditulis ke `agent_logs` via `rctx.tasks.fire()` |
+
+**Catatan:** Seri ini independen dari `GAP-0001..0004` (original, di bagian atas dokumen ini) dan `GAP-NEW-001..021`. Tiga sistem penomoran gap berbeda kini semuanya tercatat di satu file ini.
 
 ---
 

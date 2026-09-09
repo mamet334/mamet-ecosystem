@@ -1,5 +1,8 @@
 # ARCHITECTURE ANALYSIS: GAP-010 (Telemetry Leakage via Event Bus)
 
+> [!NOTE]
+> **Resolved ✅ (Wave 5-3, 29-30 Juni 2026).** Persistensi telemetri di bawah ini sudah diimplementasikan — lihat `ARCHITECTURE-GAPS.md` (tabel "Legacy Gap Series"). Isi asli dipertahankan sebagai jejak analisis.
+
 ## 1. Analisis Arsitektur
 Sistem *Mamet AI* telah mengimplementasikan MAEF Event Bus (ADR-011) yang bertugas menyalurkan sinyal-sinyal kritis seperti `Capability.Executed`, `Tool.Requested`, dan `Tool.Completed`. Namun, saat ini *subscriber* untuk telemetri eksekusi belum diimplementasikan di `audit_subscriber.ts` (modul ini hanya mencatat `Evidence.Evaluated` dan `Verification.Completed`).
 Akibatnya, jejak audit eksekusi *sub-agent* dan penggunaan *Capability Adapter* lenyap begitu *Edge Function* selesai mengeksekusi *request* pengguna. Ini melanggar prinsip visibilitas operasional penuh dari *Mamet AI Engineering Framework*.

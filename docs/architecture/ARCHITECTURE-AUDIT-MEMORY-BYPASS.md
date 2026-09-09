@@ -1,5 +1,8 @@
 # ARCHITECTURE AUDIT: MEMORY AUDIT BYPASS (GAP-005)
 
+> [!NOTE]
+> **Resolved ✅ (Wave 5-3, 29-30 Juni 2026).** Memory Verification Gate di bawah ini sudah diimplementasikan — lihat `ARCHITECTURE-GAPS.md` (tabel "Legacy Gap Series"). Isi asli dipertahankan sebagai jejak analisis.
+
 **Target**: `plugins/memory_manager.ts`, `memory_write_worker.ts`, `lib/verification/memory_validator.ts`
 **Date**: 2026-06-30
 **Reference**: ADR-011 (MAEF Event System), 06_MEMORY_SYSTEM.md

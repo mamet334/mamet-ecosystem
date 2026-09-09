@@ -1,5 +1,8 @@
 # ARCHITECTURE ANALYSIS: GAP-006 (Context Compressor Capability Integration)
 
+> [!NOTE]
+> **Resolved ✅ (Wave 5-3, 29-30 Juni 2026).** Migrasi ke Capability Adapter di bawah ini sudah diimplementasikan — lihat `ARCHITECTURE-GAPS.md` (tabel "Legacy Gap Series"). Isi asli dipertahankan sebagai jejak analisis.
+
 ## 1. Analisis Arsitektur
 Saat mendalami `plugins/context_compressor.ts` (yang bertugas melakukan kompresi kognitif untuk sistem Memori V2), saya menemukan **pelanggaran fatal terhadap ADR-012 (Capability Adapter)**:
 1. **Raw HTTP Fetch**: Agen ini melakukan pemanggilan `fetch` secara manual langsung ke API Groq dan Gemini, mengabaikan hierarki *AI Adapter* yang sudah kita bangun.

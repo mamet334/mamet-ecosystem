@@ -48,5 +48,5 @@ Kolom ini secara eksplisit didokumentasikan sebagai *Evidence Confidence Score* 
 *RFC-013 originally referenced `verification_runs`. Actual implementation uses `verification_audit_logs` as the canonical audit store. The RFC semantic intent remains unchanged.*
 
 ---
-**Status:** DRAFT (Menunggu Persetujuan Owner)
+**Status:** ✅ **APPROVED & IMPLEMENTED** (dikoreksi 2026-09-09 — header sebelumnya masih "DRAFT" padahal `docs/architecture/ARCHITECTURE-GAPS.md` GAP-NEW-008 sudah mencatat ini Resolved sejak Wave 2; kolom `confidence_score SMALLINT` sudah aktif di `verification_audit_logs`, diintegrasikan `ConfidenceEngine`/`verification_service.ts`)
 **Tanggal:** 2026-07-11

@@ -1,5 +1,8 @@
 # ARCHITECTURE ANALYSIS: GAP-008 (LLM Orchestrator Procedural Bypasses)
 
+> [!NOTE]
+> **Resolved ✅ (Wave 5-3, 29-30 Juni 2026).** Unifikasi lapisan LLM di bawah ini sudah diimplementasikan — lihat `ARCHITECTURE-GAPS.md` (tabel "Legacy Gap Series"). Isi asli dipertahankan sebagai jejak analisis.
+
 ## 1. Analisis Arsitektur
 Pemeriksaan pada fungsi `runLLM` di dalam `lib/llm_orchestrator.ts` menunjukkan adanya residu prosedural monolitik:
 1. **Bypass Capability Registry**: Terdapat blok *USER-EXPLICIT MODEL SELECTION* yang memanggil fungsi lawas (`callOpenAI`, `callOpenRouter`, `callGroq`) secara *hardcode* dalam blok `try-catch`. Hal ini secara sadar mem-*bypass* `CapabilityRegistry` beserta seluruh pengamanan *rate-limit* (cooldown) dan pencatatan telemetri di dalamnya.

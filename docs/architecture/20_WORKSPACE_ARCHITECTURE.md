@@ -1,8 +1,11 @@
 # MAMET ECOSYSTEM WORKSPACE ARCHITECTURE
 
-**Status:** v1.0 - Active  
+**Status:** v1.0 - Active — **Dokumen Master/Otoritatif** (dikonfirmasi 2026-09-09: dirujuk langsung oleh kode, lihat catatan di bawah)
 **Version:** 1.0.0  
 **Purpose:** Source of Truth for Mamet AI Operating System UI/UX Implementation  
+
+> [!IMPORTANT]
+> **Cross-check kode (2026-09-09):** Dokumen ini dikonfirmasi sebagai spesifikasi yang benar-benar diimplementasikan — `frontend/src/core/workspaces/WorkspaceManager.js` docblock-nya secara eksplisit menulis *"Handles the lifecycle defined in 20_WORKSPACE_ARCHITECTURE.md"*. Field `left_workbench`/`right_workbench`/`bottom_workbench`, status siklus hidup (`IDLE`/`INITIALIZE`/`LOADING_MANIFEST`/`RESTORING_LAYOUT`/dst), dan terminologi "Workbench" (bukan "Dock") di `WorkbenchZone.jsx`/`WidgetHost.jsx`/`AppShell.jsx` semuanya cocok persis dengan dokumen ini. Untuk dua dokumen terkait: `ARCHITECTURE-OS-NAVIGATION-V2.md` (kontributor valid untuk konsep `ApplicationManager`/`WindowManager`, sebagian terserap) dan `ARCHITECTURE-UI-OS.md` (superseded — terminologi "Dock Zone" tidak dipakai kode).
 
 ---
 

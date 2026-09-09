@@ -1,5 +1,8 @@
 # ARCHITECTURE AUDIT: RAG PIPELINE MONOLITH (GAP-004)
 
+> [!NOTE]
+> **Resolved ✅ (Wave 5-3, 29-30 Juni 2026).** Proposal Scatter-Gather di bawah ini sudah diimplementasikan — lihat `ARCHITECTURE-RESTRUCTURE-WAVE-5-3.md` dan `ARCHITECTURE-GAPS.md` (tabel "Legacy Gap Series"). Isi asli dipertahankan sebagai jejak analisis.
+
 **Target**: `lib/rag/rag_pipeline.ts`
 **Date**: 2026-06-30
 **Reference**: ADR-011 (MAEF Event System)

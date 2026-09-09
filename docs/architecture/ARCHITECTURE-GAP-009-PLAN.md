@@ -1,5 +1,8 @@
 # ARCHITECTURE ANALYSIS: GAP-009 (Tight Coupling in Execution Phase Dispatcher)
 
+> [!NOTE]
+> **Resolved ✅ (Wave 5-3, 29-30 Juni 2026).** Pola Event-Driven Scatter-Gather di bawah ini sudah diimplementasikan — lihat `ARCHITECTURE-GAPS.md` (tabel "Legacy Gap Series"). Isi asli dipertahankan sebagai jejak analisis.
+
 ## 1. Analisis Arsitektur
 Modul `lib/orchestration/handlers/execution_handler.ts` bertanggung jawab tidak hanya merencanakan eksekusi (planning), namun juga secara paksa mengimpor `getPluginByName`, membungkusnya dalam logika isolasi `AbortController`, menghitung *timeout*, dan menahan pengecualian (exceptions).
 Hal ini melanggar *Single Responsibility Principle* dan memicu *Tight Coupling*, karena *Orchestrator* dipaksa berurusan dengan mekanisme pengaman (*sandbox*) setiap plugin. Ini juga merupakan pelanggaran desain terhadap amanat *Event-Driven Architecture* (ADR-011) di mana komponen seharusnya berkomunikasi secara buta melalui rentetan event (Loose Coupling).
