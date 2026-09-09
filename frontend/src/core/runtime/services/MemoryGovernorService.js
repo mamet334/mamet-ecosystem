@@ -111,6 +111,39 @@ export class MemoryGovernorService {
     }
 
     try {
+      // 0. GUARD DUPLIKAT — sebelumnya tidak ada sama sekali: isi yang identik selalu jadi baris
+      // baru. detectAndMarkConflict() pun tidak menangkapnya karena justru mensyaratkan isi
+      // BERBEDA (existingHash !== newHash). Akibatnya fakta yang diberitahukan Owner berulang
+      // kali menumpuk sebagai salinan identik, dan tiap salinan ikut disuntikkan ke prompt di
+      // setiap permintaan — token terbuang untuk kalimat yang sama.
+      // Dicek langsung ke kolom `summary` di user_memories, TANPA join ke raw_memory_content:
+      // kedua tabel itu tidak punya foreign key (satu-satunya FK user_memories mengarah ke
+      // knowledge_spaces), sehingga embed PostgREST akan gagal — dan gagalnya senyap. Lagipula
+      // `summary` justru kolom yang benar-benar disuntikkan ke prompt, jadi itu yang relevan.
+      const { data: duplicates, error: duplicateError } = await supabase
+        .from('user_memories')
+        .select('*')
+        .eq('user_id', user_id)
+        .eq('status', 'active')
+        .eq('summary', resolvedSummary)
+        .limit(1);
+
+      if (duplicateError) {
+        console.warn('[MemoryGovernorService] Cek duplikat gagal, lanjut menyimpan:', duplicateError.message);
+      } else if (duplicates && duplicates.length > 0) {
+        const existingMemory = duplicates[0];
+        console.log(`[MemoryGovernorService] Duplikat dilewati — memori aktif dengan isi identik sudah ada (id: ${existingMemory.id})`);
+        this.eventBus?.emit('MemoryGovernor:DuplicateSkipped', {
+          existingMemoryId: existingMemory.id,
+          contentHash,
+          timestamp: new Date().toISOString()
+        });
+        // Bentuk kembalian tetap baris memori (sama seperti jalur normal) supaya kontraknya
+        // konsisten, ditambah penanda supaya pemanggil bisa memberi tahu Owner dengan jujur
+        // bahwa tidak ada penyimpanan baru — bukan mengklaim "sudah disimpan".
+        return { ...existingMemory, _duplicateSkipped: true };
+      }
+
       // 1. INSERT raw content ke tabel golden source
       const { data: rawRow, error: rawError } = await supabase
         .from('raw_memory_content')
@@ -336,7 +369,11 @@ export class MemoryGovernorService {
       if (chatId) {
         query = query.eq('chat_id', chatId);
       } else {
-        query = query.eq('source_reference', 'assistant_chat_trigger');
+        // Pencocokan awalan, bukan nilai persis: memori chat lama memakai
+        // 'assistant_chat_trigger', sedangkan yang baru memakai 'assistant_chat:<kategori>'
+        // (lihat AssistantService goldenMeta — kategori disertakan supaya deteksi konflik
+        // tidak lagi menuduh fakta yang tidak berhubungan). Keduanya harus tetap terjaring.
+        query = query.like('source_reference', 'assistant_chat%');
       }
 
       const { data: memories, error } = await query.limit(10);

@@ -543,10 +543,17 @@ export default function ConversationEngine({ sessionId }) {
     const eventBus = kernel.serviceManager?.get('EventBus');
     if (!eventBus) return;
     const memoryRetrievedHandler = (payload) => {
-      const data = payload?.result || payload;
-      const query = payload?.query || '';
-      setLastMemoryQuery(query || '');
-      setActiveMemories(Array.isArray(data) ? data : []);
+      // EventBus.emit() SELALU membungkus payload asli di payload.data bersama {source, timestamp}
+      // — lihat EventBus.js:73-77. Handler ini dulu membaca payload.result (level teratas) yang
+      // selalu undefined, lalu jatuh ke wrapper-nya yang bukan array, sehingga activeMemories
+      // selamanya kosong. Akibatnya: Live Thought Pulse tidak pernah menyala, tombol refresh
+      // memori diam (lastMemoryQuery kosong), dan panel Memory diam-diam memakai fallback
+      // dbActiveMemories — menampilkan memori aktif terakhir dari DB, bukan memori yang benar-benar
+      // dipanggil untuk pertanyaan ini. Fallback itulah yang selama ini menutupi bugnya.
+      const inner = payload?.data || payload;
+      const result = inner?.result;
+      setLastMemoryQuery(inner?.query || '');
+      setActiveMemories(Array.isArray(result) ? result : []);
       setIsMemoryLoading(false);
     };
     const unsubscribeMemory = eventBus.on('Memory:Retrieved', memoryRetrievedHandler);

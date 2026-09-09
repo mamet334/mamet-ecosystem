@@ -116,7 +116,15 @@ export class AssistantService {
 
     const goldenMeta = {
       source_type: 'assistant_chat',
-      source_reference: 'assistant_chat_trigger',
+      // Dulu semua memori chat memakai satu nilai konstan 'assistant_chat_trigger'. Karena
+      // detectAndMarkConflict() menganggap "source_reference sama + isi beda + versi tidak
+      // berurutan" sebagai konflik, SETIAP fakta baru menendang fakta lama yang sama sekali
+      // tidak berhubungan ke CONFLICT_PENDING_REVIEW (mis. "nama panggilan pak slamet"
+      // dianggap berbenturan dengan "menyukai clean architecture"). Aturan itu memang
+      // dirancang untuk memori turunan file (satu path = satu isi kanonik), bukan untuk
+      // fakta chat yang saling independen. Dengan menyertakan kategori, benturan hanya
+      // mungkin terjadi antar fakta sejenis.
+      source_reference: `assistant_chat:${category || 'general'}`,
       chat_id: workspaceId || null,
       version_code: `AST-${Date.now()}`,
       category: category || 'general',
@@ -144,6 +152,12 @@ export class AssistantService {
           category: goldenMeta.category
         });
 
+        if (stored?._duplicateSkipped) {
+          // Jujur: tidak ada yang disimpan. Mengklaim "sudah disimpan" untuk sesuatu yang
+          // dilewati adalah over-claiming yang dilarang 24_ANTI_HALLUCINATION_PROTOCOL.
+          onDone?.(`ℹ️ Info itu sudah ada di memori saya, jadi tidak saya simpan lagi: "${contentToStore}"`, [], null);
+          return;
+        }
         if (stored) {
           onDone?.(`✅ Saya telah menyimpan: "${contentToStore}" ke memori (kategori: ${category || 'general'}).`, [], null);
           return;
