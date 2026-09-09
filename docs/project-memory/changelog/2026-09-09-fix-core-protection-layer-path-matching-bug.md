@@ -1,7 +1,7 @@
 # Changelog: Perbaikan Bug Core Protection Layer — 5 dari 12 Pattern Immutable Tidak Pernah Cocok
 
 **Tanggal:** 2026-09-09
-**Status:** ✅ Selesai & Diverifikasi (11/11 test logic pass + build production sukses)
+**Status:** ✅ Selesai & Diverifikasi (11/11 test logic pass + build production sukses + verifikasi live di Electron desktop — lihat §9)
 **Scope:** `frontend/src/core/runtime/services/engineer/CapabilityGuard.js`
 **Trigger:** Pertanyaan Owner soal titik masuk dokumen aturan ("apakah AGENTS.md?") — menelusuri jalur *runtime* Engineer (`engineer.js` `_loadStaticKnowledge()`) menemukan bug ini secara tidak sengaja saat memverifikasi konsistensi konvensi path.
 
@@ -70,3 +70,16 @@ Ditemukan bersamaan (belum diperbaiki, item terpisah):
 - Daftar yang sama **tidak memuat** `24_ANTI_HALLUCINATION_PROTOCOL.md` s/d `27_DECISION_HEURISTICS.md` ke `brain.static` Engineer — berarti Engineer produksi tidak pernah membaca Anti-Hallucination Protocol.
 
 Kedua hal di atas murni soal *isi daftar file yang dimuat* (dampaknya: Engineer kurang informasi), berbeda kategori dari bug *pattern-matching* yang baru diperbaiki di changelog ini (dampaknya: proteksi keamanan tidak berfungsi). Menunggu keputusan Owner untuk diperbaiki di sesi terpisah.
+
+## 9. Verifikasi Live (Update 2026-09-09, sesi lanjutan)
+
+Owner menjalankan aplikasi via `npm run desktop` (Electron sungguhan, bukan `npm run dev`) dan menguji langsung dengan prompt "Buatkan patch untuk menambahkan baris `<!-- test proteksi -->` di akhir file `constitution/09_DNA.md`, dan terapkan langsung."
+
+**Hasil dikonfirmasi via Console + UI:**
+1. `RequestClassifier → ENGINEER`, `Intent forced: MODIFY_CODE`, `CapabilityGuard.js: ✅ Capability check passed` — task masuk ke pipeline patch sungguhan (bukan sekadar chat).
+2. `FileSystemGateway`/`FileIndexService` meresolve `09_DNA.md` → path relatif penuh `constitution/09_DNA.md` — mengonfirmasi ulang temuan §2 (path pipeline selalu tanpa leading slash).
+3. Panel **Executive Engineering Approval** menampilkan **"🔴 PERCOBAAN MODIFIKASI CORE DIBLOKIR OLEH SISTEM (IMMUTABLE FILES DETECTED)"** untuk file target tersebut — **ini adalah bukti langsung bahwa fix bekerja**: sebelum fix, pattern lama (`/constitution/09_DNA.md`, leading slash) tidak akan pernah cocok dengan path relatif nyata `constitution/09_DNA.md`, sehingga peringatan ini tidak akan pernah muncul dan file bisa lolos ke tahap approval sebagai file biasa.
+
+**Catatan independen (bukan bagian dari fix ini):** Pemanggilan LLM (`BrainService.executeLLM`) gagal total pada percobaan ini — backend lokal `localhost:3000` connection refused, lalu fallback Supabase ditolak dengan pesan "Verification Failed". Akibatnya patch yang dihasilkan adalah **fallback/template darurat** (`generateFallbackPatch`, lihat catatan lama di `SPESIFIKASI-TEKNIS-MAMET-OS-v2.md` §2.4 soal status `FAILED_DETERMINISTIC` yang belum diimplementasikan) — bukan hasil analisis AI. Ini tidak mengubah kesimpulan verifikasi Core Protection Layer di atas (blokir terjadi di level `isImmutableFile()`, sebelum konten patch relevan), tapi dicatat sebagai isu backend konektivitas terpisah yang masih terbuka.
+
+**Status akhir:** Core Protection Layer (`CapabilityGuard.js`) — ✅ diverifikasi live, bekerja sesuai desain.

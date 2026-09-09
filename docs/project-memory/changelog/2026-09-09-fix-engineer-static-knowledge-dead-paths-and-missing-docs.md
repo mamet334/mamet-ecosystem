@@ -1,7 +1,7 @@
 # Changelog: Perbaikan `_loadStaticKnowledge()` — Path Mati Dihapus, 24-27 Ditambahkan
 
 **Tanggal:** 2026-09-09
-**Status:** ✅ Selesai (build production terverifikasi; runtime read live BELUM diverifikasi — lihat §4 Keterbatasan)
+**Status:** ✅ Selesai & Diverifikasi Live (build production + runtime read live dikonfirmasi via `npm run desktop` — lihat §6 Update)
 **Scope:** `frontend/src/core/runtime/services/engineer.js` — `_loadStaticKnowledge()` (Brain 1)
 
 ---
@@ -51,3 +51,12 @@ Daftar sebelumnya berhenti di `23_HOME_DASHBOARD_SPEC.md`, langsung loncat ke `E
 Dengan perbaikan ini, kedua item yang sebelumnya ditandai "belum diperbaiki" di [`2026-09-09-fix-core-protection-layer-path-matching-bug.md`](./2026-09-09-fix-core-protection-layer-path-matching-bug.md) §8 sudah selesai:
 1. ✅ 4 path mati di `_loadStaticKnowledge()` — dihapus (plus 2 tambahan yang ditemukan: `init.md`, `agent.md`)
 2. ✅ `24_ANTI_HALLUCINATION_PROTOCOL.md` s/d `27_DECISION_HEURISTICS.md` — ditambahkan ke Brain 1
+
+## 6. Update — Verifikasi Live (2026-09-09, sesi lanjutan)
+
+Owner menjalankan `npm run desktop` (Electron sungguhan) dan mengonfirmasi via Console boot Engineer:
+- Seluruh `constitution/24_ANTI_HALLUCINATION_PROTOCOL.md` (7029 chars), `25_DESIGN_PHILOSOPHY.md` (1902 chars), `26_MENTAL_MODEL.md` (2029 chars), `27_DECISION_HEURISTICS.md` (3070 chars) berhasil dibaca via `[StorageManager:read] ✅ Read via Electron IPC`.
+- Tidak ada satu pun baris warning/gagal untuk path lama yang sudah dihapus (`init.md`, `agent.md`, `MAEF_v3.0.md`, dll).
+- Total akhir: `[Engineer] Static knowledge loaded: 32 files` — sesuai jumlah entri di `constitutionPaths` setelah perbaikan.
+
+Dengan ini, keterbatasan di §4 di atas resmi tertutup — bukan lagi risiko rendah tak terverifikasi, tapi terkonfirmasi langsung.
