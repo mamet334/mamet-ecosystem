@@ -307,14 +307,18 @@ class Engineer {
 
   async _loadStaticKnowledge() {
     try {
+      // [FIX 2026-09-09] Daftar sebelumnya punya 4 path yang tidak pernah ada
+      // ('MAEF_v3.0.md', 'Mamet_AI_Constitution_v2.0.md', 'vision.md',
+      // 'master-architecture.md' — sisa skema penamaan lama, gagal senyap
+      // lewat try/catch di bawah, sia-sia dibaca tiap boot) dan 'init.md'/
+      // 'agent.md' salah case/nama (file asli: INIT.md, AGENTS.md — AGENTS.md
+      // sudah ada di daftar, 'agent.md' duplikat yang salah dihapus).
+      // Juga MENAMBAHKAN 24-27 yang sebelumnya tidak pernah dimuat ke
+      // brain.static — termasuk 24_ANTI_HALLUCINATION_PROTOCOL.md, dokumen
+      // paling penting secara operasional dari seluruh constitution/.
       const constitutionPaths = [
-        'init.md',
-        'agent.md',
+        'INIT.md',
         'AGENTS.md',
-        'constitution/MAEF_v3.0.md',
-        'constitution/Mamet_AI_Constitution_v2.0.md',
-        'constitution/vision.md',
-        'constitution/master-architecture.md',
         'constitution/00_CONSTITUTION.md',
         'constitution/01_VISION.md',
         'constitution/02_MAEF_KERNEL.md',
@@ -339,6 +343,10 @@ class Engineer {
         'constitution/21 Engineer Capability.md',
         'constitution/22_MUS_UI_SPECIFICATION.md',
         'constitution/23_HOME_DASHBOARD_SPEC.md',
+        'constitution/24_ANTI_HALLUCINATION_PROTOCOL.md',
+        'constitution/25_DESIGN_PHILOSOPHY.md',
+        'constitution/26_MENTAL_MODEL.md',
+        'constitution/27_DECISION_HEURISTICS.md',
         'constitution/ENGINEERING_CONTRACT.md',
         'constitution/README.md'
       ];
