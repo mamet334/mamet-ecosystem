@@ -50,6 +50,18 @@ export default function ConversationEngine({ sessionId }) {
     ? `mamet_v4_${osState.workspaceId}_current_chat_id`
     : null;
 
+  // --- Tool Preferences (RAG & Web Search toggle langsung dari toolbar chat) ---
+  // toolTogglesVersion cuma pemicu re-render manual — nilai sesungguhnya selalu dibaca
+  // live dari ToolPreferencesService di setiap render lewat ragEnabledHere/webSearchEnabledHere.
+  const [toolTogglesVersion, setToolTogglesVersion] = useState(0);
+  const toolPreferencesService = kernel.serviceManager?.get('ToolPreferencesService');
+  const ragEnabledHere = (toolPreferencesService && osState?.workspaceId)
+    ? toolPreferencesService.getEffective(osState.workspaceId, 'rag')
+    : true;
+  const webSearchEnabledHere = (toolPreferencesService && osState?.workspaceId)
+    ? toolPreferencesService.getEffective(osState.workspaceId, 'web_search')
+    : true;
+
   // --- UI State ---
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -924,6 +936,44 @@ export default function ConversationEngine({ sessionId }) {
           >
             <span className="material-symbols-outlined text-[20px]">add</span>
           </button>
+
+          {/* Toggle RAG & Web Search — override langsung untuk workspace yang sedang aktif,
+              supaya tidak perlu bolak-balik ke Settings. Klik = set override workspace ini;
+              tampilan mengikuti nilai efektif (override kalau ada, kalau tidak ikut default global). */}
+          {osState?.workspaceId && (
+            <>
+              <button
+                onClick={() => {
+                  const svc = kernel.serviceManager?.get('ToolPreferencesService');
+                  if (!svc) return;
+                  const current = svc.getEffective(osState.workspaceId, 'rag');
+                  svc.setWorkspaceOverride(osState.workspaceId, 'rag', !current);
+                  setToolTogglesVersion(v => v + 1);
+                }}
+                title={`RAG (pengetahuan) untuk workspace ini: ${ragEnabledHere ? 'Nyala' : 'Mati'} — klik untuk ubah`}
+                className={`h-10 px-3 flex items-center gap-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm active:scale-95
+                  ${ragEnabledHere ? 'bg-primary/15 border-primary/50 text-primary' : 'bg-surface-container-low border-outline-variant text-on-surface-variant'}`}
+              >
+                <span className="material-symbols-outlined text-[18px]">{ragEnabledHere ? 'toggle_on' : 'toggle_off'}</span>
+                RAG
+              </button>
+              <button
+                onClick={() => {
+                  const svc = kernel.serviceManager?.get('ToolPreferencesService');
+                  if (!svc) return;
+                  const current = svc.getEffective(osState.workspaceId, 'web_search');
+                  svc.setWorkspaceOverride(osState.workspaceId, 'web_search', !current);
+                  setToolTogglesVersion(v => v + 1);
+                }}
+                title={`Web Search untuk workspace ini: ${webSearchEnabledHere ? 'Nyala (auto)' : 'Mati'} — klik untuk ubah`}
+                className={`h-10 px-3 flex items-center gap-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm active:scale-95
+                  ${webSearchEnabledHere ? 'bg-primary/15 border-primary/50 text-primary' : 'bg-surface-container-low border-outline-variant text-on-surface-variant'}`}
+              >
+                <span className="material-symbols-outlined text-[18px]">{webSearchEnabledHere ? 'toggle_on' : 'toggle_off'}</span>
+                Web
+              </button>
+            </>
+          )}
         </div>
 
         {/* Engineer Rollback Banner */}
