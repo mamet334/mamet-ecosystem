@@ -286,6 +286,28 @@ Status: **APPROVED_FOR_DESIGN** (Menunggu Kematangan RFC-015 & Kesiapan Arsitekt
 
 ---
 
+## GAP-NEW-020: Constitution v3 vs MAEF v2 — Dua Hierarki Otoritas Tanpa Suksesi Formal
+
+Status: **Resolved** ✅ (ADR-0018, 2026-09-09)
+
+**Severity:** Critical
+**Lokasi:** `constitution/00_CONSTITUTION.md` v3 vs `docs/project-memory/MAEF V2.md` + `MAMET AI VISION CONSTITUTION V2.md` vs `docs/adr/ADR-0001` vs `docs/architecture/MASTER-ARCHITECTURE-INDEX.md`
+**Dampak:** Sama persis dengan pola GAP-NEW-001/002 (dua sumber kebenaran aktif tanpa suksesi jelas), tapi terulang satu lapis lebih tinggi dan melibatkan seluruh ekosistem dokumen (ADR-0001, ADR-0011, Master Architecture Index tidak tahu `constitution/` v3 eksis).
+**Resolusi:** ADR-0018 dibuat, men-supersede ADR-0001. `MAEF V2.md`, `MAMET AI VISION CONSTITUTION V2.md`, `MASTER-ARCHITECTURE-INDEX.md`, `ADR-0011` diberi pointer status SUPERSEDED/catatan referensi. `constitution/ENGINEERING_CONTRACT.md` reading order dilengkapi sampai dokumen 27. `INIT.md` diperbarui mencantumkan status kedua dokumen v2.
+
+---
+
+## GAP-NEW-021: RFC-014/015/016 Menyebut "Svelte Desktop" yang Tidak Ada di Codebase
+
+Status: Open — **butuh klarifikasi Owner**
+
+**Severity:** Major
+**Lokasi:** `docs/architecture/RFC-015-SINGLE-TOOL-DISPATCHER.md`, `RFC-016-BACKEND-AUTHORITATIVE-EXECUTION.md`, `EXECUTION-SURFACE-INVENTORY.md`
+**Dampak:** Ketiga dokumen (2026-07-11) mendeskripsikan desktop client sebagai "Svelte Desktop", tapi tidak ada file `.svelte` atau dependency Svelte di repository manapun. Desktop client aktual yang masih aktif dipelihara (dikonfirmasi via `ADR-0016`, 2026-08-23) adalah Electron (`frontend/electron/main.cjs`). Klaim `GAP-NEW-019` bahwa "RFC-015 Phase 1-3 Active in Shadow Mode" berpotensi overclaim jika ditulis dengan asumsi arsitektur yang salah.
+**Rencana:** Warning note sudah ditambahkan ke ketiga dokumen (2026-09-09). Perlu konfirmasi Owner: apakah "Svelte Desktop" adalah rencana migrasi terpisah yang belum dieksekusi, atau istilah keliru untuk Electron — baru bisa menutup gap ini setelah itu jelas.
+
+---
+
 ## GAP-NEW-019: Tool Dispatcher & Hard Gate Implementation Belum Tersentralisasi
 
 Status: Open

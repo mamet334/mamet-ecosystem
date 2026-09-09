@@ -1,39 +1,44 @@
 # Master Architecture Index
 
-Version: 2.0
+Version: 2.1
 Status: Active
-Authority: Dibawah MAEF v2 dan Vision Constitution v2, di atas implementasi.
-Last Updated: 2026-06-29 (Constitution Review — Constitution v2 integration)
+Authority: Dibawah `constitution/` v3.0, di atas implementasi.
+Last Updated: 2026-09-09 (ADR-0018 — Constitution v3 supersedes MAEF v2 hierarchy)
 
 ---
 
 ## Konstitusi Tertinggi
 
 > [!IMPORTANT]
-> **Dua dokumen berikut adalah Source of Truth tertinggi di atas semua dokumen lain.**
-> Segala konflik antara dokumen ini dengan implementasi, kode, atau dokumen lain harus diselesaikan mengacu ke dokumen ini.
+> **`constitution/00_CONSTITUTION.md` v3.0 (dan seluruh folder `constitution/`, 27 dokumen) adalah Source of Truth tertinggi.**
+> Ini menggantikan hierarki lama yang dipimpin MAEF v2/Vision Constitution v2 — lihat [ADR-0018](../adr/ADR-0018-constitution-v3-supreme-authority.md).
+> Segala konflik antara dokumen ini dengan implementasi, kode, atau dokumen lain harus diselesaikan mengacu ke `constitution/`.
 
 | Dokumen | Versi | Lokasi | Keterangan |
 |---|---|---|---|
-| MAMET AI ENGINEERING FRAMEWORK (MAEF) | **v2.0** | `docs/project-memory/MAEF V2.md` | ✅ AKTIF — Konstitusi engineering tertinggi |
-| MAMET AI VISION CONSTITUTION | **v2.0** | `docs/project-memory/MAMET AI VISION CONSTITUTION V2.md` | ✅ AKTIF — Konstitusi visi dan capability |
-| MAEF v1.0 | 1.0 | `docs/governance/MAEF.md` | ⛔ DEPRECATED — Lihat MAEF v2 |
-| Vision v1.0 | 1.0 Draft | `docs/governance/VISION.md` | ⛔ DEPRECATED — Lihat Vision Constitution v2 |
+| Constitution | **v3.0** | `constitution/00_CONSTITUTION.md` | ✅ AKTIF — Source of Truth tertinggi |
+| Vision | **v3.0** | `constitution/01_VISION.md` | ✅ AKTIF — Arah jangka panjang |
+| Master Index navigasi tugas | — | `INIT.md` | ✅ AKTIF — index 28 dokumen constitution + peta navigasi tugas |
+| MAMET AI ENGINEERING FRAMEWORK (MAEF) | v2.0 | `docs/project-memory/MAEF V2.md` | ⛔ SUPERSEDED — lihat `constitution/02_MAEF_KERNEL.md` + ADR-0018 |
+| MAMET AI VISION CONSTITUTION | v2.0 | `docs/project-memory/MAMET AI VISION CONSTITUTION V2.md` | ⛔ SUPERSEDED — lihat `constitution/01_VISION.md` + ADR-0018 |
+| MAEF v1.0 | 1.0 | `docs/governance/MAEF.md` | ⛔ DEPRECATED — Lihat MAEF v2 (juga superseded) |
+| Vision v1.0 | 1.0 Draft | `docs/governance/VISION.md` | ⛔ DEPRECATED — Lihat Vision Constitution v2 (juga superseded) |
 
 ---
 
-## Hirarki Otoritas Dokumen (MAEF v2 §5)
+## Hirarki Otoritas Dokumen (per ADR-0018, menggantikan MAEF v2 §5)
 
 | Urutan | Dokumen | Lokasi |
 |---|---|---|
-| 1 | MAEF v2 | `docs/project-memory/MAEF V2.md` |
-| 2 | Vision Constitution v2 | `docs/project-memory/MAMET AI VISION CONSTITUTION V2.md` |
-| 3 | Master Architecture Index (dokumen ini) | `docs/architecture/MASTER-ARCHITECTURE-INDEX.md` |
-| 4 | Architecture Decision Records (ADR) | `docs/adr/` |
-| 5 | Technical Specification / Blueprints | `docs/blueprints/` |
-| 6 | Engineering Tasks | `docs/tasks/` |
-| 7 | Repository (implementasi) | `supabase/`, `frontend/`, `mametlite/` |
-| 8 | Runtime System | Supabase Edge Functions (deployed) |
+| 1 | Constitution | `constitution/00_CONSTITUTION.md` (+ seluruh folder `constitution/`) |
+| 2 | Vision | `constitution/01_VISION.md` |
+| 3 | Core Architecture & System Specification | `constitution/02-19` |
+| 4 | Master Architecture Index (dokumen ini) | `docs/architecture/MASTER-ARCHITECTURE-INDEX.md` |
+| 5 | Architecture Decision Records (ADR) | `docs/adr/` |
+| 6 | Technical Specification / RFC / Blueprints | `docs/architecture/`, `docs/blueprints/` |
+| 7 | Engineering Tasks | `docs/tasks/` |
+| 8 | Repository (implementasi) | `supabase/`, `frontend/`, `mametlite/` |
+| 9 | Runtime System | Supabase Edge Functions (deployed) |
 
 ---
 

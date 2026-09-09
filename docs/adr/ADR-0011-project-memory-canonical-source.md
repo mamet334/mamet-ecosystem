@@ -278,3 +278,6 @@ Tambahkan check di pipeline CI/CD: jika ada ADR baru tapi tidak ada entry di DB 
 - MAEF v2 §11 (Project Memory Principle): "project memory adalah aset strategis"
 - Vision Constitution v2 §PROJECT MEMORY
 - ADR-0006 — Two-Brain Context Model (referensi Brain 1 membaca DB)
+
+> [!NOTE]
+> Rujukan "MAEF v2" dan "Vision Constitution v2" di atas dipertahankan apa adanya sebagai jejak historis kapan ADR ini ditulis (2026-06-29). Keputusan inti ADR ini (`project_memory_entries` sebagai canonical source) **tidak terpengaruh** dan tetap berlaku. Namun sejak [ADR-0018](./ADR-0018-constitution-v3-supreme-authority.md) (2026-09-09), hierarki otoritas dokumen tertinggi adalah `constitution/00_CONSTITUTION.md` v3.0, bukan lagi MAEF v2/Vision Constitution v2 — lihat ADR-0018 untuk konteks lengkap.

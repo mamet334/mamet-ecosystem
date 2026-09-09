@@ -14,9 +14,10 @@ Anda **TIDAK DIIZINKAN** membaca seluruh dokumen sekaligus.
 *(Referensi struktur file asli di GitHub)*
 
 **Root Dokumen Filosofi:** `README.md`, `AGENTS.md`.
-**Root Panduan Teknis:** `docs/adr/ADR-0011.md` (Project Memory Canonical Source).
+**Root Panduan Teknis:** `docs/adr/ADR-0011.md` (Project Memory Canonical Source), `docs/adr/ADR-0018.md` (Constitution v3 sebagai otoritas tertinggi, menggantikan MAEF).
+**Superseded (bukan rujukan aktif untuk hierarki otoritas, tapi masih menyimpan detail belum diserap `constitution/`):** `docs/project-memory/MAEF V2.md`, `docs/project-memory/MAMET AI VISION CONSTITUTION V2.md` — keduanya digantikan oleh `constitution/00_CONSTITUTION.md` v3.0 per ADR-0018, tapi masih memuat Two-Brain Model, Self Engineering Lifecycle, dan Engineering Confidence dua dimensi yang belum sepenuhnya ada padanannya di `constitution/`.
 **Arsip Historis (bukan rujukan aktif):** `docs/project-memory/history-archive/` — berisi `mantra.txt`, `mantra-realita-ringkas.md`, `OWNER_MANIFESTO.md` (versi awal, sudah sepenuhnya tergantikan oleh `04_OWNER_SOVEREIGNTY.md`).
-**Dokumentasi Arsitektur Aktif:** `docs/architecture/` — berisi `universal-roadmap-evidence-gate.md` dan `phase2-knowledge-governance.md` (Evidence Gate & Knowledge Governance, terverifikasi masih berjalan di production Supabase).
+**Dokumentasi Arsitektur Aktif:** `docs/architecture/` — berisi `universal-roadmap-evidence-gate.md` dan `phase2-knowledge-governance.md` (Evidence Gate & Knowledge Governance, terverifikasi masih berjalan di production Supabase), serta `MASTER-ARCHITECTURE-INDEX.md` (index arsitektur turunan, tunduk pada `constitution/`).
 
 | Level | Path File Constitution (di `/constitution/`) | Fungsi Inti |
 | :--- | :--- | :--- |
@@ -121,3 +122,5 @@ Simple beats complex. Root Cause First. Permanent Solution First. Build systems,
 ---
 
 *Catatan revisi: dokumen ini diperbarui untuk mencerminkan struktur `constitution/` per Agustus 2026 (28 dokumen, termasuk penambahan 23-27). Versi sebelumnya sempat tersimpan di `_knowledge_archive/` dan menyebut struktur lama (24 dokumen, root filosofi berbeda) — sudah usang dan digantikan oleh dokumen ini. `27_DECISION_HEURISTICS.md` diekstrak dari `NORTH_STAR.md` (diarsipkan ke `docs/project-memory/history-archive/`) karena berisi Strategic Decision Matrix dan Engineer/Assistant Principle yang belum tercakup di dokumen constitution lain.*
+
+*Update 2026-09-09 (ADR-0018): ditambahkan rujukan status SUPERSEDED untuk `MAEF V2.md`/`MAMET AI VISION CONSTITUTION V2.md` — audit dokumentasi menyeluruh menemukan keduanya sempat mengklaim otoritas tertinggi berdampingan dengan `constitution/` v3 tanpa pernah dinyatakan digantikan secara formal. Lihat `docs/adr/ADR-0018-constitution-v3-supreme-authority.md` untuk kronologi dan resolusi lengkap.*

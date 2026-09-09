@@ -27,7 +27,7 @@ Jika Anda adalah agen AI yang sedang membaca ini, **BACA DENGAN SEKSAMA DAN PATU
 ### 5. WAJIB HORMATI ARSITEKTUR YANG SUDAH ADA (NO JUNIOR SHORTCUTS)
 - Proyek ini bukan proyek percobaan pemula. Proyek ini menggunakan arsitektur level *Senior/PhD* (CQRS, Temporal Knowledge Graph, Context Execution Binding Layer).
 - Jika ada masalah memori, JANGAN menyarankan solusi dangkal seperti *"simpan saja di array JSON biasa"* atau *"buat saja filter kemiripan biasa"*.
-- Pahami pola desain yang ada di `MANTRA.md` sebelum memberikan saran arsitektur. Anda harus menyesuaikan diri dengan level kompleksitas proyek, bukan menurunkannya.
+- Pahami pola desain yang ada di `docs/project-memory/history-archive/mantra.txt` (sejarah pembangunan lengkap) dan `docs/project-memory/history-archive/mantra-realita-ringkas.md` (ringkasan) sebelum memberikan saran arsitektur. Anda harus menyesuaikan diri dengan level kompleksitas proyek, bukan menurunkannya.
 
 ### 6. EFISIENSI MANIPULASI FILE (NO BRUTE FORCE EDITS)
 - Jangan pernah menghapus dan menulis ulang (*overwrite*) seluruh file yang berisi 1000+ baris hanya untuk mengganti 2 baris kode.

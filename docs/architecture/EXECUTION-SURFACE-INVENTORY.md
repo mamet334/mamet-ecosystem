@@ -1,5 +1,8 @@
 # Execution Surface Inventory & Bypass Audit
 
+> [!WARNING]
+> **Belum diverifikasi terhadap kode aktual (2026-09-09).** Dokumen ini menyebut "Svelte Desktop" sebagai klien — tidak ada jejak Svelte di repository; desktop client aktual adalah Electron (`frontend/electron/main.cjs`). Perlakukan daftar *execution surface* di bawah sebagai kandidat yang perlu diverifikasi ulang terhadap path file nyata, bukan status runtime yang sudah pasti.
+
 Dokumen ini merupakan hasil audit komprehensif terhadap seluruh jalur eksekusi alat dan perintah di dalam arsitektur Mamet OS, sebagai fondasi implementasi `ToolDispatcher` (RFC-015 & GAP-NEW-019).
 
 ## 1. Daftar Jalur Eksekusi Saat Ini (Execution Surface)

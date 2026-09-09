@@ -1,5 +1,8 @@
 # RFC-016: Backend Authoritative Execution Architecture
 
+> [!WARNING]
+> **Belum diverifikasi terhadap kode aktual (2026-09-09).** Sama seperti RFC-015: dokumen ini menyebut "Svelte Desktop Client" sebagai frontend, tapi tidak ada jejak Svelte di repository — desktop client aktual adalah Electron. Perlu konfirmasi Owner sebelum RFC ini dieksekusi lebih lanjut.
+
 **Date:** 2026-07-11
 **Status:** PROPOSED (WAITING_FOR_TELEMETRY)
 **Related Gaps:** GAP-NEW-009, GAP-NEW-019

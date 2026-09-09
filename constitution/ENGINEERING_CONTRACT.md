@@ -94,6 +94,41 @@ WAJIB membaca dokumen secara berurutan:
 
 19_REFERENCE_IMPLEMENTATION.md
 
+↓
+
+20_ENGINEERING POLICY.md
+
+↓
+
+21 Engineer Capability.md
+
+↓
+
+22_MUS_UI_SPECIFICATION.md
+
+↓
+
+23_HOME_DASHBOARD_SPEC.md
+
+↓
+
+24_ANTI_HALLUCINATION_PROTOCOL.md
+
+↓
+
+25_DESIGN_PHILOSOPHY.md
+
+↓
+
+26_MENTAL_MODEL.md
+
+↓
+
+27_DECISION_HEURISTICS.md
+
+> [!NOTE]
+> Untuk navigasi cepat berdasarkan jenis tugas (tanpa harus membaca semua 27 dokumen sekaligus), gunakan `INIT.md` di root repository — berisi Peta Navigasi Tugas (trigger → dokumen wajib dibuka) dan Buku Saku Teknis Eksekutif. `INIT.md` adalah index operasional; urutan baca di atas tetap otoritas untuk onboarding menyeluruh.
+
 ---
 
 ## IMPLEMENTATION PRINCIPLE

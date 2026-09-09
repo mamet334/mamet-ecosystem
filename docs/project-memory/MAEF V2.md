@@ -1,11 +1,16 @@
 # MAMET AI ENGINEERING FRAMEWORK (MAEF)
 
 Version      : 2.0
-Status       : ACTIVE
-Document Type: Engineering Constitution
-Authority    : Highest
+Status       : **SUPERSEDED** — lihat catatan di bawah
+Document Type: Engineering Constitution (Historical)
+Authority    : Highest (saat dokumen ini ditulis; sudah digantikan — lihat catatan)
 Owner        : Mamet AI Project
 Last Updated : 2026-06-28
+
+> [!IMPORTANT]
+> **Digantikan oleh `constitution/00_CONSTITUTION.md` v3.0** (2026-06-30) dan seluruh folder `constitution/`, per [ADR-0018](../adr/ADR-0018-constitution-v3-supreme-authority.md) (2026-09-09).
+> MAEF sebagai konsep tetap berlaku, kini dideskripsikan sebagai Kernel di `constitution/02_MAEF_KERNEL.md` — bukan lagi dokumen otoritas tertinggi tersendiri.
+> Dokumen ini tetap disimpan karena memuat detail yang belum sepenuhnya diserap `constitution/` v3: Two-Brain Model (§Two-Brain Model — lihat `MAMET AI VISION CONSTITUTION V2.md`), Engineering Confidence dua dimensi, dan Self Engineering Lifecycle 9 tahap. Jangan gunakan dokumen ini sebagai rujukan hierarki otoritas — gunakan `constitution/00_CONSTITUTION.md`.
 
 ---
 

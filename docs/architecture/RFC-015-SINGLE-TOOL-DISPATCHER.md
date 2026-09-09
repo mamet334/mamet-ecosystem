@@ -1,5 +1,8 @@
 # RFC-015: Single Tool Dispatcher (Execution Guard Bridge)
 
+> [!WARNING]
+> **Belum diverifikasi terhadap kode aktual (2026-09-09).** Dokumen ini dan RFC-016 menyebut "Svelte Desktop" berulang kali, tetapi tidak ditemukan file `.svelte` atau dependency Svelte di repository — desktop client aktual adalah Electron (`frontend/electron/main.cjs`, dikonfirmasi masih dipakai per `ADR-0016`, 2026-08-23). Klaim "Phase 1-3 Active in Shadow Mode" di `ARCHITECTURE-GAPS.md` (GAP-NEW-019) juga perlu diverifikasi ulang terhadap kode nyata sebelum dipercaya sebagai status runtime — lihat Anti-Hallucination Protocol (`24_ANTI_HALLUCINATION_PROTOCOL.md`) soal Runtime Supremacy Rule. Konfirmasi ke Owner diperlukan: apakah "Svelte Desktop" adalah rencana migrasi terpisah yang belum dieksekusi, atau istilah keliru untuk Electron.
+
 ## 1. Latar Belakang & Architecture Gap (GAP-NEW-019)
 Implementasi RFC-014 (Self Engineering Lifecycle) mengandalkan *Pre-flight Tool Filter* untuk menyembunyikan alat dari LLM saat tidak diizinkan. Namun, arsitektur saat ini memiliki celah (*execution bypass*) di mana eksekusi alat dan sub-agent berjalan di jalur yang tersebar (*decentralized*). Jika LLM menghalusinasi pemanggilan fungsi, atau jika sub-agent bertindak di luar kendali, tidak ada satu titik (*choke point*) yang dapat memblokir eksekusi tersebut secara absolut.
 

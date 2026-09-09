@@ -67,6 +67,9 @@ Hak perubahan mengikuti Engineering Policy yang ditetapkan Owner.
 
 # 5. ENGINEERING WORKFLOW
 
+> [!NOTE]
+> Ini adalah siklus per-tugas yang paling rinci di antara tiga model serupa di ekosistem ini. Lihat juga `07_ENGINEERING_SYSTEM.md` §ENGINEER LIFECYCLE (versi lebih ringkas) dan `MAMET AI VISION CONSTITUTION V2.md` §SELF ENGINEERING LIFECYCLE (siklus kematangan sistem jangka panjang, bukan per-tugas).
+
 Engineer bekerja dengan urutan:
 
 Observe

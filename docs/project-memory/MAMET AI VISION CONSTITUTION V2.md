@@ -1,10 +1,14 @@
-Document Type : Engineering Constitution
-Status        : ACTIVE
+Document Type : Engineering Constitution (Historical)
+Status        : **SUPERSEDED** — lihat catatan di bawah
 Version       : 2.0
 Previous      : Constitution v1.0
 Replaces      : Vision Document v1.0
 Owner         : Mamet AI
 Last Updated  : 2026-06-28
+
+> [!IMPORTANT]
+> **Digantikan oleh `constitution/01_VISION.md`** (dan `constitution/00_CONSTITUTION.md` v3.0, 2026-06-30) per [ADR-0018](../adr/ADR-0018-constitution-v3-supreme-authority.md) (2026-09-09).
+> Dokumen ini tetap disimpan karena memuat detail yang belum sepenuhnya diserap `constitution/` v3: Two-Brain Model, Self Engineering Lifecycle (9 tahap: Observer → Reviewer → Architect → Planner → Implementer → Verifier → Self Maintenance → Self Engineering System), dan Engineering Confidence dua dimensi (Coverage + Evidence). Jangan gunakan dokumen ini sebagai rujukan hierarki otoritas atau visi resmi terkini — gunakan `constitution/01_VISION.md`.
 
 # MAMET AI CONSTITUTION
 
@@ -400,6 +404,9 @@ Recommendation
 ---
 
 # SELF ENGINEERING LIFECYCLE
+
+> [!NOTE]
+> Ini adalah siklus **kematangan sistem** jangka panjang (posisi Engineer sebagai sistem, bukan langkah dalam satu task). Untuk siklus per-tugas, lihat `constitution/07_ENGINEERING_SYSTEM.md` §ENGINEER LIFECYCLE dan `constitution/21 Engineer Capability.md` §5 ENGINEERING WORKFLOW. Status implementasi: **belum ada state machine runtime** yang melacak posisi Engineer di siklus ini (GAP-NEW-009, `docs/architecture/ARCHITECTURE-GAPS.md`, status APPROVED_FOR_DESIGN).
 
 Engineer berkembang bertahap.
 

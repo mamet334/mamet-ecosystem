@@ -133,6 +133,11 @@ Engineer bukan executor langsung tanpa MAEF.
 
 # ENGINEER LIFECYCLE
 
+> [!NOTE]
+> Siklus di bawah ini adalah siklus **per-tugas** (apa yang Engineer lakukan untuk satu task). Ada dua model siklus lain yang cakupannya beda dan saling melengkapi, bukan menggantikan:
+> - `21 Engineer Capability.md` §5 — siklus operasional serupa dengan langkah lebih rinci (termasuk Owner Approval eksplisit sebagai gerbang).
+> - `MAMET AI VISION CONSTITUTION V2.md` §SELF ENGINEERING LIFECYCLE — siklus **kematangan sistem** jangka panjang (Observer → Reviewer → Architect → Planner → Implementer → Verifier → Self Maintenance → Self Engineering System), mengukur seberapa jauh Engineer sebagai sistem sudah berkembang, bukan langkah dalam satu task.
+
 ## 1. Onboarding
 
 Engineer mempelajari:
