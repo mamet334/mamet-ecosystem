@@ -690,17 +690,25 @@ export class AssistantService {
     );
 
     // 4b. PR#9: 3-Tier Retrieval Orchestrator — ambil knowledge/RAG context (terpisah dari memory)
+    // Toggle per-tool (ToolPreferencesService): RAG gate seluruh retrieve() (termasuk Tier 3 web,
+    // karena escalation Tier1→2→3 berurutan — mematikan RAG juga menonaktifkan web search untuk
+    // request ini). Web Search gate hanya perilaku Tier 3: on = cari otomatis tanpa tanya
+    // (autoConfirm), off = Tier 3 tidak pernah dipicu sama sekali.
+    const toolPreferencesService = this.serviceManager?.get('ToolPreferencesService');
+    const ragToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'rag') : true;
+    const webSearchToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'web_search') : true;
+
     const requestTraceId = crypto.randomUUID();
     let knowledgeContext = _injectedKnowledgeContext || '';
     const retrievalOrchestrator = this.serviceManager?.get('RetrievalOrchestrator');
-    if (!knowledgeContext && retrievalOrchestrator && !isLiteMode) {
+    if (!knowledgeContext && retrievalOrchestrator && !isLiteMode && ragToolEnabled) {
       try {
         const retrievalResult = await retrievalOrchestrator.retrieve(userMsg, {
           userId,
           limit: 5,
           traceId: requestTraceId,
-          enableWebComparison: true,
-          autoConfirmWebSearch: false
+          enableWebComparison: webSearchToolEnabled,
+          autoConfirmWebSearch: webSearchToolEnabled
         });
         if (retrievalResult && retrievalResult.formattedContext) {
           knowledgeContext = retrievalResult.formattedContext;
@@ -781,7 +789,7 @@ export class AssistantService {
       globalMemory: trimmedRagContext,
       semanticContext: trimmedSemanticContext,
       stream: false,
-      ragEnabled: true,
+      ragEnabled: ragToolEnabled,
       model: formattedModel || undefined,
       file: fileData || undefined,
       requestedFilePath: isEngineerMode ? this.extractFilePathFromMessage(userMsg) : undefined,

@@ -18,6 +18,7 @@ import { KnowledgeService } from './services/KnowledgeService.js';
 import { AgentOrchestratorService } from './services/AgentOrchestratorService.js';
 import { ToolRegistryService } from './services/ToolRegistryService.js';
 import { SemanticContextService } from './services/SemanticContextService.js';
+import { ToolPreferencesService } from './services/ToolPreferencesService.js';
 import { MetadataService } from '../metadata/MetadataService.js';
 import { NavigationService } from '../metadata/NavigationService.js';
 import { RepositoryReaderService } from './services/RepositoryReaderService.js';
@@ -260,6 +261,12 @@ class Kernel {
     const semanticContextService = new SemanticContextService(serviceManager);
     await semanticContextService.initialize();
     serviceManager.register('SemanticContextService', semanticContextService);
+
+    // Tool Preferences Service — preferensi on/off per-tool (RAG, Web Search, dst),
+    // dibaca AssistantService sebelum memanggil RetrievalOrchestrator/Edge Function.
+    const toolPreferencesService = new ToolPreferencesService(serviceManager);
+    await toolPreferencesService.initialize();
+    serviceManager.register('ToolPreferencesService', toolPreferencesService);
 
     // Knowledge Service
     const knowledgeService = new KnowledgeService(serviceManager);

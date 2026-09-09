@@ -3,16 +3,48 @@ import { supabase } from '../supabase';
 import { kernel } from '../core/runtime/Kernel';
 import { User, Mail, Shield, LogOut, Palette, Activity, Monitor, Bell, Cpu, Clock, Brain, Key } from 'lucide-react';
 
+// Workspace yang bisa punya override preferensi tool sendiri (lihat WorkspaceManager.js)
+const TOGGLEABLE_WORKSPACES = [
+  { id: 'ws-assistant', label: 'Assistant' },
+  { id: 'ws-lite', label: 'Lite' },
+  { id: 'ws-engineer', label: 'Engineer' }
+];
+
+const TOOL_LABELS = {
+  rag: 'RAG',
+  web_search: 'Web Search'
+};
+
 export default function Settings() {
   const [user, setUser] = useState(null);
   const [health, setHealth] = useState(null);
-  
+
   // AI Config State
   const [aiProvider, setAiProvider] = useState('openrouter');
   const [aiModel, setAiModel] = useState('anthropic/claude-3.5-sonnet');
   const [aiKey, setAiKey] = useState('');
   const [saveStatus, setSaveStatus] = useState('');
-  
+
+  // Tool Preferences State
+  const [toolPrefsVersion, setToolPrefsVersion] = useState(0);
+  const toolPreferencesService = kernel.serviceManager?.get('ToolPreferencesService');
+  const toolNames = toolPreferencesService ? toolPreferencesService.listToolNames() : ['rag', 'web_search'];
+
+  const handleToggleGlobal = (toolName) => {
+    if (!toolPreferencesService) return;
+    const current = toolPreferencesService.getGlobalDefault(toolName);
+    toolPreferencesService.setGlobalDefault(toolName, !current);
+    setToolPrefsVersion(v => v + 1);
+  };
+
+  const handleSetWorkspaceOverride = (workspaceId, toolName, value) => {
+    if (!toolPreferencesService) return;
+    // value: 'default' | 'on' | 'off'
+    const enabled = value === 'default' ? null : value === 'on';
+    toolPreferencesService.setWorkspaceOverride(workspaceId, toolName, enabled);
+    setToolPrefsVersion(v => v + 1);
+  };
+
   useEffect(() => {
     // Get user from Kernel identity
     setUser(kernel.identity.user);
@@ -258,6 +290,88 @@ export default function Settings() {
             </div>
           </section>
 
+
+          {/* Tools & Capabilities */}
+          <section className="col-span-12 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center">
+                <span className="material-symbols-outlined text-primary">tune</span>
+              </div>
+              <div>
+                <h2 className="font-headline-md text-headline-md">Tools & Capabilities</h2>
+                <p className="text-body-sm text-on-surface-variant">Atur tool mana yang boleh dipakai AI, secara global atau per workspace.</p>
+              </div>
+            </div>
+
+            {/* Default Global */}
+            <div className="mb-6">
+              <label className="text-label-mono text-on-surface-variant uppercase tracking-widest pl-1 mb-2 block">Default (Semua Workspace)</label>
+              <div className="flex flex-wrap gap-3">
+                {toolNames.map(toolName => {
+                  const enabled = toolPreferencesService ? toolPreferencesService.getGlobalDefault(toolName) : true;
+                  return (
+                    <button
+                      key={toolName}
+                      onClick={() => handleToggleGlobal(toolName)}
+                      className={`flex items-center gap-2 px-4 py-3 rounded-lg border transition-all active:scale-95 font-semibold text-sm
+                        ${enabled ? 'border-primary/50 bg-primary/10 text-primary' : 'border-outline-variant bg-surface-container-low text-on-surface-variant'}`}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">
+                        {enabled ? 'toggle_on' : 'toggle_off'}
+                      </span>
+                      {TOOL_LABELS[toolName] || toolName}
+                    </button>
+                  );
+                })}
+              </div>
+              {!toolPreferencesService?.getGlobalDefault('web_search') ? null : (
+                <p className="text-body-sm text-on-surface-variant italic mt-2">
+                  Web Search nyala = dicari otomatis saat dibutuhkan, tanpa dialog konfirmasi tiap kali.
+                </p>
+              )}
+            </div>
+
+            {/* Per-workspace override */}
+            <div>
+              <label className="text-label-mono text-on-surface-variant uppercase tracking-widest pl-1 mb-2 block">Override per Workspace</label>
+              <div className="overflow-x-auto">
+                <table className="w-full text-body-sm">
+                  <thead>
+                    <tr className="text-on-surface-variant text-left">
+                      <th className="py-2 pr-4 font-semibold">Workspace</th>
+                      {toolNames.map(toolName => (
+                        <th key={toolName} className="py-2 pr-4 font-semibold">{TOOL_LABELS[toolName] || toolName}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {TOGGLEABLE_WORKSPACES.map(ws => (
+                      <tr key={ws.id} className="border-t border-outline-variant/50">
+                        <td className="py-3 pr-4 text-on-surface font-medium">{ws.label}</td>
+                        {toolNames.map(toolName => {
+                          const override = toolPreferencesService ? toolPreferencesService.getWorkspaceOverride(ws.id, toolName) : null;
+                          const value = override === null ? 'default' : (override ? 'on' : 'off');
+                          return (
+                            <td key={toolName} className="py-3 pr-4">
+                              <select
+                                value={value}
+                                onChange={(e) => handleSetWorkspaceOverride(ws.id, toolName, e.target.value)}
+                                className="bg-surface-container-lowest border border-outline-variant px-3 py-2 rounded-lg text-on-surface text-body-sm focus:border-primary focus:ring-0"
+                              >
+                                <option value="default">Ikuti Default</option>
+                                <option value="on">Nyalakan</option>
+                                <option value="off">Matikan</option>
+                              </select>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
 
           {/* Identity & Danger Zone */}
           <section className="col-span-12 glass-panel rim-light p-gutter rounded-xl border border-outline-variant">
