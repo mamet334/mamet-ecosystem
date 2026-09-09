@@ -282,6 +282,11 @@ class Kernel {
     const toolRegistry = new ToolRegistryService(serviceManager);
     await toolRegistry.initialize();
     serviceManager.register('ToolRegistryService', toolRegistry);
+    // Scan folder tools/ di root repo sekali saat boot (bisa di-scan ulang manual lewat
+    // Settings > Tools & Capabilities tanpa perlu restart app). Dependency lazy (mis.
+    // WebComparisonService) belum tentu terdaftar di sini — aman, karena tool hanya
+    // me-resolve dependency itu saat benar-benar dieksekusi, bukan saat didaftarkan.
+    await toolRegistry.scanToolsFolder();
 
     // Assistant Service — rumah arsitektur resmi untuk kapabilitas Assistant
     // Prasyarat: BrainService, MemoryService, SemanticContextService sudah terdaftar di atas

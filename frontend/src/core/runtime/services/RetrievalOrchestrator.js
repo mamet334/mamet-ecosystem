@@ -208,18 +208,36 @@ export class RetrievalOrchestrator {
     const shouldTriggerTier3 = Boolean(options.enableWebComparison || options.needWebComparison || this.isTemporalQuery(query));
 
     if (shouldTriggerTier3) {
-      console.log(`[RetrievalOrchestrator] Web comparison requested. Initiating Tier 3 (WebComparisonService)...`);
+      console.log(`[RetrievalOrchestrator] Web comparison requested. Initiating Tier 3 (via ToolRegistryService: web_search)...`);
       try {
-        const webService = this.webComparisonService || (this.serviceManager?.has('WebComparisonService') ? this.serviceManager.get('WebComparisonService') : null);
+        const isTemporal = this.isTemporalQuery(query);
+        const tier3Params = {
+          query,
+          traceId: options.traceId,
+          autoConfirm: options.autoConfirmWebSearch || false,
+          isTemporal,
+          reason: options.webComparisonReason || (isTemporal ? 'Pertanyaan memerlukan berita/informasi terkini yang tidak ada di dokumen lokal.' : 'Konteks lokal belum memadai dan perbandingan web dibutuhkan.')
+        };
 
-        if (webService && typeof webService.searchWeb === 'function') {
-          const isTemporal = this.isTemporalQuery(query);
-          const tier3Result = await webService.searchWeb(query, {
-            traceId: options.traceId,
-            autoConfirm: options.autoConfirmWebSearch || false,
-            isTemporal,
-            reason: options.webComparisonReason || (isTemporal ? 'Pertanyaan memerlukan berita/informasi terkini yang tidak ada di dokumen lokal.' : 'Konteks lokal belum memadai dan perbandingan web dibutuhkan.')
-          });
+        // Jalur utama: lewat ToolRegistryService (folder tools/web_search.js) — supaya web
+        // search jadi tool yang bisa dipanggil generik, bukan cuma hardcode di sini.
+        // Fallback: kalau tool belum/tidak terdaftar (mis. scan folder tools/ gagal), tetap
+        // panggil WebComparisonService langsung supaya Tier 3 tidak mati total.
+        const toolRegistry = this.serviceManager?.has('ToolRegistryService') ? this.serviceManager.get('ToolRegistryService') : null;
+        const hasWebSearchTool = toolRegistry?.getTool?.('web_search');
+
+        let tier3Result;
+        if (hasWebSearchTool) {
+          tier3Result = await toolRegistry.executeTool('web_search', tier3Params);
+        } else {
+          console.warn('[RetrievalOrchestrator] Tool "web_search" belum terdaftar di ToolRegistryService — fallback panggil WebComparisonService langsung.');
+          const webService = this.webComparisonService || (this.serviceManager?.has('WebComparisonService') ? this.serviceManager.get('WebComparisonService') : null);
+          tier3Result = webService && typeof webService.searchWeb === 'function'
+            ? await webService.searchWeb(query, tier3Params)
+            : null;
+        }
+
+        if (tier3Result) {
 
           // Jika Web Search SUKSES menghasilkan chunks
           if (tier3Result.status === 'SUCCESS' && tier3Result.chunks?.length > 0) {

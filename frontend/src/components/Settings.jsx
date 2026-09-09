@@ -45,6 +45,22 @@ export default function Settings() {
     setToolPrefsVersion(v => v + 1);
   };
 
+  // Tool Registry State (folder tools/ — lihat ToolRegistryService.scanToolsFolder())
+  const [scanStatus, setScanStatus] = useState(''); // '', 'scanning', 'done'
+  const [registryVersion, setRegistryVersion] = useState(0);
+  const toolRegistryService = kernel.serviceManager?.get('ToolRegistryService');
+  const registeredTools = toolRegistryService ? toolRegistryService.listTools() : [];
+  const lastScan = toolRegistryService?.lastScan;
+
+  const handleScanTools = async () => {
+    if (!toolRegistryService) return;
+    setScanStatus('scanning');
+    await toolRegistryService.scanToolsFolder();
+    setScanStatus('done');
+    setRegistryVersion(v => v + 1);
+    setTimeout(() => setScanStatus(''), 2500);
+  };
+
   useEffect(() => {
     // Get user from Kernel identity
     setUser(kernel.identity.user);
@@ -370,6 +386,63 @@ export default function Settings() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </section>
+
+          {/* Tool Registry — folder tools/ di root repo, discan otomatis saat boot,
+              atau manual lewat tombol ini tanpa perlu restart app. */}
+          <section className="col-span-12 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant">
+            <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-secondary-container/20 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-on-secondary-container">extension</span>
+                </div>
+                <div>
+                  <h2 className="font-headline-md text-headline-md">Tool Registry</h2>
+                  <p className="text-body-sm text-on-surface-variant">Tool yang di-scan dari folder <code>tools/</code> di root repo — taruh file baru di sana lalu scan ulang, tanpa perlu restart app.</p>
+                </div>
+              </div>
+              <button
+                onClick={handleScanTools}
+                disabled={scanStatus === 'scanning'}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 text-sm font-semibold transition-all active:scale-95 disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[18px]">
+                  {scanStatus === 'scanning' ? 'hourglass_top' : scanStatus === 'done' ? 'check_circle' : 'refresh'}
+                </span>
+                {scanStatus === 'scanning' ? 'Memindai...' : scanStatus === 'done' ? 'Selesai' : 'Scan Ulang Tools'}
+              </button>
+            </div>
+
+            {lastScan?.at && (
+              <p className="text-body-sm text-on-surface-variant mb-3">
+                Scan terakhir: {new Date(lastScan.at).toLocaleTimeString('id-ID')} — {lastScan.found} file ditemukan di <code>tools/</code>
+                {lastScan.errors?.length > 0 && <span className="text-error"> ({lastScan.errors.length} gagal dimuat)</span>}
+              </p>
+            )}
+
+            {lastScan?.errors?.length > 0 && (
+              <div className="mb-3 p-3 rounded-lg bg-error/10 border border-error/30 space-y-1">
+                {lastScan.errors.map((err, i) => (
+                  <p key={i} className="text-[11px] text-error"><code>{err.file}</code>: {err.message}</p>
+                ))}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {registeredTools.map(tool => (
+                <div key={tool.name} className="p-3 rounded-lg bg-surface-container-low border border-outline-variant/50">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="material-symbols-outlined text-[16px] text-primary-fixed-dim">bolt</span>
+                    <span className="font-mono text-sm font-semibold text-on-surface">{tool.name}</span>
+                    {tool.category && <span className="text-[10px] uppercase tracking-wide text-on-surface-variant bg-surface-container-highest px-1.5 py-0.5 rounded">{tool.category}</span>}
+                  </div>
+                  <p className="text-body-sm text-on-surface-variant">{tool.description || '(tidak ada deskripsi)'}</p>
+                </div>
+              ))}
+              {registeredTools.length === 0 && (
+                <p className="text-body-sm text-on-surface-variant italic">Belum ada tool terdaftar.</p>
+              )}
             </div>
           </section>
 
