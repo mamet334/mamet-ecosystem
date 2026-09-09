@@ -44,6 +44,13 @@ async function* processOpenAIStream(res: Response): AsyncGenerator<string, void,
 //      model yang tidak mendukungnya. Mengirim nilai "off" tetap berarti
 //      mengirim parameternya, jadi tetap 400.
 //   2. Gemini 2.5 Pro sama sekali tidak bisa dimatikan thinking-nya.
+//
+// CATATAN PERILAKU NYATA (uji live 2026-09-09): alasan #1 di atas berasal dari dokumentasi
+// OpenRouter, tapi tidak terbukti untuk semua model. openai/gpt-4o-mini — yang bukan model
+// reasoning — menerima `reasoning: { enabled: true }` dan menjawab HTTP 200, bukan 400.
+// Jadi penolakannya tampaknya bergantung model, bukan berlaku menyeluruh. Desain asimetris
+// ini tetap dipertahankan: risikonya nyata untuk sebagian model, dan tidak mengirim apa pun
+// tetap satu-satunya jalur yang dijamin tidak mengubah perilaku siapa pun.
 // File ini dilewati SEMUA panggilan LLM — Assistant, Engineer, Lite, dan
 // pengguna eksternal mametlite. Perilaku bawaan wajib tidak berubah sedikit pun
 // bagi siapa pun yang tidak menyalakan toggle ini.
@@ -71,7 +78,20 @@ function applyThinking(
  */
 function applyGeminiThinking(payload: any, model: string, enabled?: boolean): any {
   if (enabled !== true || !payload) return payload;
-  const isGemini3 = /gemini-3/i.test(model || '');
+
+  // Penjaga: GeminiAdapter bisa menerima model ID milik provider lain. Jalur execute()
+  // memakai `input.model` apa adanya sebagai targetModel tanpa memeriksa apakah itu model
+  // Gemini, jadi pemanggil yang mengirim mis. "deepseek/deepseek-v4-flash-0731" akan sampai
+  // ke sini. Terbukti di log produksi 2026-09-09. Menyuntikkan thinkingConfig ke request
+  // seperti itu jelas keliru — parameternya khas Gemini. Kalau namanya bukan model Gemini,
+  // kembalikan payload apa adanya. (Akar masalahnya sendiri — kenapa model non-Gemini bisa
+  // sampai ke GeminiAdapter — dicatat terpisah, di luar cakupan Item 35.)
+  if (!/gemini/i.test(model || '')) {
+    console.log(`[Thinking] Dilewati — "${model}" bukan model Gemini, thinkingConfig tidak disuntikkan`);
+    return payload;
+  }
+
+  const isGemini3 = /gemini-3/i.test(model);
   const thinkingConfig = isGemini3 ? { thinkingLevel: 'high' } : { thinkingBudget: -1 };
   console.log(`[Thinking] Reasoning dinyalakan untuk gemini, model ${model} → ${JSON.stringify(thinkingConfig)}`);
   return {

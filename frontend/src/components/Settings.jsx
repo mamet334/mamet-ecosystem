@@ -425,9 +425,9 @@ export default function Settings() {
                       <span className="text-[11px] leading-relaxed">
                         <span className="text-on-surface font-medium group-hover:text-primary transition-colors">Nyalakan reasoning mendalam</span>
                         <span className="block text-on-surface-variant mt-0.5">
-                          Hanya untuk model yang memang mendukungnya. Kalau dinyalakan di model biasa,
-                          provider bisa menolak permintaan dengan error 400. Dibiarkan mati = model
-                          memakai perilaku bawaannya.
+                          Sebaiknya hanya untuk model yang memang mendukung reasoning. Sebagian model
+                          menolak dengan error 400 kalau dinyalakan, sebagian lain menerimanya tanpa
+                          keluhan. Dibiarkan mati = model memakai perilaku bawaannya.
                         </span>
                       </span>
                     </label>
