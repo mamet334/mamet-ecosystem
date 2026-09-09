@@ -300,6 +300,7 @@ export class AssistantService {
     onChunk,
     onDone,
     onError,
+    modelTierOverride = null,
     _isPostHocWebRetry = false,
     _injectedKnowledgeContext = ''
   }) {
@@ -326,7 +327,7 @@ export class AssistantService {
     const handlerParams = {
       userMsg, history, workspaceId, userId, token,
       attachedFile, workspaceManager, onChunk, onDone, onError,
-      resolvedMode, resolvedAppSource,
+      resolvedMode, resolvedAppSource, modelTierOverride,
       _isPostHocWebRetry, _injectedKnowledgeContext
     };
 
@@ -379,16 +380,19 @@ export class AssistantService {
     console.log('[AssistantService] PR#8 → _handleLookup (skip memory/RAG/semantic)');
 
     // Get AI provider config
+    // LOOKUP selalu memakai tier KECIL tanpa classifier: jalur ini memang sudah dirancang ringan
+    // (tanpa memory/RAG/semantic) dan tidak menuntut penalaran berat — keputusan Owner 2026-09-09.
     let aiProvider = 'gemini';
     let formattedModel = '';
     let aiKey = '';
     try {
       const brainService = this.serviceManager.get('BrainService');
       if (brainService) {
-        const context = await brainService.getActiveBrainContext();
+        const context = await brainService.getActiveBrainContext('KECIL');
         aiProvider = context.provider || 'gemini';
         formattedModel = context.model || '';
         aiKey = context.key || '';
+        console.log(`[AssistantService] Model tier: KECIL (LOOKUP selalu tier ringan) → ${aiProvider}/${formattedModel || '(default)'}`);
       }
     } catch (e) {
       console.warn('[AssistantService] BrainService not available:', e);
@@ -660,7 +664,7 @@ export class AssistantService {
   async _handleConversation({
     userMsg, history, workspaceId, userId, token,
     attachedFile, workspaceManager, resolvedMode, resolvedAppSource,
-    onChunk, onDone, onError,
+    onChunk, onDone, onError, modelTierOverride = null,
     _isPostHocWebRetry = false, _injectedKnowledgeContext = ''
   }) {
     const isEngineerMode = resolvedMode === 'ENGINEER';
@@ -669,16 +673,41 @@ export class AssistantService {
     console.log(`[AssistantService] Mode check: workspace=${workspaceId}, resolvedMode=${resolvedMode}`);
 
     // 3. Get AI provider config dari BrainService
+    // Adaptive Model Tiering: tingkat (KECIL/SEDANG/THINKING) ditentukan TierClassifierService
+    // secara deterministik (0 biaya token). Engineer dikecualikan sepenuhnya — jalur BYOK-nya
+    // tetap memakai model utama (getActiveBrainContext tanpa tier), lihat roadmap §3.
     let aiProvider = 'gemini';
     let formattedModel = '';
     let aiKey = '';
+    let selectedTier = null;
+    let tierReason = '';
     try {
       const brainService = this.serviceManager.get('BrainService');
       if (brainService) {
-        const context = await brainService.getActiveBrainContext();
+        if (!isEngineerMode) {
+          if (modelTierOverride) {
+            // Owner mengunci tingkat lewat pil di kolom chat — classifier dilewati sepenuhnya.
+            selectedTier = modelTierOverride;
+            tierReason = 'override manual Owner';
+          } else {
+            const tierClassifier = this.serviceManager.get('TierClassifierService');
+            if (tierClassifier) {
+              const verdict = tierClassifier.classify(userMsg, history);
+              selectedTier = verdict.tier;
+              tierReason = verdict.reason;
+            }
+          }
+        }
+        const context = await brainService.getActiveBrainContext(selectedTier);
         aiProvider = context.provider || 'gemini';
         formattedModel = context.model || '';
         aiKey = context.key || '';
+
+        if (selectedTier) {
+          // Model ikut dicetak supaya Owner bisa memverifikasi tier benar-benar mengganti model,
+          // bukan cuma mengganti label tingkat.
+          console.log(`[AssistantService] Model tier: ${selectedTier} (${tierReason}) → ${aiProvider}/${formattedModel || '(default)'}`);
+        }
       }
     } catch (e) {
       console.warn('[AssistantService] BrainService not available:', e);

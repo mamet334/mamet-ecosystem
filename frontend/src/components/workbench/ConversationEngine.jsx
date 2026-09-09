@@ -82,6 +82,26 @@ export default function ConversationEngine({ sessionId }) {
   // walau jumlah tool di registry terus bertambah (bukan satu chip per tool lagi).
   const [showToolsPanel, setShowToolsPanel] = useState(false);
   const toolsPanelRef = useRef(null);
+
+  // Override tingkat model (Adaptive Model Tiering) — SENGAJA tidak persisten:
+  // state React biasa, berlaku hanya untuk sesi thread yang sedang terbuka di tab ini.
+  // Reload, buka chat lain, atau membuka chat yang sama dari device lain → kembali ke Auto.
+  // Konsekuensinya tidak ada kolom DB / migrasi skema baru untuk fitur ini (roadmap §4.4).
+  const [modelTierOverride, setModelTierOverride] = useState(null); // null = Auto
+  const [showTierPanel, setShowTierPanel] = useState(false);
+  const tierPanelRef = useRef(null);
+  const isEngineerWorkspace = osState?.workspaceId === 'ws-engineer';
+
+  useEffect(() => {
+    if (!showTierPanel) return;
+    const handleClickOutside = (e) => {
+      if (tierPanelRef.current && !tierPanelRef.current.contains(e.target)) {
+        setShowTierPanel(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showTierPanel]);
   useEffect(() => {
     if (!showToolsPanel) return;
     const handleClickOutside = (e) => {
@@ -323,6 +343,12 @@ export default function ConversationEngine({ sessionId }) {
     prevSessionIdRef.current = sessionId;
   }, [sessionId]);
 
+  // Override tingkat model dilepas setiap berpindah chat — termasuk saat membuka chat lama
+  // dari riwayat, bukan cuma saat membuat chat baru.
+  useEffect(() => {
+    setModelTierOverride(null);
+  }, [currentChatId]);
+
   // =============================================
   // NEW CHAT
   // =============================================
@@ -330,6 +356,7 @@ export default function ConversationEngine({ sessionId }) {
     isNewChatInitiatedByUser.current = true;
     setMessages([]);
     setCurrentChatId(null);
+    setModelTierOverride(null); // chat baru selalu kembali ke Auto (roadmap §3)
     // [FIX: localStorage isolation] Hapus kunci workspace-spesifik, bukan kunci global
     if (chatStorageKey) localStorage.removeItem(chatStorageKey);
   };
@@ -714,6 +741,7 @@ export default function ConversationEngine({ sessionId }) {
         userId,
         token,
         attachedFile,
+        modelTierOverride,
         workspaceManager,
 
         onChunk: (chunkText, allText, steps) => {
@@ -1036,6 +1064,56 @@ export default function ConversationEngine({ sessionId }) {
                       </button>
                     );
                   })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Pil override tingkat model — hanya untuk jalur Assistant. Engineer sengaja tidak
+              ditampilkan karena memakai model utama sendiri, di luar sistem tiering (roadmap §3). */}
+          {osState?.workspaceId && !isEngineerWorkspace && (
+            <div className="relative" ref={tierPanelRef}>
+              <button
+                onClick={() => setShowTierPanel(v => !v)}
+                title={modelTierOverride
+                  ? `Model dikunci ke tingkat ${modelTierOverride} untuk sesi chat ini`
+                  : 'Tingkat model dipilih otomatis tiap pesan — klik untuk mengunci'}
+                className={`h-10 px-3 flex items-center gap-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm active:scale-95
+                  ${modelTierOverride ? 'bg-primary/15 border-primary/50 text-primary' : 'bg-surface-container-low border-outline-variant text-on-surface-variant'}`}
+              >
+                <span className="material-symbols-outlined text-[18px]">layers</span>
+                {modelTierOverride || 'Auto'}
+              </button>
+
+              {showTierPanel && (
+                <div className="absolute left-0 top-12 z-50 w-60 rounded-xl border border-outline-variant bg-surface-container-low shadow-lg p-2">
+                  <div className="px-2 py-1 text-[11px] font-bold text-on-surface-variant uppercase tracking-wide">
+                    Tingkat model
+                  </div>
+                  {[
+                    { id: null, label: 'Auto', hint: 'Dipilih otomatis tiap pesan' },
+                    { id: 'KECIL', label: 'Kecil', hint: 'Paling ringan & murah' },
+                    { id: 'SEDANG', label: 'Sedang', hint: 'Seimbang' },
+                    { id: 'THINKING', label: 'Thinking', hint: 'Penalaran berat' }
+                  ].map(option => {
+                    const active = modelTierOverride === option.id;
+                    return (
+                      <button
+                        key={option.label}
+                        onClick={() => { setModelTierOverride(option.id); setShowTierPanel(false); }}
+                        className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-surface-variant text-left transition-all"
+                      >
+                        <span className={`material-symbols-outlined text-[18px] ${active ? 'text-primary' : 'text-transparent'}`}>check</span>
+                        <span className="flex flex-col">
+                          <span className={`text-xs font-semibold ${active ? 'text-primary' : 'text-on-surface'}`}>{option.label}</span>
+                          <span className="text-[10px] text-on-surface-variant">{option.hint}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                  <p className="px-2 pt-2 text-[10px] text-on-surface-variant leading-relaxed border-t border-outline-variant/50 mt-1">
+                    Kuncian ini hanya berlaku selama sesi chat ini terbuka — pindah chat atau muat ulang akan kembali ke Auto.
+                  </p>
                 </div>
               )}
             </div>

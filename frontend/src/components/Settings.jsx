@@ -61,6 +61,60 @@ export default function Settings() {
     setTimeout(() => setScanStatus(''), 2500);
   };
 
+  // Adaptive Model Tiering — 3 slot kurasi Owner (lihat ROADMAP-ADAPTIVE-MODEL-TIERING.md).
+  // Sumber kebenaran tetap BrainService; state di sini cuma pemicu re-render setelah setTier().
+  const [tiersVersion, setTiersVersion] = useState(0);
+  const brainServiceRef = kernel.serviceManager?.get('BrainService');
+  const modelTiers = brainServiceRef?.getTiers?.() || {};
+
+  const handleTierChange = (tierName, field, value) => {
+    if (!brainServiceRef?.setTier) return;
+    brainServiceRef.setTier(tierName, { [field]: value });
+    setTiersVersion(v => v + 1);
+  };
+
+  // Batas biaya harian pribadi — disimpan di user_metadata, dibaca quota_middleware di edge
+  // function. Nilai efektifnya = min(batas ini, plafon sistem) sehingga hanya bisa memperketat.
+  const [dailyCap, setDailyCap] = useState('');
+  const [systemCap, setSystemCap] = useState(null);
+  const [capStatus, setCapStatus] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: config } = await supabase
+          .from('system_config')
+          .select('daily_budget_cap_usd')
+          .single();
+        if (cancelled) return;
+        const saved = user?.user_metadata?.daily_budget_cap_usd;
+        if (saved !== undefined && saved !== null) setDailyCap(String(saved));
+        if (config?.daily_budget_cap_usd != null) setSystemCap(Number(config.daily_budget_cap_usd));
+      } catch (e) {
+        console.warn('[Settings] Gagal memuat batas harian:', e.message);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleSaveDailyCap = async () => {
+    setCapStatus('saving');
+    try {
+      const parsed = dailyCap === '' ? null : Number(dailyCap);
+      if (parsed !== null && (!Number.isFinite(parsed) || parsed <= 0)) {
+        setCapStatus('error:Nilai harus angka lebih besar dari 0, atau kosongkan untuk mengikuti plafon sistem.');
+        return;
+      }
+      await supabase.auth.updateUser({ data: { daily_budget_cap_usd: parsed } });
+      setCapStatus('done');
+      setTimeout(() => setCapStatus(''), 2500);
+    } catch (e) {
+      setCapStatus(`error:${e.message}`);
+    }
+  };
+
   useEffect(() => {
     // Get user from Kernel identity
     setUser(kernel.identity.user);
@@ -188,7 +242,7 @@ export default function Settings() {
               </div>
               <div>
                 <h2 className="font-headline-md text-headline-md">AI Model Management</h2>
-                <p className="text-body-sm text-on-surface-variant">Select and provision inference engines</p>
+                <p className="text-body-sm text-on-surface-variant">Model utama — dipakai Engineer &amp; sebagai dasar slot tier di bawah</p>
               </div>
             </div>
             
@@ -304,6 +358,129 @@ export default function Settings() {
             <div className="mt-6 p-4 rounded-lg bg-primary-container/5 border border-primary/20">
               <p className="text-body-sm text-primary/80 leading-relaxed italic">"Masukkan API Key yang sesuai dengan provider pilihan Anda. Jika menggunakan OpenRouter, gunakan OpenRouter API Key. Klik <strong>Save</strong>, kemudian <strong>Test Connection</strong> untuk memastikan koneksi AI berhasil."</p>
             </div>
+          </section>
+
+
+          {/* Adaptive Model Tiering — 3 slot kurasi Owner, khusus jalur Assistant.
+              Sistem hanya memutuskan TINGKAT mana yang dipakai per pesan (TierClassifierService,
+              deterministik tanpa LLM); model apa yang mengisi tiap tingkat sepenuhnya pilihan Owner. */}
+          <section className="col-span-12 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center">
+                <span className="material-symbols-outlined text-primary">layers</span>
+              </div>
+              <div>
+                <h2 className="font-headline-md text-headline-md">Adaptive Model Tiering</h2>
+                <p className="text-body-sm text-on-surface-variant">Model per tingkat percakapan — khusus Assistant</p>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-on-surface-variant leading-relaxed mb-5">
+              Sistem memilih <strong>tingkat</strong> otomatis tiap pesan (tanpa biaya token — murni kata kunci &amp; panjang pesan).
+              Anda yang menentukan <strong>model</strong> di tiap tingkat. Engineer tidak memakai slot ini — Engineer tetap pakai
+              Provider/Model utama di atas. Kalau slot dibiarkan sama semua, tidak ada perubahan perilaku.
+            </p>
+
+            <div className="space-y-4">
+              {[
+                { id: 'KECIL', label: 'Kecil', hint: 'Sapaan, afirmasi, pesan pendek — juga dipakai semua request LOOKUP' },
+                { id: 'SEDANG', label: 'Sedang', hint: 'Default kalau pesan tidak tergolong ringan maupun berat' },
+                { id: 'THINKING', label: 'Thinking', hint: 'Analisis, perbandingan, perancangan, pesan panjang' }
+              ].map(tier => {
+                const slot = modelTiers[tier.id] || {};
+                return (
+                  <div key={tier.id} className="p-4 rounded-lg bg-surface-container-low border border-outline-variant/50">
+                    <div className="flex items-baseline gap-2 mb-3">
+                      <span className="text-label-mono text-primary uppercase tracking-widest text-xs font-bold">{tier.label}</span>
+                      <span className="text-[10px] text-on-surface-variant">{tier.hint}</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <input
+                        type="text"
+                        list="provider-suggestions"
+                        value={slot.provider || ''}
+                        onChange={(e) => handleTierChange(tier.id, 'provider', e.target.value)}
+                        placeholder="Provider"
+                        className="w-full bg-surface-container-lowest border border-outline-variant px-4 py-3 rounded-lg text-on-surface text-sm focus:border-primary focus:ring-0 transition-all"
+                      />
+                      <input
+                        type="text"
+                        value={slot.model || ''}
+                        onChange={(e) => handleTierChange(tier.id, 'model', e.target.value)}
+                        placeholder="Model ID"
+                        className="w-full bg-surface-container-lowest border border-outline-variant px-4 py-3 rounded-lg text-on-surface text-sm font-mono focus:border-primary focus:ring-0 transition-all"
+                      />
+                    </div>
+                    <input
+                      type="text"
+                      value={slot.note || ''}
+                      onChange={(e) => handleTierChange(tier.id, 'note', e.target.value)}
+                      placeholder="Catatan opsional — kenapa model ini dipilih (untuk pengingat nanti)"
+                      className="mt-3 w-full bg-transparent border-b border-outline-variant/60 px-1 py-2 text-on-surface-variant text-xs focus:border-primary focus:ring-0 transition-all"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-5 p-3 rounded-lg bg-primary-container/5 border border-primary/20">
+              <p className="text-[11px] text-primary/80 leading-relaxed">
+                Perubahan tersimpan otomatis dan disinkronkan ke akun Anda, jadi ikut terbawa ke device lain.
+                API Key diambil dari provider yang sama seperti yang sudah Anda simpan di bagian API Key di atas.
+              </p>
+            </div>
+          </section>
+
+
+          {/* Batas Biaya Harian — circuit breaker per akun.
+              Nilai efektif = min(batas pribadi ini, plafon sistem). Plafon hanya bisa diubah
+              lewat service role, supaya tidak ada pengguna yang bisa menaikkan jatah belanjanya
+              sendiri di atas API key sistem. */}
+          <section className="col-span-12 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center">
+                <span className="material-symbols-outlined text-primary">savings</span>
+              </div>
+              <div>
+                <h2 className="font-headline-md text-headline-md">Batas Biaya Harian</h2>
+                <p className="text-body-sm text-on-surface-variant">Circuit breaker otomatis saat pemakaian AI melewati batas</p>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-on-surface-variant leading-relaxed mb-4">
+              Batas pribadi Anda hanya bisa <strong>memperketat</strong>, tidak bisa melewati plafon sistem
+              {systemCap !== null ? <> (saat ini <strong>${systemCap.toFixed(2)}</strong>)</> : null}.
+              Kosongkan untuk mengikuti plafon sistem apa adanya.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+              <div className="flex items-center gap-2 flex-1">
+                <span className="text-on-surface-variant text-sm">$</span>
+                <input
+                  type="number"
+                  step="0.05"
+                  min="0"
+                  value={dailyCap}
+                  onChange={(e) => setDailyCap(e.target.value)}
+                  placeholder={systemCap !== null ? systemCap.toFixed(2) : '1.00'}
+                  className="w-full bg-surface-container-lowest border border-outline-variant px-4 py-3 rounded-lg text-on-surface font-mono text-sm focus:border-primary focus:ring-0 transition-all"
+                />
+                <span className="text-on-surface-variant text-xs whitespace-nowrap">per hari</span>
+              </div>
+              <button
+                onClick={handleSaveDailyCap}
+                disabled={capStatus === 'saving'}
+                className="px-5 py-3 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 text-sm font-semibold transition-all active:scale-95 disabled:opacity-50"
+              >
+                {capStatus === 'saving' ? 'Menyimpan...' : capStatus === 'done' ? 'Tersimpan' : 'Simpan Batas'}
+              </button>
+            </div>
+
+            {capStatus.startsWith('error:') && (
+              <div className="mt-3 p-3 rounded-lg bg-error/10 border border-error/30">
+                <p className="text-[11px] text-error leading-relaxed break-words">{capStatus.replace('error:', '')}</p>
+              </div>
+            )}
           </section>
 
 

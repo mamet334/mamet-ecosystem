@@ -16,14 +16,27 @@
  *
  * DEFAULT PROVIDER diubah dari 'openrouter' (berbayar, model mahal) ke 'gemini'
  * untuk mencegah saldo habis saat settings belum dikonfigurasi.
+ *
+ * ADAPTIVE MODEL TIERING (2026-09-09, ROADMAP-ADAPTIVE-MODEL-TIERING.md):
+ * `state.provider`/`state.model` TETAP ADA dan tetap jadi model utama untuk jalur non-tier
+ * (Engineer lewat executeLLM(), dan pemanggil getActiveBrainContext() tanpa argumen) — sesuai
+ * roadmap §3 yang menegaskan Engineer di luar sistem tiering. Yang baru adalah `state.tiers`:
+ * 3 slot kurasi Owner (KECIL/SEDANG/THINKING) yang hanya dipakai jalur Assistant.
  */
+import { supabase } from '../../../supabase';
+
+const TIER_NAMES = ['KECIL', 'SEDANG', 'THINKING'];
+const TIERS_STORAGE_KEY = 'maef_model_tiers';
+const TIERS_METADATA_KEY = 'model_tiers';
+
 class BrainService {
   constructor(serviceManager) {
     this.serviceManager = serviceManager;
     this.eventBus = serviceManager.get('EventBus');
     this.state = {
       provider: 'gemini',         // [SECURITY FIX] Default ke Gemini (free tier tersedia), bukan OpenRouter yang berbayar
-      model: 'gemini-2.0-flash'   // [SECURITY FIX] Model ringan sebagai default aman
+      model: 'gemini-2.0-flash',  // [SECURITY FIX] Model ringan sebagai default aman
+      tiers: null                 // Diisi saat initialize(): { KECIL: {...}, SEDANG: {...}, THINKING: {...} }
     };
   }
 
@@ -32,7 +45,118 @@ class BrainService {
     const savedModel = localStorage.getItem('maef_ai_model');
     if (savedProvider) this.state.provider = savedProvider;
     if (savedModel) this.state.model = savedModel;
+
+    this.state.tiers = this._loadTiersFromLocalStorage() || this._seedTiersFromMainModel();
     console.log(`[BrainService] Initialized with provider: ${this.state.provider}, model: ${this.state.model}`);
+
+    // Sinkron lintas device: user_metadata menang atas localStorage kalau ada (Owner bisa
+    // mengubah config dari device lain). Sengaja tidak di-await di jalur boot supaya kegagalan
+    // jaringan tidak pernah memblokir Kernel — hasilnya diumumkan lewat event kalau berubah.
+    this._hydrateTiersFromSupabase();
+  }
+
+  /**
+   * Slot tier awal = salinan model utama untuk ketiganya. Konsekuensinya perilaku Assistant
+   * TIDAK berubah sama sekali sampai Owner benar-benar mengisi slot berbeda di Settings —
+   * tiering yang aktif tapi belum dikurasi tidak boleh diam-diam mengganti model Owner.
+   */
+  _seedTiersFromMainModel() {
+    const seed = {};
+    for (const tier of TIER_NAMES) {
+      seed[tier] = { provider: this.state.provider, model: this.state.model, thinking: false, note: '' };
+    }
+    return seed;
+  }
+
+  _loadTiersFromLocalStorage() {
+    try {
+      const raw = localStorage.getItem(TIERS_STORAGE_KEY);
+      if (!raw) return null;
+      return this._normalizeTiers(JSON.parse(raw));
+    } catch (e) {
+      console.warn('[BrainService] Gagal membaca model tiers dari localStorage:', e.message);
+      return null;
+    }
+  }
+
+  /** Pastikan ketiga slot selalu ada & terisi, apa pun bentuk data yang tersimpan sebelumnya. */
+  _normalizeTiers(rawTiers) {
+    const normalized = {};
+    for (const tier of TIER_NAMES) {
+      const slot = rawTiers?.[tier] || {};
+      normalized[tier] = {
+        provider: slot.provider || this.state.provider,
+        model: slot.model || this.state.model,
+        thinking: slot.thinking === true,
+        note: slot.note || ''
+      };
+    }
+    return normalized;
+  }
+
+  async _hydrateTiersFromSupabase() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const remoteTiers = user?.user_metadata?.[TIERS_METADATA_KEY];
+      if (!remoteTiers) return;
+
+      this.state.tiers = this._normalizeTiers(remoteTiers);
+      localStorage.setItem(TIERS_STORAGE_KEY, JSON.stringify(this.state.tiers));
+      console.log('[BrainService] Model tiers disinkron dari user_metadata (lintas device)');
+      this.eventBus?.emit('Brain:TiersUpdated', { tiers: { ...this.state.tiers }, source: 'supabase' });
+    } catch (e) {
+      console.warn('[BrainService] Gagal sinkron model tiers dari Supabase (pakai lokal):', e.message);
+    }
+  }
+
+  /**
+   * Versi debounced — Settings UI memanggil setTier() tiap ketikan, tanpa ini setiap karakter
+   * jadi satu request updateUser ke Supabase (pola masalah yang sama sudah pernah ditangani
+   * WorkspaceManager._debouncedSyncLayoutToSupabase saat resize/drag).
+   */
+  _debouncedSyncTiersToSupabase() {
+    clearTimeout(this._tierSyncTimeout);
+    this._tierSyncTimeout = setTimeout(() => this._syncTiersToSupabase(), 1500);
+  }
+
+  /** Pola identik dengan WorkspaceManager._syncLayoutToSupabase() yang sudah terbukti jalan. */
+  async _syncTiersToSupabase() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      await supabase.auth.updateUser({ data: { [TIERS_METADATA_KEY]: this.state.tiers } });
+      console.log('[BrainService] Model tiers tersinkron ke Supabase user_metadata');
+    } catch (e) {
+      console.error('[BrainService] Gagal sinkron model tiers ke Supabase:', e.message);
+    }
+  }
+
+  getTiers() {
+    return { ...(this.state.tiers || this._seedTiersFromMainModel()) };
+  }
+
+  /**
+   * Simpan satu slot tier (dipakai Settings UI). Menulis ke localStorage untuk device ini,
+   * lalu menyinkronkan ke user_metadata supaya device lain ikut terbarui.
+   */
+  setTier(tierName, { provider, model, thinking, note } = {}) {
+    if (!TIER_NAMES.includes(tierName)) {
+      console.warn(`[BrainService] Tier tidak dikenal: ${tierName}`);
+      return;
+    }
+    if (!this.state.tiers) this.state.tiers = this._seedTiersFromMainModel();
+
+    const current = this.state.tiers[tierName];
+    this.state.tiers[tierName] = {
+      provider: provider ?? current.provider,
+      model: model ?? current.model,
+      thinking: thinking ?? current.thinking,
+      note: note ?? current.note
+    };
+
+    localStorage.setItem(TIERS_STORAGE_KEY, JSON.stringify(this.state.tiers));
+    this.eventBus?.emit('Brain:TiersUpdated', { tiers: { ...this.state.tiers }, source: 'local' });
+    this._debouncedSyncTiersToSupabase();
   }
 
   setBrain(provider, model) {
@@ -53,15 +177,28 @@ class BrainService {
   /**
    * Retrieves the active brain context (provider, model, apiKey) for an API call.
    * API key diambil dari VaultService yang terisi saat user Save di Settings.
+   *
+   * @param {'KECIL'|'SEDANG'|'THINKING'} [tierName] - Kalau diisi, ambil dari slot tier hasil
+   *   kurasi Owner (jalur Assistant). Kalau kosong, pakai model utama seperti sebelumnya —
+   *   inilah yang dipakai Engineer (executeLLM) supaya jalurnya tidak tersentuh tiering.
    */
-  async getActiveBrainContext() {
+  async getActiveBrainContext(tierName) {
     const vault = this.serviceManager.get('VaultService');
-    const key = vault ? vault.getKey(this.state.provider) : null;
-    
+    const slot = (tierName && this.state.tiers?.[tierName]) || null;
+
+    const provider = slot?.provider || this.state.provider;
+    const model = slot?.model || this.state.model;
+    const key = vault ? vault.getKey(provider) : null;
+
     return {
-      provider: this.state.provider,
-      model: this.state.model,
-      key: key
+      provider,
+      model,
+      key,
+      tier: slot ? tierName : null,
+      // Disimpan & dikembalikan, tapi BELUM dikirim ke LLM: pipeline (payload → edge function →
+      // adapter) belum punya jalur untuk parameter ini. Lihat ROADMAP-ADAPTIVE-MODEL-TIERING.md
+      // dan Item backlog terkait — plumbing-nya pekerjaan terpisah.
+      thinking: slot?.thinking === true
     };
   }
 

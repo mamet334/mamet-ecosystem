@@ -31,6 +31,7 @@ import { WebComparisonService } from './services/WebComparisonService.js';
 import { RetrievalOrchestrator } from './services/RetrievalOrchestrator.js';
 import { ModuleDiscoveryService } from './services/ModuleDiscoveryService.js';
 import { RequestClassifierService } from './services/RequestClassifierService.js';
+import { TierClassifierService } from './services/TierClassifierService.js';
 import { SkillRegistry } from './services/SkillRegistry.js';
 import { SkillGuardService } from './services/SkillGuardService.js';
 import { SystemGovernorService } from './services/SystemGovernorService.js';
@@ -359,6 +360,13 @@ class Kernel {
     await requestClassifierService.initialize();
     serviceManager.register('RequestClassifierService', requestClassifierService);
     this.log('INFO', 'RequestClassifierService Initialized & Registered');
+
+    // Penentu tingkat model (KECIL/SEDANG/THINKING) per pesan — deterministik, 0 LLM cost,
+    // pola sama seperti RequestClassifierService di atas.
+    const tierClassifierService = new TierClassifierService(serviceManager);
+    await tierClassifierService.initialize();
+    serviceManager.register('TierClassifierService', tierClassifierService);
+    this.log('INFO', 'TierClassifierService Initialized & Registered');
 
     // System Governor Service (Tahap 2) — Codebase Governance & File Integrity Daemon
     // Independen dari Engineer, 4-level escalation ladder, session-relative TTL
