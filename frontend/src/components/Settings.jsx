@@ -411,6 +411,27 @@ export default function Settings() {
                         className="w-full bg-surface-container-lowest border border-outline-variant px-4 py-3 rounded-lg text-on-surface text-sm font-mono focus:border-primary focus:ring-0 transition-all"
                       />
                     </div>
+                    {/* Toggle reasoning. Sengaja hanya bisa MENYALAKAN: kalau mati, tidak ada
+                        parameter apa pun yang dikirim ke provider (bukan dikirim sebagai "off").
+                        Alasannya ada di komentar ai_adapter.ts — OpenRouter menolak dengan 400
+                        kalau parameter reasoning dikirim ke model yang tidak mendukungnya. */}
+                    <label className="mt-3 flex items-start gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={slot.thinking === true}
+                        onChange={(e) => handleTierChange(tier.id, 'thinking', e.target.checked)}
+                        className="mt-0.5 w-4 h-4 rounded border-outline-variant bg-surface-container-lowest text-primary focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                      />
+                      <span className="text-[11px] leading-relaxed">
+                        <span className="text-on-surface font-medium group-hover:text-primary transition-colors">Nyalakan reasoning mendalam</span>
+                        <span className="block text-on-surface-variant mt-0.5">
+                          Hanya untuk model yang memang mendukungnya. Kalau dinyalakan di model biasa,
+                          provider bisa menolak permintaan dengan error 400. Dibiarkan mati = model
+                          memakai perilaku bawaannya.
+                        </span>
+                      </span>
+                    </label>
+
                     <input
                       type="text"
                       value={slot.note || ''}

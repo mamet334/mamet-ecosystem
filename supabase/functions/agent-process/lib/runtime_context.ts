@@ -90,6 +90,22 @@ export interface ModelConfig {
    * Undefined = gunakan default cascade.
    */
   provider?: string;
+  /**
+   * Minta model melakukan penalaran mendalam (reasoning/thinking).
+   * Berasal dari slot tier Adaptive Model Tiering di BrainService.
+   *
+   * PENTING — semantiknya sengaja asimetris:
+   *   true            = kirim parameter reasoning provider yang sesuai
+   *   false/undefined = JANGAN kirim apa pun, biarkan perilaku bawaan model
+   *
+   * Ini BUKAN "matikan reasoning". Mematikan tidak bisa dijamin lintas provider:
+   * OpenRouter menolak dengan 400 kalau parameter reasoning dikirim ke model
+   * non-reasoning, dan Gemini 2.5 Pro sama sekali tidak bisa dimatikan
+   * thinking-nya. Karena ai_adapter.ts dilewati SEMUA panggilan LLM (Assistant,
+   * Engineer, Lite, dan pengguna eksternal mametlite), jalur aman satu-satunya
+   * adalah tidak mengirim apa pun kecuali diminta eksplisit.
+   */
+  thinking?: boolean;
 }
 
 // ─────────────────────────────────────────────

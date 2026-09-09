@@ -399,6 +399,7 @@ export class AssistantService {
     let aiProvider = 'gemini';
     let formattedModel = '';
     let aiKey = '';
+    let aiThinking = false;
     try {
       const brainService = this.serviceManager.get('BrainService');
       if (brainService) {
@@ -406,7 +407,8 @@ export class AssistantService {
         aiProvider = context.provider || 'gemini';
         formattedModel = context.model || '';
         aiKey = context.key || '';
-        console.log(`[AssistantService] Model tier: KECIL (LOOKUP selalu tier ringan) → ${aiProvider}/${formattedModel || '(default)'}`);
+        aiThinking = context.thinking === true;
+        console.log(`[AssistantService] Model tier: KECIL (LOOKUP selalu tier ringan) → ${aiProvider}/${formattedModel || '(default)'}${aiThinking ? ' [thinking: ON]' : ''}`);
       }
     } catch (e) {
       console.warn('[AssistantService] BrainService not available:', e);
@@ -424,6 +426,7 @@ export class AssistantService {
       stream: false,
       ragEnabled: false,
       model: formattedModel || undefined,
+      thinking: aiThinking || undefined,
       cache_hint: true,
       _request_type: 'LOOKUP'
     };
@@ -693,6 +696,7 @@ export class AssistantService {
     let aiProvider = 'gemini';
     let formattedModel = '';
     let aiKey = '';
+    let aiThinking = false;
     let selectedTier = null;
     let tierReason = '';
     try {
@@ -716,11 +720,12 @@ export class AssistantService {
         aiProvider = context.provider || 'gemini';
         formattedModel = context.model || '';
         aiKey = context.key || '';
+        aiThinking = context.thinking === true;
 
         if (selectedTier) {
           // Model ikut dicetak supaya Owner bisa memverifikasi tier benar-benar mengganti model,
           // bukan cuma mengganti label tingkat.
-          console.log(`[AssistantService] Model tier: ${selectedTier} (${tierReason}) → ${aiProvider}/${formattedModel || '(default)'}`);
+          console.log(`[AssistantService] Model tier: ${selectedTier} (${tierReason}) → ${aiProvider}/${formattedModel || '(default)'}${aiThinking ? ' [thinking: ON]' : ''}`);
         }
       }
     } catch (e) {
@@ -834,6 +839,7 @@ export class AssistantService {
       stream: false,
       ragEnabled: ragToolEnabled,
       model: formattedModel || undefined,
+      thinking: aiThinking || undefined,
       file: fileData || undefined,
       requestedFilePath: isEngineerMode ? this.extractFilePathFromMessage(userMsg) : undefined,
       tools: isLiteMode ? ['rag_search', 'web_search', 'deep_research'] : undefined,

@@ -24,6 +24,62 @@ async function* processOpenAIStream(res: Response): AsyncGenerator<string, void,
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PARAMETER REASONING / THINKING PER-PROVIDER
+// ─────────────────────────────────────────────────────────────────────────────
+// Tiap provider menamai parameter ini berbeda-beda. Nama & nilai di bawah
+// DIVERIFIKASI LANGSUNG dari dokumentasi provider pada 2026-09-09 — jangan
+// diubah berdasarkan ingatan, buka dokumentasinya lagi:
+//   OpenRouter : reasoning: { enabled: true }        (openrouter.ai/docs/use-cases/reasoning-tokens)
+//   OpenAI     : reasoning_effort: 'medium'          (developers.openai.com/api/docs/guides/reasoning)
+//   Groq       : reasoning_effort: 'medium'          (console.groq.com/docs/reasoning)
+//   Gemini 3.x : generationConfig.thinkingConfig.thinkingLevel: 'high'
+//   Gemini 2.5 : generationConfig.thinkingConfig.thinkingBudget: -1 (dinamis)
+//   (ai.google.dev/gemini-api/docs/generate-content/thinking)
+//
+// KENAPA HANYA MENYALAKAN, TIDAK PERNAH MEMATIKAN:
+// Kalau thinking tidak diminta, kita TIDAK mengirim apa pun — bukan mengirim
+// nilai "off". Dua alasan keras:
+//   1. OpenRouter menolak dengan HTTP 400 kalau parameter reasoning dikirim ke
+//      model yang tidak mendukungnya. Mengirim nilai "off" tetap berarti
+//      mengirim parameternya, jadi tetap 400.
+//   2. Gemini 2.5 Pro sama sekali tidak bisa dimatikan thinking-nya.
+// File ini dilewati SEMUA panggilan LLM — Assistant, Engineer, Lite, dan
+// pengguna eksternal mametlite. Perilaku bawaan wajib tidak berubah sedikit pun
+// bagi siapa pun yang tidak menyalakan toggle ini.
+
+type ThinkingProvider = 'openrouter' | 'openai' | 'groq';
+
+/**
+ * Menambahkan parameter reasoning ke body request bergaya OpenAI.
+ * Mengembalikan body apa adanya kalau thinking tidak diminta eksplisit.
+ */
+function applyThinking(
+  body: Record<string, any>,
+  provider: ThinkingProvider,
+  enabled?: boolean
+): Record<string, any> {
+  if (enabled !== true) return body;
+  console.log(`[Thinking] Reasoning dinyalakan untuk provider ${provider}, model ${body.model}`);
+  if (provider === 'openrouter') return { ...body, reasoning: { enabled: true } };
+  return { ...body, reasoning_effort: 'medium' };
+}
+
+/**
+ * Versi Gemini — parameternya bersarang di generationConfig, dan nama fieldnya
+ * berbeda antara keluarga 3.x (thinkingLevel) dan 2.5 (thinkingBudget).
+ */
+function applyGeminiThinking(payload: any, model: string, enabled?: boolean): any {
+  if (enabled !== true || !payload) return payload;
+  const isGemini3 = /gemini-3/i.test(model || '');
+  const thinkingConfig = isGemini3 ? { thinkingLevel: 'high' } : { thinkingBudget: -1 };
+  console.log(`[Thinking] Reasoning dinyalakan untuk gemini, model ${model} → ${JSON.stringify(thinkingConfig)}`);
+  return {
+    ...payload,
+    generationConfig: { ...(payload.generationConfig || {}), thinkingConfig }
+  };
+}
+
 export class GroqAdapter implements CapabilityAdapter {
   name = 'GroqAdapter';
   type = 'AI' as const;
@@ -68,7 +124,7 @@ export class GroqAdapter implements CapabilityAdapter {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${this.rctx.keys.groq}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: groqModel, messages, temperature: 0.1, max_tokens: 8192 })
+      body: JSON.stringify(applyThinking({ model: groqModel, messages, temperature: 0.1, max_tokens: 8192 }, 'groq', this.rctx.model.thinking))
     });
     if (!res.ok) throw new Error(`Groq API Error: ${res.status} ${await res.text()}`);
     const data = await res.json();
@@ -126,7 +182,7 @@ export class GroqAdapter implements CapabilityAdapter {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${this.rctx.keys.groq}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: groqModel, messages, temperature: 0.1, max_tokens: 8192, stream: true }),
+      body: JSON.stringify(applyThinking({ model: groqModel, messages, temperature: 0.1, max_tokens: 8192, stream: true }, 'groq', this.rctx.model.thinking)),
       signal: aborter.signal
     });
     clearTimeout(id);
@@ -232,7 +288,7 @@ export class OpenRouterAdapter implements CapabilityAdapter {
         'X-Title': 'Mamet AI Agent',
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ model: openRouterModel, messages, temperature: 0.1, max_tokens: 8192 })
+      body: JSON.stringify(applyThinking({ model: openRouterModel, messages, temperature: 0.1, max_tokens: 8192 }, 'openrouter', this.rctx.model.thinking))
     });
     if (!res.ok) throw new Error(`OpenRouter API Error: ${res.status} ${await res.text()}`);
     const data = await res.json();
@@ -313,7 +369,7 @@ export class OpenRouterAdapter implements CapabilityAdapter {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${this.rctx.keys.openRouter}`, 'HTTP-Referer': 'https://ai-agent-project.vercel.app', 'X-Title': 'Mamet AI Agent', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: orModel, messages, temperature: 0.1, max_tokens: 8192, stream: true }),
+      body: JSON.stringify(applyThinking({ model: orModel, messages, temperature: 0.1, max_tokens: 8192, stream: true }, 'openrouter', this.rctx.model.thinking)),
       signal: aborter.signal
     });
     clearTimeout(id);
@@ -389,7 +445,7 @@ export class GeminiAdapter implements CapabilityAdapter {
           const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${key}`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(applyGeminiThinking(payload, targetModel, this.rctx.model.thinking))
           });
           
           if (res.ok) {
@@ -532,7 +588,7 @@ export class GeminiAdapter implements CapabilityAdapter {
       const id = setTimeout(() => aborter.abort(), 15000);
       try {
         const attempt = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${key}`, {
-          method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(geminiPayload), signal: aborter.signal
+          method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(applyGeminiThinking(geminiPayload, model, this.rctx.model.thinking)), signal: aborter.signal
         });
         clearTimeout(id);
         if (attempt.ok) {
@@ -657,7 +713,7 @@ export class OpenAIAdapter implements CapabilityAdapter {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${this.rctx.keys.openAI}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: selectedModel, messages, temperature: 0.1, max_tokens: 8192 })
+      body: JSON.stringify(applyThinking({ model: selectedModel, messages, temperature: 0.1, max_tokens: 8192 }, 'openai', this.rctx.model.thinking))
     });
     if (!res.ok) throw new Error(`OpenAI API Error: ${res.status} ${await res.text()}`);
     const data = await res.json();
@@ -713,7 +769,7 @@ export class OpenAIAdapter implements CapabilityAdapter {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${this.rctx.keys.openAI}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: selectedModel, messages, temperature: 0.1, max_tokens: 8192, stream: true }),
+      body: JSON.stringify(applyThinking({ model: selectedModel, messages, temperature: 0.1, max_tokens: 8192, stream: true }, 'openai', this.rctx.model.thinking)),
       signal: aborter.signal
     });
     clearTimeout(id);

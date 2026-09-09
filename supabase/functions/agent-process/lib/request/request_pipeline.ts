@@ -186,7 +186,7 @@ export async function executeRequestPipeline(
       openAI: finalProvider === 'openai' ? finalApiKey : openAIKey,
     },
 
-    model: { model: parsed.model, provider: finalProvider },
+    model: { model: parsed.model, provider: finalProvider, thinking: parsed.thinking === true },
     policy: { canUseDesktopTools: ctx.policy.canUseDesktopTools },
     stream: { isStream: !!parsed.stream, extractedImage: parsed.extractedImage, desktopOSMode: !!parsed.desktopOSMode, auditMode: parsed.auditMode || 'OFF' },
     env: runtimeEnv,

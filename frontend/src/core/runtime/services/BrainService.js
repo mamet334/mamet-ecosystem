@@ -195,9 +195,11 @@ class BrainService {
       model,
       key,
       tier: slot ? tierName : null,
-      // Disimpan & dikembalikan, tapi BELUM dikirim ke LLM: pipeline (payload → edge function →
-      // adapter) belum punya jalur untuk parameter ini. Lihat ROADMAP-ADAPTIVE-MODEL-TIERING.md
-      // dan Item backlog terkait — plumbing-nya pekerjaan terpisah.
+      // Tersambung penuh ke LLM sejak Item 35 (2026-09-09): AssistantService mengirimnya di
+      // payload sebagai `thinking`, request_parser meneruskannya ke RuntimeContext.model.thinking,
+      // dan ai_adapter.ts menerjemahkannya ke parameter reasoning masing-masing provider.
+      // Catatan penting: true = nyalakan reasoning; false = TIDAK mengirim apa pun (bukan
+      // "matikan reasoning"). Lihat komentar di ai_adapter.ts untuk alasannya.
       thinking: slot?.thinking === true
     };
   }
