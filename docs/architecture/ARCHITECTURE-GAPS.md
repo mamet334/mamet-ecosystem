@@ -299,12 +299,12 @@ Status: **Resolved** ✅ (ADR-0018, 2026-09-09)
 
 ## GAP-NEW-021: RFC-014/015/016 Menyebut "Svelte Desktop" yang Tidak Ada di Codebase
 
-Status: Open — **butuh klarifikasi Owner**
+Status: **Resolved** ✅ (2026-09-09 — dikonfirmasi Owner: istilah keliru)
 
 **Severity:** Major
 **Lokasi:** `docs/architecture/RFC-015-SINGLE-TOOL-DISPATCHER.md`, `RFC-016-BACKEND-AUTHORITATIVE-EXECUTION.md`, `EXECUTION-SURFACE-INVENTORY.md`
-**Dampak:** Ketiga dokumen (2026-07-11) mendeskripsikan desktop client sebagai "Svelte Desktop", tapi tidak ada file `.svelte` atau dependency Svelte di repository manapun. Desktop client aktual yang masih aktif dipelihara (dikonfirmasi via `ADR-0016`, 2026-08-23) adalah Electron (`frontend/electron/main.cjs`). Klaim `GAP-NEW-019` bahwa "RFC-015 Phase 1-3 Active in Shadow Mode" berpotensi overclaim jika ditulis dengan asumsi arsitektur yang salah.
-**Rencana:** Warning note sudah ditambahkan ke ketiga dokumen (2026-09-09). Perlu konfirmasi Owner: apakah "Svelte Desktop" adalah rencana migrasi terpisah yang belum dieksekusi, atau istilah keliru untuk Electron — baru bisa menutup gap ini setelah itu jelas.
+**Dampak:** Ketiga dokumen (2026-07-11) mendeskripsikan desktop client sebagai "Svelte Desktop", tapi tidak ada file `.svelte` atau dependency Svelte di repository manapun. Desktop client aktual yang masih aktif dipelihara (dikonfirmasi via `ADR-0016`, 2026-08-23) adalah Electron (`frontend/electron/main.cjs`).
+**Resolusi:** Owner mengonfirmasi "Svelte Desktop" adalah istilah keliru, bukan rencana migrasi terpisah. Seluruh rujukan "Svelte"/"Svelte Desktop"/"Svelte UI" di ketiga dokumen diganti "Electron"/"Electron Desktop". Warning note diganti catatan koreksi terminologi. Klaim `GAP-NEW-019` ("RFC-015 Phase 1-3 Active in Shadow Mode") tetap perlu diverifikasi terpisah terhadap kode nyata — itu bukan bagian dari gap terminologi ini.
 
 ---
 

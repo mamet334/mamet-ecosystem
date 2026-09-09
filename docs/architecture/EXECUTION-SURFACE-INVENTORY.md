@@ -1,7 +1,7 @@
 # Execution Surface Inventory & Bypass Audit
 
-> [!WARNING]
-> **Belum diverifikasi terhadap kode aktual (2026-09-09).** Dokumen ini menyebut "Svelte Desktop" sebagai klien — tidak ada jejak Svelte di repository; desktop client aktual adalah Electron (`frontend/electron/main.cjs`). Perlakukan daftar *execution surface* di bawah sebagai kandidat yang perlu diverifikasi ulang terhadap path file nyata, bukan status runtime yang sudah pasti.
+> [!NOTE]
+> **Terminologi dikoreksi (2026-09-09).** Dokumen ini awalnya menyebut "Svelte Desktop" — dikonfirmasi Owner sebagai istilah keliru; desktop client aktual adalah **Electron** (`frontend/electron/main.cjs`). Seluruh rujukan sudah diperbaiki.
 
 Dokumen ini merupakan hasil audit komprehensif terhadap seluruh jalur eksekusi alat dan perintah di dalam arsitektur Mamet OS, sebagai fondasi implementasi `ToolDispatcher` (RFC-015 & GAP-NEW-019).
 
@@ -12,7 +12,7 @@ Berikut adalah daftar seluruh *surface area* di mana eksekusi aktual (komputasi,
     *   **Mekanisme:** Mendengarkan `Tool.Requested`, melakukan validasi seadanya (timeout), lalu memanggil `plugin.execute(context)`.
     *   **Status Bypass:** ⚠️ **Tinggi**. Subagent berjalan secara otonom tanpa melalui `EngineeringLifecycleManager`.
 2.  **Desktop Function Calling (`lib/stream_handler.ts`):**
-    *   **Mekanisme:** Aliran SSE (*Server-Sent Events*) dari LLM diteruskan langsung ke klien (Svelte Desktop). Jika ada *tool call JSON*, klien yang akan mengeksekusi `write_to_file`, `grep_search`, dll.
+    *   **Mekanisme:** Aliran SSE (*Server-Sent Events*) dari LLM diteruskan langsung ke klien (Electron Desktop). Jika ada *tool call JSON*, klien yang akan mengeksekusi `write_to_file`, `grep_search`, dll.
     *   **Status Bypass:** ⚠️ **Kritis**. Backend sama sekali buta terhadap *Function Call* yang mungkin dihalusinasi oleh LLM, sehingga perlindungan fase gagal memblokir eksekusi di sisi klien.
 3.  **Terminal Tag Injection (`lib/llm_orchestrator.ts`):**
     *   **Mekanisme:** Injeksi prompt `<terminal>...</terminal>` yang secara asinkron ditangkap dan dieksekusi oleh OS Desktop Shell (di luar *agent-process*).
@@ -33,7 +33,7 @@ Berikut adalah daftar seluruh *surface area* di mana eksekusi aktual (komputasi,
 | **Desktop Tool Hallucination** | LLM merespons dengan format JSON untuk alat `replace_file_content` saat status masih `PROPOSAL`. | **Lolos**. Klien Desktop akan mengeksekusi karena *stream* diteruskan mentah. | **Terblokir**. *Stream_handler.ts* mem-_buffer_ stream, membaca *tool call*, mengirim ke `ToolDispatcher`, dan me-*replace* *chunk* dengan `DENY` jika tidak sah. |
 | **Terminal Tag Injection** | LLM menyuntikkan perintah `<terminal>` destruktif yang tidak diotorisasi. | **Lolos**. Desktop mengeksekusinya secara absolut. | **Terblokir**. `ToolDispatcher` mencegat teks `<terminal>`, memasukkannya ke *Risk Gate*, dan menghapus tag tersebut jika gagal lolos. |
 | **Rogue Subagent Execution** | Plugin (`file_analyzer` dsb) mengakses *Capability Adapter* langsung secara rekursif tanpa izin fase. | **Lolos**. `tool_subscriber.ts` memberikan `executeContext` secara bebas. | **Terblokir**. Plugin tidak lagi memiliki akses langsung; plugin mengembalikan *Intent* ke `ToolDispatcher` untuk dieksekusi. |
-| **API Payload Manipulation** | Serangan *Man-in-the-Middle* (MitM) atau manipulasi UI (DevTools) untuk mengirim *request* palsu ke *backend*. | **Lolos/Parsial**. Tergantung verifikasi token Svelte. | **Terblokir**. `ToolDispatcher` memvalidasi `RuntimeContext` (*Backend Authoritative*), tidak memercayai klien. |
+| **API Payload Manipulation** | Serangan *Man-in-the-Middle* (MitM) atau manipulasi UI (DevTools) untuk mengirim *request* palsu ke *backend*. | **Lolos/Parsial**. Tergantung verifikasi token Electron. | **Terblokir**. `ToolDispatcher` memvalidasi `RuntimeContext` (*Backend Authoritative*), tidak memercayai klien. |
 
 ---
 

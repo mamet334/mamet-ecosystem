@@ -1,22 +1,22 @@
 # RFC-015: Single Tool Dispatcher (Execution Guard Bridge)
 
-> [!WARNING]
-> **Belum diverifikasi terhadap kode aktual (2026-09-09).** Dokumen ini dan RFC-016 menyebut "Svelte Desktop" berulang kali, tetapi tidak ditemukan file `.svelte` atau dependency Svelte di repository — desktop client aktual adalah Electron (`frontend/electron/main.cjs`, dikonfirmasi masih dipakai per `ADR-0016`, 2026-08-23). Klaim "Phase 1-3 Active in Shadow Mode" di `ARCHITECTURE-GAPS.md` (GAP-NEW-019) juga perlu diverifikasi ulang terhadap kode nyata sebelum dipercaya sebagai status runtime — lihat Anti-Hallucination Protocol (`24_ANTI_HALLUCINATION_PROTOCOL.md`) soal Runtime Supremacy Rule. Konfirmasi ke Owner diperlukan: apakah "Svelte Desktop" adalah rencana migrasi terpisah yang belum dieksekusi, atau istilah keliru untuk Electron.
+> [!NOTE]
+> **Terminologi dikoreksi (2026-09-09).** Dokumen ini awalnya menyebut "Svelte Desktop" — dikonfirmasi Owner sebagai istilah keliru; desktop client aktual adalah **Electron** (`frontend/electron/main.cjs`). Seluruh rujukan sudah diperbaiki. Klaim "Phase 1-3 Active in Shadow Mode" di `ARCHITECTURE-GAPS.md` (GAP-NEW-019) tetap perlu diverifikasi ulang terhadap kode nyata sebelum dipercaya sebagai status runtime — lihat Anti-Hallucination Protocol (`24_ANTI_HALLUCINATION_PROTOCOL.md`) soal Runtime Supremacy Rule.
 
 ## 1. Latar Belakang & Architecture Gap (GAP-NEW-019)
 Implementasi RFC-014 (Self Engineering Lifecycle) mengandalkan *Pre-flight Tool Filter* untuk menyembunyikan alat dari LLM saat tidak diizinkan. Namun, arsitektur saat ini memiliki celah (*execution bypass*) di mana eksekusi alat dan sub-agent berjalan di jalur yang tersebar (*decentralized*). Jika LLM menghalusinasi pemanggilan fungsi, atau jika sub-agent bertindak di luar kendali, tidak ada satu titik (*choke point*) yang dapat memblokir eksekusi tersebut secara absolut.
 
 ## 2. Threat Model & Kemungkinan Bypass
 Berikut adalah daftar kelemahan (*threat model*) pada jalur eksekusi saat ini:
-1. **Desktop Tool Hallucination:** LLM merespons dengan JSON *Function Call* untuk `replace_file_content` (meskipun disembunyikan di prompt). Karena backend (`stream_handler.ts`) hanya menyalurkan *stream* langsung ke *Svelte Desktop*, Desktop akan langsung mengeksekusi perubahan file. Guardrail backend berhasil di-bypass.
+1. **Desktop Tool Hallucination:** LLM merespons dengan JSON *Function Call* untuk `replace_file_content` (meskipun disembunyikan di prompt). Karena backend (`stream_handler.ts`) hanya menyalurkan *stream* langsung ke *Electron Desktop*, Desktop akan langsung mengeksekusi perubahan file. Guardrail backend berhasil di-bypass.
 2. **Terminal Tag Injection:** LLM menggunakan tag `<terminal>rm -rf src</terminal>`. Desktop akan langsung menjalankannya tanpa pemeriksaan *State Machine* backend.
 3. **Subagent Rogue Execution:** Sebuah plugin (misal `coder`) memanggil API atau fungsi berbahaya dari dalam `tool_subscriber.ts` tanpa pernah divalidasi oleh `EngineeringLifecycleManager`.
 4. **Client API Manipulation:** Modifikasi request melalui DevTools yang mengirimkan payload fiktif.
 
 ## 3. Daftar Seluruh Jalur Eksekusi Tool Saat Ini (As-Is)
 *   **Jalur 1 (Subagent):** `ExecutionPlannerHandler` → Event Bus `Tool.Requested` → `tool_subscriber.ts` → `plugin.execute()`
-*   **Jalur 2 (Desktop Function Calling):** `LLM Adapter` → `stream_handler.ts` (SSE) → Svelte Desktop UI → `fs` / `npx` / `terminal`.
-*   **Jalur 3 (Terminal Tags):** Prompt `<terminal>` di-*inject* oleh `llm_orchestrator.ts` → Svelte UI mengeksekusi command.
+*   **Jalur 2 (Desktop Function Calling):** `LLM Adapter` → `stream_handler.ts` (SSE) → Electron Desktop UI → `fs` / `npx` / `terminal`.
+*   **Jalur 3 (Terminal Tags):** Prompt `<terminal>` di-*inject* oleh `llm_orchestrator.ts` → Electron UI mengeksekusi command.
 
 ## 4. Arsitektur ToolDispatcher (To-Be)
 Semua eksekusi wajib melalui antarmuka tunggal: `ToolDispatcher.execute()`. 
@@ -28,7 +28,7 @@ Semua eksekusi wajib melalui antarmuka tunggal: `ToolDispatcher.execute()`.
 graph TD
     %% Arsitektur Lama
     subgraph Current Architecture (Decentralized)
-        A1[LLM Stream] -->|SSE Bypass| B1[Desktop Svelte Execution]
+        A1[LLM Stream] -->|SSE Bypass| B1[Desktop Electron Execution]
         A2[Event Bus Tool.Requested] --> C1[tool_subscriber] --> D1[plugin.execute]
     end
 

@@ -1,7 +1,7 @@
 # RFC-016: Backend Authoritative Execution Architecture
 
-> [!WARNING]
-> **Belum diverifikasi terhadap kode aktual (2026-09-09).** Sama seperti RFC-015: dokumen ini menyebut "Svelte Desktop Client" sebagai frontend, tapi tidak ada jejak Svelte di repository — desktop client aktual adalah Electron. Perlu konfirmasi Owner sebelum RFC ini dieksekusi lebih lanjut.
+> [!NOTE]
+> **Terminologi dikoreksi (2026-09-09).** Dokumen ini awalnya menyebut "Svelte Desktop Client" — dikonfirmasi Owner sebagai istilah keliru; desktop client aktual adalah **Electron**. Seluruh rujukan sudah diperbaiki.
 
 **Date:** 2026-07-11
 **Status:** PROPOSED (WAITING_FOR_TELEMETRY)
@@ -16,7 +16,7 @@
 ## 1. Context & Motivation
 
 Saat ini, Mamet OS menganut model *Hybrid Authority* untuk eksekusi alat (*tools*).
-Walaupun `ToolDispatcher` (RFC-015) di sisi *backend* mampu mengobservasi dan memfilter instruksi LLM (*Stream Interceptor*), hak prerogatif eksekusi aktual untuk operasi *filesystem* dan eksekusi *shell* masih berada di *Desktop Svelte Client* (Frontend). 
+Walaupun `ToolDispatcher` (RFC-015) di sisi *backend* mampu mengobservasi dan memfilter instruksi LLM (*Stream Interceptor*), hak prerogatif eksekusi aktual untuk operasi *filesystem* dan eksekusi *shell* masih berada di *Desktop Electron Client* (Frontend). 
 
 **Masalah (*The Architecture Gap*):**
 1. Frontend menerima *Server-Sent Events (SSE)* mentah dan mengeksekusi JSON yang menyerupai *Function Call*.
@@ -72,13 +72,13 @@ Transisi otoritas adalah hal kritis. Akan dilaksanakan melalui tahapan berikut:
 
 1. **Evaluasi Shadow Mode (Saat ini):** Memantau volume `WOULD_DENY` dari RFC-015. Jika *False Positive Rate* stabil di angka ~0%, lanjutkan ke Langkah 2.
 2. **Penerbitan SET (Dual Mode):** *Backend* mulai merakit dan mengirimkan tag `<execute>`, tetapi Desktop masih menoleransi format lama (*backward compatibility*).
-3. **Desktop Refactoring:** Memodifikasi *parser* di Svelte Desktop untuk menolak seluruh injeksi yang tidak memiliki SET.
+3. **Desktop Refactoring:** Memodifikasi *parser* di Electron Desktop untuk menolak seluruh injeksi yang tidak memiliki SET.
 4. **Backend Enforce (Hard Gate Aktif):** *Backend* mengaktifkan pemblokiran (`DENY` secara aktual) dan tidak lagi menerbitkan SET untuk perintah yang melanggar.
 
 ---
 
 ## 6. Open Questions / Kesimpulan untuk Review
-*   Apakah Svelte Desktop akan melakukan *decode* JWT, atau sekadar meneruskan token kembali ke backend melalui API untuk validasi lapis kedua sebelum memanggil fungsi OS?
+*   Apakah Electron Desktop akan melakukan *decode* JWT, atau sekadar meneruskan token kembali ke backend melalui API untuk validasi lapis kedua sebelum memanggil fungsi OS?
 *   Bagaimana *latency* bertambah akibat mekanisme *buffering* sebelum penerbitan SET?
 
 RFC ini diajukan untuk mendapatkan persetujuan konseptual (*Architecture Review*) sebelum penulisan sebaris kode pun dimulai.

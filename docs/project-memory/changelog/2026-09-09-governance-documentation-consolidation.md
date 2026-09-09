@@ -1,7 +1,7 @@
 # Changelog: Konsolidasi Hierarki Otoritas Dokumen (ADR-0018)
 
 **Tanggal:** 2026-09-09
-**Status:** ✅ Selesai untuk item governance/referensi; 1 item (Svelte Desktop) menunggu klarifikasi Owner
+**Status:** ✅ Selesai Penuh — termasuk resolusi GAP-NEW-021 (Svelte→Electron, dikonfirmasi Owner)
 **Scope:** [`ADR-0018-constitution-v3-supreme-authority.md`](../../adr/ADR-0018-constitution-v3-supreme-authority.md)
 **Trigger:** Brainstorming atas permintaan Owner ("baca dokumen constitution dan dokumen terkait... apakah perlu di update dan di rapikan dokumen constitutionnya mengingat itu dokumen tertinggi")
 
@@ -49,11 +49,13 @@ Ditemukan tiga model siklus hidup Engineer dengan cakupan berbeda tapi tidak sal
 
 **Resolusi:** Referensi diperbaiki ke nama file yang benar.
 
-### 2.7 "Svelte Desktop" di RFC-014/015/016 (Belum Ditutup — Butuh Owner)
+### 2.7 "Svelte Desktop" di RFC-014/015/016 — Resolved (Dikonfirmasi Owner: Istilah Keliru)
 
 `RFC-015-SINGLE-TOOL-DISPATCHER.md`, `RFC-016-BACKEND-AUTHORITATIVE-EXECUTION.md`, dan `EXECUTION-SURFACE-INVENTORY.md` (2026-07-11) menyebut berulang kali "Svelte Desktop" sebagai frontend. Verifikasi terhadap codebase (`find . -iname "*.svelte"`, cek `package.json` semua workspace) **tidak menemukan jejak Svelte sama sekali**. Desktop client aktual yang masih aktif dipelihara adalah Electron (`frontend/electron/main.cjs`), dikonfirmasi via `ADR-0016-terminal-command-isolation-roadmap.md` (2026-08-23, lebih baru dari RFC-014/015/016).
 
-**Tindakan:** Warning note ditambahkan ke ketiga dokumen (bukan rewrite — isi RFC dipertahankan sebagai draft historis). Dicatat sebagai **GAP-NEW-021** di `docs/architecture/ARCHITECTURE-GAPS.md`, status **Open**. Klaim di `ARCHITECTURE-GAPS.md` (GAP-NEW-019) bahwa "RFC-015 Phase 1-3 Active in Shadow Mode" juga perlu diverifikasi ulang terhadap kode nyata — berpotensi overclaim.
+**Tindakan awal (2026-09-09, sesi pertama):** Warning note ditambahkan ke ketiga dokumen, dicatat sebagai **GAP-NEW-021** status Open, menunggu klarifikasi Owner.
+
+**Resolusi (2026-09-09, sesi lanjutan):** Owner mengonfirmasi "Svelte Desktop" adalah istilah keliru, bukan rencana migrasi yang belum dieksekusi. Seluruh rujukan "Svelte"/"Svelte Desktop"/"Svelte UI"/"Desktop Svelte Client" di ketiga dokumen diganti "Electron"/"Electron Desktop"/"Desktop Electron Client" (10 titik perubahan total). Warning note diganti catatan koreksi terminologi. GAP-NEW-021 ditutup **Resolved**. Klaim `GAP-NEW-019` ("RFC-015 Phase 1-3 Active in Shadow Mode") tetap terpisah dan masih perlu diverifikasi terhadap kode nyata — itu bukan bagian dari gap terminologi ini, tidak ditutup oleh perbaikan ini.
 
 ## 3. File yang Diubah
 
@@ -84,6 +86,5 @@ Ini murni perubahan dokumentasi Markdown — tidak ada kode yang tersentuh, tida
 ## 5. Tidak Dikerjakan / Di Luar Scope
 
 - Penyerapan formal Two-Brain Model, Self Engineering Lifecycle, dan Engineering Confidence dua dimensi ke dalam dokumen `constitution/` baru — dicatat sebagai backlog terpisah di ADR-0018 §4 (Konsekuensi), belum dieksekusi.
-- Resolusi final GAP-NEW-021 (Svelte vs Electron) — menunggu konfirmasi Owner.
 - Audit menyeluruh sisa ~15 file di `docs/architecture/` yang belum dibaca (ARCHITECTURE-AUDIT-*, ARCHITECTURE-GAP-*-PLAN, RFC-013, dll) — kemungkinan pola serupa, tapi tidak dibaca semua dalam sesi ini.
 - GAP-NEW-009 (Self Engineering Lifecycle belum ada state machine runtime) dan GAP-NEW-019 (Tool Dispatcher belum tersentralisasi) tetap Open — backlog teknis nyata, bukan bagian dari housekeeping dokumentasi ini.
