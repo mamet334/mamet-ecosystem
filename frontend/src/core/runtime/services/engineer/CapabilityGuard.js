@@ -103,29 +103,46 @@ export function checkCapabilityAndDeclare(task, options = {}, deps = {}) {
 // =============================================
 
 export function isImmutableFile(filePath) {
+  // [FIX 2026-09-09] Pattern sebelumnya berawalan '/', tapi seluruh pipeline
+  // Engineer (extractFileNamesFromTask -> tryReadFile -> FileIndexService,
+  // yang membangun index dari storageManager.listRecursive('.')) selalu
+  // menghasilkan path relatif repo TANPA leading slash. Untuk file yang
+  // bersarang dalam (frontend/src/core/runtime/Kernel.js), '/core/runtime/...'
+  // kebetulan tetap cocok karena ada '/' dari segmen sebelumnya. Tapi untuk
+  // file di root repo (constitution/, electron/) tidak ada segmen sebelumnya
+  // yang menyediakan '/' itu -> pattern TIDAK PERNAH cocok, sehingga proteksi
+  // untuk 00_CONSTITUTION.md/01_VISION.md/09_DNA.md diam-diam tidak berfungsi.
+  // Diperbaiki dengan menghapus leading slash di semua pattern (root cause,
+  // bukan menambal satu per satu), sekaligus dua nama file yang salah ketik:
+  // 'main.js' -> 'main.cjs' (file asli di frontend/electron/) dan
+  // 'ModuleLoader.js' -> 'module-loader.js' (file asli kebab-case).
   const IMMUTABLE_PATTERNS = [
-    '/core/runtime/Kernel.js',
-    '/core/runtime/EventBus.js',
-    '/core/runtime/ServiceManager.js',
-    '/core/runtime/ProcessManager.js',
-    '/core/runtime/StorageManager.js',
-    '/core/runtime/ModuleLoader.js',
-    '/core/runtime/DiscoveryManager.js',
-    '/electron/main.js',
-    '/electron/preload.cjs',
-    '/constitution/00_CONSTITUTION.md',
-    '/constitution/01_VISION.md',
-    '/constitution/09_DNA.md'
+    'core/runtime/Kernel.js',
+    'core/runtime/EventBus.js',
+    'core/runtime/ServiceManager.js',
+    'core/runtime/ProcessManager.js',
+    'core/runtime/StorageManager.js',
+    'core/runtime/module-loader.js',
+    'core/runtime/DiscoveryManager.js',
+    'electron/main.cjs',
+    'electron/preload.cjs',
+    'constitution/00_CONSTITUTION.md',
+    'constitution/01_VISION.md',
+    'constitution/09_DNA.md'
   ];
   return IMMUTABLE_PATTERNS.some(pattern => filePath.includes(pattern));
 }
 
 export function isProtectedFile(filePath) {
+  // [FIX 2026-09-09] Sama seperti isImmutableFile: leading slash dihapus
+  // karena 'supabase/' dan 'frontend/' adalah folder root repo — pattern
+  // '/supabase/...' dan '/frontend/...' tidak pernah cocok dengan path
+  // relatif nyata yang dipakai runtime (lihat catatan di isImmutableFile).
   const PROTECTED_PATTERNS = [
-    '/core/runtime/services/',
-    '/supabase/functions/agent-process/index.ts',
-    '/supabase/functions/agent-process/lib/',
-    '/frontend/src/core/runtime/services/engineer.js'
+    'core/runtime/services/',
+    'supabase/functions/agent-process/index.ts',
+    'supabase/functions/agent-process/lib/',
+    'frontend/src/core/runtime/services/engineer.js'
   ];
   return PROTECTED_PATTERNS.some(pattern => filePath.includes(pattern));
 }
