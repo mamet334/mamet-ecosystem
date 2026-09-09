@@ -2,13 +2,11 @@
  * ToolRegistryService - Layer 2 Capability Service
  * Bertanggung jawab sebagai pusat pendaftaran dan pengambilan spesifikasi Tool AI.
  *
- * Dua sumber tool:
- * 1. Built-in (hardcode di initialize()) — belum semua fungsional, lihat komentar masing-masing.
- * 2. Folder tools/ di root repo — di-scan lewat scanToolsFolder(), tiap file .js WAJIB
- *    `export default { name, description, category, async execute(params, context) {...} }`.
- *    Ini mekanisme "drop file, tidak perlu ubah kode aplikasi" (mirip modul Linux) —
- *    dimuat lewat dynamic import() dari Blob URL saat runtime, bisa di-scan ulang kapan saja
- *    lewat scanToolsFolder() tanpa restart aplikasi.
+ * Satu-satunya sumber tool: folder tools/ di root repo, di-scan lewat scanToolsFolder().
+ * Tiap file .js WAJIB `export default { name, description, category, async execute(params, context) {...} }`.
+ * Ini mekanisme "drop file, tidak perlu ubah kode aplikasi" (mirip modul Linux) —
+ * dimuat lewat dynamic import() dari Blob URL saat runtime, bisa di-scan ulang kapan saja
+ * lewat scanToolsFolder() tanpa restart aplikasi. Tidak ada lagi tool hardcode di initialize().
  */
 const TOOLS_FOLDER = 'tools';
 
@@ -27,47 +25,9 @@ export class ToolRegistryService {
 
     this.isInitialized = true;
 
-    // Register built-in tools
-    // [BELUM FUNGSIONAL] memory_manager: referensi `memoryService` di bawah tidak pernah
-    // di-import di file ini — akan error kalau benar-benar dieksekusi. Dibiarkan apa adanya,
-    // di luar scope perbaikan folder tools/ (lihat changelog 2026-09-09 folder tools/).
-    this.registerTool({
-      name: 'memory_manager',
-      description: 'Menyimpan, mencari, dan mengelola User Memory di Supabase',
-      category: 'memory',
-      execute: async (params) => {
-        if (params.action === 'store') return await memoryService.storeMemory(params.key, params.value, {
-          source_type: 'tool_call',
-          source_reference: 'tool_memory_manager',
-          version_code: `TOOL-${Date.now()}`,
-          category: params.category || 'general',
-          useGovernor: true
-        });
-        if (params.action === 'get') return await memoryService.getMemory(params.query);
-        return { error: 'Unknown action' };
-      }
-    });
-
-    // 'web_search' TIDAK didaftarkan di sini lagi — sekarang datang dari tools/web_search.js
-    // (implementasi nyata, delegasi ke WebComparisonService), lihat scanToolsFolder().
-
-    this.registerTool({
-      name: 'file_reader',
-      description: 'Membaca dan menganalisis file (PDF, Excel, Word, TXT)',
-      category: 'analysis',
-      execute: async (params) => {
-        return { message: 'File reader tool ready', filePath: params.filePath };
-      }
-    });
-
-    this.registerTool({
-      name: 'deep_research',
-      description: 'Melakukan riset mendalam multi-langkah dengan sintesis',
-      category: 'research',
-      execute: async (params) => {
-        return { message: 'Deep research tool ready', topic: params.topic };
-      }
-    });
+    // Tidak ada lagi tool hardcode di sini — semua tool (termasuk memory_manager, file_reader,
+    // deep_research, web_search) sekarang datang dari folder tools/ di root repo, lihat
+    // scanToolsFolder(). Konsisten dengan prinsip "semua tool terkumpul di satu tempat".
 
     this.eventBus.emit('ToolRegistry:Ready', { status: 'READY', timestamp: Date.now() });
     console.log('[ToolRegistryService] Initialized and Ready');
