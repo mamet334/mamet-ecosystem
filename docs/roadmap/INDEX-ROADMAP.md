@@ -430,3 +430,50 @@ Setiap kali sebuah dokumen di folder ini selesai dikerjakan (Exit Criteria terpe
     - **API key Gemini #0 menjawab 403.** Rotasi key menutupinya sehingga tidak mengganggu, tapi setiap panggilan koordinator menanggung satu percobaan gagal. Perlu dicek di Google AI Studio.
     - **`prompt=20451t` per pesan percakapan.** Besar. Belum diselidiki apakah wajar (konstitusi + RAG + memori ikut disuntikkan) atau ada yang berlebihan. Catatan: angka `prompt=1334t` yang sempat terlihat itu jalur LOOKUP, bukan pembanding yang setara.
     - **Pesan Owner terkirim dua kali ke prompt.** `history` sudah memuat pesan yang sedang dikirim (`ConversationEngine.jsx:726`), lalu `userMsg` dikirim lagi sebagai `message`. Diduga terkait satu kejadian AI menjawab pertanyaan sebelumnya; tidak terulang setelah Item 43 diperbaiki, tapi **hipotesisnya belum diuji langsung**.
+
+---
+
+## Audit Menyeluruh Kernel→UI (2026-09-10)
+
+Sapuan sistematis memakai pola cacat Item 38–43 sebagai pemburu. Yang bersih juga
+dicatat supaya tidak diaudit ulang: **seluruh 94 berkas `.ts` edge function
+impornya teratasi** (kelas Item 40 tidak berulang), dan **biaya hari ini sudah
+jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
+(Item 41/42 terbukti bertahan).
+
+45. **`match_memories` — Kebocoran Memori Lintas Pengguna (ranjau, urutan perbaikan menentukan):**
+    - **Isu:** ada **dua** overload `match_memories`, keduanya `SECURITY DEFINER` (menembus RLS) dan keduanya di-`GRANT` ke peran `authenticated`. Yang 3-argumen **tidak punya filter user sama sekali** — ia memindai seluruh `user_memories` milik semua akun. Yang 4-argumen memfilter `target_user_id`, tapi **tidak ada guard `auth.uid()`**, jadi penyerang cukup menyodorkan UUID korban. Bandingkan dengan `check_daily_quota` dan `get_active_knowledge` di database yang sama: keduanya punya guard `auth.role()/auth.uid()` eksplisit. Perbaikannya dulu **ditambahkan di sebelah lubangnya, bukan menggantikannya** — overload lama tidak pernah di-`DROP`.
+    - **Ini bukan lubang teoretis:** `request_pipeline.ts:213` — jalur produksi setiap pesan — memanggil **versi 3-argumen** dengan klien service-role. Hasil teratas disuntikkan ke `parsed.globalMemory`, langsung masuk prompt. Ada 3 akun di `auth.users`, dan pengguna mametlite eksternal memakai key sistem Owner.
+    - **Kenapa belum meledak:** ketujuh baris `user_memories` embedding-nya `NULL`, jadi klausa `WHERE` tak pernah menghasilkan baris. Diverifikasi: RPC dipanggil dengan vektor 3072 mengembalikan `[]` tanpa error.
+    - **⚠️ Urutan perbaikan kritis:** memperbaiki Item 46 **mempersenjatai** cacat ini. Begitu embedding mulai terisi, kebocoran menjadi nyata. **Item 45 wajib ditutup lebih dulu.**
+    - **Status:** ❌ Belum dikerjakan. Rencana: `DROP` overload 3-argumen, tambahkan guard `auth.uid()` di yang 4-argumen, dan ubah `request_pipeline.ts:213` agar mengirim `target_user_id`.
+
+46. **Skema `user_memories.embedding` Masih Tertinggal di 768 — Pencarian Memori Semantik Belum Pernah Bisa Hidup:**
+    - **Isu:** `user_memories.embedding` bertipe **`vector(768)`**, sedangkan pipeline embedding kini menghasilkan **3072** (lihat Item 39, dan `document_chunks` sudah `vector(3072)`). Dibuktikan langsung di database: `SELECT vector(768) <=> vector(3072)` → `ERROR: different vector dimensions 768 and 3072`.
+    - **Cacat kedua yang menutupi cacat pertama:** `memory_manager_v1.ts:36` menuliskan **`embedding: null`** secara hardcoded di satu-satunya jalur insert memori. Jadi tidak ada apa pun di sistem ini yang pernah menulis embedding memori. Ketujuh baris `NULL` itu bukan kebetulan — itu perilaku yang dikodekan.
+    - **Akibatnya:** `match_memories` mustahil menghasilkan apa pun, dan kegagalannya ditelan `if (error) console.error` lalu pipeline lanjut dengan "Tidak ada memori yang relevan." Ini melengkapi temuan sampingan Item 39.
+    - **Status:** ❌ Belum dikerjakan. Perlu keputusan Owner: migrasi kolom ke `vector(3072)` (dan indeks ulang), atau turunkan dimensi embedding memori. **Jangan dikerjakan sebelum Item 45 selesai.**
+
+47. **Circuit Breaker Gagal-Terbuka — Perlindungan Dompet Menguap Saat Ada Gangguan:**
+    - **Isu:** `quota_middleware.ts` — `catch (quotaCheckError) { console.error("Quota check failed, bypassing...") }` lalu `return null`, artinya permintaan **diteruskan**. Kodenya jujur menyebut dirinya *bypassing*. Cacat kedua di berkas yang sama: penjagaan dibungkus `if (!quotaError && currentCost !== null)` — kalau RPC mengembalikan error, seluruh pemeriksaan **dilewati diam-diam** tanpa satu pun log peringatan.
+    - **Kenapa ini penting sekarang:** inilah satu-satunya kontrol yang melindungi saldo Owner, dan pengguna mametlite tanpa BYOK membelanjakan key Owner. Sepanjang 2026-09-09 Owner menaikkan batasnya $1→$3 dengan asumsi kontrol ini bekerja. Satu gangguan sesaat di database membuatnya tidak bekerja, tanpa jejak yang bisa dilihat.
+    - **Yang sudah benar dan jangan diubah:** `resolveDailyLimit` gagal ke arah **ketat** (`FALLBACK_DAILY_LIMIT = 1`). Pola itu yang seharusnya dipakai juga di `checkQuota`.
+    - **Status:** ❌ Belum dikerjakan. Rencana: gagal-tertutup pada kegagalan pemeriksaan, atau minimal naikkan ke log tingkat alarm yang bisa terlihat.
+
+48. **Instrumentasi Sistem Ini Terputus dari Sistemnya — Enam Dasbor Yatim (~1.200 baris):**
+    - **Isu:** enam komponen React hanya mendefinisikan dirinya sendiri dan **tidak pernah diimpor atau dipasang** di mana pun (diverifikasi dua arah: penelusuran impor relatif **dan** pencarian nama). `BillingDashboard.jsx` (153), `MemoryHealthDashboard.jsx` (182), `MonitoringDashboard.jsx` (317), `ObservabilityDashboard.jsx` (210), `EngineerDashboard.jsx` (278), `WorkDashboard.jsx` (133), plus `ShopeeDashboard.jsx` (250) dan `Login.jsx` (153).
+    - **Kenapa ini temuan paling menjelaskan:** `BillingDashboard.jsx:17` adalah **satu-satunya** pemanggil `check_daily_quota` di seluruh frontend. Selama ini Owner tidak punya layar yang menampilkan belanja hariannya — itulah sebabnya Item 41 bisa berlangsung sepanjang hari sambil menaikkan plafon mengejar biaya yang tidak pernah ada. `MemoryHealthDashboard` akan memperlihatkan nol embedding (Item 46) sejak lama.
+    - **Benang merah keseluruhan:** enam cacat kemarin dan enam temuan hari ini bertahan diam bukan karena sulit dideteksi, melainkan karena **alat pantaunya sudah ditulis tetapi tidak pernah disambungkan**.
+    - **Status:** ❌ Belum dikerjakan. Perlu keputusan Owner per komponen: pasang, atau hapus. Jangan diasumsikan semuanya layak dipasang — `ShopeeDashboard` dan `Login` mungkin memang peninggalan.
+
+49. **Ranjau di Kode Mati — Aman Sekarang, Merusak Kalau Disambungkan:**
+    - **`self_healing.ts` (tanpa importer):** `const similarity = (memA.embedding && memB.embedding) ? cosineSimilarity(...) : 0.85` — nilai cadangannya **gagal ke arah "sangat mirip"**. Karena embedding memori selalu `null` (Item 46), `similarity` akan **selalu** 0.85, dan `0.85 > 0.75` **selalu** benar. Setiap pasang dari 20 memori terakhir akan dinilai LLM, lalu bisa ditandai `CONFLICTED` atau di-`OBSOLETE`/`is_deprecated: true` — **destruktif**. Nilai cadangan yang aman adalah 0 (lewati), bukan 0,85. Bonus: memakai model Groq `llama3-8b-8192` yang sudah dipensiunkan.
+    - **`/api/agent/process` di `backend/server.js` (tanpa pemanggil di frontend maupun mametlite):** memetakan ke `google/gemini-2.0-flash-exp:free` yang sudah hilang dari katalog OpenRouter, dan mengabaikan model pilihan user — semua `openrouter-*` jatuh ke `meta-llama/llama-3.1-8b-instruct`.
+    - **Koreksi terhadap dugaan awal saya:** saya sempat menduga rute ini dipakai Engineer untuk membuat patch. **Salah.** `BrainService.executeLLM` memanggil `/api/chat`, dan rute itu **bersih** — menghormati provider, model, dan key user, serta menolak provider tak dikenal secara eksplisit. Dugaan itu saya batalkan sebelum sempat jadi klaim.
+    - **Status:** ❌ Belum dikerjakan. Keduanya kode mati, jadi tidak mendesak — tapi keduanya akan menggigit kalau disambungkan tanpa dibaca ulang.
+
+50. **Sisa Temuan Kecil (2026-09-10):**
+    - **Atribusi model salah di `api_usage`.** Ada baris `provider: 'gemini'` dengan `model: 'openai/gpt-4o-mini'`. Saat kaskade jatuh ke GeminiAdapter, adapter memakai model bawaannya (perbaikan Item 38) tapi `logApiUsage` tetap mencatat `rctx.model.model`. Biayanya benar karena `usage.cost` asli, tapi analitiknya menyesatkan — dan tarif cadangan akan salah kalau `usage.cost` absen.
+    - **Rasio prompt:output 136:1 — Item 44 kini terukur.** Hari ini: **352.972** token masuk vs **2.596** token keluar untuk 23 panggilan `gpt-4o-mini`, rata-rata **~15.300 token prompt per panggilan**. Jadi `prompt=20451t` bukan kejadian tunggal melainkan pola sistemik, dan **99,3% belanja Owner adalah prompt**. Di sinilah penghematan terbesar berada, bukan di pemilihan model.
+    - **`match_documents` di-`GRANT` ke `anon`.** Risikonya rendah karena ia `SECURITY INVOKER` sehingga RLS tetap berlaku, tapi hak itu tampaknya tidak disengaja.
+    - **Higiene yang sudah baik dan layak dipertahankan:** dari 10 fungsi `SECURITY DEFINER`, hanya 4 yang terbuka ke `authenticated`; sisanya service-role saja.
