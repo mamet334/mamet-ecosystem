@@ -255,6 +255,52 @@ export function createBackgroundTaskTracker(traceId?: string): BackgroundTaskTra
  * @param tasks  - BackgroundTaskTracker untuk fire-and-forget logging
  * @param env - Environment configuration for Supabase credentials
  */
+/**
+ * TABEL TARIF — dipakai menghitung `api_usage.cost_usd`, yang dibaca RPC
+ * `check_daily_quota` dan MENENTUKAN KAPAN CIRCUIT BREAKER MEMUTUS OWNER.
+ * Salah di sini = Owner diblokir untuk biaya yang tidak pernah terjadi.
+ *
+ * URUTAN PENTING: dicocokkan dari atas ke bawah, yang PALING SPESIFIK dulu.
+ * Sebelum perbaikan 2026-09-09 kodenya memakai `modelName.includes('gpt-4o')`
+ * tanpa urutan, sehingga "openai/gpt-4o-mini" — yang mengandung substring
+ * "gpt-4o" — ditagih dengan tarif gpt-4o. Terukur: 335.485 token input dicatat
+ * $1,7119, padahal tagihan asli di dashboard OpenRouter hari itu $0,0606 untuk
+ * model yang sama. Selisih 28x. Owner sepanjang hari menaikkan batas hariannya
+ * ($1 → $1,5 → $2 → $3) mengejar biaya yang tidak nyata. Lihat Item 41.
+ *
+ * Angka di bawah diambil dari katalog resmi OpenRouter
+ * (https://openrouter.ai/api/v1/models) pada 2026-09-09, dikonversi dari
+ * harga per-token ke per-1K token. JANGAN diubah dari ingatan — ambil ulang
+ * dari katalog. Tarif gpt-4o yang lama ($0,005/$0,015) bahkan salah untuk
+ * gpt-4o sendiri; harga sebenarnya $0,0025/$0,01.
+ *
+ * BATAS KETELITIAN YANG DISADARI: jumlah token di sini masih ESTIMASI
+ * (`Math.ceil(text.length / 4)`), bukan angka dari provider. Jadi hasilnya
+ * tetap perkiraan sekalipun tarifnya benar — pada data uji 2026-09-09 hasilnya
+ * $0,0517 vs $0,0606 asli. Solusi tepatnya memakai `usage` yang dikembalikan
+ * provider, bukan menebak dari panjang teks. Dicatat sebagai pekerjaan terpisah.
+ */
+const MODEL_PRICING: Array<{ match: string; costIn: number; costOut: number }> = [
+  // Paling spesifik lebih dulu — "gpt-4o-mini" WAJIB sebelum "gpt-4o".
+  { match: 'gpt-4o-mini',              costIn: 0.00015,    costOut: 0.0006 },
+  { match: 'gpt-4o',                   costIn: 0.0025,     costOut: 0.01 },
+  { match: 'deepseek-v4-pro',          costIn: 0.00057948, costOut: 0.00173844 },
+  { match: 'deepseek-v4-flash',        costIn: 0.000065,   costOut: 0.00018 },
+  { match: 'llama',                    costIn: 0.00005,    costOut: 0.00008 },
+];
+
+/** Tarif cadangan kalau model tidak dikenali — sengaja konservatif (lebih mahal). */
+const FALLBACK_PRICING = { costIn: 0.0001, costOut: 0.0002 };
+
+function resolveModelPricing(modelName: string): { costIn: number; costOut: number } {
+  const name = (modelName || '').toLowerCase();
+  for (const row of MODEL_PRICING) {
+    if (name.includes(row.match)) return { costIn: row.costIn, costOut: row.costOut };
+  }
+  console.log(`[Pricing] Model "${modelName}" tidak ada di tabel tarif — memakai tarif cadangan`);
+  return FALLBACK_PRICING;
+}
+
 export function createRuntimeLogger(
   userId: string,
   tasks: BackgroundTaskTracker,
@@ -272,10 +318,7 @@ export function createRuntimeLogger(
         const inputTokens = Math.ceil(inputText.length / 4);
         const outputTokens = Math.ceil(outputText.length / 4);
 
-        let costIn = 0.0001; let costOut = 0.0002;
-        if (modelName.includes('gpt-4o')) { costIn = 0.005; costOut = 0.015; }
-        else if (modelName.includes('llama')) { costIn = 0.00005; costOut = 0.00008; }
-
+        const { costIn, costOut } = resolveModelPricing(modelName);
         const totalCost = ((inputTokens / 1000) * costIn) + ((outputTokens / 1000) * costOut);
         const supClient = createClient(
           env.supabaseUrl,
