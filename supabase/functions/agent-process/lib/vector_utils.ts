@@ -28,67 +28,86 @@ export function chunkText(text: string, maxLength: number = 4500): string[] {
 }
 
 /**
- * Embedding Gemini dengan rotasi key + retry, dipakai edge function `rag-process`
- * (jalur unggah dokumen RAG).
+ * EMBEDDING LEWAT OPENROUTER DENGAN KUNCI PENGGUNA (Item 63–64, 2026-09-10)
  *
- * DIPULIHKAN 2026-09-09. Fungsi ini dihapus commit 3176c6e (2026-07-01,
- * "vendor decoupling for llm and embeddings") tanpa memutakhirkan pemanggilnya —
- * `rag-process/index.ts` masih mengimpornya, sehingga fungsi itu akan GAGAL BOOT
- * begitu di-deploy ulang. Belum meledak hanya karena versi yang berjalan di
- * produksi masih bundel 30 Juni 2026, sehari sebelum commit tersebut. Lihat Item 40.
+ * Menggantikan getGeminiEmbeddingWithRetry (Gemini langsung, kunci sistem). Keputusan
+ * Owner di Item 63: model TETAP `google/gemini-embedding-2` — hanya jalurnya pindah —
+ * dan yang membayar adalah pengguna dengan kunci OpenRouter-nya sendiri.
  *
- * Model dan bentuk request sengaja dibuat identik dengan GeminiEmbeddingAdapter
- * (embedding_adapter.ts) supaya dimensinya sama persis (3072) dengan 512 chunk yang
- * sudah ada di database.
+ * Model tidak boleh diganti tanpa memvektorkan ulang SEMUA baris: vektor dari model lain
+ * tidak sebanding (Item 62). Lewat OpenRouter model ini terbukti menghasilkan vektor yang
+ * identik dengan yang sudah tersimpan (sidik "saya suka kopi", Item 63).
  *
- * DUPLIKASI YANG DISENGAJA: idealnya `rag-process` memakai adapter seperti
- * `agent-process`, sejalan dengan maksud commit 3176c6e. Tapi adapter menuntut
- * RuntimeContext penuh yang tidak dibangun `rag-process`, dan merombaknya berarti
- * mengubah jalur unggah dokumen yang tidak bisa diuji tanpa dokumen nyata.
- * Memulihkan fungsi ini adalah perbaikan paling kecil yang menutup ranjaunya.
+ * Kunci diterima sebagai ARGUMEN, bukan lewat CapabilityRegistry — Map statis di sana
+ * dipakai bersama semua permintaan, dan kunci pengguna tidak boleh ikut tertukar.
+ *
+ * Satu panggilan = satu kelompok teks (OpenRouter menerima array). Uji HCDP: 11 potongan
+ * ±12 ribu token selesai ±1 detik per permintaan, 0 kali 429 — dibanding satu per satu
+ * dengan jeda 0,6 s yang gagal setelah 44 detik.
  */
-export async function getGeminiEmbeddingWithRetry(text: string, allKeys: string[], maxRetries = 3): Promise<number[]> {
-  let lastError = 'Unknown error';
-  let geminiKeyIndex = 0;
+export const EMBED_MODEL = 'google/gemini-embedding-2';
+export const EMBED_DIMENSI = 3072;
 
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    for (let ki = 0; ki < allKeys.length; ki++) {
-      const key = allKeys[(geminiKeyIndex + ki) % allKeys.length];
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:embedContent?key=${key}`;
-
-      try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'models/gemini-embedding-2',
-            content: { parts: [{ text }] }
-          })
-        });
-
-        if (response.ok) {
-          geminiKeyIndex = (geminiKeyIndex + ki + 1) % allKeys.length;
-          const data = await response.json();
-          return data.embedding.values;
-        }
-
-        const errText = await response.text();
-        lastError = `Status ${response.status}: ${errText}`;
-
-        if (response.status === 429) {
-          console.warn(`Gemini key #${ki} hit 429, trying next key...`);
-          continue;
-        }
-      } catch (e: any) {
-        lastError = e.message || String(e);
-      }
-    }
-
-    if (attempt < maxRetries - 1) {
-      const waitMs = Math.pow(2, attempt) * 1000;
-      await new Promise(r => setTimeout(r, waitMs));
-    }
+export class EmbedGagal extends Error {
+  constructor(public kode: string, message: string, public status: number = 502) {
+    super(message);
   }
+}
 
-  throw new Error(`Gemini Embedding Error: ${lastError}`);
+export async function embedLewatOpenRouter(
+  teks: string[],
+  kunci: string,
+  opsi: { batasWaktuMs?: number } = {}
+): Promise<number[][]> {
+  const tenggat = opsi.batasWaktuMs ? Date.now() + opsi.batasWaktuMs : Infinity;
+  const MAKS_PERCOBAAN = 4;
+
+  for (let percobaan = 1; ; percobaan++) {
+    const res = await fetch('https://openrouter.ai/api/v1/embeddings', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${kunci}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: EMBED_MODEL, input: teks })
+    });
+
+    if (res.ok) {
+      const body = await res.json().catch(() => ({}));
+      const data = Array.isArray(body?.data) ? [...body.data].sort((a: any, b: any) => a.index - b.index) : [];
+      if (data.length !== teks.length) {
+        throw new EmbedGagal('JAWABAN_TIDAK_LENGKAP', `OpenRouter mengembalikan ${data.length} vektor untuk ${teks.length} teks.`);
+      }
+      const vektor = data.map((d: any) => d.embedding);
+      const salah = vektor.find((v: any) => !Array.isArray(v) || v.length !== EMBED_DIMENSI);
+      if (salah !== undefined) {
+        throw new EmbedGagal('DIMENSI_SALAH', `Vektor berdimensi ${Array.isArray(salah) ? salah.length : typeof salah}, seharusnya ${EMBED_DIMENSI}.`);
+      }
+      return vektor;
+    }
+
+    const pesanAsli = (await res.text().catch(() => '')).slice(0, 300);
+    if (res.status === 401) {
+      throw new EmbedGagal('KUNCI_TIDAK_VALID', 'Kunci OpenRouter Anda ditolak (401). Periksa kunci di Pengaturan.', 401);
+    }
+    if (res.status === 402) {
+      throw new EmbedGagal('SALDO_HABIS', 'Saldo OpenRouter Anda tidak cukup untuk memproses dokumen ini (402).', 402);
+    }
+
+    // 429 dan 5xx: tunggu lalu coba lagi — sesuai Retry-After bila ada, selain itu 2, 4, 8 detik.
+    // (Versi Gemini dulu hanya menunggu 1 lalu 2 detik, terlalu singkat untuk jatah per menit.)
+    if ((res.status === 429 || res.status >= 500) && percobaan < MAKS_PERCOBAAN) {
+      const saran = Number(res.headers.get('retry-after'));
+      const tunggu = Math.min(Number.isFinite(saran) && saran > 0 ? saran * 1000 : 2000 * 2 ** (percobaan - 1), 30_000);
+      if (Date.now() + tunggu > tenggat) {
+        throw new EmbedGagal('WAKTU_HABIS', `OpenRouter meminta menunggu ${Math.round(tunggu / 1000)} detik, melebihi sisa waktu proses.`, 503);
+      }
+      console.warn(`[embed] OpenRouter ${res.status}, percobaan ${percobaan}/${MAKS_PERCOBAAN} — menunggu ${tunggu} ms`);
+      await new Promise((r) => setTimeout(r, tunggu));
+      continue;
+    }
+
+    throw new EmbedGagal(
+      res.status === 429 ? 'BATAS_PERMINTAAN' : 'OPENROUTER_GAGAL',
+      `OpenRouter menjawab ${res.status}: ${pesanAsli}`,
+      502
+    );
+  }
 }

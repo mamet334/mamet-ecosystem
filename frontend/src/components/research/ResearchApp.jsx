@@ -102,16 +102,15 @@ export default function ResearchApp() {
                 return;
             }
 
-            // Kirim key Gemini milik pengguna kalau ada (keputusan BYOK, Item 51).
-            // Kalau tidak ada, `rag-process` memakai key sistem — embedding adalah
-            // fungsi internal, bukan panggilan chat atas nama orang lain.
+            // Embedding dibayar pengguna dengan kunci OpenRouter-nya sendiri (Item 63).
+            // Tanpa kunci, rag-process menolak dengan pesan yang menjelaskan caranya.
             const headers = {};
             try {
                 const vault = kernel.serviceManager?.get('VaultService');
-                const geminiKey = vault?.getKey('gemini');
-                if (geminiKey) headers['x-byok-gemini'] = geminiKey.replace(/[^\x00-\x7F]/g, '');
+                const openRouterKey = vault?.getKey('openrouter');
+                if (openRouterKey) headers['x-byok-openrouter'] = openRouterKey.replace(/[^\x00-\x7F]/g, '');
             } catch {
-                // Vault belum siap — biarkan rag-process memakai key sistem.
+                // Vault belum siap — rag-process akan menjawab OPENROUTER_KEY_REQUIRED.
             }
 
             const { data, error } = await supabase.functions.invoke('rag-process', {
@@ -128,10 +127,19 @@ export default function ResearchApp() {
                 headers
             });
 
-            if (error) throw new Error(error.message);
-            // rag-process menjawab 500 dengan { error } untuk kegagalan vektorisasi;
-            // supabase-js tidak selalu melemparnya, jadi diperiksa sendiri di sini —
-            // kalau tidak, kegagalan vektorisasi akan tampak seperti sukses.
+            // Untuk status non-2xx supabase-js mengembalikan `error` bermesej umum
+            // ("Edge Function returned a non-2xx status code"); alasan sebenarnya ada di
+            // body jawaban, yang tersedia lewat error.context (Item 63).
+            if (error) {
+                let pesan = error.message;
+                try {
+                    const isi = await error.context?.json?.();
+                    if (isi?.error) pesan = isi.error;
+                } catch {
+                    // Body bukan JSON — pakai pesan bawaan.
+                }
+                throw new Error(pesan);
+            }
             if (data?.error) throw new Error(data.error);
 
             console.log(`[ResearchApp] ✅ ${file.name}: ${data?.message ?? 'terunggah'}`);

@@ -188,6 +188,23 @@ function App() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Periksa kunci SEBELUM apa pun dihapus: alur "timpa dokumen" di bawah menghapus
+    // dokumen lama lebih dulu, jadi unggahan yang pasti gagal karena tanpa kunci akan
+    // ikut menghilangkan dokumen lama.
+    if (!(localStorage.getItem('x-byok-openrouter') || '').trim()) {
+      alert('Unggah dokumen ke RAG memakai kunci OpenRouter Anda sendiri. Pasang kunci OpenRouter di Pengaturan, lalu coba lagi.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    // PDF/DOCX masih dibaca mentah dengan file.text() (belum ada ekstraksi teks), dan
+    // rag-process menolaknya sebagai BINARY_FILE. Ditolak di sini juga, sebelum alur
+    // timpa menghapus dokumen lama.
+    if (!file.name.toLowerCase().endsWith('.txt')) {
+      alert('Untuk sementara hanya berkas .txt yang bisa diunggah. Ekstraksi teks PDF/Word sedang diperbaiki.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     // Filter dokumen ganda / Update dokumen
     const existingDoc = documents.find(doc => doc.title === file.name);
     if (existingDoc) {
@@ -214,11 +231,27 @@ function App() {
         extractedText = await file.text(); 
       }
 
+      // Embedding dibayar pengguna dengan kunci OpenRouter-nya sendiri (Item 63) — kunci
+      // yang sama dengan yang dipakai chat. Tanpa kunci, rag-process menolak dengan
+      // pesan yang menjelaskan caranya. Catatan: PDF/DOCX di atas masih dibaca mentah;
+      // rag-process kini menolaknya sebelum ada biaya (BINARY_FILE).
+      const openRouterKey = (localStorage.getItem('x-byok-openrouter') || '').replace(/[^\x00-\x7F]/g, '').trim();
       const { error } = await supabase.functions.invoke('rag-process', {
-        body: { title: file.name, text: extractedText, userId: session.user.id }
+        body: { title: file.name, text: extractedText, userId: session.user.id },
+        headers: openRouterKey ? { 'x-byok-openrouter': openRouterKey } : {}
       });
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        // Alasan sebenarnya ada di body jawaban, bukan di error.message yang umum.
+        let pesan = error.message;
+        try {
+          const isi = await error.context?.json?.();
+          if (isi?.error) pesan = isi.error;
+        } catch {
+          // Body bukan JSON — pakai pesan bawaan.
+        }
+        throw new Error(pesan);
+      }
       
       setDocuments(prev => [{ id: Date.now(), title: file.name }, ...prev]); // Optimistic update, exact ID doesn't matter much until refresh
       fetchDocuments(session.user.id); // Refresh to get real ID

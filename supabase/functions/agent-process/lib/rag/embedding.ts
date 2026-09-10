@@ -27,7 +27,8 @@ import { CapabilityRegistry } from '../adapters/adapter_registry.ts';
  * dan pemanggil memutuskan: pencarian dilewati, pengindeksan menolak.
  *
  * Fungsi ini satu-satunya pintu embedding di agent-process — jangan buat kaskade kedua.
- * (rag-process memakai getGeminiEmbeddingWithRetry di vector_utils.ts — model yang sama.)
+ * (rag-process memakai embedLewatOpenRouter di vector_utils.ts — model yang sama, lewat
+ * OpenRouter dengan kunci pengguna, Item 64. Jalur ini menyusul di rencana Item 63 no. 2.)
  */
 // Diekspor sejak 2026-09-10 (Item 46): penjaga dimensi kedua ternyata tercecer
 // di knowledge_manager.ts dengan angka 768 yang di-hardcode terpisah. Selama
