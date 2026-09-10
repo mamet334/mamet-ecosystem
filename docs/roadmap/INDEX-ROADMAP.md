@@ -740,8 +740,8 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
 
       Versi web yang dibuka dari HP kini punya lapisan pengaman yang sama dengan mode dev.
     - **✅ Alur konversi Item 57–58 terbukti di bawah CSP produksi.** Owner menguji ulang setelah deploy ber-CSP: `Roadmap_Mamet_OS_Ecosystem.docx` — dokumen baru, belum pernah dikonversi, jadi melewati alur penuh, bukan cache — dikirim **21:05:43 WIB** (hampir 3 menit setelah deploy mendarat 21:02:57), selesai 21:06:20 (37 detik, 3 halaman, tanpa error), diunduh 21:06:32 (`last_accessed_at` tercatat oleh tombol Unduh), `sumber.docx` langsung dihapus. Unggah storage, antrian, laptop, unggah PDF, dan tautan unduh semuanya jalan di bawah CSP. **Batas bukti:** basis data tidak mencatat situs asal pengiriman; "lewat situs live" bersandar pada laporan Owner, dan urutan waktunya konsisten.
+    - **✅ File Explorer versi web terbukti (2026-09-10, setelah push Item 60 `c2abaf2`):** Owner membukanya dari versi web sambil login dan melaporkan berhasil — daftar folder dan isi berkas dimuat dari GitHub di bawah CSP produksi.
     - **Belum terbukti:**
-      - File Explorer versi web dengan login — alamatnya sudah diizinkan, fiturnya belum dibuka.
       - Build installer desktop penuh (`npm run dist`) — skripnya diuji, electron-builder belum dijalankan.
 
 60. **File Explorer — Pengaman HTML yang Tidak Mengamankan dan Pewarna Kode yang Tidak Mengenal String (2026-09-10):**
@@ -766,4 +766,34 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
     - **Dicatat, tidak dikerjakan:**
       - GitHub melayani sekitar 60 permintaan per jam per IP tanpa token; setiap klik folder di versi web memakai satu.
       - IPC `fs:readFile` di `main.cjs` menerima path absolut apa pun, jadi bisa membaca berkas di luar folder proyek. Pintu ini dipakai bersama fitur lain, bukan hanya File Explorer.
-    - **Belum terbukti:** File Explorer versi web (GitHub API) setelah perbaikan ini — perbaikannya ada di tampilan dan berlaku sama untuk kedua sumber, tapi versi web belum dibuka (sama dengan catatan Item 59).
+    - **✅ Versi web terbukti (2026-09-10):** setelah push `c2abaf2`, Owner membuka File Explorer versi web (sumber GitHub API) dan melaporkan berhasil. Catatan "belum terbukti" di Item 59 dan 60 tertutup.
+
+61. **Database 238 MB → 32 MB — Kuota Supabase Dimakan Log Sistem, Bukan RAG (2026-09-10):**
+    - **Berawal dari pertanyaan Owner:** kuota database Supabase gratis hanya 500 MB. Kalau PDF/Word diunggah penuh ke RAG, ruangnya cepat habis; kalau diringkas, RAG jadi kurang efektif — dokumen yang ada sekarang memang pernah diringkas oleh DeepSeek dan hasilnya kurang lengkap. Apa solusinya?
+    - **Diukur dulu, bukan ditebak.** Database 238 MB, tapi **seluruh RAG hanya 9,3 MB** (46 dokumen, 515 potongan). **207 MB (87%) adalah log sistem:**
+
+      | Isi | Ukuran | Sebab |
+      |---|---|---|
+      | `net._http_response` | 121 MB | Hanya 24 baris — sisanya ruang kosong. pg_net menghapus baris tiap 6 jam, tapi ruangnya tidak dikembalikan; dibengkakkan jadwal yang memanggil HTTP tiap menit. |
+      | `cron.job_run_details` | 86 MB | 141.522 baris riwayat jalan pg_cron sejak 31 Mei, tidak pernah dibersihkan. **132.160** di antaranya dari jadwal No. 2 (`cron-agent`, tiap menit, 1.440×/hari) yang sudah dihapus 31 Agustus tapi riwayatnya tertinggal. |
+      | Seluruh RAG | 9,3 MB | — |
+
+    - **Temuan tentang RAG:** yang disimpan hanya teks hasil ekstraksi — foto, grafik, dan berkas asli tidak ikut (Storage hanya berisi 838 KB, semuanya bucket `conversions`). Yang besar adalah **vektornya**: `gemini-embedding-2` menghasilkan 3.072 angka ≈ **12 KB per potongan, 10× teksnya** (±1,2 KB). Perkiraan: dokumen 47 halaman ≈ 1,5 MB di RAG; setelah pembersihan, ruang cukup untuk ratusan dokumen seukuran itu **disimpan penuh**. Kesimpulan untuk Owner: jangan ringkas teks — kalau suatu saat perlu berhemat, kecilkan vektornya (Gemini mendukung 768 dimensi, 4× lebih kecil; butuh vektorisasi ulang dan menyentuh jalur embedding memori semantik — belum dikerjakan).
+    - **Temuan keamanan sampingan:** setiap baris `cron.job_run_details` menyimpan salinan perintah jadwal, termasuk **header Authorization**. Riwayat jadwal No. 2 berarti 132 ribu salinan kunci di tabel log. Isinya tidak ditampilkan; terbuang bersama pembersihan.
+    - **Dikerjakan dengan izin Owner, setelah pratinjau per jadwal ditunjukkan:**
+      - **A.** `delete from cron.job_run_details where start_time < now() - interval '7 days'` — **140.842 baris**, semuanya berstatus `succeeded` (No. 2: 132.160, No. 3 health-checker: 8.534, No. 6: 77, No. 1: 55, No. 4: 13, No. 5: 3). 680 baris 7 hari terakhir disisakan. Jadwalnya sendiri tidak disentuh. Selisih satu baris dari pratinjau (140.841) adalah log health-checker yang melewati batas 7 hari di sela pratinjau dan eksekusi.
+      - **B.** `vacuum full` pada kedua tabel. Menghapus baris saja tidak menurunkan angka kuota — ruang bekas hanya ditandai boleh dipakai ulang oleh tabel yang sama. `net._http_response` tidak dihapus barisnya (24 baris tetap); hanya ruang kosongnya dibuang. Hak `MAINTAIN` akun `postgres` atas kedua tabel diperiksa lebih dulu.
+      - **C.** Migrasi `20260910144900_cleanup_cron_history_weekly.sql`: jadwal No. 7 `cleanup-cron-history-weekly`, Minggu 00:30 UTC (07:30 WIB), menghapus riwayat lebih dari 7 hari. Tanpa `vacuum full` — pada kondisi stabil tabel hanya berisi ±700 baris, ruang bekas dipakai ulang oleh autovacuum. Jadwal No. 1–6 dibuat lewat dashboard dan tidak tercatat di repo; ini jadwal pertama yang tercatat.
+    - **Status:** ✅ **Selesai & Diverifikasi (2026-09-10).**
+
+      | | Sebelum | Sesudah |
+      |---|---|---|
+      | **Database** | **238 MB** | **32 MB** |
+      | `cron.job_run_details` | 86 MB, 141.522 baris | 248 KB, 680 baris |
+      | `net._http_response` | 121 MB, 24 baris | 72 KB, 24 baris |
+      | RAG (`documents` / `document_chunks`) | 46 / 515 | 46 / 515 |
+      | Jadwal aktif | 4 | 5 (4 lama tetap aktif + No. 7) |
+
+      Jadwal No. 7 tercatat aktif dengan user `postgres`; perintahnya dijalankan sekali secara manual: tanpa error, 0 baris (log tertua tersisa 3 September).
+    - **Belum terbukti:** jadwal No. 7 berjalan sendiri — pertama kali Minggu 13 September 07:30 WIB; cek di `cron.job_run_details` dengan `jobid = 7`.
+    - **Dicatat, tidak dikerjakan:** fallback embedding OpenAI di `embedding_adapter.ts:86-90` memaksa `dimensions: 768` dengan komentar "agar cocok dengan Gemini" — sisa masa ketika vektor Gemini masih 768; kolom vektor kini 3.072, jadi hasil fallback itu tidak akan cocok. `rag-process` sendiri memakai `vector_utils.ts` (Gemini langsung), tidak lewat adapter ini; perlu diperiksa jalur mana yang masih memakainya.

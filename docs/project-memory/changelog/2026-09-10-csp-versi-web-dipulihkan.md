@@ -88,7 +88,9 @@ Owner lalu menguji ulang konversi setelah deploy. Dokumen baru (`Roadmap_Mamet_O
 berhasil diunduh. Karena dokumennya belum pernah dikonversi, ia melewati alur penuh — unggah,
 antrian, laptop, unggah PDF, unduh — bukan jalan pintas cache.
 
+File Explorer versi web — penyebab awal seluruh item ini — kemudian dibuka Owner sambil login
+dan berhasil memuat repo dari GitHub (dicatat di Item 60).
+
 ## Yang belum terbukti
 
-- File Explorer versi web saat login.
 - Build installer desktop penuh.

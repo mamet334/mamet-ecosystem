@@ -74,6 +74,6 @@ bagi butuh parser penuh.
 - Pintu baca berkas desktop (`fs:readFile`) menerima path mana pun di laptop, bukan hanya folder
   proyek. Pintu ini dipakai bersama fitur lain.
 
-## Yang belum terbukti
+## Versi web
 
-File Explorer versi web — perbaikannya berlaku sama, tapi versi web belum dibuka.
+Setelah push, Owner membuka File Explorer versi web (sumber GitHub) dan melaporkan berhasil.
