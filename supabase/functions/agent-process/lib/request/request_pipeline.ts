@@ -116,12 +116,28 @@ export async function executeRequestPipeline(
   const provider = parsed.provider || 'openrouter';
   const providerHeaderKey = `x-byok-${provider}`;
   const byokProviderKey = request.headers.get(providerHeaderKey);
-  const envVarKey = `${provider.toUpperCase()}_API_KEY`;
-  const providerApiKey = (byokProviderKey || Deno.env.get(envVarKey) || '').trim();
+  // [BYOK WAJIB — keputusan Owner 2026-09-10]
+  //
+  // Key sistem dari environment SENGAJA tidak lagi dipakai sebagai cadangan untuk
+  // provider chat. Sebelumnya, pengguna tanpa key sendiri diam-diam dialihkan ke
+  // `OPENROUTER_API_KEY` milik Owner. Dua akibatnya buruk sekaligus:
+  //
+  //   1. Belanja pengguna eksternal ditanggung Owner tanpa jejak kepemilikan, dan
+  //      ikut memakan plafon harian Owner sendiri.
+  //   2. Ketika key sistem itu mati — terbukti 2026-09-10, OpenRouter menjawab
+  //      401 "User not found" — SETIAP pengguna tanpa BYOK langsung tertutup
+  //      total, dengan galat mentah alih-alih penjelasan. Tidak ada yang tahu,
+  //      karena Owner selalu punya key sendiri sehingga tak pernah menyentuh
+  //      jalur itu.
+  //
+  // Aturannya kini sama untuk semua mode, menggeneralisasi penjagaan yang sudah
+  // lebih dulu ada untuk mode ENGINEER (2026-07-30): pemakaian harus punya
+  // pemiliknya. Key sistem Gemini TIDAK terpengaruh — ia dipakai untuk fungsi
+  // internal (embedding, Intent Router), bukan untuk melayani chat orang lain.
+  const providerApiKey = (byokProviderKey || '').trim();
 
-  // Fallback to OpenRouter if provider key is empty
   const finalProvider = providerApiKey ? provider : 'openrouter';
-  const finalApiKey = providerApiKey || (request.headers.get('x-byok-openrouter') || (getAllKeys('OPENROUTER_API_KEY').length > 0 ? getAllKeys('OPENROUTER_API_KEY')[0] : '')).trim();
+  const finalApiKey = providerApiKey || (request.headers.get('x-byok-openrouter') || '').trim();
 
   // [SECURITY FIX 2026-07-30] GUARD: Mode ENGINEER wajib menggunakan BYOK key dari user.
   // Jika tidak ada BYOK key, TOLAK request. Engineer TIDAK BOLEH menggunakan API key sistem.
@@ -147,7 +163,23 @@ export async function executeRequestPipeline(
     }
   }
 
-  console.log(`[RequestPipeline] Provider: ${finalProvider}, Key source: ${byokProviderKey ? 'BYOK header' : Deno.env.get(envVarKey) ? 'Environment' : 'Fallback'}`);
+  // Gerbang BYOK umum. Ditaruh SESUDAH penjagaan ENGINEER supaya mode itu tetap
+  // memberi pesannya sendiri yang lebih spesifik.
+  if (!finalApiKey) {
+    console.warn(`[RequestPipeline] ⛔ Permintaan ditolak: tidak ada BYOK API key dari user (mode: ${parsed.mode || 'default'}, appSource: ${parsed.appSource || 'unknown'}).`);
+    return { ctx: {} as any, rctx: {} as any, response: new Response(JSON.stringify({
+      error: 'NO_API_KEY',
+      message: 'Aplikasi ini memerlukan API Key Anda sendiri. ' +
+               'Buka Settings → AI Provider dan masukkan API Key Anda terlebih dahulu. ' +
+               'Key disimpan di perangkat Anda dan dipakai langsung untuk permintaan Anda, ' +
+               'sehingga setiap pemakaian jelas pemiliknya.'
+    }), {
+      status: 403,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    }) };
+  }
+
+  console.log(`[RequestPipeline] Provider: ${finalProvider}, Key source: BYOK header`);
 
   // Hapus duplikasi ctx yang error!
   const ctx = buildUnifiedExecutionContext({
