@@ -194,7 +194,8 @@ export class GroqAdapter implements CapabilityAdapter {
       result: answer,
       confidence: 0.9,
       source: 'groq',
-      trace_id: context.trace_id
+      trace_id: context.trace_id,
+      modelUsed: groqModel
     };
   }
 
@@ -382,7 +383,8 @@ export class OpenRouterAdapter implements CapabilityAdapter {
       confidence: 0.9,
       source: 'openrouter',
       trace_id: context.trace_id,
-      usageCostUsd: actualCostUsd
+      usageCostUsd: actualCostUsd,
+      modelUsed: openRouterModel
     };
   }
 
@@ -549,7 +551,8 @@ export class GeminiAdapter implements CapabilityAdapter {
               confidence: 0.95,
               source: 'gemini',
               trace_id: context.trace_id,
-              metadata
+              metadata,
+              modelUsed: targetModel
             };
           }
           
@@ -805,7 +808,8 @@ export class OpenAIAdapter implements CapabilityAdapter {
       result: answer,
       confidence: 0.9,
       source: 'openai',
-      trace_id: context.trace_id
+      trace_id: context.trace_id,
+      modelUsed: selectedModel
     };
   }
 

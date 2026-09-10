@@ -140,7 +140,19 @@ export const callLLMWithMetadata = async (
         if (!rctx.stream.isStream) {
           // result.usageCostUsd = biaya sesungguhnya dari provider kalau dilaporkan.
           // Kalau undefined, logApiUsage jatuh ke perkiraan tabel tarif.
-          rctx.logger.logApiUsage(result.source, rctx.model.model || 'auto', promptText + systemPromptText, result.result, result.usageCostUsd);
+          //
+          // Modelnya diambil dari `result.modelUsed` — model yang BENAR-BENAR
+          // dipakai adapter — bukan `rctx.model.model` yang hanya model yang
+          // diminta. Saat kaskade jatuh ke adapter lain, keduanya berbeda, dan
+          // mencatat model yang diminta menghasilkan baris mustahil di
+          // `api_usage` seperti provider `gemini` dengan model `deepseek/...`.
+          //
+          // Ini bukan sekadar label: kalau provider tidak melaporkan biaya,
+          // `logApiUsage` mencocokkan nama model ini ke tabel tarif. Nama yang
+          // salah berarti tarif yang salah — kelas kesalahan yang sama persis
+          // dengan Item 41.
+          const modelTercatat = result.modelUsed || rctx.model.model || 'auto';
+          rctx.logger.logApiUsage(result.source, modelTercatat, promptText + systemPromptText, result.result, result.usageCostUsd);
         }
         console.log(`✅ ${adapter.name} succeeded`);
         eventBus.emit({ type: 'Capability.Executed', source: adapter.name, payload: { success: true, rctx } });

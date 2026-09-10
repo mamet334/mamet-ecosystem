@@ -287,6 +287,22 @@ const MODEL_PRICING: Array<{ match: string; costIn: number; costOut: number }> =
   { match: 'deepseek-v4-pro',          costIn: 0.00057948, costOut: 0.00173844 },
   { match: 'deepseek-v4-flash',        costIn: 0.000065,   costOut: 0.00018 },
   { match: 'llama',                    costIn: 0.00005,    costOut: 0.00008 },
+  // SENGAJA TIDAK ADA BARIS GEMINI.
+  //
+  // Sejak 2026-09-10 baris Gemini muncul di api_usage dengan nama modelnya yang
+  // benar (`gemini-2.5-flash`) — sebelumnya ia salah tercatat sebagai model
+  // OpenRouter milik pemanggil. Konsekuensinya ia kini tidak cocok dengan entri
+  // mana pun dan jatuh ke FALLBACK_PRICING.
+  //
+  // Itu disengaja. Owner memanggil Gemini dengan API key-nya sendiri langsung ke
+  // generativelanguage.googleapis.com, dan belum dipastikan apakah key itu tier
+  // gratis (biaya nyata $0) atau berbayar. Menuliskan angka dari ingatan adalah
+  // persis kesalahan Item 41 — tarif karangan yang memutus Owner dari biaya yang
+  // tidak pernah terjadi. FALLBACK meleset ke arah AMAN (sedikit terlalu mahal),
+  // dan nilainya remeh: satu panggilan Intent Router ~157 token ≈ $0,00002.
+  //
+  // Untuk diisi kalau Owner sudah memastikan tier key Gemini-nya, dengan angka
+  // dari halaman harga resmi Google — bukan dari ingatan.
 ];
 
 /** Tarif cadangan kalau model tidak dikenali — sengaja konservatif (lebih mahal). */
