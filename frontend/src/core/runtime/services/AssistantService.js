@@ -21,7 +21,7 @@
 const AGENT_ENDPOINT = 'https://uuyzdjifhdfyyvpxsofu.supabase.co/functions/v1/agent-process';
 
 import { supabase } from '../../../supabase.js';
-import { statusLaptop, kirimKeLaptop } from './remoteConversionClient.js';
+import { statusLaptop, kirimKeLaptop, sidikJari, cariDiCache, KUOTA_CACHE_MB } from './remoteConversionClient.js';
 import { runDesktopInterceptors } from '../../../components/AIAgent/hooks/useDesktopInterceptor.js';
 
 // PR#2: Import governor dari versi JS lokal (bukan cross-boundary ke lib/ TypeScript)
@@ -477,6 +477,43 @@ export class AssistantService {
    * @private
    */
   async _handleDocConvertLewatLaptop({ attachedFile, onChunk, onDone }) {
+    // CACHE DULU (Item 58), SEBELUM memeriksa laptop: dokumen yang isinya pernah dikonversi
+    // langsung diberikan — tanpa antre, tanpa Word, dan tetap berhasil walau laptop mati.
+    onChunk?.(`🔍 Memeriksa apakah **${attachedFile.name}** pernah dikonversi...`, `🔍 Memeriksa apakah **${attachedFile.name}** pernah dikonversi...`, []);
+    let hash = null;
+    try {
+      hash = await sidikJari(attachedFile);
+      const dariCache = await cariDiCache(hash);
+      if (dariCache) {
+        const r = dariCache.result || {};
+        const mb = dariCache.output_size ? (dariCache.output_size / (1024 * 1024)).toFixed(1) : '?';
+        const sejak = dariCache.finished_at ? new Date(dariCache.finished_at).toLocaleString('id-ID') : '?';
+        onDone?.(
+          `⚡ **Diambil dari cache** — isi dokumen ini sama persis dengan yang pernah dikonversi, jadi tidak diproses ulang.\n\n` +
+          `| | |\n|---|---|\n` +
+          `| Halaman | ${r.halaman_pdf ?? '?'} |\n` +
+          `| Ukuran | ${mb} MB |\n` +
+          `| Dikonversi | ${sejak} |\n` +
+          (dariCache.source_name !== attachedFile.name ? `| Nama saat itu | ${dariCache.source_name} |\n` : '') +
+          '\n_Dokumen dikenali dari isinya, bukan namanya. Kalau Anda mengubah isinya, dokumen akan dikonversi ulang._',
+          [],
+          {
+            toolsUsed: ['word_to_pdf'],
+            toolExecution: {
+              name: 'word_to_pdf',
+              result: r,
+              cache: true,
+              remote: { jobId: dariCache.id, outputPath: dariCache.output_path, sourceName: attachedFile.name }
+            }
+          }
+        );
+        return;
+      }
+    } catch (err) {
+      // Cache hanya jalan pintas: gagal di sini tidak boleh menggagalkan konversi.
+      console.warn('[AssistantService] Pemeriksaan cache konversi gagal, lanjut ke laptop:', err.message);
+    }
+
     const laptop = await statusLaptop();
     if (!laptop?.online) {
       onDone?.(
@@ -496,7 +533,7 @@ export class AssistantService {
     };
     const hasil = await kirimKeLaptop(attachedFile, (status) => {
       if (teks[status]) onChunk?.(teks[status], teks[status], []);
-    });
+    }, hash);
 
     const job = hasil.job;
     if (hasil.ok && job?.output_path) {
@@ -509,6 +546,7 @@ export class AssistantService {
         `| Ukuran | ${mb} MB |\n` +
         `| Waktu di laptop | ${r.detik ?? '?'} detik |\n` +
         `| Mesin | Microsoft Word ${r.word_versi || ''} → Microsoft Print to PDF |\n\n` +
+        `💾 PDF disimpan di **Riwayat konversi** (tombol di atas chat). Kalau dokumen yang sama dikirim lagi, PDF langsung diberikan tanpa diproses ulang. Penyimpanan dibatasi ${KUOTA_CACHE_MB} MB; bila penuh, yang paling lama tidak dipakai dibuang lebih dulu.\n\n` +
         '_Tautan (hyperlink) di dalam dokumen tidak bisa diklik di PDF hasil cetak._',
         [],
         {

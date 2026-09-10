@@ -688,3 +688,32 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
     - **Belum dikerjakan:**
       - **Berkas tidak pernah terhapus.** Setiap konversi meninggalkan sumber + hasil di bucket (±9,2 MB setelah dua konversi), dan versi web belum punya daftar riwayat atau tombol hapus. Perlu kebijakan retensi.
       - **CSP versi web memblokir `api.github.com`** (`RepositoryReaderService.js:157`) — terlihat di log uji, sudah ada sebelum item ini, tidak memengaruhi konversi.
+
+58. **Cache Hasil Konversi Berbasis Sidik Jari Isi, Kuota 200 MB, dan Panel Riwayat (2026-09-10):**
+    - **Masalah dari Item 57:** setiap konversi meninggalkan `sumber.docx` + `hasil.pdf` di bucket selamanya (±9,2 MB setelah dua konversi), dan versi web tidak punya daftar riwayat — PDF hanya bisa diunduh dari tombol di pesan chat asalnya.
+    - **Rancangan pertama saya (batas 24 jam) diganti setelah pertanyaan Owner.** Owner bertanya bagaimana kalau memakai sistem cache atau sampah. Dibandingkan: sampah cocok untuk data yang tak tergantikan; hasil konversi SELALU bisa dibuat ulang karena dokumen aslinya ada di perangkat Owner — yang dibutuhkan bukan "bisa dipulihkan" tapi "tidak hilang terlalu cepat dan tidak menumpuk". Owner memilih **cache 200 MB + panel Riwayat**, dan menambahkan poin yang menjadi inti rancangan: *cache membuat sistem tidak berulang kali memproses hal yang sama*, dan berguna untuk tujuan ke depan. Kode batas 24 jam belum sempat di-commit, jadi tidak ada yang perlu dibatalkan.
+    - **Cache berbasis sidik jari ISI (SHA-256), bukan nama berkas.** Dihitung di browser sebelum mengirim. Dokumen sama dengan nama beda → tetap dikenali; diedit satu huruf → sidik jari berubah, dianggap dokumen baru (tidak ada PDF basi). Kunci pencarian `(user_id, kind, source_hash)` — `kind` sengaja ikut supaya jenis pemrosesan lain di masa depan (mis. ringkasan dokumen) bisa memakai mekanisme yang sama.
+    - **Cache per akun, sengaja tidak dibagi.** Kalau dibagi antar pengguna, orang lain bisa mengetahui bahwa suatu dokumen pernah dikonversi di sistem ini.
+    - **Cache diperiksa SEBELUM status laptop.** Dokumen yang pernah dikonversi diberikan seketika, tanpa antre, tanpa Word — dan tetap berhasil walau laptop mati. Gagal memeriksa cache tidak menggagalkan konversi; ia jalan pintas, bukan syarat.
+    - **Kuota 200 MB, buang yang paling lama TIDAK DIPAKAI** (`last_accessed_at`, diperbarui saat cache dipakai dan saat diunduh), bukan yang paling lama dibuat — PDF yang sering diunduh bertahan. Ditegakkan laptop setelah setiap konversi dan tiap jam; hanya laptop yang menambah isi cache, jadi kuota tidak bisa terlampaui lewat jalur lain.
+    - **Kenapa bukan pg_cron:** trigger `storage.protect_delete` di `storage.objects` memblokir DELETE lewat SQL (dibuktikan dari `pg_trigger`). Berkas hanya bisa dihapus lewat Storage API, jadi laptop-pekerja yang membersihkan — ia sudah login dan hanya berhak atas folder akunnya sendiri.
+    - **Aturan pembersihan lainnya:** `sumber.docx` dihapus segera setelah konversi selesai atau gagal (kecuali dikembalikan ke antrian karena Word sibuk); pending > 15 menit ditandai kedaluwarsa (versi web berhenti menunggu di menit ke-13); baris gagal > 7 hari dihapus. Kolom `source_deleted` mencegah penghapusan dicoba ulang tiap jam. Baris dihapus **hanya bila berkasnya berhasil dihapus** — kalau Storage gagal, baris tetap ada sebagai penunjuk, bukan berkas yatim.
+    - **Panel Riwayat** (`RiwayatKonversi.jsx`) di toolbar workspace Assistant: pemakaian "X MB dari 200 MB", daftar konversi dengan status, halaman, ukuran, tanggal, tombol Unduh dan Hapus. Tombol Unduh di pesan chat lama yang PDF-nya sudah terbuang kini menjelaskan sebabnya, bukan "Object not found" mentah.
+    - **Satu sumber angka:** `KUOTA_CACHE_MB` diekspor `remoteConversionClient.js` dan diimpor pekerja, panel, dan pesan chat — tidak bisa berbeda satu sama lain.
+    - **Status:** ✅ **Selesai & Diverifikasi Live (2026-09-10).**
+      - **Migrasi** divalidasi dalam `BEGIN … ROLLBACK` sebelum `supabase db push`; kedua PDF lama langsung mendapat ukuran benar dari metadata storage (7.769.349 dan 473.157 byte).
+      - **Pembersihan sumber lama saat laptop mulai:** bucket turun dari **4 berkas menjadi 2** (hanya `hasil.pdf`), `source_deleted` kedua pekerjaan lama menjadi `true`.
+      - **Panel Riwayat** tampil di Chrome: 2 konversi, "7.9 MB dari 200 MB".
+      - **Cache — urutan waktu adalah buktinya:**
+
+        | WIB | Kejadian |
+        |---|---|
+        | 20:39:45 | lembar kerja UT dikirim → **satu** pekerjaan baru, sidik jari `66d30b1d47f2…` |
+        | 20:40:52 | laptop selesai; `sumber.docx` langsung dihapus |
+        | 20:41:12 | **detak terakhir laptop** — detak 20:41:32 tidak pernah datang, aplikasi desktop tertutup |
+        | 20:41:52 | dokumen sama dikirim lagi → ⚡ **diambil dari cache** |
+
+        Hanya satu baris baru, bukan dua — kiriman kedua tidak masuk antrian sama sekali — dan terjadi 40 detik setelah laptop berhenti berdetak. Bucket berisi 3 berkas, ketiganya `hasil.pdf`.
+      - **Logika kuota** diuji dengan kode pekerja yang ASLI dan Supabase tiruan di memori (hook `module.register` mengganti modul `supabase.js`): 5 PDF × 60 MB = 300 MB → dibuang A dan C (paling lama tak dipakai), **B yang dibuat paling awal tapi baru dipakai bertahan**, sisa 180 MB; pending 20 menit kedaluwarsa, pending 1 menit bertahan; gagal 8 hari terhapus, 1 hari bertahan; akun lain berisi 300 MB **tidak tersentuh**; pembersihan kedua tidak membuang apa pun. 10/10 lulus.
+    - **Belum terbukti:** pembuangan saat kuota 200 MB **benar-benar penuh** di Supabase sungguhan — hanya diuji dengan tiruan, karena butuh ratusan MB PDF.
+    - **Keterbatasan yang disadari:** dua konversi sebelum Item 58 tidak punya sidik jari, jadi tidak pernah menjadi cache hit; di Riwayat kini ada dua entri lembar kerja UT (lama tanpa sidik jari, baru dengan sidik jari). Konversi langsung di aplikasi desktop (Item 56) menaruh PDF di sebelah dokumen aslinya dan tidak masuk cache.

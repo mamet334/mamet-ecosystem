@@ -3,6 +3,7 @@ import { Loader2, Globe } from 'lucide-react';
 import { useWorkspace } from '../../core/workspaces/WorkspaceContext';
 import { supabase } from '../../supabase';
 import { tautanUnduh } from '../../core/runtime/services/remoteConversionClient';
+import RiwayatKonversi from './RiwayatKonversi';
 import { kernel } from '../../core/runtime/Kernel';
 import FolderSelector from '../FolderSelector';
 import ChatHistory from './ChatHistory';
@@ -1084,6 +1085,12 @@ export default function ConversationEngine({ sessionId }) {
             </div>
           )}
 
+          {/* Riwayat konversi Word → PDF (cache, Item 58) — hanya di Assistant, satu-satunya
+              workspace yang bisa memicu konversi ("ubah word ke pdf dokumen ini"). */}
+          {osState?.workspaceId && !isEngineerWorkspace && workspaceManager?.activeWorkspaceId === 'ws-assistant' && (
+            <RiwayatKonversi />
+          )}
+
           {/* Pil override tingkat model — hanya untuk jalur Assistant. Engineer sengaja tidak
               ditampilkan karena memakai model utama sendiri, di luar sistem tiering (roadmap §3). */}
           {osState?.workspaceId && !isEngineerWorkspace && (
@@ -1366,7 +1373,7 @@ export default function ConversationEngine({ sessionId }) {
                         if (remote?.outputPath) {
                           const unduh = async () => {
                             try {
-                              const { url, namaPdf } = await tautanUnduh(remote.outputPath, remote.sourceName);
+                              const { url, namaPdf } = await tautanUnduh(remote.outputPath, remote.sourceName, remote.jobId);
                               const a = document.createElement('a');
                               a.href = url;
                               a.download = namaPdf;
