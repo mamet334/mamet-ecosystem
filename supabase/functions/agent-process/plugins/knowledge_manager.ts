@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { evaluateKnowledgeQuality } from '../lib/knowledge_quality_filter.ts';
 import { chunkText } from '../lib/vector_utils.ts';
-import { generateEmbedding } from '../lib/rag/embedding.ts';
+import { generateEmbedding, EMBEDDING_DIMENSIONS } from '../lib/rag/embedding.ts';
 
 export const knowledgeManagerPlugin = {
   name: 'knowledge_manager',
@@ -137,17 +137,44 @@ export const knowledgeManagerPlugin = {
 
           const chunks = chunkText(contentToSave, 4500);
           let successCount = 0;
+          let gagalDimensi = 0;
+          let gagalInsert = 0;
           for (const chunk of chunks) {
              const embeddingVector = await generateEmbedding(chunk, context.rctx);
-             if (embeddingVector && embeddingVector.length === 768) {
+             // Penjaga ini sempat mematok 768 yang di-hardcode — sisa era model embedding
+             // lama, sama seperti di rag/embedding.ts. Setelah adapter beralih ke 3072,
+             // syaratnya tidak pernah terpenuhi lagi: TIDAK ADA chunk yang tersimpan,
+             // sementara pesan di bawah tetap melapor "Berhasil menyimpan". Angkanya kini
+             // diimpor dari satu sumber agar tidak bisa lagi berbeda diam-diam (Item 46).
+             if (embeddingVector && embeddingVector.length === EMBEDDING_DIMENSIONS) {
                const { error: chunkErr } = await supabase.from('document_chunks').insert({ document_id: docData.id, content: chunk, embedding: embeddingVector });
-               if (!chunkErr) successCount++;
+               if (!chunkErr) {
+                 successCount++;
+               } else {
+                 gagalInsert++;
+                 console.error(`[KnowledgeManager] Insert chunk gagal: ${chunkErr.message}`);
+               }
+             } else {
+               gagalDimensi++;
+               console.error(`[KnowledgeManager] Chunk dilewati — embedding berdimensi ${embeddingVector?.length ?? 0}, diharapkan ${EMBEDDING_DIMENSIONS}.`);
              }
+          }
+
+          // Melapor jujur. Menyimpan nol chunk berarti dokumen ini tidak akan pernah
+          // muncul di pencarian vektor, dan itu kegagalan — bukan keberhasilan dengan
+          // angka nol di dalam kurung.
+          if (successCount === 0 && chunks.length > 0) {
+             return {
+                output: `Gagal menyimpan ke workspace "${spaceName}": tidak satu pun dari ${chunks.length} chunk berhasil divektorkan (${gagalDimensi} gagal dimensi, ${gagalInsert} gagal insert). Dokumen tidak akan muncul di pencarian.`,
+                sources: []
+             };
           }
 
           // 💾 STEP 4: SAVE DECISION TRANSPARENCY LAYER
           return { 
-             output: `Berhasil menyimpan informasi ke workspace "${spaceName}" (${successCount} chunks vektor).`, 
+             output: successCount < chunks.length
+                ? `Sebagian tersimpan ke workspace "${spaceName}": ${successCount} dari ${chunks.length} chunk (${gagalDimensi} gagal dimensi, ${gagalInsert} gagal insert). Bagian yang gagal tidak akan muncul di pencarian.`
+                : `Berhasil menyimpan informasi ke workspace "${spaceName}" (${successCount} chunks vektor).`,
              sources: [],
              toolExecution: {
                  target: "WORKSPACE",

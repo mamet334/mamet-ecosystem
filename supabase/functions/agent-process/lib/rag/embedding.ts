@@ -25,7 +25,11 @@ import { CapabilityRegistry } from '../adapters/adapter_registry.ts';
  * akan ditolak database. Praktisnya Gemini adalah satu-satunya penyedia embedding
  * yang layak sekarang, dan itu memang sejalan dengan tujuan hemat biaya Owner.
  */
-const EMBEDDING_DIMENSIONS = 3072;
+// Diekspor sejak 2026-09-10 (Item 46): penjaga dimensi kedua ternyata tercecer
+// di knowledge_manager.ts dengan angka 768 yang di-hardcode terpisah. Selama
+// angkanya ditulis ulang di banyak tempat, perbaikan di satu tempat tidak
+// menyembuhkan tempat lainnya — dan kegagalannya diam.
+export const EMBEDDING_DIMENSIONS = 3072;
 
 export const generateEmbedding = async (text: string, rctx: RuntimeContext): Promise<number[]> => {
   // Ensure adapters are initialized (usually done in Orchestrator, but safe to call)
