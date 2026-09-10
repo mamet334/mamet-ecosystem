@@ -83,8 +83,12 @@ situs live:
 | Kontrol `example.com` | **diblokir** |
 | Tampilan halaman | normal |
 
+Owner lalu menguji ulang konversi setelah deploy. Dokumen baru (`Roadmap_Mamet_OS_Ecosystem.docx`,
+3 halaman) dikirim hampir 3 menit setelah versi ber-CSP aktif, selesai dalam 37 detik, dan
+berhasil diunduh. Karena dokumennya belum pernah dikonversi, ia melewati alur penuh — unggah,
+antrian, laptop, unggah PDF, unduh — bukan jalan pintas cache.
+
 ## Yang belum terbukti
 
 - File Explorer versi web saat login.
-- Alur konversi di bawah CSP produksi — sudah jalan di bawah CSP yang sama di mode dev.
 - Build installer desktop penuh.

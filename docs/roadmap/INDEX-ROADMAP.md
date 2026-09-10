@@ -739,7 +739,7 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
       | tampilan halaman | normal; satu-satunya error konsol adalah pemblokiran kontrol yang sengaja dipicu |
 
       Versi web yang dibuka dari HP kini punya lapisan pengaman yang sama dengan mode dev.
+    - **✅ Alur konversi Item 57–58 terbukti di bawah CSP produksi.** Owner menguji ulang setelah deploy ber-CSP: `Roadmap_Mamet_OS_Ecosystem.docx` — dokumen baru, belum pernah dikonversi, jadi melewati alur penuh, bukan cache — dikirim **21:05:43 WIB** (hampir 3 menit setelah deploy mendarat 21:02:57), selesai 21:06:20 (37 detik, 3 halaman, tanpa error), diunduh 21:06:32 (`last_accessed_at` tercatat oleh tombol Unduh), `sumber.docx` langsung dihapus. Unggah storage, antrian, laptop, unggah PDF, dan tautan unduh semuanya jalan di bawah CSP. **Batas bukti:** basis data tidak mencatat situs asal pengiriman; "lewat situs live" bersandar pada laporan Owner, dan urutan waktunya konsisten.
     - **Belum terbukti:**
       - File Explorer versi web dengan login — alamatnya sudah diizinkan, fiturnya belum dibuka.
-      - Alur konversi Item 57–58 di bawah CSP **produksi** — sudah jalan di bawah CSP yang sama di mode dev, belum diulang di situs live.
       - Build installer desktop penuh (`npm run dist`) — skripnya diuji, electron-builder belum dijalankan.
