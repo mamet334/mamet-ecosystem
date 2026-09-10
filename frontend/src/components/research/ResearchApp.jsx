@@ -71,57 +71,77 @@ export default function ResearchApp() {
     }, [selectedSpace, searchQuery]);
 
     // Upload document
+    //
+    // CATATAN (2026-09-10): sampai hari ini fungsi ini menulis LANGSUNG ke tabel
+    // `documents` dan `document_chunks` tanpa pernah menyentuh `rag-process`.
+    // Akibatnya tiga kegagalan yang semuanya diam:
+    //   1. Chunk tersimpan tanpa `embedding`. Kolom itu nullable, jadi Postgres
+    //      menerima tanpa protes — dokumen muncul di daftar, terlihat berhasil,
+    //      tapi tidak akan pernah ditemukan pencarian RAG.
+    //   2. `text.substring(0, 5000)` membuang sisa dokumen tanpa memberi tahu.
+    //   3. `space_id` di-hardcode ke workspace milik satu akun, sehingga unggahan
+    //      pengguna lain akan mendarat di workspace orang.
+    // Semuanya kini diserahkan ke `rag-process` — jalur yang sama yang dipakai
+    // mametlite, yang memotong per 4.500 karakter, memvektorkan tiap potongan,
+    // dan menentukan space CORE milik pengguna yang benar di sisi server.
     const handleUpload = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // GUNAKAN SPACE YANG SUDAH ADA (hardcoded ID dari database)
-        const DEFAULT_SPACE_ID = '58dba6bd-293e-4a8e-8692-a38dd6f7c41b';
-        
-        // Jika selectedSpace belum di-set, gunakan default
-        if (!selectedSpace) {
-          setSelectedSpace(DEFAULT_SPACE_ID);
-        }
-        
-        const targetSpace = selectedSpace || DEFAULT_SPACE_ID;
-
         setUploading(true);
         try {
             const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
+            if (!session) {
+                alert('Sesi tidak ditemukan. Silakan masuk kembali.');
+                return;
+            }
 
-            // Baca file sebagai teks
             const text = await file.text();
+            if (!text.trim()) {
+                alert(`Dokumen "${file.name}" kosong atau tidak berisi teks yang bisa dibaca.`);
+                return;
+            }
 
-            // Insert ke documents
-            const { data: doc, error: docError } = await supabase
-                .from('documents')
-                .insert({
-                    user_id: session.user.id,
+            // Kirim key Gemini milik pengguna kalau ada (keputusan BYOK, Item 51).
+            // Kalau tidak ada, `rag-process` memakai key sistem — embedding adalah
+            // fungsi internal, bukan panggilan chat atas nama orang lain.
+            const headers = {};
+            try {
+                const vault = kernel.serviceManager?.get('VaultService');
+                const geminiKey = vault?.getKey('gemini');
+                if (geminiKey) headers['x-byok-gemini'] = geminiKey.replace(/[^\x00-\x7F]/g, '');
+            } catch {
+                // Vault belum siap — biarkan rag-process memakai key sistem.
+            }
+
+            const { data, error } = await supabase.functions.invoke('rag-process', {
+                body: {
                     title: file.name,
-                    space_id: targetSpace
-                })
-                .select('id')
-                .single();
+                    text,
+                    userId: session.user.id,
+                    // Hanya dikirim kalau pengguna memang sedang memilih sebuah space.
+                    // Tanpa ini rag-process mencari space CORE milik pengguna sendiri.
+                    ...(selectedSpace ? { spaceId: selectedSpace } : {}),
+                    source_type: 'user_upload',
+                    retrieved_at: new Date().toISOString()
+                },
+                headers
+            });
 
-            if (docError) throw docError;
+            if (error) throw new Error(error.message);
+            // rag-process menjawab 500 dengan { error } untuk kegagalan vektorisasi;
+            // supabase-js tidak selalu melemparnya, jadi diperiksa sendiri di sini —
+            // kalau tidak, kegagalan vektorisasi akan tampak seperti sukses.
+            if (data?.error) throw new Error(data.error);
 
-            // Insert ke document_chunks (simpan konten sebagai satu chunk)
-            const { error: chunkError } = await supabase
-                .from('document_chunks')
-                .insert({
-                    document_id: doc.id,
-                    content: text.substring(0, 5000) // Batasi 5000 karakter
-                });
-
-            if (chunkError) throw chunkError;
-
+            console.log(`[ResearchApp] ✅ ${file.name}: ${data?.message ?? 'terunggah'}`);
             loadDocuments();
         } catch (err) {
             console.error('[ResearchApp] Gagal upload:', err);
             alert('Gagal mengunggah dokumen: ' + err.message);
         } finally {
             setUploading(false);
+            e.target.value = '';
         }
     };
 

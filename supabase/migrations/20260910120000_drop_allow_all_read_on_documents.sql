@@ -1,0 +1,24 @@
+-- Menutup kebocoran baca lintas pengguna pada tabel `documents`.
+--
+-- Ditemukan 2026-09-10 saat menelusuri jalur upload RAG. Tabel `documents`
+-- memiliki policy SELECT berikut:
+--
+--     "Allow all read on documents"  |  SELECT  |  USING (true)
+--
+-- `true` tanpa syarat. Di Postgres, beberapa policy permissive untuk perintah
+-- yang sama digabung dengan OR — jadi policy longgar ini MENGALAHKAN dua policy
+-- benar yang berdampingan dengannya ("Users can view own documents" dan
+-- "User bisa melihat dokumennya sendiri", keduanya `auth.uid() = user_id`).
+-- Akibatnya setiap pengguna terautentikasi bisa membaca daftar seluruh dokumen
+-- milik semua orang: judul berkas dan `user_id` pemiliknya.
+--
+-- Isi dokumen sendiri tidak ikut bocor karena `document_chunks` diperiksa dengan
+-- benar lewat EXISTS ke `documents.user_id = auth.uid()`. Yang bocor adalah
+-- metadatanya — dan judul berkas di sistem ini bersifat mengungkap (contoh nyata
+-- di produksi: nama instansi dan kelurahan milik akun lain).
+--
+-- Dua policy yang benar sengaja DIBIARKAN utuh, jadi setelah migrasi ini setiap
+-- pengguna tetap melihat dokumennya sendiri persis seperti sebelumnya. Yang
+-- hilang hanya kemampuan melihat dokumen orang lain.
+
+DROP POLICY IF EXISTS "Allow all read on documents" ON public.documents;
