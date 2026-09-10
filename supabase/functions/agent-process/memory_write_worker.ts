@@ -9,7 +9,11 @@ export const processMemoryWriteQueue = async (
   supabaseUrl: string,
   supabaseKey: string,
   mode: string,
-  workspaceId?: string | null
+  workspaceId?: string | null,
+  // Diteruskan apa adanya ke saveFactDirectly supaya memori yang baru ditulis
+  // punya embedding. Tanpa ini memori tetap tersimpan, tapi hanya bisa
+  // ditemukan lewat pencarian SQL — bukan pencarian makna (Item 46).
+  rctx?: any
 ) => {
   const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -122,7 +126,7 @@ export const processMemoryWriteQueue = async (
       source: 'rule_based_async_worker',
       memory_state: 'ACTIVE',
       workspace_id: validWorkspaceId || null
-    }, supabaseUrl, supabaseKey);
+    }, supabaseUrl, supabaseKey, rctx);
 
     await logAudit('STORED', 'FACT', detectorResult.score, detectorResult.reason);
   } catch (error) {

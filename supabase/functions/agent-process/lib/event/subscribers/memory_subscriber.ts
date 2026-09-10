@@ -9,7 +9,9 @@ export const registerMemorySubscribers = () => {
       const supUrl = rctx.env.supabaseUrl;
       const supKey = rctx.env.supabaseServiceKey;
       if (rctx.tasks) {
-        rctx.tasks.fire('MemoryWriteQueue', processMemoryWriteQueue(userId, message, supUrl, supKey, mode, workspaceId));
+        // rctx ikut diteruskan supaya memori yang ditulis punya embedding —
+        // generateEmbedding butuh RuntimeContext untuk mencapai adapter (Item 46).
+        rctx.tasks.fire('MemoryWriteQueue', processMemoryWriteQueue(userId, message, supUrl, supKey, mode, workspaceId, rctx));
       }
     }
   });

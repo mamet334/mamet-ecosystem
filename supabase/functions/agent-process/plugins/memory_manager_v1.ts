@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { parseCognitiveIntent, bindCognitiveExecution } from '../lib/context_optimizer.ts';
 import { compressCognitiveContext } from './context_compressor.ts';
+import { generateEmbedding, EMBEDDING_DIMENSIONS } from '../lib/rag/embedding.ts';
 
 // Helper to log audits asynchronously
 const logMemoryAudit = (supabaseUrl, supabaseKey, payload, rctx) => {
@@ -18,22 +19,52 @@ const logMemoryAudit = (supabaseUrl, supabaseKey, payload, rctx) => {
 };
 
 export const saveFactDirectly = async (
-  payload: { user_id: string, content: string, memory_type: string, confidence: number, source: string, memory_state?: string }, 
-  supabaseUrl: string, 
-  supabaseKey: string
+  payload: { user_id: string, content: string, memory_type: string, confidence: number, source: string, memory_state?: string },
+  supabaseUrl: string,
+  supabaseKey: string,
+  rctx?: any
 ) => {
   const supabase = createClient(supabaseUrl, supabaseKey);
   console.log('[V1_CLEAN_INGESTION] Menerima structured payload:', payload);
 
+  // 0. EMBEDDING
+  //
+  // Kolom ini sebelumnya di-hardcode `null` di sini — satu-satunya jalur insert
+  // memori — sehingga tidak ada apa pun di sistem yang pernah menulis embedding
+  // memori. `match_memories` karena itu mustahil menemukan apa pun, dan ketujuh
+  // baris NULL di produksi bukan kebetulan melainkan perilaku yang dikodekan.
+  // Butuh migrasi 20260910003000 (kolom 768 -> 3072) supaya insert ini diterima.
+  //
+  // Sengaja GAGAL-LUNAK: kalau embedding gagal dibuat, memorinya tetap disimpan.
+  // Kehilangan seluruh memori lebih buruk daripada kehilangan kemampuan mencarinya
+  // secara semantik — pencarian SQL tetap menemukannya. Tapi kegagalannya dicatat
+  // keras, karena diam adalah cara cacat ini bertahan selama ini.
+  let embedding: number[] | null = null;
+  if (rctx) {
+    try {
+      const vektor = await generateEmbedding(payload.content, rctx);
+      if (vektor && vektor.length === EMBEDDING_DIMENSIONS) {
+        embedding = vektor;
+        console.log(`[V1_CLEAN_INGESTION] ✅ Embedding memori dibuat (${vektor.length} dimensi)`);
+      } else {
+        console.error(`[V1_CLEAN_INGESTION] ⚠️ Embedding dilewati — dimensi ${vektor?.length ?? 0}, diharapkan ${EMBEDDING_DIMENSIONS}. Memori tetap disimpan, tapi tidak akan muncul di pencarian semantik.`);
+      }
+    } catch (e) {
+      console.error(`[V1_CLEAN_INGESTION] ⚠️ Embedding gagal: ${(e as Error).message}. Memori tetap disimpan, tapi tidak akan muncul di pencarian semantik.`);
+    }
+  } else {
+    console.warn('[V1_CLEAN_INGESTION] ⚠️ Tanpa rctx — embedding tidak dibuat. Memori hanya bisa ditemukan lewat pencarian SQL.');
+  }
+
   // 1. INSERT DATA
-  const { data: insertData, error: insertError } = await supabase.from('user_memories').insert([{ 
-    user_id: payload.user_id, 
-    summary: payload.content, 
+  const { data: insertData, error: insertError } = await supabase.from('user_memories').insert([{
+    user_id: payload.user_id,
+    summary: payload.content,
     memory_type: payload.memory_type,
     confidence: payload.confidence,
     source: payload.source,
     memory_state: payload.memory_state || 'ACTIVE',
-    embedding: null
+    embedding: embedding
   }]).select('id').single();
 
   // RULE BARU: IF INSERT FAIL -> THROW ERROR (NO SILENT FAIL)
