@@ -208,26 +208,42 @@ export async function executeRequestPipeline(
       const userEmbedding = await generateEmbeddingThroughAdapter(parsed.finalMessage, rctx);
 
       // 2. Query vector database via Supabase RPC
-      const supabase = createClient(runtimeEnv.supabaseUrl, runtimeEnv.supabaseServiceKey);
-      const { data: memories, error } = await supabase
-        .rpc('match_memories', {
-          query_embedding: userEmbedding,
-          match_threshold: 0.8,
-          match_count: 5
-        });
+      //
+      // WAJIB memakai overload 4-argumen `match_memories(..., target_user_id)`.
+      // Overload 3-argumen tidak memfilter user sama sekali; dipanggil dengan
+      // klien service-role seperti di bawah, ia memindai `user_memories` milik
+      // SELURUH akun lalu menyuntikkan hasilnya ke prompt user ini (Item 45).
+      const ragUserId = ctx.auth?.userId;
 
-      if (error) {
-        console.error('[RAG] Vector search error:', error);
-      }
-
-      // 3. Build RAG context from matched memories
-      const ragContext = memories?.map((m: any) => (m.summary || m.content || '')).join('\n') || '';
-      if (ragContext) {
-        console.log(`✅ [RAG] Found ${memories?.length || 0} relevant memories`);
-        parsed.globalMemory = ragContext;
-      } else {
-        console.log('ℹ️ [RAG] No relevant memories found');
+      if (!ragUserId) {
+        // Gagal ke arah TERTUTUP. Tanpa identitas pemilik, satu-satunya
+        // pencarian yang mungkin adalah pencarian lintas pengguna — jadi lebih
+        // baik tidak mencari sama sekali daripada membocorkan memori orang lain.
+        console.warn('[RAG] ⚠️ Pencarian memori dilewati — userId tidak tersedia. Menolak mencari lintas pengguna.');
         parsed.globalMemory = 'Tidak ada memori yang relevan.';
+      } else {
+        const supabase = createClient(runtimeEnv.supabaseUrl, runtimeEnv.supabaseServiceKey);
+        const { data: memories, error } = await supabase
+          .rpc('match_memories', {
+            query_embedding: userEmbedding,
+            match_threshold: 0.8,
+            match_count: 5,
+            target_user_id: ragUserId
+          });
+
+        if (error) {
+          console.error('[RAG] Vector search error:', error);
+        }
+
+        // 3. Build RAG context from matched memories
+        const ragContext = memories?.map((m: any) => (m.summary || m.content || '')).join('\n') || '';
+        if (ragContext) {
+          console.log(`✅ [RAG] Found ${memories?.length || 0} relevant memories untuk user ${ragUserId}`);
+          parsed.globalMemory = ragContext;
+        } else {
+          console.log('ℹ️ [RAG] No relevant memories found');
+          parsed.globalMemory = 'Tidak ada memori yang relevan.';
+        }
       }
     }
   } catch (ragError: any) {
