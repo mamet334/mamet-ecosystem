@@ -9,10 +9,10 @@
     "preview": "vite preview",
     "electron:dev": "cross-env NODE_ENV=development electron .",
     "desktop": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && npm run electron:dev\"",
-    "postbuild": "node -e \"const fs=require('fs'); let h=fs.readFileSync('dist/index.html','utf8'); h=h.replaceAll(' crossorigin',''); h=h.replace(/<meta http-equiv=.Content-Security-Policy.[^>]*>/,''); fs.writeFileSync('dist/index.html',h); console.log('Post-build: crossorigin + CSP stripped from dist/index.html')\"",
-    "dist": "vite build && npm run postbuild && electron-builder --win",
-    "dist:portable": "vite build && npm run postbuild && electron-builder --win portable",
-    "dist:publish": "vite build && npm run postbuild && electron-builder --win --publish always"
+    "desktop:postbuild": "node -e \"const fs=require('fs'); let h=fs.readFileSync('dist/index.html','utf8'); h=h.replaceAll(' crossorigin',''); h=h.replace(/<meta http-equiv=.Content-Security-Policy.[^>]*>/,''); fs.writeFileSync('dist/index.html',h); console.log('Post-build (DESKTOP): crossorigin + CSP stripped from dist/index.html')\"",
+    "dist": "vite build && npm run desktop:postbuild && electron-builder --win",
+    "dist:portable": "vite build && npm run desktop:postbuild && electron-builder --win portable",
+    "dist:publish": "vite build && npm run desktop:postbuild && electron-builder --win --publish always"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
