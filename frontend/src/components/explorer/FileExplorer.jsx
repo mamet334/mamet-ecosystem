@@ -29,24 +29,76 @@ const KEYWORDS = new Set([
 ]);
 
 function escapeHtml(s) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '<').replace(/>/g, '>');
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-function highlightCode(code) {
+// Aturan pewarnaan per jenis berkas. Berkas yang tidak terdaftar (md, txt, ...) tampil polos —
+// prosa penuh kata "if"/"for" dan apostrof yang bukan kode.
+const C_LIKE = { line: '//', block: ['/*', '*/'], quotes: '"\'`', keywords: true };
+const HASH = { line: '#', quotes: '"\'', keywords: true };
+const SYNTAX = {
+  js: C_LIKE, jsx: C_LIKE, ts: C_LIKE, tsx: C_LIKE, mjs: C_LIKE, cjs: C_LIKE,
+  css: { block: ['/*', '*/'], quotes: '"\'' },
+  scss: { line: '//', block: ['/*', '*/'], quotes: '"\'' },
+  json: { quotes: '"', keywords: true },
+  html: { block: ['<!--', '-->'], quotes: '"\'' },
+  py: HASH, sh: HASH,
+  yml: { ...HASH, keywords: false }, yaml: { ...HASH, keywords: false }, env: { ...HASH, keywords: false }
+};
+
+const CLS_STRING = 'text-amber-300';
+const CLS_KOMENTAR = 'text-slate-600 italic';
+const CLS_KATA_KUNCI = 'text-purple-400 font-semibold';
+
+function warnaiKataKunci(s, pakai) {
+  if (!pakai) return escapeHtml(s);
+  return s.split(/([a-zA-Z_$][\w$]*)/g)
+    .map(t => KEYWORDS.has(t) ? `<span class="${CLS_KATA_KUNCI}">${t}</span>` : escapeHtml(t))
+    .join('');
+}
+
+// Dibaca SEKALI dari kiri ke kanan, sehingga tiap karakter hanya punya satu peran:
+// `//` di dalam "https://..." tetap bagian string, kata kunci di dalam komentar tidak diwarnai.
+// (Versi lama menjalankan beberapa regex berurutan di atas hasil regex sebelumnya.)
+function highlightCode(code, path) {
   if (!code) return '';
-  const esc = escapeHtml(code);
-  let html = esc.replace(/(".*?"|'.*?'|`.*?`)/g, '<span class="text-amber-300">$1</span>');
-  const parts = html.split(/(<span[^>]*>.*?<\/span>)/g);
-  html = parts.map(p => {
-    if (p.startsWith('<span')) return p;
-    return p.split(/([a-zA-Z_$][\w$]*)/g)
-      .map(t => KEYWORDS.has(t) ? `<span class="text-purple-400 font-semibold">${t}</span>` : t)
-      .join('');
-  }).join('');
-  html = html.replace(/\/\/.*$/gm, m => `<span class="text-slate-600 italic">${m}</span>`);
-  html = html.replace(/#.*$/gm, m => `<span class="text-slate-600 italic">${m}</span>`);
-  html = html.replace(/\/\*[\s\S]*?\*\//g, m => `<span class="text-slate-600 italic">${m}</span>`);
-  return html;
+  // Samakan akhir baris dulu. Berkas Windows (\r\n) yang komentarnya dipotong sebelum \n
+  // menyisakan \r di dalam span — browser membacanya sebagai baris baru kedua.
+  code = code.replace(/\r\n?/g, '\n');
+  const aturan = SYNTAX[path?.split('.').pop()?.toLowerCase()];
+  if (!aturan) return escapeHtml(code);
+
+  const n = code.length;
+  let out = '';
+  let i = 0;
+  let mulaiPolos = 0;
+  const ambil = (cls, akhir) => {
+    out += warnaiKataKunci(code.slice(mulaiPolos, i), aturan.keywords);
+    out += `<span class="${cls}">${escapeHtml(code.slice(i, akhir))}</span>`;
+    i = mulaiPolos = akhir;
+  };
+
+  while (i < n) {
+    const c = code[i];
+    if (aturan.block && code.startsWith(aturan.block[0], i)) {
+      const tutup = code.indexOf(aturan.block[1], i + aturan.block[0].length);
+      ambil(CLS_KOMENTAR, tutup === -1 ? n : tutup + aturan.block[1].length);
+    } else if (aturan.line && code.startsWith(aturan.line, i)) {
+      const tutup = code.indexOf('\n', i);
+      ambil(CLS_KOMENTAR, tutup === -1 ? n : tutup);
+    } else if (aturan.quotes.includes(c)) {
+      // String berakhir di kutip penutup atau di akhir baris (kecuali backtick yang boleh
+      // multi-baris) — kutip yang tak tertutup tidak mewarnai sisa berkas.
+      let j = i + 1;
+      while (j < n && code[j] !== c && !(code[j] === '\n' && c !== '`')) j += code[j] === '\\' ? 2 : 1;
+      if (j < n && code[j] === c) j++;
+      ambil(CLS_STRING, Math.min(j, n));
+    } else {
+      i++;
+    }
+  }
+  out += warnaiKataKunci(code.slice(mulaiPolos), aturan.keywords);
+  return out;
 }
 
 function formatSize(b) {
@@ -144,7 +196,7 @@ export default function FileExplorer() {
       } else {
         setFileContent(result.content);
         setFileMeta({ path: result.path || filePath, size: result.size || result.content.length, backend: result.backend || 'unknown' });
-        setHighlightedHtml(highlightCode(result.content));
+        setHighlightedHtml(highlightCode(result.content, filePath));
       }
     } catch (e) {
       setFileError(e.message || 'Gagal membaca file');
