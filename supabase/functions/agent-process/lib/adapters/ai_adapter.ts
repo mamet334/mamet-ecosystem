@@ -146,13 +146,32 @@ export class GroqAdapter implements CapabilityAdapter {
     }
     messages.push({ role: 'user', content: promptText });
     
-    let groqModel = 'llama-3.1-8b-instant';
+    // MODEL GROQ (diperbarui 2026-09-10, Item 53).
+    //
+    // `llama-3.1-8b-instant` dan `llama-3.3-70b-versatile` DIPENSIUNKAN Groq pada
+    // 16 Agustus 2026. Sejak itu setiap panggilan Groq menjawab 404 — bukan 401,
+    // jadi bukan soal key. Dibuktikan dengan bertanya langsung ke
+    // `GET /openai/v1/models` memakai key sistem: statusnya 200 (key sehat) dan
+    // ketiga model yang dirujuk kode kita TIDAK ADA di daftar 14 model yang
+    // dikembalikan. Pesan galat Groq sendiri: "The model `llama-3.1-8b-instant`
+    // does not exist or you do not have access to it."
+    //
+    // Penggantinya diambil dari rekomendasi resmi Groq di halaman deprecations,
+    // dan keberadaannya dipastikan ada di daftar server:
+    //   llama-3.1-8b-instant   → openai/gpt-oss-20b
+    //   llama-3.3-70b-versatile → openai/gpt-oss-120b
+    //
+    // Ini provider KETIGA yang jatuh pada pola Item 38 (model dipensiunkan diam-
+    // diam), setelah Gemini dan DeepSeek. Nama alias `groq-llama-*` sengaja
+    // dipertahankan agar preferensi model yang sudah tersimpan di user_metadata
+    // tidak mendadak tak dikenali — yang berubah hanya model yang ditunjuknya.
+    let groqModel = 'openai/gpt-oss-20b';
     if (this.rctx.model.model && this.rctx.model.model.startsWith('groq/')) {
       groqModel = this.rctx.model.model.replace('groq/', '');
     } else if (this.rctx.model.model === 'groq-llama-3.3') {
-      groqModel = 'llama-3.3-70b-versatile';
+      groqModel = 'openai/gpt-oss-120b';
     } else if (this.rctx.model.model === 'groq-llama-3.1') {
-      groqModel = 'llama-3.1-8b-instant';
+      groqModel = 'openai/gpt-oss-20b';
     }
 
     const userId = this.rctx.userId || 'anonymous';
@@ -201,7 +220,8 @@ export class GroqAdapter implements CapabilityAdapter {
 
   async *stream(input: any, context: AdapterContext): AsyncGenerator<string, void, unknown> {
     const { promptText, systemPromptText, chatHistory } = input;
-    let groqModel = 'llama-3.1-8b-instant';
+    // Lihat catatan pensiun model Groq di execute() di atas (Item 53).
+    let groqModel = 'openai/gpt-oss-20b';
     if (this.rctx.model.model && this.rctx.model.model.startsWith('groq/')) groqModel = this.rctx.model.model.replace('groq/', '');
     
     const messages = [];

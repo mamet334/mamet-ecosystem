@@ -34,17 +34,76 @@ Deno.serve(async (req) => {
   }
 
   // Check Groq
+  //
+  // CATATAN (2026-09-10): probe ini sebelumnya hanya memanggil chat dengan
+  // `llama-3.1-8b-instant` dan melaporkan status mentahnya. Hasilnya 404, dan
+  // 404 itu ambigu kalau berdiri sendiri — ia bisa berarti model tak dikenal,
+  // bisa juga salah endpoint. Yang menghilangkan keraguan adalah bertanya ke
+  // Groq model APA yang sebenarnya tersedia untuk key ini, lalu mencocokkan
+  // model yang dipakai kode kita terhadap daftar itu. Daftar dari server
+  // mengalahkan dokumentasi maupun ingatan (pelajaran Item 41 & 51).
   const groqKey = Deno.env.get('GROQ_API_KEY') || '';
   results.groq_key_exists = !!groqKey;
+
+  // Model Groq yang benar-benar dirujuk kode kita hari ini. Kalau salah satu
+  // tidak ada di daftar server, itulah penyebab 404-nya.
+  const MODEL_GROQ_DIPAKAI = ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
+
   if (groqKey) {
+    // 1. Daftar model yang tersedia untuk key ini.
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: { 'Authorization': `Bearer ${groqKey}` }
+      });
+      const body: any = await res.json().catch(() => ({}));
+      results.groq_models_status = res.status;
+      if (res.ok && Array.isArray(body?.data)) {
+        const tersedia = body.data.map((m: any) => m.id).sort();
+        results.groq_models_available = tersedia;
+        results.groq_models_count = tersedia.length;
+        // Inilah jawabannya: mana dari model kita yang masih ada, mana yang hilang.
+        results.groq_models_dipakai_kode = MODEL_GROQ_DIPAKAI.map((m) => ({
+          model: m,
+          masih_ada: tersedia.includes(m)
+        }));
+      } else {
+        results.groq_models_error = body?.error?.message ?? String(res.status);
+      }
+    } catch (e: any) {
+      results.groq_models_status = 'error';
+      results.groq_models_error = e.message;
+    }
+
+    // 2. Panggilan chat nyata, tetap dipertahankan — daftar model membuktikan
+    //    KEBERADAAN, panggilan ini membuktikan model itu benar-benar BISA
+    //    dipakai oleh key ini. Dua hal yang berbeda.
+    //
+    // `max_tokens` sengaja LONGGAR (200), bukan 5.
+    //
+    // Dengan max_tokens=5 probe ini menjawab 200 tapi `content` KOSONG —
+    // gpt-oss adalah model reasoning, jatah token pertamanya habis untuk
+    // penalaran sebelum sempat mengeluarkan teks. Terukur: 46 dari 56 token
+    // keluaran adalah `reasoning_tokens`. Status 200 dengan keluaran kosong
+    // adalah persis pola yang berulang kali menipu di proyek ini, jadi
+    // probe-nya diberi ruang cukup untuk benar-benar menghasilkan kalimat —
+    // dan `groq_benar_menjawab` yang menjadi kesimpulannya, bukan statusnya.
     try {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: [{ role: 'user', content: 'say hi' }], max_tokens: 5 })
+        body: JSON.stringify({ model: 'openai/gpt-oss-20b', messages: [{ role: 'user', content: 'Balas persis satu kata: OK' }], max_tokens: 200 })
       });
+      const body: any = await res.json().catch(() => ({}));
+      const choice = body?.choices?.[0];
       results.groq_status = res.status;
       results.groq_ok = res.ok;
+      results.groq_model_diuji = 'openai/gpt-oss-20b';
+      results.groq_jawaban = choice?.message?.content ?? null;
+      results.groq_finish_reason = choice?.finish_reason ?? null;
+      results.groq_usage = body?.usage ?? null;
+      // Sukses yang sebenarnya: bukan status 200, melainkan ADA teks yang keluar.
+      results.groq_benar_menjawab = !!(choice?.message?.content || '').trim();
+      if (!res.ok) results.groq_error = body?.error?.message ?? null;
     } catch (e: any) {
       results.groq_status = 'error';
       results.groq_error = e.message;

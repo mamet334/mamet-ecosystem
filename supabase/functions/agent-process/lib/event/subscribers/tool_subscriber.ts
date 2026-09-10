@@ -71,7 +71,7 @@ export const initializeToolSubscriber = () => {
                     // langsung ke https://openrouter.ai/api/v1/models). Artinya setiap sub-agent
                     // yang jatuh ke OpenRouterAdapter pasti gagal — dan kegagalannya ditelan
                     // `catch` di bawah yang hanya console.warn. Lihat Item 38.
-                    model: adapter.name === 'GroqAdapter' ? 'llama-3.1-8b-instant' : 
+                    model: adapter.name === 'GroqAdapter' ? 'openai/gpt-oss-20b' : 
                            adapter.name === 'OpenRouterAdapter' ? 'google/gemini-3.5-flash-lite' : 
                            'gemini-2.5-flash'
                 };
@@ -101,7 +101,7 @@ export const initializeToolSubscriber = () => {
                     chatHistory: [],
                     payload: adapterPayload,
                     forceDefaultModel: false,
-                    model: adapter.name === 'GroqAdapter' ? 'llama-3.1-8b-instant' : 'gemini-2.5-flash'
+                    model: adapter.name === 'GroqAdapter' ? 'openai/gpt-oss-20b' : 'gemini-2.5-flash'
                 }, { trace_id: event.trace_id });
                 if (result && result.result) return { text: result.result, sources: result.metadata?.sources || [] };
             } catch(e) { console.warn(`Research Adapter ${adapter.name} failed:`, e); }

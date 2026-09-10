@@ -188,7 +188,7 @@ Silakan lakukan Cognitive Compression berformat JSON.`;
              chatHistory: [],
              payload: adapterPayload,
              forceDefaultModel: false,
-             model: adapter.name === 'GroqAdapter' ? 'llama-3.1-8b-instant' : 'gemini-2.5-flash'
+             model: adapter.name === 'GroqAdapter' ? 'openai/gpt-oss-20b' : 'gemini-2.5-flash'
            };
            const result = await adapter.execute(adapterInput, { trace_id: rctx?.tasks?.traceId || 'unknown' });
            if (result && result.result) {

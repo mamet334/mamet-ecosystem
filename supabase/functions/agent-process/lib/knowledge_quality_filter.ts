@@ -33,7 +33,7 @@ Format WAJIB JSON persis seperti ini (tanpa markdown):
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'openai/gpt-oss-20b', // Item 53: llama-3.1-8b-instant dipensiunkan Groq 16 Agu 2026
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: text }

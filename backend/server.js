@@ -523,7 +523,7 @@ app.post('/api/agent/process', async (req, res) => {
         messages.push({ role: 'user', content: promptText });
         
         const response = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-          model: 'llama-3.3-70b-versatile',
+          model: 'openai/gpt-oss-120b', // Item 53: llama-3.3-70b-versatile dipensiunkan Groq 16 Agu 2026. Rute /api/agent/process ini tidak punya pemanggil (kode mati); diperbaiki agar tak jadi ranjau bila kelak dihidupkan.
           messages: messages,
           temperature: 0.1
         }, {
@@ -1103,7 +1103,7 @@ JANGAN ragu menggunakan gambar/diagram jika itu mempermudah penjelasan!`;
           console.log('OpenRouter key missing, falling back to Llama 3.3 on Groq...');
           try {
             const groqResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-              model: 'llama-3.3-70b-versatile',
+              model: 'openai/gpt-oss-120b', // Item 53: llama-3.3-70b-versatile dipensiunkan Groq 16 Agu 2026. Rute /api/agent/process ini tidak punya pemanggil (kode mati); diperbaiki agar tak jadi ranjau bila kelak dihidupkan.
               messages: [
                 {
                   role: 'system',
@@ -1181,9 +1181,9 @@ JANGAN ragu menggunakan gambar/diagram jika itu mempermudah penjelasan!`;
         });
       }
 
-      let groqModel = 'llama-3.3-70b-versatile';
+      let groqModel = 'openai/gpt-oss-120b'; // Item 53
       if (model === 'groq-llama-3.1') {
-        groqModel = 'llama-3.1-8b-instant';
+        groqModel = 'openai/gpt-oss-20b'; // Item 53
       }
 
       console.log(`Calling Groq API using model: ${groqModel}`);

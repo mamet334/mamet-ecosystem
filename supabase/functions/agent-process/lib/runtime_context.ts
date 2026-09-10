@@ -79,7 +79,7 @@ export interface StreamConfig {
 export interface ModelConfig {
   /**
    * Model string dari request client.
-   * Contoh: 'gemini-2.5-flash', 'groq/llama-3.1-8b-instant',
+   * Contoh: 'gemini-2.5-flash', 'groq/openai/gpt-oss-20b',
    *         'openrouter/anthropic/claude-sonnet-4.6'
    * Undefined = gunakan default cascade.
    */
@@ -287,6 +287,20 @@ const MODEL_PRICING: Array<{ match: string; costIn: number; costOut: number }> =
   { match: 'deepseek-v4-pro',          costIn: 0.00057948, costOut: 0.00173844 },
   { match: 'deepseek-v4-flash',        costIn: 0.000065,   costOut: 0.00018 },
   { match: 'llama',                    costIn: 0.00005,    costOut: 0.00008 },
+  // Groq, ditambahkan 2026-09-10 (Item 53). Model llama Groq dipensiunkan
+  // 16 Agustus 2026 dan diganti gpt-oss; tanpa dua baris ini keduanya tidak
+  // cocok entri mana pun dan jatuh ke FALLBACK_PRICING. Baris 'llama' di atas
+  // TETAP dipertahankan karena masih dipakai model llama lewat OpenRouter
+  // (`meta-llama/llama-3.1-8b-instruct`), bukan sisa Groq.
+  //
+  // Angkanya dari halaman model GroqCloud, bukan dari ingatan (pelajaran Item
+  // 41): gpt-oss-20b $0,075/1M masuk dan $0,30/1M keluar; gpt-oss-120b
+  // $0,15/1M dan $0,60/1M. Tabel ini bersatuan per 1K token, jadi dibagi 1000.
+  //
+  // '120b' WAJIB sebelum '20b' — pencocokannya `includes()`, dan menaruh yang
+  // pendek lebih dulu adalah kelas kesalahan yang sama dengan gpt-4o-mini.
+  { match: 'gpt-oss-120b',             costIn: 0.00015,    costOut: 0.0006 },
+  { match: 'gpt-oss-20b',              costIn: 0.000075,   costOut: 0.0003 },
   // SENGAJA TIDAK ADA BARIS GEMINI.
   //
   // Sejak 2026-09-10 baris Gemini muncul di api_usage dengan nama modelnya yang

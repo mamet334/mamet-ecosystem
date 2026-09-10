@@ -39,7 +39,7 @@ Respond ONLY in JSON format:
             method: 'POST',
             headers: { 'Authorization': `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                model: 'llama3-8b-8192',
+                model: 'openai/gpt-oss-20b', // Item 53: llama3-8b-8192 dipensiunkan Groq; berkas ini kode mati (Item 49)
                 messages: [{ role: 'user', content: prompt }],
                 response_format: { type: 'json_object' }
             })
