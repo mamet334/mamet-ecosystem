@@ -48,6 +48,7 @@ export const AppComponents = {
   'FileExplorer': lazy(() => import('../../components/explorer/FileExplorer')),
   'Settings': lazy(() => import('../../components/Settings')),
   'SystemLogsApp': lazy(() => import('../../components/system/SystemLogsApp')),
+  'BillingDashboard': lazy(() => import('../../components/BillingDashboard')),
 
   // Engineer Widgets
   'EngineeringTasksWidget': lazy(() => import('../../components/widgets/EngineeringTasksWidget')),
