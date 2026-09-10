@@ -294,15 +294,23 @@ const MODEL_PRICING: Array<{ match: string; costIn: number; costOut: number }> =
   // OpenRouter milik pemanggil. Konsekuensinya ia kini tidak cocok dengan entri
   // mana pun dan jatuh ke FALLBACK_PRICING.
   //
-  // Itu disengaja. Owner memanggil Gemini dengan API key-nya sendiri langsung ke
-  // generativelanguage.googleapis.com, dan belum dipastikan apakah key itu tier
-  // gratis (biaya nyata $0) atau berbayar. Menuliskan angka dari ingatan adalah
-  // persis kesalahan Item 41 — tarif karangan yang memutus Owner dari biaya yang
-  // tidak pernah terjadi. FALLBACK meleset ke arah AMAN (sedikit terlalu mahal),
-  // dan nilainya remeh: satu panggilan Intent Router ~157 token ≈ $0,00002.
+  // Itu disengaja, dan tetap disengaja setelah tiernya diketahui.
   //
-  // Untuk diisi kalau Owner sudah memastikan tier key Gemini-nya, dengan angka
-  // dari halaman harga resmi Google — bukan dari ingatan.
+  // Owner mengonfirmasi (2026-09-10) bahwa key Gemini di `GEMINI_API_KEY` adalah
+  // key AI Studio tier GRATIS, dipasang di era "AI Agent" sebagai cadangan. Jadi
+  // biaya nyatanya $0 dan FALLBACK sedikit terlalu mahal — sekitar $0,00002 per
+  // panggilan Intent Router (~157 token). Dalam sehari 100 pesan itu $0,002.
+  //
+  // Baris bertarif 0 SENGAJA TIDAK ditambahkan, meski itu yang paling akurat hari
+  // ini. Proyek ini sudah pernah terbakar pola tersebut: `model_pricing` tidak
+  // punya baris DeepSeek sehingga semua panggilan DeepSeek dihargai NOL, dan
+  // circuit breaker jadi buta terhadapnya (Item 42). Mengunci Gemini di 0
+  // menciptakan ulang titik buta yang sama begitu ada key berbayar dipasang —
+  // dan kesalahannya akan senyap, karena nol tidak pernah memicu alarm.
+  //
+  // Pertukarannya jelas: meleset $0,002/hari ke arah AMAN, demi tidak menanam
+  // titik buta yang pernah menggigit. Kalau kelak Owner beralih ke key berbayar,
+  // isi baris ini dengan angka dari halaman harga resmi Google — bukan ingatan.
 ];
 
 /** Tarif cadangan kalau model tidak dikenali — sengaja konservatif (lebih mahal). */
