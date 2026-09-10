@@ -40,34 +40,89 @@ async function resolveDailyLimit(supClient: any, userId: string): Promise<number
   return effective;
 }
 
+/**
+ * Membangun respons penolakan, seragam untuk jalur stream maupun non-stream.
+ * Sebelumnya kedua bentuk ini ditulis dua kali dengan kalimat yang disalin
+ * tangan, sehingga menambah satu jenis penolakan berarti menyalinnya lagi.
+ */
+function bangunPenolakan(pesan: string, stream: boolean, corsHeaders: HeadersInit): Response {
+  if (!stream) {
+    return new Response(JSON.stringify({ message: pesan }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+  const streamRes = new ReadableStream({
+    start(controller) {
+      const data = JSON.stringify({ choices: [{ delta: { content: `\n\n${pesan}` } }] });
+      controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
+      controller.close();
+    }
+  });
+  return new Response(streamRes, { headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' } });
+}
+
+/**
+ * Penjaga belanja harian. GAGAL-TERTUTUP.
+ *
+ * Sebelum 2026-09-10 fungsi ini gagal-TERBUKA lewat dua celah sekaligus:
+ *
+ *   1. `catch { console.error("Quota check failed, bypassing...") }` lalu
+ *      `return null` — permintaan diteruskan. Kodenya jujur menyebut dirinya
+ *      sendiri "bypassing".
+ *   2. Seluruh penjagaan dibungkus `if (!quotaError && currentCost !== null)`,
+ *      jadi kalau RPC mengembalikan error, pemeriksaan dilewati diam-diam
+ *      tanpa satu pun log peringatan.
+ *
+ * Akibatnya satu gangguan sesaat di database membuat penjaga ini lenyap tanpa
+ * jejak — padahal inilah satu-satunya kontrol yang melindungi saldo Owner, dan
+ * pengguna mametlite tanpa BYOK membelanjakan API key Owner.
+ *
+ * Sekarang: kalau kuota tidak bisa dipastikan, permintaan DITOLAK. Ini memang
+ * menukar ketersediaan dengan keamanan biaya, dan itu pertukaran yang disengaja
+ * — pola yang sama sudah dipakai `resolveDailyLimit`, yang jatuh ke batas paling
+ * ketat ($1) saat plafon sistem tidak terbaca.
+ *
+ * Pesan penolakannya sengaja dibedakan supaya Owner bisa membedakan "jatah saya
+ * memang habis" dari "pemeriksaannya yang rusak" — dua keadaan yang menuntut
+ * tindakan berbeda.
+ */
 export async function checkQuota(userId: string, supabaseUrl: string, supabaseServiceKey: string, stream: boolean, corsHeaders: HeadersInit): Promise<Response | null> {
+  const PESAN_GAGAL_PERIKSA =
+    '**[PENGAMAN BIAYA AKTIF]** Pemakaian harian Anda tidak bisa dipastikan saat ini, ' +
+    'jadi permintaan dihentikan demi keamanan — bukan karena jatah Anda habis. ' +
+    'Biasanya ini gangguan sesaat pada database; coba ulangi sebentar lagi. ' +
+    'Kalau terus berulang, periksa log fungsi agent-process.';
+
   try {
     const supClient = createClient(supabaseUrl, supabaseServiceKey);
     const { data: currentCost, error: quotaError } = await supClient.rpc('check_daily_quota', { target_user_id: userId });
-    
-    if (!quotaError && currentCost !== null) {
-      const DAILY_LIMIT = await resolveDailyLimit(supClient, userId);
-      if (Number(currentCost) >= DAILY_LIMIT) {
-         console.warn(`[CIRCUIT BREAKER] User ${userId} exceeded daily quota: $${currentCost}`);
-         
-         if (!stream) {
-           return new Response(JSON.stringify({ 
-              message: `[CIRCUIT BREAKER AKTIF] Limit harian AI Anda telah habis ($${Number(currentCost).toFixed(2)} / $${DAILY_LIMIT}). Arus API telah diputus otomatis untuk mencegah tagihan bengkak. Silakan coba lagi besok hari!` 
-           }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-         } else {
-           const streamRes = new ReadableStream({
-             start(controller) {
-               const data = JSON.stringify({ choices: [{ delta: { content: `\n\n**[CIRCUIT BREAKER AKTIF]** Limit harian AI Anda telah habis ($${Number(currentCost).toFixed(2)} / $${DAILY_LIMIT}). Arus API telah diputus otomatis untuk mencegah tagihan bengkak. Silakan coba lagi besok hari!` } }] });
-               controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
-               controller.close();
-             }
-           });
-           return new Response(streamRes, { headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' } });
-         }
-      }
+
+    if (quotaError || currentCost === null || currentCost === undefined) {
+      console.error(
+        `[QUOTA] ⛔ Permintaan DITOLAK — pemeriksaan kuota tidak menghasilkan angka untuk user ${userId}. ` +
+        `Gagal-tertutup disengaja. Sebab: ${quotaError?.message ?? 'RPC mengembalikan null'}`
+      );
+      return bangunPenolakan(PESAN_GAGAL_PERIKSA, stream, corsHeaders);
     }
+
+    const DAILY_LIMIT = await resolveDailyLimit(supClient, userId);
+    if (Number(currentCost) >= DAILY_LIMIT) {
+      console.warn(`[CIRCUIT BREAKER] User ${userId} exceeded daily quota: $${currentCost}`);
+      return bangunPenolakan(
+        `**[CIRCUIT BREAKER AKTIF]** Limit harian AI Anda telah habis ($${Number(currentCost).toFixed(2)} / $${DAILY_LIMIT}). ` +
+        `Arus API telah diputus otomatis untuk mencegah tagihan bengkak. Silakan coba lagi besok hari!`,
+        stream,
+        corsHeaders
+      );
+    }
+
+    return null;
   } catch (quotaCheckError) {
-    console.error("Quota check failed, bypassing...", quotaCheckError);
+    console.error(
+      `[QUOTA] ⛔ Permintaan DITOLAK — pemeriksaan kuota melempar exception untuk user ${userId}. ` +
+      `Gagal-tertutup disengaja.`,
+      quotaCheckError
+    );
+    return bangunPenolakan(PESAN_GAGAL_PERIKSA, stream, corsHeaders);
   }
-  return null;
 }
