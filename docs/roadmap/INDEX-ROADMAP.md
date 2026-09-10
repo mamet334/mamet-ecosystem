@@ -577,3 +577,50 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
     - **Keputusan Owner (2026-09-10): turunkan ke 0,70.** Ditaruh di celah lebar antara 0,73 dan 0,57. Dampaknya terukur, bukan teoretis: untuk kueri "kopi", ambang 0,80 meloloskan **1** memori (dirinya sendiri), ambang 0,70 meloloskan **2** (kopi + teh). Konsekuensi biaya disadari — Item 44 mencatat 99,3% belanja ada di prompt — tapi `match_count: 5` yang membatasinya, paling banyak 5 memori apa pun ambangnya.
     - **Status:** ✅ **Selesai & Diverifikasi Live (2026-09-10).** Bukti tiga ujung: klien mencatat `[MemoryGovernorService] Embedding didapat: 3072 dimensi.`; basis data mencatat 7 dari 7 bervektor pada 3072 dimensi; dan **`match_memories` mengembalikan hasil yang benar** — `similarity: 1` untuk memori itu sendiri, 0,7263 untuk "teh" terhadap kueri "kopi", kalimat yang tidak berbagi satu kata pun selain "suka". Pencarian SQL biasa tidak akan pernah menemukannya. Deploy `[MATCH]`.
     - **Yang belum terbukti:** ambang 0,70 belum diuji pada percakapan nyata dengan basis memori yang lebih besar. Dengan 7 memori, jarak antar kelompok masih lebar dan mudah dipisahkan; pada ratusan memori jaraknya akan menyempit dan angka ini mungkin perlu ditinjau ulang. Dicatat, bukan diklaim selesai selamanya.
+
+55. **Deteksi Konflik Memori: Aturan yang Dijamin Positif Palsu, dan Kemiripan Vektor yang Ternyata Tidak Cukup (2026-09-10):**
+    - **Ditemukan Owner, bukan dari audit.** Panel Memory Context menandai "ya, saya suka menggunakan ai" berbenturan dengan "saya lebih suka penjelasan dengan tabel". Dua fakta yang sama-sama benar dan tidak berhubungan.
+    - **Aturan lama runtuh menjadi tautologi.** `detectAndMarkConflict` mensyaratkan `source_reference` sama **dan** isi berbeda **dan** versi tidak sekuensial. Dua dari tiga syarat itu tidak pernah bisa gagal:
+      - Setiap fakta chat dalam satu kategori memakai `source_reference` yang sama (`assistant_chat:preference`).
+      - **SETIAP** baris `user_memories` punya `version_sequence = 1` — dibuktikan dengan query ke seluruh tabel. Pemanggil mengirim `newVersionSeq: 1` yang di-hardcode dan `storeGoldenMemory` juga default `1`, jadi `1 !== 1 + 1` **selalu** benar. Syarat versi itu murni hiasan.
+
+      Sisanya tinggal "dua fakta berbeda dalam kategori sama = konflik". Dijamin menyala untuk setiap fakta baru. Aturan itu memang dirancang untuk memori turunan berkas (satu path = satu isi kanonik), bukan untuk fakta chat yang saling independen. Sudah pernah ditambal sekali (menambahkan kategori ke `source_reference`) — tambalan itu hanya **memperkecil** kelompok yang bertabrakan, tidak menghapus tabrakannya.
+    - **Owner memilih (b): deteksi berbasis makna.** Baru mungkin sejak Item 54, karena sebelumnya tidak ada memori yang punya vektor.
+    - **PENGUKURAN MENJATUHKAN (b) SEBAGAIMANA DIRANCANG.** Sebelum memasang apa pun, 12 pasang kalimat nyata diukur lewat konsol. Hasilnya:
+
+      | Kemiripan | Jenis | Pasangan |
+      |---|---|---|
+      | 0,8780 | BENTROK | tabel vs tidak suka tabel |
+      | 0,8710 | BENTROK | pak slamet vs pak mamet |
+      | 0,8514 | BENTROK | kopi vs tidak suka kopi |
+      | **0,8323** | **TAJAM** | kopi vs kopi hitam tanpa gula |
+      | **0,8185** | **TAJAM** | UT vs jurusan SI di UT |
+      | 0,7890 | BENTROK | teh vs benci teh |
+      | **0,7263** | **BEBAS** | kopi vs teh |
+      | **0,6353** | **BENTROK** | UT vs ITB |
+      | 0,5201 | BEBAS | ai vs tabel |
+      | 0,5083 | BEBAS | pak slamet vs kopi |
+      | 0,5068 | BEBAS | kopi vs UT |
+      | 0,4763 | BEBAS | clean architecture vs teh |
+
+      **Celah antara BENTROK terendah dan BEBAS tertinggi: −0,091. NEGATIF.** "UT vs ITB" bertentangan tapi duduk **di bawah** "kopi vs teh" yang bebas. Dan golongan TAJAM (0,818–0,832) terkubur persis di tengah rentang BENTROK (0,789–0,878). Tidak ada satu ambang pun yang memisahkan ketiganya.
+    - **Sebabnya mendasar, bukan soal kalibrasi:** vektor mengukur **kemiripan topik**, bukan **pertentangan**. Kata "tidak" nyaris tidak menggeser vektor, sementara dua nama berbeda (UT/ITB) justru menjauhkannya meski maknanya bertabrakan. Kemiripan tinggi berarti "membicarakan hal yang sama", bukan "saling membantah" — dua pertanyaan berbeda yang keliru saya kira bisa saling mewakili.
+    - **Yang dipasang: DUA TAHAP.**
+      - **Tahap 1 — saringan (gratis, di klien):** kemiripan kosinus ≥ **0,78**. Untuk 7 memori Owner, pasangan tak berhubungan tertinggi hanya 0,7263, jadi saringan ini hampir tidak pernah menyala untuk fakta bebas — panggilan LLM jadi jarang.
+      - **Tahap 2 — hakim (berbayar, di server):** endpoint baru `{ action: 'judge_conflict' }` di `agent-process` (`lib/request/judge_endpoint.ts`) meminta model kecil memutuskan **BERTENTANGAN / PENAJAMAN / INDEPENDEN**. Hanya BERTENTANGAN yang menandai memori lama.
+    - **BYOK wajib untuk hakim (Item 51).** Ini panggilan model chat atas nama pengguna — beda dengan embedding yang fungsi internal — jadi memakai kunci pengguna sendiri. Model dikirim klien dari `BrainService`, **bukan ditebak di server**, karena katalog penyedia berubah lebih cepat daripada kode (pelajaran Item 41 dan 53).
+    - **Gagal ke arah TIDAK menandai.** Kalau hakim gagal, tidak ada key, atau jawabannya tidak bisa dibaca, memori dibiarkan aktif. Prompt-nya juga diberi tie-breaker eksplisit: ragu antara BERTENTANGAN dan PENAJAMAN → pilih PENAJAMAN. Menandai keliru berarti fakta Owner yang benar dilempar ke antrian review — persis keluhan yang melahirkan item ini.
+    - **Deteksi dipindah ke dalam `storeGoldenMemory`.** Dulu dipanggil terpisah dari `AssistantService` sebelum penyimpanan; sejak berbasis vektor itu berarti dua embedding untuk teks yang sama, dan membuat jalur penyimpanan lain (mis. `MemoryService`) luput. Sekarang satu memori = satu embedding = satu pemeriksaan.
+    - **Status:** ✅ **Selesai & Diverifikasi Live (2026-09-10).** Diuji tiga kasus lewat chat sungguhan:
+
+      | Kasus | Kemiripan | Putusan | Hasil |
+      |---|---|---|---|
+      | kopi hitam tanpa gula | 0,8323 | PENAJAMAN | dibiarkan aktif |
+      | sekarang tidak suka kopi | 0,7957 | BERTENTANGAN | ditandai |
+      | suka jalan pagi | — | tidak lolos saringan | tanpa panggilan LLM |
+
+      **0,8323 dibiarkan sementara 0,7957 ditandai** — yang lebih mirip justru lolos. Itu bukti langsung bahwa ambang tunggal mustahil bekerja, dan bahwa hakimnya benar-benar memutuskan berdasarkan makna. Alasan hakim tersimpan di `metadata.conflict_info.judge_reason`: "kedua pernyataan tidak mungkin benar bersamaan". Penjagaan endpoint diuji: tanpa token 401; `proxy_fetch` dan `embed` tidak rusak. Deploy `[MATCH]`.
+    - **Label tombol yang menyesatkan, ditemukan Owner sesudahnya.** Owner bertanya: "itu artinya semuanya tersimpan sekarang? bukan pilih salah satu kan?" Jawabannya ya — dan labelnya memang keliru. Memori baru **selalu** tersimpan; yang diputuskan hanya nasib memori lama. "Pertahankan Lama" terbaca seolah menolak memori baru, padahal artinya kedua memori dibiarkan hidup berdampingan. Diganti menjadi **"Simpan Keduanya"** dan **"Arsipkan yang Lama"**, ditambah keterangan eksplisit di atas tombol. Chip `(v1)` dan baris "Sumber" dibuang — keduanya sisa aturan lama yang menampilkan angka mati sebagai seolah-olah bermakna. Kemiripan dan alasan hakim kini ditampilkan, tapi hanya bila ada.
+    - **Belum diverifikasi:** tampilan kartu konflik yang baru **belum dilihat terpasang** — tidak ada konflik aktif saat perubahan UI selesai. Perubahannya lolos kompilasi, tapi itu hanya membuktikan bentuknya.
+    - **Konsekuensi yang perlu diketahui Owner:** menekan "Simpan Keduanya" pada pertentangan nyata berarti dua fakta yang saling membantah sama-sama aktif, dan keduanya bisa tertarik ke prompt yang sama. Untuk kalimat uji hari ini tidak masalah; untuk fakta sungguhan (mis. alamat lama vs baru) yang lama sebaiknya diarsipkan.
+    - **Ambang saringan 0,78 diukur pada 7 memori.** Pada ratusan memori jarak antar kelompok akan menyempit dan angka ini perlu ditinjau ulang. Dicatat, bukan diklaim selesai selamanya.

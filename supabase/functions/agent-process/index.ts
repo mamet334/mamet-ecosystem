@@ -5,6 +5,7 @@ import { streamController } from './lib/streaming/stream_controller.ts';
 import { corsHeaders } from './lib/stream_handler.ts';
 import { pingHeartbeat } from './lib/adapters/heartbeat.ts';
 import { handleEmbedRequest } from './lib/request/embed_endpoint.ts';
+import { handleJudgeConflictRequest } from './lib/request/judge_endpoint.ts';
 
 // PRIORITY 2: ENVIRONMENT VALIDATION (STARTUP)
 const REQUIRED_ENV_VARS = [
@@ -95,6 +96,11 @@ serve(async (req) => {
       if (parsedBody) {
         const embedResponse = await handleEmbedRequest(req, parsedBody, corsHeaders);
         if (embedResponse) return embedResponse;
+
+        // ENDPOINT HAKIM KONFLIK (Item 55) — `{ action: 'judge_conflict', ... }`.
+        // Sama alasannya: di luar penelan galat, dan memeriksa JWT sendiri.
+        const judgeResponse = await handleJudgeConflictRequest(req, parsedBody, corsHeaders);
+        if (judgeResponse) return judgeResponse;
       }
 
       try {

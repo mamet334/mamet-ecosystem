@@ -311,6 +311,15 @@ export class MemoryGovernorService {
       // akan menghasilkan kecocokan yang meleset tanpa ada yang tahu sebabnya.
       const embedding = await this._requestEmbedding(resolvedSummary);
 
+      // 1c. Deteksi konflik — memakai ULANG vektor di atas (Item 55).
+      //
+      // Dulu dipanggil terpisah dari AssistantService SEBELUM fungsi ini. Sejak
+      // deteksinya berbasis vektor, memanggilnya di sana berarti menghitung
+      // embedding dua kali untuk teks yang sama. Ditaruh di sini supaya satu
+      // memori = satu embedding, dan supaya SETIAP jalur yang menyimpan memori
+      // golden ikut terperiksa — bukan hanya jalur chat.
+      await this.detectAndMarkConflict({ userId: user_id, newContent: resolvedSummary, newEmbedding: embedding });
+
       // 2. INSERT summary di user_memories dengan metadata lengkap
       const { data: memRow, error: memError } = await supabase
         .from('user_memories')
@@ -678,80 +687,129 @@ export class MemoryGovernorService {
   // ADDENDUM FASE 1 — Conflict Resolution
   // ===========================================================================
 
+
   /**
-   * Deteksi konflik untuk source_file tertentu.
-   * Jika ada record lain dengan source_reference sama tapi content berbeda
-   * dan version_sequence tidak sekuensial → tandai sebagai CONFLICT_PENDING_REVIEW.
+   * Deteksi konflik memori — DUA TAHAP (Item 55, 2026-09-10).
    *
-   * Aturan wajib: DILARANG auto-resolve. Hanya user yang bisa resolve.
+   * ATURAN LAMA DAN KENAPA IA SELALU SALAH
+   * Sebelumnya: "source_reference sama + isi berbeda + versi tidak sekuensial"
+   * = konflik. Dua dari tiga syarat itu runtuh di praktik:
+   *   - Setiap fakta chat dalam satu kategori memakai `source_reference` yang
+   *     sama (`assistant_chat:preference`), jadi syarat pertama selalu benar.
+   *   - SETIAP baris `user_memories` punya `version_sequence = 1` (pemanggil
+   *     mengirim 1, default-nya juga 1), sehingga `newSeq !== existingSeq + 1`
+   *     berbunyi `1 !== 2` — selalu benar. Syarat itu tidak menyaring apa pun.
+   * Sisanya tinggal "dua fakta berbeda = konflik". Dijamin positif palsu:
+   * "saya suka menggunakan ai" ditandai berbenturan dengan "saya lebih suka
+   * penjelasan dengan tabel", padahal keduanya benar.
+   *
+   * KENAPA KEMIRIPAN VEKTOR SAJA TIDAK CUKUP
+   * Diukur pada 12 pasang kalimat nyata (2026-09-10). Celah antara pasangan
+   * BERTENTANGAN terendah dan pasangan BEBAS tertinggi ternyata -0,091 —
+   * NEGATIF. "kuliah di UT" vs "kuliah di ITB" bertentangan tapi hanya 0,6353,
+   * di BAWAH "suka kopi" vs "suka teh" yang bebas di 0,7263. Dan penajaman
+   * ("suka kopi" vs "suka kopi hitam tanpa gula", 0,8323) duduk persis di tengah
+   * rentang pertentangan (0,789-0,878). Tidak ada satu ambang pun yang memisah.
+   *
+   * Sebabnya mendasar: vektor mengukur KEMIRIPAN TOPIK, bukan PERTENTANGAN.
+   * Kata "tidak" nyaris tidak menggeser vektor; dua nama berbeda justru
+   * menjauhkannya meski maknanya bertabrakan.
+   *
+   * MAKA DUA TAHAP
+   *   Tahap 1 — SARINGAN (gratis): kemiripan vektor >= AMBANG_SARING.
+   *             Untuk 7 memori Owner, pasangan tak berhubungan tertinggi 0,7263,
+   *             jadi saringan 0,78 hampir tidak pernah menyala untuk fakta bebas.
+   *   Tahap 2 — HAKIM (berbayar): model kecil memutuskan BERTENTANGAN /
+   *             PENAJAMAN / INDEPENDEN. Hanya yang lolos saringan sampai sini,
+   *             jadi panggilannya jarang. Memakai BYOK key Owner (Item 51).
+   *
+   * Hanya putusan BERTENTANGAN yang menandai memori lama sebagai
+   * CONFLICT_PENDING_REVIEW. Aturan wajib tetap: DILARANG auto-resolve.
    *
    * @param {Object} params
    * @param {string} params.userId
-   * @param {string} params.sourceFile - path/identifier sumber
-   * @param {string} params.newContent - content baru yang akan disimpan
-   * @param {number} params.newVersionSeq - version sequence yang diklaim
+   * @param {string} params.newContent - isi baru yang akan disimpan
+   * @param {number[]} [params.newEmbedding] - vektor isi baru; dihitung sendiri bila kosong
    * @returns {Promise<{ hasConflict: boolean, conflictedIds: string[] }>}
    */
-  async detectAndMarkConflict({ userId, sourceFile, newContent, newVersionSeq }) {
+  async detectAndMarkConflict({ userId, newContent, newEmbedding = null }) {
     if (!this.isInitialized) throw new Error('MemoryGovernorService not initialized');
 
+    const AMBANG_SARING = 0.78;
+
     try {
-      // Cari semua memori aktif dengan source_reference yang sama
+      const vektorBaru = newEmbedding || await this._requestEmbedding(newContent);
+      if (!Array.isArray(vektorBaru) || vektorBaru.length === 0) {
+        // Tanpa vektor tidak ada saringan. Memilih TIDAK menandai apa pun —
+        // menebak di sini persis yang melahirkan keluhan positif palsu.
+        console.warn('[MemoryGovernorService] Deteksi konflik dilewati — tidak ada embedding untuk isi baru.');
+        return { hasConflict: false, conflictedIds: [] };
+      }
+
       const { data: existing, error } = await supabase
         .from('user_memories')
-        .select('id, summary, version_sequence, status, metadata')
+        .select('id, summary, embedding, metadata')
         .eq('user_id', userId)
-        .eq('source_reference', sourceFile)
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .not('embedding', 'is', null);
 
       if (error || !existing || existing.length === 0) {
         return { hasConflict: false, conflictedIds: [] };
       }
 
-      // Cek konflik: content berbeda DAN version tidak sekuensial
-      const newHash = this._computeHash(newContent);
-      const conflictedIds = [];
-
+      const kandidat = [];
       for (const mem of existing) {
-        const existingHash = this._computeHash(mem.summary || '');
-        const versionBroken = newVersionSeq !== (mem.version_sequence + 1);
+        // PostgREST mengembalikan kolom vector sebagai STRING "[0.1,0.2,...]",
+        // bukan array. Tanpa parse ini cosine-nya menghasilkan NaN dan seluruh
+        // saringan diam-diam tidak pernah menyala.
+        const vektorLama = this._parseVector(mem.embedding);
+        if (!vektorLama) continue;
 
-        if (existingHash !== newHash && versionBroken) {
-          const updatedMetadata = {
-            ...(mem.metadata || {}),
-            conflict_info: {
-              detected_at: new Date().toISOString(),
-              reason: 'VERSION_SEQUENCE_BROKEN_AND_CONTENT_DIFF',
-              source_reference: sourceFile,
-              incoming_content: newContent,
-              incoming_version_seq: newVersionSeq,
-              existing_version_seq: mem.version_sequence,
-              previous_summary: mem.summary || ''
-            }
-          };
+        const kemiripan = this._cosine(vektorBaru, vektorLama);
+        if (kemiripan >= AMBANG_SARING) kandidat.push({ mem, kemiripan });
+      }
 
-          // Tandai sebagai CONFLICT_PENDING_REVIEW & tulis metadata.conflict_info secara atomik
-          const { error: updateErr } = await supabase
-            .from('user_memories')
-            .update({
-              status: 'CONFLICT_PENDING_REVIEW',
-              metadata: updatedMetadata
-            })
-            .eq('id', mem.id);
+      if (kandidat.length === 0) return { hasConflict: false, conflictedIds: [] };
 
-          if (!updateErr) {
-            conflictedIds.push(mem.id);
-          }
+      console.log(`[MemoryGovernorService] ${kandidat.length} kandidat lolos saringan ${AMBANG_SARING}. Meminta putusan hakim...`);
+
+      const conflictedIds = [];
+      for (const { mem, kemiripan } of kandidat) {
+        const putusan = await this._judgeConflict(mem.summary || '', newContent);
+
+        // null = hakim tidak dapat memutuskan. Tidak menandai apa pun.
+        if (putusan?.putusan !== 'BERTENTANGAN') {
+          console.log(`[MemoryGovernorService] ${putusan?.putusan || 'TIDAK DIPUTUS'} (mirip ${kemiripan.toFixed(4)}) — "${(mem.summary || '').substring(0, 40)}" dibiarkan aktif.`);
+          continue;
         }
+
+        const updatedMetadata = {
+          ...(mem.metadata || {}),
+          conflict_info: {
+            detected_at: new Date().toISOString(),
+            reason: 'SEMANTIC_CONTRADICTION',
+            similarity: +kemiripan.toFixed(4),
+            judge_verdict: putusan.putusan,
+            judge_reason: putusan.alasan || '',
+            incoming_content: newContent,
+            previous_summary: mem.summary || ''
+          }
+        };
+
+        const { error: updateErr } = await supabase
+          .from('user_memories')
+          .update({ status: 'CONFLICT_PENDING_REVIEW', metadata: updatedMetadata })
+          .eq('id', mem.id);
+
+        if (!updateErr) conflictedIds.push(mem.id);
       }
 
       if (conflictedIds.length > 0) {
         this.eventBus.emit('MemoryGovernor:ConflictDetected', {
-          sourceFile,
           conflictedIds,
           timestamp: new Date().toISOString()
         });
-        console.log(`[MemoryGovernorService] Conflict detected for "${sourceFile}" → ${conflictedIds.length} record(s) ditandai CONFLICT_PENDING_REVIEW`);
+        console.log(`[MemoryGovernorService] Konflik nyata: ${conflictedIds.length} memori ditandai CONFLICT_PENDING_REVIEW`);
       }
 
       return { hasConflict: conflictedIds.length > 0, conflictedIds };
@@ -759,6 +817,64 @@ export class MemoryGovernorService {
     } catch (err) {
       console.error('[MemoryGovernorService] detectAndMarkConflict error:', err);
       return { hasConflict: false, conflictedIds: [] };
+    }
+  }
+
+  /** Kemiripan kosinus dua vektor. */
+  _cosine(a, b) {
+    if (!a || !b || a.length !== b.length) return 0;
+    let d = 0, na = 0, nb = 0;
+    for (let i = 0; i < a.length; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+    if (na === 0 || nb === 0) return 0;
+    return d / (Math.sqrt(na) * Math.sqrt(nb));
+  }
+
+  /** Kolom `vector` datang sebagai string JSON dari PostgREST — ubah ke array angka. */
+  _parseVector(v) {
+    if (Array.isArray(v)) return v;
+    if (typeof v !== 'string') return null;
+    try {
+      const arr = JSON.parse(v);
+      return Array.isArray(arr) ? arr : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Tahap 2: minta model kecil memutuskan hubungan dua pernyataan.
+   * Mengembalikan null bila tidak bisa memutuskan — pemanggil TIDAK menandai apa pun.
+   */
+  async _judgeConflict(existing, incoming) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return null;
+
+      const brain = this.serviceManager.has('BrainService') ? this.serviceManager.get('BrainService') : null;
+      const vault = this.serviceManager.has('VaultService') ? this.serviceManager.get('VaultService') : null;
+      const cfg = brain?.getBrainConfig?.() || {};
+      const provider = cfg.provider || null;
+      const key = provider && vault ? vault.getKey(provider) : null;
+
+      if (!provider || !key) {
+        console.warn('[MemoryGovernorService] Hakim konflik dilewati — tidak ada API Key pengguna.');
+        return null;
+      }
+
+      const headers = {};
+      headers['x-byok-' + provider] = String(key).replace(/[^\x00-\x7F]/g, '');
+
+      const { data, error } = await supabase.functions.invoke('agent-process', {
+        body: { action: 'judge_conflict', existing, incoming, model: cfg.model || undefined },
+        headers
+      });
+
+      if (error) throw new Error(error.message);
+      if (!data?.putusan) return null;
+      return data;
+    } catch (err) {
+      console.warn('[MemoryGovernorService] Hakim konflik gagal, dianggap tidak berkonflik:', err.message);
+      return null;
     }
   }
 

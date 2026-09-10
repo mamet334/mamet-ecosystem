@@ -133,14 +133,13 @@ export class AssistantService {
 
     try {
       if (governor && userId && typeof governor.storeGoldenMemory === 'function') {
-        // Deteksi konflik sebelum menyimpan
-        await governor.detectAndMarkConflict({
-          userId,
-          sourceFile: goldenMeta.source_reference,
-          newContent: contentToStore,
-          newVersionSeq: 1
-        });
-
+        // Deteksi konflik TIDAK lagi dipanggil di sini (Item 55).
+        //
+        // Sejak deteksinya berbasis vektor, ia dijalankan di dalam
+        // storeGoldenMemory memakai embedding yang memang sudah dihitung di sana.
+        // Memanggilnya terpisah berarti dua embedding untuk teks yang sama, dan
+        // membuat jalur penyimpanan lain (mis. MemoryService) luput dari
+        // pemeriksaan. Satu memori = satu embedding = satu pemeriksaan.
         const stored = await governor.storeGoldenMemory({
           user_id: userId,
           content: contentToStore,

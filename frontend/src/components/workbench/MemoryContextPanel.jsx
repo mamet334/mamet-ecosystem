@@ -527,51 +527,71 @@ export default function MemoryContextPanel({
                     </span>
                   </div>
 
-                  {/* Metadata Deteksi */}
+                  {/* Metadata Deteksi.
+                      Kemiripan dan alasan hakim hanya ada pada konflik yang
+                      dideteksi cara baru (SEMANTIC_CONTRADICTION, Item 55).
+                      Konflik lama tidak punya keduanya — jangan tampilkan
+                      kolom kosong yang seolah-olah bermakna. */}
                   <div className="text-[9px] text-on-surface-variant space-y-0.5">
-                    <div><span className="font-semibold text-on-surface">Sumber:</span> {conf.source_reference || info.source_reference || 'assistant_chat_trigger'}</div>
                     <div><span className="font-semibold text-on-surface">Alasan:</span> {info.reason || 'KONTEN BERBEDA / VERSI TIDAK SEKUENSIAL'}</div>
+                    {info.similarity != null && (
+                      <div><span className="font-semibold text-on-surface">Kemiripan:</span> {info.similarity}</div>
+                    )}
+                    {info.judge_reason && (
+                      <div><span className="font-semibold text-on-surface">Penilaian:</span> {info.judge_reason}</div>
+                    )}
+                  </div>
+
+                  {/* Keterangan yang menjelaskan apa yang SUDAH terjadi.
+                      Tanpa ini, "Pertahankan Lama" terbaca seolah membatalkan
+                      memori baru — padahal memori baru selalu tersimpan dan
+                      yang diputuskan di sini hanya nasib memori lama. */}
+                  <div className="text-[9px] leading-relaxed rounded-lg p-2 bg-surface-container-lowest/50 border border-outline-variant text-on-surface-variant">
+                    Memori baru <span className="font-semibold text-on-surface">sudah tersimpan</span>. Yang Anda putuskan di sini hanya apakah memori lama masih berlaku.
                   </div>
 
                   {/* Diff Container */}
                   <div className="space-y-1.5 text-[10px]">
-                    {/* Versi Lama */}
+                    {/* Memori Lama — inilah yang nasibnya diputuskan */}
                     <div className="rounded-lg p-2 bg-red-900/20 border border-red-500/30">
                       <div className="flex items-center gap-1 text-[9px] font-bold text-red-400 mb-0.5 uppercase tracking-wide">
-                        <span>🔴 Versi Lama (Database)</span>
-                        <span className="text-on-surface-variant font-normal">(v{info.existing_version_seq || conf.version_sequence})</span>
+                        <span>🔴 Memori Lama — menunggu keputusan Anda</span>
                       </div>
                       <p className="text-on-surface break-words leading-relaxed">{previousContent}</p>
                     </div>
 
-                    {/* Versi Baru */}
+                    {/* Memori Baru — sudah masuk, tidak diputuskan di sini */}
                     <div className="rounded-lg p-2 bg-emerald-900/20 border border-emerald-500/30">
                       <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-400 mb-0.5 uppercase tracking-wide">
-                        <span>🟢 Input Baru yang Berbenturan</span>
-                        <span className="text-on-surface-variant font-normal">(v{info.incoming_version_seq || 1})</span>
+                        <span>🟢 Memori Baru — sudah tersimpan</span>
                       </div>
                       <p className="text-on-surface break-words leading-relaxed">{incomingContent}</p>
                     </div>
                   </div>
 
-                  {/* Tombol Keputusan Owner */}
+                  {/* Tombol Keputusan Owner.
+                      Label lama ("Pertahankan Lama" / "Buang / Arsipkan")
+                      menyesatkan: yang pertama terdengar seperti menolak memori
+                      baru, padahal artinya kedua memori dibiarkan hidup
+                      berdampingan. Label diganti agar menyebut akibatnya, bukan
+                      tindakannya. */}
                   <div className="pt-1 flex items-center gap-2">
                     <button
                       disabled={processingId === conf.id}
                       onClick={() => handleResolve(conf.id, 'keep')}
                       className="flex-1 py-1.5 px-2 rounded-lg text-[10px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-all text-center shadow disabled:opacity-50"
-                      title="Pertahankan versi lama di memori aktif"
+                      title="Kedua memori tetap aktif dan keduanya bisa muncul di jawaban AI"
                     >
-                      {processingId === conf.id ? 'Memproses...' : 'Pertahankan Lama'}
+                      {processingId === conf.id ? 'Memproses...' : 'Simpan Keduanya'}
                     </button>
 
                     <button
                       disabled={processingId === conf.id}
                       onClick={() => handleResolve(conf.id, 'discard')}
                       className="flex-1 py-1.5 px-2 rounded-lg text-[10px] font-semibold bg-red-700 hover:bg-red-600 text-white transition-all text-center shadow disabled:opacity-50"
-                      title="Buang / Arsipkan record ini"
+                      title="Memori lama diarsipkan; hanya memori baru yang berlaku"
                     >
-                      {processingId === conf.id ? 'Memproses...' : 'Buang / Arsipkan'}
+                      {processingId === conf.id ? 'Memproses...' : 'Arsipkan yang Lama'}
                     </button>
                   </div>
                 </div>
