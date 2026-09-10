@@ -97,16 +97,29 @@ aplikasi desktop terbuka sebagai pekerja, lalu mengunduh PDF-nya.
 | Hasil | 47 = 47 halaman, Word 12.0, Word ditutup normal, tanpa error |
 | Storage | `sumber.docx` 977.276 byte — sama persis dengan aslinya; `hasil.pdf` 7.769.349 byte — sama dengan konversi lokal |
 
+## Terbukti dari HP
+
+Setelah push dan deploy Vercel, Owner mengonversi dokumen **lain** dari HP lewat
+`mamet-ecosystem.vercel.app` dan berhasil mengunduhnya.
+
+| | Dari HP (20:02) | Uji Chrome (19:51) |
+|---|---|---|
+| Dokumen | Lembar kerja UT (nama panjang, berspasi) | DOKUMEN HCDP 2025-2026 |
+| Diambil laptop | 4 detik | 2 detik |
+| Selesai | 22 detik | 74 detik |
+| Halaman | 5 = 5 | 47 = 47 |
+
+Basis data tidak mencatat perangkat pengirim, jadi "dari HP" bersandar pada laporan Owner.
+Yang dibuktikan basis data: dokumen baru masuk lewat antrian, dikerjakan laptop, hasilnya utuh.
+
 ## Yang belum terbukti
 
-- **Dari HP sungguhan.** Uji dilakukan dari Chrome di laptop. Jalurnya sama dengan
-  `mamet-ecosystem.vercel.app`, tapi baru terbukti setelah push dan deploy.
 - **Pemulihan pekerjaan macet** — aplikasi ditutup di tengah konversi, ditandai gagal setelah
   15 menit — belum pernah diuji.
 
 ## Yang belum dikerjakan
 
 - **Berkas tidak pernah terhapus.** Tiap konversi meninggalkan sumber dan hasil di bucket
-  (±8,7 MB untuk dokumen HCDP). Perlu kebijakan retensi.
+  (±9,2 MB setelah dua konversi). Perlu kebijakan retensi.
 - **CSP versi web memblokir `api.github.com`.** Terlihat di log uji, sudah ada sebelumnya,
   tidak memengaruhi konversi.

@@ -671,9 +671,20 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
       | Storage | `sumber.docx` **977.276 byte** — sama persis dengan dokumen asli; `hasil.pdf` 7.769.349 byte — sama dengan hasil konversi lokal Item 56 |
 
       Ukuran sumber yang identik membuktikan dokumen tidak berubah dalam perjalanan; ukuran PDF yang identik membuktikan laptop memakai mesin yang sama.
+    - **✅ Terbukti dari HP (2026-09-10, setelah push `42d1a4c` dan deploy Vercel).** Owner mengonversi dokumen **lain** dari HP lewat `mamet-ecosystem.vercel.app` dan berhasil mengunduhnya — dokumen berbeda, jadi bukan pengulangan uji Chrome:
+
+      | | Dari HP (20:02:32 WIB) | Uji Chrome (19:51:42 WIB) |
+      |---|---|---|
+      | Dokumen | `UT_PBB_LPKBJJ_2022_PKBJJ_LEMBAR KERJA MEMBUAT RENCANA BELAJAR.docx` | `DOKUMEN HCDP 2025-2026.docx` |
+      | Diambil laptop | 4 detik | 2 detik |
+      | Selesai | 22 detik | 74 detik |
+      | Halaman | 5 = 5 | 47 = 47 |
+      | Word ditutup | normal | normal |
+      | Storage | `sumber.docx` 34.420 B, `hasil.pdf` 473.157 B | 977.276 B / 7.769.349 B |
+
+      Nama berkas panjang berisi spasi dan garis bawah lolos tanpa masalah — keputusan kunci storage bernama tetap (`sumber.docx` / `hasil.pdf`) bekerja sebagaimana dirancang. **Batas bukti:** basis data tidak mencatat perangkat pengirim; bahwa pekerjaan 20:02 dikirim dari HP bersandar pada laporan Owner. Yang dibuktikan basis data: dokumen baru masuk lewat antrian, dikerjakan laptop, hasilnya utuh.
     - **Belum terbukti:**
-      - **Dari HP sungguhan** lewat `mamet-ecosystem.vercel.app` — uji dilakukan dari Chrome di laptop. Jalurnya sama, tapi baru terbukti setelah push dan deploy Vercel.
       - **Pemulihan pekerjaan macet** (aplikasi ditutup di tengah konversi → ditandai gagal setelah 15 menit) belum pernah diuji.
     - **Belum dikerjakan:**
-      - **Berkas tidak pernah terhapus.** Setiap konversi meninggalkan sumber + hasil di bucket (±8,7 MB untuk dokumen HCDP), dan versi web belum punya daftar riwayat atau tombol hapus. Perlu kebijakan retensi.
+      - **Berkas tidak pernah terhapus.** Setiap konversi meninggalkan sumber + hasil di bucket (±9,2 MB setelah dua konversi), dan versi web belum punya daftar riwayat atau tombol hapus. Perlu kebijakan retensi.
       - **CSP versi web memblokir `api.github.com`** (`RepositoryReaderService.js:157`) — terlihat di log uji, sudah ada sebelum item ini, tidak memengaruhi konversi.
