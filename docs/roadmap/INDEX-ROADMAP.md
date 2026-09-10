@@ -730,7 +730,16 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
       - `desktop:postbuild` pada hasil build: CSP dan `crossorigin` terhapus, font dan aset utuh.
       - Hasil build web dibuka di Browser pane: `api.github.com`, `raw.githubusercontent.com`, Supabase, Wikipedia lolos (HTTP 200); **kontrol `example.com` diblokir** dengan pelanggaran `connect-src` tercatat — bukti CSP benar-benar menjaga, bukan hanya tertulis.
       - Bukti tambahan: mode dev sudah memakai CSP ini sepanjang hari, dan seluruh uji web Item 57–58 (konversi, unggah storage, unduh PDF, cache, panel Riwayat) berjalan di bawahnya tanpa terblokir.
+    - **✅ Terbukti di produksi (2026-09-10, setelah push `b94ce0c`).** Situs live dipantau sampai deploy baru mendarat: `Last-Modified` berganti dari 13:48:16 GMT (deploy sebelumnya, CSP=0) menjadi **14:02:57 GMT (CSP=1)**. HTML live memuat CSP dengan kedua alamat GitHub, dan atribut `crossorigin` kembali ada. Diuji langsung dari origin `https://mamet-ecosystem.vercel.app` di Browser pane:
+
+      | Uji | Hasil |
+      |---|---|
+      | `api.github.com`, `raw.githubusercontent.com`, Supabase | diizinkan (HTTP 200) |
+      | **kontrol `example.com`** | **diblokir** — pelanggaran `connect-src` tercatat di konsol |
+      | tampilan halaman | normal; satu-satunya error konsol adalah pemblokiran kontrol yang sengaja dipicu |
+
+      Versi web yang dibuka dari HP kini punya lapisan pengaman yang sama dengan mode dev.
     - **Belum terbukti:**
-      - Situs live memuat CSP setelah deploy — diperiksa dengan cara yang sama seperti temuan awal.
       - File Explorer versi web dengan login — alamatnya sudah diizinkan, fiturnya belum dibuka.
+      - Alur konversi Item 57–58 di bawah CSP **produksi** — sudah jalan di bawah CSP yang sama di mode dev, belum diulang di situs live.
       - Build installer desktop penuh (`npm run dist`) — skripnya diuji, electron-builder belum dijalankan.

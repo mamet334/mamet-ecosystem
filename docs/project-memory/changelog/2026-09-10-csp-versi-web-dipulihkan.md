@@ -71,8 +71,20 @@ Baris terakhir adalah kontrolnya: alamat yang tidak ada di daftar benar-benar di
 Bukti tambahan: mode dev memakai CSP ini sepanjang hari, dan semua uji versi web untuk
 konversi, cache, dan panel Riwayat berjalan di bawahnya tanpa terblokir.
 
+## Terbukti di produksi
+
+Setelah push, situs live dipantau sampai deploy baru mendarat — `Last-Modified` berganti dari
+13:48 GMT (tanpa CSP) menjadi 14:02 GMT (dengan CSP). Uji yang sama diulang langsung dari
+situs live:
+
+| Uji | Hasil |
+|---|---|
+| GitHub dan Supabase | diizinkan |
+| Kontrol `example.com` | **diblokir** |
+| Tampilan halaman | normal |
+
 ## Yang belum terbukti
 
-- Situs live benar-benar memuat CSP setelah deploy.
 - File Explorer versi web saat login.
+- Alur konversi di bawah CSP produksi — sudah jalan di bawah CSP yang sama di mode dev.
 - Build installer desktop penuh.
