@@ -29,6 +29,9 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
+    // tools/ ada di root repo, di luar frontend/. ToolRegistryService membundelnya lewat
+    // import.meta.glob untuk versi web; tanpa izin ini server dev menolak menyajikannya.
+    fs: { allow: ['.', '../tools'] },
     proxy: {
       '/api': {
         target: 'http://localhost:3000',

@@ -376,6 +376,61 @@ ipcMain.handle('doc:word-to-pdf', async (event, { filePath }) => {
   }
 });
 
+// 0b-2. Berkas sementara untuk konversi dari HP (Item 57).
+//
+// Pekerja di renderer mengunduh .docx dari Supabase Storage, tapi Word hanya bisa membuka
+// berkas di disk. Tiga IPC ini menjembatani, dan SEMUANYA dikurung di satu folder:
+// %TEMP%\mamet-konversi\<jobId>\. jobId divalidasi sebagai UUID dan nama berkas dibersihkan,
+// jadi renderer tidak bisa menulis atau membaca di luar folder itu ("..\..\" dsb).
+const TEMP_KONVERSI = path.join(os.tmpdir(), 'mamet-konversi');
+const POLA_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function folderJob(jobId) {
+  if (typeof jobId !== 'string' || !POLA_UUID.test(jobId)) throw new Error('jobId tidak valid.');
+  return path.join(TEMP_KONVERSI, jobId);
+}
+
+function didalamTempKonversi(p) {
+  const rel = path.relative(TEMP_KONVERSI, path.resolve(p));
+  return !!rel && !rel.startsWith('..') && !path.isAbsolute(rel);
+}
+
+ipcMain.handle('doc:temp-save', async (event, { jobId, fileName, bytes }) => {
+  try {
+    const dir = folderJob(jobId);
+    const ext = path.extname(String(fileName || '')).toLowerCase();
+    if (!['.doc', '.docx'].includes(ext)) return { ok: false, error: `Hanya .doc/.docx, bukan "${ext || 'tanpa ekstensi'}".` };
+    // Nama asli dipertahankan (PDF hasilnya ikut bernama sama), karakter terlarang Windows dibuang.
+    const aman = path.basename(String(fileName)).replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').slice(0, 150);
+    fs.mkdirSync(dir, { recursive: true });
+    const tujuan = path.join(dir, aman);
+    fs.writeFileSync(tujuan, Buffer.from(bytes));
+    return { ok: true, filePath: tujuan };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('doc:temp-read', async (event, { filePath }) => {
+  try {
+    if (typeof filePath !== 'string' || !didalamTempKonversi(filePath) || path.extname(filePath).toLowerCase() !== '.pdf') {
+      return { ok: false, error: 'Hanya PDF hasil konversi di folder sementara yang boleh dibaca.' };
+    }
+    return { ok: true, bytes: fs.readFileSync(filePath) };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
+ipcMain.handle('doc:temp-cleanup', async (event, { jobId }) => {
+  try {
+    fs.rmSync(folderJob(jobId), { recursive: true, force: true });
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+});
+
 // 0c. Buka hasil konversi — tombol "Buka PDF" / "Tampilkan di folder" di chat.
 //
 // HANYA berkas .pdf yang benar-benar ada. shell.openPath() membuka berkas dengan program

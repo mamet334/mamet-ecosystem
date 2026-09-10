@@ -95,4 +95,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   wordToPdf: (filePath) => ipcRenderer.invoke('doc:word-to-pdf', { filePath }),
   // mode: 'open' (buka dengan penampil PDF bawaan) | 'folder' (Explorer, berkas terpilih)
   openConvertedPdf: (filePath, mode = 'open') => ipcRenderer.invoke('doc:open-result', { filePath, mode }),
+  // Konversi dari HP (Item 57): berkas sementara di %TEMP%\mamet-konversi\<jobId>\
+  conversionTempSave: (jobId, fileName, bytes) => ipcRenderer.invoke('doc:temp-save', { jobId, fileName, bytes }),
+  conversionTempRead: (filePath) => ipcRenderer.invoke('doc:temp-read', { filePath }),
+  conversionTempCleanup: (jobId) => ipcRenderer.invoke('doc:temp-cleanup', { jobId }),
 });

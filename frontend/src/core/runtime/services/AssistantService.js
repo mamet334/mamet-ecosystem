@@ -21,6 +21,7 @@
 const AGENT_ENDPOINT = 'https://uuyzdjifhdfyyvpxsofu.supabase.co/functions/v1/agent-process';
 
 import { supabase } from '../../../supabase.js';
+import { statusLaptop, kirimKeLaptop } from './remoteConversionClient.js';
 import { runDesktopInterceptors } from '../../../components/AIAgent/hooks/useDesktopInterceptor.js';
 
 // PR#2: Import governor dari versi JS lokal (bukan cross-boundary ke lib/ TypeScript)
@@ -418,6 +419,12 @@ export class AssistantService {
       return;
     }
 
+    // Versi WEB (mamet-ecosystem.vercel.app, termasuk dari HP): tidak ada Word di sini, jadi
+    // dokumennya dikirim ke laptop lewat antrian Supabase (Item 57).
+    if (typeof window === 'undefined' || typeof window.electronAPI?.wordToPdf !== 'function') {
+      return this._handleDocConvertLewatLaptop({ attachedFile, onChunk, onDone });
+    }
+
     const toolRegistry = this.serviceManager.has('ToolRegistryService')
       ? this.serviceManager.get('ToolRegistryService')
       : null;
@@ -461,6 +468,65 @@ export class AssistantService {
       pesan += `\n\nBerkas tetap dibuat di \`${hasil.output}\`, tapi **jangan dianggap benar** sebelum Anda periksa sendiri.`;
     }
     onDone?.(pesan, [], { toolsUsed: ['word_to_pdf'], toolExecution: { name: 'word_to_pdf', result: hasil } });
+  }
+
+  /**
+   * Word → PDF dari versi web: kirim ke laptop-pekerja lewat antrian Supabase (Item 57).
+   * Laptop harus online (aplikasi desktop terbuka); kalau tidak, katakan apa adanya — jangan
+   * membuat antrian yang tidak akan dikerjakan siapa pun tanpa memberi tahu pengguna.
+   * @private
+   */
+  async _handleDocConvertLewatLaptop({ attachedFile, onChunk, onDone }) {
+    const laptop = await statusLaptop();
+    if (!laptop?.online) {
+      onDone?.(
+        '💻 **Laptop Anda sedang offline.**\n\n' +
+        'Konversi Word → PDF dikerjakan oleh Microsoft Word di laptop, jadi laptop harus menyala ' +
+        'dan aplikasi desktop Mamet OS harus terbuka.' +
+        (laptop ? `\n\n_Terakhir terlihat ${Math.round(laptop.detik_lalu / 60)} menit lalu._` : ''),
+        [], null
+      );
+      return;
+    }
+
+    const teks = {
+      mengirim: `📤 Mengirim **${attachedFile.name}** ke laptop Anda...`,
+      pending: `⏳ **${attachedFile.name}** menunggu diambil laptop...`,
+      processing: `⚙️ Laptop sedang mengubah **${attachedFile.name}** ke PDF lewat Microsoft Word...\n\n_Dokumen dengan banyak grafik bisa butuh satu sampai beberapa menit._`
+    };
+    const hasil = await kirimKeLaptop(attachedFile, (status) => {
+      if (teks[status]) onChunk?.(teks[status], teks[status], []);
+    });
+
+    const job = hasil.job;
+    if (hasil.ok && job?.output_path) {
+      const r = job.result || {};
+      const mb = r.ukuran ? (r.ukuran / (1024 * 1024)).toFixed(1) : '?';
+      onDone?.(
+        `✅ **Selesai.** PDF dibuat oleh laptop Anda dan siap diunduh.\n\n` +
+        `| | |\n|---|---|\n` +
+        `| Halaman | ${r.halaman_pdf ?? '?'} (sama dengan di Word) |\n` +
+        `| Ukuran | ${mb} MB |\n` +
+        `| Waktu di laptop | ${r.detik ?? '?'} detik |\n` +
+        `| Mesin | Microsoft Word ${r.word_versi || ''} → Microsoft Print to PDF |\n\n` +
+        '_Tautan (hyperlink) di dalam dokumen tidak bisa diklik di PDF hasil cetak._',
+        [],
+        {
+          toolsUsed: ['word_to_pdf'],
+          toolExecution: {
+            name: 'word_to_pdf',
+            result: r,
+            remote: { jobId: job.id, outputPath: job.output_path, sourceName: job.source_name }
+          }
+        }
+      );
+      return;
+    }
+
+    onDone?.(
+      `❌ **Konversi tidak berhasil.**\n\n${hasil.error || 'Tidak ada keterangan.'}`,
+      [], { toolsUsed: ['word_to_pdf'], toolExecution: { name: 'word_to_pdf', result: job?.result || null, error: hasil.error } }
+    );
   }
 
   // =============================================

@@ -91,6 +91,15 @@ export class ToolRegistryService {
    * @returns {Promise<{found: number, registered: string[], errors: Array<{file: string, message: string}>}>}
    */
   async scanToolsFolder() {
+    // Versi WEB (mamet-ecosystem.vercel.app / browser): tidak ada disk repo untuk dipindai —
+    // folder tools/ dibaca lewat IPC Electron. Sejak scan folder diperkenalkan (2026-09-09),
+    // versi web jadi tidak memuat SATU tool pun: panel Tools hanya menampilkan RAG, dan
+    // web_search diam-diam lewat jalur cadangan di RetrievalOrchestrator. Di web, tool diambil
+    // dari salinan yang ikut dibundel Vite saat build.
+    if (typeof window === 'undefined' || typeof window.electronAPI?.listFilesRecursive !== 'function') {
+      return this._muatToolTerbundel();
+    }
+
     const storageManager = this.serviceManager?.get?.('StorageManager');
     if (!storageManager) {
       const error = 'StorageManager tidak tersedia, tidak bisa scan folder tools/';
@@ -161,5 +170,35 @@ export class ToolRegistryService {
     this.eventBus?.emit('ToolRegistry:Scanned', { registered, errors, at: this.lastScan.at });
 
     return { found: relativeFilePaths.length, registered, errors };
+  }
+
+  /**
+   * Tool dari folder tools/ yang ikut dibundel saat build (hanya dipakai di luar Electron).
+   * Beda dengan scan disk: tool baru baru muncul di web setelah build & deploy ulang.
+   */
+  async _muatToolTerbundel() {
+    for (const name of this.fileSourcedToolNames) this.tools.delete(name);
+    this.fileSourcedToolNames.clear();
+
+    // Path relatif dari file ini: services → runtime → core → src → frontend → root repo.
+    const modul = import.meta.glob('../../../../../tools/*.js', { eager: true });
+    const registered = [];
+    const errors = [];
+
+    for (const [file, mod] of Object.entries(modul)) {
+      const toolConfig = mod?.default;
+      if (!toolConfig?.name || typeof toolConfig.execute !== 'function') {
+        errors.push({ file, message: 'export default harus berupa { name, execute(params, context) {...} }' });
+        continue;
+      }
+      await this.registerTool(toolConfig);
+      this.fileSourcedToolNames.add(toolConfig.name);
+      registered.push(toolConfig.name);
+    }
+
+    this.lastScan = { at: Date.now(), found: Object.keys(modul).length, errors };
+    console.log(`[ToolRegistryService] ✅ Versi web: ${registered.length}/${Object.keys(modul).length} tool dimuat dari bundel build`, registered);
+    this.eventBus?.emit('ToolRegistry:Scanned', { registered, errors, at: this.lastScan.at });
+    return { found: Object.keys(modul).length, registered, errors };
   }
 }

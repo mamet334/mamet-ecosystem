@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Loader2, Globe } from 'lucide-react';
 import { useWorkspace } from '../../core/workspaces/WorkspaceContext';
 import { supabase } from '../../supabase';
+import { tautanUnduh } from '../../core/runtime/services/remoteConversionClient';
 import { kernel } from '../../core/runtime/Kernel';
 import FolderSelector from '../FolderSelector';
 import ChatHistory from './ChatHistory';
@@ -1358,6 +1359,33 @@ export default function ConversationEngine({ sessionId }) {
                       {(() => {
                         const execution = m.metadata?.toolExecution;
                         const hasil = execution?.name === 'word_to_pdf' ? execution.result : null;
+
+                        // Dikerjakan laptop dari versi web (Item 57): PDF ada di Supabase Storage,
+                        // bukan di disk perangkat ini — jadi satu tombol unduh lewat signed URL.
+                        const remote = execution?.name === 'word_to_pdf' ? execution.remote : null;
+                        if (remote?.outputPath) {
+                          const unduh = async () => {
+                            try {
+                              const { url, namaPdf } = await tautanUnduh(remote.outputPath, remote.sourceName);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = namaPdf;
+                              document.body.appendChild(a);
+                              a.click();
+                              a.remove();
+                            } catch (err) {
+                              setMessages(prev => [...prev, { role: 'model', content: `⚠️ PDF tidak bisa diunduh: ${err.message}` }]);
+                            }
+                          };
+                          return (
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                              <button type="button" onClick={unduh} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary-fixed text-on-primary text-xs font-semibold transition-colors cursor-pointer">
+                                <span className="material-symbols-outlined text-[16px]">download</span>Unduh PDF
+                              </button>
+                            </div>
+                          );
+                        }
+
                         if (!hasil?.ok || !hasil.output || !window.electronAPI?.openConvertedPdf) return null;
                         const buka = async (mode) => {
                           let res;

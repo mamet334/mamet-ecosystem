@@ -35,6 +35,7 @@ import { TierClassifierService } from './services/TierClassifierService.js';
 import { SkillRegistry } from './services/SkillRegistry.js';
 import { SkillGuardService } from './services/SkillGuardService.js';
 import { SystemGovernorService } from './services/SystemGovernorService.js';
+import { RemoteConversionWorkerService } from './services/RemoteConversionWorkerService.js';
 import { supabase } from '../../supabase.js';
 
 /**
@@ -374,6 +375,15 @@ class Kernel {
     await systemGovernorService.initialize();
     serviceManager.register('SystemGovernorService', systemGovernorService);
     this.log('INFO', 'SystemGovernorService Initialized & Registered');
+
+    // Remote Conversion Worker (Item 57) — laptop mengerjakan konversi Word → PDF yang dikirim
+    // dari Mamet OS versi web (mis. dibuka di HP). Didaftarkan setelah ToolPreferencesService (dibaca untuk toggle
+    // word_to_pdf). Di luar Electron initialize() berhenti sendiri tanpa menyalakan apa pun.
+    const remoteConversionWorker = new RemoteConversionWorkerService(serviceManager);
+    serviceManager.register('RemoteConversionWorkerService', remoteConversionWorker);
+    remoteConversionWorker.initialize().catch(err =>
+      console.error('[Kernel] RemoteConversionWorkerService gagal dijalankan:', err.message));
+    this.log('INFO', 'RemoteConversionWorkerService Registered');
 
     // 3. Initialize Adapter Registry stub
     const adapterRegistry = {
