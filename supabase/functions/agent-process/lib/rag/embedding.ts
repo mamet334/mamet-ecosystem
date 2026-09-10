@@ -19,11 +19,15 @@ import { CapabilityRegistry } from '../adapters/adapter_registry.ts';
  * Pencarian vektor lewat context_builder dan pengindeksan dokumen lewat
  * knowledge_manager karenanya mati diam-diam. Lihat Item 39.
  *
- * CATATAN soal fallback OpenAI: OpenAIEmbeddingAdapter mematok `dimensions: 768`
- * (embedding_adapter.ts), jadi ia tidak akan pernah lolos penjaga ini. Itu disengaja
- * — lebih baik gagal jujur daripada menyimpan vektor berdimensi salah yang tetap
- * akan ditolak database. Praktisnya Gemini adalah satu-satunya penyedia embedding
- * yang layak sekarang, dan itu memang sejalan dengan tujuan hemat biaya Owner.
+ * TIDAK ADA CADANGAN (Item 62, 2026-09-10). Dulu ada fallback OpenAIEmbeddingAdapter
+ * (768 dimensi) yang selalu ditolak penjaga ini — dan lolos di request_pipeline.ts yang
+ * punya salinan kaskade TANPA penjaga. Fallback itu dihapus, bukan dinaikkan ke 3072:
+ * vektor dari model lain tidak sebanding dengan vektor Gemini di database, jadi hasilnya
+ * ngawur walau dimensinya cocok. Kalau Gemini gagal, embedding gagal JUJUR (array kosong)
+ * dan pemanggil memutuskan: pencarian dilewati, pengindeksan menolak.
+ *
+ * Fungsi ini satu-satunya pintu embedding di agent-process — jangan buat kaskade kedua.
+ * (rag-process memakai getGeminiEmbeddingWithRetry di vector_utils.ts — model yang sama.)
  */
 // Diekspor sejak 2026-09-10 (Item 46): penjaga dimensi kedua ternyata tercecer
 // di knowledge_manager.ts dengan angka 768 yang di-hardcode terpisah. Selama
@@ -35,7 +39,7 @@ export const generateEmbedding = async (text: string, rctx: RuntimeContext): Pro
   // Ensure adapters are initialized (usually done in Orchestrator, but safe to call)
   await CapabilityRegistry.initializeAdapters(rctx);
   
-  const availableAdapters = CapabilityRegistry.getAvailableEmbeddingAdapters(['gemini_embedding', 'openai_embedding']);
+  const availableAdapters = CapabilityRegistry.getAvailableEmbeddingAdapters(['gemini_embedding']);
   
   if (availableAdapters.length === 0) {
       console.error("[Embedding] No embedding adapters available. Please check your API keys.");

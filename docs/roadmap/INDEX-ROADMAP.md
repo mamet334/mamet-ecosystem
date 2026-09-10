@@ -796,4 +796,35 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
 
       Jadwal No. 7 tercatat aktif dengan user `postgres`; perintahnya dijalankan sekali secara manual: tanpa error, 0 baris (log tertua tersisa 3 September).
     - **Belum terbukti:** jadwal No. 7 berjalan sendiri — pertama kali Minggu 13 September 07:30 WIB; cek di `cron.job_run_details` dengan `jobid = 7`.
-    - **Dicatat, tidak dikerjakan:** fallback embedding OpenAI di `embedding_adapter.ts:86-90` memaksa `dimensions: 768` dengan komentar "agar cocok dengan Gemini" — sisa masa ketika vektor Gemini masih 768; kolom vektor kini 3.072, jadi hasil fallback itu tidak akan cocok. `rag-process` sendiri memakai `vector_utils.ts` (Gemini langsung), tidak lewat adapter ini; perlu diperiksa jalur mana yang masih memakainya.
+    - **Dicatat, tidak dikerjakan:** fallback embedding OpenAI di `embedding_adapter.ts:86-90` memaksa `dimensions: 768` dengan komentar "agar cocok dengan Gemini" — sisa masa ketika vektor Gemini masih 768; kolom vektor kini 3.072, jadi hasil fallback itu tidak akan cocok. `rag-process` sendiri memakai `vector_utils.ts` (Gemini langsung), tidak lewat adapter ini; perlu diperiksa jalur mana yang masih memakainya. → **Dikerjakan di Item 62:** fallback dihapus, bukan dinaikkan ke 3.072.
+
+62. **Fallback Embedding OpenAI Dihapus — Cadangan dari Model Lain Tidak Pernah Bisa Benar (2026-09-10):**
+    - **Permintaan Owner:** kerjakan catatan Item 61 — fallback `OpenAIEmbeddingAdapter` mematok 768 dimensi, sementara kolom vektor 3.072.
+    - **Akar masalahnya model, bukan dimensi.** Vektor tiap model embedding hidup di ruang maknanya sendiri. Vektor kueri OpenAI yang dibandingkan dengan vektor Gemini di database menghasilkan skor kemiripan tanpa arti — walau dimensinya disamakan (`text-embedding-3-large` bisa 3.072). Menaikkan angkanya hanya akan mengubah error yang jujur menjadi hasil pencarian ngawur yang diam. Mengganti model embedding berarti memvektorkan ulang semua baris, bukan menambah cadangan. Maka fallback **dihapus**.
+    - **Temuan saat menelusuri:**
+      - **Dua kaskade embedding.** `rag/embedding.ts` (`generateEmbedding`) punya penjaga 3.072, jadi fallback selalu ditolak di sana. Tapi `request_pipeline.ts` — pencarian memori di setiap chat dengan RAG menyala — punya **salinan kaskade sendiri tanpa penjaga** yang menerima vektor sepanjang apa pun.
+      - **Fallback hanya hidup lewat kunci BYOK pengguna.** `OPENAI_API_KEY` sistem tidak ada (Item 51), tapi `request_pipeline.ts:192` (sebelum perubahan: baris 218) mengisi `rctx.keys.openAI` dengan kunci pengguna yang chat dengan provider openai. Saat Gemini gagal, embedding internal sistem ditagihkan ke kunci pengguna — bertentangan dengan keputusan Item 51 bahwa embedding memakai kunci sistem — lalu vektor 768 itu ditolak database.
+    - **Perubahan (4 berkas, +36 −100):**
+      - `embedding_adapter.ts`: kelas `OpenAIEmbeddingAdapter` dihapus, diganti komentar yang menjelaskan kenapa cadangan lintas model tidak bisa dipakai.
+      - `adapter_registry.ts`: adapter itu tidak lagi didaftarkan.
+      - `rag/embedding.ts`: urutan adapter hanya `gemini_embedding`; komentar lama ("fallback disengaja ditolak penjaga") diganti; ditegaskan sebagai satu-satunya pintu embedding di agent-process (`rag-process` memakai `vector_utils.ts` dengan model yang sama).
+      - `request_pipeline.ts`: salinan kaskade diganti pemanggilan `generateEmbedding` + pemeriksaan `EMBEDDING_DIMENSIONS`; gagal → melempar error yang ditangkap blok RAG yang sudah ada (pencarian dilewati, chat tetap jalan).
+    - **Status:** ✅ **Selesai, Dideploy & Terbukti di Produksi (2026-09-10).**
+      - **Uji perilaku dengan kode ASLI** lama vs baru di Deno, `fetch` palsu (tanpa panggilan Google/OpenAI sungguhan):
+
+        | Kasus | Lama | Baru |
+        |---|---|---|
+        | Gemini sehat | 3.072 dimensi | 3.072 dimensi |
+        | Gemini gagal, tanpa kunci OpenAI | gagal jujur (2 panggilan Gemini) | sama |
+        | **Gemini gagal, pengguna BYOK openai** | **kunci pengguna dipanggil ke OpenAI**; `openai_embedding` terdaftar | tidak ada panggilan OpenAI; hanya `gemini_embedding` terdaftar |
+
+      - **Database menolak vektor 768:** `different vector dimensions 3072 and 768` — bukti bahwa jalur lama berakhir error pada pencarian memori pengguna BYOK.
+      - **Pemeriksaan tipe Deno:** 81 error sebelum, 81 sesudah — tidak ada yang baru. (Perbandingan pertama sempat menunjukkan 83 vs 81; selisih dua ternyata artefak salinan baseline yang tidak menyertakan `frontend/`, yang diimpor `context_builder.ts`.)
+      - **Deploy** oleh Owner: `agent-process` versi **405**, aktif 22:02:13 WIB, `verify_jwt` tetap `false`.
+      - **Log produksi, dua sisi:** chat pertama pukul 22:04 WIB tidak menyentuh blok ini — tombol RAG workspace mati (dikonfirmasi Owner), sehingga `ragEnabled=false`. Setelah RAG dinyalakan, dua chat (22:08 dan 22:10 WIB) sama-sama mencetak `🔍 [RAG] Generating embedding for vector search...` **tanpa** baris `Generating embedding via GeminiEmbeddingAdapter…` yang selalu dicetak kode lama, lalu `No relevant memories found` tanpa `Embedding gagal` maupun `Vector search error` — vektor 3.072 dibuat dan `match_memories` jalan. Keduanya POST 200. Kesepuluh memori Owner di `user_memories` berdimensi 3.072.
+    - **Diamati, di luar perubahan ini:**
+      - **Pencarian memori vektor di server belum pernah menemukan hasil di produksi.** *"minuman apa yang saya suka?"* tidak lolos ambang 0,70 terhadap *"saya suka kopi"* / *"saya juga suka teh"*; `match_memories` hanya menyaring pemilik dan skor, tanpa filter lain. Ambang 0,70 dikalibrasi dengan pernyataan lawan pernyataan (Item 46), padahal kueri biasanya berbentuk pertanyaan. Jawaban Owner tetap benar (kopi hitam, teh) karena memori datang dari jalur lain (`[MemoryManager] … memoryFetchCount: 1`).
+      - Saat pencarian server kosong, `request_pipeline.ts` menimpa `globalMemory` kiriman frontend dengan *"Tidak ada memori yang relevan."* — konteks dari frontend bisa ikut terbuang. Dibaca dari kode, dampaknya belum diukur.
+      - `CapabilityRegistry` menyimpan adapter di satu `Map` statis yang dikosongkan dan diisi ulang setiap permintaan. Dua permintaan bersamaan di isolate yang sama bisa saling memakai adapter yang dibuat dengan kunci pengguna lain (termasuk BYOK). Dibaca dari kode, belum terbukti terjadi — layak jadi item tersendiri karena lebih serius dari fallback ini.
+      - Setiap chat mencatat `Audit log setup error: TypeError: rctx.tasks.add is not a function` (`memory_manager_v1.ts:15`) — log audit memori tidak tertulis.
+      - Kunci Gemini #0 masih 403 (Item 51).

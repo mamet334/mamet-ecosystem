@@ -62,55 +62,14 @@ export class GeminiEmbeddingAdapter implements CapabilityAdapter {
   async shutdown() {}
 }
 
-export class OpenAIEmbeddingAdapter implements CapabilityAdapter {
-  name = 'OpenAIEmbeddingAdapter';
-  type = 'EMBEDDING' as const;
-  private rctx: RuntimeContext;
-
-  constructor(rctx: RuntimeContext) {
-    this.rctx = rctx;
-  }
-
-  async initialize() {
-    return !!this.rctx.keys.openAI;
-  }
-
-  async execute(input: any, context: AdapterContext): Promise<AdapterResult> {
-    const { text } = input;
-    const res = await fetch('https://api.openai.com/v1/embeddings', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.rctx.keys.openAI}`,
-        'Content-Type': 'application/json'
-      },
-      // Force dimensions to 768 to match Gemini compatibility in pgvector
-      body: JSON.stringify({
-        input: text,
-        model: 'text-embedding-3-small',
-        dimensions: 768
-      })
-    });
-    
-    if (!res.ok) {
-      throw new Error(`OpenAI embedding HTTP ${res.status}: ${await res.text()}`);
-    }
-    
-    const data = await res.json();
-    const embedding = data.data?.[0]?.embedding || [];
-    if (embedding.length > 0) {
-      return { result: embedding, confidence: 1.0, source: 'openai_embedding', trace_id: context.trace_id };
-    }
-    
-    throw new Error(`OpenAI embedding failed to return valid data.`);
-  }
-
-  async *stream(input: any, context: AdapterContext): AsyncGenerator<string, void, unknown> {
-    throw new Error("Stream not supported for embedding adapter");
-  }
-
-  async healthCheck() {
-    return await this.initialize();
-  }
-
-  async shutdown() {}
-}
+// OpenAIEmbeddingAdapter DIHAPUS 2026-09-10 (Item 62). Ia dulu cadangan Gemini, tapi cadangan
+// embedding dari MODEL LAIN tidak pernah bisa benar:
+//   - Vektor tiap model hidup di ruang makna sendiri. Vektor kueri OpenAI yang dibandingkan
+//     dengan vektor Gemini di database menghasilkan skor kemiripan tanpa arti — menyamakan
+//     dimensinya (text-embedding-3-large bisa 3072) hanya mengubah error jujur menjadi hasil
+//     pencarian ngawur yang diam.
+//   - Ia mematok `dimensions: 768`, sisa era Gemini 768; kolom vektor kini 3072.
+//   - OPENAI_API_KEY sistem tidak ada, jadi ia hanya hidup lewat kunci BYOK pengguna yang
+//     chat dengan provider openai — embedding internal sistem ditagihkan ke kunci pengguna,
+//     bertentangan dengan keputusan Item 51.
+// Mengganti model embedding berarti memvektorkan ulang SEMUA baris, bukan menambah cadangan.

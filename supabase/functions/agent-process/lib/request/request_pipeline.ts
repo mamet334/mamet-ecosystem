@@ -8,6 +8,7 @@ import { UnifiedExecutionContext, RequestPipelineParams, RequestPipelineResult }
 import { RuntimeContext, createBackgroundTaskTracker, createRuntimeLogger } from '../runtime_context.ts';
 import { getPluginPromptList } from '../../plugins/registry.ts';
 import { CapabilityRegistry } from '../adapters/adapter_registry.ts';
+import { generateEmbedding, EMBEDDING_DIMENSIONS } from '../rag/embedding.ts';
 import { compressChatHistory } from './history_compressor.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -18,47 +19,20 @@ const getAllKeys = (envVarName: string): string[] => {
 };
 
 /**
- * Generate vector embedding from text using CapabilityRegistry adapters.
- * Tries GeminiEmbeddingAdapter first, then falls back to OpenAIEmbeddingAdapter.
+ * Embedding untuk pencarian memori — lewat generateEmbedding (rag/embedding.ts), pintu
+ * embedding satu-satunya beserta penjaga dimensinya.
+ *
+ * Sampai 2026-09-10 (Item 62) di sini ada salinan kaskade adapter sendiri yang menerima
+ * vektor sepanjang APA PUN. Bila Gemini gagal dan pengguna chat dengan BYOK openai, ia
+ * memakai kunci pengguna itu untuk vektor OpenAI 768 dimensi, yang lalu ditolak
+ * match_memories (kolom 3072).
  */
 async function generateEmbeddingThroughAdapter(text: string, rctx: RuntimeContext): Promise<number[]> {
-  // Initialize embedding adapters via CapabilityRegistry
-  await CapabilityRegistry.initializeAdapters(rctx);
-
-  // Preferred order: gemini_embedding -> openai_embedding
-  const embeddingAdapters = CapabilityRegistry.getAvailableEmbeddingAdapters([
-    'gemini_embedding',
-    'openai_embedding'
-  ]);
-
-  if (embeddingAdapters.length === 0) {
-    throw new Error('No embedding adapters available. Check GEMINI_API_KEY or OPENAI_API_KEY.');
+  const embedding = await generateEmbedding(text, rctx);
+  if (embedding.length !== EMBEDDING_DIMENSIONS) {
+    throw new Error(`Embedding gagal (didapat ${embedding.length} dimensi, perlu ${EMBEDDING_DIMENSIONS}) — pencarian memori dilewati.`);
   }
-
-  let lastError = '';
-
-  for (const adapter of embeddingAdapters) {
-    try {
-      console.log(`🔍 Generating embedding via ${adapter.name}...`);
-      const result = await adapter.execute(
-        { text },
-        { trace_id: 'pipeline-rag', userId: rctx.keys.gemini || 'unknown' }
-      );
-
-      if (result && result.result && Array.isArray(result.result) && result.result.length > 0) {
-        console.log(`✅ Embedding generated via ${adapter.name} (${result.result.length} dimensions)`);
-        return result.result as number[];
-      }
-
-      lastError += ` [${adapter.name}]: returned empty embedding;`;
-    } catch (err: any) {
-      const msg = err.message || String(err);
-      lastError += ` [${adapter.name}]: ${msg};`;
-      console.warn(`⚠️ Embedding adapter ${adapter.name} failed: ${msg}`);
-    }
-  }
-
-  throw new Error(`All embedding adapters failed.${lastError}`);
+  return embedding;
 }
 
 export async function executeRequestPipeline(
@@ -236,7 +210,7 @@ export async function executeRequestPipeline(
     if (parsed.finalMessage && parsed.finalMessage.trim().length > 0 && parsed.ragEnabled !== false) {
       console.log('🔍 [RAG] Generating embedding for vector search...');
       
-      // 1. Generate vector embedding using CapabilityRegistry adapters
+      // 1. Vektor kueri lewat pintu embedding tunggal (Gemini, dijaga 3072 dimensi)
       const userEmbedding = await generateEmbeddingThroughAdapter(parsed.finalMessage, rctx);
 
       // 2. Query vector database via Supabase RPC
