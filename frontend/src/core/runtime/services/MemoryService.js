@@ -164,6 +164,31 @@ export class MemoryService {
       }
 
       // === STANDARD PATH (Safety Net Fallback jika Governor tidak tersedia) ===
+      //
+      // JALUR INI MENULIS TANPA EMBEDDING (Item 46, 2026-09-10).
+      //
+      // Vektorisasi hanya ada di MemoryGovernorService, jadi memori yang lahir
+      // di sini tidak akan pernah ditemukan `match_memories` — hanya lewat
+      // pencarian SQL. Kolom `embedding` nullable sehingga Postgres menerimanya
+      // tanpa protes, dan itulah yang membuat cacat ini bertahan berbulan-bulan:
+      // satu baris di produksi bersumber `MemoryService` sejak 24 Juli 2026.
+      //
+      // Jalur ini SENGAJA tidak dibuat memanggil embedding sendiri — ia justru
+      // berjalan ketika Governor tidak ada, jadi menambahkan logika embedding di
+      // sini berarti menduplikasinya di tempat kedua. Yang ditambahkan adalah
+      // SUARA: kalau jaring pengaman ini sampai menyala, itu keadaan tidak normal
+      // dan harus terlihat, bukan tertelan.
+      console.warn(
+        '[MemoryService] ⚠️ MemoryGovernorService tidak tersedia — memakai jalur cadangan. ' +
+        'Memori ini disimpan TANPA embedding dan tidak akan bisa dicari berdasarkan makna. ' +
+        'Ini menandakan Kernel belum selesai boot atau service gagal terdaftar.'
+      );
+      this.eventBus?.emit('Memory:StoredWithoutEmbedding', {
+        key,
+        reason: 'MemoryGovernorService tidak tersedia',
+        timestamp: new Date().toISOString()
+      });
+
       const { error } = await supabase
         .from('user_memories')
         .insert([

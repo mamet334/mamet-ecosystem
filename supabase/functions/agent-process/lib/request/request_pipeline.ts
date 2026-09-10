@@ -255,10 +255,41 @@ export async function executeRequestPipeline(
         parsed.globalMemory = 'Tidak ada memori yang relevan.';
       } else {
         const supabase = createClient(runtimeEnv.supabaseUrl, runtimeEnv.supabaseServiceKey);
+        // AMBANG 0,70 — diturunkan dari 0,8 pada 2026-09-10 (Item 46).
+        //
+        // Angka 0,8 tidak pernah teruji, karena sampai hari ini tidak ada satu
+        // pun memori yang punya embedding sehingga pencarian ini mustahil
+        // mengembalikan apa pun. Begitu ketujuh memori Owner bervektor, ambang
+        // itu langsung terbukti terlalu ketat.
+        //
+        // Diukur dengan memakai vektor "saya suka kopi" sebagai kueri:
+        //   saya suka kopi                     1,0000
+        //   saya juga suka teh                 0,7263   ← berhubungan
+        //   ya, saya suka menggunakan ai       0,5728
+        //   Menyukai clean architecture...     0,5256
+        //   dan saya kuliah di UT              0,5138
+        //   saya lebih suka penjelasan tabel   0,5117
+        //   nama panggilan saya pak slamet     0,5083
+        //
+        // Yang benar-benar berhubungan duduk di 0,73 dan yang tidak berhubungan
+        // mengumpul rapat di 0,51–0,57. Ambang 0,8 memotong TEPAT DI ATAS
+        // pasangan yang benar, jadi ia hanya akan meloloskan teks yang nyaris
+        // identik — pencarian semantiknya akan tetap terasa mati meski datanya
+        // sudah benar.
+        //
+        // 0,70 ditaruh di celah lebar antara 0,73 dan 0,57. Ini juga menyelaraskan
+        // memori dengan pencarian DOKUMEN, yang sejak lama memakai 0,60–0,68
+        // secara dinamis (execution_context.ts). Angka 0,8 rupanya penyimpangan,
+        // bukan kebijakan.
+        //
+        // Konsekuensi biaya disadari: lebih banyak memori lolos berarti prompt
+        // lebih panjang, dan Item 44 mencatat 99,3% belanja Owner ada di prompt.
+        // `match_count: 5` yang membatasinya — paling banyak 5 memori, apa pun
+        // ambangnya. Diputuskan Owner secara eksplisit, bukan diam-diam.
         const { data: memories, error } = await supabase
           .rpc('match_memories', {
             query_embedding: userEmbedding,
-            match_threshold: 0.8,
+            match_threshold: 0.70,
             match_count: 5,
             target_user_id: ragUserId
           });

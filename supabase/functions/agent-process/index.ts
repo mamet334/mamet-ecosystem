@@ -4,6 +4,7 @@ import { coreEngine } from './lib/orchestration/core_engine.ts';
 import { streamController } from './lib/streaming/stream_controller.ts';
 import { corsHeaders } from './lib/stream_handler.ts';
 import { pingHeartbeat } from './lib/adapters/heartbeat.ts';
+import { handleEmbedRequest } from './lib/request/embed_endpoint.ts';
 
 // PRIORITY 2: ENVIRONMENT VALIDATION (STARTUP)
 const REQUIRED_ENV_VARS = [
@@ -70,8 +71,34 @@ serve(async (req) => {
     // TIER 3 WEB PROXY BRIDGE: Membantu client Web/Vercel melakukan fetch URL tanpa kendala CORS browser
     if (req.method === 'POST') {
       const clonedReq = req.clone();
+
+      // Body di-parse SEKALI di luar blok penelan galat di bawah.
+      //
+      // Blok `try { ... } catch (_) { /* lanjut */ }` yang lama menelan SEMUA
+      // galat, bukan hanya kegagalan parse JSON. Menaruh penanganan action baru
+      // di dalamnya berarti setiap galat di dalamnya akan diam-diam jatuh ke
+      // pipeline chat — pemanggil menerima jawaban chat untuk permintaan
+      // embedding, tanpa satu pun pesan galat. Pola yang sama yang melahirkan
+      // Item 46. Jadi parse-nya dipisahkan, dan hanya kegagalan parse yang boleh
+      // diabaikan diam-diam.
+      let parsedBody: any = null;
       try {
-        const body = await clonedReq.json();
+        parsedBody = await clonedReq.json();
+      } catch (_) {
+        parsedBody = null; // Bukan JSON — lanjutkan ke pipeline normal.
+      }
+
+      // ENDPOINT EMBEDDING (Item 46) — `{ action: 'embed', text }`.
+      // Di luar penelan galat: kalau ia gagal, kegagalannya harus terdengar.
+      // Penjagaan JWT-nya ada di dalam handleEmbedRequest, WAJIB karena fungsi
+      // ini di-deploy dengan --no-verify-jwt.
+      if (parsedBody) {
+        const embedResponse = await handleEmbedRequest(req, parsedBody, corsHeaders);
+        if (embedResponse) return embedResponse;
+      }
+
+      try {
+        const body = parsedBody || {};
         if (body?.action === 'proxy_fetch' && body?.url) {
           const targetUrl = body.url;
           console.log(`[ProxyFetch] Server-side fetching external URL: ${targetUrl}`);

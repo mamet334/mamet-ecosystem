@@ -33,6 +33,145 @@ export class MemoryGovernorService {
   }
 
   /**
+   * Meminta vektor embedding ke `agent-process` untuk sebuah teks.
+   *
+   * KENAPA LEWAT SERVER (Item 46, 2026-09-10)
+   * Sampai hari ini `storeGoldenMemory` menyimpan memori TANPA embedding, dan
+   * karena kolomnya nullable, Postgres menerimanya tanpa protes. Akibatnya
+   * `match_memories` tidak pernah bisa menemukan apa pun — pencarian memori
+   * berbasis makna tidak pernah hidup sejak awal.
+   *
+   * Embedding dibuat di server, bukan di sini, karena dua alasan: kunci Gemini
+   * tidak boleh tersebar ke setiap perangkat, dan dimensi vektor harus
+   * ditentukan di SATU tempat saja. Menghitungnya di klien berarti menyalin
+   * logika provider ke frontend — itu yang dulu membuat penjaga dimensi 768
+   * tercecer di dua berkas dan bertahan berbulan-bulan tanpa ketahuan.
+   *
+   * GAGAL-LUNAK, TAPI BERSUARA. Kalau embedding gagal, memorinya TETAP
+   * disimpan — memori tanpa vektor masih ditemukan lewat pencarian SQL (Tahap 1,
+   * Item 36), jadi menolak menyimpan justru merugikan. Yang tidak boleh adalah
+   * gagal dalam diam, maka kegagalannya dicatat keras dan dipancarkan sebagai
+   * event supaya bisa dihitung.
+   *
+   * @param {string} text - teks yang akan divektorkan
+   * @returns {Promise<number[]|null>} vektor, atau null bila gagal
+   */
+  async _requestEmbedding(text) {
+    if (!text || !text.trim()) return null;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn('[MemoryGovernorService] Embedding dilewati — tidak ada sesi aktif.');
+        return null;
+      }
+
+      const { data, error } = await supabase.functions.invoke('agent-process', {
+        body: { action: 'embed', text: text.substring(0, 8000) }
+      });
+
+      if (error) throw new Error(error.message);
+      // Endpoint menjawab 502 dengan { error } saat semua adapter gagal;
+      // supabase-js tidak selalu melemparnya, jadi diperiksa sendiri.
+      if (data?.error) throw new Error(data.message || data.error);
+
+      const vektor = data?.embedding;
+      if (!Array.isArray(vektor) || vektor.length === 0) {
+        throw new Error('Endpoint menjawab tanpa vektor yang sah.');
+      }
+
+      console.log(`[MemoryGovernorService] Embedding didapat: ${vektor.length} dimensi.`);
+      return vektor;
+    } catch (err) {
+      console.error(
+        '[MemoryGovernorService] ⚠️ Gagal membuat embedding — memori tetap disimpan ' +
+        'tetapi TIDAK akan bisa dicari berdasarkan makna. Sebab: ' + err.message
+      );
+      this.eventBus?.emit('MemoryGovernor:EmbeddingFailed', {
+        reason: err.message,
+        timestamp: new Date().toISOString()
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Mengisi embedding untuk memori lama yang tersimpan sebelum vektorisasi ada.
+   *
+   * Item 46 mencatat ini sebagai pekerjaan terpisah, dan memang seharusnya
+   * terpisah: memperbaiki jalur maju dan mengisi ulang data lama adalah dua
+   * risiko yang berbeda. Jalur majunya dibuktikan lebih dulu (2026-09-10,
+   * `match_memories` mengembalikan similarity 1,0 untuk memori pertama yang
+   * bervektor) — baru sesudah itu pengisian ini layak dijalankan.
+   *
+   * Aman dijalankan berulang: hanya menyentuh baris yang `embedding`-nya NULL.
+   *
+   * Dijalankan manual dari konsol:
+   *   await window.__mamet.serviceManager.get('MemoryGovernorService').backfillMissingEmbeddings()
+   *
+   * @param {number} batas - maksimal baris yang diproses dalam satu panggilan
+   * @returns {Promise<{diperiksa:number, berhasil:number, gagal:number}>}
+   */
+  async backfillMissingEmbeddings(batas = 50) {
+    if (!this.isInitialized) throw new Error('MemoryGovernorService not initialized');
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Tidak ada sesi aktif — masuk dulu.');
+
+    const { data: rows, error } = await supabase
+      .from('user_memories')
+      .select('id, summary')
+      .eq('user_id', session.user.id)
+      .is('embedding', null)
+      .limit(batas);
+
+    if (error) throw new Error('Gagal membaca memori: ' + error.message);
+    if (!rows || rows.length === 0) {
+      console.log('[Backfill] Tidak ada memori tanpa embedding. Tidak ada yang dikerjakan.');
+      return { diperiksa: 0, berhasil: 0, gagal: 0 };
+    }
+
+    console.log(`[Backfill] ${rows.length} memori tanpa embedding ditemukan. Mulai...`);
+    let berhasil = 0;
+    let gagal = 0;
+
+    for (const row of rows) {
+      // Yang divektorkan HARUS `summary`, sama seperti di storeGoldenMemory —
+      // kalau berbeda, memori lama dan memori baru akan hidup di ruang vektor
+      // yang tidak sebanding dan kecocokannya meleset tanpa sebab yang terlihat.
+      const vektor = await this._requestEmbedding(row.summary);
+      if (!vektor) {
+        gagal++;
+        console.warn(`[Backfill] ✗ ${row.id} — gagal divektorkan, dilewati.`);
+        continue;
+      }
+
+      const { error: updateError } = await supabase
+        .from('user_memories')
+        .update({ embedding: vektor })
+        .eq('id', row.id);
+
+      if (updateError) {
+        gagal++;
+        console.warn(`[Backfill] ✗ ${row.id} — gagal disimpan: ${updateError.message}`);
+      } else {
+        berhasil++;
+        console.log(`[Backfill] ✓ ${row.id} — "${(row.summary || '').substring(0, 40)}"`);
+      }
+
+      // Jeda kecil untuk menghormati batas laju penyedia embedding, sama
+      // alasannya dengan jeda 600ms di rag-process.
+      await new Promise(r => setTimeout(r, 400));
+    }
+
+    // Dilaporkan apa adanya, termasuk yang gagal. Melaporkan "selesai" tanpa
+    // menyebut kegagalan adalah pola yang justru sedang diperbaiki Item 46.
+    console.log(`[Backfill] Selesai — ${berhasil} berhasil, ${gagal} gagal, dari ${rows.length} diperiksa.`);
+    this.eventBus?.emit('MemoryGovernor:BackfillDone', { diperiksa: rows.length, berhasil, gagal });
+    return { diperiksa: rows.length, berhasil, gagal };
+  }
+
+  /**
    * Menghasilkan hash sederhana dari sebuah string (deterministik).
    * Digunakan untuk membandingkan apakah raw content berubah.
    * @param {string} content
@@ -164,12 +303,24 @@ export class MemoryGovernorService {
         return null;
       }
 
+      // 1b. Vektorkan ringkasannya (Item 46).
+      //
+      // Yang divektorkan adalah `summary`, BUKAN `content` mentah — karena
+      // `summary` pula yang disuntikkan ke prompt dan yang dibandingkan oleh
+      // `match_memories`. Memvektorkan teks yang berbeda dari teks yang dicari
+      // akan menghasilkan kecocokan yang meleset tanpa ada yang tahu sebabnya.
+      const embedding = await this._requestEmbedding(resolvedSummary);
+
       // 2. INSERT summary di user_memories dengan metadata lengkap
       const { data: memRow, error: memError } = await supabase
         .from('user_memories')
         .insert([{
           user_id,
           summary: resolvedSummary,
+          // null bila embedding gagal — kolomnya nullable dan memori tanpa vektor
+          // masih ditemukan lewat pencarian SQL. Kegagalannya sudah bersuara di
+          // _requestEmbedding, jadi ia tidak lagi hilang dalam diam.
+          embedding,
           memory_type: source_type,
           category: category || 'general',
           access_tier: resolvedAccessTier,
