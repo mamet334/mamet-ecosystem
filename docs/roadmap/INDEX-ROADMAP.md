@@ -828,3 +828,69 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
       - `CapabilityRegistry` menyimpan adapter di satu `Map` statis yang dikosongkan dan diisi ulang setiap permintaan. Dua permintaan bersamaan di isolate yang sama bisa saling memakai adapter yang dibuat dengan kunci pengguna lain (termasuk BYOK). Dibaca dari kode, belum terbukti terjadi — layak jadi item tersendiri karena lebih serius dari fallback ini.
       - Setiap chat mencatat `Audit log setup error: TypeError: rctx.tasks.add is not a function` (`memory_manager_v1.ts:15`) — log audit memori tidak tertulis.
       - Kunci Gemini #0 masih 403 (Item 51).
+
+63. **Embedding Pindah ke OpenRouter — Uji Unggah Gagal, Uji Tanding Empat Model, dan Uji Dokumen HCDP (2026-09-10):**
+    - **Berawal dari pertanyaan Owner:** buku PDF 5 MB memakan berapa MB setelah di-embed?
+    - **Ukuran ditentukan jumlah huruf, bukan ukuran berkas.** Diukur dengan PDF nyata dan `chunkText` yang disalin persis dari `vector_utils.ts`:
+
+      | PDF | Berkas | Halaman | Huruf | Potongan |
+      |---|---|---|---|---|
+      | DOKUMEN HCDP 2025-2026 | 7,4 MB | 47 | 138.011 (±2.900/halaman) | 33 |
+      | CamScanner (hasil scan) | 0,27 MB | 1 | 0 | 0 |
+
+      Per potongan ±20 KB: vektor 3.072 angka ±12 KB (tetap, apa pun panjang teksnya), teks ±4.300 huruf ±2–4 KB setelah kompresi Postgres, overhead ±2–5 KB. HCDP ≈ **0,7 MB**; buku 300 halaman ≈ ±4 MB — kira-kira sebesar PDF-nya atau lebih kecil. PDF hasil scan menghasilkan **nol** potongan (butuh OCR, belum ada). **Koreksi terbuka:** perkiraan sebelumnya "47 halaman ≈ 1,5 MB" terlalu besar, karena memakai rata-rata potongan dokumen yang sudah diringkas (±1.600 huruf), bukan ±4.300 huruf aturan yang berlaku.
+    - **Tidak ada jalur unggah PDF yang benar:**
+      - **Research App** hanya menerima `.txt .md .csv .json .html .xml` (`ResearchApp.jsx:190`) — PDF tidak bisa dipilih.
+      - **mametlite (live, pengguna luar)** menerima `.pdf .docx .txt`, tapi kedua cabang memanggil `file.text()` (`mametlite/src/App.jsx:211-215`) — yang dikirim ke RAG adalah **isi biner mentah**, bukan tulisannya. Sudah begitu sejak mametlite dibuat (`bc85208`, 2026-06-04).
+      - Database **belum tercemar**: lima PDF yang ada (30 Mei–2 Juni) diunggah sebelum mametlite lewat jalur lama; diperiksa, 0 potongan berpenanda biner PDF, 1,5–4,7% karakter di luar huruf/angka/tanda baca. Sejak itu tidak ada PDF masuk.
+    - **Uji unggah HCDP (sebagai `.txt`, lewat Research App): ❌ gagal.** Teks diekstrak lokal dengan pdf.js ke `C:\Users\HP\Downloads\DOKUMEN HCDP 2025-2026 (teks).txt` (140 KB, 33 potongan diharapkan). Kondisi awal dicatat: DB 32 MB, 46 dokumen, 515 potongan.
+
+      | WIB | Log `rag-process` |
+      |---|---|
+      | 22:29:06 | `Processing 33 chunks…` — cocok dengan perkiraan |
+      | 22:29:50 | `Gemini key #1 hit 429` — jatah Gemini habis setelah ±44 detik |
+      | 22:29:54 | dua 429 lagi → `POST 500` |
+
+      Sebab: dari tiga kunci Gemini sistem hanya #1 yang hidup (#0 dan #2 403, Item 51), dan `getGeminiEmbeddingWithRetry` hanya menunggu 1 lalu 2 detik sebelum menyerah — tidak cukup untuk jatah per menit. **Rollback bersih:** 0 dokumen, 0 potongan tertinggal. **Pesan gagal hilang:** `rag-process` mengirim alasan lengkap, tapi Research App hanya menampilkan *"Edge Function returned a non-2xx status code"* — supabase-js melempar error sebelum pemeriksaan `data?.error` (`ResearchApp.jsx:135`) tercapai.
+    - **Usul Owner: embedding lewat OpenRouter dengan saldo, model termurah yang tersedia.** Masuk akal — jatah berbayar jauh lebih longgar, satu penyedia, kunci Gemini peninggalan era AI Agent bisa dipensiunkan. Syaratnya dari Item 62: satu model untuk semua vektor. Daftar `openrouter.ai/api/v1/embeddings/models` (33 model): model gratis kebanyakan hanya menerima 512 token (potongan kita ±1.200) dan punya batas per menit; `google/gemini-embedding-2` justru termahal ($0,20/1 juta token).
+    - **Uji tanding memori — dijalankan Owner di console Mamet OS desktop dengan kunci OpenRouter miliknya.** Kode mengambil kunci langsung dari `localStorage.maef_secure_vault`; nilainya tidak dicetak dan tidak melewati Claude. Bahan: 10 memori Owner, 7 pertanyaan berjawaban pasti, 3 kontrol.
+
+      | Model | Tebakan benar | Dimensi | $/1 juta token |
+      |---|---|---|---|
+      | `google/gemini-embedding-2` | 7/7 | 3.072 | 0,20 |
+      | `baai/bge-m3` | 7/7 | 1.024 | 0,01 |
+      | `openai/text-embedding-3-small` | 6/7 | 1.536 | 0,02 |
+      | `qwen/qwen3-embedding-4b` | 6/7 | 2.560 | 0,02 |
+
+      Rata-rata selisih jawaban benar vs salah terdekat: bge-m3 0,140, Gemini 0,111. **Sidik vektor identik:** enam angka pertama "saya suka kopi" dari Gemini lewat OpenRouter (`0.00177, -0.01371, 0.00704, -0.00496, -0.00889, 0.01799`) sama persis dengan yang tersimpan di `user_memories` — lewat OpenRouter model yang sama menghasilkan vektor yang sama, data lama tetap berlaku. **Misteri Item 62 terjawab:** *"minuman apa yang saya suka?"* skornya 0,683 terhadap "saya suka kopi" — tertolak tipis oleh ambang memori 0,70; hanya 2–3 dari 7 pertanyaan yang lolos ambang itu. Tapi kontrol tak berhubungan mencapai 0,535, jadi untuk memori pendek jaraknya tipis.
+    - **Keputusan Owner:** **jalan A** — tetap `google/gemini-embedding-2`, hanya jalurnya pindah ke OpenRouter, tanpa migrasi data. (Sempat memilih B/bge-m3, lalu dikoreksi sendiri.) **Yang membayar: pengguna, dengan kunci OpenRouter-nya sendiri.** Ini membalik keputusan Item 51 bahwa embedding memakai kunci sistem. Konsekuensi yang disadari: pengguna — termasuk mametlite — yang belum memasang kunci OpenRouter tidak bisa memakai RAG.
+    - **Uji dokumen HCDP dengan jalan A — dijalankan Owner di console desktop**, membaca berkas `(teks).txt` lewat `electronAPI.readFile`. Potongan identik dengan peta lokal (33; panjang #11 dan #30 = 4.494 dan 4.500).
+
+      | Gelombang | Potongan | Waktu | Token | Biaya |
+      |---|---|---|---|---|
+      | 0–10 | 11 | 1,5 s | 12.075 | $0,0024 |
+      | 11–21 | 11 | 0,9 s | 13.922 | $0,0028 |
+      | 22–32 | 11 | 1,0 s | 12.298 | $0,0025 |
+      | **Total** | **33** | **3,4 s** | **38.411** | **$0,0077** |
+
+      **0 kali 429, 0 percobaan ulang.** Dokumen yang sama gagal di `rag-process` setelah 44 detik. **Temuan terbesar:** batas waktu buku tebal bukan sifat bawaan — penyebabnya `rag-process` mengirim potongan satu per satu dengan jeda 0,6 detik. Berkelompok, buku ±200 potongan ≈ ±20 detik, jauh di bawah batas 150 detik. Harga $0,20/1 juta token terkonfirmasi dari `usage.cost`.
+
+      Ketepatan (8 pertanyaan berjawaban pasti, 2 kontrol):
+
+      | | Hasil |
+      |---|---|
+      | Potongan benar di urutan 1 / 3 teratas / 5 teratas (`ragTopK` mode Assistant) | 6/8 · 7/8 · **8/8** |
+      | Jebakan daftar isi: "tugas pokok BKPSDM" ada di judul daftar isi #1, isinya di #11 | tidak tertipu — #11 teratas (0,803), #1 tidak masuk 3 besar |
+      | Skor potongan benar | 0,649–0,803 |
+      | Kontrol (rendang, Piala Dunia) | maks 0,455 |
+
+      Dua yang tidak di urutan pertama kalah oleh tetangga setopik: anggaran klaster sertifikasi (#30) di urutan 4 di bawah tiga potongan anggaran lain; definisi standar kompetensi jabatan (#17) di urutan 2 di bawah profil kompetensi (#15).
+    - **Ambang dokumen sedikit terlalu ketat.** `execution_context.ts:16-19` memakai 0,60 / 0,65 / 0,68 menurut panjang pertanyaan. Pertanyaan anggaran (68 huruf → 0,65) punya potongan benar 0,649 — terbuang tipis. Ambang tetap ±0,55 meloloskan 8/8 dengan jarak 0,1 dari kontrol. Untuk dokumen, jarak nyambung vs tidak nyambung jauh lebih lebar daripada untuk memori pendek.
+    - **Status:** ✅ **Uji selesai; keputusan diambil. Belum ada kode yang diubah.** Biaya uji dari saldo OpenRouter Owner: ±$0,008.
+    - **Rencana pengerjaan jalan A (belum dikerjakan):**
+      1. `rag-process`: OpenRouter `google/gemini-embedding-2` dengan kunci pengguna, kirim berkelompok (±10–16 potongan per permintaan), tanpa jeda 0,6 s, tunggu dengan benar saat 429, pesan jelas bila kunci tidak ada.
+      2. `agent-process` (pencarian memori & dokumen, endpoint embed): kunci OpenRouter pengguna lewat **fungsi terpisah yang menerima kunci langsung**, bukan lewat `CapabilityRegistry` — kalau kunci pengguna masuk ke `Map` statis bersama (Item 62), risiko tertukar antarpengguna menjadi nyata.
+      3. Frontend (Research App, embed memori) dan mametlite: kirim kunci OpenRouter pengguna; tampilkan alasan gagal yang sebenarnya.
+      4. Ambang dokumen → ±0,55. Ambang memori (0,70) diputuskan terpisah.
+      5. Tanpa migrasi data: 515 potongan dan 10 memori lama tetap dipakai.
+    - **Terbuka, terpisah:** ekstraksi PDF/DOCX yang benar untuk mametlite dan Research App (pdf.js sudah terpasang di frontend); mametlite saat ini akan mengisi RAG dengan sampah biner bila pengguna mengunggah PDF.
