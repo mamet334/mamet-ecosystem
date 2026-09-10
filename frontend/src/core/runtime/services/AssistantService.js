@@ -353,6 +353,10 @@ export class AssistantService {
       });
     }
 
+    if (requestType === 'DOC_CONVERT') {
+      return this._handleDocConvert({ ...handlerParams, direction: classifierMeta.direction });
+    }
+
     if (requestType === 'LOOKUP') {
       return this._handleLookup(handlerParams);
     }
@@ -373,6 +377,90 @@ export class AssistantService {
     // COMMAND, ENGINEER, CONVERSATION → semua lewat ConversationHandler
     // CommandRegistry dipanggil downstream setelah LLM respond (via PR#1 flow)
     return this._handleConversation(handlerParams);
+  }
+
+  // =============================================
+  // DOC_CONVERT — tool word_to_pdf
+  // =============================================
+
+  /**
+   * Jalankan konversi dokumen langsung lewat ToolRegistry, tanpa LLM.
+   *
+   * Sengaja deterministik: perintahnya jelas, dan menyerahkannya ke LLM hanya membuka
+   * peluang model MENGAKU sudah mengonversi tanpa berkas apa pun tercipta. Setiap klaim
+   * berhasil di sini bersandar pada bukti dari skrip: berkas selesai ditulis dan jumlah
+   * halaman PDF sama dengan jumlah halaman menurut Word.
+   *
+   * @private
+   */
+  async _handleDocConvert({ direction, attachedFile, workspaceId, onChunk, onDone }) {
+    if (direction === 'pdf_to_word') {
+      onDone?.(
+        'ℹ️ Konversi **PDF → Word** belum tersedia.\n\n' +
+        'Word 2007 di komputer ini tidak bisa membuka PDF, dan PDF tidak menyimpan susunan ' +
+        'paragraf atau tabel, sehingga hasilnya selalu berupa tebakan. Yang sudah tersedia ' +
+        'adalah arah sebaliknya: **Word → PDF**.',
+        [], null
+      );
+      return;
+    }
+
+    if (!attachedFile) {
+      onDone?.('📎 Lampirkan dulu dokumen Word-nya lewat tombol 📎 di kolom chat, lalu kirim ulang perintahnya.', [], null);
+      return;
+    }
+
+    const toolPreferences = this.serviceManager.has('ToolPreferencesService')
+      ? this.serviceManager.get('ToolPreferencesService')
+      : null;
+    if (toolPreferences && !toolPreferences.getEffective(workspaceId, 'word_to_pdf')) {
+      onDone?.('⚠️ Tool **Word → PDF** sedang dimatikan untuk workspace ini. Aktifkan lewat tombol **Tools** di atas chat.', [], null);
+      return;
+    }
+
+    const toolRegistry = this.serviceManager.has('ToolRegistryService')
+      ? this.serviceManager.get('ToolRegistryService')
+      : null;
+    if (!toolRegistry?.getTool('word_to_pdf')) {
+      onDone?.('⚠️ Tool `word_to_pdf` belum terdaftar. Pastikan berkas `tools/word_to_pdf.js` ada, lalu pindai ulang folder tools.', [], null);
+      return;
+    }
+
+    const menunggu = `⏳ Mengubah **${attachedFile.name}** ke PDF lewat Microsoft Word...\n\n` +
+      '_Dokumen dengan banyak grafik bisa butuh satu sampai beberapa menit. Berkas PDF akan ' +
+      'tampak 0 KB selama proses berlangsung — itu normal, jangan dibuka dulu._';
+    onChunk?.(menunggu, menunggu, []);
+
+    const hasil = await toolRegistry.executeTool('word_to_pdf', { file: attachedFile });
+
+    if (hasil?.ok) {
+      const mb = (hasil.ukuran / (1024 * 1024)).toFixed(1);
+      onDone?.(
+        `✅ **Selesai.** PDF tersimpan di sebelah dokumen aslinya:\n\n` +
+        `\`${hasil.output}\`\n\n` +
+        `| | |\n|---|---|\n` +
+        `| Halaman | ${hasil.halaman_pdf} (sama dengan di Word) |\n` +
+        `| Ukuran | ${mb} MB |\n` +
+        `| Waktu | ${hasil.detik} detik |\n` +
+        `| Mesin | Microsoft Word ${hasil.word_versi || ''} → Microsoft Print to PDF |\n\n` +
+        '_Tautan (hyperlink) di dalam dokumen tidak bisa diklik di PDF hasil cetak._',
+        [], { toolsUsed: ['word_to_pdf'], toolExecution: { name: 'word_to_pdf', result: hasil } }
+      );
+      return;
+    }
+
+    // Gagal atau tidak terbukti — sebutkan tahap dan alasannya apa adanya.
+    const tahap = {
+      platform: 'aplikasi', input: 'berkas', sibuk: 'antrian', printer: 'printer',
+      word: 'Microsoft Word', tunggu: 'penulisan PDF', selesai: 'pemeriksaan hasil',
+      timeout: 'batas waktu', skrip: 'skrip konversi'
+    }[hasil?.stage] || hasil?.stage || 'tidak diketahui';
+
+    let pesan = `❌ **Konversi tidak berhasil** (tahap: ${tahap}).\n\n${hasil?.error || 'Tidak ada keterangan dari skrip.'}`;
+    if (hasil?.stage === 'selesai' && hasil?.output) {
+      pesan += `\n\nBerkas tetap dibuat di \`${hasil.output}\`, tapi **jangan dianggap benar** sebelum Anda periksa sendiri.`;
+    }
+    onDone?.(pesan, [], { toolsUsed: ['word_to_pdf'], toolExecution: { name: 'word_to_pdf', result: hasil } });
   }
 
   // =============================================

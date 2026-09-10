@@ -11,6 +11,7 @@
  * Tipe yang dikenali:
  * - ENGINEER     → workspace mode ENGINEER (ditentukan dari resolvedMode)
  * - COMMAND      → pesan command eksplisit (mulai /, keyword aksi filesystem)
+ * - DOC_CONVERT  → perintah konversi dokumen ("ubah word ke pdf dokumen ini")
  * - LOOKUP       → pertanyaan faktual singkat, tidak butuh memory/RAG
  * - CONVERSATION → default, alur penuh (perilaku saat ini)
  * - SKILL        → (slot disiapkan, belum diisi — menunggu Skill Implementation)
@@ -109,6 +110,40 @@ export class RequestClassifierService {
   }
 
   /**
+   * Helper: kenali perintah konversi dokumen Word <-> PDF.
+   *
+   * Syarat: ada kata kerja konversi + "pdf" + penanda Word, dan BUKAN pertanyaan.
+   * "bisakah ubah word ke pdf?" adalah pertanyaan tentang kemampuan, bukan perintah —
+   * biarkan jatuh ke CONVERSATION supaya dijawab, bukan langsung dieksekusi.
+   *
+   * Arah ditentukan dari urutan kata: yang disebut lebih dulu adalah asalnya.
+   * Arah PDF -> Word tetap dikenali supaya bisa ditolak dengan jujur oleh handler,
+   * alih-alih diserahkan ke LLM yang bisa saja mengaku sudah mengonversi.
+   *
+   * @param {string} msgLower
+   * @returns {{ direction: 'word_to_pdf'|'pdf_to_word' } | null}
+   */
+  _matchDocConvert(msgLower) {
+    const isQuestion = msgLower.trim().endsWith('?') ||
+      /^(?:apakah|bisakah|dapatkah|bolehkah|bagaimana|gimana|kenapa|mengapa|can you|could you|how)\b/.test(msgLower.trim());
+    if (isQuestion) return null;
+
+    const hasVerb = /\b(?:ubah|ubahkan|rubah|konversi|konversikan|convert|jadikan|ganti|export|ekspor|simpan)\b/.test(msgLower);
+    const idxPdf = msgLower.search(/\bpdf\b/);
+    const idxWord = msgLower.search(/\b(?:word|docx?|ms word)\b/);
+    if (!hasVerb || idxPdf === -1) return null;
+
+    if (idxWord !== -1) {
+      return { direction: idxWord < idxPdf ? 'word_to_pdf' : 'pdf_to_word' };
+    }
+    // Tanpa kata "word": "jadikan pdf", "ubah ke pdf" — tujuan PDF, asalnya dari lampiran.
+    if (/\b(?:ke|jadi|jadikan|menjadi|sebagai|to|as)\s+pdf\b/.test(msgLower)) {
+      return { direction: 'word_to_pdf' };
+    }
+    return null;
+  }
+
+  /**
    * Klasifikasi tipe request dari pesan user.
    *
    * @param {string} userMsg - pesan dari user
@@ -136,6 +171,18 @@ export class RequestClassifierService {
     if (msg.startsWith('/')) {
       const commandHint = msg.split(' ')[0];
       const result = { type: 'COMMAND', confidence: 0.95, metadata: { commandHint, isSlashCommand: true } };
+      this._emitClassified(result, msgLen);
+      return result;
+    }
+
+    // -----------------------------------------------------------------------
+    // 2b. DOC_CONVERT — "ubah word ke pdf dokumen ini"
+    //     Dicek sebelum keyword COMMAND karena daftar itu memuat kata umum
+    //     ("copy", "salin") yang bisa ikut muncul di kalimat konversi.
+    // -----------------------------------------------------------------------
+    const docConvert = this._matchDocConvert(msgLower);
+    if (docConvert) {
+      const result = { type: 'DOC_CONVERT', confidence: 0.9, metadata: docConvert };
       this._emitClassified(result, msgLen);
       return result;
     }

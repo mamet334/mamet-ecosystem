@@ -67,6 +67,9 @@
       "dist/**/*",
       "electron/**/*"
     ],
+    "asarUnpack": [
+      "electron/scripts/**"
+    ],
     "win": {
       "target": [
         {

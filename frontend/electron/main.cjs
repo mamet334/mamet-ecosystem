@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, protocol, session } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, protocol, session, shell } = require('electron');
 // MATIKAN AKSELERASI GPU SEAWAL MUNGKIN UNTUK MENCEGAH CRASH GPU
 app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('disable-gpu');
@@ -267,6 +267,136 @@ ipcMain.handle('net:fetchWeb', async (event, { url, options = {} }) => {
       error: err.message
     };
   }
+});
+
+// 0b. Konversi Word -> PDF (tool `word_to_pdf`)
+//
+// Mesinnya adalah Word itu sendiri, mencetak ke printer virtual "Microsoft Print to PDF"
+// (lihat header electron/scripts/word_to_pdf.ps1 untuk alasannya dan jebakan 0 KB).
+//
+// Sengaja memakai PowerShell 32-BIT (SysWOW64): mesin Owner punya Word 2007 berlisensi DAN
+// Word 365 tanpa lisensi. COM "Word.Application" dari proses 64-bit membuka Word 365, yang
+// memunculkan dialog tersembunyi "Save to OneDrive to enable editing" dan menahan Word
+// selamanya. Dari proses 32-bit, COM membuka Word 2007. Keduanya dibuktikan 2026-09-10.
+//
+// Tidak memakai `run-terminal-command`: perintahnya tetap (bukan teks bebas dari AI), dan
+// argumen dikirim lewat spawn tanpa shell sehingga nama berkas tidak bisa disisipi perintah.
+let wordToPdfSedangBerjalan = false;
+
+function pathTanpaBentrok(dir, namaDasar, ekstensi) {
+  let kandidat = path.join(dir, `${namaDasar}${ekstensi}`);
+  let n = 2;
+  while (fs.existsSync(kandidat)) {
+    kandidat = path.join(dir, `${namaDasar} (${n})${ekstensi}`);
+    n++;
+  }
+  return kandidat;
+}
+
+ipcMain.handle('doc:word-to-pdf', async (event, { filePath }) => {
+  if (process.platform !== 'win32') {
+    return { ok: false, stage: 'platform', error: 'Konversi Word ke PDF hanya tersedia di Windows.' };
+  }
+  if (typeof filePath !== 'string' || !path.isAbsolute(filePath)) {
+    return { ok: false, stage: 'input', error: 'Path berkas tidak valid.' };
+  }
+  const ext = path.extname(filePath).toLowerCase();
+  if (!['.doc', '.docx'].includes(ext)) {
+    return { ok: false, stage: 'input', error: `Hanya berkas .doc atau .docx yang bisa dikonversi, bukan "${ext || 'tanpa ekstensi'}".` };
+  }
+  if (!fs.existsSync(filePath)) {
+    return { ok: false, stage: 'input', error: `Berkas tidak ditemukan: ${filePath}` };
+  }
+  // Satu per satu: skrip mengenali job cetaknya lewat nama dokumen di antrian printer.
+  if (wordToPdfSedangBerjalan) {
+    return { ok: false, stage: 'sibuk', error: 'Masih ada konversi lain yang berjalan. Tunggu sampai selesai.' };
+  }
+
+  // PDF ditaruh di sebelah dokumen aslinya. Berkas yang sudah ada TIDAK ditimpa.
+  const outputPath = pathTanpaBentrok(path.dirname(filePath), path.basename(filePath, ext), '.pdf');
+
+  // Di build terpaket, electron/ ada di dalam app.asar yang tidak bisa dibaca PowerShell.
+  // package.json → build.asarUnpack mengeluarkan folder scripts/ ke app.asar.unpacked.
+  const scriptPath = path.join(__dirname, 'scripts', 'word_to_pdf.ps1').replace('app.asar', 'app.asar.unpacked');
+  const ps32 = path.join(process.env.SystemRoot || 'C:\\Windows', 'SysWOW64', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+  const powershell = fs.existsSync(ps32) ? ps32 : 'powershell.exe';
+
+  wordToPdfSedangBerjalan = true;
+  const { spawn } = require('child_process');
+
+  try {
+    return await new Promise((resolve) => {
+      const child = spawn(powershell, [
+        '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
+        '-File', scriptPath,
+        '-InputPath', filePath,
+        '-OutputPath', outputPath
+      ], { windowsHide: true });
+
+      let stdout = '';
+      let stderr = '';
+      let wordPid = null;
+
+      child.stdout.on('data', (d) => {
+        stdout += d.toString('utf8');
+        const m = stdout.match(/PID:(\d+)/);
+        if (m) wordPid = Number(m[1]);
+      });
+      child.stderr.on('data', (d) => { stderr += d.toString('utf8'); });
+
+      // Batas keras di atas batas tunggu skrip (600 dtk). Kalau terlewati, hentikan juga Word
+      // milik skrip — tanpa ini, WINWORD.EXE tersembunyi akan tertinggal di latar belakang.
+      const batas = setTimeout(() => {
+        try { child.kill(); } catch (_) {}
+        if (wordPid) { try { process.kill(wordPid); } catch (_) {} }
+        resolve({ ok: false, stage: 'timeout', error: 'Konversi melebihi 11 menit dan dihentikan.', output: outputPath });
+      }, 11 * 60 * 1000);
+
+      child.on('close', (code) => {
+        clearTimeout(batas);
+        const barisJson = stdout.trim().split(/\r?\n/).reverse().find(l => l.trim().startsWith('{'));
+        if (!barisJson) {
+          resolve({ ok: false, stage: 'skrip', error: (stderr || stdout || `PowerShell keluar dengan kode ${code} tanpa hasil.`).trim().slice(0, 800) });
+          return;
+        }
+        try {
+          resolve(JSON.parse(barisJson));
+        } catch (e) {
+          resolve({ ok: false, stage: 'skrip', error: `Hasil skrip tidak terbaca: ${e.message}` });
+        }
+      });
+
+      child.on('error', (err) => {
+        clearTimeout(batas);
+        resolve({ ok: false, stage: 'skrip', error: `Gagal menjalankan PowerShell: ${err.message}` });
+      });
+    });
+  } finally {
+    wordToPdfSedangBerjalan = false;
+  }
+});
+
+// 0c. Buka hasil konversi — tombol "Buka PDF" / "Tampilkan di folder" di chat.
+//
+// HANYA berkas .pdf yang benar-benar ada. shell.openPath() membuka berkas dengan program
+// bawaannya — untuk .exe atau .bat itu berarti MENJALANKANNYA. Tanpa batas ekstensi, jalur
+// ini bisa dipakai renderer untuk mengeksekusi apa saja di disk.
+ipcMain.handle('doc:open-result', async (event, { filePath, mode }) => {
+  if (typeof filePath !== 'string' || !path.isAbsolute(filePath)) {
+    return { ok: false, error: 'Path berkas tidak valid.' };
+  }
+  if (path.extname(filePath).toLowerCase() !== '.pdf') {
+    return { ok: false, error: 'Hanya berkas PDF yang bisa dibuka dari sini.' };
+  }
+  if (!fs.existsSync(filePath)) {
+    return { ok: false, error: `Berkas sudah tidak ada di lokasi itu (mungkin dipindah atau dihapus): ${filePath}` };
+  }
+  if (mode === 'folder') {
+    shell.showItemInFolder(filePath);
+    return { ok: true };
+  }
+  const galat = await shell.openPath(filePath); // '' berarti berhasil
+  return galat ? { ok: false, error: galat } : { ok: true };
 });
 
 const { runAirdropTask } = require('./airdropEngine.cjs');

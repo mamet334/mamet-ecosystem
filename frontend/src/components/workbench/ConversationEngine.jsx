@@ -68,7 +68,8 @@ export default function ConversationEngine({ sessionId }) {
     web_search: 'Web',
     memory_manager: 'Memory',
     file_reader: 'File Reader',
-    deep_research: 'Deep Research'
+    deep_research: 'Deep Research',
+    word_to_pdf: 'Word → PDF'
   };
   const formatToolLabel = (name) => KNOWN_TOOL_LABELS[name]
     || name.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -1352,6 +1353,44 @@ export default function ConversationEngine({ sessionId }) {
                         );
                       })()}
 
+                      {/* Hasil tool word_to_pdf: tombol buka berkasnya. Tanpa ini balasan hanya
+                          menulis path sebagai teks dan Owner harus mencari PDF-nya sendiri. */}
+                      {(() => {
+                        const execution = m.metadata?.toolExecution;
+                        const hasil = execution?.name === 'word_to_pdf' ? execution.result : null;
+                        if (!hasil?.ok || !hasil.output || !window.electronAPI?.openConvertedPdf) return null;
+                        const buka = async (mode) => {
+                          let res;
+                          try {
+                            res = await window.electronAPI.openConvertedPdf(hasil.output, mode);
+                          } catch (err) {
+                            // "No handler registered" = proses utama Electron masih versi lama. Terjadi
+                            // bila jendela hanya dimuat ulang (Ctrl+R): preload & UI ikut baru, main.cjs
+                            // tidak. Dulu error ini hanya muncul di konsol dan tombolnya tampak mati.
+                            const basi = /No handler registered/i.test(err?.message || '');
+                            res = {
+                              ok: false,
+                              error: basi
+                                ? 'Tombol ini butuh aplikasi dibuka ulang sepenuhnya (tutup lalu jalankan lagi `npm run desktop`) — memuat ulang jendela saja tidak cukup.'
+                                : (err?.message || 'PDF tidak bisa dibuka.')
+                            };
+                          }
+                          if (!res?.ok) {
+                            setMessages(prev => [...prev, { role: 'model', content: `⚠️ ${res?.error || 'PDF tidak bisa dibuka.'}` }]);
+                          }
+                        };
+                        return (
+                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                            <button type="button" onClick={() => buka('open')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary hover:bg-primary-fixed text-on-primary text-xs font-semibold transition-colors cursor-pointer">
+                              <span className="material-symbols-outlined text-[16px]">picture_as_pdf</span>Buka PDF
+                            </button>
+                            <button type="button" onClick={() => buka('folder')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-variant text-on-surface-variant text-xs font-semibold border border-outline-variant transition-colors cursor-pointer">
+                              <span className="material-symbols-outlined text-[16px]">folder_open</span>Tampilkan di folder
+                            </button>
+                          </div>
+                        );
+                      })()}
+
                       {/* Critical Backend UI: Grounding Sources Chips */}
                       {(() => {
                         const sources = m.metadata?.groundingSources || m.groundingSources || [];
@@ -1590,10 +1629,13 @@ export default function ConversationEngine({ sessionId }) {
                   className="flex-1 max-h-40 min-h-[38px] bg-transparent resize-none py-2 px-3 text-sm text-on-surface placeholder-on-surface-variant focus:outline-none custom-scrollbar overflow-y-auto"
                   rows="1"
                 />
-                {workspaceManager?.activeWorkspaceId === 'ws-lite' && (
+                {/* Tombol lampiran juga di Assistant: tool word_to_pdf ("ubah word ke pdf dokumen ini")
+                    butuh berkas terlampir, dan tombol folder di kiri hanya memilih FOLDER, bukan berkas.
+                    `e.target.value = ''` supaya berkas yang sama bisa dipilih lagi setelah dilepas. */}
+                {(workspaceManager?.activeWorkspaceId === 'ws-lite' || workspaceManager?.activeWorkspaceId === 'ws-assistant') && (
                   <>
-                    <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => { if (e.target.files?.[0]) setAttachedFile(e.target.files[0]); }} />
-                    <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 rounded-xl bg-surface-container-high hover:bg-surface-variant text-on-surface-variant transition-all shrink-0" title="Upload Dokumen RAG">
+                    <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => { if (e.target.files?.[0]) setAttachedFile(e.target.files[0]); e.target.value = ''; }} />
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 rounded-xl bg-surface-container-high hover:bg-surface-variant text-on-surface-variant transition-all shrink-0" title={workspaceManager?.activeWorkspaceId === 'ws-lite' ? 'Upload Dokumen RAG' : 'Lampirkan berkas (mis. Word untuk diubah ke PDF)'}>
                       <span className="material-symbols-outlined text-[18px]">attach_file</span>
                     </button>
                   </>

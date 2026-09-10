@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // =============================================
@@ -82,4 +82,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // TIER 3 WEB RETRIEVAL FETCHER (Node.js Network Bridge)
   // =============================================
   fetchWeb: (url, options) => ipcRenderer.invoke('net:fetchWeb', { url, options }),
+
+  // =============================================
+  // DOKUMEN — konversi Word -> PDF (tool word_to_pdf)
+  // =============================================
+
+  // Path asli berkas yang dilampirkan di chat. Sejak Electron 32, `File.path` sudah dihapus;
+  // satu-satunya jalan resmi adalah webUtils.getPathForFile(), dan itu hanya ada di preload.
+  getPathForFile: (file) => {
+    try { return webUtils.getPathForFile(file) || null; } catch (_) { return null; }
+  },
+  wordToPdf: (filePath) => ipcRenderer.invoke('doc:word-to-pdf', { filePath }),
+  // mode: 'open' (buka dengan penampil PDF bawaan) | 'folder' (Explorer, berkas terpilih)
+  openConvertedPdf: (filePath, mode = 'open') => ipcRenderer.invoke('doc:open-result', { filePath, mode }),
 });
