@@ -1,0 +1,12 @@
+# Status lokal Supabase CLI — bukan bagian dari proyek.
+# Berkas di sini ditulis ulang setiap kali CLI dipakai (versi CLI terbaru,
+# versi Postgres/GoTrue/Storage, project-ref, pooler-url), sehingga kalau
+# dilacak ia memunculkan diff kotor setiap `supabase db push` atau `deploy`.
+#
+# Diperiksa 2026-09-10 sebelum di-untrack: tidak ada kredensial di dalamnya.
+# `pooler-url` hanya memuat nama user (postgres.<project-ref>) tanpa sandi.
+.temp/
+
+# Berkas environment lokal untuk `supabase start`
+.env
+.branches
