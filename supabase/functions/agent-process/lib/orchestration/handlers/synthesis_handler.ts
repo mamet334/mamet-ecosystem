@@ -205,7 +205,12 @@ export const SynthesisHandler = {
         // =============================================
         if (maef.shouldExecutePhase('POST_PROCESSING')) {
           maef.requestTransition('POST_PROCESSING', 'Starting Final Synthesis');
-          const synthesisPrompt = `Anda telah menugaskan beberapa sub-agent.${fullSystemContext}\n\nPermintaan Awal User: "${ctx.request.finalMessage}"\n\nRiwayat pekerjaan sub-agent:\n${accumulatedContext}\n\nJAWABLAH pesan/pertanyaan user dengan ramah dan natural berdasarkan informasi dari sub-agent di atas. \n\nPENTING: \n- JANGAN gunakan format kaku seperti "Laporan Hasil Kerja".\n- Langsung berikan jawaban, sapaan balik, atau solusi.\n- Sertakan gambar jika ada.\n- Jangan pernah mengarang data palsu!\n- Gunakan format Tabel Markdown HANYA jika menyajikan data terstruktur.\n- DILARANG KERAS menggunakan blok \`\`\`mermaid\`\`\` KECUALI diminta.`;
+          // fullSystemContext TIDAK ditempel di sini (Item 66, 2026-09-11): ia sudah dikirim sebagai
+          // prompt sistem (argumen kedua runLLM di bawah). Dulu teks ini diawali
+          // `...sub-agent.${fullSystemContext}`, sehingga seluruh prompt sistem — termasuk semua
+          // potongan dokumen — terkirim DUA KALI. Terukur lewat [PROMPT_KOMPOSISI]: pertanyaan 80
+          // huruf menjadi pesan 28.519 huruf di atas sistem 27.802 huruf (15.272 token).
+          const synthesisPrompt = `Anda telah menugaskan beberapa sub-agent.\n\nPermintaan Awal User: "${ctx.request.finalMessage}"\n\nRiwayat pekerjaan sub-agent:\n${accumulatedContext}\n\nJAWABLAH pesan/pertanyaan user dengan ramah dan natural berdasarkan informasi dari sub-agent di atas. \n\nPENTING: \n- JANGAN gunakan format kaku seperti "Laporan Hasil Kerja".\n- Langsung berikan jawaban, sapaan balik, atau solusi.\n- Sertakan gambar jika ada.\n- Jangan pernah mengarang data palsu!\n- Gunakan format Tabel Markdown HANYA jika menyajikan data terstruktur.\n- DILARANG KERAS menggunakan blok \`\`\`mermaid\`\`\` KECUALI diminta.`;
           
           ctx.state.processingSteps.push('📝 Merangkum dan menyintesis jawaban akhir...');
           
