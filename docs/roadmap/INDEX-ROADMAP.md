@@ -1062,7 +1062,38 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
       | "Jelaskan singkat apa itu inflasi" | 0 potongan | "pesan sudah mandiri" — 1.201 ms | umum, tanpa HCDP, `[STATUS: HYPOTHESIS]` |
 
     - **Dicatat, belum dikerjakan:**
-      - **Chat ketiga lama karena pemadat riwayat, bukan tulis ulang.** `history_compressor.ts` meringkas riwayat dengan AI begitu riwayat > 4.000 huruf: **36,5 detik** (14:30:44 → 14:31:21 UTC; `deepseek-v4-flash` menalar 552 token, 867 token jawaban, $0,00022) sebelum pencarian dokumen dimulai. → Item 68.
+      - **Chat ketiga lama karena pemadat riwayat, bukan tulis ulang.** `history_compressor.ts` meringkas riwayat dengan AI begitu riwayat > 4.000 huruf: **36,5 detik** (14:30:44 → 14:31:21 UTC; `deepseek-v4-flash` menalar 552 token, 867 token jawaban, $0,00022) sebelum pencarian dokumen dimulai. **→ Diselesaikan di Item 68.**
       - **Ambang 0,55 terlalu dekat dengan dasar derau.** Dokumen yang sama sekali tak berhubungan mencapai 0,547 (D) dan 0,544 (inflasi setelah ditulis ulang). Belum pernah lolos, tapi selisihnya tipis.
       - Obrolan umum dengan RAG menyala membayar tulis ulang (±1–3 detik, ±$0,00003) di setiap pesan setelah pesan pertama, karena pencariannya selalu kosong.
       - Biaya tulis ulang dibayar langsung ke OpenRouter pengguna — tidak tercatat di Billing, sama seperti embedding.
+
+68. **Riwayat Percakapan Dipangkas Tanpa AI, Pesan Saat Ini Tak Lagi Dobel (2026-09-11):**
+    - **Permintaan Owner:** perbaiki jeda chat ketiga yang ditemukan di Item 67.
+    - **Akar masalah:** `history_compressor.ts` ("Cognitive Memory Compressor") memanggil `runLLM` untuk meringkas riwayat begitu totalnya ≥ 4.000 huruf dan > 2 pesan, **ditunggu** di `request_pipeline.ts:436` sebelum `context_builder` berjalan. Terukur (14:30:44 → 14:31:21 UTC): 36,5 detik, `deepseek-v4-flash` 1.038 token masuk / 867 keluar / 552 token penalaran, $0,00022, 4.576 → 1.138 huruf.
+      - **Lebih mahal daripada yang dihemat:** ±700 token yang dihemat bernilai ±$0,00005 di flash. Ia memakai model pesan itu sendiri (`rctx.model`), jadi di THINKING (`deepseek-v4-pro`, $0,00058/$0,00174 per 1K) ±$0,002 per pesan.
+      - **Diulang dari nol** di setiap pesan setelah riwayat melewati ambang — tanpa cache. Dalam 24 jam terakhir baru sekali terpicu hanya karena uji-uji Owner selalu ≤ 3 pesan.
+    - **Temuan kedua (terkonfirmasi di Item 66):** `ConversationEngine.jsx:729` mengirim riwayat yang sudah memuat pesan saat ini, lalu pesan yang sama dikirim lagi sebagai prompt — model menerimanya dua kali.
+    - **Perbaikan (commit `069cffa`):** `compressChatHistory` (async, AI) diganti `rapikanRiwayat(history, pesanSaatIni)` (sinkron, tanpa AI):
+      - pesan terakhir dibuang bila `role === 'user'` dan isinya sama persis (setelah `trim`) dengan `parsed.message` — klien yang tak menyertakannya tidak kehilangan apa pun;
+      - bila total ≥ 4.000 huruf dan > 2 pesan: 2 pesan terakhir utuh, pesan lebih lama dipotong ke 800 huruf + `… [dipangkas]`; log `[Riwayat] N pesan, X → Y huruf`;
+      - jalur cadangan lama (`role: 'system'` "[WARNING: History truncated…]") ikut hilang.
+      - Tidak ada pemakai lain (`compressChatHistory` hanya di `request_pipeline.ts`; sisanya keluaran graphify).
+    - **Uji sebelum deploy:** kode asli, 13/13 lulus — bentuk riwayat chat produksi (5 pesan ±4.500 huruf → pesan saat ini dibuang, 2 terakhir utuh, jawaban lama tepat 800 + penanda, masukan tidak diubah), riwayat pesan pertama jadi kosong, di bawah ambang tak dipangkas, klien tanpa pesan saat ini, pesan berulang hanya ujungnya, spasi diabaikan, isi rusak/undefined aman, riwayat hasil tetap memberi konteks untuk `riwayatSebelumPesan` (Item 67). `deno check` tetap 81.
+    - **Status:** ✅ **Selesai, Dideploy & Terbukti di Produksi** (deploy `069cffa`, versi web live, satu sesi, RAG menyala, 22:07–22:09 WIB; jawaban ketiga chat dinyatakan **benar** oleh Owner):
+
+      | Chat | Riwayat (sebelum → sesudah) | Catatan |
+      |---|---|---|
+      | "Menurut dokumen HCDP, jelaskan program…" | 1 pesan / 80 huruf → **0 pesan** | 5 potongan, 0,763; prompt 7.528 token |
+      | "Lanjutkan, apa kendala utamanya?" | 3 pesan / 2.902 → **2 pesan / 2.794 huruf** | tulis ulang 1.819 ms → 5 potongan, 0,765 |
+      | "Jelaskan singkat apa itu inflasi" | ringkasan AI 36,5 s → **`[Riwayat] 4 pesan, 4571 → 2670 huruf`** | tulis ulang "sudah mandiri" 1.159 ms |
+
+      | Chat inflasi | Sebelum | Sesudah |
+      |---|---|---|
+      | Pesan masuk → model utama mulai | **43,6 detik** | **5,0 detik** |
+      | Pesan masuk → jawaban selesai | > 60 detik | **20,2 detik** (15 detik waktu menulis `deepseek-v4-flash`) |
+      | Biaya merapikan riwayat | $0,00022 | $0 |
+
+    - **Konsekuensi yang disadari:** fakta di tengah jawaban lama bisa terpotong, sedangkan ringkasan AI menyimpannya. Untuk pertanyaan tentang dokumen, isinya diambil lagi lewat pencarian dokumen.
+    - **Dicatat, belum dikerjakan:**
+      - **Chat lanjutan HCDP masih ±36 detik:** `deepseek-v4-pro` menulis ±16 detik, dan ada jeda ±9 detik antara selesainya pencarian dokumen (15:07:54) dan panggilan Intent Router berikutnya (15:08:03) — kemungkinan jalur multi-agen/*knowledge manager*, belum diselidiki. Pertanyaan pendek ikut THINKING karena *smoothing* (keputusan Owner, Item 34).
+      - Intent Router (Gemini) dipanggil 1–2 kali per chat, ±2–3 detik masing-masing, termasuk 403 di kunci #0.
