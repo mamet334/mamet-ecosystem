@@ -9,7 +9,7 @@ import { RuntimeContext, createBackgroundTaskTracker, createRuntimeLogger } from
 import { getPluginPromptList } from '../../plugins/registry.ts';
 import { CapabilityRegistry } from '../adapters/adapter_registry.ts';
 import { generateEmbedding, EMBEDDING_DIMENSIONS } from '../rag/embedding.ts';
-import { compressChatHistory } from './history_compressor.ts';
+import { rapikanRiwayat } from './history_compressor.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const getAllKeys = (envVarName: string): string[] => {
@@ -433,7 +433,7 @@ Instruksi ENGINEER lain (RULE 1-6 di konteks Two-Brain) merujuk ke sini, tidak m
   ctx.request.effectiveRagMatchCount = ctx.policy.ragTopK;
   ctx.request.effectiveRagThreshold = ctx.policy.ragThreshold;
 
-  ctx.request.history = await compressChatHistory(ctx.request.history || [], rctx);
+  ctx.request.history = rapikanRiwayat(ctx.request.history || [], parsed.message);
 
   return { ctx, rctx };
 }

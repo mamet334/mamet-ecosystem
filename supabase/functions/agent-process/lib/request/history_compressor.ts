@@ -1,51 +1,44 @@
-import { runLLM } from '../llm_orchestrator.ts';
+/**
+ * PERAPIAN RIWAYAT PERCAKAPAN (Item 68, 2026-09-11)
+ *
+ * Menggantikan "Cognitive Memory Compressor" yang meringkas riwayat dengan AI begitu riwayat
+ * melebihi 4.000 huruf. Terukur di produksi (Item 67, chat "apa itu inflasi"):
+ *   - 36,5 detik menunggu ringkasan SEBELUM pencarian dokumen dan jawaban dimulai;
+ *   - $0,00022 (1.038 token masuk, 867 keluar + 552 token penalaran) untuk menghemat ±700 token
+ *     yang di model flash bernilai ±$0,00005 — lebih mahal daripada yang dihemat. Ia memakai model
+ *     pesan itu sendiri, jadi di tingkat THINKING (`deepseek-v4-pro`) biayanya ±$0,002;
+ *   - diulang dari nol di setiap pesan setelah riwayat melewati ambang.
+ *
+ * Kini tanpa AI: dua pesan terakhir utuh, pesan yang lebih lama dipangkas ke awalnya. Tanpa biaya,
+ * tanpa jeda. Awal jawaban cukup untuk mengenali topik — tulis ulang pertanyaan lanjutan (Item 67)
+ * terbukti benar dengan jawaban asisten dipotong 800 huruf. Fakta di tengah jawaban lama bisa
+ * hilang; untuk pertanyaan tentang dokumen, isinya diambil lagi lewat pencarian dokumen.
+ */
+const AMBANG_HURUF = 4000;
+const PESAN_UTUH = 2;
+const MAKS_HURUF_PESAN_LAMA = 800;
 
-export async function compressChatHistory(history: any[], rctx: any): Promise<any[]> {
-  if (!history || history.length === 0) return history;
-  
-  // Hitung perkiraan panjang string dari history
-  const totalLength = history.reduce((acc, msg) => acc + (msg.content?.length || 0), 0);
-  
-  // Jika panjang total masih aman (< 4000 karakter, sekitar 1000 token), biarkan saja
-  if (totalLength < 4000 || history.length <= 2) {
-    return history;
+export function rapikanRiwayat(history: any[], pesanSaatIni: string): any[] {
+  let riwayat = Array.isArray(history) ? [...history] : [];
+
+  // ConversationEngine mengirim riwayat yang SUDAH memuat pesan saat ini di ujungnya, lalu pesan yang
+  // sama dikirim lagi sebagai prompt — model menerimanya dua kali (Item 66). Dibuang di sini hanya
+  // bila benar-benar sama, supaya klien lain yang tak menyertakannya tidak kehilangan pesan.
+  const terakhir = riwayat[riwayat.length - 1];
+  if (terakhir?.role === 'user' && typeof terakhir.content === 'string'
+      && pesanSaatIni && terakhir.content.trim() === pesanSaatIni.trim()) {
+    riwayat = riwayat.slice(0, -1);
   }
 
-  console.log(`[CognitiveMemoryCompressor] History size is ${totalLength} chars across ${history.length} messages. Triggering autonomous compression...`);
+  const total = riwayat.reduce((n, m) => n + (typeof m?.content === 'string' ? m.content.length : 0), 0);
+  if (total < AMBANG_HURUF || riwayat.length <= PESAN_UTUH) return riwayat;
 
-  // Kita biarkan 2 pesan terakhir tetap utuh agar konteks percakapan langsung tetap tajam
-  const messagesToCompress = history.slice(0, history.length - 2);
-  const recentMessages = history.slice(history.length - 2);
-  
-  const historyText = messagesToCompress.map((m, i) => `[Turn ${i+1} - ${m.role}]: ${m.content}`).join('\n\n');
-  
-  const prompt = `Anda adalah Cognitive Memory Compressor untuk Mamet OS.
-Tugas Anda adalah merangkum transkrip percakapan masa lalu (dibawah) menjadi SATU pesan ringkasan yang padat, akurat, dan mempertahankan seluruh fakta, keputusan, serta tindakan penting.
-Hilangkan obrolan basa-basi, salam, dan laporan eksekusi OS yang panjang. Fokus pada esensi percakapan.
-
-TRANSKRIP PERCAKAPAN:
-${historyText}
-
-Tuliskan ringkasan Anda secara langsung tanpa kalimat pengantar. (Maksimal 1-2 paragraf).`;
-
-  try {
-    const compressedText = await runLLM(prompt, "System: Compress the context.", [], rctx);
-    console.log(`[CognitiveMemoryCompressor] Compression successful. New length: ${compressedText.length} chars.`);
-    
-    // Gabungkan pesan ringkasan dengan 2 pesan terbaru
-    return [
-      { role: 'model', content: `[COGNITIVE MEMORY COMPRESSION ACTIVE]\n(Percakapan sebelumnya telah disusutkan menjadi ringkasan berikut untuk menghemat memori):\n\n${compressedText}` },
-      ...recentMessages
-    ];
-  } catch (error) {
-    console.warn(`[CognitiveMemoryCompressor] Compression failed, falling back to original history. Error:`, error);
-    // Jika gagal, potong paksa secara kasar
-    if (totalLength > 10000) {
-      return [
-        { role: 'system', content: '[WARNING: History truncated due to size limits]' },
-        ...history.slice(-4)
-      ];
-    }
-    return history;
-  }
+  const batas = riwayat.length - PESAN_UTUH;
+  const hasil = riwayat.map((m, i) => {
+    if (i >= batas || typeof m?.content !== 'string' || m.content.length <= MAKS_HURUF_PESAN_LAMA) return m;
+    return { ...m, content: `${m.content.slice(0, MAKS_HURUF_PESAN_LAMA)}… [dipangkas]` };
+  });
+  const totalBaru = hasil.reduce((n, m) => n + (typeof m?.content === 'string' ? m.content.length : 0), 0);
+  console.log(`[Riwayat] ${riwayat.length} pesan, ${total} → ${totalBaru} huruf (pesan lama dipangkas ke ${MAKS_HURUF_PESAN_LAMA} huruf, ${PESAN_UTUH} terakhir utuh).`);
+  return hasil;
 }
