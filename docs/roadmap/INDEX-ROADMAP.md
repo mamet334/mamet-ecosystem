@@ -1017,5 +1017,52 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
       - "API key Gemini #0 403" → kini #0 dan #1 403 (Item 65); hanya dipakai Intent Router.
     - **Dicatat, belum dikerjakan:**
       - **Biaya kini didominasi jawaban, bukan prompt.** Chat sesudah perbaikan tetap $0,0154 karena tingkat **THINKING** memilih `deepseek-v4-pro` (1.336 token jawaban + 463 token penalaran). Pertanyaan "jelaskan program…" dinilai THINKING, dan chat lanjutan ikut THINKING karena *smoothing*. Aturan tingkat adalah keputusan Owner (Item 34).
-      - **Pertanyaan lanjutan kehilangan dokumen.** *"Lanjutkan, apa kendala utamanya?"* → pencarian makna 0 potongan (pesan tak menyebut apa pun tentang HCDP), dan model menjawab *"dokumen HCDP tidak tersedia di database saya"*. Perlu "dokumen fokus percakapan" atau pencarian ulang dengan pertanyaan sebelumnya.
+      - **Pertanyaan lanjutan kehilangan dokumen.** *"Lanjutkan, apa kendala utamanya?"* → pencarian makna 0 potongan (pesan tak menyebut apa pun tentang HCDP), dan model menjawab *"dokumen HCDP tidak tersedia di database saya"*. Perlu "dokumen fokus percakapan" atau pencarian ulang dengan pertanyaan sebelumnya. **→ Diselesaikan di Item 67 (tulis ulang pertanyaan lanjutan).**
       - `context_builder.ts:450` memasukkan seluruh prompt sistem (27 ribu huruf, termasuk dokumen) ke `processingSteps`, yang ikut dikirim balik ke browser di setiap jawaban — bukan biaya token, tapi beban jawaban dan membuka isi prompt ke klien.
+
+67. **Pertanyaan Lanjutan Ditulis Ulang Sebelum Mencari Dokumen (2026-09-11):**
+    - **Permintaan Owner:** lanjut Item 66 — "dokumen fokus percakapan", supaya *"Lanjutkan, apa kendala utamanya?"* tidak lagi menjawab "dokumen tidak tersedia".
+    - **Akar masalah:** pencarian dokumen memvektorkan **pesan saat ini saja**. Pesan lanjutan tak menyebut topiknya, jadi skor teratasnya 0,541 — di bawah ambang 0,55 — walau HCDP memuat jawabannya (kata "hambatan" di potongan `1a7b4083…` dan `0374d16a…`; kata "kendala" sendiri tidak ada di dokumen).
+    - **Diukur sebelum memilih cara** — dua cuplikan Console di browser Owner, kunci OpenRouter dibaca dari Vault tanpa dicetak, `match_documents` dipanggil dengan token sesi Owner (ambang 0, 5 teratas, semua 548 potongan / 47 dokumen):
+
+      | Kueri | Skor teratas | Kemiripan dg. pertanyaan sebelumnya |
+      |---|---|---|
+      | A. "Lanjutkan, apa kendala utamanya?" | 0,541 Continual Learning | 0,508 |
+      | B. pertanyaan sebelumnya + A | 0,762 HCDP [hambatan] | 0,929 |
+      | C. pertanyaan + jawaban sebelumnya + A | 0,804 HCDP | 0,793 |
+      | D. "Siapa yang bertanggung jawab melaksanakannya?" | 0,547 Pembelajaran mesin | 0,537 |
+      | E. pertanyaan sebelumnya + D | 0,766 HCDP [hambatan] | 0,965 |
+      | F. "Jelaskan singkat apa itu inflasi" | 0,528 Matematika Dasar | 0,488 |
+      | **G. pertanyaan sebelumnya + F** | **0,708 HCDP [hambatan] ❌** | 0,852 |
+      | H. pertanyaan sebelumnya saja | 0,763 HCDP [hambatan] | 1 |
+
+      - **Menggabungkan kalimat ditolak.** B ≈ H (0,762 vs 0,763): vektor gabungan hampir sama dengan pertanyaan lama, pesan baru nyaris tak berpengaruh — potongan [hambatan] muncul hanya karena sudah teratas untuk pertanyaan lama. Dan G menyuntikkan 5 potongan HCDP ke pertanyaan inflasi.
+      - **Vektor tak bisa membedakan lanjutan dari ganti topik:** kemiripan dengan pertanyaan sebelumnya 0,508 / 0,537 (lanjutan) vs 0,488 (ganti topik) — terlalu rapat untuk ambang.
+      - **Tulis ulang oleh model murah** (`deepseek/deepseek-v4-flash-0731`, `reasoning: {enabled:false}`, suhu 0):
+
+        | Pesan | Hasil tulis ulang | Skor teratas | Waktu (browser) |
+        |---|---|---|---|
+        | lanjutan 1 | "Apa kendala utama dalam pelaksanaan program pengembangan kompetensi ASN … dokumen HCDP tersebut?" | 0,765 HCDP [hambatan] | 2.310 ms |
+        | lanjutan 2 | "Siapa yang bertanggung jawab melaksanakan program … dokumen HCDP tersebut?" | 0,761 HCDP [hambatan] | 1.651 ms |
+        | ganti topik 1 | "Jelaskan singkat apa itu inflasi." (apa adanya) | 0,544, bukan HCDP | 2.730 ms |
+        | ganti topik 2 | "Siapa presiden pertama Indonesia?" (apa adanya) | 0,528, bukan HCDP | 2.678 ms |
+
+        `google/gemini-3.5-flash-lite` tidak bisa dipakai: *"Reasoning is mandatory for this endpoint and cannot be disabled"* (400).
+    - **Perbaikan (commit `a56ab26`):**
+      - `lib/rag/query_rewrite.ts` (baru): `tulisUlangPertanyaan()` — kunci `openRouterByok` pengguna, 4 pesan riwayat terakhir masing-masing dipotong 800 huruf, batas waktu 4 detik (AbortController), keluaran kosong / > 400 huruf / galat HTTP → `null`. `riwayatSebelumPesan()` membuang pesan saat ini dari ujung riwayat (`ConversationEngine.jsx:729` mengirim riwayat yang sudah memuatnya). `samaDenganAsli()` membandingkan tanpa tanda baca/huruf besar.
+      - `context_builder.ts` `executeTier1`: bila pencarian pertama 0 potongan **dan** ada riwayat → tulis ulang → bila berbeda dari pesan asli, embedding baru + `match_documents` sekali lagi; bila sama (pesan mandiri / ganti topik) → tidak dicari ulang. Hasil dicatat di log `[RAG] Mode: …` dan `processingSteps`.
+      - Batas waktu Tier 1 tetap 5 detik, **diperpanjang 6 detik hanya saat menulis ulang** (tenggat bergerak, bukan `Promise.race` tetap); pengatur waktunya kini dibersihkan di `finally`.
+    - **Uji sebelum deploy:** kode asli `query_rewrite.ts` dengan `fetch` palsu — 15/15 lulus (riwayat membuang pesan saat ini, riwayat kosong/rusak/undefined, tanda kutip dibuang, model & parameter benar, jawaban asisten dipotong 800, keluaran kosong/kepanjangan diabaikan, 402 → null, batas waktu 300 ms dihormati, tanpa kunci / tanpa riwayat tidak memanggil jaringan). `deno check` tetap 81.
+    - **Status:** ✅ **Selesai, Dideploy & Terbukti di Produksi** (deploy `a56ab26`, versi web live, satu sesi, RAG menyala, 21:28–21:31 WIB):
+
+      | Chat | Log server | Tulis ulang | Jawaban |
+      |---|---|---|---|
+      | "Menurut dokumen HCDP, jelaskan program…" | 5 potongan, 0,763 | tidak perlu | benar |
+      | "Lanjutkan, apa kendala utamanya?" | **5 potongan, 0,766** | "Lanjutkan, apa kendala utama dalam pelaksanaan program pengembangan kompetensi ASN berdasarkan dokumen HCDP tersebut?" — 2.264 ms, $0,000028 | **dari dokumen**: keterbatasan instrumen/akurasi data, gap 20 JP, kategori KMS belum dapat giliran diklat teknis, disempurnakan lewat koordinasi lintas sektor |
+      | "Jelaskan singkat apa itu inflasi" | 0 potongan | "pesan sudah mandiri" — 1.201 ms | umum, tanpa HCDP, `[STATUS: HYPOTHESIS]` |
+
+    - **Dicatat, belum dikerjakan:**
+      - **Chat ketiga lama karena pemadat riwayat, bukan tulis ulang.** `history_compressor.ts` meringkas riwayat dengan AI begitu riwayat > 4.000 huruf: **36,5 detik** (14:30:44 → 14:31:21 UTC; `deepseek-v4-flash` menalar 552 token, 867 token jawaban, $0,00022) sebelum pencarian dokumen dimulai. → Item 68.
+      - **Ambang 0,55 terlalu dekat dengan dasar derau.** Dokumen yang sama sekali tak berhubungan mencapai 0,547 (D) dan 0,544 (inflasi setelah ditulis ulang). Belum pernah lolos, tapi selisihnya tipis.
+      - Obrolan umum dengan RAG menyala membayar tulis ulang (±1–3 detik, ±$0,00003) di setiap pesan setelah pesan pertama, karena pencariannya selalu kosong.
+      - Biaya tulis ulang dibayar langsung ke OpenRouter pengguna — tidak tercatat di Billing, sama seperti embedding.
