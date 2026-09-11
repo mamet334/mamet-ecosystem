@@ -41,11 +41,12 @@ export class MemoryGovernorService {
    * `match_memories` tidak pernah bisa menemukan apa pun — pencarian memori
    * berbasis makna tidak pernah hidup sejak awal.
    *
-   * Embedding dibuat di server, bukan di sini, karena dua alasan: kunci Gemini
-   * tidak boleh tersebar ke setiap perangkat, dan dimensi vektor harus
+   * Embedding dibuat di server, bukan di sini, supaya model dan dimensi vektor
    * ditentukan di SATU tempat saja. Menghitungnya di klien berarti menyalin
    * logika provider ke frontend — itu yang dulu membuat penjaga dimensi 768
    * tercecer di dua berkas dan bertahan berbulan-bulan tanpa ketahuan.
+   * Sejak Item 63–65 embedding dibayar pengguna: kunci OpenRouter dari Vault
+   * dikirim sebagai header x-byok-openrouter; tanpanya server menjawab gagal.
    *
    * GAGAL-LUNAK, TAPI BERSUARA. Kalau embedding gagal, memorinya TETAP
    * disimpan — memori tanpa vektor masih ditemukan lewat pencarian SQL (Tahap 1,
@@ -66,11 +67,30 @@ export class MemoryGovernorService {
         return null;
       }
 
+      let kunciOpenRouter = '';
+      try {
+        const vault = this.serviceManager?.has('VaultService') ? this.serviceManager.get('VaultService') : null;
+        kunciOpenRouter = (vault?.getKey('openrouter') || '').replace(/[^\x00-\x7F]/g, '');
+      } catch {
+        // Vault belum siap — server akan menjawab EMBEDDING_FAILED.
+      }
+
       const { data, error } = await supabase.functions.invoke('agent-process', {
-        body: { action: 'embed', text: text.substring(0, 8000) }
+        body: { action: 'embed', text: text.substring(0, 8000) },
+        headers: kunciOpenRouter ? { 'x-byok-openrouter': kunciOpenRouter } : {}
       });
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        // Alasan sebenarnya ada di body jawaban (Item 64), bukan di error.message yang umum.
+        let pesan = error.message;
+        try {
+          const isi = await error.context?.json?.();
+          if (isi?.message || isi?.error) pesan = isi.message || isi.error;
+        } catch {
+          // Body bukan JSON.
+        }
+        throw new Error(pesan);
+      }
       // Endpoint menjawab 502 dengan { error } saat semua adapter gagal;
       // supabase-js tidak selalu melemparnya, jadi diperiksa sendiri.
       if (data?.error) throw new Error(data.message || data.error);

@@ -195,7 +195,12 @@ export class RetrievalOrchestrator {
     try {
       const fallbackService = this.internalKnowledgeFallbackService || (this.serviceManager?.has('InternalKnowledgeFallbackService') ? this.serviceManager.get('InternalKnowledgeFallbackService') : null);
 
-      if (fallbackService && typeof fallbackService.buildFallbackContext === 'function') {
+      // options.skipInternalFallback (Item 65): dokumen dicari di SERVER, bukan di Tier 1 ini.
+      // Panduan Tier 2 berbunyi "tidak ditemukan dokumen lokal — jawab dari pengetahuan umum";
+      // disisipkan di sini, ia akan membantah dokumen yang ditemukan server.
+      if (options.skipInternalFallback) {
+        console.log('[RetrievalOrchestrator] Tier 2 dilewati — dokumen ditangani server (skipInternalFallback).');
+      } else if (fallbackService && typeof fallbackService.buildFallbackContext === 'function') {
         tier2Result = await fallbackService.buildFallbackContext({
           query,
           tier1Result,

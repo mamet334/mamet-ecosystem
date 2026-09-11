@@ -31,6 +31,12 @@ export interface ProviderKeys {
   allGemini: string[];
   groq: string;
   openRouter?: string;
+  /**
+   * Kunci OpenRouter MILIK PENGGUNA (header x-byok-openrouter) — khusus embedding (Item 63–65).
+   * Sengaja terpisah dari `openRouter`, yang jatuh ke OPENROUTER_API_KEY sistem bila provider
+   * chat pengguna bukan openrouter. Embedding dibayar pengguna; tidak pernah kunci sistem.
+   */
+  openRouterByok?: string;
   openAI: string;
 }
 

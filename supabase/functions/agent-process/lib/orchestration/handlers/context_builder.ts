@@ -1,4 +1,4 @@
-import { generateEmbedding } from '../../rag/embedding.ts';
+import { generateEmbedding, EMBEDDING_DIMENSIONS } from '../../rag/embedding.ts';
 import { searchDocuments } from '../../rag/document_search.ts';
 import { executeRoutingDecision } from '../../rag/routing_decider.ts';
 import { loadProjectMemory } from '../../rag/project_memory.ts';
@@ -77,52 +77,57 @@ export const ContextBuilderHandler = {
         if (!ctx.auth.userId || !ctx.request.isRagEnabled) return [];
 
         const executeTier1 = async () => {
-            // For ASSISTANT/LITE modes: PR#9 Tier 1 — KnowledgeService query + RetrievalStrategyService (Case A/B adaptive)
-            // For ENGINEER mode, use full vector embedding (semantic similarity).
-            // Ref: MAEF 4.5 — Capability-Based RAG Access & PR#9 Tier 1.
-            if (ctx.policy.mode === 'ASSISTANT' || ctx.policy.mode === 'LITE') {
-                console.log('[RAG] Mode:', ctx.policy.mode, '— using KnowledgeService + RetrievalStrategyService (PR#9 Tier 1).');
-                const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.39.3');
-                const supabase = createClient(rctx.env.supabaseUrl, rctx.env.supabaseServiceKey);
-                
-                const knowledgeService = new KnowledgeService({ supabaseClient: supabase });
-                const rawChunks = await knowledgeService.queryKnowledge(ctx.request.finalMessage || '', {
-                    supabaseClient: supabase,
-                    userId: ctx.auth.userId,
-                    limit: ctx.request.effectiveRagMatchCount || 10
-                });
+            // PENCARIAN DOKUMEN BERDASARKAN MAKNA UNTUK SEMUA MODE (Item 65, 2026-09-11).
+            //
+            // Dulu hanya ENGINEER yang memakai vektor; ASSISTANT dan LITE (mametlite) memakai
+            // KnowledgeService — pencocokan KATA pada judul/isi — lalu RetrievalStrategyService
+            // Kasus A menyeret SELURUH potongan dokumen yang judulnya cocok. Terbukti di Item 64:
+            // satu pertanyaan tentang HCDP = 33 potongan, prompt=90116t, $0,0112. Dokumen yang
+            // pertanyaannya tak memuat kata dari judul tidak ditemukan sama sekali, sementara
+            // pengguna membayar untuk memvektorkannya.
+            //
+            // Kini: vektor pertanyaan (dipakai ulang dari pencarian memori di request_pipeline bila
+            // ada) → match_documents → potongan teratas, sudah terurut relevansi. Hasil vektor
+            // TIDAK dilewatkan RetrievalStrategyService: Kasus B membatasi potongan per dokumen
+            // (membuang jawaban yang sama-sama dari satu dokumen), dan pengurutan ulangnya tak perlu.
+            const pesan = ctx.request.finalMessage || '';
+            const vektorSiap = Array.isArray(ctx.request.queryEmbedding) && ctx.request.queryEmbedding.length === EMBEDDING_DIMENSIONS;
+            const queryEmbedding = vektorSiap ? ctx.request.queryEmbedding : await generateEmbedding(pesan, rctx);
 
-                if (!rawChunks || rawChunks.length === 0) return { chunks: [], strategy: 'empty', sufficiency: 0.0, caseType: 'NONE' };
-
-                const retrievalStrategy = new RetrievalStrategyService();
-                const adaptiveResult = await retrievalStrategy.apply(rawChunks, supabase);
-                return adaptiveResult;
+            if (queryEmbedding.length === EMBEDDING_DIMENSIONS) {
+                const vectorDocs = await searchDocuments(
+                    queryEmbedding,
+                    pesan,
+                    ctx.request.effectiveRagThreshold,
+                    ctx.request.effectiveRagMatchCount,
+                    routingDecision,
+                    ctx.auth.userId,
+                    rctx
+                );
+                const skorTeratas = vectorDocs.length ? Math.max(...vectorDocs.map((d: any) => d.similarity || 0)) : 0;
+                console.log(`[RAG] Mode: ${ctx.policy.mode} — pencarian makna: ${vectorDocs.length} potongan (ambang ${ctx.request.effectiveRagThreshold}, maks ${ctx.request.effectiveRagMatchCount}, skor teratas ${skorTeratas.toFixed(3)}, vektor ${vektorSiap ? 'dipakai ulang' : 'baru'})`);
+                if (vectorDocs.length === 0) return { chunks: [], strategy: 'vector_empty', sufficiency: 0.0, caseType: 'NONE' };
+                return { chunks: vectorDocs, strategy: 'vector_topk', sufficiency: +skorTeratas.toFixed(3), caseType: 'NONE' };
             }
-            
-            // Mode ENGINEER: Vector search via document_search.ts + RetrievalStrategyService
-            console.log('[RAG] Mode: ENGINEER — attempting embedding generation + vector search...');
-            const queryEmbedding = await generateEmbedding(ctx.request.finalMessage, rctx);
-            if (queryEmbedding.length === 0) {
-                console.warn('[RAG] Embedding generation returned empty');
-                return { chunks: [], strategy: 'empty', sufficiency: 0.0, caseType: 'NONE' };
-            }
-            const vectorDocs = await searchDocuments(
-                queryEmbedding,
-                ctx.request.finalMessage,
-                ctx.request.effectiveRagThreshold,
-                ctx.request.effectiveRagMatchCount,
-                routingDecision,
-                ctx.auth.userId,
-                rctx
-            );
 
-            if (!vectorDocs || vectorDocs.length === 0) return { chunks: [], strategy: 'empty', sufficiency: 0.0, caseType: 'NONE' };
-
+            // CADANGAN tanpa vektor (pengguna tanpa kunci OpenRouter, atau OpenRouter gagal):
+            // pencocokan kata. Kasus A di RetrievalStrategyService tidak lagi menyeret seluruh
+            // dokumen, jadi hasilnya dibatasi `effectiveRagMatchCount`.
+            console.log(`[RAG] Mode: ${ctx.policy.mode} — vektor tidak tersedia, cadangan pencocokan kata (KnowledgeService).`);
             const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.39.3');
             const supabase = createClient(rctx.env.supabaseUrl, rctx.env.supabaseServiceKey);
+
+            const knowledgeService = new KnowledgeService({ supabaseClient: supabase });
+            const rawChunks = await knowledgeService.queryKnowledge(pesan, {
+                supabaseClient: supabase,
+                userId: ctx.auth.userId,
+                limit: ctx.request.effectiveRagMatchCount || 10
+            });
+
+            if (!rawChunks || rawChunks.length === 0) return { chunks: [], strategy: 'empty', sufficiency: 0.0, caseType: 'NONE' };
+
             const retrievalStrategy = new RetrievalStrategyService();
-            const adaptiveResult = await retrievalStrategy.apply(vectorDocs, supabase);
-            return adaptiveResult;
+            return await retrievalStrategy.apply(rawChunks, supabase);
         };
 
         try {

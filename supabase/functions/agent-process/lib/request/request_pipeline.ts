@@ -185,6 +185,9 @@ export async function executeRequestPipeline(
     keys: {
       [finalProvider]: finalApiKey,
       openRouter: finalProvider === 'openrouter' ? finalApiKey : (Deno.env.get('OPENROUTER_API_KEY') || ''),
+      // Embedding memakai kunci OpenRouter PENGGUNA saja — bukan `openRouter` di atas, yang bisa
+      // jatuh ke kunci sistem (Item 63–65).
+      openRouterByok: (request.headers.get('x-byok-openrouter') || '').replace(/[^\x00-\x7F]/g, '').trim(),
       // Keep existing keys for embedding adapters
       gemini: primaryGeminiKey,
       allGemini: allGeminiKeys,
@@ -205,13 +208,23 @@ export async function executeRequestPipeline(
   // =============================================
   // [BACKEND RAG: Generate Embedding + Vector Search]
   // =============================================
+  //
+  // `parsed.globalMemory` TIDAK ditimpa lagi (Item 65). Nilainya — konteks kiriman frontend —
+  // sudah tersalin ke ctx.request.globalMemory di atas dan dipakai context_builder; di sini ia
+  // hanya menentukan penanda "SISTEM RETRIEVAL AKTIF". Dulu penanda itu dihitung dari teks
+  // "Tidak ada memori yang relevan." sehingga model diberi tahu pengetahuannya berhenti di 2024
+  // walau dokumen/web sudah disuntikkan. Memori hasil pencarian vektor disimpan terpisah.
+  let memoriVektor = '';
   try {
     // Only run RAG if the message is non-empty and RAG is enabled
     if (parsed.finalMessage && parsed.finalMessage.trim().length > 0 && parsed.ragEnabled !== false) {
       console.log('🔍 [RAG] Generating embedding for vector search...');
-      
-      // 1. Vektor kueri lewat pintu embedding tunggal (Gemini, dijaga 3072 dimensi)
+
+      // 1. Vektor kueri lewat pintu embedding tunggal (OpenRouter, kunci pengguna, 3072 dimensi).
+      //    Disimpan di ctx.request supaya pencarian DOKUMEN di context_builder memakai vektor yang
+      //    sama — satu embedding per pesan, bukan dua.
       const userEmbedding = await generateEmbeddingThroughAdapter(parsed.finalMessage, rctx);
+      (ctx.request as any).queryEmbedding = userEmbedding;
 
       // 2. Query vector database via Supabase RPC
       //
@@ -226,7 +239,6 @@ export async function executeRequestPipeline(
         // pencarian yang mungkin adalah pencarian lintas pengguna — jadi lebih
         // baik tidak mencari sama sekali daripada membocorkan memori orang lain.
         console.warn('[RAG] ⚠️ Pencarian memori dilewati — userId tidak tersedia. Menolak mencari lintas pengguna.');
-        parsed.globalMemory = 'Tidak ada memori yang relevan.';
       } else {
         const supabase = createClient(runtimeEnv.supabaseUrl, runtimeEnv.supabaseServiceKey);
         // AMBANG 0,70 — diturunkan dari 0,8 pada 2026-09-10 (Item 46).
@@ -276,30 +288,29 @@ export async function executeRequestPipeline(
         const ragContext = memories?.map((m: any) => (m.summary || m.content || '')).join('\n') || '';
         if (ragContext) {
           console.log(`✅ [RAG] Found ${memories?.length || 0} relevant memories untuk user ${ragUserId}`);
-          parsed.globalMemory = ragContext;
+          memoriVektor = ragContext;
         } else {
           console.log('ℹ️ [RAG] No relevant memories found');
-          parsed.globalMemory = 'Tidak ada memori yang relevan.';
         }
       }
     }
   } catch (ragError: any) {
     // Don't crash the pipeline if RAG fails — just log and continue
     console.error('[RAG] Error during vector search:', ragError.message || ragError);
-    parsed.globalMemory = 'Tidak ada memori yang relevan.';
   }
   // =============================================
   // [SELESAI] LOGIKA RAG
 
   // --- PROMPT INITIALIZATION ---
   const currentDateStr = new Date().toISOString().split('T')[0];
-  const hasInjectedKnowledge = Boolean(parsed.globalMemory && typeof parsed.globalMemory === 'string' && (
-    parsed.globalMemory.includes('[DOKUMEN PENGETAHUAN') ||
-    parsed.globalMemory.includes('Sumber: Google News') ||
-    parsed.globalMemory.includes('Sumber: Web Search') ||
-    parsed.globalMemory.includes('--- Konteks') ||
-    parsed.globalMemory.length > 80
-  ));
+  const teksPenanda = [typeof parsed.globalMemory === 'string' ? parsed.globalMemory : '', memoriVektor].join('\n');
+  const hasInjectedKnowledge = Boolean(
+    teksPenanda.includes('[DOKUMEN PENGETAHUAN') ||
+    teksPenanda.includes('Sumber: Google News') ||
+    teksPenanda.includes('Sumber: Web Search') ||
+    teksPenanda.includes('--- Konteks') ||
+    teksPenanda.trim().length > 80
+  );
 
   let agentIdentityPrompt = `\nKONTEKS WAKTU HARI INI: ${currentDateStr} (Tahun berjalan saat ini adalah 2026).\n`;
   if (hasInjectedKnowledge) {

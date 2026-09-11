@@ -5,9 +5,8 @@
  * Mendeteksi otomatis Kasus A (dokumen besar tunggal) vs Kasus B (multi-dokumen)
  * berdasarkan distribusi top-K similarity results.
  *
- * Kasus A (dokumen besar):
- *   1. Neighbor expansion — ikut ambil chunk tetangga (sebelum/sesudah)
- *   2. Fallback full-read — baca dokumen sumber utuh jika masih tidak cukup
+ * Kasus A (dokumen besar): potongan diteruskan apa adanya. "Neighbor expansion" dan
+ *   "full-read" DIHAPUS 2026-09-11 (Item 65) — lihat catatan di _handleCaseA.
  *
  * Kasus B (multi-dokumen):
  *   1. Max N chunk per dokumen — cegah satu sumber mendominasi
@@ -72,7 +71,7 @@ export class RetrievalStrategyService {
 
     let finalResult;
     if (caseType === 'A') {
-      const result = await this._handleCaseA(topKChunks, supabaseClient);
+      const result = await this._handleCaseA(topKChunks);
       finalResult = { ...result, caseType: 'A' };
     } else if (caseType === 'B') {
       const result = this._handleCaseB(topKChunks);
@@ -171,74 +170,22 @@ export class RetrievalStrategyService {
   // =============================================
 
   /**
-   * Handle Kasus A: neighbor expansion + fallback full-read.
+   * Handle Kasus A: teruskan potongan yang sudah ditemukan, apa adanya.
+   *
+   * DULU (sampai 2026-09-11, Item 65): "neighbor expansion" mengambil SEMUA potongan dokumen
+   * dominan, diurutkan `order('id')` dengan asumsi "id berurutan". Asumsi itu tidak pernah
+   * benar — `document_chunks.id` adalah UUID acak dan tabel itu tidak punya kolom urutan —
+   * jadi yang terambil bukan tetangga, melainkan SELURUH dokumen dalam urutan acak. Terbukti
+   * di Item 64: satu pertanyaan tentang HCDP menyeret 33 potongan, prompt=90116t, $0,0112.
+   * "Full-read" (kolom documents.content) dihapus bersamanya.
+   *
+   * Tetangga yang sebenarnya baru mungkin bila potongan menyimpan nomor urutnya.
+   *
    * @param {Array} chunks
-   * @param {*} supabaseClient
    * @returns {Promise<{ chunks: Array, strategy: string }>}
    */
-  async _handleCaseA(chunks, supabaseClient) {
-    // Ambil document_id yang dominan
-    const docFreq = {};
-    for (const chunk of chunks) {
-      const docId = chunk.document_id || 'unknown';
-      docFreq[docId] = (docFreq[docId] || 0) + 1;
-    }
-    const dominantDocId = Object.entries(docFreq).sort((a, b) => b[1] - a[1])[0][0];
-
-    // Step 1: Neighbor expansion — ambil semua chunk dari dokumen yang sama
-    let expandedChunks = chunks;
-    if (supabaseClient && dominantDocId !== 'unknown') {
-      try {
-        const { data: allChunks, error } = await supabaseClient
-          .from('document_chunks')
-          .select('id, document_id, content, source_url, source_type')
-          .eq('document_id', dominantDocId)
-          .order('id', { ascending: true }); // Asumsikan id berurutan
-
-        if (!error && allChunks && allChunks.length > 0) {
-          console.log(`[RetrievalStrategy] Case A: neighbor expansion → ${allChunks.length} chunks dari doc ${dominantDocId}`);
-          expandedChunks = allChunks;
-
-          // Jika masih <3 chunk (dokumen kecil) → tidak perlu full-read
-          if (allChunks.length >= 3) {
-            return { chunks: expandedChunks, strategy: 'case_a_neighbor_expansion' };
-          }
-        }
-      } catch (err) {
-        console.warn('[RetrievalStrategy] Neighbor expansion gagal:', err.message);
-      }
-    }
-
-    // Step 2: Fallback full-read — baca content dokumen sumber utuh
-    if (supabaseClient && dominantDocId !== 'unknown') {
-      try {
-        const { data: doc, error } = await supabaseClient
-          .from('documents')
-          .select('id, title, content, source_url, source_type')
-          .eq('id', dominantDocId)
-          .single();
-
-        if (!error && doc?.content) {
-          console.log(`[RetrievalStrategy] Case A: fallback full-read → doc "${doc.title}"`);
-          // Bungkus full content sebagai satu chunk virtual
-          return {
-            chunks: [{
-              id: `fullread_${doc.id}`,
-              document_id: doc.id,
-              content: doc.content,
-              source_url: doc.source_url,
-              source_type: doc.source_type,
-              _isFullRead: true
-            }],
-            strategy: 'case_a_full_read'
-          };
-        }
-      } catch (err) {
-        console.warn('[RetrievalStrategy] Full-read fallback gagal:', err.message);
-      }
-    }
-
-    return { chunks: expandedChunks, strategy: 'case_a_passthrough' };
+  async _handleCaseA(chunks) {
+    return { chunks, strategy: 'case_a_passthrough' };
   }
 
   // =============================================

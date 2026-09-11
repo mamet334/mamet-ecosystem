@@ -1,7 +1,12 @@
 import { CapabilityAdapter } from './capability_adapter.ts';
 import { GeminiAdapter, GroqAdapter, OpenRouterAdapter, OpenAIAdapter } from './ai_adapter.ts';
-import { GeminiEmbeddingAdapter } from './embedding_adapter.ts';
 import { RuntimeContext } from '../runtime_context.ts';
+
+// Embedding TIDAK lagi lewat registry ini (Item 65, 2026-09-11). Registry memakai Map statis
+// yang dikosongkan dan diisi ulang setiap permintaan — dipakai bersama oleh permintaan yang
+// berjalan bersamaan, jadi bukan tempat untuk kunci milik pengguna. Embedding kini lewat
+// generateEmbedding (rag/embedding.ts) → embedLewatOpenRouter, dengan kunci sebagai argumen.
+// GeminiEmbeddingAdapter (kunci Gemini sistem) dan OpenAIEmbeddingAdapter (Item 62) dihapus.
 
 export class CapabilityRegistry {
   private static adapters = new Map<string, CapabilityAdapter>();
@@ -35,15 +40,12 @@ export class CapabilityRegistry {
     const groq = new GroqAdapter(rctx);
     const openRouter = new OpenRouterAdapter(rctx);
     const openai = new OpenAIAdapter(rctx);
-    const geminiEmbedding = new GeminiEmbeddingAdapter(rctx);
-    // Tidak ada cadangan embedding dari model lain — lihat catatan di embedding_adapter.ts.
 
     if (await gemini.initialize()) this.adapters.set('gemini', gemini);
     if (await groq.initialize()) this.adapters.set('groq', groq);
     if (await openRouter.initialize()) this.adapters.set('openrouter', openRouter);
     if (await openai.initialize()) this.adapters.set('openai', openai);
-    if (await geminiEmbedding.initialize()) this.adapters.set('gemini_embedding', geminiEmbedding);
-    
+
     this.isInitialized = true;
   }
 
@@ -57,15 +59,6 @@ export class CapabilityRegistry {
       if (this.isProviderLocked(name)) continue;
       const adapter = this.adapters.get(name);
       if (adapter) available.push(adapter);
-    }
-    return available;
-  }
-
-  public static getAvailableEmbeddingAdapters(preferredOrder: string[]): CapabilityAdapter[] {
-    const available: CapabilityAdapter[] = [];
-    for (const name of preferredOrder) {
-      const adapter = this.adapters.get(name);
-      if (adapter && adapter.type === 'EMBEDDING') available.push(adapter);
     }
     return available;
   }

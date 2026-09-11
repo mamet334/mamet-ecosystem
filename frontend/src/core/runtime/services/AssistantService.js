@@ -266,6 +266,20 @@ export class AssistantService {
       else if (aiProvider === 'openai') headers['x-byok-openai'] = cleanKey;
       else if (aiProvider === 'groq') headers['x-byok-groq'] = cleanKey;
       else if (aiProvider === 'gemini') headers['x-byok-gemini'] = cleanKey;
+
+      // Embedding (pencarian dokumen & memori di server) memakai kunci OpenRouter pengguna
+      // (Item 63–65), apa pun provider chat-nya. Hanya ditambahkan bila kunci provider chat ada,
+      // supaya request_pipeline tetap memakai provider pilihan pengguna — ia jatuh ke
+      // x-byok-openrouter hanya saat kunci provider kosong.
+      if (!headers['x-byok-openrouter']) {
+        try {
+          const vault = this.serviceManager?.has('VaultService') ? this.serviceManager.get('VaultService') : null;
+          const kunciOpenRouter = vault?.getKey('openrouter');
+          if (kunciOpenRouter) headers['x-byok-openrouter'] = kunciOpenRouter.replace(/[^\x00-\x7F]/g, '');
+        } catch {
+          // Vault belum siap — server jatuh ke pencocokan kata untuk dokumen.
+        }
+      }
     }
 
     return headers;
@@ -579,10 +593,17 @@ export class AssistantService {
    * @private
    */
   async _handleLookup({
-    userMsg, history, userId, token, workspaceManager,
+    userMsg, history, workspaceId, userId, token, workspaceManager,
     resolvedMode, resolvedAppSource, onChunk, onDone, onError
   }) {
-    console.log('[AssistantService] PR#8 → _handleLookup (skip memory/RAG/semantic)');
+    console.log('[AssistantService] PR#8 → _handleLookup (skip memory/semantic; dokumen dicari server bila RAG nyala)');
+
+    // LOOKUP tetap ringan, tapi TIDAK lagi buta dokumen (Item 65). Dulu ragEnabled selalu false,
+    // sehingga pertanyaan faktual pendek — "berapa jumlah desa …", jenis pertanyaan yang paling
+    // sering diajukan ke dokumen — tak pernah mencari di dokumen walau tombol RAG menyala.
+    // Pencarian makna di server murah: satu embedding pertanyaan + potongan teratas.
+    const toolPreferencesService = this.serviceManager?.get('ToolPreferencesService');
+    const ragToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'rag') : true;
 
     // Get AI provider config
     // LOOKUP selalu memakai tier KECIL tanpa classifier: jalur ini memang sudah dirancang ringan
@@ -612,10 +633,10 @@ export class AssistantService {
       appSource: resolvedAppSource,
       workspaceTarget: null,
       history: history.slice(-3),  // hanya 3 pesan terakhir (bukan 10)
-      globalMemory: '',            // sengaja kosong — tidak butuh RAG
+      globalMemory: '',            // sengaja kosong — konteks klien tidak dibangun di jalur ringan
       semanticContext: '',         // sengaja kosong
       stream: false,
-      ragEnabled: false,
+      ragEnabled: ragToolEnabled,  // dokumen dicari di server (Item 65)
       model: formattedModel || undefined,
       thinking: aiThinking || undefined,
       cache_hint: true,
@@ -939,13 +960,19 @@ export class AssistantService {
     const requestTraceId = crypto.randomUUID();
     let knowledgeContext = _injectedKnowledgeContext || '';
     const retrievalOrchestrator = this.serviceManager?.get('RetrievalOrchestrator');
-    if (!knowledgeContext && retrievalOrchestrator && !isLiteMode && (ragToolEnabled || webSearchToolEnabled)) {
+    // DOKUMEN DICARI DI SERVER (Item 65, 2026-09-11): agent-process kini mencari dokumen
+    // berdasarkan makna (ragEnabled di payload). Tier 1 di sini — pencocokan kata lewat
+    // KnowledgeService — hanya menggandakan dokumen ke prompt, jadi selalu dilewati; orkestrator
+    // dipanggil hanya untuk Web (Tier 3). Selama RAG menyala, panduan Tier 2 ("tidak ada dokumen
+    // lokal") juga dilewati karena hanya server yang tahu apakah dokumen ditemukan.
+    if (!knowledgeContext && retrievalOrchestrator && !isLiteMode && webSearchToolEnabled) {
       try {
         const retrievalResult = await retrievalOrchestrator.retrieve(userMsg, {
           userId,
           limit: 5,
           traceId: requestTraceId,
-          skipLocalKnowledge: !ragToolEnabled,
+          skipLocalKnowledge: true,
+          skipInternalFallback: ragToolEnabled,
           enableWebComparison: webSearchToolEnabled,
           autoConfirmWebSearch: webSearchToolEnabled
         });

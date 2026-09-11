@@ -26,12 +26,11 @@ import {
  *     menduplikasi logika provider di frontend — persis pola yang dulu sengaja
  *     dihapus, dan persis cara penjaga 768 bisa tercecer di dua tempat.
  *
- * SOAL BYOK (Item 51)
- * Gerbang BYOK wajib berlaku untuk provider CHAT, bukan untuk embedding.
- * Embedding adalah fungsi internal sistem — pembuatan indeks pencarian milik
- * pengguna itu sendiri — bukan percakapan atas nama seseorang. Kunci sistem
- * tetap dipakai di sini, dan itu keputusan yang sama yang sudah tercatat saat
- * kunci Gemini sengaja tidak ikut dihapus.
+ * SOAL KUNCI (Item 63–65)
+ * Dulu (Item 51) embedding memakai kunci Gemini SISTEM. Owner membalik keputusan itu
+ * di Item 63: embedding lewat OpenRouter dan dibayar pengguna dengan kuncinya sendiri —
+ * header `x-byok-openrouter`. Tanpa kunci, endpoint menjawab EMBEDDING_FAILED dan memori
+ * tetap tersimpan, hanya belum bisa dicari berdasarkan makna.
  *
  * PENJAGAANNYA
  * `agent-process` di-deploy dengan `--no-verify-jwt` karena `/health` dan
@@ -82,17 +81,15 @@ export async function handleEmbedRequest(
     enableAsyncMemoryWrite: false
   };
 
-  const geminiKeys = (Deno.env.get('GEMINI_API_KEY') || '').split(',').map(k => k.trim()).filter(k => k);
-
-  // rctx minimal — hanya yang benar-benar dibaca oleh adapter embedding.
+  // rctx minimal — generateEmbedding hanya membaca keys.openRouterByok.
   const rctx = {
     traceId,
     keys: {
-      gemini: geminiKeys[0] || '',
-      allGemini: geminiKeys,
+      gemini: '',
+      allGemini: [],
       groq: '',
-      openAI: Deno.env.get('OPENAI_API_KEY') || '',
-      openRouter: Deno.env.get('OPENROUTER_API_KEY') || ''
+      openAI: '',
+      openRouterByok: (request.headers.get('x-byok-openrouter') || '').replace(/[^\x00-\x7F]/g, '').trim()
     },
     model: { model: '', provider: 'gemini', thinking: false },
     policy: { canUseDesktopTools: false },
@@ -116,7 +113,7 @@ export async function handleEmbedRequest(
     console.error(
       `[Embed] ⛔ Gagal membuat embedding untuk user ${user.id}. ` +
       `Diharapkan ${EMBEDDING_DIMENSIONS} dimensi, didapat ${Array.isArray(embedding) ? embedding.length : typeof embedding}. ` +
-      `Kemungkinan besar semua adapter embedding gagal — periksa kesehatan GEMINI_API_KEY lewat check-keys.`
+      `Kemungkinan tidak ada kunci OpenRouter pengguna (x-byok-openrouter), atau OpenRouter menolaknya — lihat log [Embedding] di atas.`
     );
     return jawab({
       error: 'EMBEDDING_FAILED',

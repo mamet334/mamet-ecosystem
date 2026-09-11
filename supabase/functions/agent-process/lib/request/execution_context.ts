@@ -12,11 +12,13 @@ export function buildUnifiedExecutionContext(input: { message: string, desktopOS
   const mode: MametCapabilityMode = (input.mode as MametCapabilityMode) || (isMametEngineer ? "ENGINEER" : isMametLite ? "LITE" : (input.desktopOSMode ? "AI" : "LITE"));
   const isRagEnabled = input.ragEnabled !== false;
   
-  const qLen = (input.message || '').length;
-  let dynamicThreshold = 0.60;
-  if (qLen < 20) dynamicThreshold = 0.60;
-  else if (qLen >= 20 && qLen <= 80) dynamicThreshold = 0.65;
-  else dynamicThreshold = 0.68;
+  // AMBANG PENCARIAN DOKUMEN: 0,55 tetap (Item 65, 2026-09-11) — menggantikan 0,60/0,65/0,68
+  // menurut panjang pertanyaan. Diukur di Item 63 dengan 33 potongan HCDP, 8 pertanyaan
+  // berjawaban pasti, model gemini-embedding-2: potongan benar berskor 0,649–0,803, pertanyaan
+  // kontrol tak berhubungan maksimal 0,455. Ambang 0,65 membuang satu jawaban benar (0,649).
+  // 0,55 meloloskan 8/8 dengan jarak 0,1 dari kontrol; jumlah tetap dibatasi ragTopK.
+  // Ambang MEMORI (match_memories, request_pipeline.ts) terpisah dan tidak diubah di sini.
+  const dynamicThreshold = 0.55;
 
   const lowerMsg = (input.message || '').toLowerCase();
   const needsWeb = /terbaru|update|berita|2024|2025|revisi|perubahan|aturan baru/.test(lowerMsg);

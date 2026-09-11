@@ -16,12 +16,20 @@ export const searchDocuments = async (
     rctx.env.supabaseServiceKey
   );
 
+  // Batasi ke satu space HANYA bila space itu dipilih eksplisit (scope WORKSPACE: UUID dari UI
+  // atau nama space disebut di pesan). Selain itu cari di SEMUA space milik pengguna (Item 65).
+  // Dulu `routing_decider` mengisi workspace_id dengan space CORE setiap kali klien tak mengirim
+  // workspaceTarget — jalur LOOKUP — sehingga dokumen di space lain tak pernah ditemukan, sementara
+  // jalur chat biasa mencari di semua space. Hasilnya bergantung pada cara bertanya. Research App
+  // pun otomatis memilih space terbaru saat mengunggah, jadi dokumen jarang berada di CORE.
+  const spaceId = routingDecision?.scope === 'WORKSPACE' ? routingDecision.workspace_id : null;
+
   const { data: matchedDocs, error: matchError } = await supabaseClient.rpc('match_documents', {
     query_embedding: queryEmbedding,
     match_threshold: effectiveRagThreshold,
     match_count: effectiveRagMatchCount,
     p_user_id: userId,
-    p_space_id: routingDecision.workspace_id
+    p_space_id: spaceId
   });
 
   if (matchError) {
