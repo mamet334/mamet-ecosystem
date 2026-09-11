@@ -499,6 +499,7 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
       - **Bukan sekadar label:** kalau provider tidak melaporkan `usage.cost`, `logApiUsage` mencocokkan nama model ke tabel tarif — nama salah berarti tarif salah, kelas kesalahan yang sama persis dengan Item 41. Terlihat di angkanya: baris Gemini bergerak $0,000010 → $0,000014 karena kini jatuh ke FALLBACK_PRICING alih-alih salah dicocokkan sebagai DeepSeek.
     - **Rasio prompt:output 136:1 — Item 44 kini terukur.** Hari ini: **352.972** token masuk vs **2.596** token keluar untuk 23 panggilan `gpt-4o-mini`, rata-rata **~15.300 token prompt per panggilan**. Jadi `prompt=20451t` bukan kejadian tunggal melainkan pola sistemik, dan **99,3% belanja Owner adalah prompt**. Di sinilah penghematan terbesar berada, bukan di pemilihan model.
       - **Nuansa yang mempersempit dugaan (2026-09-10):** satu permintaan percakapan biasa hari ini hanya `prompt=1639t` — jauh di bawah rata-rata kemarin. Jadi pembengkakan itu **tidak konstan di setiap permintaan**; ada sesuatu yang spesifik menggelembungkannya. Bedanya mencolok: permintaan hari ini punya RAG kosong (`ragArray size=0`) dan kedua blok KNOWLEDGE kosong. Dugaan yang lebih tajam sekarang: penyuntikan RAG/knowledge-lah yang membawa beban itu, bukan konstitusi. Belum diuji langsung — jangan diperlakukan sebagai kesimpulan.
+      - **→ Diselesaikan di Item 65 (Kasus A) dan Item 66 (prompt sistem dobel, −50%). Pesan terkirim dua kali: terkonfirmasi, efeknya kecil.**
       - **→ Mekanismenya terlihat di Item 64 (2026-09-11):** `RetrievalStrategyService` Kasus A menyuntikkan **seluruh** potongan dokumen yang judulnya cocok — satu pertanyaan tentang HCDP menghabiskan 76.895 token masuk. Terbukti untuk permintaan itu; hari-hari sebelumnya belum dicocokkan.
     - **`match_documents` di-`GRANT` ke `anon`.** Risikonya rendah karena ia `SECURITY INVOKER` sehingga RLS tetap berlaku, tapi hak itu tampaknya tidak disengaja.
     - **Higiene yang sudah baik dan layak dipertahankan:** dari 10 fungsi `SECURITY DEFINER`, hanya 4 yang terbuka ke `authenticated`; sisanya service-role saja.
@@ -984,3 +985,37 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
       - Log `[RAG_SCOPE_USED]: CORE` di `routing_decider` masih muncul — kini hanya label, pencarian memakai `p_space_id` null.
       - `ExecutionTraceService` meminta kolom `verification_audit_logs.metadata` yang tidak ada (400, dicatat non-fatal).
       - `rctx.tasks.add is not a function` di setiap chat (Item 62).
+
+66. **Item 44 Diukur: Prompt Sistem Terkirim Dua Kali di Jalur Multi-Agen — Token Masuk Turun 50% (2026-09-11):**
+    - **Permintaan Owner:** lanjut Item 44 — sisa ±10 ribu token prompt dasar di jalur Assistant yang tercatat di Item 65.
+    - **Diukur dulu, bukan ditebak.** Perkiraan "±10 ribu token prompt dasar" berasal dari selisih LOOKUP (6.725 token) vs ASSISTANT (17.392 token) dengan 5 potongan dokumen yang sama. Tapi keduanya memakai model berbeda (`gpt-4o-mini` vs `deepseek-v4-flash`), dan tokenizer berbeda menghitung teks yang sama berbeda — selisih token tidak bisa dibaca sebagai selisih isi. Memangkas berdasarkan tebakan itu bisa memangkas bagian yang bukan penyebabnya.
+    - **Alat ukur (commit `67da3da`):** log `[PROMPT_KOMPOSISI]` di `runLLM`/`runStreamLLM` (`llm_orchestrator.ts`) mencatat **jumlah huruf** tiap bagian prompt jawaban utama — dasar identitas/panduan, memori klien, kontrak blok 1–6 dengan RAG dipisah, riwayat, pesan. Hanya untuk prompt ber-Universal Evidence Contract. Penanda dicari **sesudah** awal kontrak, karena teks panduan identitas juga menyebut `<RAG>` dan `[BLOK 4: KNOWLEDGE]`. Diuji dengan kode asli: jumlah segmen = panjang prompt, blok RAG tidak tertipu penanda palsu (20.016 dari 20.015 huruf — selisih hanya karakter pemisah), prompt non-kontrak tidak dicatat.
+    - **Pengukuran produksi** (versi web live, satu sesi, 20:46–20:48 WIB):
+
+      | Chat | Jalur | Sistem | RAG di sistem | Riwayat | **Pesan** | Total huruf | Token |
+      |---|---|---|---|---|---|---|---|
+      | "Jelaskan singkat apa itu inflasi" (RAG mati) | langsung | 5.304 | — | 1 / 32 | **32** | 5.368 | 1.645 |
+      | "Menurut dokumen HCDP, jelaskan program…" (80 huruf) | multi-agen | 27.802 | 22.631 | 3 / 1.136 | **28.519** | 57.457 | 15.272 |
+      | "Lanjutkan, apa kendala utamanya?" (32 huruf) | multi-agen | 5.302 | 0 potongan | 5 / 3.112 | **5.923** | 14.337 | 4.320 |
+
+    - **Temuan:** di jalur multi-agen (dipakai saat sub-agen/alat seperti *knowledge manager* dijalankan), `synthesis_handler.ts:208` membentuk pesan sebagai `` `Anda telah menugaskan beberapa sub-agent.${fullSystemContext}\n\nPermintaan Awal User: …` `` lalu memanggil `runLLM(synthesisPrompt, fullSystemContext, …)` — **seluruh prompt sistem, termasuk semua potongan dokumen, terkirim dua kali**: sekali di pesan, sekali sebagai sistem. Angkanya cocok persis di kedua chat: 28.519 = 27.802 + ±700 huruf pembungkus & hasil sub-agen; 5.923 = 5.302 + ±600. Jalur langsung tidak terdampak (pesan = 32 huruf).
+    - **Perbaikan (commit `63f5429`):** `${fullSystemContext}` dihapus dari pesan sintesis — ia sudah dikirim sebagai prompt sistem. Diperiksa: tidak ada tempat lain yang menempel prompt sistem ke pesan. `deno check` tetap 81.
+    - **Status:** ✅ **Selesai, Dideploy & Terbukti di Produksi.** `agent-process` versi **410**, pertanyaan yang sama persis di chat baru (21:00 WIB):
+
+      | | Sebelum | Sesudah |
+      |---|---|---|
+      | Prompt sistem | 27.802 huruf | 27.802 huruf |
+      | **Pesan** | **28.519 huruf** | **717 huruf** |
+      | Total ke model | 57.457 huruf | 28.599 huruf |
+      | **Token masuk** | **15.272** | **7.626 (−50%)** |
+      | Jawaban | benar | benar, lebih rinci (kategori MS/MMS/KMS, PERLAN 10/2018, sasaran Smart ASN 2025) |
+
+    - **Koreksi terbuka:** "sisa ±10 ribu token prompt dasar" (Item 65) **keliru**. Prompt dasar diukur **±5.300 huruf** — seluruh chat tanpa dokumen hanya 1.645 token. Selisih yang saya lihat berasal dari prompt sistem yang terkirim dua kali dan dari perbedaan tokenizer, bukan dari prompt dasar. Tidak ada yang perlu dipangkas di sana.
+    - **Item 44 — status akhir tiga temuannya:**
+      - "Prompt 15–20 ribu token, 99,3% belanja adalah prompt" → dua penyebab ditemukan dan diperbaiki: Kasus A menyeret seluruh dokumen (Item 65, 90.116 → ±6–17 ribu token) dan prompt sistem dobel di jalur multi-agen (Item 66, −50%).
+      - "Pesan Owner terkirim dua kali" → **terkonfirmasi**: pada chat pertama sesi, riwayat sudah berisi pertanyaan itu sendiri (`riwayat=1 pesan/80 huruf` untuk pertanyaan 80 huruf). Efeknya kecil — sepanjang pertanyaan saja.
+      - "API key Gemini #0 403" → kini #0 dan #1 403 (Item 65); hanya dipakai Intent Router.
+    - **Dicatat, belum dikerjakan:**
+      - **Biaya kini didominasi jawaban, bukan prompt.** Chat sesudah perbaikan tetap $0,0154 karena tingkat **THINKING** memilih `deepseek-v4-pro` (1.336 token jawaban + 463 token penalaran). Pertanyaan "jelaskan program…" dinilai THINKING, dan chat lanjutan ikut THINKING karena *smoothing*. Aturan tingkat adalah keputusan Owner (Item 34).
+      - **Pertanyaan lanjutan kehilangan dokumen.** *"Lanjutkan, apa kendala utamanya?"* → pencarian makna 0 potongan (pesan tak menyebut apa pun tentang HCDP), dan model menjawab *"dokumen HCDP tidak tersedia di database saya"*. Perlu "dokumen fokus percakapan" atau pencarian ulang dengan pertanyaan sebelumnya.
+      - `context_builder.ts:450` memasukkan seluruh prompt sistem (27 ribu huruf, termasuk dokumen) ke `processingSteps`, yang ikut dikirim balik ke browser di setiap jawaban — bukan biaya token, tapi beban jawaban dan membuka isi prompt ke klien.
