@@ -195,10 +195,47 @@ export const callLLMWithCascade = async (
   return res.result;
 };
 
+/**
+ * [PROMPT_KOMPOSISI] — ukuran tiap bagian prompt JAWABAN UTAMA, dalam huruf (Item 44/66).
+ *
+ * Token tak bisa dibandingkan antar model — tokenizer gpt-4o-mini dan deepseek menghitung teks
+ * yang sama berbeda — jadi yang dicatat jumlah huruf. Hanya untuk prompt yang memuat Universal
+ * Evidence Contract (jawaban utama), bukan panggilan kecil (peringkas, router). Penanda dicari
+ * SESUDAH awal kontrak, karena teks panduan identitas juga menyebut "<RAG>" dan "[BLOK 4: …]".
+ */
+export function catatKomposisiPrompt(promptText: string, systemPromptText: string, chatHistory: any[]) {
+  const s = systemPromptText || '';
+  const awalKontrak = s.indexOf('[UNIVERSAL EVIDENCE CONTRACT');
+  if (awalKontrak < 0) return;
+  const cari = (penanda: string) => s.indexOf(penanda, awalKontrak);
+  const blok4 = cari('[BLOK 4:');
+  const segmen = ([
+    ['dasar_identitas_panduan', 0],
+    ['memori_personal_klien', s.search(/\[MEMORI & (PREFERENSI PERSONAL|KONTEKS SISTEM)\]/)],
+    ['kontrak_blok1_2', awalKontrak],
+    ['blok3_memori', cari('[BLOK 3:')],
+    ['blok4_brain', blok4],
+    ['blok4_rag', blok4 >= 0 ? s.indexOf('<RAG>', blok4) : -1],
+    ['blok5_constraint', cari('[BLOK 5:')],
+    ['blok6_format', cari('[BLOK 6:')],
+  ] as [string, number][]).filter(([, i]) => i >= 0).sort((a, b) => a[1] - b[1]);
+
+  const ukuran: Record<string, number> = {};
+  segmen.forEach(([nama, i], k) => {
+    const akhir = k + 1 < segmen.length ? segmen[k + 1][1] : s.length;
+    ukuran[nama] = akhir - i;
+  });
+  const riwayat = Array.isArray(chatHistory) ? chatHistory : [];
+  const hurufRiwayat = riwayat.reduce((n, m) => n + String(m?.content ?? '').length, 0);
+  const hurufPesan = (promptText || '').length;
+  console.log(`[PROMPT_KOMPOSISI] sistem=${s.length} ${JSON.stringify(ukuran)} | riwayat=${riwayat.length} pesan/${hurufRiwayat} huruf | pesan=${hurufPesan} | total=${s.length + hurufRiwayat + hurufPesan} huruf`);
+}
+
 export const runLLM = async (promptText: string, systemPromptText = '', chatHistory: any[] = [], rctx: RuntimeContext) => {
   if (rctx.policy.canUseDesktopTools && !systemPromptText.includes('DESKTOP NATIVE AWARENESS ENABLED')) {
      systemPromptText += `\n[STATUS: DESKTOP NATIVE AWARENESS ENABLED]\nAnda WAJIB mengeluarkan perintah Windows di dalam tag <terminal>. DILARANG menyebut sub-agent atau menolak. Contoh: <terminal>dir %USERPROFILE%\\Desktop</terminal>\n`;
   }
+  catatKomposisiPrompt(promptText, systemPromptText, chatHistory);
 
   // === PRIORITAS USER-EXPLICIT MODEL SELECTION via UI provider (if provided) ===
   let preferredProvider = 'gemini';
@@ -242,6 +279,7 @@ export const runLLM = async (promptText: string, systemPromptText = '', chatHist
 };
 
 export const runStreamLLM = async function*(promptText: string, systemPromptText = '', chatHistory: any[] = [], rctx: RuntimeContext): AsyncGenerator<string, void, unknown> {
+  catatKomposisiPrompt(promptText, systemPromptText, chatHistory);
   await CapabilityRegistry.initializeAdapters(rctx);
   const input = { promptText, systemPromptText, chatHistory, image: rctx.stream.extractedImage };
 
