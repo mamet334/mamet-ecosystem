@@ -1,4 +1,4 @@
--- Migration: 20260911170000_embedding_768.sql
+-- Migration: 20260911163456_embedding_768.sql (versi sesuai riwayat migrasi remote)
 -- Item 70 (2026-09-11): vektor embedding 3072 -> 768 dimensi.
 --
 -- google/gemini-embedding-2 adalah model "Matryoshka": angka-angka awal vektornya sudah memuat
