@@ -1,5 +1,6 @@
 import { generateEmbedding, EMBEDDING_DIMENSIONS } from '../../rag/embedding.ts';
 import { searchDocuments } from '../../rag/document_search.ts';
+import { tulisUlangPertanyaan, riwayatSebelumPesan, samaDenganAsli } from '../../rag/query_rewrite.ts';
 import { executeRoutingDecision } from '../../rag/routing_decider.ts';
 import { loadProjectMemory } from '../../rag/project_memory.ts';
 import { loadEngineerContext } from '../../rag/engineer_context.ts';
@@ -73,8 +74,14 @@ export const ContextBuilderHandler = {
 
     // 2. SCATTER: Trigger independent services in parallel (Phase 1 Event-Driven Gatherer)
     const TIER1_RETRIEVAL_TIMEOUT_MS = 5000;
+    // Tulis ulang (≤4 s) + embedding + pencarian kedua. Hanya berlaku saat pencarian pertama kosong
+    // dan ada riwayat — pesan biasa tetap dibatasi 5 detik.
+    const TULIS_ULANG_ANGGARAN_MS = 6000;
     const ragPromise = (async () => {
         if (!ctx.auth.userId || !ctx.request.isRagEnabled) return [];
+
+        const mulaiTier1 = Date.now();
+        let tenggatTier1 = mulaiTier1 + TIER1_RETRIEVAL_TIMEOUT_MS;
 
         const executeTier1 = async () => {
             // PENCARIAN DOKUMEN BERDASARKAN MAKNA UNTUK SEMUA MODE (Item 65, 2026-09-11).
@@ -95,17 +102,42 @@ export const ContextBuilderHandler = {
             const queryEmbedding = vektorSiap ? ctx.request.queryEmbedding : await generateEmbedding(pesan, rctx);
 
             if (queryEmbedding.length === EMBEDDING_DIMENSIONS) {
-                const vectorDocs = await searchDocuments(
-                    queryEmbedding,
-                    pesan,
+                const cari = (vektor: number[], teks: string) => searchDocuments(
+                    vektor,
+                    teks,
                     ctx.request.effectiveRagThreshold,
                     ctx.request.effectiveRagMatchCount,
                     routingDecision,
                     ctx.auth.userId,
                     rctx
                 );
+                let vectorDocs = await cari(queryEmbedding, pesan);
+
+                // PERTANYAAN LANJUTAN (Item 67): "Lanjutkan, apa kendalanya?" tak menyebut topiknya,
+                // jadi pencarian di atas kosong walau dokumennya ada. Bila kosong DAN ada riwayat,
+                // model murah menulis ulang pesan menjadi pertanyaan mandiri lalu dicari sekali lagi.
+                // Pesan yang sudah mandiri / ganti topik dikembalikan apa adanya → tidak dicari ulang.
+                let catatanUlang = '';
+                if (vectorDocs.length === 0) {
+                    const riwayat = riwayatSebelumPesan(ctx.request.history, pesan);
+                    if (riwayat.length > 0) {
+                        tenggatTier1 = Math.max(tenggatTier1, Date.now() + TULIS_ULANG_ANGGARAN_MS);
+                        const ulang = await tulisUlangPertanyaan(pesan, riwayat, rctx, { batasWaktuMs: 4000 });
+                        if (!ulang) {
+                            catatanUlang = ', tulis ulang gagal';
+                        } else if (samaDenganAsli(ulang.teks, pesan)) {
+                            catatanUlang = `, tulis ulang: pesan sudah mandiri (${ulang.ms} ms)`;
+                        } else {
+                            const vektorUlang = await generateEmbedding(ulang.teks, rctx);
+                            if (vektorUlang.length === EMBEDDING_DIMENSIONS) vectorDocs = await cari(vektorUlang, ulang.teks);
+                            catatanUlang = `, tulis ulang (${ulang.ms} ms, $${ulang.biaya ?? '?'}): "${ulang.teks.slice(0, 120)}" → ${vectorDocs.length} potongan`;
+                            ctx.state.processingSteps.push(`🔁 [RAG] Pertanyaan lanjutan ditulis ulang: "${ulang.teks}"`);
+                        }
+                    }
+                }
+
                 const skorTeratas = vectorDocs.length ? Math.max(...vectorDocs.map((d: any) => d.similarity || 0)) : 0;
-                console.log(`[RAG] Mode: ${ctx.policy.mode} — pencarian makna: ${vectorDocs.length} potongan (ambang ${ctx.request.effectiveRagThreshold}, maks ${ctx.request.effectiveRagMatchCount}, skor teratas ${skorTeratas.toFixed(3)}, vektor ${vektorSiap ? 'dipakai ulang' : 'baru'})`);
+                console.log(`[RAG] Mode: ${ctx.policy.mode} — pencarian makna: ${vectorDocs.length} potongan (ambang ${ctx.request.effectiveRagThreshold}, maks ${ctx.request.effectiveRagMatchCount}, skor teratas ${skorTeratas.toFixed(3)}, vektor ${vektorSiap ? 'dipakai ulang' : 'baru'}${catatanUlang})`);
                 if (vectorDocs.length === 0) return { chunks: [], strategy: 'vector_empty', sufficiency: 0.0, caseType: 'NONE' };
                 return { chunks: vectorDocs, strategy: 'vector_topk', sufficiency: +skorTeratas.toFixed(3), caseType: 'NONE' };
             }
@@ -130,10 +162,17 @@ export const ContextBuilderHandler = {
             return await retrievalStrategy.apply(rawChunks, supabase);
         };
 
+        let pengaturWaktu: number | undefined;
         try {
-            // Terapkan Timeout 5 Detik eksplisit
+            // Batas waktu 5 detik, diperpanjang oleh executeTier1 lewat `tenggatTier1` hanya saat
+            // menulis ulang pertanyaan lanjutan (Item 67).
             const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error(`Tier 1 RAG timeout after ${TIER1_RETRIEVAL_TIMEOUT_MS}ms`)), TIER1_RETRIEVAL_TIMEOUT_MS);
+                const periksa = () => {
+                    const sisa = tenggatTier1 - Date.now();
+                    if (sisa > 0) { pengaturWaktu = setTimeout(periksa, sisa); return; }
+                    reject(new Error(`Tier 1 RAG timeout after ${Date.now() - mulaiTier1}ms`));
+                };
+                pengaturWaktu = setTimeout(periksa, TIER1_RETRIEVAL_TIMEOUT_MS);
             });
 
             const adaptiveResult: any = await Promise.race([executeTier1(), timeoutPromise]);
@@ -170,6 +209,8 @@ export const ContextBuilderHandler = {
             };
             ctx.state.processingSteps.push(`⚠️ [RAG TIER 1 FALLBACK] ${err.message}`);
             return [];
+        } finally {
+            clearTimeout(pengaturWaktu);
         }
     })();
 
