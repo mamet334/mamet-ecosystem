@@ -220,7 +220,7 @@ export async function executeRequestPipeline(
     if (parsed.finalMessage && parsed.finalMessage.trim().length > 0 && parsed.ragEnabled !== false) {
       console.log('🔍 [RAG] Generating embedding for vector search...');
 
-      // 1. Vektor kueri lewat pintu embedding tunggal (OpenRouter, kunci pengguna, 3072 dimensi).
+      // 1. Vektor kueri lewat pintu embedding tunggal (OpenRouter, kunci pengguna, 768 dimensi — Item 70).
       //    Disimpan di ctx.request supaya pencarian DOKUMEN di context_builder memakai vektor yang
       //    sama — satu embedding per pesan, bukan dua.
       const userEmbedding = await generateEmbeddingThroughAdapter(parsed.finalMessage, rctx);

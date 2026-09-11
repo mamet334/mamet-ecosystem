@@ -33,7 +33,10 @@ export function buildUnifiedExecutionContext(input: { message: string, desktopOS
     request: { originalMessage: input.message, finalMessage: input.message, lowerMsg, mode },
     policy: {
         mode, decision: "ALLOW", toolsEnabled: true, webSearchEnabled: true, riskScore: 0,
-        ragTopK: mode === "LITE" ? 10 : 5, ragThreshold: dynamicThreshold, webHint,
+        // 8 potongan (dulu 5) sejak potongan 800 huruf (Item 70): 8 × ±800 = ±6.400 huruf dokumen
+        // per jawaban — tetap jauh di bawah 5 × 4.500 = 22.500 sebelumnya, dengan potongan tetangga
+        // ikut terbawa (jawaban di peringkat #2 pun masuk). LITE sudah 10.
+        ragTopK: mode === "LITE" ? 10 : 8, ragThreshold: dynamicThreshold, webHint,
         canReadRAG: engineerPolicy?.canReadRAG ?? true,
         canReadMemory: engineerPolicy?.canReadMemory ?? !isMametLite,
         canWriteMemory: engineerPolicy?.canWriteMemory ?? ((mode === "ENGINEER" || mode === "ASSISTANT" || mode === "AI") && !isMametLite),

@@ -26,7 +26,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-byok-openrouter',
 };
 
-const UKURAN_KELOMPOK = 12;
+// 32 potongan per panggilan embedding (dulu 12, saat potongan 4.500 huruf). Potongan kini 800 huruf
+// (Item 70) — ebook 436 halaman ±920 potongan: 12 per kelompok = ±77 panggilan, terlalu dekat dengan
+// anggaran 110 detik; 32 per kelompok = ±29 panggilan dengan teks per panggilan tetap lebih kecil.
+const UKURAN_KELOMPOK = 32;
 const ANGGARAN_WAKTU_MS = 110_000;
 
 function jawab(isi: unknown, status: number): Response {
@@ -119,7 +122,7 @@ serve(async (req) => {
     }
 
     // 5. Potong teks.
-    const chunks = chunkText(text, 4500).filter(c => c.trim() !== '');
+    const chunks = chunkText(text).filter(c => c.trim() !== ''); // 800 / 100 — vector_utils (Item 70)
     totalPotongan = chunks.length;
     if (chunks.length === 0) {
       return jawab({ error: `Dokumen "${title}" kosong atau tidak memiliki teks yang bisa dibaca.`, code: 'EMPTY_DOCUMENT' }, 400);

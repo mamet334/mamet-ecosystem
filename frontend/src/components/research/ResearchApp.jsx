@@ -5,7 +5,7 @@ import { Search, Upload, Trash2, FileText, Loader2, Database, PlusCircle } from 
 import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from '../../core/runtime/services/documentTextExtractor.js';
 
 // Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
-const POTONGAN_PERLU_KONFIRMASI = 30;
+const POTONGAN_PERLU_KONFIRMASI = 150; // ±105 ribu huruf ≈ $0,006 (potongan 800 huruf, Item 70)
 
 export default function ResearchApp() {
     const [documents, setDocuments] = useState([]);

@@ -5,7 +5,7 @@ import { callAgentSimple, parseSSEStream } from './lib/callAgentSimple';
 import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from './lib/documentTextExtractor';
 
 // Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
-const POTONGAN_PERLU_KONFIRMASI = 30;
+const POTONGAN_PERLU_KONFIRMASI = 150; // ±105 ribu huruf ≈ $0,006 (potongan 800 huruf, Item 70)
 
 // Custom lightweight Markdown parser to avoid React 19 crashes with react-markdown
 const parseMarkdown = (text) => {

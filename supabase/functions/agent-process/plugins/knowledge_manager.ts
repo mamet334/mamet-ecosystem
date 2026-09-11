@@ -135,7 +135,7 @@ export const knowledgeManagerPlugin = {
           const { data: docData, error: docError } = await supabase.from('documents').insert({ user_id: userId, title, space_id: space.id }).select('id').single();
           if (docError) throw docError;
 
-          const chunks = chunkText(contentToSave, 4500);
+          const chunks = chunkText(contentToSave); // ukuran bersama di vector_utils (Item 70)
           let successCount = 0;
           let gagalDimensi = 0;
           let gagalInsert = 0;

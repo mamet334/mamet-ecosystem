@@ -26,10 +26,12 @@ const PORSI_BERULANG = 0.3;           // baris tepi yang muncul di ≥30% halama
 const PORSI_SCAN = 0.5;               // ≥50% halaman tanpa teks = PDF hasil scan
 
 // Perkiraan biaya embedding (Item 63): google/gemini-embedding-2 ±$0,20 per juta token,
-// ±4 huruf per token (HCDP: 11 potongan ≈ 12 ribu token). Potongan 4.500 huruf, tumpang 250.
+// ±4 huruf per token (HCDP: 11 potongan ≈ 12 ribu token). Potongan 800 huruf, tumpang 100
+// (Item 70, sama dengan chunkText di rag-process) → maju 700 huruf per potongan.
 const DOLAR_PER_TOKEN = 0.20 / 1e6;
 const HURUF_PER_TOKEN = 4;
-const HURUF_PER_POTONGAN = 4250;
+const LANGKAH_POTONGAN = 700;
+const TUMPANG_POTONGAN = 100;
 
 export class GagalEkstrak extends Error {
   constructor(kode, message) {
@@ -39,10 +41,9 @@ export class GagalEkstrak extends Error {
 }
 
 export function perkiraanUnggah(huruf) {
-  return {
-    potongan: Math.max(1, Math.ceil(huruf / HURUF_PER_POTONGAN)),
-    dolar: (huruf / HURUF_PER_TOKEN) * DOLAR_PER_TOKEN
-  };
+  const potongan = Math.max(1, Math.ceil(huruf / LANGKAH_POTONGAN));
+  // Tumpang ikut divektorkan dua kali.
+  return { potongan, dolar: ((huruf + potongan * TUMPANG_POTONGAN) / HURUF_PER_TOKEN) * DOLAR_PER_TOKEN };
 }
 
 const ekstensi = (nama) => {

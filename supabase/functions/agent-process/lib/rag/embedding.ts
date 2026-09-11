@@ -5,8 +5,8 @@ import { embedLewatOpenRouter, EMBED_DIMENSI } from '../vector_utils.ts';
  * Dimensi vektor yang WAJIB dihasilkan embedding.
  *
  * Angkanya ditentukan oleh skema database, bukan sebaliknya: kolom
- * `document_chunks.embedding` dan `user_memories.embedding` bertipe `vector(3072)`.
- * Menyimpan dimensi lain ditolak Postgres; membandingkannya pun gagal
+ * `document_chunks.embedding` dan `user_memories.embedding` bertipe `vector(768)` sejak Item 70
+ * (sebelumnya 3072). Menyimpan dimensi lain ditolak Postgres; membandingkannya pun gagal
  * (`different vector dimensions`, Item 62).
  *
  * Riwayat: konstanta ini dulu 768 — sisa era model lama — sehingga generateEmbedding()

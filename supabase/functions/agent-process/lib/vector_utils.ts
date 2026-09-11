@@ -1,6 +1,21 @@
-export function chunkText(text: string, maxLength: number = 4500): string[] {
+/**
+ * UKURAN POTONGAN (Item 70, 2026-09-11): 800 huruf, tumpang 100 — sebelumnya 4.500 / 250.
+ *
+ * Potongan besar mencampur banyak topik, dan vektornya menjadi rata-rata yang kabur. Terukur pada
+ * ebook "Operator Handbook": potongan 4.500 huruf berisi 19 perintah adb; kalimat
+ * `adb shell dumpsys battery reset` — yang tertulis PERSIS di dalamnya — hanya mendapat skor 0,510
+ * terhadapnya (peringkat 5), dan untuk enam pertanyaan uji potongan itu KALAH dari potongan
+ * bertopik lain. Dipotong ulang, potongan berisi jawaban naik ke peringkat #1–#2 di keenamnya:
+ *   800 huruf → #1/#1/#2/#1/#2/#1;  1.000 → cadangan (ID) #3–4;  1.200 → #5.
+ */
+export const UKURAN_POTONGAN = 800;
+export const TUMPANG_POTONGAN = 100;
+
+export function chunkText(text: string, maxLength: number = UKURAN_POTONGAN, tumpang: number = TUMPANG_POTONGAN): string[] {
   const chunks: string[] = [];
   let i = 0;
+  // Batas mundur untuk mencari akhir baris/kalimat — dulu 150 dari tumpang 250.
+  const jangkauBatas = Math.round(tumpang * 0.6);
   while (i < text.length) {
     let end = i + maxLength;
     if (end < text.length) {
@@ -13,10 +28,10 @@ export function chunkText(text: string, maxLength: number = 4500): string[] {
     chunks.push(text.substring(i, end).trim());
     if (end >= text.length) break;
 
-    let nextI = end - 250;
+    let nextI = end - tumpang;
     let bLine = text.lastIndexOf('\n', end);
     let bDot = text.lastIndexOf('. ', end);
-    let boundary = bLine >= end - 150 ? bLine : (bDot >= end - 150 ? bDot : -1);
+    let boundary = bLine >= end - jangkauBatas ? bLine : (bDot >= end - jangkauBatas ? bDot : -1);
     
     if (boundary > nextI && boundary < end) {
       nextI = boundary + 1;
@@ -46,7 +61,13 @@ export function chunkText(text: string, maxLength: number = 4500): string[] {
  * dengan jeda 0,6 s yang gagal setelah 44 detik.
  */
 export const EMBED_MODEL = 'google/gemini-embedding-2';
-export const EMBED_DIMENSI = 3072;
+// 768, bukan 3072 (Item 70). Model ini "Matryoshka": angka-angka awal vektornya sudah memuat makna
+// utama, jadi vektor bisa dipersingkat. Terukur: peringkat potongan berisi jawaban SAMA PERSIS pada
+// 3072/1536/768 untuk keenam pertanyaan uji; `dimensions: 768` dari OpenRouter identik dengan
+// memotong sendiri (kemiripan 1,0000); ambang memori 0,70 tetap memisahkan pasangan kalibrasinya
+// (teh 0,7327 lolos, jalan pagi 0,6735 tidak). Seperempat ruang (±3 KB/vektor, bukan ±12 KB) dan kini
+// bisa diindeks (pgvector membatasi indeks 2.000 dimensi). Kolom database WAJIB ikut 768.
+export const EMBED_DIMENSI = 768;
 
 export class EmbedGagal extends Error {
   constructor(public kode: string, message: string, public status: number = 502) {
@@ -66,7 +87,7 @@ export async function embedLewatOpenRouter(
     const res = await fetch('https://openrouter.ai/api/v1/embeddings', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${kunci}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: EMBED_MODEL, input: teks })
+      body: JSON.stringify({ model: EMBED_MODEL, input: teks, dimensions: EMBED_DIMENSI })
     });
 
     if (res.ok) {
