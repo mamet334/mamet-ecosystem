@@ -91,10 +91,11 @@ serve(async (req) => {
       }, 400);
     }
 
-    // 3. Tolak berkas biner sebelum ada biaya.
+    // 3. Tolak berkas biner sebelum ada biaya. Sejak Item 69 aplikasi mengambil teks PDF/DOCX di
+    //    browser, jadi yang sampai ke sini hanya dari aplikasi versi lama yang masih termuat.
     if (tampakBiner(text)) {
       return jawab({
-        error: `"${title}" tampaknya berkas PDF/Word yang terbaca mentah, bukan teks. Untuk sementara unggah versi .txt-nya.`,
+        error: `"${title}" terkirim sebagai berkas PDF/Word mentah, bukan teks. Muat ulang aplikasi (versi lama belum bisa membaca PDF/Word), lalu unggah lagi.`,
         code: 'BINARY_FILE'
       }, 400);
     }

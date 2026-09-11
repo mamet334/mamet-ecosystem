@@ -2,6 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, Upload, Send, User, Bot, Loader2, LogOut, Globe, BookOpen, Lock, Plus, MessageSquare, Trash2, Copy, Check } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { callAgentSimple, parseSSEStream } from './lib/callAgentSimple';
+import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from './lib/documentTextExtractor';
+
+// Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
+const POTONGAN_PERLU_KONFIRMASI = 30;
 
 // Custom lightweight Markdown parser to avoid React 19 crashes with react-markdown
 const parseMarkdown = (text) => {
@@ -76,6 +80,7 @@ function App() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [statusUnggah, setStatusUnggah] = useState('');
   const [documents, setDocuments] = useState([]);
   const [activeModes, setActiveModes] = useState({ rag: true, websearch: false, research: false });
 
@@ -196,16 +201,9 @@ function App() {
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
-    // PDF/DOCX masih dibaca mentah dengan file.text() (belum ada ekstraksi teks), dan
-    // rag-process menolaknya sebagai BINARY_FILE. Ditolak di sini juga, sebelum alur
-    // timpa menghapus dokumen lama.
-    if (!file.name.toLowerCase().endsWith('.txt')) {
-      alert('Untuk sementara hanya berkas .txt yang bisa diunggah. Ekstraksi teks PDF/Word sedang diperbaiki.');
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
-    }
-
-    // Filter dokumen ganda / Update dokumen
+    // Filter dokumen ganda / Update dokumen. Hanya DITANYAKAN di sini — dokumen lama baru
+    // dihapus setelah unggahan baru berhasil (Item 69). Dulu dihapus lebih dulu, jadi unggahan
+    // yang gagal (PDF scan, saldo habis…) ikut menghilangkan dokumen lama.
     const existingDoc = documents.find(doc => doc.title === file.name);
     if (existingDoc) {
       const confirmUpdate = window.confirm(`Dokumen bernama "${file.name}" sudah ada. Apakah Anda ingin menimpanya (memperbarui data)?`);
@@ -213,31 +211,39 @@ function App() {
         if (fileInputRef.current) fileInputRef.current.value = '';
         return;
       }
-      // Jika setuju menimpa, hapus diam-diam dari Supabase dulu
-      await supabase.from('documents').delete().eq('id', existingDoc.id);
-      setDocuments(prev => prev.filter(doc => doc.id !== existingDoc.id));
     }
 
     setIsUploading(true);
-    
+    setStatusUnggah('Membaca dokumen…');
+
     // Memberikan waktu singkat agar browser (React) merender animasi putaran (spinner) sebelum memproses file berat
     await new Promise(resolve => setTimeout(resolve, 100));
 
     try {
-      let extractedText = '';
-      if (file.name.endsWith('.txt')) {
-        extractedText = await file.text();
-      } else {
-        extractedText = await file.text(); 
+      // PDF/DOCX diambil teksnya di browser (Item 69). Gagal (scan, terkunci, .doc lama…)
+      // melempar GagalEkstrak berpesan jelas → alert di bawah, dokumen lama tetap utuh.
+      const hasil = await ekstrakTeksDokumen(file, {
+        onProgress: ({ halaman, total }) => {
+          if (total) setStatusUnggah(`Membaca halaman ${halaman}/${total}…`);
+        }
+      });
+      const { potongan, dolar } = perkiraanUnggah(hasil.huruf);
+      if (potongan > POTONGAN_PERLU_KONFIRMASI) {
+        const infoHalaman = hasil.halaman ? `${hasil.halaman} halaman, ` : '';
+        const infoKosong = hasil.halamanKosong ? `\n${hasil.halamanKosong} halaman berupa gambar dilewati.` : '';
+        const lanjut = window.confirm(
+          `"${file.name}": ${infoHalaman}±${potongan} potongan teks.${infoKosong}\n\n` +
+          `Perkiraan biaya embedding ±$${dolar.toFixed(3)} dari saldo OpenRouter Anda. Lanjutkan?`
+        );
+        if (!lanjut) return;
       }
+      setStatusUnggah(`Memvektorkan ±${potongan} potongan…`);
 
       // Embedding dibayar pengguna dengan kunci OpenRouter-nya sendiri (Item 63) — kunci
-      // yang sama dengan yang dipakai chat. Tanpa kunci, rag-process menolak dengan
-      // pesan yang menjelaskan caranya. Catatan: PDF/DOCX di atas masih dibaca mentah;
-      // rag-process kini menolaknya sebelum ada biaya (BINARY_FILE).
+      // yang sama dengan yang dipakai chat.
       const openRouterKey = (localStorage.getItem('x-byok-openrouter') || '').replace(/[^\x00-\x7F]/g, '').trim();
       const { error } = await supabase.functions.invoke('rag-process', {
-        body: { title: file.name, text: extractedText, userId: session.user.id },
+        body: { title: file.name, text: hasil.teks, userId: session.user.id },
         headers: openRouterKey ? { 'x-byok-openrouter': openRouterKey } : {}
       });
 
@@ -252,14 +258,21 @@ function App() {
         }
         throw new Error(pesan);
       }
-      
-      setDocuments(prev => [{ id: Date.now(), title: file.name }, ...prev]); // Optimistic update, exact ID doesn't matter much until refresh
+
+      // Versi baru sudah tersimpan — baru sekarang versi lama dihapus.
+      if (existingDoc) {
+        const { error: errHapus } = await supabase.from('documents').delete().eq('id', existingDoc.id);
+        if (errHapus) console.warn(`[mametlite] Versi lama "${file.name}" gagal dihapus: ${errHapus.message}`);
+      }
+
+      setDocuments(prev => [{ id: Date.now(), title: file.name }, ...prev.filter(doc => doc.id !== existingDoc?.id)]); // Optimistic update, exact ID doesn't matter much until refresh
       fetchDocuments(session.user.id); // Refresh to get real ID
 
     } catch (err) {
       alert(`Gagal mengunggah: ${err.message}`);
     } finally {
       setIsUploading(false);
+      setStatusUnggah('');
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -394,14 +407,14 @@ function App() {
           </div>
         </div>
 
-        <input type="file" ref={fileInputRef} onChange={handleUpload} className="hidden" accept=".pdf,.txt,.docx" />
+        <input type="file" ref={fileInputRef} onChange={handleUpload} className="hidden" accept={ACCEPT_UNGGAH} />
         <button 
           onClick={handleUploadClick} 
           disabled={isUploading}
           className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shrink-0"
         >
           {isUploading ? (
-            <><Loader2 className="w-5 h-5 animate-spin" /> Memproses AI...</>
+            <><Loader2 className="w-5 h-5 animate-spin" /> {statusUnggah || 'Memproses AI...'}</>
           ) : (
             <><Upload className="w-5 h-5" /> Unggah Dokumen (RAG)</>
           )}

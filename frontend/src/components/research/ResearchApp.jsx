@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabase';
 import { kernel } from '../../core/runtime/Kernel';
 import { Search, Upload, Trash2, FileText, Loader2, Database, PlusCircle } from 'lucide-react';
+import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from '../../core/runtime/services/documentTextExtractor.js';
+
+// Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
+const POTONGAN_PERLU_KONFIRMASI = 30;
 
 export default function ResearchApp() {
     const [documents, setDocuments] = useState([]);
@@ -10,6 +14,7 @@ export default function ResearchApp() {
         return sessionStorage.getItem('research_search_query') || '';
     });
     const [uploading, setUploading] = useState(false);
+    const [statusUnggah, setStatusUnggah] = useState('');
     const [deletingId, setDeletingId] = useState(null);
     const [knowledgeSpaces, setKnowledgeSpaces] = useState([]);
     const [selectedSpace, setSelectedSpace] = useState(null);
@@ -96,11 +101,26 @@ export default function ResearchApp() {
                 return;
             }
 
-            const text = await file.text();
-            if (!text.trim()) {
-                alert(`Dokumen "${file.name}" kosong atau tidak berisi teks yang bisa dibaca.`);
-                return;
+            // PDF/DOCX diambil teksnya di browser (Item 69); berkas teks dibaca apa adanya.
+            // Gagal (scan, terkunci, format lama…) melempar GagalEkstrak berpesan jelas → alert di bawah.
+            setStatusUnggah('Membaca dokumen…');
+            const hasil = await ekstrakTeksDokumen(file, {
+                onProgress: ({ halaman, total }) => {
+                    if (total) setStatusUnggah(`Membaca halaman ${halaman}/${total}…`);
+                }
+            });
+            const text = hasil.teks;
+            const { potongan, dolar } = perkiraanUnggah(hasil.huruf);
+            if (potongan > POTONGAN_PERLU_KONFIRMASI) {
+                const infoHalaman = hasil.halaman ? `${hasil.halaman} halaman, ` : '';
+                const infoKosong = hasil.halamanKosong ? `\n${hasil.halamanKosong} halaman berupa gambar dilewati.` : '';
+                const lanjut = window.confirm(
+                    `"${file.name}": ${infoHalaman}±${potongan} potongan teks.${infoKosong}\n\n` +
+                    `Perkiraan biaya embedding ±$${dolar.toFixed(3)} dari saldo OpenRouter Anda. Lanjutkan?`
+                );
+                if (!lanjut) return;
             }
+            setStatusUnggah(`Memvektorkan ±${potongan} potongan…`);
 
             // Embedding dibayar pengguna dengan kunci OpenRouter-nya sendiri (Item 63).
             // Tanpa kunci, rag-process menolak dengan pesan yang menjelaskan caranya.
@@ -142,13 +162,14 @@ export default function ResearchApp() {
             }
             if (data?.error) throw new Error(data.error);
 
-            console.log(`[ResearchApp] ✅ ${file.name}: ${data?.message ?? 'terunggah'}`);
+            console.log(`[ResearchApp] ✅ ${file.name}: ${data?.message ?? 'terunggah'} (${hasil.jenis}, ${hasil.huruf} huruf${data?.seconds ? `, ${data.seconds} s` : ''})`);
             loadDocuments();
         } catch (err) {
             console.error('[ResearchApp] Gagal upload:', err);
             alert('Gagal mengunggah dokumen: ' + err.message);
         } finally {
             setUploading(false);
+            setStatusUnggah('');
             e.target.value = '';
         }
     };
@@ -194,8 +215,8 @@ export default function ResearchApp() {
                 {/* Upload Button */}
                 <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg cursor-pointer transition-colors text-sm">
                     <Upload className="w-4 h-4" />
-                    {uploading ? 'Mengunggah...' : 'Upload Dokumen'}
-                    <input type="file" className="hidden" onChange={handleUpload} accept=".txt,.md,.csv,.json,.html,.xml" />
+                    {uploading ? (statusUnggah || 'Mengunggah...') : 'Upload Dokumen'}
+                    <input type="file" className="hidden" onChange={handleUpload} accept={ACCEPT_UNGGAH} disabled={uploading} />
                 </label>
             </div>
 

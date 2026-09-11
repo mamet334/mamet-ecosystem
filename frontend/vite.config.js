@@ -15,6 +15,7 @@ export default defineConfig({
         '**/node_modules/**',
         'src/core/workspace/WidgetRegistry.js',
         'src/core/runtime/Kernel.js', // Critical: Obfuscator breaks static analysis of dynamic imports
+        'src/core/runtime/services/documentTextExtractor.js', // import() pdfjs/mammoth + worker ?url (Item 69)
         'src/core/application/AppRegistry.js'
       ],
       compact: true,
