@@ -112,8 +112,11 @@ export class VerificationEngine {
       message: "Source trace string is present."
     };
 
-    // Mode ASSISTANT dan LITE adalah chat percakapan natural — tidak mewajibkan format SOURCE TRACE
-    if (context.mode === 'ASSISTANT' || context.mode === 'LITE') {
+    // Mode ASSISTANT dan LITE adalah chat percakapan natural — tidak mewajibkan format SOURCE TRACE.
+    // LOOKUP adalah jalur ringan chat Assistant yang sama (Item 65): sejak ia ikut mencari dokumen,
+    // evidence > 0 dan mode ketat menuntut kode jejak sumber dari jawaban natural pendek — terbukti
+    // 2026-09-11 20:18 WIB: jawaban benar dari 5 potongan HCDP diblokir HARD GATE ("Verification Failed").
+    if (context.mode === 'ASSISTANT' || context.mode === 'LITE' || context.mode === 'LOOKUP') {
       check002.status = "PASS";
       check002.severity = "INFO";
       check002.message = `CHECK_002 dilewati untuk mode ${context.mode || 'ASSISTANT'} (chat natural tidak memerlukan format source trace).`;
@@ -190,8 +193,10 @@ export class VerificationEngine {
 
     const traceFormatRegex = /[A-Z]{2,3}-\d{4}/;
 
-    // Mode ASSISTANT dan LITE: skip CHECK_003 karena chat natural tidak memerlukan format source trace
-    if (context.mode === 'ASSISTANT' || context.mode === 'LITE') {
+    // Mode ASSISTANT, LITE, dan LOOKUP: skip CHECK_003 karena chat natural tidak memerlukan format
+    // source trace. LOOKUP wajib ikut di SINI JUGA — pengecualian CHECK_002 membuatnya PASS, dan
+    // cabang di bawah lalu menuntut format ID dari jawaban natural (gagal di CHECK_003 alih-alih 002).
+    if (context.mode === 'ASSISTANT' || context.mode === 'LITE' || context.mode === 'LOOKUP') {
       check003.status = "PASS";
       check003.severity = "INFO";
       check003.message = `CHECK_003 dilewati untuk mode ${context.mode || 'ASSISTANT'} (chat natural tidak memerlukan format source trace).`;
