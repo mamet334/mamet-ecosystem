@@ -825,7 +825,7 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
       - **Log produksi, dua sisi:** chat pertama pukul 22:04 WIB tidak menyentuh blok ini — tombol RAG workspace mati (dikonfirmasi Owner), sehingga `ragEnabled=false`. Setelah RAG dinyalakan, dua chat (22:08 dan 22:10 WIB) sama-sama mencetak `🔍 [RAG] Generating embedding for vector search...` **tanpa** baris `Generating embedding via GeminiEmbeddingAdapter…` yang selalu dicetak kode lama, lalu `No relevant memories found` tanpa `Embedding gagal` maupun `Vector search error` — vektor 3.072 dibuat dan `match_memories` jalan. Keduanya POST 200. Kesepuluh memori Owner di `user_memories` berdimensi 3.072.
     - **Diamati, di luar perubahan ini:**
       - **Pencarian memori vektor di server belum pernah menemukan hasil di produksi.** *"minuman apa yang saya suka?"* tidak lolos ambang 0,70 terhadap *"saya suka kopi"* / *"saya juga suka teh"*; `match_memories` hanya menyaring pemilik dan skor, tanpa filter lain. Ambang 0,70 dikalibrasi dengan pernyataan lawan pernyataan (Item 46), padahal kueri biasanya berbentuk pertanyaan. Jawaban Owner tetap benar (kopi hitam, teh) karena memori datang dari jalur lain (`[MemoryManager] … memoryFetchCount: 1`).
-      - Saat pencarian server kosong, `request_pipeline.ts` menimpa `globalMemory` kiriman frontend dengan *"Tidak ada memori yang relevan."* — konteks dari frontend bisa ikut terbuang. Dibaca dari kode, dampaknya belum diukur.
+      - Saat pencarian server kosong, `request_pipeline.ts` menimpa `globalMemory` kiriman frontend dengan *"Tidak ada memori yang relevan."* — konteks dari frontend bisa ikut terbuang. Dibaca dari kode, dampaknya belum diukur. **→ Dikoreksi di Item 65:** konteks frontend tidak terbuang (sudah tersalin ke `ctx.request` lebih dulu); yang tertimpa hanya penanda "retrieval aktif". Diperbaiki di sana.
       - `CapabilityRegistry` menyimpan adapter di satu `Map` statis yang dikosongkan dan diisi ulang setiap permintaan. Dua permintaan bersamaan di isolate yang sama bisa saling memakai adapter yang dibuat dengan kunci pengguna lain (termasuk BYOK). Dibaca dari kode, belum terbukti terjadi — layak jadi item tersendiri karena lebih serius dari fallback ini.
       - Setiap chat mencatat `Audit log setup error: TypeError: rctx.tasks.add is not a function` (`memory_manager_v1.ts:15`) — log audit memori tidak tertulis.
       - Kunci Gemini #0 masih 403 (Item 51).
@@ -931,3 +931,56 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
     - **Item 44 (prompt 15–20 ribu token, 99,3% belanja) — mekanisme terlihat:** Kasus A menyeret seluruh dokumen yang judulnya cocok. Terbukti untuk permintaan 23:19:45; hari-hari sebelumnya belum dicocokkan.
     - **Belum terbukti:** unggah dari mametlite live dengan kode baru (belum diuji Owner).
     - **Berikutnya — beberapa item ternyata satu masalah:** rencana Item 63 no. 2 dan no. 4, LOOKUP yang melewati RAG, dan Item 44 disatukan menjadi **chat ASSISTANT dan LITE mencari dokumen berdasarkan makna**: pertanyaan divektorkan dengan kunci pengguna (±$0,000004), 5 potongan terbaik dengan ambang ±0,55, Kasus A dibatasi atau dihapus. Perkiraan ±6 ribu token alih-alih ±77 ribu per pertanyaan dokumen. **Sebelumnya:** periksa `CapabilityRegistry` (`Map` statis bersama, Item 62), karena kunci pengguna akan masuk ke `agent-process`.
+    - **→ Dikerjakan di Item 65.**
+
+65. **RAG Dituntaskan: Chat Mencari Dokumen Berdasarkan Makna, Embedding dengan Kunci Pengguna (2026-09-11):**
+    - **Permintaan Owner:** "tuntaskan dulu masalah RAG". Commit `51e1885` (RAG) dan `d80d8db` (verifikasi LOOKUP).
+    - **Pemetaan sebelum menulis kode** membongkar dua hal lagi:
+      - `document_chunks` **tidak punya kolom urutan** (tak ada `chunk_index`/`created_at`) dan `id`-nya UUID acak. "Neighbor expansion" Kasus A (`order('id')` dengan komentar "Asumsikan id berurutan") tidak pernah bisa mengambil tetangga — ia menyeret seluruh dokumen dalam urutan acak.
+      - Frontend **juga** menjalankan RAG dokumen sendiri (`RetrievalOrchestrator` Tier 1, pencocokan kata, dipangkas 4.000 huruf) dan mengirimnya sebagai `globalMemory` — dokumen masuk ke prompt **dua kali**.
+    - **Koreksi di tengah jalan, sebelum ada kode yang diubah:** saya sempat menyimpulkan server "menimpa konteks frontend" (catatan Item 62). **Keliru.** `ctx.request.globalMemory` sudah tersalin dari kiriman frontend di `request_pipeline.ts:172`, sebelum blok RAG, dan salinan itulah yang dipakai `context_builder`. Yang ditimpa hanya `parsed.globalMemory`, yang **hanya menentukan satu penanda**: kalimat *"SISTEM RETRIEVAL AKTIF"* vs *"BATAS PENGETAHUAN ANDA: akhir 2024"*. Akibat nyatanya dua: (1) saat tak ada memori cocok, penanda dihitung dari teks *"Tidak ada memori yang relevan."*, sehingga model diberi tahu pengetahuannya berhenti di 2024 walau dokumen/web sudah disuntikkan; (2) **memori hasil pencarian vektor tidak pernah masuk prompt** — hanya menyalakan penanda.
+    - **Perubahan:**
+
+      | # | Sebelum | Sesudah |
+      |---|---|---|
+      | 1 | Embedding lewat `GeminiEmbeddingAdapter` (kunci Gemini sistem, 1 dari 3 hidup) melalui `CapabilityRegistry` | `generateEmbedding` → `embedLewatOpenRouter` dengan `rctx.keys.openRouterByok` (header `x-byok-openrouter` saja — **tidak pernah** `keys.openRouter`, yang jatuh ke kunci sistem bila provider chat bukan openrouter). `embedding_adapter.ts` dan jalur embedding registry dihapus |
+      | 2 | ASSISTANT/LITE: pencocokan kata; hanya ENGINEER memakai vektor | **Semua mode** (ASSISTANT, LOOKUP, LITE, ENGINEER) memanggil `match_documents`. Vektor pertanyaan **dipakai ulang** dari pencarian memori — satu embedding per pesan. Hasil vektor tidak dilewatkan `RetrievalStrategyService` (Kasus B membatasi potongan per dokumen). Cadangan pencocokan kata hanya bila vektor tak tersedia |
+      | 3 | Ambang 0,60/0,65/0,68 menurut panjang pertanyaan | **0,55 tetap** (data Item 63) |
+      | 4 | `p_space_id` = space CORE setiap kali klien tak mengirim workspace (LOOKUP) | Dibatasi hanya bila `scope === 'WORKSPACE'` (UUID dari UI atau nama space disebut); selain itu semua space milik pengguna |
+      | 5 | Kasus A menyeret seluruh dokumen | Kasus A meneruskan potongan apa adanya (`case_a_passthrough`), "full-read" dihapus |
+      | 6 | LOOKUP mengirim `ragEnabled: false` | `ragEnabled` sesuai tombol RAG workspace |
+      | 7 | Penanda retrieval dihitung dari teks "Tidak ada memori yang relevan." | Dihitung dari konteks kiriman frontend + memori vektor; `parsed.globalMemory` tak lagi ditimpa |
+      | 8 | Frontend menjalankan Tier 1 dokumen sendiri | `skipLocalKnowledge: true`; orkestrator dipanggil hanya bila Web menyala; panduan Tier 2 ("tidak ada dokumen lokal — jawab dari pengetahuan umum") dilewati selama RAG menyala agar tidak membantah dokumen dari server (`skipInternalFallback`) |
+      | 9 | Embed memori (frontend) tanpa kunci pengguna | `MemoryGovernorService` mengirim `x-byok-openrouter` dari Vault; `AssistantService.buildHeaders` ikut mengirimnya bila provider chat bukan openrouter (hanya bila kunci provider chat ada, supaya `request_pipeline` tetap memakai provider pilihan) |
+
+    - **Uji kode asli sebelum deploy** (Deno, `fetch` dipalsukan): embedding tanpa kunci pengguna → `[]` dan **0 panggilan jaringan**; dengan kunci → `openrouter.ai`, Bearer kunci pengguna, `google/gemini-embedding-2`, 3.072 dimensi, **kunci sistem tidak tersentuh**; kunci ditolak 401 → `[]`. `p_space_id`: CORE default berisi ID core → `null`; WORKSPACE eksplisit → ID itu; ambang 0,55, maks 5. Kasus A/B: 0 akses database. `deno check`: tetap 81 (dua error `execution_context.ts` bawaan lama yang bergeser dua baris).
+    - **Produksi, putaran pertama (deploy `51e1885`, 20:18–20:20 WIB)** — tiga chat Owner, RAG menyala, tanpa kata "HCDP":
+
+      | Chat | Jalur | Pencarian makna | Token prompt | Hasil |
+      |---|---|---|---|---|
+      | desa & kelurahan (tanpa "?") | LOOKUP | 5 potongan, teratas 0,751, vektor dipakai ulang | 6.723 | ❌ **"Verification Failed"** |
+      | anggaran klaster sertifikasi | ASSISTANT | 5 potongan, teratas 0,681 | 17.369 | ✅ Rp927.500.000 |
+      | desa & kelurahan (dengan "?") | ASSISTANT | 5 potongan, teratas 0,736 | 15.160 (12.010 cache, $0,00037) | ✅ 14 kelurahan, 143 desa |
+
+    - **Kegagalan LOOKUP — efek samping perubahan ini.** Jawaban sudah jadi (26 token), lalu `HARD GATE` memblokirnya: `CHECK_002_SOURCE_TRACE_EXISTS`. Pengecualian chat natural hanya untuk ASSISTANT/LITE; dulu LOOKUP tak pernah membawa dokumen (tanpa bukti → WARN), kini membawa 5 potongan sehingga mode ketat menuntut kode jejak sumber. **Perbaikan `d80d8db`:** LOOKUP ditambahkan ke pengecualian `CHECK_002` **dan** `CHECK_003` — hanya di 002 akan membuatnya gagal di 003, karena cabang 003 menuntut format ID bila 002 PASS. Uji kode asli lama vs baru dengan jawaban natural + 5 bukti: LOOKUP FAIL → **PASS**; ASSISTANT PASS tetap; **ENGINEER (kontrol) FAIL tetap** — ketatnya tidak berkurang.
+    - **Pertanyaan Owner — "terlalu cepat? karena tanpa '?'"** Keduanya bukan: log menunjukkan seluruh tahap selesai (embedding, 5 potongan, jawaban model) sebelum verifikasi memblokir, dan kegagalannya deterministik. Pengklasifikasi tidak melihat "?"; pertanyaan yang sama masuk LOOKUP di chat pertama dan CONVERSATION di chat ketiga karena syarat **riwayat ≤4 pesan**. Chat anggaran masuk CONVERSATION karena kata rujukan dicocokkan sebagai **potongan huruf**: "k**last**er" mengandung "last".
+    - **Status:** ✅ **Selesai, Dideploy & Terbukti di Produksi.** `agent-process` versi **407** (20:25 WIB, `verify_jwt` tetap `false`), chat baru kosong 20:29 WIB:
+
+      | Chat | Jalur | Pencarian makna | Token prompt | Biaya | Verifikasi |
+      |---|---|---|---|---|---|
+      | desa & kelurahan | **LOOKUP** | 5 potongan, teratas 0,736 | **6.725** | $0,0010 | ✅ PASS — "14 kelurahan dan 143 desa" |
+      | anggaran klaster | ASSISTANT | 5 potongan, teratas 0,681 | 17.392 | $0,0012 | ✅ Rp927.500.000 |
+
+      **Dibanding Item 64:** pertanyaan desa yang sama dulu 90.116 token dan $0,0112 — dan hanya berhasil karena kata "HCDP" cocok dengan judul. Kini dijawab lewat **makna**, tanpa menyebut judul, walau dokumennya berada di space "Observasi Pasar": **±13× lebih sedikit token, ±11× lebih murah**.
+    - **Menutup:** rencana Item 63 no. 2, 3, 4; temuan utama Item 64 (vektor dokumen tak dipakai chat, Kasus A, LOOKUP buta dokumen, cakupan space); jalur embedding Item 51 (kunci Gemini sistem tak lagi dipakai untuk embedding).
+    - **Belum terbukti:** unggah/penulisan memori dengan embedding kunci pengguna (`MemoryGovernorService` → endpoint embed); chat mametlite (mode LITE) dengan pencarian makna; pengguna tanpa kunci OpenRouter (jalur cadangan pencocokan kata).
+    - **Dicatat, belum dikerjakan:**
+      - **Memori hasil pencarian vektor tidak pernah masuk prompt** — `match_memories` jalan di setiap chat, hasilnya hanya menyalakan penanda. Mengubah isi prompt memori di luar cakupan RAG dokumen; butuh keputusan.
+      - **Sisa ±10 ribu token prompt dasar** di jalur ASSISTANT (konstitusi, identitas, riwayat) — lanjutan Item 44; LOOKUP hanya ±6,7 ribu termasuk 5 potongan dokumen.
+      - **Perubahan perilaku Web:** frontend tak lagi menjalankan Tier 1, jadi saat tombol Web menyala Tier 3 (pencarian web) terpicu di setiap pesan — sama seperti perilaku saat RAG mati. Dulu dokumen yang "cukup" menahannya.
+      - `CapabilityRegistry` (Map statis bersama) **belum diselidiki** untuk adapter chat; embedding sudah tidak lewat sana.
+      - Kunci Gemini **#0 dan #1 kini 403** (log 20:19 WIB) — masih dipakai Intent Router, bukan embedding.
+      - Pengklasifikasi mencocokkan kata rujukan sebagai potongan huruf ("last" dalam "klaster", "ku" dalam "buku", "ini" dalam "dinilai").
+      - Log `[RAG_SCOPE_USED]: CORE` di `routing_decider` masih muncul — kini hanya label, pencarian memakai `p_space_id` null.
+      - `ExecutionTraceService` meminta kolom `verification_audit_logs.metadata` yang tidak ada (400, dicatat non-fatal).
+      - `rctx.tasks.add is not a function` di setiap chat (Item 62).
