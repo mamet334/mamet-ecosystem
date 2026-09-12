@@ -217,6 +217,16 @@ function renderContractAsText(
   if (knowledge.hasRAG) {
     text += `--- RAG Documents (${knowledge.ragCount} dokumen) ---\n`;
     text += `<RAG>\n${knowledge.ragSummary}\n</RAG>\n\n`;
+
+    // [ATURAN KUTIPAN PERSIS] Sisa Item 70: dokumen berbahasa Inggris dibaca lewat pertanyaan
+    // bahasa Indonesia, sehingga perintah shell yang dikutip berisiko diterjemahkan/dirapikan.
+    // Perintah yang sudah diterjemahkan tidak bisa dijalankan, jadi kutipan harus tetap apa adanya.
+    // Hanya dikirim bila ada dokumen — tidak menambah token saat RAG kosong.
+    text += `ATURAN KUTIPAN PERSIS (berlaku untuk dokumen di atas):\n`;
+    text += `- Perintah, kode, jalur file, flag/parameter, nama fungsi, kunci konfigurasi, pesan error, dan URL WAJIB ditulis ulang PERSIS huruf demi huruf seperti di dokumen: jangan diterjemahkan, jangan dirapikan ejaannya, jangan diganti tanda kutip/tanda hubungnya, jangan ditambah atau dikurangi spasi.\n`;
+    text += `- Bahasa penjelasan mengikuti bahasa pertanyaan user, tetapi bagian yang dikutip TETAP dalam bahasa aslinya (dokumen berbahasa Inggris tetap dikutip dalam bahasa Inggris).\n`;
+    text += `- Tulis perintah di dalam blok kode tersendiri, bukan disisipkan ke tengah kalimat.\n`;
+    text += `- Bila dokumen tidak memuat perintah yang diminta, katakan apa adanya. Jangan menyusun perintah dari ingatan sendiri lalu menyebutnya berasal dari dokumen.\n\n`;
   }
 
   // ── CONSTRAINT BLOCK ──
