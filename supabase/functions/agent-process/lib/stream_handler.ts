@@ -1,5 +1,6 @@
 import { RuntimeContext } from './runtime_context.ts';
 import { runStreamLLM } from './llm_orchestrator.ts';
+import { periksaLabelSumber, LABEL_HIPOTESIS } from './verification/label_sumber.ts';
 
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -94,6 +95,19 @@ export const getStreamResponse = (promptText: string, systemPromptText = '', cha
             enqueueStr(chunk);
         }
         
+        // === LABEL VERIFIED HARUS MENGUTIP SUMBER (Item 71) ===
+        // Teks yang sudah terkirim tidak bisa ditarik kembali, jadi koreksinya DITAMBAHKAN di akhir —
+        // pembaca tetap tahu label itu tidak sah. Jalur non-stream menggantinya langsung.
+        try {
+          const cek = periksaLabelSumber(fullLLMResponse, safeMeta.judulDokumen || []);
+          if (cek.dikoreksi) {
+            console.warn(`[LABEL] stream: VERIFIED tidak sah (${cek.alasan}); dokumen dilampirkan: ${(safeMeta.judulDokumen || []).length}`);
+            enqueueStr(`\n\n${LABEL_HIPOTESIS}\n${cek.catatan}\n`);
+          }
+        } catch (labelErr) {
+          console.error('[LABEL] gagal memeriksa label:', labelErr);
+        }
+
         // === PHASE 3: SHADOW STREAM INTERCEPTOR ===
         // Analyze the buffered text for potential rogue edits before closing
         try {

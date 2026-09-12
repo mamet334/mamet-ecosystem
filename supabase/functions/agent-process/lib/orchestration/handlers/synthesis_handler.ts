@@ -3,6 +3,7 @@ import { executeResponsePipeline } from '../../coordinator/parser_pipeline.ts';
 import { VerificationEngine } from '../../verification/verification_engine.ts';
 import { persistTelemetryLog } from '../../verification/verification_service.ts';
 import { eventBus } from '../../event/event_bus.ts';
+import { koreksiLabel } from '../../verification/label_sumber.ts';
 
 export const SynthesisHandler = {
   async handle(state: any, ctx: any, rctx: any, maef: any): Promise<any> {
@@ -24,6 +25,11 @@ export const SynthesisHandler = {
     const extractedImage = ctx.request.extractedImage;
     const history = ctx.request.history;
     const requestMode = (ctx.request.mode || 'ASSISTANT').toUpperCase(); // Normalisasi mode
+    // Judul DAN kode dokumen ([DOC-0001]) yang benar-benar dilampirkan ke prompt — dipakai memeriksa
+    // label VERIFIED (Item 71). Keduanya diterima: model boleh menyebut judul atau kodenya.
+    const judulDokumen: string[] = (ctx.state.ragArray || [])
+      .flatMap((r: any) => [r.formattedTitle, r.docId])
+      .filter((t: any) => typeof t === 'string' && t.trim());
     let replyMessage = 'Gagal memproses jawaban.';
 
     if (isChatBiasa || !maef.shouldExecutePhase('ORCHESTRATION')) {
@@ -44,7 +50,8 @@ export const SynthesisHandler = {
               processingSteps: ctx.state.processingSteps, 
               auditMode: ctx.request.auditMode, 
               routingDecision, 
-              contractValidation 
+              contractValidation,
+              judulDokumen 
             }, 
             snapshot: maef.getSnapshot() 
           };
@@ -277,6 +284,9 @@ export const SynthesisHandler = {
     });
 
     await rctx.tasks.awaitAll();
+
+    // Label VERIFIED hanya boleh bertahan bila jawaban mengutip dokumen yang dilampirkan (Item 71).
+    replyMessage = koreksiLabel(replyMessage, judulDokumen, requestMode);
 
     const aiResponse = {
       message: replyMessage,
