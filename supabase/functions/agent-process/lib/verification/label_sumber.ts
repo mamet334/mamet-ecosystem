@@ -38,14 +38,21 @@ export function periksaLabelSumber(jawaban: string, judulDokumen: string[]): Has
   if (!teks.includes(LABEL_VERIFIED)) return diam;
 
   const judul = (judulDokumen || []).filter((j) => typeof j === 'string' && j.trim());
-  // Baris sumber: "Sumber: ..." / "Sumber dokumen: ..." di luar blok kode.
-  const barisSumber = teks.split('\n').filter((b) => /^\s*(?:[*_>\s-]*)sumber\b/i.test(b));
-  const adaYangCocok = judul.length > 0 && barisSumber.some((b) => judul.some((j) => judulDisebut(b, j)));
+  // Kutipan sumber dicari di MANA SAJA, bukan hanya di awal baris: pada uji produksi pertama
+  // (2026-09-12) model menulis `[STATUS: VERIFIED] — Sumber: "judul…"` di SATU baris dengan label,
+  // dan aturan "baris harus dimulai dengan Sumber" menurunkan label yang sebenarnya sah.
+  // Tiap kemunculan kata "sumber" dibuka 300 huruf ke depan, lalu dicari judul yang cocok di sana.
+  const JANGKAUAN = 300;
+  const kutipan: string[] = [];
+  const pola = /sumber/gi;
+  let temu: RegExpExecArray | null;
+  while ((temu = pola.exec(teks)) !== null) kutipan.push(teks.slice(temu.index, temu.index + JANGKAUAN));
+  const adaYangCocok = judul.length > 0 && kutipan.some((k) => judul.some((j) => judulDisebut(k, j)));
   if (adaYangCocok) return diam;
 
   const alasan = judul.length === 0
     ? 'tidak ada dokumen yang dilampirkan'
-    : (barisSumber.length === 0 ? 'jawaban tidak menuliskan baris Sumber' : 'judul di baris Sumber tidak cocok dengan dokumen yang dilampirkan');
+    : (kutipan.length === 0 ? 'jawaban tidak menyebut Sumber' : 'judul di dekat kata Sumber tidak cocok dengan dokumen yang dilampirkan');
   return {
     jawaban: teks.split(LABEL_VERIFIED).join(LABEL_HIPOTESIS),
     dikoreksi: true,
