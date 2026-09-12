@@ -1173,8 +1173,20 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
       - **Prompt:** BLOK 6 kini memberi PILIHAN label; VERIFIED hanya bila jawaban berasal dari dokumen dan **wajib** disertai baris `Sumber: "judul"` (boleh dengan nomor halaman, tersedia sejak penanda `[Halaman N]` Item 69) atau kode `[DOC-000N]`; ditutup kalimat "Dokumen terlampir TIDAK otomatis berarti VERIFIED".
       - **Kode:** `lib/verification/label_sumber.ts` (baru) memeriksa judul/kode yang disebut terhadap `ctx.state.ragArray` — dokumen yang BENAR-BENAR dilampirkan. Tidak cocok → label diturunkan ke `[STATUS: HYPOTHESIS - Rekomendasi AI]` + catatan untuk pembaca, dicatat `[LABEL]` di log. Jalur non-stream: diganti sebelum jawaban dikirim. Jalur stream (mametlite, `stream: true`): teks terkirim tak bisa ditarik, jadi koreksi DITAMBAHKAN di akhir; `judulDokumen` ikut lewat payload ke `stream_handler`.
     - **Uji sebelum deploy:** kode asli 16/16 — jawaban sungguhan yang salah label di Item 70 diturunkan; judul cocok (termasuk bertanda tebal, di dalam daftar, beda huruf besar-kecil, kode `[DOC-0002]`) dipertahankan; sumber karangan, kode dokumen asing, dan "tanpa dokumen" diturunkan; `HYPOTHESIS` dan jawaban tanpa label tidak disentuh. `deno check` 81 → 81.
-    - **Status:** ⏳ **Sudah di-commit, MENUNGGU DEPLOY & UJI PRODUKSI.**
-    - **Dicatat:** jalur stream hanya bisa menambahkan koreksi di akhir, tidak mengganti label yang sudah terkirim.
+    - **Bug yang ditemukan uji produksi pertama (commit `a500f9c`):** label yang SAH justru diturunkan — model menulis `[STATUS: VERIFIED] — Sumber: "Operator handbook…"` pada SATU baris dengan label, sedangkan pemeriksa hanya menerima baris yang DIMULAI dengan "Sumber" (log 10:22:26 UTC: `[LABEL] LOOKUP: VERIFIED -> HYPOTHESIS (jawaban tidak menuliskan baris Sumber); dokumen dilampirkan: 16`). Diperbaiki: tiap kemunculan kata "sumber" dibuka 300 huruf ke depan lalu judul dicocokkan di sana, jadi posisi penulisan tak lagi menentukan; prompt ikut dilonggarkan. **Lolos karena semua contoh uji saya menaruh "Sumber" di awal baris.** Pesan commit pertama juga sempat menyebut "16/16 lulus" — angka keliru, diperbaiki lewat amend.
+    - **Status:** ✅ **Selesai, Dideploy & Terbukti di Produksi** (agent-process **v416**, di-deploy 10:27:39 UTC; chat uji 10:32:52 UTC):
+
+      | Pertanyaan (chat baru, RAG nyala) | Hasil |
+      |---|---|
+      | "Bagaimana cara mereset status baterai Android lewat adb?" | `[STATUS: VERIFIED] — Sumber: "Operator handbook … .pdf" [Halaman 15]`, tanpa catatan koreksi |
+      | "Jelaskan singkat apa itu inflasi" (1 potongan terlampir) | `[STATUS: HYPOTHESIS - Rekomendasi AI]`, tanpa catatan koreksi |
+
+      Tidak ada baris `[LABEL]` sesudah deploy, padahal sebelum deploy ada — jadi label dipertahankan karena sumbernya sah, bukan karena pemeriksaan dilewati. Teks jawaban tidak tersimpan di database (hanya token & biaya), jadi pembuktian dari sisi server bersandar pada ada/tidaknya baris `[LABEL]` plus versi fungsi.
+    - **Diuji silang:** nomor halaman yang dikutip model benar — `adb shell dumpsys battery reset` memang di **halaman 15** ebook.
+    - **Keterbatasan yang disadari:**
+      - **Nomor halaman belum dijamin.** Potongan yang memuat perintah itu TIDAK berisi penanda `[Halaman 15]`; penandanya 444 huruf sebelumnya, di potongan tetangga yang ikut terambil. Kali ini benar, tapi ketepatannya bergantung pada tempat potongan dipotong.
+      - **Yang diperiksa kutipannya, bukan isinya.** Jawaban yang menyebut dokumen benar tetapi isinya melenceng tetap lolos.
+      - Jalur stream hanya bisa menambahkan koreksi di akhir, tidak mengganti label yang sudah terkirim.
 
 72. **Rencana Adaptive Shell (UI Multi-Device) — Telaah (2026-09-12):**
     - **Asal:** `docs/roadmap/roadmap-adaptive-shell.md` (158 baris, ditulis di luar sesi ini). Owner meminta ditelaah dan didaftarkan. **Belum dikerjakan.**
