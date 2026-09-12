@@ -1097,3 +1097,71 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
     - **Dicatat, belum dikerjakan:**
       - **Chat lanjutan HCDP masih ±36 detik:** `deepseek-v4-pro` menulis ±16 detik, dan ada jeda ±9 detik antara selesainya pencarian dokumen (15:07:54) dan panggilan Intent Router berikutnya (15:08:03) — kemungkinan jalur multi-agen/*knowledge manager*, belum diselidiki. Pertanyaan pendek ikut THINKING karena *smoothing* (keputusan Owner, Item 34).
       - Intent Router (Gemini) dipanggil 1–2 kali per chat, ±2–3 detik masing-masing, termasuk 403 di kunci #0.
+
+69. **Unggah RAG Menerima PDF dan DOCX — Teks Diambil di Browser (2026-09-11):**
+    - **Permintaan Owner:** unggah PDF/Word untuk RAG pengetahuan ("saat ini ebook banyak menggunakan PDF").
+    - **Akar masalah:** `rag-process` hanya menerima teks. Research App (`accept=".txt,.md,…"`) dan mametlite (`file.text()` untuk `.pdf`/`.docx`) mengirim isi berkas mentah; sejak Item 64 ditolak sebagai `BINARY_FILE`. `pdfjs-dist` dan `mammoth` sudah ada di `package.json` frontend & mametlite tapi **tidak dipakai di mana pun**.
+    - **Keputusan: ekstraksi di browser**, bukan di edge function — bebas biaya, tak terkena batas CPU edge function, berkas asli tidak pernah disimpan di Supabase (hanya teksnya).
+    - **Diukur dulu dengan prototipe** (Node + pdfjs legacy; berkas HCDP di scratchpad, lalu `DOKUMEN HCDP 2025-2026.pdf` asli dan ebook Owner):
+
+      | Sumber | Waktu | Halaman | Hasil | Huruf rusak |
+      |---|---|---|---|---|
+      | HCDP DOCX | 0,2 s | — | 6.269 kata | 0 |
+      | HCDP PDF dari Word 365 | 0,5 s | 47 | 6.635 kata | 0 |
+      | HCDP PDF dari Word 2007 (= PDF asli Owner) | 0,8 s | 47 | 6.438 kata | 0 |
+      | Ebook "Operator Handbook" (WeLib) | 4,1 s | 436 | 645.522 huruf, 4 halaman gambar | 0 |
+      | `CamScanner 24-02-2026 14.15.pdf` (izin Owner) | — | 1 | 0 huruf → ditolak sebagai scan | — |
+
+    - **Temuan: PDF bercetak ulang.** PDF HCDP asli (Word 2007) mencetak setiap kalimat **3 kali di koordinat yang sama** (efek tebal/bayangan), dipecah di titik berbeda; spasi berlebar ±8,8 px menumpuk ke kata berikutnya. Ekstraksi polos: 133 ribu huruf berantakan. Ditangani: salinan identik dibuang menurut posisi (±2 px) + isi; halaman bercetak ulang disusun menurut posisi, spasi dibuang, potongan bertumpuk disambung lewat bagian teks yang sama. Hasil: frasa khas ("Smart ASN", "3.578 Pegawai", "Kecamatan Lubuk Batang", "antara 103°25′ sampai") tepat sekali di ketiga sumber.
+    - **Temuan kedua: HCDP di RAG sebelum item ini berisi teks 3 kali lipat** — diperiksa di database, setiap frasa khas muncul 3×; 33 potongan untuk isi yang cukup ±15. Diunggah ulang dari PDF asli: 14 potongan (masih 4.500 huruf); versi lama dihapus Owner.
+    - **Perubahan (commit `07d1fa3`):**
+      - `frontend/src/core/runtime/services/documentTextExtractor.js` (baru) + salinan `mametlite/src/lib/documentTextExtractor.js`: pdfjs **build legacy** + worker (`?url`, dimuat hanya saat unggah PDF), `mammoth` untuk DOCX; judul/kaki halaman berulang (baris tepi di ≥30% halaman) dan nomor halaman dibuang; kata terpotong tanda hubung disambung; penanda `[Halaman N]` untuk kutipan halaman tanpa kolom baru.
+      - Ditolak dengan pesan jelas (`GagalEkstrak.kode`): `SCAN` (≥50% halaman tanpa teks), `TERKUNCI`, `PDF_RUSAK`, `DOCX_RUSAK`, `TIDAK_DIDUKUNG` (`.doc` lama, format lain), `TERLALU_BESAR` (> 60 MB), `KOSONG`, `HURUF_RUSAK` (U+FFFD > 1%).
+      - Research App & mametlite: progres "Membaca halaman n/total" di tombol unggah; konfirmasi perkiraan potongan & biaya untuk dokumen besar.
+      - **mametlite: dokumen lama baru dihapus SETELAH unggahan baru berhasil** — dulu dihapus lebih dulu, jadi unggahan yang gagal ikut menghilangkan dokumen lama.
+      - `rag-process`: pesan `BINARY_FILE` kini menyuruh memuat ulang aplikasi (hanya tersisa untuk versi lama yang masih termuat).
+      - `vite.config.js`: berkas ekstraktor dikecualikan dari obfuscator (`import()` pdfjs/mammoth).
+    - **Uji sebelum deploy:** kode asli 23/23 lulus di frontend (pdfjs 5) dan mametlite (pdfjs 6) — **uji salinan mametlite menangkap bug**: pdfjs 6 tak lagi punya `doc.destroy()`; kini `loadingTask.destroy()` (ada di v5 & v6). Di browser (server dev) kedua aplikasi menghasilkan angka identik dengan Node, tanpa peringatan *fake worker*. Build frontend & mametlite lolos.
+    - **Status:** ✅ **Selesai & Terbukti di Produksi** — Owner mengunggah HCDP PDF dan ebook lewat versi web live, "berhasil lengkap dengan pemberitahuan"; 14 + 145 potongan tersimpan.
+    - **Dicatat, belum dikerjakan:** OCR untuk PDF scan; ekstraksi di Electron (`file://`) belum diuji — pdfjs jatuh ke *fake worker* bila module worker gagal, tetap jalan tapi lebih lambat.
+
+70. **Potongan RAG 800 Huruf dan Vektor 768 Dimensi (2026-09-11):**
+    - **Pertanyaan Owner:** bisakah Mamet menjawab dari dokumen berbahasa Inggris saat ditanya dalam bahasa Indonesia, dan apakah perintah seperti `adb shell dumpsys battery reset` tetap utuh, tidak diterjemahkan?
+    - **Uji di web (ebook, potongan 4.500 huruf):** bahasa jawaban aman — penjelasan berbahasa Indonesia, perintah utuh di blok kode. Tapi pencariannya meleset: skor 0,552 / 0,554 / 0,550 (mepet ambang 0,55); dua dari tiga berlabel `HYPOTHESIS` dengan perintah dari pengetahuan umum, bukan versi buku. Ketiga jawaban ada di **satu potongan** (`161c2490…`, 19 perintah adb) yang tidak terambil. `VERIFIED` pertanyaan pertama pun diberikan dengan potongan lain — label itu hanya berarti "ada dokumen yang diberikan", bukan bukti asal fakta.
+    - **Diukur, tiga cuplikan Console Owner** (kunci dari Vault tanpa dicetak; teks potongan dibaca dari database Owner sendiri, tidak ditempel ke chat):
+      1. **Bukan bahasa:** pertanyaan EN tidak lebih baik (baterai ID 0,530 vs EN 0,514); kalimat `adb shell dumpsys battery reset` — tertulis persis di potongan itu — hanya **0,510, peringkat 5**.
+      2. **Potongan terlalu campur** — potongan adb dipotong ulang, dibanding 4 potongan pengecoh (firewall, PowerShell, diskpart, Ansible); selisih skor adb terhadap pengecoh terbaik:
+
+         | Pertanyaan | 4.500 | 1.500 | 800 |
+         |---|---|---|---|
+         | ID baterai | −0,022 (kalah) | +0,141 | +0,132 (0,709) |
+         | EN baterai | −0,003 | +0,166 | +0,233 (0,805) |
+         | ID layar | −0,051 | +0,036 | +0,041 |
+         | EN layar | −0,049 | +0,070 | +0,133 |
+         | ID cadangan | −0,080 | ≈0 | +0,060 |
+         | EN cadangan | −0,081 | ≈0 | +0,095 |
+
+      3. **Ukuran × dimensi** — peringkat potongan yang *berisi jawaban*: 800 huruf → #1/#1/#2/#1/#2/#1; 1.000 → cadangan (ID) #3–4; 1.200 → #5. Peringkat **sama persis** pada 3.072 / 1.536 / 768. OpenRouter `dimensions: 768` identik dengan memotong sendiri (kemiripan 1,0000).
+    - **Ambang memori diperiksa di database** dengan pasangan kalibrasi Item 46: urutan sama, skor naik ±0,01 ("suka teh" 0,7263 → 0,7327 tetap lolos; "suka jalan pagi" 0,6599 → 0,6735 tetap tidak).
+    - **Perubahan (commit `d6b0966`, disetujui Owner):**
+      - `vector_utils.ts`: `UKURAN_POTONGAN` 800 / `TUMPANG_POTONGAN` 100 sebagai default `chunkText` (dipakai `rag-process` dan plugin `knowledge_manager`); `EMBED_DIMENSI` 768, `dimensions` dikirim ke OpenRouter.
+      - `rag-process`: kelompok 32 (dulu 12). `ragTopK` 5 → 8 (LITE tetap 10).
+      - Layar unggah: perkiraan untuk potongan 800 huruf; konfirmasi bila > 150 potongan.
+      - **Migrasi `20260911163456_embedding_768`** (commit `8768dcc` menyamakan nama file dengan versi remote): `document_chunks.embedding` & `user_memories.embedding` → `vector(768)` lewat `subvector` (tanpa memvektorkan ulang); view `active_user_memories` dibuat ulang (security_invoker, hak akses sama). Diuji dulu dalam transaksi `ROLLBACK`; diterapkan setelah Owner men-deploy kedua fungsi. Indeks HNSW sengaja belum dibuat — pencarian difilter per pengguna, sedangkan HNSW menyaring sesudah mengambil kandidat.
+    - **Uji sebelum deploy:** kode server asli 14/14 — ebook 827 potongan, maks 800 huruf, **0 kata hilang**, `adb shell dumpsys battery reset` utuh di satu potongan; `dimensions: 768` terkirim; vektor 3.072 ditolak. `deno check` 81 → 81, rag-process 0.
+    - **Status:** ✅ **Selesai, Dideploy & Terbukti di Produksi** (versi web live, 23:40–23:43 WIB):
+      - Migrasi: 674 vektor dokumen + 10 memori utuh; `match_documents` bekerja (potongan menemukan dirinya 1,0000); database **33 → 28 MB**.
+      - Unggah ulang: ebook **827 potongan dalam 53,3 s, 3,2 MB** (dulu 145 potongan / 2,1 MB dengan hasil meleset); HCDP DOCX 84 potongan dalam 6,6 s, 312 kB. Database 31 MB.
+
+      | Pertanyaan (chat baru, RAG nyala) | Sebelum | Sesudah |
+      |---|---|---|
+      | Reset baterai | 0,552, potongan lain | **0,735** `VERIFIED`, `adb shell dumpsys battery reset` |
+      | Tangkapan layar | 0,554, `HYPOTHESIS`, `adb exec-out…` | **0,673** `VERIFIED`, `adb shell screencap -p "/path/to/screenshot.png"` (versi buku) |
+      | Cadangan | 0,550, `HYPOTHESIS` | **0,616** `VERIFIED`, `adb backup -apk -all -f backup.ab` + varian `-nosystem`/`-shared` (versi buku) |
+
+      - Log: "maks 8" dan 8 potongan; blok RAG ±7.300 huruf (dulu hingga 22.500). LOOKUP: 3.218 token masuk, $0,0006 (dulu ±6.700, $0,001).
+    - **Dicatat, belum dikerjakan:**
+      - Pertanyaan bahasa Indonesia tetap ±0,05–0,10 di bawah bahasa Inggris untuk dokumen berbahasa Inggris ("cadangan" 0,616). Bila ada yang meleset: terjemahkan pertanyaan saat pencarian kosong (mekanisme Item 67).
+      - Dokumen lama (Juni–Agustus) masih berpotongan 4.500 huruf sampai diunggah ulang.
+      - Aturan "kutip perintah persis" di prompt sistem belum dipasang — uji menunjukkan model sudah melakukannya, tapi belum dijamin.
+      - Label `VERIFIED` perlu dibedakan dari "fakta berasal dari dokumen".
