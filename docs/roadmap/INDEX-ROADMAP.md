@@ -1163,7 +1163,7 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
     - **Dicatat, belum dikerjakan:**
       - Pertanyaan bahasa Indonesia tetap ±0,05–0,10 di bawah bahasa Inggris untuk dokumen berbahasa Inggris ("cadangan" 0,616). Bila ada yang meleset: terjemahkan pertanyaan saat pencarian kosong (mekanisme Item 67).
       - Dokumen lama (Juni–Agustus) masih berpotongan 4.500 huruf sampai diunggah ulang.
-      - Aturan "kutip perintah persis" di prompt sistem belum dipasang — uji menunjukkan model sudah melakukannya, tapi belum dijamin.
+      - ~~Aturan "kutip perintah persis" di prompt sistem belum dipasang~~ → dikerjakan di **Item 73** (2026-09-12).
       - Label `VERIFIED` perlu dibedakan dari "fakta berasal dari dokumen".
 
 71. **Label VERIFIED Wajib Mengutip Dokumen (2026-09-12):**
@@ -1203,3 +1203,21 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
       4. **Kenyataan HP dari Item 69 belum masuk rencana:** ekstraksi PDF di HP 3–5× lebih lambat, tab latar belakang bisa dihentikan browser saat unggah, dan batas 60 MB. Ini syarat nyata untuk "companion", layak ditulis sebagai batasan Fase 3/4.
       5. Ambang 600/1024 px sebagai konstanta bernama: setuju, dan sebaiknya satu sumber yang sama dipakai Tailwind maupun `DiscoveryManager`.
     - **Status:** 📋 **Rencana terdaftar, belum dikerjakan.** Saran urutan: kerjakan poin 3 dulu (murah, langsung terasa), lalu Fase 1 (deteksi + override, berdiri sendiri dan berguna), lalu putuskan Fase 2–3 setelah ada bukti pemakaian.
+
+73. **Aturan Kutipan Persis untuk Dokumen RAG (2026-09-12):**
+    - **Asal:** butir tertunda Item 70. Ebook di RAG berbahasa Inggris, pertanyaan Owner bahasa Indonesia; perintah yang ikut diterjemahkan atau "dirapikan" tidak bisa dijalankan. Uji Item 70 menunjukkan model sudah menyalin apa adanya, tapi tidak ada satu kalimat pun di prompt yang memintanya.
+    - **Perbaikan (commit `3c2d86e`):** `[BLOK 4]` di `universal_contract.ts` menambah **ATURAN KUTIPAN PERSIS** — (1) perintah/kode/jalur/flag/nama fungsi/kunci konfigurasi/pesan error/URL ditulis ulang huruf demi huruf, (2) bahasa penjelasan mengikuti pertanyaan sedangkan kutipan tetap bahasa aslinya, (3) perintah di blok kode tersendiri, (4) bila dokumen tidak memuatnya, katakan apa adanya. Dikirim **hanya bila ada dokumen**: 763 huruf bila ada, 0 bila RAG kosong.
+    - **Letaknya sengaja sesudah `</RAG>`, bukan di dalamnya:** pemisah cache di `llm_orchestrator.ts:35` dan `ai_adapter.ts:619` memindahkan seluruh blok `<RAG>…</RAG>` ke pesan user, jadi aturan yang ditaruh di dalamnya akan hilang dari `systemInstruction` dan tidak ikut ter-cache.
+    - **Uji sebelum deploy:** 12 pemeriksaan lulus (`scratchpad/uji_kutipan.mjs`, memakai potongan asli ebook) — aturan muncul saat ada dokumen & hilang saat kosong; keempat butir utuh; urutan sesudah dokumen dan sebelum BLOK 5; BLOK 6 tidak tergeser; dan dengan pemisahan cache disimulasikan, aturan tetap di prompt statis sementara dokumen pindah ke pesan user. Berkas asli diuji langsung (salinan uji hanya berbeda pada baris `import type`, diperiksa lewat diff di dalam uji).
+    - **Status:** ✅ **Selesai, Dideploy & Terbukti di Produksi** (chat 11:06 UTC):
+
+      | Yang tertulis di buku | Yang ditulis Mamet |
+      |---|---|
+      | `adb shell dumpsys battery set level <n>` | sama |
+      | `adb shell dumpsys battery set status<n>` | **sama — tanpa spasi sebelum `<n>`** |
+      | `adb shell dumpsys battery reset` | sama |
+
+      Baris kedua adalah buktinya: ebook itu salah ketik (tidak memberi spasi sebelum `<n>`) sedangkan baris di atasnya memberi spasi — salah ketik begitu tidak mungkin datang dari ingatan model. Keterangan bahasa Inggris dikutip apa adanya di tengah penjelasan bahasa Indonesia, dan model sendiri menambahkan bahwa keterangan `set status` di buku janggal "tapi saya tuliskan apa adanya sesuai dokumen" (butir 4). Label `Sumber: "…"` + `[STATUS: VERIFIED]`, tanpa baris `[LABEL]` di log.
+    - **Keterbatasan yang disadari:** ini **aturan prompt, bukan penegak kode** — berbeda dengan Item 71 yang labelnya diperiksa dan diturunkan otomatis. Buktinya satu jawaban produksi, bukan jaminan.
+    - **Temuan sampingan — jawaban berbeda untuk permintaan identik:** pertanyaan yang sama dijawab dua kali; 11:04 UTC menjawab "belum ada pertanyaan spesifik yang masuk" + `INSUFFICIENT`, 11:06 UTC menjawab benar. Log server memperlihatkan **kedua permintaan identik**: 8 potongan, skor teratas 0,764, Evidence Gate PASSED, prompt sistem 13.772 + pesan 861 huruf, model `deepseek-v4-flash-0731`, pesan user terkirim (`[L1] auth binding`). Yang berbeda hanya di sisi OpenRouter: token prompt 4.139 (cache 227) vs 4.217 (cache 0), biaya $0,000143 vs $0,000410 — pola khas OpenRouter mengarahkan model yang sama ke **penyedia hulu berbeda**. Masih dugaan: `data.provider` yang dikirim OpenRouter di setiap respons dibuang `ai_adapter.ts:361` dan tidak dicatat.
+    - **Dicatat, belum dikerjakan:** catat `data.provider` di baris `[PR#6 TOKEN METRICS]` (satu baris, gratis) agar kejadian seperti di atas bisa dibuktikan; bila terbukti, kunci daftar penyedia lewat parameter `provider` pada permintaan OpenRouter.
