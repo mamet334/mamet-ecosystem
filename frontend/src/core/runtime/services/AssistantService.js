@@ -36,6 +36,13 @@ function estimateTokens(text = '') {
   return Math.ceil(text.length / 4);
 }
 
+// Zona waktu browser (mis. "Asia/Jakarta"), dikirim bersama pesan supaya server tahu jam lokal pengguna
+// sebagai DATA, bukan tebakan model. undefined bila browser tak mendukung — server lalu menyatakan
+// jam lokal tidak diketahui.
+function zonaWaktuBrowser() {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined; } catch (_) { return undefined; }
+}
+
 // PR#6: Batas maksimal karakter untuk RAG/memory context yang dikirim ke Edge Function
 // Cegah bloat — context besar tidak selalu = jawaban lebih baik
 const MAX_RAG_CONTEXT_CHARS = 4000;   // ~1000 token
@@ -639,6 +646,7 @@ export class AssistantService {
       ragEnabled: ragToolEnabled,  // dokumen dicari di server (Item 65)
       model: formattedModel || undefined,
       thinking: aiThinking, // true/false tier dikirim apa adanya; false kini mematikan nalar di OpenRouter (2026-09-13)
+      clientTimezone: zonaWaktuBrowser(), // mis. "Asia/Jakarta" — server menghitung jam lokal (2026-09-13)
       cache_hint: true,
       _request_type: 'LOOKUP'
     };
@@ -1058,6 +1066,7 @@ export class AssistantService {
       ragEnabled: ragToolEnabled,
       model: formattedModel || undefined,
       thinking: aiThinking, // true/false tier dikirim apa adanya; false kini mematikan nalar di OpenRouter (2026-09-13)
+      clientTimezone: zonaWaktuBrowser(), // mis. "Asia/Jakarta" — server menghitung jam lokal (2026-09-13)
       file: fileData || undefined,
       requestedFilePath: isEngineerMode ? this.extractFilePathFromMessage(userMsg) : undefined,
       tools: isLiteMode ? ['rag_search', 'web_search', 'deep_research'] : undefined,

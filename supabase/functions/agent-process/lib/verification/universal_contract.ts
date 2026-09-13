@@ -282,7 +282,7 @@ function renderContractAsText(
     // header ini, lalu berlabel VERIFIED karena tabel zona waktu di ebook ikut dikutip untuk sebagian
     // isinya. Pemeriksa label_sumber.ts hanya bisa memeriksa KUTIPAN, bukan asal tiap fakta, jadi
     // pembedaan ini harus dinyatakan di prompt.
-    text += `Waktu, tanggal, dan Request ID di header kontrak adalah DATA SISTEM, bukan dokumen — jangan dijadikan Sumber dan jangan menjadi dasar label VERIFIED.\n`;
+    text += `Waktu, tanggal, zona waktu pengguna (KONTEKS WAKTU), dan Request ID di header kontrak adalah DATA SISTEM, bukan dokumen — jangan dijadikan Sumber dan jangan menjadi dasar label VERIFIED.\n`;
     text += `Bila INTI jawaban berasal dari data sistem atau pengetahuan Anda sendiri, dan dokumen hanya melengkapi sebagian, JANGAN pakai VERIFIED: pakai [STATUS: HYPOTHESIS - Rekomendasi AI] dan sebutkan bagian mana yang berasal dari dokumen.\n`;
     text += `Dokumen terlampir TIDAK otomatis berarti VERIFIED. Label VERIFIED tanpa baris Sumber yang cocok diturunkan otomatis oleh sistem.\n`;
   } else if (runtime.evidenceGateVerdict === 'WARNING') {

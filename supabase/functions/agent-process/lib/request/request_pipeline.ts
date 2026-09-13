@@ -11,6 +11,7 @@ import { CapabilityRegistry } from '../adapters/adapter_registry.ts';
 import { generateEmbedding, EMBEDDING_DIMENSIONS } from '../rag/embedding.ts';
 import { rapikanRiwayat } from './history_compressor.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { konteksWaktuPengguna, zonaWaktuSah } from './waktu_pengguna.ts';
 
 const getAllKeys = (envVarName: string): string[] => {
   const keysString = Deno.env.get(envVarName) || '';
@@ -305,7 +306,6 @@ export async function executeRequestPipeline(
   // [SELESAI] LOGIKA RAG
 
   // --- PROMPT INITIALIZATION ---
-  const currentDateStr = new Date().toISOString().split('T')[0];
   const teksPenanda = [typeof parsed.globalMemory === 'string' ? parsed.globalMemory : '', memoriVektor].join('\n');
   const hasInjectedKnowledge = Boolean(
     teksPenanda.includes('[DOKUMEN PENGETAHUAN') ||
@@ -315,7 +315,11 @@ export async function executeRequestPipeline(
     teksPenanda.trim().length > 80
   );
 
-  let agentIdentityPrompt = `\nKONTEKS WAKTU HARI INI: ${currentDateStr} (Tahun berjalan saat ini adalah 2026).\n`;
+  // Jam lokal pengguna dihitung dari zona waktu yang dikirim browser (lib/request/waktu_pengguna.ts).
+  // Dulu hanya tanggal UTC server + tahun yang ditulis tetap "2026": jam lokal harus DITEBAK model.
+  let agentIdentityPrompt = `\n${konteksWaktuPengguna(new Date(), parsed.clientTimezone)}\n`;
+  // Bukti dua ujung: jawaban yang menyebut WIB belum membuktikan zona waktunya sampai — model bisa menebak.
+  console.log(`[Waktu] Zona waktu pengguna: ${zonaWaktuSah(parsed.clientTimezone) ?? '(tidak dikirim / tidak sah)'}`);
   if (hasInjectedKnowledge) {
     agentIdentityPrompt += `SISTEM RETRIEVAL AKTIF: Anda telah dibekali dengan dokumen referensi pengetahuan / hasil pencarian web terkini pada konteks. Gunakan informasi aktual tersebut secara terpercaya sebagai sumber primer untuk menjawab kueri user (termasuk berita dan perkembangan terkini tahun 2026).\n`;
   } else {
