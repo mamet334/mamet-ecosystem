@@ -171,7 +171,7 @@ function renderContractAsText(
   text += `[UNIVERSAL EVIDENCE CONTRACT v2.0]\n`;
   text += `${'═'.repeat(60)}\n`;
   text += `System: ${identity.name} | Mode: ${identity.mode} | v${identity.version}\n`;
-  text += `Request ID: ${runtime.requestId} | ${runtime.timestamp}\n\n`;
+  text += `Request ID: ${runtime.requestId} | Waktu server (DATA SISTEM, bukan dokumen): ${runtime.timestamp}\n\n`;
 
   // ── IDENTITY BLOCK ──
   text += `[BLOK 1: IDENTITY]\n`;
@@ -278,6 +278,12 @@ function renderContractAsText(
     text += `- [STATUS: VERIFIED] — HANYA bila isi jawaban benar-benar berasal dari dokumen di BLOK 4 / <RAG> di atas. Bila memakai label ini, sertakan Sumber: "judul dokumen persis seperti tertulis di BLOK 4" — boleh di baris sebelum label atau pada baris label itu sendiri (sebut nomor halaman bila ada penanda [Halaman N]).\n`;
     text += `- [STATUS: HYPOTHESIS - Rekomendasi AI] — bila dokumen yang tersedia tidak memuat jawabannya dan Anda menjawab dari pengetahuan sendiri.\n`;
     text += `- [STATUS: INSUFFICIENT] — bila jawabannya tidak diketahui.\n`;
+    // Data sistem bukan dokumen (2026-09-13): pertanyaan "jam saat ini" dijawab dari stempel waktu
+    // header ini, lalu berlabel VERIFIED karena tabel zona waktu di ebook ikut dikutip untuk sebagian
+    // isinya. Pemeriksa label_sumber.ts hanya bisa memeriksa KUTIPAN, bukan asal tiap fakta, jadi
+    // pembedaan ini harus dinyatakan di prompt.
+    text += `Waktu, tanggal, dan Request ID di header kontrak adalah DATA SISTEM, bukan dokumen — jangan dijadikan Sumber dan jangan menjadi dasar label VERIFIED.\n`;
+    text += `Bila INTI jawaban berasal dari data sistem atau pengetahuan Anda sendiri, dan dokumen hanya melengkapi sebagian, JANGAN pakai VERIFIED: pakai [STATUS: HYPOTHESIS - Rekomendasi AI] dan sebutkan bagian mana yang berasal dari dokumen.\n`;
     text += `Dokumen terlampir TIDAK otomatis berarti VERIFIED. Label VERIFIED tanpa baris Sumber yang cocok diturunkan otomatis oleh sistem.\n`;
   } else if (runtime.evidenceGateVerdict === 'WARNING') {
     if (isShortVariant) {
