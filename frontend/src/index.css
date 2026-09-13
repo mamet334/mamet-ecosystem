@@ -2,6 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── HURUF TEKS ──
+   Inter disimpan sendiri (scripts/perbarui-huruf.mjs), tidak lagi diambil dari
+   fonts.googleapis.com. Bukan soal tampilan — stylesheet yang timeout MENAHAN tampilnya halaman
+   sampai browser menyerah, dan 12–13 September 2026 alamat itu memang tak terjangkau dari jaringan
+   Owner. Satu berkas variabel (47 KB) memuat seluruh ketebalan 100–900.
+
+   unicode-range dibatasi latin: aksara di luar itu memakai huruf sistem, browser tidak perlu
+   mengunduh berkas ini untuk teks yang tak bisa ditampilkannya.
+
+   font-display: swap → teks langsung tampil dengan huruf sistem lalu berganti begitu Inter siap.
+   Berbeda dengan ikon yang memakai block, karena ikon yang "tampil apa adanya" berupa kata. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./assets/fonts/inter-latin-wght-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 * {
   margin: 0;
   padding: 0;

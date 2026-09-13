@@ -68,11 +68,14 @@ export default {
         "margin-mobile": "16px",
         "gutter": "24px"
       },
+      // Geist dan JetBrains Mono TIDAK lagi diunduh (tautan Google Fonts dicabut 13 Sep 2026),
+      // sedangkan Inter disimpan sendiri. Cadangan Geist diarahkan ke Inter supaya judul tetap
+      // serumpun dengan sisa antarmuka, bukan jatuh ke huruf bawaan browser (Arial/Segoe UI).
       fontFamily: {
-        "display-lg": ["Geist", "sans-serif"],
-        "label-mono": ["JetBrains Mono", "monospace"],
+        "display-lg": ["Geist", "Inter", "sans-serif"],
+        "label-mono": ["JetBrains Mono", "ui-monospace", "monospace"],
         "body-sm": ["Inter", "sans-serif"],
-        "headline-md": ["Geist", "sans-serif"],
+        "headline-md": ["Geist", "Inter", "sans-serif"],
         "body-base": ["Inter", "sans-serif"]
       },
       fontSize: {
