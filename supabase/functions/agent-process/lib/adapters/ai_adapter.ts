@@ -2,7 +2,9 @@ import { CapabilityAdapter, AdapterContext, AdapterResult } from './capability_a
 import { RuntimeContext } from '../runtime_context.ts';
 import { checkGuardrails, recordUsage } from '../cost/costTracker.ts';
 
-async function* processOpenAIStream(res: Response): AsyncGenerator<string, void, unknown> {
+// `info` opsional: OpenRouter menyertakan `provider` (penyedia hulu yang benar-benar melayani,
+// mis. "DeepInfra") di setiap chunk. Groq/OpenAI tidak mengirimnya dan tidak perlu mengoper info.
+async function* processOpenAIStream(res: Response, info?: { provider?: string }): AsyncGenerator<string, void, unknown> {
   const reader = res.body?.getReader();
   if (!reader) throw new Error("No body");
   let buffer = '';
@@ -16,6 +18,7 @@ async function* processOpenAIStream(res: Response): AsyncGenerator<string, void,
       if (line.startsWith('data: ') && !line.includes('[DONE]')) {
         try {
           const data = JSON.parse(line.substring(6));
+          if (info && !info.provider && typeof data.provider === 'string' && data.provider) info.provider = data.provider;
           const content = data.choices?.[0]?.delta?.content || '';
           if (content) yield content;
         } catch(e) {}
@@ -380,9 +383,17 @@ export class OpenRouterAdapter implements CapabilityAdapter {
     // berbasis panjang teks selalu terlalu kecil untuk model yang bernalar.
     const reasoningTokens = usage.completion_tokens_details?.reasoning_tokens || 0;
 
+    // Penyedia hulu yang BENAR-BENAR melayani permintaan ini. Satu nama model di OpenRouter bisa
+    // dilayani beberapa penyedia (kuantisasi, cache, dan perilakunya bisa berbeda). Item 73: dua
+    // permintaan identik ke deepseek-v4-flash menghasilkan satu jawaban melantur dan satu benar,
+    // dengan selisih hanya di token/cache/biaya — dugaan penyedia berbeda tak bisa dibuktikan karena
+    // field ini dulu dibuang.
+    const penyediaHulu = typeof data.provider === 'string' && data.provider ? data.provider : '(tidak dilaporkan)';
+
     console.log(
       `[PR#6 TOKEN METRICS] OpenRouter (${openRouterModel}): prompt=${promptTokens}t completion=${completionTokens}t ` +
-      `cached=${cachedTokens}t reasoning=${reasoningTokens}t biaya=${actualCostUsd !== undefined ? '$' + actualCostUsd : '(tidak dilaporkan)'}`
+      `cached=${cachedTokens}t reasoning=${reasoningTokens}t biaya=${actualCostUsd !== undefined ? '$' + actualCostUsd : '(tidak dilaporkan)'} ` +
+      `penyedia=${penyediaHulu}`
     );
 
     this.rctx.tasks.fire('RecordUsage', recordUsage({
@@ -464,14 +475,15 @@ export class OpenRouterAdapter implements CapabilityAdapter {
     if (!res.ok) throw new Error(`OpenRouter HTTP ${res.status}: ${await res.text()}`);
     
     let accumulatedText = '';
-    for await (const chunk of processOpenAIStream(res)) {
+    const infoStream: { provider?: string } = {};
+    for await (const chunk of processOpenAIStream(res, infoStream)) {
       accumulatedText += chunk;
       yield chunk;
     }
     
     const promptTokens = Math.ceil(JSON.stringify(messages || []).length / 4);
     const completionTokens = Math.ceil(accumulatedText.length / 4);
-    console.log(`[PR#6 TOKEN METRICS] OpenRouter stream (${orModel}): prompt_est=${promptTokens}t completion_est=${completionTokens}t`);
+    console.log(`[PR#6 TOKEN METRICS] OpenRouter stream (${orModel}): prompt_est=${promptTokens}t completion_est=${completionTokens}t penyedia=${infoStream.provider || '(tidak dilaporkan)'}`);
 
     this.rctx.tasks.fire('RecordUsageStream', recordUsage({
       userId,
