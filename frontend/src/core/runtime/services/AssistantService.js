@@ -611,7 +611,7 @@ export class AssistantService {
     let aiProvider = 'gemini';
     let formattedModel = '';
     let aiKey = '';
-    let aiThinking = false;
+    let aiThinking; // undefined bila BrainService tak tersedia → server memakai bawaan model
     try {
       const brainService = this.serviceManager.get('BrainService');
       if (brainService) {
@@ -620,7 +620,7 @@ export class AssistantService {
         formattedModel = context.model || '';
         aiKey = context.key || '';
         aiThinking = context.thinking === true;
-        console.log(`[AssistantService] Model tier: KECIL (LOOKUP selalu tier ringan) → ${aiProvider}/${formattedModel || '(default)'}${aiThinking ? ' [thinking: ON]' : ''}`);
+        console.log(`[AssistantService] Model tier: KECIL (LOOKUP selalu tier ringan) → ${aiProvider}/${formattedModel || '(default)'}${aiThinking === true ? ' [thinking: ON]' : aiThinking === false ? ' [thinking: OFF]' : ''}`);
       }
     } catch (e) {
       console.warn('[AssistantService] BrainService not available:', e);
@@ -638,7 +638,7 @@ export class AssistantService {
       stream: false,
       ragEnabled: ragToolEnabled,  // dokumen dicari di server (Item 65)
       model: formattedModel || undefined,
-      thinking: aiThinking || undefined,
+      thinking: aiThinking, // true/false tier dikirim apa adanya; false kini mematikan nalar di OpenRouter (2026-09-13)
       cache_hint: true,
       _request_type: 'LOOKUP'
     };
@@ -908,7 +908,7 @@ export class AssistantService {
     let aiProvider = 'gemini';
     let formattedModel = '';
     let aiKey = '';
-    let aiThinking = false;
+    let aiThinking; // undefined bila BrainService tak tersedia → server memakai bawaan model
     let selectedTier = null;
     let tierReason = '';
     try {
@@ -937,7 +937,7 @@ export class AssistantService {
         if (selectedTier) {
           // Model ikut dicetak supaya Owner bisa memverifikasi tier benar-benar mengganti model,
           // bukan cuma mengganti label tingkat.
-          console.log(`[AssistantService] Model tier: ${selectedTier} (${tierReason}) → ${aiProvider}/${formattedModel || '(default)'}${aiThinking ? ' [thinking: ON]' : ''}`);
+          console.log(`[AssistantService] Model tier: ${selectedTier} (${tierReason}) → ${aiProvider}/${formattedModel || '(default)'}${aiThinking === true ? ' [thinking: ON]' : aiThinking === false ? ' [thinking: OFF]' : ''}`);
         }
       }
     } catch (e) {
@@ -1057,7 +1057,7 @@ export class AssistantService {
       stream: false,
       ragEnabled: ragToolEnabled,
       model: formattedModel || undefined,
-      thinking: aiThinking || undefined,
+      thinking: aiThinking, // true/false tier dikirim apa adanya; false kini mematikan nalar di OpenRouter (2026-09-13)
       file: fileData || undefined,
       requestedFilePath: isEngineerMode ? this.extractFilePathFromMessage(userMsg) : undefined,
       tools: isLiteMode ? ['rag_search', 'web_search', 'deep_research'] : undefined,

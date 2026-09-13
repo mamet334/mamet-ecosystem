@@ -195,7 +195,10 @@ export async function executeRequestPipeline(
       openAI: finalProvider === 'openai' ? finalApiKey : openAIKey,
     },
 
-    model: { model: parsed.model, provider: finalProvider, thinking: parsed.thinking === true },
+    // thinking TIGA keadaan (2026-09-13): true/false dari tier Owner diteruskan apa adanya — false kini
+    // benar-benar mematikan nalar di OpenRouter (reasoning_openrouter.ts). undefined = klien tidak
+    // mengirim (mis. mametlite) → bawaan model, perilaku lama.
+    model: { model: parsed.model, provider: finalProvider, thinking: parsed.thinking === true ? true : parsed.thinking === false ? false : undefined },
     policy: { canUseDesktopTools: ctx.policy.canUseDesktopTools },
     stream: { isStream: !!parsed.stream, extractedImage: parsed.extractedImage, desktopOSMode: !!parsed.desktopOSMode, auditMode: parsed.auditMode || 'OFF' },
     env: runtimeEnv,

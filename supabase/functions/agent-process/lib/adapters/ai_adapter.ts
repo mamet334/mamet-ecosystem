@@ -1,6 +1,7 @@
 import { CapabilityAdapter, AdapterContext, AdapterResult } from './capability_adapter.ts';
 import { RuntimeContext } from '../runtime_context.ts';
 import { checkGuardrails, recordUsage } from '../cost/costTracker.ts';
+import { kirimOpenRouterDenganReasoning } from './reasoning_openrouter.ts';
 
 // `info` opsional: OpenRouter menyertakan `provider` (penyedia hulu yang benar-benar melayani,
 // mis. "DeepInfra") di setiap chunk. Groq/OpenAI tidak mengirimnya dan tidak perlu mengoper info.
@@ -57,6 +58,13 @@ async function* processOpenAIStream(res: Response, info?: { provider?: string })
 // File ini dilewati SEMUA panggilan LLM — Assistant, Engineer, Lite, dan
 // pengguna eksternal mametlite. Perilaku bawaan wajib tidak berubah sedikit pun
 // bagi siapa pun yang tidak menyalakan toggle ini.
+//
+// PEMBARUAN 2026-09-13 — OPENROUTER KINI TIGA KEADAAN (lib/adapters/reasoning_openrouter.ts):
+// thinking === false dari tier Owner kini MENGIRIM reasoning: { enabled: false }, sebab model yang
+// mampu bernalar menyalakannya otomatis bila tak dikirim apa pun (terukur: 1.491 token nalar ditagih
+// di tier SEDANG yang Thinking-nya mati). Klien yang tidak mengirim thinking (undefined, mis.
+// mametlite) tetap tidak dikirimi apa pun. Model yang menolak (400 "Reasoning is mandatory") diulang
+// sekali tanpa parameter. Groq, OpenAI, dan Gemini tidak berubah.
 
 /**
  * Model Gemini bawaan, dipakai kapan pun pemanggil tidak menentukan model Gemini.
@@ -350,16 +358,20 @@ export class OpenRouterAdapter implements CapabilityAdapter {
       context.trace_id
     );
 
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${this.rctx.keys.openRouter}`,
-        'HTTP-Referer': 'https://ai-agent-project.vercel.app',
-        'X-Title': 'Mamet AI Agent',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(applyThinking({ model: openRouterModel, messages, temperature: 0.1, max_tokens: 8192 }, 'openrouter', this.rctx.model.thinking))
-    });
+    const res = await kirimOpenRouterDenganReasoning(
+      { model: openRouterModel, messages, temperature: 0.1, max_tokens: 8192 },
+      this.rctx.model.thinking,
+      (body) => fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.rctx.keys.openRouter}`,
+          'HTTP-Referer': 'https://ai-agent-project.vercel.app',
+          'X-Title': 'Mamet AI Agent',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      })
+    );
     if (!res.ok) throw new Error(`OpenRouter API Error: ${res.status} ${await res.text()}`);
     const data = await res.json();
     const answer = data.choices?.[0]?.message?.content || '';
@@ -465,12 +477,16 @@ export class OpenRouterAdapter implements CapabilityAdapter {
       context.trace_id
     );
 
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${this.rctx.keys.openRouter}`, 'HTTP-Referer': 'https://ai-agent-project.vercel.app', 'X-Title': 'Mamet AI Agent', 'Content-Type': 'application/json' },
-      body: JSON.stringify(applyThinking({ model: orModel, messages, temperature: 0.1, max_tokens: 8192, stream: true }, 'openrouter', this.rctx.model.thinking)),
-      signal: aborter.signal
-    });
+    const res = await kirimOpenRouterDenganReasoning(
+      { model: orModel, messages, temperature: 0.1, max_tokens: 8192, stream: true },
+      this.rctx.model.thinking,
+      (body) => fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${this.rctx.keys.openRouter}`, 'HTTP-Referer': 'https://ai-agent-project.vercel.app', 'X-Title': 'Mamet AI Agent', 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: aborter.signal
+      })
+    );
     clearTimeout(id);
     if (!res.ok) throw new Error(`OpenRouter HTTP ${res.status}: ${await res.text()}`);
     
