@@ -66,10 +66,45 @@ body {
   box-shadow: 0 0 15px rgba(0, 82, 255, 0.4);
 }
 
-/* ── MATERIAL ICONS ── */
-.material-symbols-outlined {
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-  vertical-align: middle;
+/* ── MATERIAL ICONS ──
+   Font ikon disimpan sendiri, tidak lagi diambil dari fonts.googleapis.com.
+   Ikon ditulis sebagai LIGATUR — <span class="material-symbols-outlined">home</span> — jadi kalau
+   fontnya gagal termuat yang tampil adalah KATA "home". Itu yang terjadi 12 September 2026 saat
+   Google Fonts timeout: seluruh sidebar berubah menjadi daftar kata. Dulu deklarasi font-family
+   ikon ini datang dari CSS Google; sekarang ditulis di sini.
+   Subset 67 ikon = 21 KB (font penuh 970 KB). Perbarui dengan: npm run ikon
+   font-display: block → selama font belum siap ikonnya disembunyikan, bukan tampil sebagai kata. */
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url('./assets/fonts/material-symbols-subset.woff2') format('woff2');
+}
+
+/* Sengaja di dalam @layer base: banyak ikon memakai kelas ukuran Tailwind (text-[13px],
+   text-[16px], …) dan utilities harus tetap menang atas font-size di bawah ini. Dulu urutan itu
+   terjaga sendiri karena CSS Google berada di <link> terpisah sebelum bundel; aturan biasa di
+   berkas ini justru MENGALAHKAN utilities karena ditulis sesudah @tailwind utilities. */
+@layer base {
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    vertical-align: middle;
+  }
 }
 
 /* ── CUSTOM SCROLLBAR ── */

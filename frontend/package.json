@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "ikon": "node scripts/perbarui-ikon.mjs",
     "preview": "vite preview",
     "electron:dev": "cross-env NODE_ENV=development electron .",
     "desktop": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && npm run electron:dev\"",
