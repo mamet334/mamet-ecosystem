@@ -187,6 +187,81 @@ export async function ekstrakPdfDariData(data, pdfjs, onProgress) {
   }
 }
 
+// ─── Tabel DOCX → baris Markdown (murni, tanpa browser — diuji di Node) ────────────────────
+//
+// extractRawText mengeluarkan setiap sel tabel sebagai paragraf sendiri: judul kolom hanya muncul
+// sekali di awal, dan dua paragraf dalam satu sel ditempel tanpa spasi ("Waktu(Kenaikan pangkat").
+// Mulai baris ke-2 model tak tahu lagi mana "Satuan" dan mana "Target". convertToHtml masih
+// menyimpan struktur tabel, jadi tabel ≥2 kolom ditulis ulang sebagai baris Markdown (Item 76):
+//   | No | Sasaran Strategis | Satuan |
+//   | --- | --- | --- |
+//   | 1 | Meningkatnya profesionalisme ASN | Skala / % |
+// Diuji 2026-09-14 dengan kode ini sendiri (Node: buffer; browser Vite: arrayBuffer, hasil sama):
+//   Buku Materi Pokok UT → 42 baris tabel, 6.407 → 6.407 kata (tidak ada yang hilang);
+//   HCDP → 48 baris tabel, 6.796 → 6.802 kata — selisihnya hanya kata yang dulu tertempel
+//   ("Waktu(Kenaikan") dan kini terpisah. Tanpa opsiHtmlDocx HTML Buku 5,5 MB (gambar base64), dengan 55 KB.
+
+// Penanda sementara tabel yang sudah diubah. Memakai NUL (U+0000): XML melarang karakter itu, jadi
+// mustahil muncul di teks DOCX — penanda yang terlihat seperti "⟦T0⟧" bisa saja ada di dokumen asli.
+const penandaTabel = (i) => `\u0000T${i}\u0000`;
+const PENANDA_TABEL = /\u0000T(\d+)\u0000/g;
+
+const dekodeEntitas = (s) => s
+  .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n))
+  .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+  .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+  .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+  .replace(/&amp;/g, '&');                                        // terakhir: "&amp;lt;" tetap "&lt;"
+
+// Tag dibuang DULU, entitas didekode SESUDAHNYA — "set status&lt;n&gt;" harus menjadi "<n>",
+// bukan ikut terbuang sebagai tag.
+const htmlKeParagraf = (html) => dekodeEntitas(html
+  .replace(/<\/(p|h[1-6]|li)>/g, '\n\n').replace(/<br\s*\/?>/g, '\n')
+  .replace(/<li[^>]*>/g, '• ').replace(/<[^>]+>/g, ''));
+
+// Isi satu sel → satu baris: paragraf dipisah " / ", "|" di-escape agar kolom tidak bergeser.
+const htmlKeSel = (html) => dekodeEntitas(html
+  .replace(/<\/(p|h[1-6]|li)>/g, ' / ').replace(/<br\s*\/?>/g, ' / ').replace(/<[^>]+>/g, ''))
+  .replace(/(\s*\/\s*)+/g, ' / ').replace(/^\s*\/\s*|\s*\/\s*$/g, '')
+  .replace(/\|/g, '\\|').replace(/\s+/g, ' ').trim();
+
+function tabelKeTeks(isi, tabel) {
+  // Tabel bersarang sudah diganti penanda; di dalam sel ia diratakan jadi satu baris.
+  const rataSel = (s) => s.replace(PENANDA_TABEL, (m, i) => (tabel[+i] ?? m)
+    .split('\n').filter((l) => l.trim() && !/^\|( --- \|)+$/.test(l))
+    .join(' ; ').replace(/(?<!\\)\|/g, '\\|'));
+  const rows = [...isi.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)]
+    .map((r) => [...r[1].matchAll(/<t([dh])([^>]*)>([\s\S]*?)<\/t[dh]>/g)].flatMap((c) => {
+      const lebar = Number(c[2].match(/colspan="(\d+)"/)?.[1] || 1);
+      return [rataSel(htmlKeSel(c[3])), ...Array(lebar - 1).fill('')];   // sel gabungan: teks sekali
+    }))
+    .filter((r) => r.some(Boolean));                                     // baris kosong (tata letak gambar)
+  const kolom = rows.length ? Math.max(...rows.map((r) => r.length)) : 0;
+  // Tabel satu kolom biasanya kotak teks ("OUTLINE" + butir-butirnya) — biarkan sebagai paragraf.
+  if (kolom < 2) return htmlKeParagraf(isi).trim();
+  const baris = (r) => `| ${[...r, ...Array(kolom - r.length).fill('')].join(' | ')} |`;
+  return [baris(rows[0]), `|${' --- |'.repeat(kolom)}`, ...rows.slice(1).map(baris)].join('\n');
+}
+
+/** HTML dari mammoth.convertToHtml → teks, dengan tabel ≥2 kolom sebagai baris Markdown. */
+export function teksDariHtmlDocx(html) {
+  const tabel = [];
+  const terdalam = /<table[^>]*>((?:(?!<table[\s>])[\s\S])*?)<\/table>/;
+  let sisa = html;
+  while (terdalam.test(sisa)) {
+    sisa = sisa.replace(terdalam, (_, isi) => penandaTabel(tabel.push(tabelKeTeks(isi, tabel)) - 1));
+  }
+  // Satu kali ganti cukup: penanda tabel bersarang sudah diratakan ke dalam sel oleh tabelKeTeks.
+  // (String.replace dengan regex global selalu mulai dari awal — tidak bergantung lastIndex.)
+  const teks = htmlKeParagraf(sisa).replace(PENANDA_TABEL, (m, i) => (tabel[+i] === undefined ? m : `\n\n${tabel[+i]}\n\n`));
+  return teks.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+/** Opsi convertToHtml: gambar tidak dibaca — tanpa ini setiap gambar ikut menjadi base64. */
+export const opsiHtmlDocx = (mammoth) => ({
+  convertImage: mammoth.images.imgElement(() => Promise.resolve({ src: '' }))
+});
+
 function periksaHasil(nama, hasil) {
   const huruf = hasil.teks.replace(/\s/g, '').length;
   if (hasil.jenis === 'pdf' && hasil.halaman > 0 && (huruf < 200 || hasil.halamanKosong / hasil.halaman >= PORSI_SCAN)) {
@@ -232,11 +307,12 @@ export async function ekstrakTeksDokumen(file, { onProgress } = {}) {
     const { default: mammoth } = await import('mammoth');
     let hasil;
     try {
-      hasil = await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() });
+      // convertToHtml, bukan extractRawText: hanya HTML yang masih menyimpan baris & kolom tabel.
+      hasil = await mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() }, opsiHtmlDocx(mammoth));
     } catch (e) {
       throw new GagalEkstrak('DOCX_RUSAK', `DOCX tidak bisa dibaca: ${e?.message || e}`);
     }
-    return periksaHasil(file.name, { jenis: 'docx', teks: hasil.value.replace(/\n{3,}/g, '\n\n').trim() });
+    return periksaHasil(file.name, { jenis: 'docx', teks: teksDariHtmlDocx(hasil.value) });
   }
 
   // PDF — build "legacy" supaya jalan juga di browser HP yang lebih tua. Dimuat hanya saat
