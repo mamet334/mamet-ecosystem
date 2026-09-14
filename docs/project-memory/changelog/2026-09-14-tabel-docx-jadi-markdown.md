@@ -2,7 +2,8 @@
 
 **Tanggal:** 14 September 2026
 **Roadmap:** Item 76
-**Commit kode:** `1c0e03e`
+**Commit kode:** `1c0e03e` (tabel DOCX → Markdown), `4022546` (judul kolom diulang per potongan)
+**Status:** dideploy dan terbukti di produksi 14 September 2026
 
 Berawal dari pertanyaan Owner: dokumen di RAG ditulis untuk manusia, sedangkan pembacanya AI — apakah
 ekstraksi dan embedding sudah menyiapkannya untuk kebutuhan RAG? Jawabannya: embedding hanya mengubah
@@ -81,14 +82,89 @@ Build frontend dan mametlite sukses.
 versi browser (dipilih Vite lewat kolom `browser` di `package.json`) hanya `arrayBuffer`. Memanggil
 `ekstrakTeksDokumen` di Node gagal "Could not find file in options" — bukan bug produksi.
 
+## Di produksi: tabel rapi, lalu judul kolom yang harus diulang
+
+**Deploy frontend & mametlite.** Diperiksa dari isi kode di situs live, bukan nama berkas (hash Vercel
+berbeda dengan build lokal): `ResearchApp-B1nQesJc.js` (mamet-ecosystem) dan `index-lwTVUo04.js`
+(mametlite) memuat penanda tabel baru dan `convertToHtml`, tanpa `extractRawText({arrayBuffer`.
+
+**Unggahan HCDP pertama (02.44 UTC).** Unggahan sebelumnya ternyata berkas lain (sebuah ebook PDF) —
+log `rag-process` menunjukkan hanya satu permintaan; diulang dengan berkas yang benar.
+
+| | HCDP lama (11 Sep) | HCDP 02.44 UTC |
+|---|---|---|
+| Potongan | 84 | 87 (sama dengan uji lokal) |
+| Potongan berisi baris tabel | 0 | 20 |
+| Kata tertempel (`Waktu(Kenaikan`) | 1 | 0 |
+
+HCDP lama dihapus Owner pukul 02.55 UTC.
+
+**Jawaban salah (03.01 UTC).** *"Menurut dokumen HCDP, berapa target rasio jabatan fungsional
+bersertifikat kompetensi pada tahun 3?"* dijawab **35,0%** (seharusnya **20,0%**), berlabel
+`VERIFIED` — model sempat menyebut 20,0% lalu "mengoreksi" dirinya. Konteks yang benar-benar dikirim
+tersimpan di `chats.messages[].metadata.processingSteps` (`[SYSTEM CONTEXT FINAL]`, 12.058 huruf,
+8 potongan). Potongan DOC-0002 memuat
+
+```
+| 4 | Indeks Kepuasan Masyarakat (IKM) Layanan Kepegawaian | Skala | 78,5 | 80,0 | 82,5 | 84,0 | 85,5 | 85,5 |
+| II | PROGRAM PENDIDIKAN DAN PELATIHAN (PENGEMBANGAN SDM) |  |  |  |  |  |  |  |
+| 5 | Rasio Jabatan Fungsional Bersertifikat Kompetensi / (…) | % | 5,93% | 12,0% | 20,0% | 35,0% | 47,6% | 47,60% |
+```
+
+tetapi baris `| No | Nama Program / Indikator Kinerja | Satuan | Tahun 1 | … | Tahun 5 | Target Akhir |`
+**tidak ada di konteks** — ia di potongan sebelumnya, yang tidak terambil. Model menebak 5,93% sebagai
+nilai awal dan semua kolom bergeser satu. Pertanyaan pembanding pukul 03.02 (satuan indikator Nilai
+Evaluasi Sistem Merit) dijawab benar — potongannya memuat judul kolom. `evidence_audit_logs.rag_docs`
+hanya mencatat label `DOC-0001…`, bukan id potongan, jadi yang dibaca model hanya bisa dibuktikan dari
+`processingSteps` itu.
+
+**Perbaikan (commit `4022546`).** `lib/judul_tabel.ts` (baru, tanpa impor) dipanggil dari `chunkText`:
+potongan yang **dimulai di tengah tabel Markdown** diawali baris judul + garis pemisah tabel itu.
+Dimulai di baris judul → tidak ditempel; dimulai di garis pemisah → hanya judul; tabel tanpa garis
+pemisah → tidak ditempel. Titik potong dan tumpang tidak berubah, jadi jumlah potongan sama; potongan
+bisa melebihi 800 huruf sepanjang judulnya. Berlaku untuk `rag-process` dan `knowledge_manager`.
+
+Uji 27/27 (Node; `chunkText` lama diambil dari git):
+
+| Dokumen | Potongan | Bertabel tanpa judul kolom | Terpanjang |
+|---|---|---|---|
+| HCDP | 87 → 87 | 12 → **0** | 799 → 957 |
+| Buku Materi Pokok | 76 → 76 | 7 → **0** | 796 → 796 |
+| mantra.txt (tanpa tabel) | 32 → 32, **identik** | 0 → 0 | 795 → 795 |
+
+Setiap potongan yang berubah persis = judul + potongan lama.
+
+**Deploy Supabase** diperiksa dari kode yang aktif (`get_edge_function`): `rag-process` versi 65
+(03.11.17 UTC) dan `agent-process` versi 422 (03.11.34 UTC), keduanya membundel `judul_tabel.ts`.
+
+**Unggahan ulang (03.16 UTC)** — persis prediksi uji lokal: 87 potongan, terpanjang 957 huruf,
+**0** potongan bertabel tanpa judul kolom, potongan "Rasio Jabatan" diawali `| No | Nama Program …`.
+
+**Pertanyaan yang sama (03.18 UTC):**
+
+| | 03.01 UTC (sebelum) | **03.18 UTC (sesudah)** |
+|---|---|---|
+| Model / riwayat | `deepseek-v4-flash-0731`, 0 pesan | sama |
+| Potongan / skor teratas | 8 / 0,747 | 8 / **0,752** |
+| Awal DOC-0002 (berisi baris "Rasio Jabatan") | `\| 4 \| Indeks Kepuasan…` | `\| No \| Nama Program … \| Target Akhir \|` |
+| Jawaban | 35,0% ❌ `VERIFIED` | **20,0%** ✅, keenam kolom tepat |
+
+Skor pencarian tidak turun karena judul kolom — berbeda dengan awalan judul bagian buatan di riset
+PDF. Biaya sengaja tidak dibandingkan: 3.849 dari 4.051 token permintaan kedua ter-cache.
+
+**Catatan cara memeriksa.** Satu pemeriksaan sempat melaporkan DOC tanpa judul kolom pada jawaban baru —
+salah baca: kuerinya mengambil "chat yang terakhir diubah", dan chat lama tersimpan ulang pukul 03.19.
+Ambil jawaban per pesan (`chats.messages[]` + `metadata.timestamp`), bukan per baris chat.
+
 ## Keterbatasan yang disadari
 
-- **Judul kolom tidak diulang di setiap potongan.** Diukur dengan potongan 800 huruf: 12 dari 20
-  potongan HCDP dan 7 dari 12 potongan Buku yang berisi baris tabel tidak memuat baris judul kolom.
-  Tidak ada baris tabel yang terpotong di tengah (terpanjang 479 huruf). Mengulang judul kolom belum
-  dikerjakan — dampaknya ke skor pencarian belum diuji.
-- **Dokumen `.docx` yang sudah tersimpan**, termasuk HCDP, baru mendapat tabel rapi setelah diunggah ulang.
-- **Belum diuji lewat tombol unggah di aplikasi live** — fungsinya diuji langsung di browser dev.
+- **`VERIFIED` lolos pada jawaban yang salah.** Pemeriksa label mencocokkan kutipan sumber, bukan
+  ketepatan angka — jawaban 35,0% mengutip dokumen yang benar.
+- **Dokumen yang sudah tersimpan** baru mendapat tabel Markdown dan judul kolom per potongan setelah
+  diunggah ulang (setelah deploy 14 Sep 03.11 UTC).
+- Hanya tabel Markdown **bergaris pemisah** yang judulnya diulang. Teks PDF dari pdf.js tidak berupa
+  tabel Markdown, jadi belum terbantu.
+- Potongan bisa lebih panjang dari 800 huruf (HCDP: 957).
 - `.doc` lama tetap belum didukung (pengguna diminta menyimpan ulang sebagai `.docx`).
 
 ## 2. Riset jalur PDF (belum dipasang)
