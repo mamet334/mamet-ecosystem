@@ -16,6 +16,9 @@ export default defineConfig({
         'src/core/workspace/WidgetRegistry.js',
         'src/core/runtime/Kernel.js', // Critical: Obfuscator breaks static analysis of dynamic imports
         'src/core/runtime/services/documentTextExtractor.js', // import() pdfjs/mammoth + worker ?url (Item 69)
+        // import('pdf-lib') (Item 76b): string array obfuscator menyembunyikan nama paket dari Vite,
+        // pdf-lib tak ikut dibundel dan browser gagal "Failed to resolve module specifier 'pdf-lib'".
+        'src/core/runtime/services/pdfOcrService.js',
         'src/core/application/AppRegistry.js'
       ],
       compact: true,

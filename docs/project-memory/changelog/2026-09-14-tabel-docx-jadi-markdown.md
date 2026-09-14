@@ -381,6 +381,33 @@ Build `frontend` (3.110 modul) dan `mametlite` (2.242 modul) sukses.
 
 **Belum terbukti:** belum ada unggahan live dengan kode ini — kecepatan nyata dan perilaku batas laju
 OpenRouter pada 5 permintaan serentak belum diukur.
+
+## Item 76b — `pdf-lib` tak terbundel di mamet-ecosystem (2026-09-14)
+
+**Gejala:** sesudah deploy `7b5ac20`, Owner mengunggah di mamet-ecosystem.vercel.app: `Gagal mengunggah
+dokumen: Failed to resolve module specifier 'pdf-lib'`.
+
+**Penyebab:** build frontend menjalankan `rollup-obfuscator` dengan `stringArray`. Di bundel live
+`ResearchApp-Co-6Ufyi.js` teks `"pdf-lib"` berada di daftar string acak (`p(…)`), sehingga Vite tak lagi
+mengenali `import('pdf-lib')` sebagai import statis: pustaka tidak dibundel dan browser menerima nama
+modul mentah. `documentTextExtractor.js` sudah dikecualikan karena alasan yang sama (Item 69);
+`pdfOcrService.js` belum. Cacat ini ada **sejak `4604ccf`** — bukan dari OCR paralel. Uji live
+KATALOG-PENDAS lolos karena berjalan di `npm run desktop` (server dev, tanpa obfuscator); pemeriksaan
+Vercel sebelumnya hanya mencari penanda teks, bukan apakah `pdf-lib` ikut dibundel.
+
+**mametlite tidak terkena:** tak memakai obfuscator; bundel live memanggil `import("./es-DWoTRqE4.js")`
+yang berisi pdf-lib.
+
+**Perbaikan:** `frontend/vite.config.js` — `src/core/runtime/services/pdfOcrService.js` masuk daftar
+`exclude` obfuscator, dengan komentar alasannya.
+
+**Bukti build lokal:** kode pdf-lib asli (`updateInfoDict`) kini di chunk `index-BzRsIcXZ.js`; modul
+3.110 → 3.305; chunk OCR `ResearchApp-CT35GF47.js` memanggil `import("./index-BzRsIcXZ.js")`, string
+`"pdf-lib"` di dalamnya 0. Import dinamis paket lain di `frontend/src` diperiksa: `jszip`/`xlsx`
+(`fileProcessor.js`) tak meninggalkan nama paket mentah; `mammoth`/`pdfjs-dist` sudah dikecualikan;
+`lucide-react` di `Kernel.js` dikecualikan.
+
+**Belum terbukti:** unggahan OCR di situs Vercel — belum pernah berhasil di web sejak `4604ccf`.
 - Operator Handbook di database belum diunggah ulang dengan OCR.
 - Belum ada UI biaya persisten (ledger) untuk unggahan — masih `window.confirm` sekali pakai.
 - Buku penuh tetap diproses halaman-per-halaman untuk OCR, bukan satu permintaan mistral-ocr untuk
