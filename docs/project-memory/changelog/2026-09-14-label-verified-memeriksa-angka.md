@@ -4,8 +4,9 @@
 **Roadmap:** Item 77 (lanjutan Item 71 — label VERIFIED wajib mengutip sumber)
 **Berkas kode:** `supabase/functions/agent-process/lib/verification/label_sumber.ts`,
 `lib/orchestration/handlers/synthesis_handler.ts`, `lib/stream_handler.ts`
-**Status:** pemeriksaan angka (`c953e01`) dideploy (`agent-process` v424) dan terbukti live di
-`npm run desktop` dan web 14 September 2026; pemeriksaan nomor halaman di-commit, belum di-deploy
+**Status:** pemeriksaan angka (`c953e01`, v424) terbukti live di `npm run desktop` dan web; pemeriksaan
+nomor halaman (`be1f425`) dideploy v425 — model berhenti mengarang halaman tetapi menjawab tanpa label;
+penjaga jawaban tanpa label + BLOK 6 diperlunak di-commit, belum di-deploy (14 September 2026)
 
 ## Masalah
 
@@ -147,3 +148,62 @@ Jawaban desktop produksi tetap 3/3. Sintaks `label_sumber.ts` dan `universal_con
 **Batas.** Penanda halaman hanya ada di awal halaman PDF; potongan dari tengah halaman tidak membawa
 penandanya, sehingga nomor halaman yang benar tetapi tidak tertulis di potongan itu ikut diturunkan.
 Kontrak kini melarang menyebut halaman tanpa penanda, jadi kasus ini seharusnya jarang.
+
+## Jawaban tanpa label (uji live web sesudah v425)
+
+`be1f425` dideploy sebagai `agent-process` **v425** (07.30.24 UTC; isi kode aktif memuat
+`periksaHalamanSumber` dan instruksi halaman baru). Pertanyaan HCDP yang sama di web, chat `090baab3…`
+07.33 UTC:
+
+```
+Target rasio jabatan fungsional bersertifikat kompetensi pada tahun 3 adalah 20,0%.
+
+Sumber: "DOKUMEN HCDP 2025-2026.docx"
+```
+
+Jawaban benar dan **tanpa nomor halaman** (instruksi dipatuhi), tetapi tersimpan **tanpa label status sama
+sekali**. Diperiksa:
+
+- Konteks yang dibaca model memuat aturan wajib label, BLOK 6, instruksi halaman baru, dan judul kolom
+  "Tahun 3".
+- Tidak ada kode yang membuang label (dicari di `agent-process`, frontend, mametlite) — model memang tidak
+  menulisnya.
+- Jawaban ber-RAG (Evidence Gate PASSED) 5 hari: sebelum v425, 44/54 berlabel — 10 yang tanpa label
+  semuanya tanggal 9 September (sebelum Item 71); sesudah v425, 1/1 tanpa label. Dugaan: kalimat baru
+  "nomor halaman karangan membuat label diturunkan otomatis" mendorong model menghindari label — satu
+  sampel, belum terbukti.
+
+**Celah yang lebih penting:** semua pemeriksaan hanya bekerja bila model menulis `[STATUS: VERIFIED]`;
+**tidak menulis label** adalah jalan lolos, dan pengguna kehilangan tanda percaya.
+
+**Perbaikan.**
+
+- `label_sumber.ts` — **penjaga label hilang:** bila dokumen dilampirkan dan jawaban tidak memuat label apa
+  pun (`[STATUS: …]` atau label ringkas LOOKUP), sistem menambahkan `[STATUS: HYPOTHESIS - Rekomendasi AI]` +
+  `_Catatan sistem: model tidak menulis label status — jawaban ini belum diverifikasi sistem terhadap dokumen
+  yang tersedia._` VERIFIED tidak pernah ditambahkan otomatis. Kontrak BLOK 6 dipasang untuk semua mode
+  (`context_builder.ts`), jadi penjaga berlaku merata. Tanpa dokumen, `[STATUS: INSUFFICIENT]`, dan label
+  LOOKUP tidak disentuh.
+- `label_sumber.ts` — varian `[Status: Verified]` (huruf/spasi) disamakan menjadi `[STATUS: VERIFIED]` sebelum
+  diperiksa; tanpa ini varian itu lolos dari pemeriksaan Sumber, halaman, dan angka.
+- `universal_contract.ts` BLOK 6 — instruksi halaman tetap, ancaman "membuat label diturunkan otomatis"
+  dihapus.
+- `stream_handler.ts` — log `[LABEL]` kini "label dikoreksi -> HYPOTHESIS (alasan)", tidak lagi selalu
+  "VERIFIED tidak sah".
+
+**Uji.** `uji-label-angka.mjs` **53/53**:
+
+| Kasus | Hasil |
+|---|---|
+| Jawaban web produksi 07.33 tanpa label, dokumen dilampirkan | HYPOTHESIS + catatan ditambahkan, tanpa VERIFIED |
+| Tanpa label, tanpa dokumen | tidak disentuh |
+| `[STATUS: INSUFFICIENT]`; label ringkas LOOKUP | tidak disentuh |
+| `[Status: Verified]` + `[Halaman 1]` karangan | disamakan lalu turun (halaman) |
+| `**[STATUS: VERIFIED]**` sah | bertahan |
+| `koreksiLabel` non-stream tanpa label | tepat satu HYPOTHESIS + catatan |
+
+Uji lama (angka, pasangan tabel, halaman, perilaku Item 71) tetap lolos; jawaban desktop produksi tetap
+3/3. Sintaks `label_sumber.ts`, `universal_contract.ts`, `stream_handler.ts` OK (esbuild).
+
+**Belum terbukti:** penjaga belum berjalan live, dan belum pasti kalimat yang diperlunak membuat model
+kembali menulis label.

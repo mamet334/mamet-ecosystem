@@ -275,7 +275,7 @@ function renderContractAsText(
     // panduan identitas di request_pipeline.ts, dan terbukti melabeli VERIFIED untuk jawaban dari
     // pengetahuan umum ketika potongan yang terambil tidak memuat jawabannya (Item 70).
     text += `WAJIB: pilih TEPAT SATU label di baris PALING AKHIR jawaban Anda:\n`;
-    text += `- [STATUS: VERIFIED] — HANYA bila isi jawaban benar-benar berasal dari dokumen di BLOK 4 / <RAG> di atas. Bila memakai label ini, sertakan Sumber: "judul dokumen persis seperti tertulis di BLOK 4" — boleh di baris sebelum label atau pada baris label itu sendiri. Sebut nomor halaman HANYA bila potongan yang dikutip memuat penanda [Halaman N]; bila tidak ada penanda, JANGAN menulis nomor halaman — nomor halaman karangan membuat label diturunkan otomatis.\n`;
+    text += `- [STATUS: VERIFIED] — HANYA bila isi jawaban benar-benar berasal dari dokumen di BLOK 4 / <RAG> di atas. Bila memakai label ini, sertakan Sumber: "judul dokumen persis seperti tertulis di BLOK 4" — boleh di baris sebelum label atau pada baris label itu sendiri. Sebut nomor halaman HANYA bila potongan yang dikutip memuat penanda [Halaman N]; bila tidak ada penanda, JANGAN menulis nomor halaman.\n`;
     text += `- [STATUS: HYPOTHESIS - Rekomendasi AI] — bila dokumen yang tersedia tidak memuat jawabannya dan Anda menjawab dari pengetahuan sendiri.\n`;
     text += `- [STATUS: INSUFFICIENT] — bila jawabannya tidak diketahui.\n`;
     // Data sistem bukan dokumen (2026-09-13): pertanyaan "jam saat ini" dijawab dari stempel waktu

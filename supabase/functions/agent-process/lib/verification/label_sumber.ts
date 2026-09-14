@@ -30,10 +30,18 @@
  * potongan yang dibaca model tidak memuat `[Halaman …]`; "Halaman 1" dikarang. Nomor halaman yang
  * disebut jawaban kini harus ada sebagai penanda `[Halaman N]` di potongan, atau tertulis "halaman N"
  * di teks dokumen itu sendiri.
+ *
+ * JAWABAN TANPA LABEL (Item 77, uji live web 2026-09-14 07.33 UTC). Sesudah pemeriksaan halaman dideploy,
+ * jawaban benar HCDP tersimpan TANPA label status sama sekali, walau BLOK 6 mewajibkannya dan kontrak
+ * dipasang untuk semua mode. Semua pemeriksaan di atas hanya bekerja bila ada `[STATUS: VERIFIED]`, jadi
+ * TIDAK menulis label adalah jalan lolos. Kini: bila dokumen dilampirkan dan jawaban tanpa label apa pun,
+ * sistem menambahkan HYPOTHESIS + catatan (VERIFIED tidak pernah ditambahkan otomatis). Varian penulisan
+ * label VERIFIED (`[Status: Verified]`) disamakan dulu agar tidak lolos dari pemeriksaan.
  */
 export const LABEL_VERIFIED = '[STATUS: VERIFIED]';
 export const LABEL_HIPOTESIS = '[STATUS: HYPOTHESIS - Rekomendasi AI]';
 export const CATATAN_KOREKSI = '_Catatan sistem: label VERIFIED diturunkan — jawaban ini tidak mengutip dokumen yang tersedia._';
+export const CATATAN_TANPA_LABEL = '_Catatan sistem: model tidak menulis label status — jawaban ini belum diverifikasi sistem terhadap dokumen yang tersedia._';
 
 const rapikan = (s: string) => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 
@@ -238,14 +246,22 @@ export type HasilLabel = { jawaban: string; dikoreksi: boolean; alasan: string; 
  * @param isiDokumen isi potongan yang dilampirkan (opsional) — bila ada, angka dan pasangannya ikut diperiksa
  */
 export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiDokumen: string[] = []): HasilLabel {
-  const teks = String(jawaban || '');
+  // Varian huruf/spasi label VERIFIED disamakan dulu — kalau tidak, `[Status: Verified]` lolos dari semua pemeriksaan.
+  const teks = String(jawaban || '').replace(/\[\s*status\s*:\s*verified\s*\]/gi, LABEL_VERIFIED);
   const diam: HasilLabel = { jawaban: teks, dikoreksi: false, alasan: '', catatan: '' };
+  const judul = (judulDokumen || []).filter((j) => typeof j === 'string' && j.trim());
+
+  // Dokumen dilampirkan → kontrak BLOK 6 mewajibkan label. Tanpa label apa pun → HYPOTHESIS ditambahkan sistem.
+  const adaLabel = /\[\s*status\s*:/i.test(teks) || teks.includes('[Pengetahuan umum AI');
+  if (!adaLabel) {
+    if (!judul.length) return diam;
+    return { jawaban: `${teks.trimEnd()}\n\n${LABEL_HIPOTESIS}`, dikoreksi: true, alasan: 'model tidak menulis label status', catatan: CATATAN_TANPA_LABEL };
+  }
+
   if (!teks.includes(LABEL_VERIFIED)) return diam;
   const turunkan = (alasan: string, catatan: string): HasilLabel => ({
     jawaban: teks.split(LABEL_VERIFIED).join(LABEL_HIPOTESIS), dikoreksi: true, alasan, catatan
   });
-
-  const judul = (judulDokumen || []).filter((j) => typeof j === 'string' && j.trim());
   // Kutipan sumber dicari di MANA SAJA, bukan hanya di awal baris: pada uji produksi pertama
   // (2026-09-12) model menulis `[STATUS: VERIFIED] — Sumber: "judul…"` di SATU baris dengan label,
   // dan aturan "baris harus dimulai dengan Sumber" menurunkan label yang sebenarnya sah.

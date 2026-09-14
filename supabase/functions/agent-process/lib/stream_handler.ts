@@ -103,7 +103,7 @@ export const getStreamResponse = (promptText: string, systemPromptText = '', cha
         try {
           const cek = periksaLabelSumber(fullLLMResponse, safeMeta.judulDokumen || [], isiDokumen);
           if (cek.dikoreksi) {
-            console.warn(`[LABEL] stream: VERIFIED tidak sah (${cek.alasan}); dokumen dilampirkan: ${(safeMeta.judulDokumen || []).length}`);
+            console.warn(`[LABEL] stream: label dikoreksi -> HYPOTHESIS (${cek.alasan}); dokumen dilampirkan: ${(safeMeta.judulDokumen || []).length}`);
             enqueueStr(`\n\n${LABEL_HIPOTESIS}\n${cek.catatan}\n`);
           }
         } catch (labelErr) {
