@@ -30,6 +30,10 @@ export const SynthesisHandler = {
     const judulDokumen: string[] = (ctx.state.ragArray || [])
       .flatMap((r: any) => [r.formattedTitle, r.docId])
       .filter((t: any) => typeof t === 'string' && t.trim());
+    // Isi potongan yang dilampirkan — angka dan pasangan label–angka jawaban VERIFIED dicocokkan ke sini (Item 77).
+    const isiDokumen: string[] = (ctx.state.ragArray || [])
+      .map((r: any) => r.contentWithId || r.content)
+      .filter((t: any) => typeof t === 'string' && t.trim());
     let replyMessage = 'Gagal memproses jawaban.';
 
     if (isChatBiasa || !maef.shouldExecutePhase('ORCHESTRATION')) {
@@ -51,8 +55,9 @@ export const SynthesisHandler = {
               auditMode: ctx.request.auditMode, 
               routingDecision, 
               contractValidation,
-              judulDokumen 
-            }, 
+              judulDokumen,
+              isiDokumen // dikeluarkan lagi di stream_handler sebelum metadata jadi header
+            },
             snapshot: maef.getSnapshot() 
           };
         }
@@ -286,7 +291,7 @@ export const SynthesisHandler = {
     await rctx.tasks.awaitAll();
 
     // Label VERIFIED hanya boleh bertahan bila jawaban mengutip dokumen yang dilampirkan (Item 71).
-    replyMessage = koreksiLabel(replyMessage, judulDokumen, requestMode);
+    replyMessage = koreksiLabel(replyMessage, judulDokumen, requestMode, isiDokumen);
 
     const aiResponse = {
       message: replyMessage,

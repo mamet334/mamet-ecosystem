@@ -8,7 +8,9 @@ export const corsHeaders = {
 };
 
 export const getStreamResponse = (promptText: string, systemPromptText = '', chatHistory: any[] = [], metaData: any = {}, rctx: RuntimeContext) => {
-  const safeMeta = { ...metaData };
+  // isiDokumen (isi potongan RAG, bisa puluhan KB) hanya untuk memeriksa label — JANGAN ikut ke header X-Agent-Metadata.
+  const { isiDokumen = [], ...metaTanpaIsi } = metaData || {};
+  const safeMeta = { ...metaTanpaIsi };
   if (safeMeta.subagentRuns) safeMeta.subagentRuns = safeMeta.subagentRuns.map((r: any) => ({ ...r, output: '[Omitted to save header space]' }));
 
   const stream = new ReadableStream({
@@ -99,7 +101,7 @@ export const getStreamResponse = (promptText: string, systemPromptText = '', cha
         // Teks yang sudah terkirim tidak bisa ditarik kembali, jadi koreksinya DITAMBAHKAN di akhir —
         // pembaca tetap tahu label itu tidak sah. Jalur non-stream menggantinya langsung.
         try {
-          const cek = periksaLabelSumber(fullLLMResponse, safeMeta.judulDokumen || []);
+          const cek = periksaLabelSumber(fullLLMResponse, safeMeta.judulDokumen || [], isiDokumen);
           if (cek.dikoreksi) {
             console.warn(`[LABEL] stream: VERIFIED tidak sah (${cek.alasan}); dokumen dilampirkan: ${(safeMeta.judulDokumen || []).length}`);
             enqueueStr(`\n\n${LABEL_HIPOTESIS}\n${cek.catatan}\n`);
