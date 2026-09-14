@@ -379,8 +379,8 @@ huruf identik; pembersih; annotations; PDF dimuat sekali). Uji baru:
 
 Build `frontend` (3.110 modul) dan `mametlite` (2.242 modul) sukses.
 
-**Belum terbukti:** belum ada unggahan live dengan kode ini — kecepatan nyata dan perilaku batas laju
-OpenRouter pada 5 permintaan serentak belum diukur.
+**Bukti live:** lihat "Bukti live di web" di bawah — unggahan KATALOG-PENDAS di Vercel selesai tanpa 429,
+Owner menilai kecepatannya cukup. Percepatan terhadap versi berurutan tidak diukur dengan angka.
 
 ## Item 76b — `pdf-lib` tak terbundel di mamet-ecosystem (2026-09-14)
 
@@ -407,7 +407,31 @@ yang berisi pdf-lib.
 (`fileProcessor.js`) tak meninggalkan nama paket mentah; `mammoth`/`pdfjs-dist` sudah dikecualikan;
 `lucide-react` di `Kernel.js` dikecualikan.
 
-**Belum terbukti:** unggahan OCR di situs Vercel — belum pernah berhasil di web sejak `4604ccf`.
+## Item 76b — Bukti live di web (2026-09-14 06.42 UTC)
+
+Sesudah push & deploy `26f3b41`, Owner menghapus KATALOG-PENDAS lalu mengunggahnya ulang di
+**mamet-ecosystem.vercel.app** dengan OCR disetujui — unggahan OCR pertama yang berhasil di web, dan uji
+live pertama OCR paralel. Log klien: 813/813 blok, 611.889 huruf, 58,7 s; tanpa galat `pdf-lib`, tanpa 429.
+Owner menilai kecepatannya sudah cukup.
+
+**Database** (dokumen `cd9d8e22…`), dibanding unggahan desktop 06.02:
+
+| Pemeriksaan | Web 06.42 | Desktop 06.02 |
+|---|---|---|
+| Potongan / ber-embedding | 813 / 813 | 813 / 813 |
+| Potongan bertabel Markdown | 518 | 519 |
+| Diawali baris tabel / tanpa judul kolom | 476 / 0 | 480 / 0 |
+| Tag palsu, entitas, `$\equiv$`, `<br>` | 0 | 0 |
+| Total huruf potongan | 716.243 | 716.839 |
+
+Selisih kecil wajar — mistral-ocr tidak deterministik per panggilan.
+
+**Bundel live** (22 berkas JS ditelusuri): chunk OCR `ResearchApp-Dr1aXPYr.js` memuat kode paralel
+(`retry-after`) dan memanggil `import("./index-BzRsIcXZ.js")`; kode pdf-lib asli ada di
+`index-BzRsIcXZ.js`; nama `"pdf-lib"` mentah tidak ada di berkas mana pun.
+
+Waktu 58,7 s (web) vs 43,3 s (desktop, berurutan) tidak dijadikan ukuran percepatan: belum dipastikan
+angka log itu mencakup tahap OCR, dan jaringan/mesin berbeda.
 - Operator Handbook di database belum diunggah ulang dengan OCR.
 - Belum ada UI biaya persisten (ledger) untuk unggahan — masih `window.confirm` sekali pakai.
 - Buku penuh tetap diproses halaman-per-halaman untuk OCR, bukan satu permintaan mistral-ocr untuk
