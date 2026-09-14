@@ -275,10 +275,10 @@ export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiD
   const teks = String(jawaban || '').replace(/\[\s*status\s*:\s*verified\s*\]/gi, LABEL_VERIFIED);
   const diam: HasilLabel = { jawaban: teks, dikoreksi: false, alasan: '', catatan: '' };
   const judul = (judulDokumen || []).filter((j) => typeof j === 'string' && j.trim());
-  // Blok <think>…</think> diperintahkan request_pipeline dan SENGAJA ditampilkan di chat utama (transparansi,
-  // keputusan Owner 2026-09-14). Label dan Sumber harus tertulis di jawaban akhir, di LUAR nalar — label/Sumber
-  // yang hanya ada di dalam nalar tidak meloloskan VERIFIED. Halaman & angka tetap diperiksa pada SELURUH teks,
-  // karena nalar ikut dibaca pengguna.
+  // Blok <think>…</think> SENGAJA ditampilkan di chat (transparansi, keputusan Owner 2026-09-14), tetapi label
+  // menilai JAWABAN AKHIR saja: label, Sumber, halaman, rujukan, dan angka dibaca di LUAR nalar. Keputusan Owner
+  // (uji mutu RAG putaran 4) menggantikan `0a50452` yang ikut memeriksa nalar: HCDP-07 #1 diturunkan hanya karena
+  // model mengecek di nalar "3.548 + 1.164 = 4.712, tidak sama dengan 4.828" — jawaban akhirnya bersih.
   const tampil = teks.replace(/<think>[\s\S]*?<\/think>/gi, '');
 
   // Dokumen dilampirkan → kontrak BLOK 6 mewajibkan label. Tanpa label apa pun → HYPOTHESIS ditambahkan sistem.
@@ -307,8 +307,13 @@ export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiD
   // dan 5 jawaban benar diturunkan. Teks yang dikutip dianggap cocok bila tertulis di isi potongan yang
   // dilampirkan (≥20 huruf setelah dirapikan). Pemeriksaan halaman & angka tetap berjalan sesudahnya.
   const isiRapi = (isiDokumen || []).filter((t) => typeof t === 'string' && t.trim()).map(rapikan);
-  const kutipanDiIsi = isiRapi.length > 0 && [...tampil.matchAll(/sumber\s*:?\s*["“]([^"”\n]{8,300})["”]/gi)]
-    .map((m) => rapikan(m[1]))
+  // Tanpa tanda kutip juga diterima (uji mutu RAG putaran 4, KAT-02 #2): `Sumber: Katalog Kurikulum FEB, FHISIP, …`
+  // — sisa baris sesudah "Sumber:" harus tertulis utuh di isi potongan (≥20 huruf setelah dirapikan).
+  const kutipanDiIsi = isiRapi.length > 0 && [
+    ...[...tampil.matchAll(/sumber\s*:?\s*["“]([^"”\n]{8,300})["”]/gi)].map((m) => m[1]),
+    ...[...tampil.matchAll(/sumber\s*:\s*([^"“”\n]{20,300})$/gim)].map((m) => m[1].replace(/[.\s]+$/, ''))
+  ]
+    .map((q) => rapikan(q))
     .some((q) => q.length >= 20 && isiRapi.some((t) => t.includes(q)));
   const adaYangCocok = judul.length > 0 && (kutipanDiIsi || kutipan.some((k) => judul.some((j) => judulDisebut(k, j))));
   if (!adaYangCocok) {
@@ -318,13 +323,13 @@ export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiD
     return turunkan(alasan, CATATAN_KOREKSI);
   }
 
-  const alasanHalaman = periksaHalamanSumber(teks, isiDokumen);
+  const alasanHalaman = periksaHalamanSumber(tampil, isiDokumen);
   if (alasanHalaman) return turunkan(alasanHalaman, `_Catatan sistem: label VERIFIED diturunkan — ${alasanHalaman}._`);
 
-  const alasanRujukan = periksaRujukanSumber(teks, isiDokumen);
+  const alasanRujukan = periksaRujukanSumber(tampil, isiDokumen);
   if (alasanRujukan) return turunkan(alasanRujukan, `_Catatan sistem: label VERIFIED diturunkan — ${alasanRujukan}. Periksa rujukan ini langsung di sumbernya._`);
 
-  const alasanAngka = periksaAngkaSumber(teks, isiDokumen);
+  const alasanAngka = periksaAngkaSumber(tampil, isiDokumen);
   if (alasanAngka) return turunkan(alasanAngka, `_Catatan sistem: label VERIFIED diturunkan — ${alasanAngka}. Periksa angka ini langsung di dokumen._`);
   return diam;
 }
