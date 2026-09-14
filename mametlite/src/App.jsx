@@ -3,6 +3,7 @@ import { Search, Upload, Send, User, Bot, Loader2, LogOut, Globe, BookOpen, Lock
 import { supabase } from './lib/supabase';
 import { callAgentSimple, parseSSEStream } from './lib/callAgentSimple';
 import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from './lib/documentTextExtractor';
+import { perkiraanOcr, terapkanOcrHalaman } from './lib/pdfOcrService';
 
 // Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
 const POTONGAN_PERLU_KONFIRMASI = 150; // ±105 ribu huruf ≈ $0,006 (potongan 800 huruf, Item 70)
@@ -222,11 +223,36 @@ function App() {
     try {
       // PDF/DOCX diambil teksnya di browser (Item 69). Gagal (scan, terkunci, .doc lama…)
       // melempar GagalEkstrak berpesan jelas → alert di bawah, dokumen lama tetap utuh.
-      const hasil = await ekstrakTeksDokumen(file, {
+      let hasil = await ekstrakTeksDokumen(file, {
         onProgress: ({ halaman, total }) => {
           if (total) setStatusUnggah(`Membaca halaman ${halaman}/${total}…`);
         }
       });
+
+      // Halaman PDF yang tampak bertabel (Item 76b): pdf.js meratakan kolomnya jadi satu baris
+      // tanpa jeda. Tawarkan OCR mistral-ocr HANYA untuk halaman itu — opsional (Human-in-Command,
+      // sama seperti gerbang konfirmasi Tier 3 Web Search). Kunci OpenRouter sudah dipastikan ada
+      // di pemeriksaan awal fungsi ini.
+      if (hasil.halamanBertabelTerdeteksi?.length) {
+        const kunciOcr = (localStorage.getItem('x-byok-openrouter') || '').replace(/[^\x00-\x7F]/g, '').trim();
+        const jumlah = hasil.halamanBertabelTerdeteksi.length;
+        const lanjutOcr = window.confirm(
+          `"${file.name}": ${jumlah} halaman tampak berupa tabel yang mungkin rusak dibaca pdf.js.\n\n` +
+          `Perbaiki dengan OCR (mistral-ocr)? Perkiraan biaya ±$${perkiraanOcr(jumlah).toFixed(3)} ` +
+          `dari saldo OpenRouter Anda, di luar biaya embedding.`
+        );
+        if (lanjutOcr) {
+          setStatusUnggah(`Membaca ulang ${jumlah} halaman tabel dengan OCR…`);
+          const petaOcr = await terapkanOcrHalaman(
+            new Uint8Array(await file.arrayBuffer()),
+            hasil.halamanBertabelTerdeteksi,
+            kunciOcr,
+            ({ ke, total }) => setStatusUnggah(`OCR halaman ${ke}/${total}…`)
+          );
+          hasil = await ekstrakTeksDokumen(file, { petaOcrHalaman: petaOcr });
+        }
+      }
+
       const { potongan, dolar } = perkiraanUnggah(hasil.huruf);
       if (potongan > POTONGAN_PERLU_KONFIRMASI) {
         const infoHalaman = hasil.halaman ? `${hasil.halaman} halaman, ` : '';

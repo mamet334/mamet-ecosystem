@@ -3,6 +3,7 @@ import { supabase } from '../../supabase';
 import { kernel } from '../../core/runtime/Kernel';
 import { Search, Upload, Trash2, FileText, Loader2, Database, PlusCircle } from 'lucide-react';
 import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from '../../core/runtime/services/documentTextExtractor.js';
+import { perkiraanOcr, terapkanOcrHalaman } from '../../core/runtime/services/pdfOcrService.js';
 
 // Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
 const POTONGAN_PERLU_KONFIRMASI = 150; // ±105 ribu huruf ≈ $0,006 (potongan 800 huruf, Item 70)
@@ -101,14 +102,48 @@ export default function ResearchApp() {
                 return;
             }
 
+            // Embedding (Item 63) dan OCR opsional (Item 76b) dibayar pengguna dengan kunci
+            // OpenRouter-nya sendiri — diambil sekali di sini, dipakai untuk keduanya.
+            let openRouterKey = null;
+            try {
+                const vault = kernel.serviceManager?.get('VaultService');
+                openRouterKey = vault?.getKey('openrouter') || null;
+            } catch {
+                // Vault belum siap — rag-process akan menjawab OPENROUTER_KEY_REQUIRED.
+            }
+
             // PDF/DOCX diambil teksnya di browser (Item 69); berkas teks dibaca apa adanya.
             // Gagal (scan, terkunci, format lama…) melempar GagalEkstrak berpesan jelas → alert di bawah.
             setStatusUnggah('Membaca dokumen…');
-            const hasil = await ekstrakTeksDokumen(file, {
+            let hasil = await ekstrakTeksDokumen(file, {
                 onProgress: ({ halaman, total }) => {
                     if (total) setStatusUnggah(`Membaca halaman ${halaman}/${total}…`);
                 }
             });
+
+            // Halaman PDF yang tampak bertabel (Item 76b): pdf.js meratakan kolomnya jadi satu
+            // baris tanpa jeda. Tawarkan OCR mistral-ocr HANYA untuk halaman itu — opsional, dan
+            // hanya bila ada kunci OpenRouter untuk membayarnya (Human-in-Command, sama seperti
+            // gerbang konfirmasi Tier 3 Web Search).
+            if (hasil.halamanBertabelTerdeteksi?.length && openRouterKey) {
+                const jumlah = hasil.halamanBertabelTerdeteksi.length;
+                const lanjutOcr = window.confirm(
+                    `"${file.name}": ${jumlah} halaman tampak berupa tabel yang mungkin rusak dibaca pdf.js.\n\n` +
+                    `Perbaiki dengan OCR (mistral-ocr)? Perkiraan biaya ±$${perkiraanOcr(jumlah).toFixed(3)} ` +
+                    `dari saldo OpenRouter Anda, di luar biaya embedding.`
+                );
+                if (lanjutOcr) {
+                    setStatusUnggah(`Membaca ulang ${jumlah} halaman tabel dengan OCR…`);
+                    const petaOcr = await terapkanOcrHalaman(
+                        new Uint8Array(await file.arrayBuffer()),
+                        hasil.halamanBertabelTerdeteksi,
+                        openRouterKey,
+                        ({ ke, total }) => setStatusUnggah(`OCR halaman ${ke}/${total}…`)
+                    );
+                    hasil = await ekstrakTeksDokumen(file, { petaOcrHalaman: petaOcr });
+                }
+            }
+
             const text = hasil.teks;
             const { potongan, dolar } = perkiraanUnggah(hasil.huruf);
             if (potongan > POTONGAN_PERLU_KONFIRMASI) {
@@ -122,16 +157,8 @@ export default function ResearchApp() {
             }
             setStatusUnggah(`Memvektorkan ±${potongan} potongan…`);
 
-            // Embedding dibayar pengguna dengan kunci OpenRouter-nya sendiri (Item 63).
-            // Tanpa kunci, rag-process menolak dengan pesan yang menjelaskan caranya.
             const headers = {};
-            try {
-                const vault = kernel.serviceManager?.get('VaultService');
-                const openRouterKey = vault?.getKey('openrouter');
-                if (openRouterKey) headers['x-byok-openrouter'] = openRouterKey.replace(/[^\x00-\x7F]/g, '');
-            } catch {
-                // Vault belum siap — rag-process akan menjawab OPENROUTER_KEY_REQUIRED.
-            }
+            if (openRouterKey) headers['x-byok-openrouter'] = openRouterKey.replace(/[^\x00-\x7F]/g, '');
 
             const { data, error } = await supabase.functions.invoke('rag-process', {
                 body: {

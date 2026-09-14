@@ -13,6 +13,11 @@
  *
  * SALINAN: mametlite/src/lib/documentTextExtractor.js memuat logika yang sama (proyek terpisah,
  * di-deploy sendiri). Ubah keduanya bersamaan.
+ *
+ * DETEKSI TABEL PDF (Item 76b, 2026-09-14): `deteksiTabelHalaman` menandai halaman yang tampak
+ * bertabel (aturan B′ dari riset di changelog 2026-09-14-tabel-docx-jadi-markdown.md) supaya bisa
+ * ditawarkan OCR opsional lewat `pdfOcrService.js` — pdf.js sendiri tidak bisa merapikan tabel PDF
+ * seperti tabel DOCX karena tak ada struktur HTML untuk direkonstruksi, hanya posisi teks.
  */
 
 export const EKSTENSI_TEKS = ['.txt', '.md', '.csv', '.json', '.html', '.xml'];
@@ -24,6 +29,17 @@ const MAKS_MB = 60;
 const AMBANG_HALAMAN_KOSONG = 25;     // huruf; di bawah ini halaman dianggap gambar/scan
 const PORSI_BERULANG = 0.3;           // baris tepi yang muncul di ≥30% halaman = judul/nomor halaman
 const PORSI_SCAN = 0.5;               // ≥50% halaman tanpa teks = PDF hasil scan
+
+// Deteksi halaman bertabel (Item 76b, aturan B′ dari riset 2026-09-14): pdf.js meratakan kolom
+// tabel jadi satu baris tanpa jeda, jadi tabel dideteksi dari POSISI, bukan struktur (tak ada
+// struktur tabel di teks PDF seperti HTML DOCX). Dua sinyal digabung DAN supaya sampul, poin
+// berindentasi, dan kode menjorok tidak salah terpilih (aturan tunggal C di riset salah pilih itu):
+//   - "multi-kolom": ada jeda horizontal antar potongan teks dalam satu baris > 25pt (kolom tabel).
+//   - "yatim": baris mulai > 60pt di sebelah kanan margin kiri halaman (lanjutan sel kolom kanan).
+const JARAK_MULTI_KOLOM = 25;
+const JARAK_BARIS_YATIM = 60;
+const PORSI_MULTI_KOLOM = 0.3;
+const PORSI_BARIS_YATIM = 0.1;
 
 // Perkiraan biaya embedding (Item 63): google/gemini-embedding-2 ±$0,20 per juta token,
 // ±4 huruf per token (HCDP: 11 potongan ≈ 12 ribu token). Potongan 800 huruf, tumpang 100
@@ -80,8 +96,11 @@ function gabungBaris(bagian, buangTumpang) {
   return teks.replace(/\s+/g, ' ').trim();
 }
 
-/** Item `getTextContent()` satu halaman → daftar baris teks. */
-export function susunBarisHalaman(items) {
+/**
+ * Item `getTextContent()` satu halaman → baris dikelompokkan per-y (dipakai `susunBarisHalaman`
+ * untuk dirangkai jadi teks, dan `deteksiTabelHalaman` untuk diperiksa posisinya).
+ */
+export function kelompokkanBaris(items) {
   // Sebagian pembuat PDF mencetak teks yang sama 2–3 kali di koordinat yang sama (efek tebal /
   // bayangan). Terbukti di PDF HCDP asli dari Word 2007: tiap kalimat 3 salinan, dipecah di titik
   // berbeda — tanpa penanganan ini teksnya 133 ribu huruf berantakan, bukan ±60 ribu. HCDP yang
@@ -112,7 +131,7 @@ export function susunBarisHalaman(items) {
       b.bagian.push(p);
     }
     baris.sort((a, c) => c.y - a.y);
-    return baris.map((b) => gabungBaris(b.bagian, true)).filter(Boolean);
+    return { baris, cetakUlang: true };
   }
 
   // Halaman normal: ikuti urutan aliran — menjaga urutan kolom pada buku dua kolom.
@@ -126,7 +145,35 @@ export function susunBarisHalaman(items) {
     kini.bagian.push(p);
     if (p.akhir) kini = null;
   }
-  return baris.map((b) => gabungBaris(b.bagian, false)).filter(Boolean);
+  return { baris, cetakUlang: false };
+}
+
+/** Item `getTextContent()` satu halaman → daftar baris teks. */
+export function susunBarisHalaman(items) {
+  const { baris, cetakUlang } = kelompokkanBaris(items);
+  return baris.map((b) => gabungBaris(b.bagian, cetakUlang)).filter(Boolean);
+}
+
+/**
+ * `baris` dari `kelompokkanBaris` → true bila halaman ini tampak berupa tabel (aturan B′): pdf.js
+ * meratakan kolom jadi baris tunggal, jadi dideteksi dari posisi horizontal potongan teks, bukan
+ * struktur. Dua sinyal digabung DAN supaya sampul/poin berindentasi/kode menjorok tidak salah
+ * terpilih (aturan tunggal berbasis satu sinyal saja terbukti salah pilih itu di riset).
+ */
+export function deteksiTabelHalaman(baris) {
+  if (baris.length < 3) return false;
+  const awalBaris = baris.map((b) => Math.min(...b.bagian.map((p) => p.x)));
+  const margin = Math.min(...awalBaris);
+  let multiKolom = 0;
+  let yatim = 0;
+  baris.forEach((b, i) => {
+    const bagian = [...b.bagian].sort((a, c) => a.x - c.x);
+    for (let k = 1; k < bagian.length; k++) {
+      if (bagian[k].x - (bagian[k - 1].x + bagian[k - 1].lebar) > JARAK_MULTI_KOLOM) { multiKolom++; break; }
+    }
+    if (awalBaris[i] - margin > JARAK_BARIS_YATIM) yatim++;
+  });
+  return (multiKolom / baris.length) >= PORSI_MULTI_KOLOM && (yatim / baris.length) >= PORSI_BARIS_YATIM;
 }
 
 /** Baris per halaman → teks utuh, tanpa judul/kaki halaman berulang, dengan penanda [Halaman N]. */
@@ -157,8 +204,13 @@ export function rakitTeksHalaman(halaman) {
   return { teks: bagian.filter(Boolean).join('\n\n'), halamanKosong: kosong };
 }
 
-/** Inti ekstraksi PDF — `pdfjs` diberikan pemanggil (browser: build legacy + worker; uji: Node). */
-export async function ekstrakPdfDariData(data, pdfjs, onProgress) {
+/**
+ * Inti ekstraksi PDF — `pdfjs` diberikan pemanggil (browser: build legacy + worker; uji: Node).
+ * `petaOcr` (opsional, Item 76b): `Map<nomorHalaman, teks>` — halaman yang ada di peta ini memakai
+ * teks OCR-nya (dipecah per baris) alih-alih hasil pdf.js, dipakai saat mengulang ekstraksi sesudah
+ * `terapkanOcrHalaman` (lihat `pdfOcrService.js`) menggantikan halaman yang terdeteksi bertabel.
+ */
+export async function ekstrakPdfDariData(data, pdfjs, onProgress, petaOcr) {
   // Yang dihentikan di akhir adalah loadingTask, bukan doc: pdfjs 6 (mametlite) tak lagi punya
   // doc.destroy() — terbukti saat uji salinan mametlite. loadingTask.destroy() ada di v5 dan v6.
   const tugas = pdfjs.getDocument({ data, isEvalSupported: false });
@@ -173,15 +225,21 @@ export async function ekstrakPdfDariData(data, pdfjs, onProgress) {
   }
   try {
     const halaman = [];
+    const bertabel = [];
     for (let n = 1; n <= doc.numPages; n++) {
       const page = await doc.getPage(n);
       const isi = await page.getTextContent();
-      halaman.push(susunBarisHalaman(isi.items));
+      const { baris, cetakUlang } = kelompokkanBaris(isi.items);
+      if (deteksiTabelHalaman(baris)) bertabel.push(n);
+      const teksOcr = petaOcr?.get(n);
+      halaman.push(teksOcr !== undefined
+        ? teksOcr.split('\n').filter(Boolean)
+        : baris.map((b) => gabungBaris(b.bagian, cetakUlang)).filter(Boolean));
       page.cleanup();
       onProgress?.({ tahap: 'membaca', halaman: n, total: doc.numPages });
     }
     const { teks, halamanKosong } = rakitTeksHalaman(halaman);
-    return { jenis: 'pdf', teks, halaman: halaman.length, halamanKosong };
+    return { jenis: 'pdf', teks, halaman: halaman.length, halamanKosong, halamanBertabelTerdeteksi: bertabel };
   } finally {
     await tugas.destroy();
   }
@@ -286,7 +344,7 @@ function periksaHasil(nama, hasil) {
  * @returns {Promise<{jenis, teks, huruf, halaman?, halamanKosong?}>}
  * @throws {GagalEkstrak}
  */
-export async function ekstrakTeksDokumen(file, { onProgress } = {}) {
+export async function ekstrakTeksDokumen(file, { onProgress, petaOcrHalaman } = {}) {
   const eks = ekstensi(file?.name);
   if (eks === '.doc') {
     throw new GagalEkstrak('TIDAK_DIDUKUNG', 'Format .doc lama belum didukung. Simpan ulang sebagai .docx di Word, lalu unggah lagi.');
@@ -322,7 +380,7 @@ export async function ekstrakTeksDokumen(file, { onProgress } = {}) {
     import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')
   ]);
   pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-  const hasil = await ekstrakPdfDariData(new Uint8Array(await file.arrayBuffer()), pdfjs, onProgress);
+  const hasil = await ekstrakPdfDariData(new Uint8Array(await file.arrayBuffer()), pdfjs, onProgress, petaOcrHalaman);
   return periksaHasil(file.name, hasil);
 }
 
