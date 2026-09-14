@@ -201,7 +201,9 @@ export async function executeRequestPipeline(
     // mengirim (mis. mametlite) → bawaan model, perilaku lama.
     model: { model: parsed.model, provider: finalProvider, thinking: parsed.thinking === true ? true : parsed.thinking === false ? false : undefined },
     policy: { canUseDesktopTools: ctx.policy.canUseDesktopTools },
-    stream: { isStream: !!parsed.stream, extractedImage: parsed.extractedImage, desktopOSMode: !!parsed.desktopOSMode, auditMode: parsed.auditMode || 'OFF' },
+    // streamNalar (hybrid, 2026-09-14): jawaban tetap JSON utuh, tetapi nalar dialirkan lebih dulu lewat SSE —
+    // hanya bila Thinking dinyalakan (tanpa nalar tak ada yang dialirkan). Lihat index.ts.
+    stream: { isStream: !!parsed.stream, extractedImage: parsed.extractedImage, desktopOSMode: !!parsed.desktopOSMode, auditMode: parsed.auditMode || 'OFF', streamNalar: !parsed.stream && parsed.streamNalar === true && parsed.thinking === true },
     env: runtimeEnv,
     logger: createRuntimeLogger(ctx.auth.userId, backgroundTasks, !!parsed.stream, runtimeEnv),
     userId: ctx.auth?.userId || 'anonymous',
@@ -360,6 +362,7 @@ INGAT: Ini adalah Windows OS. Gunakan perintah Windows (dir, cd, type, copy) BUK
   const isLookupMode = parsed.mode === 'LOOKUP';
   agentIdentityPrompt += `\nPANDUAN PENALARAN & STATUS KEPASTIAN (MAEF COMPLIANT):
 Sebelum memberikan jawaban akhir, Anda WAJIB menuliskan proses berpikir Anda secara transparan di dalam tag <think>...</think>.
+BAHASA NALAR: seluruh proses berpikir/penalaran Anda (termasuk penalaran internal model) WAJIB ditulis dalam Bahasa Indonesia, sama dengan bahasa jawaban — nalar ditampilkan kepada pengguna.
 Isi tag think harus mencakup:
 1. Apa yang Anda pahami dari pertanyaan/permintaan user.
 2. APAKAH DATA TERSEDIA DI BLOK <RAG>, [BLOK 4: KNOWLEDGE], ATAU <MEMORY>?

@@ -335,6 +335,7 @@ export class AssistantService {
     onChunk,
     onDone,
     onError,
+    onNalar, // hybrid: nalar mengalir sebelum jawaban (hanya jalur CONVERSATION dengan Thinking menyala)
     modelTierOverride = null,
     _isPostHocWebRetry = false,
     _injectedKnowledgeContext = ''
@@ -361,7 +362,7 @@ export class AssistantService {
     // 3. Dispatch ke handler yang sesuai
     const handlerParams = {
       userMsg, history, workspaceId, userId, token,
-      attachedFile, workspaceManager, onChunk, onDone, onError,
+      attachedFile, workspaceManager, onChunk, onDone, onError, onNalar,
       resolvedMode, resolvedAppSource, modelTierOverride,
       _isPostHocWebRetry, _injectedKnowledgeContext
     };
@@ -901,7 +902,7 @@ export class AssistantService {
   async _handleConversation({
     userMsg, history, workspaceId, userId, token,
     attachedFile, workspaceManager, resolvedMode, resolvedAppSource,
-    onChunk, onDone, onError, modelTierOverride = null,
+    onChunk, onDone, onError, onNalar, modelTierOverride = null,
     _isPostHocWebRetry = false, _injectedKnowledgeContext = ''
   }) {
     const isEngineerMode = resolvedMode === 'ENGINEER';
@@ -1063,6 +1064,8 @@ export class AssistantService {
       globalMemory: trimmedRagContext,
       semanticContext: trimmedSemanticContext,
       stream: false,
+      // Hybrid (2026-09-14): nalar dialirkan lebih dulu, jawaban tetap JSON utuh — hanya bila Thinking menyala.
+      streamNalar: aiThinking === true,
       ragEnabled: ragToolEnabled,
       model: formattedModel || undefined,
       thinking: aiThinking, // true/false tier dikirim apa adanya; false kini mematikan nalar di OpenRouter (2026-09-13)
@@ -1100,8 +1103,44 @@ export class AssistantService {
     await this._handleResponseStream(response, {
       userMsg, isEngineerMode, workspaceManager, onChunk, onDone, onError, userId,
       history, workspaceId, token, attachedFile, resolvedMode, resolvedAppSource,
-      _isPostHocWebRetry
+      _isPostHocWebRetry, onNalar, hybrid: payload.streamNalar === true
     });
+  }
+
+  /**
+   * HYBRID — baca aliran dari agent-process: event `nalar` (potongan nalar), `nalar_selesai` (jawaban mulai
+   * ditulis), lalu `hasil` (isi Response JSON yang biasa) atau `galat`. Baris `: detak` diabaikan.
+   * Mengembalikan data JSON jawaban, atau null bila gagal (onError sudah dipanggil).
+   * @private
+   */
+  async _bacaAliranHybrid(response, { onNalar, onError }) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+    let nalar = '';
+    let hasil = null;
+    const olah = (baris) => {
+      if (!baris.startsWith('data: ')) return;
+      let ev;
+      try { ev = JSON.parse(baris.slice(6)); } catch { return; }
+      if (ev.tipe === 'nalar' && ev.teks) { nalar += ev.teks; onNalar?.(nalar, false); }
+      else if (ev.tipe === 'nalar_selesai') onNalar?.(nalar, true);
+      else if (ev.tipe === 'hasil') hasil = ev;
+      else if (ev.tipe === 'galat') hasil = { galat: ev.pesan || 'galat tidak diketahui' };
+    };
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const l of lines) olah(l.trim());
+    }
+    if (buffer.trim()) olah(buffer.trim());
+    if (!hasil) { onError?.('⚠️ Error: Aliran jawaban terputus sebelum selesai.'); return null; }
+    if (hasil.galat) { onError?.(`⚠️ Error: ${hasil.galat}`); return null; }
+    if (hasil.status >= 400) { onError?.(`⚠️ Error: ${hasil.data?.error || `HTTP ${hasil.status}`}`); return null; }
+    return hasil.data;
   }
 
   // =============================================
@@ -1116,13 +1155,20 @@ export class AssistantService {
   async _handleResponseStream(response, {
     userMsg, isEngineerMode, workspaceManager, onChunk, onDone, onError, userId,
     history, workspaceId, token, attachedFile, resolvedMode, resolvedAppSource,
-    _isPostHocWebRetry = false
+    _isPostHocWebRetry = false, onNalar, hybrid = false
   }) {
     const contentType = response.headers.get('content-type') || '';
 
-    if (contentType.includes('application/json')) {
-      console.log('[LIFECYCLE] Received JSON response (DIRECT mode)');
-      const jsonData = await response.json();
+    // HYBRID: nalar dialirkan lebih dulu; jawaban (event `hasil`) diproses PERSIS seperti jalur JSON di bawah.
+    let jsonHybrid = null;
+    if (hybrid && contentType.includes('text/event-stream')) {
+      jsonHybrid = await this._bacaAliranHybrid(response, { onNalar, onError });
+      if (!jsonHybrid) return;
+    }
+
+    if (jsonHybrid || contentType.includes('application/json')) {
+      console.log(jsonHybrid ? '[LIFECYCLE] Received JSON response (HYBRID mode)' : '[LIFECYCLE] Received JSON response (DIRECT mode)');
+      const jsonData = jsonHybrid || await response.json();
       const rawContent = typeof (jsonData.message || jsonData) === 'string'
         ? (jsonData.message || jsonData)
         : JSON.stringify(jsonData.message || jsonData);

@@ -19,7 +19,13 @@ const PESAN_UTUH = 2;
 const MAKS_HURUF_PESAN_LAMA = 800;
 
 export function rapikanRiwayat(history: any[], pesanSaatIni: string): any[] {
-  let riwayat = Array.isArray(history) ? [...history] : [];
+  // Nalar `<think>…</think>` jawaban lama ditampilkan di chat tetapi TIDAK dikirim ulang ke model: memboroskan
+  // token dan mengundang model meniru nalar lama sebagai fakta (2026-09-14, nalar OpenRouter diteruskan).
+  let riwayat = (Array.isArray(history) ? history : []).map((m) =>
+    typeof m?.content === 'string' && /<think>/i.test(m.content)
+      ? { ...m, content: m.content.replace(/<think>[\s\S]*?<\/think>\s*/gi, '').trim() }
+      : m
+  );
 
   // ConversationEngine mengirim riwayat yang SUDAH memuat pesan saat ini di ujungnya, lalu pesan yang
   // sama dikirim lagi sebagai prompt — model menerimanya dua kali (Item 66). Dibuang di sini hanya

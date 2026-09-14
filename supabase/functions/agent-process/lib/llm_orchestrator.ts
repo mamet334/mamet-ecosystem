@@ -22,8 +22,9 @@ export const callLLMWithMetadata = async (
   preferredProvider: string = 'gemini',
   extractedImage: { mimeType: string; data: string } | null = null,
   rctx: RuntimeContext,
-  tools: string[] = []
-): Promise<{ result: string; metadata?: any }> => {
+  tools: string[] = [],
+  opsi: { onNalar?: (teks: string) => void; onIsiMulai?: () => void } = {}
+): Promise<{ result: string; metadata?: any; reasoning?: string }> => {
   await CapabilityRegistry.initializeAdapters(rctx);
 
   const buildPayload = (tools: string[] = []) => {
@@ -131,7 +132,9 @@ export const callLLMWithMetadata = async (
         chatHistory,
         payload,
         forceDefaultModel: (adapter.name === 'OpenRouterAdapter' && preferredProvider !== 'openrouter') ? true : false,
-        model: modelCocokUntukAdapter
+        model: modelCocokUntukAdapter,
+        onNalar: opsi.onNalar,
+        onIsiMulai: opsi.onIsiMulai
       };
 
         const result = await adapter.execute(adapterInput, { trace_id: rctx.traceId || rctx.tasks?.traceId || 'unknown' });
@@ -156,7 +159,7 @@ export const callLLMWithMetadata = async (
         }
         console.log(`✅ ${adapter.name} succeeded`);
         eventBus.emit({ type: 'Capability.Executed', source: adapter.name, payload: { success: true, rctx } });
-        return { result: result.result, metadata: result.metadata };
+        return { result: result.result, metadata: result.metadata, reasoning: result.reasoning };
       }
 
       console.log(`⚠️  ${adapter.name} returned empty.`);
@@ -231,7 +234,11 @@ export function catatKomposisiPrompt(promptText: string, systemPromptText: strin
   console.log(`[PROMPT_KOMPOSISI] sistem=${s.length} ${JSON.stringify(ukuran)} | riwayat=${riwayat.length} pesan/${hurufRiwayat} huruf | pesan=${hurufPesan} | total=${s.length + hurufRiwayat + hurufPesan} huruf`);
 }
 
-export const runLLM = async (promptText: string, systemPromptText = '', chatHistory: any[] = [], rctx: RuntimeContext) => {
+/** Seperti runLLM, tetapi ikut mengembalikan nalar model (`reasoning`) — dipakai jawaban akhir di synthesis_handler. */
+export const runLLMDenganNalar = async (
+  promptText: string, systemPromptText = '', chatHistory: any[] = [], rctx: RuntimeContext,
+  opsi: { onNalar?: (teks: string) => void; onIsiMulai?: () => void } = {}
+): Promise<{ result: string; metadata?: any; reasoning?: string }> => {
   if (rctx.policy.canUseDesktopTools && !systemPromptText.includes('DESKTOP NATIVE AWARENESS ENABLED')) {
      systemPromptText += `\n[STATUS: DESKTOP NATIVE AWARENESS ENABLED]\nAnda WAJIB mengeluarkan perintah Windows di dalam tag <terminal>. DILARANG menyebut sub-agent atau menolak. Contoh: <terminal>dir %USERPROFILE%\\Desktop</terminal>\n`;
   }
@@ -275,8 +282,11 @@ export const runLLM = async (promptText: string, systemPromptText = '', chatHist
 
   console.log('[DEBUG][runLLM] rctx.model=', (rctx as any)?.model, ' uiProvider=', uiProvider, ' preferredProvider=', preferredProvider);
   console.log(`🔄 runLLM delegated to Capability Registry with preferred provider: ${preferredProvider}`);
-  return await callLLMWithCascade(promptText, systemPromptText, chatHistory, preferredProvider, rctx.stream.extractedImage, rctx);
+  return await callLLMWithMetadata(promptText, systemPromptText, chatHistory, preferredProvider, rctx.stream.extractedImage, rctx, [], opsi);
 };
+
+export const runLLM = async (promptText: string, systemPromptText = '', chatHistory: any[] = [], rctx: RuntimeContext): Promise<string> =>
+  (await runLLMDenganNalar(promptText, systemPromptText, chatHistory, rctx)).result;
 
 export const runStreamLLM = async function*(promptText: string, systemPromptText = '', chatHistory: any[] = [], rctx: RuntimeContext): AsyncGenerator<string, void, unknown> {
   catatKomposisiPrompt(promptText, systemPromptText, chatHistory);

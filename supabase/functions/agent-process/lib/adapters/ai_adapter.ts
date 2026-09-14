@@ -1,14 +1,16 @@
 import { CapabilityAdapter, AdapterContext, AdapterResult } from './capability_adapter.ts';
 import { RuntimeContext } from '../runtime_context.ts';
 import { checkGuardrails, recordUsage } from '../cost/costTracker.ts';
-import { kirimOpenRouterDenganReasoning } from './reasoning_openrouter.ts';
+import { kirimOpenRouterDenganReasoning, teksNalar, pembungkusNalarStream, bacaSseOpenRouter } from './reasoning_openrouter.ts';
 
 // `info` opsional: OpenRouter menyertakan `provider` (penyedia hulu yang benar-benar melayani,
 // mis. "DeepInfra") di setiap chunk. Groq/OpenAI tidak mengirimnya dan tidak perlu mengoper info.
-async function* processOpenAIStream(res: Response, info?: { provider?: string }): AsyncGenerator<string, void, unknown> {
+async function* processOpenAIStream(res: Response, info?: { provider?: string }, tampilkanNalar = false): AsyncGenerator<string, void, unknown> {
   const reader = res.body?.getReader();
   if (!reader) throw new Error("No body");
   let buffer = '';
+  // Nalar (delta.reasoning_details) dibungkus <think> di depan jawaban — hanya bila diminta (Thinking ON).
+  const bungkus = pembungkusNalarStream();
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -20,12 +22,16 @@ async function* processOpenAIStream(res: Response, info?: { provider?: string })
         try {
           const data = JSON.parse(line.substring(6));
           if (info && !info.provider && typeof data.provider === 'string' && data.provider) info.provider = data.provider;
-          const content = data.choices?.[0]?.delta?.content || '';
-          if (content) yield content;
+          const delta = data.choices?.[0]?.delta;
+          const content = delta?.content || '';
+          const keluar = bungkus.potong(tampilkanNalar ? teksNalar(delta) : '', content);
+          if (keluar) yield keluar;
         } catch(e) {}
       }
     }
   }
+  const penutup = bungkus.akhir();
+  if (penutup) yield penutup;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -359,7 +365,8 @@ export class OpenRouterAdapter implements CapabilityAdapter {
     );
 
     const res = await kirimOpenRouterDenganReasoning(
-      { model: openRouterModel, messages, temperature: 0.1, max_tokens: 8192 },
+      // Hybrid: bila pemanggil meminta nalar dialirkan (onNalar), permintaan dikirim sebagai stream lalu dirakit ulang.
+      { model: openRouterModel, messages, temperature: 0.1, max_tokens: 8192, ...(typeof input.onNalar === 'function' ? { stream: true } : {}) },
       this.rctx.model.thinking,
       (body) => fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -373,7 +380,9 @@ export class OpenRouterAdapter implements CapabilityAdapter {
       })
     );
     if (!res.ok) throw new Error(`OpenRouter API Error: ${res.status} ${await res.text()}`);
-    const data = await res.json();
+    const data = typeof input.onNalar === 'function'
+      ? await bacaSseOpenRouter(res, { onNalar: input.onNalar, onIsiMulai: input.onIsiMulai })
+      : await res.json();
     const answer = data.choices?.[0]?.message?.content || '';
 
     const usage = data.usage || {};
@@ -427,7 +436,8 @@ export class OpenRouterAdapter implements CapabilityAdapter {
       source: 'openrouter',
       trace_id: context.trace_id,
       usageCostUsd: actualCostUsd,
-      modelUsed: openRouterModel
+      modelUsed: openRouterModel,
+      reasoning: teksNalar(data.choices?.[0]?.message)
     };
   }
 
@@ -489,10 +499,10 @@ export class OpenRouterAdapter implements CapabilityAdapter {
     );
     clearTimeout(id);
     if (!res.ok) throw new Error(`OpenRouter HTTP ${res.status}: ${await res.text()}`);
-    
+
     let accumulatedText = '';
     const infoStream: { provider?: string } = {};
-    for await (const chunk of processOpenAIStream(res, infoStream)) {
+    for await (const chunk of processOpenAIStream(res, infoStream, this.rctx.model.thinking === true)) {
       accumulatedText += chunk;
       yield chunk;
     }

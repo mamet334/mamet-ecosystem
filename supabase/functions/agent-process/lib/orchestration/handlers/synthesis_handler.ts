@@ -1,9 +1,21 @@
-import { runLLM } from '../../llm_orchestrator.ts';
+import { runLLMDenganNalar } from '../../llm_orchestrator.ts';
 import { executeResponsePipeline } from '../../coordinator/parser_pipeline.ts';
 import { VerificationEngine } from '../../verification/verification_engine.ts';
 import { persistTelemetryLog } from '../../verification/verification_service.ts';
 import { eventBus } from '../../event/event_bus.ts';
 import { koreksiLabel } from '../../verification/label_sumber.ts';
+import { sisipkanNalar } from '../../adapters/reasoning_openrouter.ts';
+
+/** Jawaban akhir. Nalar model ikut ditampilkan (`<think>`) hanya bila Thinking dinyalakan eksplisit. */
+async function jawabanAkhir(prompt: string, sistem: string, riwayat: any[], rctx: any): Promise<string> {
+  // Hybrid: nalar dialirkan ke klien sambil model berpikir; jawaban tetap dirakit utuh & diperiksa di bawah.
+  const kirim = rctx?.model?.thinking === true ? rctx?.stream?.kirimNalar : undefined;
+  const opsi = kirim
+    ? { onNalar: (teks: string) => kirim({ tipe: 'nalar', teks }), onIsiMulai: () => kirim({ tipe: 'nalar_selesai' }) }
+    : {};
+  const r = await runLLMDenganNalar(prompt, sistem, riwayat, rctx, opsi);
+  return rctx?.model?.thinking === true ? sisipkanNalar(r.result, r.reasoning) : r.result;
+}
 
 export const SynthesisHandler = {
   async handle(state: any, ctx: any, rctx: any, maef: any): Promise<any> {
@@ -61,7 +73,7 @@ export const SynthesisHandler = {
             snapshot: maef.getSnapshot() 
           };
         }
-        replyMessage = await runLLM(ctx.request.finalMessage, fullSystemContext, history, rctx);
+        replyMessage = await jawabanAkhir(ctx.request.finalMessage, fullSystemContext, history, rctx);
         
         const { replyWithoutTrace, sourceTrace } = executeResponsePipeline('extract_trace', replyMessage, rctx);
 
@@ -246,7 +258,7 @@ export const SynthesisHandler = {
               snapshot: maef.getSnapshot() 
             };
           }
-          replyMessage = await runLLM(synthesisPrompt, fullSystemContext, history, rctx);
+          replyMessage = await jawabanAkhir(synthesisPrompt, fullSystemContext, history, rctx);
         } else {
           if (stream && !extractedImage) {
             return { 
@@ -268,7 +280,7 @@ export const SynthesisHandler = {
               snapshot: maef.getSnapshot() 
             };
           }
-          replyMessage = await runLLM(ctx.request.finalMessage, fullSystemContext, history, rctx);
+          replyMessage = await jawabanAkhir(ctx.request.finalMessage, fullSystemContext, history, rctx);
         }
     }
 

@@ -3,7 +3,8 @@
 **Tanggal:** 14 September 2026
 **Roadmap:** Item 78 (lanjutan putaran 1)
 **Berkas kode:** `supabase/functions/agent-process/lib/verification/label_sumber.ts`
-**Status:** di-commit; belum di-deploy (`agent-process`)
+**Status:** dideploy (`agent-process` v429, 2026-09-14 12.29 UTC). Putaran 3 dan pekerjaan lanjutan:
+[`2026-09-14-nalar-hybrid-memori-rujukan.md`](2026-09-14-nalar-hybrid-memori-rujukan.md)
 
 ## Hasil putaran 2 (2026-09-14 12.16 UTC, `agent-process` v427)
 

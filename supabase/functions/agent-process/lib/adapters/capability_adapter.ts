@@ -31,6 +31,8 @@ export interface AdapterResult {
    * dipasang (Item 48) dan menampilkannya di layar.
    */
   modelUsed?: string;
+  /** Nalar model yang dikirim provider terpisah dari `result` (OpenRouter `message.reasoning`); lihat reasoning_openrouter.ts. */
+  reasoning?: string;
 }
 
 export interface CapabilityAdapter {

@@ -151,6 +151,42 @@ serve(async (req) => {
 
     const { ctx, rctx } = pipelineResult;
 
+    // --- HYBRID: NALAR DIALIRKAN, JAWABAN TETAP JSON UTUH (2026-09-14) ---
+    // Owner memilih nalar tampil SEBELUM jawaban (gaya DeepSeek) tanpa melepas pemeriksaan label, verifikasi,
+    // dan konteks tersimpan milik jalur JSON. Pipeline di bawah dijalankan persis sama di dalam aliran SSE:
+    // event `nalar` / `nalar_selesai` selama model berpikir, lalu `hasil` = isi Response JSON yang biasa.
+    if (rctx.stream?.streamNalar) {
+      const encoder = new TextEncoder();
+      const aliran = new ReadableStream({
+        async start(controller) {
+          let tertutup = false;
+          const tulis = (teks: string) => { if (tertutup) return; try { controller.enqueue(encoder.encode(teks)); } catch (_) { /* klien pergi */ } };
+          const kirim = (obj: any) => tulis(`data: ${JSON.stringify(obj)}\n\n`);
+          const detak = setInterval(() => tulis(': detak\n\n'), 10000);
+          rctx.stream.kirimNalar = kirim;
+          try {
+            const engineResult = await coreEngine.execute(ctx, rctx);
+            await rctx.tasks.awaitAll();
+            await pingHeartbeat('agent-process', 'HEALTHY');
+            const res = streamController.pipe(engineResult, rctx);
+            const teks = await res.text();
+            let data: any;
+            try { data = JSON.parse(teks); } catch { data = { message: teks }; }
+            kirim({ tipe: 'hasil', status: res.status, data });
+          } catch (error: any) {
+            console.error('Edge Function Error (hybrid):', error);
+            await pingHeartbeat('agent-process', 'DOWN');
+            kirim({ tipe: 'galat', pesan: String(error?.message || error) });
+          } finally {
+            clearInterval(detak);
+            tertutup = true;
+            try { controller.close(); } catch (_) { /* sudah tertutup */ }
+          }
+        }
+      });
+      return new Response(aliran, { headers: { ...corsHeaders, 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' } });
+    }
+
     // --- EXECUTE ORCHESTRATION ---
     const engineResult = await coreEngine.execute(ctx, rctx);
     

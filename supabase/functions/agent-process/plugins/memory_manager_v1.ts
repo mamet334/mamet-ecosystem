@@ -10,9 +10,9 @@ const logMemoryAudit = (supabaseUrl, supabaseKey, payload, rctx) => {
     const promise = supabase.from('memory_audit_logs').insert([payload]).then(({error}) => {
       if (error) console.error("Audit log insert error:", error);
     });
-    if (rctx && rctx.tasks) {
-      rctx.tasks.add(promise);
-    }
+    // Pelacak tugas (runtime_context.ts BackgroundTaskTracker) hanya punya fire()/awaitAll(). Dulu `.add()` →
+    // TypeError; di retrieveMemories galat itu jatuh ke catch dan memori yang SUDAH ditemukan dibuang (return []).
+    if (rctx?.tasks?.fire) rctx.tasks.fire('MemoryAuditLog', promise);
   } catch(e) {
     console.error("Audit log setup error:", e);
   }
@@ -159,8 +159,9 @@ export const retrieveMemoriesV2 = async (userPrompt: string, userId: string, sup
     
     // Asynchronous hit tracker
     if (compressedContext.source_nodes.length > 0) {
-       const promise = supabase.rpc('update_memory_stats', { memory_ids: compressedContext.source_nodes }).catch(() => {});
-       if (rctx && rctx.tasks) rctx.tasks.add(promise);
+       const promise = supabase.rpc('update_memory_stats', { memory_ids: compressedContext.source_nodes })
+         .then(({error}) => { if (error) console.error("Update memory stats error:", error) });
+       if (rctx?.tasks?.fire) rctx.tasks.fire('MemoryStatsUpdate', promise);
     }
     
     return [finalMemoryObject];
@@ -343,7 +344,7 @@ export const retrieveMemories = async (userPrompt: string, userId: string, supab
            const promise = supabase.rpc('update_memory_stats', { memory_ids: memoryIds })
              .then(({error}) => { if (error) console.error("Update memory stats error:", error) })
              .catch(e => console.error("Update memory stats exception:", e));
-           if (rctx && rctx.tasks) rctx.tasks.add(promise);
+           if (rctx?.tasks?.fire) rctx.tasks.fire('MemoryStatsUpdate', promise);
        }
     }
     

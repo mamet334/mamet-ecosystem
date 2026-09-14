@@ -50,7 +50,12 @@ function judulDisebut(baris: string, judul: string): boolean {
   const j = rapikan(judul);
   if (j.length < 4) return false;
   const b = rapikan(baris);
-  return b.includes(j.slice(0, 30)) || (j.length <= 60 && j.includes(b) && b.length >= 4);
+  if (b.includes(j.slice(0, 30)) || (j.length <= 60 && j.includes(b) && b.length >= 4)) return true;
+  // Akhiran berkas tidak wajib ditulis (uji chat 2026-09-14): `Sumber: Dokumen HCDP 2025-2026 Kabupaten OKU.`
+  // untuk berkas "DOKUMEN HCDP 2025-2026.docx" diturunkan hanya karena ".docx". Nama tanpa akhiran minimal
+  // 8 huruf, supaya berkas pendek ("Laporan.pdf") tidak cocok dengan sembarang kalimat.
+  const tanpaAkhiran = rapikan(String(judul || '').replace(/\.(docx?|pdf|xlsx?|pptx?|txt|md|csv|rtf|odt)\s*$/i, ''));
+  return tanpaAkhiran.length >= 8 && tanpaAkhiran !== j && b.includes(tanpaAkhiran.slice(0, 30));
 }
 
 // ── Angka ────────────────────────────────────────────────────────────────────────────────────
@@ -238,6 +243,26 @@ export function periksaHalamanSumber(jawaban: string, isiDokumen: string[]): str
     : `nomor halaman ${karangan.join(', ')} disebut, padahal dokumen yang dilampirkan tidak memuat penanda halaman`;
 }
 
+// ── Rujukan peraturan ────────────────────────────────────────────────────────────────────────
+// "Nomor 19 Tahun 2026" bukan desimal/persen, jadi lolos pemeriksaan angka. Uji chat 2026-09-14: potongan
+// berita web terpotong `(PermenPANRB) Nomor 19 Tahun ...`, model melengkapinya menjadi "Nomor 19 Tahun 2026"
+// dan tetap VERIFIED. Kini setiap "Nomor N Tahun YYYY" di jawaban wajib tertulis persis di potongan.
+const POLA_RUJUKAN = /\b(?:nomor|no\.?)\s*(\d{1,4}[a-z]?)\s+tahun\s+(\d{4})\b/gi;
+
+/** null = rujukan sah (atau tidak ada); string = alasan penurunan. */
+export function periksaRujukanSumber(jawaban: string, isiDokumen: string[]): string | null {
+  const isi = (isiDokumen || []).filter((t) => typeof t === 'string' && t.trim());
+  if (!isi.length) return null;
+  const teksIsi = rapikan(isi.join('\n'));
+  const karangan = new Set<string>();
+  for (const m of String(jawaban || '').matchAll(POLA_RUJUKAN)) {
+    const n = m[1].toLowerCase(); const th = m[2];
+    if (!teksIsi.includes(`nomor ${n} tahun ${th}`) && !teksIsi.includes(`no ${n} tahun ${th}`)) karangan.add(`Nomor ${m[1]} Tahun ${th}`);
+  }
+  if (!karangan.size) return null;
+  return `rujukan ${[...karangan].slice(0, 3).join(', ')} tidak tertulis di dokumen yang dilampirkan`;
+}
+
 export type HasilLabel = { jawaban: string; dikoreksi: boolean; alasan: string; catatan: string };
 
 /**
@@ -295,6 +320,9 @@ export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiD
 
   const alasanHalaman = periksaHalamanSumber(teks, isiDokumen);
   if (alasanHalaman) return turunkan(alasanHalaman, `_Catatan sistem: label VERIFIED diturunkan — ${alasanHalaman}._`);
+
+  const alasanRujukan = periksaRujukanSumber(teks, isiDokumen);
+  if (alasanRujukan) return turunkan(alasanRujukan, `_Catatan sistem: label VERIFIED diturunkan — ${alasanRujukan}. Periksa rujukan ini langsung di sumbernya._`);
 
   const alasanAngka = periksaAngkaSumber(teks, isiDokumen);
   if (alasanAngka) return turunkan(alasanAngka, `_Catatan sistem: label VERIFIED diturunkan — ${alasanAngka}. Periksa angka ini langsung di dokumen._`);

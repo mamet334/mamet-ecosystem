@@ -21,6 +21,89 @@
  * instans fungsi hidup supaya permintaan berikutnya tidak membuang satu panggilan.
  */
 
+// ── NALAR DITAMPILKAN (2026-09-14) ─────────────────────────────────────────────────────────────
+// Owner sengaja menampilkan nalar model di chat (transparansi; blok lipat gaya DeepSeek). Model yang
+// bernalar lewat OpenRouter TIDAK menulis `<think>` di `content` — nalarnya dikirim terpisah dan dulu
+// dibuang adapter (uji chat 2026-09-14: 7 jawaban tanpa nalar). Kolom resmi (openrouter.ai/docs/
+// use-cases/reasoning-tokens, dicek 2026-09-14): non-stream `message.reasoning` (teks) /
+// `message.reasoning_details`; stream `delta.reasoning_details` (`reasoning.text` → `text`,
+// `reasoning.summary` → `summary`; `reasoning.encrypted` tak terbaca). Hanya diteruskan bila Thinking
+// dinyalakan eksplisit — klien tanpa `thinking` (mametlite) tidak tiba-tiba menerima nalar.
+
+/** Teks nalar dari `message` (non-stream) atau `delta` (stream); '' bila tidak ada. */
+export function teksNalar(obj: any): string {
+  if (!obj) return '';
+  if (typeof obj.reasoning === 'string' && obj.reasoning) return obj.reasoning;
+  const detail = Array.isArray(obj.reasoning_details) ? obj.reasoning_details : [];
+  return detail
+    .map((d: any) => (d?.type === 'reasoning.summary' ? d?.summary : d?.text))
+    .filter((t: any) => typeof t === 'string' && t)
+    .join('');
+}
+
+/** Jawaban akhir non-stream: nalar dibungkus `<think>` di depan jawaban (bila jawaban belum memuatnya). */
+export function sisipkanNalar(jawaban: string, nalar?: string): string {
+  const n = String(nalar || '').trim();
+  if (!n || /<think>/i.test(jawaban || '')) return jawaban;
+  return `<think>\n${n}\n</think>\n\n${jawaban}`;
+}
+
+/** Stream: ubah potongan nalar + isi menjadi teks berurutan `<think>…</think>` lalu jawaban. */
+export function pembungkusNalarStream() {
+  let terbuka = false;
+  return {
+    potong(nalar: string, isi: string): string {
+      let keluar = '';
+      if (nalar) { if (!terbuka) { keluar += '<think>\n'; terbuka = true; } keluar += nalar; }
+      if (isi) { if (terbuka) { keluar += '\n</think>\n\n'; terbuka = false; } keluar += isi; }
+      return keluar;
+    },
+    akhir(): string {
+      if (!terbuka) return '';
+      terbuka = false;
+      return '\n</think>\n\n';
+    }
+  };
+}
+
+/**
+ * Hybrid (2026-09-14): jawaban akhir diminta sebagai stream ke OpenRouter supaya nalar bisa diteruskan ke klien
+ * SAMBIL model berpikir, lalu dirakit kembali ke bentuk respons non-stream — pemanggil (label, verifikasi,
+ * penyimpanan) tidak berubah. `onNalar` menerima potongan nalar; `onIsiMulai` dipanggil sekali saat jawaban mulai.
+ */
+export async function bacaSseOpenRouter(
+  res: Response,
+  opsi: { onNalar?: (teks: string) => void; onIsiMulai?: () => void } = {}
+): Promise<any> {
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error('No body');
+  const dekoder = new TextDecoder();
+  let sisa = ''; let isi = ''; let nalar = ''; let usage: any; let provider: string | undefined; let isiMulai = false;
+  const olah = (baris: string) => {
+    if (!baris.startsWith('data: ') || baris.includes('[DONE]')) return;
+    let data: any;
+    try { data = JSON.parse(baris.slice(6)); } catch { return; }
+    if (data.error) throw new Error(`OpenRouter stream error: ${JSON.stringify(data.error).slice(0, 300)}`);
+    if (!provider && typeof data.provider === 'string' && data.provider) provider = data.provider;
+    if (data.usage) usage = data.usage;
+    const delta = data.choices?.[0]?.delta;
+    const n = teksNalar(delta);
+    if (n) { nalar += n; opsi.onNalar?.(n); }
+    const c = delta?.content || '';
+    if (c) { if (!isiMulai) { isiMulai = true; opsi.onIsiMulai?.(); } isi += c; }
+  };
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    sisa += dekoder.decode(value, { stream: true });
+    const baris = sisa.split('\n');
+    sisa = baris.pop() || '';
+    for (const b of baris) olah(b.trim());
+  }
+  if (sisa.trim()) olah(sisa.trim());
+  return { choices: [{ message: { content: isi, reasoning: nalar } }], usage, provider };
+}
+
 /** Model yang terbukti menolak reasoning dimatikan — diisi saat berjalan, hidup selama instans. */
 export const MODEL_WAJIB_NALAR = new Set<string>();
 

@@ -76,6 +76,10 @@ export interface StreamConfig {
   desktopOSMode: boolean;
   /** Audit mode: 'OFF' | 'BASIC' | 'FULL' */
   auditMode: string;
+  /** Hybrid: nalar dialirkan lewat SSE, jawaban tetap JSON utuh di event terakhir (index.ts). */
+  streamNalar?: boolean;
+  /** Diisi index.ts saat hybrid aktif — mengirim event nalar ke klien. */
+  kirimNalar?: (ev: { tipe: 'nalar' | 'nalar_selesai'; teks?: string }) => void;
 }
 
 // ─────────────────────────────────────────────

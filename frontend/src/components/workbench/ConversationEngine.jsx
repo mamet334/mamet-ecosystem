@@ -14,6 +14,18 @@ import MemoryContextPanel from './MemoryContextPanel';
 // =============================================
 const parseThinkingContent = (text) => {
   if (!text) return { thinking: '', answer: '', isThinkingComplete: false };
+  // Nalar <think>…</think> (diperintahkan request_pipeline) SENGAJA ditampilkan — sebagai blok lipat di atas
+  // jawaban seperti DeepSeek, bukan teks mentah bercampur jawaban (keputusan Owner 2026-09-14).
+  const buka = text.search(/<think>/i);
+  if (buka !== -1) {
+    const tutup = text.search(/<\/think>/i);
+    if (tutup === -1) return { thinking: text.slice(buka + 7).trim(), answer: text.slice(0, buka).trim(), isThinkingComplete: false };
+    return {
+      thinking: text.slice(buka + 7, tutup).trim(),
+      answer: (text.slice(0, buka) + text.slice(tutup + 8)).trim(),
+      isThinkingComplete: true
+    };
+  }
   const startIndex = text.indexOf(' thinking');
   const endIndex = text.indexOf(' response');
   if (startIndex !== -1) {
@@ -744,6 +756,12 @@ export default function ConversationEngine({ sessionId }) {
 
     // Tambah placeholder streaming
     let streamingStarted = false;
+    // "Berpikir selama N detik": dari pesan dikirim sampai </think> pertama tiba (hanya jalur streaming —
+    // jalur JSON menerima nalar & jawaban sekaligus, jadi lamanya tidak diketahui dan tidak ditulis).
+    const waktuKirim = Date.now();
+    const lamaBerpikirDari = (teks, lama) => lama ?? (/<\/think>/i.test(teks) ? Math.max(1, Math.round((Date.now() - waktuKirim) / 1000)) : undefined);
+    // Hybrid: lama berpikir = dari potongan nalar PERTAMA sampai model mulai menulis jawaban (pencarian dokumen tak dihitung).
+    let mulaiNalar = null;
 
     if (workspaceManager && osState) {
       workspaceManager.osState = osState;
@@ -760,6 +778,25 @@ export default function ConversationEngine({ sessionId }) {
         modelTierOverride,
         workspaceManager,
 
+        // Hybrid: nalar mengalir sebelum jawaban. selesai=true saat model mulai menulis jawaban; jawaban utuh
+        // (sesudah label diperiksa server) datang lewat onDone dan menggantikan isi pesan ini.
+        onNalar: (teksNalar, selesai) => {
+          if (mulaiNalar === null) mulaiNalar = Date.now();
+          if (!streamingStarted) {
+            streamingStarted = true;
+            setMessages(prev => [...prev, { role: 'model', content: '', steps: [], isStreaming: true }]);
+          }
+          setMessages(prev => {
+            const next = [...prev];
+            const lama = next[next.length - 1] || {};
+            const lamaBerpikir = selesai
+              ? (lama.lamaBerpikir ?? Math.max(1, Math.round((Date.now() - mulaiNalar) / 1000)))
+              : lama.lamaBerpikir;
+            next[next.length - 1] = { ...lama, role: 'model', content: `<think>\n${teksNalar}${selesai ? '\n</think>\n\n' : ''}`, isStreaming: true, lamaBerpikir };
+            return next;
+          });
+        },
+
         onChunk: (chunkText, allText, steps) => {
           if (!streamingStarted) {
             streamingStarted = true;
@@ -767,7 +804,8 @@ export default function ConversationEngine({ sessionId }) {
           }
           setMessages(prev => {
             const next = [...prev];
-            next[next.length - 1] = { role: 'model', content: allText, steps: [...steps], isStreaming: true };
+            const lamaBerpikir = lamaBerpikirDari(allText, next[next.length - 1]?.lamaBerpikir);
+            next[next.length - 1] = { role: 'model', content: allText, steps: [...steps], isStreaming: true, lamaBerpikir };
             return next;
           });
         },
@@ -782,6 +820,7 @@ export default function ConversationEngine({ sessionId }) {
                 content: finalText,
                 steps,
                 isStreaming: false,
+                lamaBerpikir: lamaBerpikirDari(finalText, next[next.length - 1]?.lamaBerpikir),
                 hasPatchProposal: hasPatch || false,
                 patchOriginalTask: hasPatch ? patchOriginalTask : undefined,
                 metadata: jsonMetadata
@@ -789,12 +828,14 @@ export default function ConversationEngine({ sessionId }) {
               return next;
             });
           } else {
-            // JSON/direct mode — tidak ada streaming frame
+            // JSON/direct mode — tidak ada streaming frame. Nalar & jawaban tiba bersamaan, jadi lama BERPIKIR
+            // tak diketahui; yang dicatat lama seluruh respons dan ditampilkan sebagai "respons N detik".
             setMessages(prev => [...prev, {
               role: 'model',
               content: finalText,
               steps,
               isStreaming: false,
+              lamaRespons: Math.max(1, Math.round((Date.now() - waktuKirim) / 1000)),
               hasPatchProposal: hasPatch || false,
               patchOriginalTask: hasPatch ? patchOriginalTask : undefined,
               metadata: jsonMetadata
@@ -1243,22 +1284,40 @@ export default function ConversationEngine({ sessionId }) {
 
               {messages.map((m, idx) => {
                 const parsed = parseThinkingContent(m.content);
-                const displayText = parsed.answer || m.content || '';
+                // Ada nalar → jawaban = bagian di luar nalar (kosong selama nalar masih ditulis), jangan jatuh ke teks mentah.
+                const displayText = parsed.thinking ? parsed.answer : (parsed.answer || m.content || '');
 
                 return (
                   <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`relative group max-w-[85%] lg:max-w-[75%] rounded-2xl px-5 py-4 ${m.role === 'user' ? 'bg-primary-container/20 text-on-surface border border-primary/30' : 'glass-panel rim-light text-on-surface border border-outline-variant'}`}>
                       <div className="text-body-base leading-relaxed">
-                        {/* AI Reasoning Deep Link */}
+                        {/* Nalar AI — blok lipat di atas jawaban (gaya DeepSeek), terbuka secara bawaan demi transparansi */}
                         {parsed.thinking && (
-                          <div
-                            onClick={() => openLifecycleInspector('AI_REASONING', parsed.thinking)}
-                            className="mb-3 inline-flex items-center gap-2 px-3 py-2 bg-surface-container border border-outline-variant text-on-surface-variant text-body-sm rounded-lg cursor-pointer hover:bg-surface-variant hover:text-on-surface transition-all shadow-sm"
-                            title="Open AI thought trace in Right Workbench"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">psychology</span>
-                            [Deep Link] View AI Reasoning Trace
-                          </div>
+                          <details open className="mb-3 group/nalar">
+                            <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant hover:text-on-surface select-none transition-colors">
+                              <span className={`material-symbols-outlined text-[16px] ${parsed.isThinkingComplete ? '' : 'animate-pulse text-primary'}`}>psychology</span>
+                              <span>
+                                {!parsed.isThinkingComplete
+                                  ? 'Berpikir…'
+                                  : m.lamaBerpikir ? `Berpikir selama ${m.lamaBerpikir} detik`
+                                  : m.lamaRespons ? `Proses berpikir · respons ${m.lamaRespons} detik` : 'Proses berpikir'}
+                              </span>
+                              {/* chevron_right ada di subset font ikon (daftar-ikon.txt); expand_more tidak → dulu tampil sebagai kata */}
+                              <span className="material-symbols-outlined text-[16px] transition-transform group-open/nalar:rotate-90">chevron_right</span>
+                            </summary>
+                            <div className="mt-2 ml-2 pl-3 border-l-2 border-outline-variant text-body-sm text-on-surface-variant leading-relaxed whitespace-pre-wrap">
+                              {parsed.thinking}
+                              {parsed.isThinkingComplete && (
+                                <button
+                                  onClick={() => openLifecycleInspector('AI_REASONING', parsed.thinking)}
+                                  className="mt-2 block text-[11px] text-on-surface-variant/70 hover:text-primary underline underline-offset-2"
+                                  title="Buka nalar di Right Workbench"
+                                >
+                                  Buka di Workbench
+                                </button>
+                              )}
+                            </div>
+                          </details>
                         )}
 
                         {/* Render konten dengan parser marker Engineer */}
