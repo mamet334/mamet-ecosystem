@@ -100,9 +100,35 @@ function teksDariAnotasi(data) {
     .filter((t) => t && !/^<file name=/.test(t) && t !== '</file>');
 }
 
+// Galat sementara yang layak dicoba ulang. Dengan beberapa halaman dikirim serentak, 429 (batas laju)
+// lebih mungkin muncul — tanpa coba ulang, satu halaman gagal membatalkan seluruh unggahan.
+const STATUS_COBA_ULANG = new Set([429, 500, 502, 503, 504]);
+const PERCOBAAN_MAKS = 3;
+const JEDA_DASAR_MS = 1000;
+const tunggu = (ms) => new Promise((r) => setTimeout(r, ms));
+
 /** Kirim satu halaman (bytes PDF satu halaman) ke mistral-ocr via OpenRouter, kembalikan teks bersih. */
 export async function ocrHalamanPdf(bytesSatuHalaman, kunci) {
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  for (let percobaan = 1; ; percobaan++) {
+    const res = await kirimOcr(bytesSatuHalaman, kunci);
+    if (res.ok || !STATUS_COBA_ULANG.has(res.status) || percobaan >= PERCOBAAN_MAKS) return bacaHasilOcr(res);
+    // Hormati Retry-After bila ada (detik), selain itu jeda berlipat: 1 s, 2 s.
+    const detik = Number(res.headers?.get?.('retry-after'));
+    await tunggu(Number.isFinite(detik) && detik > 0 ? Math.min(detik, 30) * 1000 : JEDA_DASAR_MS * 2 ** (percobaan - 1));
+  }
+}
+
+async function bacaHasilOcr(res) {
+  if (!res.ok) throw new GagalOcr(res.status, await res.text().catch(() => res.statusText));
+  const bagian = teksDariAnotasi(await res.json());
+  if (!bagian.length) {
+    throw new GagalOcr('KOSONG', 'OpenRouter tidak mengembalikan hasil mistral-ocr (annotations kosong).');
+  }
+  return bagian.map(bersihkanHasilOcr).join('\n\n');
+}
+
+function kirimOcr(bytesSatuHalaman, kunci) {
+  return fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: { Authorization: `Bearer ${kunci}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -122,29 +148,40 @@ export async function ocrHalamanPdf(bytesSatuHalaman, kunci) {
       }]
     })
   });
-  if (!res.ok) throw new GagalOcr(res.status, await res.text().catch(() => res.statusText));
-  const bagian = teksDariAnotasi(await res.json());
-  if (!bagian.length) {
-    throw new GagalOcr('KOSONG', 'OpenRouter tidak mengembalikan hasil mistral-ocr (annotations kosong).');
-  }
-  return bagian.map(bersihkanHasilOcr).join('\n\n');
 }
 
+// Jumlah halaman yang dikirim serentak. Uji live KATALOG-PENDAS (±130 halaman berurutan) terasa lama;
+// hampir seluruh waktunya menunggu jaringan, bukan memotong PDF. Dibatasi agar tidak memicu 429 massal.
+export const OCR_SERENTAK = 5;
+
 /**
- * Jalankan OCR untuk sejumlah halaman terdeteksi bertabel, satu per satu. PDF sumber dimuat SEKALI —
- * versi pertama memuat ulang seluruh berkas untuk setiap halaman (Operator Handbook: 152× berkas 436
- * halaman di browser).
- * @returns {Promise<Map<number, string>>} nomor halaman (1-based) → teks bersih
+ * Jalankan OCR untuk sejumlah halaman terdeteksi bertabel, hingga `serentak` halaman sekaligus. PDF
+ * sumber dimuat SEKALI — versi pertama memuat ulang seluruh berkas untuk setiap halaman (Operator
+ * Handbook: 152× berkas 436 halaman di browser). Satu halaman gagal (sesudah coba ulang) → halaman
+ * yang belum dimulai tidak dikirim, galat pertama dilempar (unggahan dibatalkan, sama seperti dulu).
+ * `onProgress` dipanggil tiap halaman SELESAI; `ke` = jumlah yang selesai, bukan urutan halaman.
+ * @returns {Promise<Map<number, string>>} nomor halaman (1-based) → teks bersih, urut sesuai daftar masukan
  */
-export async function terapkanOcrHalaman(fileBytes, nomorHalamanList, kunci, onProgress) {
+export async function terapkanOcrHalaman(fileBytes, nomorHalamanList, kunci, onProgress, { serentak = OCR_SERENTAK } = {}) {
   const { PDFDocument } = await import('pdf-lib');
   const asal = await PDFDocument.load(fileBytes);
-  const hasil = new Map();
-  for (let i = 0; i < nomorHalamanList.length; i++) {
-    const n = nomorHalamanList[i];
-    const satuHalaman = await pisahHalamanPdf(asal, n);
-    hasil.set(n, await ocrHalamanPdf(satuHalaman, kunci));
-    onProgress?.({ tahap: 'ocr', halaman: n, ke: i + 1, total: nomorHalamanList.length });
-  }
-  return hasil;
+  const teks = new Array(nomorHalamanList.length);
+  let berikut = 0; let selesai = 0; let galat = null;
+
+  const pekerja = async () => {
+    while (!galat && berikut < nomorHalamanList.length) {
+      const i = berikut++;
+      const n = nomorHalamanList[i];
+      try {
+        teks[i] = await ocrHalamanPdf(await pisahHalamanPdf(asal, n), kunci);
+      } catch (e) {
+        galat ??= e;
+        return;
+      }
+      onProgress?.({ tahap: 'ocr', halaman: n, ke: ++selesai, total: nomorHalamanList.length });
+    }
+  };
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(serentak, nomorHalamanList.length)) }, pekerja));
+  if (galat) throw galat;
+  return new Map(nomorHalamanList.map((n, i) => [n, teks[i]]));
 }

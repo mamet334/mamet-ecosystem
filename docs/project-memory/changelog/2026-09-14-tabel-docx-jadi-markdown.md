@@ -328,8 +328,8 @@ waktu ujian, bahan ajar, dan paket semester berada di kolom masing-masing. Owner
 benar.
 
 **Keterbatasan yang diwariskan (belum digarap):**
-- OCR berjalan berurutan per halaman — unggahan ±130 halaman terasa lama. Bisa dipercepat dengan
-  beberapa permintaan sekaligus.
+- ~~OCR berjalan berurutan per halaman — unggahan ±130 halaman terasa lama.~~ Kini paralel, lihat
+  "OCR paralel + coba ulang" di bawah (kecepatan live belum diukur).
 - Salah baca kata oleh mistral-ocr (riset: 4 per 30 halaman) tidak terdeteksi otomatis; teks per
   halaman belum dibandingkan satu per satu dengan PDF asli.
 - Unggahan dengan OCR baru dibuktikan di `npm run desktop`; belum ada unggahan uji di situs Vercel.
@@ -345,6 +345,42 @@ yang dilayani situs, termasuk chunk yang dimuat belakangan. Penanda yang hanya a
 |---|---|---|
 | mamet-ecosystem.vercel.app | 22 | `ResearchApp-C7ITVAp2.js` |
 | mametlite.vercel.app | 5 | `index-DLax1SjZ.js` |
+
+## Item 76b — OCR paralel + coba ulang (2026-09-14)
+
+**Asal:** uji live KATALOG-PENDAS — Owner mencatat unggahan "cukup lama" karena ±130 halaman dikirim
+ke mistral-ocr satu per satu; hampir seluruh waktunya menunggu jaringan, bukan memotong PDF.
+
+**Kode** (`pdfOcrService.js`, frontend & mametlite, isi sama selain komentar SALINAN):
+
+- `terapkanOcrHalaman` menjalankan hingga `OCR_SERENTAK = 5` pekerja; opsi `{ serentak }` untuk
+  mengubahnya. PDF sumber tetap dimuat sekali. Hasil `Map` tetap urut sesuai daftar halaman meski
+  halaman selesai tak berurutan; `onProgress` dipanggil tiap halaman selesai (`ke` = jumlah selesai),
+  jadi status "OCR halaman X/Y" di `ResearchApp.jsx`/`App.jsx` tetap benar tanpa diubah.
+- Satu halaman gagal → halaman yang belum dimulai tidak dikirim, galat pertama dilempar, unggahan
+  dibatalkan seperti sebelumnya. Halaman yang sudah berjalan tetap selesai dan ditagih (maks. 4).
+- `ocrHalamanPdf` mencoba ulang 429 dan 500/502/503/504 hingga 3 percobaan (jeda 1 s lalu 2 s, atau
+  `Retry-After` maks. 30 s). Dengan permintaan serentak 429 lebih mungkin muncul; tanpa coba ulang
+  satu halaman membatalkan seluruh unggahan. 401 dan galat lain langsung gagal.
+
+**Uji** (`uji-76b.mjs`, fetch palsu untuk bagian OCR): 33 lolos / 1 gagal di frontend dan mametlite
+— yang gagal hanya "Operator Handbook: berkas ada" (berkas asli sudah tak ada di Downloads). Uji
+lama tetap lolos (deteksi KATALOG-PENDAS 130, Buku 3, HCDP 4, E-Book 0 = riset; teks Buku 47.800
+huruf identik; pembersih; annotations; PDF dimuat sekali). Uji baru:
+
+| Kasus | Hasil |
+|---|---|
+| Puncak permintaan serentak | 5; opsi `serentak: 1` → 1 |
+| 12 halaman, jeda palsu 60–140 ms | ±480 ms (berurutan minimal 1.200 ms), kunci urut, progres 1..12 |
+| 429 sekali lalu sukses | 2 permintaan, berhasil |
+| 429 terus | berhenti di 3 percobaan, `GagalOcr(429)` |
+| 401 | 1 permintaan, langsung gagal |
+| Halaman ke-3 gagal | galat dilempar, 7 dari 12 dikirim |
+
+Build `frontend` (3.110 modul) dan `mametlite` (2.242 modul) sukses.
+
+**Belum terbukti:** belum ada unggahan live dengan kode ini — kecepatan nyata dan perilaku batas laju
+OpenRouter pada 5 permintaan serentak belum diukur.
 - Operator Handbook di database belum diunggah ulang dengan OCR.
 - Belum ada UI biaya persisten (ledger) untuk unggahan — masih `window.confirm` sekali pakai.
 - Buku penuh tetap diproses halaman-per-halaman untuk OCR, bukan satu permintaan mistral-ocr untuk
