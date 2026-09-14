@@ -1274,7 +1274,19 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
     - **Uji:** kasus buatan 11/11. Dokumen asli, hasil sama di Node (`buffer`), browser Vite (`arrayBuffer`) dan salinan mametlite — Buku Materi Pokok UT: 42 baris tabel, 6.407 → 6.407 kata; HCDP: 48 baris tabel, 6.796 → 6.802 kata (selisih hanya kata tertempel yang kini terpisah); tanpa sisa penanda/base64; 90/289 ms di browser. Build frontend & mametlite sukses. `mammoth` versi Node tidak menerima `arrayBuffer` — karena itu uji ujung-ke-ujung dilakukan di browser.
     - **(c) Di produksi — judul kolom yang harus diulang (commit `4022546`):** HCDP diunggah ulang 02.44 UTC: 87 potongan, 20 berisi baris tabel (lama: 84 dan 0). Pertanyaan "target rasio jabatan fungsional bersertifikat kompetensi pada tahun 3" dijawab **35,0%** (seharusnya 20,0%) berlabel `VERIFIED`. Konteks yang dikirim ke model (`chats.messages[].metadata.processingSteps`, 12.058 huruf, 8 potongan) memuat baris `| 5 | Rasio … | 5,93% | 12,0% | 20,0% | …` tetapi TIDAK memuat `| No | … | Tahun 1 | … | Target Akhir |` — judulnya di potongan lain yang tak terambil; model menebak 5,93% sebagai nilai awal dan kolom bergeser. Perbaikan: `lib/judul_tabel.ts` dipanggil `chunkText` — potongan yang dimulai di tengah tabel Markdown diawali baris judul + pemisahnya; titik potong tak berubah. Uji 27/27: HCDP 87 → 87 potongan, bertabel tanpa judul 12 → 0 (terpanjang 799 → 957); Buku 7 → 0; teks tanpa tabel identik. Deploy diperiksa dari kode aktif (`rag-process` v65, `agent-process` v422, 03.11 UTC). Unggahan ulang 03.16 UTC persis prediksi (87 / 957 / 0). **Pertanyaan yang sama 03.18 UTC: 20,0% ✅**, keenam kolom tepat; model sama, 8 potongan, skor teratas 0,747 → 0,752 — tak turun karena judul kolom.
     - **Status:** ✅ **Selesai, Dideploy & Terbukti di Produksi** (14 September 2026) — frontend & mametlite di Vercel (isi kode live diperiksa: penanda tabel ada, `extractRawText` tak ada), `rag-process` dan `agent-process` di Supabase.
-    - **(b) Riset jalur PDF — belum dipasang, angka lengkap di changelog:**
+    - **(b) Jalur PDF — detektor + OCR dipasang (commit `4604ccf`, 14 September 2026):** heuristik B′
+      (`deteksiTabelHalaman`) menandai halaman PDF bertabel dari posisi teks pdf.js; `pdfOcrService.js`
+      (baru, frontend & mametlite) memotong halaman itu lewat `pdf-lib` dan mengirimnya ke
+      `mistral-ocr` via plugin `file-parser` OpenRouter, ditagih ke kunci BYOK pengguna
+      (~$0,002/halaman). Opsional dengan preview biaya di `ResearchApp.jsx`/`App.jsx` — pola sama
+      seperti gerbang konfirmasi Tier 3 Web Search. Uji 3/3 kasus buatan, build frontend & mametlite
+      sukses, **live-verified `npm run desktop`**: unggah Operator Handbook 436 halaman memicu
+      dialog OCR, status `OCR halaman X/Y…` berjalan, unggahan selesai tervektorkan. **Status:
+      di-commit lokal, belum di-push/deploy** — sisa 3 potongan riset (UI biaya persisten, kirim
+      buku sekali jalan, uji mutu jawaban) sengaja belum digarap. Detail: changelog
+      [`2026-09-14-tabel-docx-jadi-markdown.md`](../project-memory/changelog/2026-09-14-tabel-docx-jadi-markdown.md)
+      bagian "Item 76b".
+    - **Riset jalur PDF (angka lengkap di changelog, bagian yang belum dipasang di atas):**
       - Database Operator Handbook: 827 potongan, hanya 10% memuat judul bagian, 51% berciri tabel yang diratakan, ±64 bukan isi.
       - Pembaca PDF OpenRouter pada 3 halaman sulit: `cloudflare-ai` lebih buruk dari pdf.js; native Gemini memecah kolom dan mengubah teks; **`mistral-ocr` terbaik** ($2/1.000 hal; ditagih ke model penerima, tidak tampil sebagai model Mistral di dashboard).
       - mistral-ocr 30 halaman: 5,6 s, $0,0613; cacat pola tetap (44 tag palsu, 30 entitas, 5 LaTeX) + 4 salah baca kata.
@@ -1284,4 +1296,4 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
       - `VERIFIED` lolos pada jawaban 35,0% yang salah — pemeriksa label mencocokkan kutipan sumber, bukan ketepatan angka.
       - Dokumen yang sudah tersimpan baru mendapat tabel Markdown dan judul kolom per potongan setelah diunggah ulang. Hanya tabel Markdown bergaris pemisah yang judulnya diulang (teks PDF pdf.js belum terbantu); potongan bisa melebihi 800 huruf.
       - `evidence_audit_logs.rag_docs` hanya mencatat label `DOC-000N`; potongan yang dibaca model hanya bisa dibuktikan dari `processingSteps` di `chats` — diambil per pesan, bukan per "chat terakhir diubah" (chat lama bisa tersimpan ulang).
-      - Jalur PDF: detektor di kode, pemisah halaman (`pdf-lib`), mistral-ocr + pembersih, tampilan biaya unggah (opsional/otomatis belum diputuskan), buku penuh sekali kirim, dan uji mutu jawaban — semuanya belum.
+      - Jalur PDF: detektor, pemisah halaman (`pdf-lib`), dan mistral-ocr + pembersih **kini dipasang** (Item 76b, commit `4604ccf`, opsional dengan preview biaya). Yang masih belum: tampilan biaya unggah persisten (ledger), buku penuh sekali kirim, dan uji mutu jawaban.

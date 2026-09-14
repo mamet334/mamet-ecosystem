@@ -2,8 +2,10 @@
 
 **Tanggal:** 14 September 2026
 **Roadmap:** Item 76
-**Commit kode:** `1c0e03e` (tabel DOCX → Markdown), `4022546` (judul kolom diulang per potongan)
-**Status:** dideploy dan terbukti di produksi 14 September 2026
+**Commit kode:** `1c0e03e` (tabel DOCX → Markdown), `4022546` (judul kolom diulang per potongan),
+`4604ccf` (Item 76b: detektor + OCR halaman bertabel PDF)
+**Status:** DOCX dideploy & terbukti di produksi 14 September 2026; Item 76b (deteksi + OCR PDF)
+di-commit lokal & live-verified `npm run desktop` 14 September 2026, belum di-push/deploy
 
 Berawal dari pertanyaan Owner: dokumen di RAG ditulis untuk manusia, sedangkan pembacanya AI — apakah
 ekstraksi dan embedding sudah menyiapkannya untuk kebutuhan RAG? Jawabannya: embedding hanya mengubah
@@ -167,9 +169,12 @@ Ambil jawaban per pesan (`chats.messages[]` + `metadata.timestamp`), bukan per b
 - Potongan bisa lebih panjang dari 800 huruf (HCDP: 957).
 - `.doc` lama tetap belum didukung (pengguna diminta menyimpan ulang sebagai `.docx`).
 
-## 2. Riset jalur PDF (belum dipasang)
+## 2. Riset jalur PDF
 
-Tidak ada kode produksi. Dicatat karena skrip dan datanya hanya ada di scratchpad.
+Riset awalnya tidak berkode produksi — dicatat karena skrip dan datanya hanya ada di scratchpad.
+Bagian **detektor + OCR** (dari 5 potongan pekerjaan di bawah) kini dipasang, lihat "Item 76b" di
+akhir bagian ini. Sisanya (UI biaya persisten, kirim buku sekali jalan, uji mutu jawaban) masih
+scratchpad.
 
 ### Keadaan potongan di database — Operator Handbook (827 potongan)
 
@@ -233,6 +238,53 @@ Aturan A memilih tabel yang barisnya masih utuh di pdf.js (zona waktu `Ireland: 
 lolos dari B′: kunci jawaban dua kolom (Buku hal. 31). Belum diperiksa satu per satu: 4 halaman HCDP dan
 12 halaman tambahan Operator Handbook yang dipilih B′.
 
-**Belum dikerjakan untuk jalur PDF:** detektor di kode, pemisah halaman di browser (butuh `pdf-lib`),
-panggilan mistral-ocr + pembersih, tampilan biaya saat unggah (opsional/otomatis belum diputuskan),
-buku penuh dalam satu permintaan, dan uji apakah tabel hasil OCR benar-benar membuat jawaban lebih benar.
+**Belum dikerjakan untuk jalur PDF (saat riset ditulis):** detektor di kode, pemisah halaman di
+browser (butuh `pdf-lib`), panggilan mistral-ocr + pembersih, tampilan biaya saat unggah
+(opsional/otomatis belum diputuskan), buku penuh dalam satu permintaan, dan uji apakah tabel hasil
+OCR benar-benar membuat jawaban lebih benar.
+
+## Item 76b — Detektor + OCR dipasang (2026-09-14, commit `4604ccf`)
+
+Owner memutuskan: OCR **opsional dengan preview biaya** (pola sama seperti gerbang konfirmasi
+Human-in-Command di Tier 3 Web Search), dan scope dibatasi ke **detektor + pemisah halaman +
+panggilan mistral-ocr untuk halaman terdeteksi** — 3 dari 5 potongan pekerjaan riset di atas. UI
+biaya persisten, kirim buku sekali jalan, dan uji mutu jawaban disengaja belum digarap.
+
+**Kode.** `documentTextExtractor.js` (frontend & mametlite, sama persis):
+`kelompokkanBaris` (ekstraksi dari `susunBarisHalaman`, perilaku lama tidak berubah) menghasilkan
+baris per-halaman lengkap dengan posisi `x`, dipakai `deteksiTabelHalaman` (aturan **B′**: baris
+multi-kolom ≥30% DAN baris "yatim" ≥10%) untuk menandai nomor halaman bertabel — dikembalikan lewat
+`ekstrakPdfDariData` sebagai `halamanBertabelTerdeteksi`. Fungsi yang sama menerima `petaOcr`
+opsional (`Map<halaman, teks>`) untuk mengganti hasil pdf.js halaman tertentu dengan teks OCR.
+
+File baru `pdfOcrService.js` (frontend & mametlite): `pisahHalamanPdf` memotong satu halaman jadi
+PDF sendiri lewat `pdf-lib`, `ocrHalamanPdf` mengirimnya ke OpenRouter
+(`plugins: [{id:'file-parser', pdf:{engine:'mistral-ocr'}}]`, model penerima
+`google/gemini-2.5-flash-lite` — termurah di uji riset), `bersihkanHasilOcr` membuang 3 pola cacat
+tetap yang ditemukan riset (tag penutup semu, entitas HTML lolos, notasi LaTeX `$\equiv$`).
+`ResearchApp.jsx` / `App.jsx` mengambil kunci OpenRouter (BYOK) sekali di awal, menawarkan dialog
+OCR bila ada halaman terdeteksi DAN ada kunci, lalu memanggil ulang `ekstrakTeksDokumen` dengan
+`petaOcrHalaman` bila Owner menyetujui.
+
+**Uji sebelum deploy.** 3 kasus buatan Node (teks biasa, tabel jelas dengan sel meluber ke baris
+kedua, poin berindentasi — kasus yang salah pilih di aturan tunggal "C" pada riset): 3/3 lolos.
+Refactor `susunBarisHalaman` → `kelompokkanBaris` dicek tidak mengubah keluaran. Build `frontend`
+(3.110 modul) dan `mametlite` (2.242 modul) sukses.
+
+**Live-Verified (2026-09-14, `npm run desktop`).** Unggah *Operator handbook - Red Team + OSINT +
+Blue Team Reference* (436 halaman, buku yang sama dipakai riset): dialog "N halaman tampak berupa
+tabel... Perbaiki dengan OCR?" muncul, Owner menyetujui, status `OCR halaman X/Y…` berjalan per
+halaman, lalu unggahan selesai tervektorkan. Percobaan pertama di `npm run dev` sempat gagal 401
+saat embedding (`Kunci OpenRouter Anda ditolak (401)`, pesan dari `vector_utils.ts:114`) — bukan
+bug jalur OCR, melainkan kunci OpenRouter cache lama di sesi `dev` yang beda dari `desktop`; setelah
+dicoba di `desktop` dengan kunci yang benar, unggahan berhasil penuh.
+
+**Keterbatasan yang diwariskan (scope sesi ini, belum digarap):**
+- Belum ada UI biaya persisten (ledger) untuk unggahan — masih `window.confirm` sekali pakai.
+- Buku penuh tetap diproses halaman-per-halaman untuk OCR, bukan satu permintaan mistral-ocr untuk
+  seluruh buku.
+- Uji mutu jawaban (apakah teks OCR benar-benar membuat jawaban RAG lebih tepat, bukan cuma lebih
+  rapi) belum dibangun.
+- Detektor belum diverifikasi angka persisnya terhadap tabel B′ hasil riset (152/3/4/0 halaman per
+  buku) — uji live hanya mengonfirmasi dialog & OCR berjalan, bukan mencocokkan jumlah halaman
+  persis dengan angka riset.
