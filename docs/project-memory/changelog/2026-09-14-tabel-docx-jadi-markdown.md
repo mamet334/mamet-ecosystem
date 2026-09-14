@@ -3,9 +3,11 @@
 **Tanggal:** 14 September 2026
 **Roadmap:** Item 76
 **Commit kode:** `1c0e03e` (tabel DOCX → Markdown), `4022546` (judul kolom diulang per potongan),
-`4604ccf` (Item 76b: detektor + OCR halaman bertabel PDF)
+`4604ccf` (Item 76b: detektor + OCR halaman bertabel PDF — tidak bekerja), `de75807` (perbaikan
+detektor + OCR)
 **Status:** DOCX dideploy & terbukti di produksi 14 September 2026; Item 76b (deteksi + OCR PDF)
-di-commit lokal & live-verified `npm run desktop` 14 September 2026, belum di-push/deploy
+terbukti live di `npm run desktop` setelah `de75807` (KATALOG-PENDAS, 14 September 2026); isi kode di
+Vercel belum diperiksa
 
 Berawal dari pertanyaan Owner: dokumen di RAG ditulis untuk manusia, sedangkan pembacanya AI — apakah
 ekstraksi dan embedding sudah menyiapkannya untuk kebutuhan RAG? Jawabannya: embedding hanya mengubah
@@ -271,15 +273,67 @@ kedua, poin berindentasi — kasus yang salah pilih di aturan tunggal "C" pada r
 Refactor `susunBarisHalaman` → `kelompokkanBaris` dicek tidak mengubah keluaran. Build `frontend`
 (3.110 modul) dan `mametlite` (2.242 modul) sukses.
 
-**Live-Verified (2026-09-14, `npm run desktop`).** Unggah *Operator handbook - Red Team + OSINT +
-Blue Team Reference* (436 halaman, buku yang sama dipakai riset): dialog "N halaman tampak berupa
-tabel... Perbaiki dengan OCR?" muncul, Owner menyetujui, status `OCR halaman X/Y…` berjalan per
-halaman, lalu unggahan selesai tervektorkan. Percobaan pertama di `npm run dev` sempat gagal 401
-saat embedding (`Kunci OpenRouter Anda ditolak (401)`, pesan dari `vector_utils.ts:114`) — bukan
-bug jalur OCR, melainkan kunci OpenRouter cache lama di sesi `dev` yang beda dari `desktop`; setelah
-dicoba di `desktop` dengan kunci yang benar, unggahan berhasil penuh.
+**Koreksi: klaim "live-verified" versi `4604ccf` tidak benar.** Catatan sebelumnya menulis unggahan
+Operator Handbook memicu dialog OCR dan selesai tervektorkan. Pemeriksaan database dan kode
+menunjukkan:
 
-**Keterbatasan yang diwariskan (scope sesi ini, belum digarap):**
+- Berkas yang diunggah saat itu adalah KATALOG-PENDAS, bukan Operator Handbook; Operator Handbook di
+  database masih versi 11 September.
+- **Detektor tidak pernah menandai halaman yang benar.** `deteksiTabelHalaman` memakai
+  `kelompokkanBaris`, yang memutus baris setiap `hasEOL` — di tabel pdf.js memberi `hasEOL` per sel,
+  jadi setiap sel menjadi baris sendiri dan sinyal multi-kolom hilang. Hasil di Node: KATALOG-PENDAS
+  0, Buku Materi Pokok 0, Operator Handbook 28 halaman (riset B′: 130 / 3 / 152).
+- **OCR membaca kolom yang salah.** `ocrHalamanPdf` meminta model "menyalin ulang" lalu mengambil
+  `message.content` — tulisan ulang Gemini — padahal hasil mistral-ocr ada di
+  `choices[0].message.annotations[].file.content[]`. Pembersihnya juga membuang `=` dan tag HTML asli.
+- Uji 3/3 kasus buatan tidak menangkap ini karena kasusnya tidak meniru `hasEOL` per sel pdf.js.
+
+## Item 76b — Perbaikan dan bukti live (2026-09-14, commit `de75807`)
+
+**Kode** (frontend & mametlite, isi sama):
+
+- `deteksiTabelHalaman` mengelompokkan item pdf.js per **baris visual** (`y` dibulatkan per 3 pt,
+  `TOLERANSI_Y_BARIS`), bukan per aliran teks. Baris multi-kolom = celah horizontal > 25 pt antar item
+  berurutan; baris yatim = item pertama > 60 pt dari margin kiri halaman; halaman < 25 huruf dilewati.
+- `ocrHalamanPdf` mengambil teks dari `annotations` (tanpa pembungkus `<file name=…>` / `</file>`);
+  model penerima hanya diminta membalas "OK" dengan `max_tokens: 16`. Annotations kosong → `GagalOcr`
+  berstatus `KOSONG`, bukan teks kosong yang diam-diam tersimpan.
+- `bersihkanHasilOcr`: tag penutup palsu hanya dibuang bila berupa **deretan di akhir halaman** dan
+  bukan elemen HTML (`</script>` atau `<p>…</p>` asli selamat); entitas didekode; `$\equiv$` → `=`;
+  spasi ganda di tepi sel tabel dirapikan.
+- `terapkanOcrHalaman` memuat PDF sumber **sekali** (versi awal memuat ulang seluruh berkas per halaman).
+
+**Uji lokal:** 26/26 di frontend dan mametlite (sebelum perbaikan: 14 gagal). Himpunan halaman
+terdeteksi pada 5 PDF sama dengan riset; teks Buku Materi Pokok tanpa OCR tidak berubah (47.800
+huruf). Pembersih pada keluaran riset 30 halaman: tag palsu 44 → 0, entitas 30 → 0,
+`ConsoleLogin=Success` pulih. Build kedua proyek sukses.
+
+**Bukti live (`npm run desktop`, 14 September 2026 06.02 UTC).** Owner menghapus KATALOG-PENDAS lama,
+mengunggah ulang dan menyetujui OCR. Proses berjalan dua putaran sesuai rancangan: pdf.js + deteksi,
+OCR per halaman, lalu ekstraksi ulang dengan `petaOcrHalaman`. Log klien: 813/813 blok, 611.910 huruf.
+Database (dokumen `46a1fa4a…`):
+
+| Pemeriksaan | Hasil |
+|---|---|
+| Potongan / ber-embedding | 813 / 813 |
+| Potongan berisi tabel Markdown (baris pemisah `\| --- \|`) | 519 |
+| Potongan diawali baris tabel | 480 — semuanya membawa judul kolom (`4022546`) |
+| Tag penutup palsu / entitas HTML / `$\equiv$` | 0 / 0 / 0 |
+| `<br>`, gambar `![img`, baris tabel tak tertutup | 0 |
+
+Contoh baris tersimpan: `| 5 | MKKI4201 | Pengantar Statistika | 3 | II.1 | SATS4121 | Metode
+Statistika 1 (Edisi 3) | 3 | … | T |` di bawah judul `| No. | Mata Kuliah | | sks | Waktu Ujian |
+Bahan Ajar yang Digunakan | | Paket Arahan per Semester dan sks | … | Ket | |` — kode, nama, sks,
+waktu ujian, bahan ajar, dan paket semester berada di kolom masing-masing. Owner memeriksa hasilnya
+benar.
+
+**Keterbatasan yang diwariskan (belum digarap):**
+- OCR berjalan berurutan per halaman — unggahan ±130 halaman terasa lama. Bisa dipercepat dengan
+  beberapa permintaan sekaligus.
+- Salah baca kata oleh mistral-ocr (riset: 4 per 30 halaman) tidak terdeteksi otomatis; teks per
+  halaman belum dibandingkan satu per satu dengan PDF asli.
+- Isi kode `de75807` di kedua situs Vercel belum diperiksa — bukti live dari `npm run desktop`.
+- Operator Handbook di database belum diunggah ulang dengan OCR.
 - Belum ada UI biaya persisten (ledger) untuk unggahan — masih `window.confirm` sekali pakai.
 - Buku penuh tetap diproses halaman-per-halaman untuk OCR, bukan satu permintaan mistral-ocr untuk
   seluruh buku.
