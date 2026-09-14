@@ -24,6 +24,12 @@
  *     kolom sel itu atau disebut di baris yang sama. Bila judul kolom sumber tidak ada di konteks dan
  *     labelnya tidak ada di baris itu, pasangan tidak bisa dibuktikan.
  * Batas: pasangan di kalimat bebas ("tahun ke-3 adalah 20,0%") belum diperiksa.
+ *
+ * NOMOR HALAMAN JUGA DIPERIKSA (Item 77, uji live web 2026-09-14). Jawaban benar HCDP ditulis
+ * `Sumber: "DOKUMEN HCDP 2025-2026.docx" [Halaman 1]` — padahal .docx tidak punya penanda halaman dan
+ * potongan yang dibaca model tidak memuat `[Halaman …]`; "Halaman 1" dikarang. Nomor halaman yang
+ * disebut jawaban kini harus ada sebagai penanda `[Halaman N]` di potongan, atau tertulis "halaman N"
+ * di teks dokumen itu sendiri.
  */
 export const LABEL_VERIFIED = '[STATUS: VERIFIED]';
 export const LABEL_HIPOTESIS = '[STATUS: HYPOTHESIS - Rekomendasi AI]';
@@ -201,6 +207,29 @@ export function periksaAngkaSumber(jawaban: string, isiDokumen: string[]): strin
   return null;
 }
 
+// `[Halaman 12]`, `Halaman 12–14`, `hlm. 12`, `hal. 12`, `page 12` — "hal ini" tidak (butuh titik + angka).
+const POLA_HALAMAN = /\b(?:halaman|hlm\.?|hal\.|page)\s*(\d{1,4})(?:\s*[-–—]\s*(\d{1,4}))?/gi;
+
+/** null = kutipan halaman sah (atau tidak ada); string = alasan penurunan. */
+export function periksaHalamanSumber(jawaban: string, isiDokumen: string[]): string | null {
+  const isi = (isiDokumen || []).filter((t) => typeof t === 'string' && t.trim());
+  if (!isi.length) return null;
+  const disebut = new Set<string>();
+  for (const m of String(jawaban || '').matchAll(POLA_HALAMAN)) {
+    disebut.add(String(Number(m[1])));
+    if (m[2]) disebut.add(String(Number(m[2])));
+  }
+  if (!disebut.size) return null;
+  const teksIsi = isi.join('\n');
+  const penanda = new Set([...teksIsi.matchAll(/\[Halaman\s+(\d{1,4})\]/gi)].map((m) => String(Number(m[1]))));
+  const tertulis = new Set([...teksIsi.matchAll(POLA_HALAMAN)].map((m) => String(Number(m[1]))));
+  const karangan = [...disebut].filter((n) => !penanda.has(n) && !tertulis.has(n));
+  if (!karangan.length) return null;
+  return penanda.size
+    ? `nomor halaman ${karangan.join(', ')} tidak ada di dokumen yang dilampirkan (penanda yang ada: ${[...penanda].slice(0, 5).join(', ')})`
+    : `nomor halaman ${karangan.join(', ')} disebut, padahal dokumen yang dilampirkan tidak memuat penanda halaman`;
+}
+
 export type HasilLabel = { jawaban: string; dikoreksi: boolean; alasan: string; catatan: string };
 
 /**
@@ -233,6 +262,9 @@ export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiD
       : (kutipan.length === 0 ? 'jawaban tidak menyebut Sumber' : 'judul di dekat kata Sumber tidak cocok dengan dokumen yang dilampirkan');
     return turunkan(alasan, CATATAN_KOREKSI);
   }
+
+  const alasanHalaman = periksaHalamanSumber(teks, isiDokumen);
+  if (alasanHalaman) return turunkan(alasanHalaman, `_Catatan sistem: label VERIFIED diturunkan — ${alasanHalaman}._`);
 
   const alasanAngka = periksaAngkaSumber(teks, isiDokumen);
   if (alasanAngka) return turunkan(alasanAngka, `_Catatan sistem: label VERIFIED diturunkan — ${alasanAngka}. Periksa angka ini langsung di dokumen._`);

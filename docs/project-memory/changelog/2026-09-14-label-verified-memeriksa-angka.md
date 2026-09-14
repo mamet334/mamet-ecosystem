@@ -4,8 +4,8 @@
 **Roadmap:** Item 77 (lanjutan Item 71 — label VERIFIED wajib mengutip sumber)
 **Berkas kode:** `supabase/functions/agent-process/lib/verification/label_sumber.ts`,
 `lib/orchestration/handlers/synthesis_handler.ts`, `lib/stream_handler.ts`
-**Status:** di-commit; belum di-deploy — uji pertama direncanakan dari `npm run desktop` sesudah
-`agent-process` di-deploy, lalu web
+**Status:** pemeriksaan angka (`c953e01`) dideploy (`agent-process` v424) dan terbukti live di
+`npm run desktop` dan web 14 September 2026; pemeriksaan nomor halaman di-commit, belum di-deploy
 
 ## Masalah
 
@@ -94,3 +94,56 @@ Sintaks ketiga berkas diperiksa dengan `esbuild`.
   melihat potongan yang tidak dibaca model (lebih longgar, bukan lebih ketat).
 - Di jalur stream teks yang sudah terkirim tidak bisa ditarik; label pengganti + catatan ditambahkan di
   akhir (sama seperti Item 71).
+
+## Bukti live — `npm run desktop` dan web (2026-09-14)
+
+Owner men-deploy `agent-process`. Kode aktif **v424** (`updated_at` 07.16.48 UTC) diperiksa lewat
+`get_edge_function`: memuat `periksaAngkaSumber`, `kunciAngka`, `isiDokumen` dikeluarkan dari metadata
+(`metaTanpaIsi`), dan `koreksiLabel(replyMessage, judulDokumen, requestMode, isiDokumen)`.
+
+| Uji | Chat | Jawaban | Konteks yang dibaca | Hasil |
+|---|---|---|---|---|
+| `npm run desktop` 07.18 UTC | `b2fa16dd…` | 20,0%; menyalin baris sumber lengkap dengan judul kolom | DOC-0001 diawali `\| No \| … \| Tahun 3 \| …` | VERIFIED bertahan, tanpa catatan; log fungsi tanpa `[LABEL]` |
+| Web 07.24 UTC | `92c6408c…` | 20,0% dalam kalimat; `Sumber: "…docx" [Halaman 1]` | judul kolom ada, 20,0% ada | VERIFIED bertahan, tanpa catatan |
+
+Label yang lolos tidak menulis log, jadi keputusan pemeriksa dibuktikan ulang dengan menjalankan
+`label_sumber.ts` pada teks produksi desktop yang sama (`uji-label-desktop-b2fa16dd.mjs`): jawaban asli
+bertahan; kontrol dengan data yang sama — 5,93% dan 12,0% ditukar kolom → turun ("berada di kolom lain"),
+angka kalimat diganti 22,0% → turun ("tidak ada di dokumen"). 3/3.
+
+Penurunan label belum pernah terjadi live — kedua jawaban memang benar; jalur penurunan baru terbukti lewat uji.
+
+## Nomor halaman karangan (temuan uji web)
+
+Jawaban web menulis `[Halaman 1]` untuk berkas `.docx`. Potongan RAG yang dibaca (5.061 huruf) **tidak
+memuat penanda `[Halaman …]`**; satu-satunya "[Halaman" di konteks adalah instruksi kontrak "sebut nomor
+halaman bila ada penanda [Halaman N]". Nomor itu dikarang, dan pemeriksa angka tidak menangkapnya (bukan
+angka berdesimal/persen; judul Sumber benar).
+
+**Perbaikan.**
+
+- `periksaHalamanSumber` (`label_sumber.ts`), dijalankan sesudah Sumber lolos dan sebelum pemeriksaan
+  angka: kutipan `[Halaman N]`, `Halaman N`, `Halaman N–M`, `hlm. N`, `hal. N`, `page N` di jawaban harus ada
+  sebagai penanda `[Halaman N]` di potongan yang dilampirkan, atau tertulis "halaman N" di teks dokumen itu
+  sendiri. Untuk rentang, kedua ujungnya diperiksa. "hal ini" tidak terbaca sebagai kutipan (butuh titik + angka).
+- Gagal → turun, dengan alasan yang membedakan "dokumen tidak memuat penanda halaman" dan "halaman N tidak
+  ada (penanda yang ada: …)".
+- `universal_contract.ts` BLOK 6: instruksi diperjelas — sebut nomor halaman HANYA bila potongan memuat
+  penanda; bila tidak ada, jangan menulisnya, karena label akan diturunkan otomatis.
+
+**Uji.** `uji-label-angka.mjs` kini **44/44** (33 lama + 11 halaman):
+
+| Kasus | Hasil |
+|---|---|
+| Jawaban web produksi `[Halaman 1]`, potongan tanpa penanda | turun — dokumen tidak memuat penanda halaman |
+| Jawaban web yang sama tanpa nomor halaman | bertahan |
+| PDF berpenanda 195–196: `[Halaman 195]`, `Halaman 195–196`, `hal. 195` | bertahan |
+| `hlm. 200`, `page 5`, `Halaman 195-199` (ujung 199 tak ada) | turun |
+| "halaman 12" tertulis di teks dokumen; "Hal ini …" | bertahan |
+| Tanpa `isiDokumen` | tidak diperiksa (kompatibel) |
+
+Jawaban desktop produksi tetap 3/3. Sintaks `label_sumber.ts` dan `universal_contract.ts` OK (esbuild).
+
+**Batas.** Penanda halaman hanya ada di awal halaman PDF; potongan dari tengah halaman tidak membawa
+penandanya, sehingga nomor halaman yang benar tetapi tidak tertulis di potongan itu ikut diturunkan.
+Kontrak kini melarang menyebut halaman tanpa penanda, jadi kasus ini seharusnya jarang.
