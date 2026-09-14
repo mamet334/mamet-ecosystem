@@ -7,7 +7,12 @@
  * terhadapnya (peringkat 5), dan untuk enam pertanyaan uji potongan itu KALAH dari potongan
  * bertopik lain. Dipotong ulang, potongan berisi jawaban naik ke peringkat #1–#2 di keenamnya:
  *   800 huruf → #1/#1/#2/#1/#2/#1;  1.000 → cadangan (ID) #3–4;  1.200 → #5.
+ *
+ * Item 76: potongan yang dimulai di tengah tabel Markdown diawali baris judul kolom tabel itu
+ * (judul_tabel.ts), sehingga bisa melebihi 800 huruf sepanjang judulnya. Titik potong tidak berubah.
  */
+import { tambahJudulTabel } from './judul_tabel.ts';
+
 export const UKURAN_POTONGAN = 800;
 export const TUMPANG_POTONGAN = 100;
 
@@ -25,7 +30,7 @@ export function chunkText(text: string, maxLength: number = UKURAN_POTONGAN, tum
         end = breakPoint + 1;
       }
     }
-    chunks.push(text.substring(i, end).trim());
+    chunks.push(tambahJudulTabel(text, i, text.substring(i, end).trim()));
     if (end >= text.length) break;
 
     let nextI = end - tumpang;
