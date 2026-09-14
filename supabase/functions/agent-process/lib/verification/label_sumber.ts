@@ -250,15 +250,19 @@ export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiD
   const teks = String(jawaban || '').replace(/\[\s*status\s*:\s*verified\s*\]/gi, LABEL_VERIFIED);
   const diam: HasilLabel = { jawaban: teks, dikoreksi: false, alasan: '', catatan: '' };
   const judul = (judulDokumen || []).filter((j) => typeof j === 'string' && j.trim());
+  // Blok <think>…</think> diperintahkan request_pipeline dan disembunyikan tampilan chat (parseThinkingContent).
+  // Semua pemeriksaan membaca jawaban di LUAR blok itu: angka coretan nalar tidak boleh menurunkan label,
+  // dan label/Sumber yang hanya tertulis di dalam nalar tidak boleh meloloskannya (uji mutu RAG 2026-09-14).
+  const tampil = teks.replace(/<think>[\s\S]*?<\/think>/gi, '');
 
   // Dokumen dilampirkan → kontrak BLOK 6 mewajibkan label. Tanpa label apa pun → HYPOTHESIS ditambahkan sistem.
-  const adaLabel = /\[\s*status\s*:/i.test(teks) || teks.includes('[Pengetahuan umum AI');
+  const adaLabel = /\[\s*status\s*:/i.test(tampil) || tampil.includes('[Pengetahuan umum AI');
   if (!adaLabel) {
     if (!judul.length) return diam;
     return { jawaban: `${teks.trimEnd()}\n\n${LABEL_HIPOTESIS}`, dikoreksi: true, alasan: 'model tidak menulis label status', catatan: CATATAN_TANPA_LABEL };
   }
 
-  if (!teks.includes(LABEL_VERIFIED)) return diam;
+  if (!tampil.includes(LABEL_VERIFIED)) return diam;
   const turunkan = (alasan: string, catatan: string): HasilLabel => ({
     jawaban: teks.split(LABEL_VERIFIED).join(LABEL_HIPOTESIS), dikoreksi: true, alasan, catatan
   });
@@ -270,14 +274,14 @@ export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiD
   const kutipan: string[] = [];
   const pola = /sumber/gi;
   let temu: RegExpExecArray | null;
-  while ((temu = pola.exec(teks)) !== null) kutipan.push(teks.slice(temu.index, temu.index + JANGKAUAN));
+  while ((temu = pola.exec(tampil)) !== null) kutipan.push(tampil.slice(temu.index, temu.index + JANGKAUAN));
   // Judul di DALAM dokumen juga sah (uji mutu RAG 2026-09-14): model menulis
   // `Sumber: "DOKUMEN PERENCANAAN PENGEMBANGAN KOMPETENSI ASN … (HCDP) …"` atau
   // `Sumber: "Katalog Kurikulum FEB, FHISIP, FKIP …"` — judul sampul/tajuk halaman, bukan nama berkas —
   // dan 5 jawaban benar diturunkan. Teks yang dikutip dianggap cocok bila tertulis di isi potongan yang
   // dilampirkan (≥20 huruf setelah dirapikan). Pemeriksaan halaman & angka tetap berjalan sesudahnya.
   const isiRapi = (isiDokumen || []).filter((t) => typeof t === 'string' && t.trim()).map(rapikan);
-  const kutipanDiIsi = isiRapi.length > 0 && [...teks.matchAll(/sumber\s*:?\s*["“]([^"”\n]{8,300})["”]/gi)]
+  const kutipanDiIsi = isiRapi.length > 0 && [...tampil.matchAll(/sumber\s*:?\s*["“]([^"”\n]{8,300})["”]/gi)]
     .map((m) => rapikan(m[1]))
     .some((q) => q.length >= 20 && isiRapi.some((t) => t.includes(q)));
   const adaYangCocok = judul.length > 0 && (kutipanDiIsi || kutipan.some((k) => judul.some((j) => judulDisebut(k, j))));
@@ -288,10 +292,10 @@ export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiD
     return turunkan(alasan, CATATAN_KOREKSI);
   }
 
-  const alasanHalaman = periksaHalamanSumber(teks, isiDokumen);
+  const alasanHalaman = periksaHalamanSumber(tampil, isiDokumen);
   if (alasanHalaman) return turunkan(alasanHalaman, `_Catatan sistem: label VERIFIED diturunkan — ${alasanHalaman}._`);
 
-  const alasanAngka = periksaAngkaSumber(teks, isiDokumen);
+  const alasanAngka = periksaAngkaSumber(tampil, isiDokumen);
   if (alasanAngka) return turunkan(alasanAngka, `_Catatan sistem: label VERIFIED diturunkan — ${alasanAngka}. Periksa angka ini langsung di dokumen._`);
   return diam;
 }
