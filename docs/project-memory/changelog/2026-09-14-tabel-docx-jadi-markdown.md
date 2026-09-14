@@ -6,8 +6,8 @@
 `4604ccf` (Item 76b: detektor + OCR halaman bertabel PDF — tidak bekerja), `de75807` (perbaikan
 detektor + OCR)
 **Status:** DOCX dideploy & terbukti di produksi 14 September 2026; Item 76b (deteksi + OCR PDF)
-terbukti live di `npm run desktop` setelah `de75807` (KATALOG-PENDAS, 14 September 2026); isi kode di
-Vercel belum diperiksa
+terbukti live di `npm run desktop` setelah `de75807` (KATALOG-PENDAS, 14 September 2026); isi kode
+`de75807` diperiksa live di kedua situs Vercel
 
 Berawal dari pertanyaan Owner: dokumen di RAG ditulis untuk manusia, sedangkan pembacanya AI — apakah
 ekstraksi dan embedding sudah menyiapkannya untuk kebutuhan RAG? Jawabannya: embedding hanya mengubah
@@ -332,7 +332,19 @@ benar.
   beberapa permintaan sekaligus.
 - Salah baca kata oleh mistral-ocr (riset: 4 per 30 halaman) tidak terdeteksi otomatis; teks per
   halaman belum dibandingkan satu per satu dengan PDF asli.
-- Isi kode `de75807` di kedua situs Vercel belum diperiksa — bukti live dari `npm run desktop`.
+- Unggahan dengan OCR baru dibuktikan di `npm run desktop`; belum ada unggahan uji di situs Vercel.
+  Perbaikan detektor tidak bisa dicari sebagai teks di bundel (kode dipadatkan) — hanya tersirat dari
+  commit yang sama.
+
+**Deploy Vercel (diperiksa 14 September 2026, sesudah push `fbc5507`).** Skrip menelusuri bundel JS
+yang dilayani situs, termasuk chunk yang dimuat belakangan. Penanda yang hanya ada di `de75807`
+(`"Reply with OK."`, galat "annotations kosong", pembersih `$\equiv$`) plus `max_tokens:16`,
+`halaman.pdf`, `mistral-ocr` ditemukan di keduanya:
+
+| Situs | Berkas JS diperiksa | Penanda ditemukan di |
+|---|---|---|
+| mamet-ecosystem.vercel.app | 22 | `ResearchApp-C7ITVAp2.js` |
+| mametlite.vercel.app | 5 | `index-DLax1SjZ.js` |
 - Operator Handbook di database belum diunggah ulang dengan OCR.
 - Belum ada UI biaya persisten (ledger) untuk unggahan — masih `window.confirm` sekali pakai.
 - Buku penuh tetap diproses halaman-per-halaman untuk OCR, bukan satu permintaan mistral-ocr untuk

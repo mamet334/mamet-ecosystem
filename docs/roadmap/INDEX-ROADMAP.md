@@ -1292,7 +1292,8 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
         disetujui → 813 potongan ber-embedding, 519 memuat tabel Markdown, 480 diawali baris tabel dan
         semuanya membawa judul kolom; tag palsu, entitas HTML, `$\equiv$`, `<br>` = 0. Kolom kode,
         nama, sks, waktu ujian, bahan ajar tepat; Owner memeriksa benar.
-      - **Status:** ✅ **Terbukti live di `npm run desktop`**; isi kode di Vercel belum diperiksa. Detail:
+      - **Deploy Vercel diperiksa (sesudah push `fbc5507`):** bundel live mamet-ecosystem (`ResearchApp-C7ITVAp2.js`, 22 berkas JS ditelusuri) dan mametlite (`index-DLax1SjZ.js`, 5 berkas) memuat penanda khusus `de75807` — `"Reply with OK."`, galat "annotations kosong", pembersih `$\equiv$`, `max_tokens:16`. Perbaikan detektor tak bisa dicari sebagai teks (kode dipadatkan); belum ada unggahan OCR uji di situs Vercel.
+      - **Status:** ✅ **Terbukti live di `npm run desktop`, kode dideploy di kedua situs Vercel.** Detail:
         changelog [`2026-09-14-tabel-docx-jadi-markdown.md`](../project-memory/changelog/2026-09-14-tabel-docx-jadi-markdown.md)
         bagian "Item 76b".
     - **Riset jalur PDF (angka lengkap di changelog, bagian yang belum dipasang di atas):**
