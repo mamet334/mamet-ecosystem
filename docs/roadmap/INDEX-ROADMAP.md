@@ -1266,3 +1266,20 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
       - RAG tetap menarik tabel zona waktu ebook untuk pertanyaan jam (7 potongan, skor 0,674); mesin kepercayaan melapor "100% — Sangat Tinggi" dan menyuruh model memprioritaskan dokumen. Model kini tak terpancing, tapi dorongannya masih ada.
       - Jalur cadangan model wajib-nalar belum pernah terjadi di produksi — hanya teruji dengan fetch palsu.
       - mametlite dan pemanggil lain di luar AssistantService belum mengirim zona waktu (teks cadangan: jam lokal tidak diketahui). Groq/OpenAI tetap tak dikirimi "mati".
+
+76. **Tabel DOCX Dibaca sebagai Tabel, dan Riset Jalur PDF untuk RAG (2026-09-14):**
+    - **Asal:** pertanyaan Owner — dokumen RAG ditulis untuk manusia sedangkan pembacanya AI; apakah ekstraksi dan embedding sudah menyiapkannya? Embedding tidak merapikan apa pun; kerusakan terjadi saat teks diambil, terutama pada tabel. Changelog: [`2026-09-14-tabel-docx-jadi-markdown.md`](../project-memory/changelog/2026-09-14-tabel-docx-jadi-markdown.md).
+    - **(a) Tabel DOCX → baris Markdown (commit `1c0e03e`):** `extractRawText` mengeluarkan setiap sel sebagai paragraf sendiri — judul kolom hanya sekali, dua paragraf dalam sel ditempel (`Waktu(Kenaikan pangkat`). Kini `convertToHtml` + `teksDariHtmlDocx`: tabel ≥2 kolom jadi `| … |`, sel gabungan ditulis sekali, tabel satu kolom tetap paragraf, baris kosong dibuang, tabel bersarang diratakan, `|` di-escape, entitas didekode sesudah tag dibuang (`<n>` selamat), gambar tidak ikut jadi base64 (HTML Buku 5,5 MB → 55 KB). Salinan mametlite sama persis.
+    - **Kode awal yang rusak:** fungsi ini lebih dulu ditinggalkan sesi lain belum tersambung, dengan regex `/⟦T(d+)⟧/` tanpa garis miring terbalik — diuji: setiap tabel hilang, tersisa `⟦T0⟧`, sementara komentarnya menulis "0 kata hilang". Diperbaiki; penanda kini NUL (`\u0000`) karena XML melarangnya, sehingga teks `⟦T0⟧` atau ` T1 ` asli di dokumen tidak tertukar.
+    - **Uji:** kasus buatan 11/11. Dokumen asli, hasil sama di Node (`buffer`), browser Vite (`arrayBuffer`) dan salinan mametlite — Buku Materi Pokok UT: 42 baris tabel, 6.407 → 6.407 kata; HCDP: 48 baris tabel, 6.796 → 6.802 kata (selisih hanya kata tertempel yang kini terpisah); tanpa sisa penanda/base64; 90/289 ms di browser. Build frontend & mametlite sukses. `mammoth` versi Node tidak menerima `arrayBuffer` — karena itu uji ujung-ke-ujung dilakukan di browser.
+    - **Status:** ✅ **Selesai & Teruji, belum dideploy** (frontend dan mametlite ke Vercel; tidak ada perubahan Supabase).
+    - **(b) Riset jalur PDF — belum dipasang, angka lengkap di changelog:**
+      - Database Operator Handbook: 827 potongan, hanya 10% memuat judul bagian, 51% berciri tabel yang diratakan, ±64 bukan isi.
+      - Pembaca PDF OpenRouter pada 3 halaman sulit: `cloudflare-ai` lebih buruk dari pdf.js; native Gemini memecah kolom dan mengubah teks; **`mistral-ocr` terbaik** ($2/1.000 hal; ditagih ke model penerima, tidak tampil sebagai model Mistral di dashboard).
+      - mistral-ocr 30 halaman: 5,6 s, $0,0613; cacat pola tetap (44 tag palsu, 30 entitas, 5 LaTeX) + 4 salah baca kata.
+      - Dibuang setelah diuji: pencocok ejaan Mistral↔pdf.js (menukar kesalahan) dan awalan judul bagian per potongan (skor embedding turun 0,7476 → 0,7021/0,7139, peringkat tetap 8/8).
+      - Jalan tengah: detektor halaman tabel dari posisi teks pdf.js, aturan **B′** (multi-kolom ≥30% & baris yatim ≥10%) — Operator Handbook 152/436 (±$0,30), Buku Materi Pokok 3/32 (semuanya tabel rusak), HCDP PDF 4/47, E-Book Keinsinyuran 0/52.
+    - **Keterbatasan / belum dikerjakan:**
+      - Judul kolom tidak diulang di potongan yang dimulai di tengah tabel (12 dari 20 potongan bertabel HCDP, 7 dari 12 Buku); dampak ke skor pencarian belum diuji.
+      - Dokumen `.docx` yang sudah tersimpan (termasuk HCDP) perlu diunggah ulang; belum diuji lewat tombol unggah di aplikasi live.
+      - Jalur PDF: detektor di kode, pemisah halaman (`pdf-lib`), mistral-ocr + pembersih, tampilan biaya unggah (opsional/otomatis belum diputuskan), buku penuh sekali kirim, dan uji mutu jawaban — semuanya belum.
