@@ -40,6 +40,7 @@ const JARAK_MULTI_KOLOM = 25;
 const JARAK_BARIS_YATIM = 60;
 const PORSI_MULTI_KOLOM = 0.3;
 const PORSI_BARIS_YATIM = 0.1;
+const TOLERANSI_Y_BARIS = 3;          // pt; potongan teks dengan y (dibulatkan per 3 pt) sama = satu baris visual
 
 // Perkiraan biaya embedding (Item 63): google/gemini-embedding-2 ±$0,20 per juta token,
 // ±4 huruf per token (HCDP: 11 potongan ≈ 12 ribu token). Potongan 800 huruf, tumpang 100
@@ -155,24 +156,35 @@ export function susunBarisHalaman(items) {
 }
 
 /**
- * `baris` dari `kelompokkanBaris` → true bila halaman ini tampak berupa tabel (aturan B′): pdf.js
- * meratakan kolom jadi baris tunggal, jadi dideteksi dari posisi horizontal potongan teks, bukan
- * struktur. Dua sinyal digabung DAN supaya sampul/poin berindentasi/kode menjorok tidak salah
- * terpilih (aturan tunggal berbasis satu sinyal saja terbukti salah pilih itu di riset).
+ * Item `getTextContent()` MENTAH satu halaman → true bila halaman ini tampak berupa tabel (aturan
+ * B′): pdf.js meratakan kolom jadi baris tunggal, jadi dideteksi dari posisi horizontal potongan
+ * teks, bukan struktur. Dua sinyal digabung DAN supaya sampul/poin berindentasi/kode menjorok tidak
+ * salah terpilih (aturan tunggal berbasis satu sinyal saja terbukti salah pilih itu di riset).
+ *
+ * Dikelompokkan per baris VISUAL (y yang sama), BUKAN memakai `kelompokkanBaris`. Versi pertama
+ * memakai urutan aliran `kelompokkanBaris`, yang memulai baris baru setiap `hasEOL` — di tabel pdf.js
+ * menandai akhir baris di SETIAP SEL, jadi tiap sel menjadi "baris" sendiri tanpa celah kolom dan
+ * sinyal multi-kolom hampir selalu nol. Terukur 2026-09-14: KATALOG-PENDAS 0 halaman (riset 130),
+ * Buku Materi Pokok 0 (riset 3), Operator Handbook 28 (riset 152, tabel ADB hal. 13–15 terlewat) —
+ * dialog OCR tak pernah muncul untuk dokumen penuh tabel.
  */
-export function deteksiTabelHalaman(baris) {
-  if (baris.length < 3) return false;
-  const awalBaris = baris.map((b) => Math.min(...b.bagian.map((p) => p.x)));
-  const margin = Math.min(...awalBaris);
+export function deteksiTabelHalaman(items) {
+  const isi = (items || []).filter((it) => it && typeof it.str === 'string' && it.str.trim() && it.transform);
+  if (isi.reduce((s, it) => s + it.str.trim().length, 0) < AMBANG_HALAMAN_KOSONG) return false;
+  const perY = new Map();
+  for (const it of isi) {
+    const kunci = Math.round(it.transform[5] / TOLERANSI_Y_BARIS);
+    if (!perY.has(kunci)) perY.set(kunci, []);
+    perY.get(kunci).push({ x: it.transform[4], lebar: it.width || 0 });
+  }
+  const baris = [...perY.values()].map((r) => r.sort((a, c) => a.x - c.x));
+  const margin = Math.min(...baris.map((r) => r[0].x));
   let multiKolom = 0;
   let yatim = 0;
-  baris.forEach((b, i) => {
-    const bagian = [...b.bagian].sort((a, c) => a.x - c.x);
-    for (let k = 1; k < bagian.length; k++) {
-      if (bagian[k].x - (bagian[k - 1].x + bagian[k - 1].lebar) > JARAK_MULTI_KOLOM) { multiKolom++; break; }
-    }
-    if (awalBaris[i] - margin > JARAK_BARIS_YATIM) yatim++;
-  });
+  for (const r of baris) {
+    if (r.some((p, k) => k > 0 && p.x - (r[k - 1].x + r[k - 1].lebar) > JARAK_MULTI_KOLOM)) multiKolom++;
+    if (r[0].x - margin > JARAK_BARIS_YATIM) yatim++;
+  }
   return (multiKolom / baris.length) >= PORSI_MULTI_KOLOM && (yatim / baris.length) >= PORSI_BARIS_YATIM;
 }
 
@@ -230,7 +242,7 @@ export async function ekstrakPdfDariData(data, pdfjs, onProgress, petaOcr) {
       const page = await doc.getPage(n);
       const isi = await page.getTextContent();
       const { baris, cetakUlang } = kelompokkanBaris(isi.items);
-      if (deteksiTabelHalaman(baris)) bertabel.push(n);
+      if (deteksiTabelHalaman(isi.items)) bertabel.push(n);
       const teksOcr = petaOcr?.get(n);
       halaman.push(teksOcr !== undefined
         ? teksOcr.split('\n').filter(Boolean)
