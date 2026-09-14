@@ -4,9 +4,9 @@
 **Roadmap:** Item 77 (lanjutan Item 71 — label VERIFIED wajib mengutip sumber)
 **Berkas kode:** `supabase/functions/agent-process/lib/verification/label_sumber.ts`,
 `lib/orchestration/handlers/synthesis_handler.ts`, `lib/stream_handler.ts`
-**Status:** pemeriksaan angka (`c953e01`, v424) terbukti live di `npm run desktop` dan web; pemeriksaan
-nomor halaman (`be1f425`) dideploy v425 — model berhenti mengarang halaman tetapi menjawab tanpa label;
-penjaga jawaban tanpa label + BLOK 6 diperlunak di-commit, belum di-deploy (14 September 2026)
+**Status:** dideploy seluruhnya (`agent-process` v426) dan terbukti live di web 14 September 2026 —
+pemeriksaan angka (v424, desktop + web), nomor halaman (v425), penjaga jawaban tanpa label + BLOK 6
+diperlunak (v426: model kembali menulis label sendiri). Jalur penurunan label belum pernah terjadi live.
 
 ## Masalah
 
@@ -205,5 +205,41 @@ sekali**. Diperiksa:
 Uji lama (angka, pasangan tabel, halaman, perilaku Item 71) tetap lolos; jawaban desktop produksi tetap
 3/3. Sintaks `label_sumber.ts`, `universal_contract.ts`, `stream_handler.ts` OK (esbuild).
 
-**Belum terbukti:** penjaga belum berjalan live, dan belum pasti kalimat yang diperlunak membuat model
-kembali menulis label.
+**Belum terbukti (saat commit `2dfd0c6`):** penjaga belum berjalan live, dan belum pasti kalimat yang
+diperlunak membuat model kembali menulis label.
+
+## Bukti live v426 (web, 2026-09-14 07.46 UTC)
+
+`2dfd0c6` di-push dan dideploy sebagai `agent-process` **v426** (07.43.49 UTC). Isi kode aktif diperiksa lewat
+`get_edge_function`: memuat `CATATAN_TANPA_LABEL`, "model tidak menulis label status", log
+`label dikoreksi -> HYPOTHESIS`, `periksaHalamanSumber`, `periksaAngkaSumber`; kalimat "nomor halaman karangan
+membuat label …" sudah tidak ada.
+
+Pertanyaan HCDP yang sama di web, chat `bc5ec398…` (dicari lewat `created_at` — chat lama bisa tersimpan ulang
+dengan `updated_at` baru):
+
+```
+Target rasio jabatan fungsional bersertifikat kompetensi pada tahun 3 adalah 20,0%.
+
+Sumber: "DOKUMEN HCDP 2025-2026.docx"
+
+[STATUS: VERIFIED]
+```
+
+Label ditulis **model sendiri**, tanpa catatan sistem. Konteks yang dibaca: Evidence Gate PASSED (7 potongan),
+judul kolom "Tahun 3" ada, instruksi halaman yang diperlunak ada, kalimat ancaman tidak ada. Pemeriksa benar
+tidak menurunkan: Sumber cocok, tanpa nomor halaman, 20,0% ada di dokumen.
+
+**Riwayat uji web pertanyaan yang sama:**
+
+| Versi | Jam (UTC) | Jawaban | Label |
+|---|---|---|---|
+| v424 | 07.24 | 20,0% + `[Halaman 1]` karangan | VERIFIED (halaman belum diperiksa) |
+| v425 | 07.33 | 20,0%, tanpa halaman | **tanpa label** |
+| v426 | 07.46 | 20,0%, tanpa halaman | VERIFIED, ditulis model |
+
+**Belum terbukti live:**
+
+- Penjaga label hilang belum pernah terpakai — model menulis label; jalurnya terbukti lewat uji lokal (53/53).
+- Kaitan pelunakan BLOK 6 dengan kembalinya label baru satu sampel sebelum dan sesudah.
+- Penurunan label karena angka, pasangan tabel, atau halaman belum pernah terjadi live — semua jawaban uji benar.
