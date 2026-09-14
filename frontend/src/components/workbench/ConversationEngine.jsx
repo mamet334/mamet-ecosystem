@@ -14,18 +14,6 @@ import MemoryContextPanel from './MemoryContextPanel';
 // =============================================
 const parseThinkingContent = (text) => {
   if (!text) return { thinking: '', answer: '', isThinkingComplete: false };
-  // Tag <think>…</think> diperintahkan request_pipeline (agent-process). Tanpa ini nalar model tampil
-  // sebagai teks biasa di chat (uji mutu RAG 2026-09-14: HCDP-06, NEG-02).
-  const buka = text.search(/<think>/i);
-  if (buka !== -1) {
-    const tutup = text.search(/<\/think>/i);
-    if (tutup === -1) return { thinking: text.slice(buka + 7).trim(), answer: text.slice(0, buka).trim(), isThinkingComplete: false };
-    return {
-      thinking: text.slice(buka + 7, tutup).trim(),
-      answer: (text.slice(0, buka) + text.slice(tutup + 8)).trim(),
-      isThinkingComplete: true
-    };
-  }
   const startIndex = text.indexOf(' thinking');
   const endIndex = text.indexOf(' response');
   if (startIndex !== -1) {

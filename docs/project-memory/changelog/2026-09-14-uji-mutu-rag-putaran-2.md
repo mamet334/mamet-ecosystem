@@ -1,10 +1,9 @@
-# Uji Mutu RAG Putaran 2: Label Tak Lagi Keliru Turun, Nalar `<think>` Disembunyikan
+# Uji Mutu RAG Putaran 2: Label Tak Lagi Keliru Turun; Label & Sumber Wajib di Luar Nalar
 
 **Tanggal:** 14 September 2026
 **Roadmap:** Item 78 (lanjutan putaran 1)
-**Berkas kode:** `supabase/functions/agent-process/lib/verification/label_sumber.ts`,
-`frontend/src/components/workbench/ConversationEngine.jsx`
-**Status:** di-commit; belum di-deploy (`agent-process`) dan belum di-push (frontend)
+**Berkas kode:** `supabase/functions/agent-process/lib/verification/label_sumber.ts`
+**Status:** di-commit; belum di-deploy (`agent-process`)
 
 ## Hasil putaran 2 (2026-09-14 12.16 UTC, `agent-process` v427)
 
@@ -41,38 +40,37 @@ Ringkasan konsol: benar 17, perlu cek 3, salah 2, label tidak jujur 4. Setelah d
 Dinilai ulang dengan penilai terbaru: benar 19, perlu cek 3 (HCDP-01 #1, HCDP-04 ×2 menyalin deret tabel),
 salah 0, tidak dinilai 4.
 
-## Temuan: `<think>` bukan bocoran model, tetapi tampil di chat utama
+## Temuan: `<think>` bukan bocoran — sengaja ditampilkan
 
-- `request_pipeline.ts` **memerintahkan** model menulis nalar di `<think>…</think>` (panduan MAEF).
-- `ChatMessages.jsx` (AI Agent) dan mametlite memisahkan tag itu. **`ConversationEngine.jsx`** — chat utama yang
-  memanggil `AssistantService.processMessage` — hanya mencari penanda `' thinking'` / `' response'`, lalu
-  menampilkan teks mentah di `<span className="whitespace-pre-wrap">` → nalar model **tampil sebagai teks
-  jawaban**. Tabel `chats` 7 hari terakhir memuat ≥8 jawaban model yang diawali `<think>` (9–12 September).
-- `label_sumber.ts` memeriksa seluruh teks termasuk nalar: angka coretan di `<think>` bisa menurunkan label
-  yang sah, dan label/Sumber yang hanya tertulis di nalar bisa meloloskan jawaban.
+- `request_pipeline.ts` **memerintahkan** model menulis nalar di `<think>…</think>` (panduan MAEF), dan
+  `ConversationEngine.jsx` (chat utama) menampilkannya bersama jawaban. Tabel `chats` 9–12 September memuat ≥8
+  jawaban model yang diawali `<think>`.
+- **Keputusan Owner:** nalar AI sengaja ikut tampil — untuk transparansi dan menjaga alur percakapan tetap sesuai
+  keinginan pengguna. Commit `b6cf10e` sempat menyembunyikannya di `ConversationEngine.jsx`; perubahan itu
+  **dibatalkan** (berkas kembali identik dengan sebelum `b6cf10e`, belum pernah di-push).
+- Celah di `label_sumber.ts`: label `[STATUS: VERIFIED]` atau `Sumber:` yang hanya tertulis di dalam nalar
+  ikut dihitung, sehingga jawaban akhir tanpa label/Sumber bisa lolos VERIFIED.
 
 ## Perbaikan
 
-1. `ConversationEngine.jsx` — `parseThinkingContent` mengenali `<think>…</think>` (juga huruf besar dan tag yang
-   belum tertutup saat streaming). Nalar masuk tombol "View AI Reasoning Trace"; jawaban tampil tanpa tag.
-   Penanda lama `' thinking'` tetap didukung.
-2. `label_sumber.ts` — semua pemeriksaan (ada label, VERIFIED, Sumber, halaman, angka) membaca jawaban **di luar**
-   blok `<think>` yang tertutup. Teks yang dikembalikan tetap utuh; penurunan mengganti label di teks utuh.
-   `<think>` tak tertutup diperiksa seperti sebelumnya (seluruh teks).
-3. Set uji (di luar git) — butir alternatif untuk KAT-02; penilai menilai jawaban tanpa blok `<think>`.
+1. `label_sumber.ts` — keberadaan label, label VERIFIED, dan kutipan Sumber dibaca dari jawaban **di luar** blok
+   `<think>` yang tertutup. **Halaman dan angka tetap diperiksa pada seluruh teks termasuk nalar**, karena nalar
+   dibaca pengguna: angka karangan di nalar ikut menurunkan label. Teks yang dikembalikan tetap utuh.
+   `<think>` tak tertutup diperlakukan seperti sebelumnya.
+2. Set uji (di luar git) — butir alternatif untuk KAT-02; isi dinilai dari jawaban di luar `<think>` (fakta
+   wajib tertulis di jawaban akhir, bukan hanya di nalar).
 
 ## Uji
 
-- `uji-label-think.mjs` 7/7 kasus (jawaban produksi HCDP-06 bertahan; angka/halaman karangan hanya di nalar
-  tidak menurunkan; angka karangan di jawaban tampil tetap turun; label atau Sumber hanya di nalar → turun;
-  tag tak tertutup tetap diperiksa; tanpa `<think>` perilaku lama).
-- `uji-parse-think-ce.mjs` 5/5 — fungsi diambil langsung dari `ConversationEngine.jsx`.
-- Regresi: `uji-label-angka.mjs` lolos, `uji-label-desktop-b2fa16dd.mjs` 3/3, `uji-label-hasil-produksi.mjs`
-  28/28, `uji-penilai-rag.mjs` 14/14; sintaks `ConversationEngine.jsx` OK (esbuild).
+- `uji-label-think.mjs` 11/11 kasus: jawaban produksi HCDP-06 bertahan; angka dan halaman karangan yang hanya
+  ada di nalar → turun; angka benar di nalar → bertahan; angka karangan di jawaban → turun; label hanya di nalar
+  → penjaga tanpa label; Sumber hanya di nalar → turun; tag tak tertutup tetap diperiksa; tanpa `<think>` perilaku
+  lama.
+- Regresi: `uji-label-angka.mjs` lolos, `uji-label-desktop-b2fa16dd.mjs` lolos, `uji-label-hasil-produksi.mjs`
+  semua lolos, `uji-penilai-rag.mjs` 14/14.
 
 ## Belum terbukti / sisa
 
-- Deploy `agent-process` + push frontend, lalu putaran 3 set uji (muat ulang halaman dulu) dan lihat chat utama
-  tidak lagi menampilkan `<think>`.
+- Deploy `agent-process`, lalu putaran 3 set uji (muat ulang halaman dulu).
 - Sub-agent "researcher" yang berhasil belum pernah terlihat.
 - Satuan bertentangan HCDP-03; set uji masih 13 pertanyaan di `node_modules`.

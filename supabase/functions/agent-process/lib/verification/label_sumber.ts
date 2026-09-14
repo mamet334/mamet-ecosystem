@@ -250,9 +250,10 @@ export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiD
   const teks = String(jawaban || '').replace(/\[\s*status\s*:\s*verified\s*\]/gi, LABEL_VERIFIED);
   const diam: HasilLabel = { jawaban: teks, dikoreksi: false, alasan: '', catatan: '' };
   const judul = (judulDokumen || []).filter((j) => typeof j === 'string' && j.trim());
-  // Blok <think>…</think> diperintahkan request_pipeline dan disembunyikan tampilan chat (parseThinkingContent).
-  // Semua pemeriksaan membaca jawaban di LUAR blok itu: angka coretan nalar tidak boleh menurunkan label,
-  // dan label/Sumber yang hanya tertulis di dalam nalar tidak boleh meloloskannya (uji mutu RAG 2026-09-14).
+  // Blok <think>…</think> diperintahkan request_pipeline dan SENGAJA ditampilkan di chat utama (transparansi,
+  // keputusan Owner 2026-09-14). Label dan Sumber harus tertulis di jawaban akhir, di LUAR nalar — label/Sumber
+  // yang hanya ada di dalam nalar tidak meloloskan VERIFIED. Halaman & angka tetap diperiksa pada SELURUH teks,
+  // karena nalar ikut dibaca pengguna.
   const tampil = teks.replace(/<think>[\s\S]*?<\/think>/gi, '');
 
   // Dokumen dilampirkan → kontrak BLOK 6 mewajibkan label. Tanpa label apa pun → HYPOTHESIS ditambahkan sistem.
@@ -292,10 +293,10 @@ export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiD
     return turunkan(alasan, CATATAN_KOREKSI);
   }
 
-  const alasanHalaman = periksaHalamanSumber(tampil, isiDokumen);
+  const alasanHalaman = periksaHalamanSumber(teks, isiDokumen);
   if (alasanHalaman) return turunkan(alasanHalaman, `_Catatan sistem: label VERIFIED diturunkan — ${alasanHalaman}._`);
 
-  const alasanAngka = periksaAngkaSumber(tampil, isiDokumen);
+  const alasanAngka = periksaAngkaSumber(teks, isiDokumen);
   if (alasanAngka) return turunkan(alasanAngka, `_Catatan sistem: label VERIFIED diturunkan — ${alasanAngka}. Periksa angka ini langsung di dokumen._`);
   return diam;
 }
