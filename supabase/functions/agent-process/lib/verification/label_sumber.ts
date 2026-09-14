@@ -271,7 +271,16 @@ export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiD
   const pola = /sumber/gi;
   let temu: RegExpExecArray | null;
   while ((temu = pola.exec(teks)) !== null) kutipan.push(teks.slice(temu.index, temu.index + JANGKAUAN));
-  const adaYangCocok = judul.length > 0 && kutipan.some((k) => judul.some((j) => judulDisebut(k, j)));
+  // Judul di DALAM dokumen juga sah (uji mutu RAG 2026-09-14): model menulis
+  // `Sumber: "DOKUMEN PERENCANAAN PENGEMBANGAN KOMPETENSI ASN … (HCDP) …"` atau
+  // `Sumber: "Katalog Kurikulum FEB, FHISIP, FKIP …"` — judul sampul/tajuk halaman, bukan nama berkas —
+  // dan 5 jawaban benar diturunkan. Teks yang dikutip dianggap cocok bila tertulis di isi potongan yang
+  // dilampirkan (≥20 huruf setelah dirapikan). Pemeriksaan halaman & angka tetap berjalan sesudahnya.
+  const isiRapi = (isiDokumen || []).filter((t) => typeof t === 'string' && t.trim()).map(rapikan);
+  const kutipanDiIsi = isiRapi.length > 0 && [...teks.matchAll(/sumber\s*:?\s*["“]([^"”\n]{8,300})["”]/gi)]
+    .map((m) => rapikan(m[1]))
+    .some((q) => q.length >= 20 && isiRapi.some((t) => t.includes(q)));
+  const adaYangCocok = judul.length > 0 && (kutipanDiIsi || kutipan.some((k) => judul.some((j) => judulDisebut(k, j))));
   if (!adaYangCocok) {
     const alasan = judul.length === 0
       ? 'tidak ada dokumen yang dilampirkan'

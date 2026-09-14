@@ -127,7 +127,10 @@ export class ToolDispatcher {
     
     const targetResource = args?.TargetFile || args?.AbsolutePath || args?.task || args?.CommandLine || 'unknown';
     const metadata = {
-       dispatcher_mode: shadowMode ? 'SHADOW' : 'ENFORCED',
+       // `shadowMode` hanya ada di dalam execute(); dulu dirujuk di sini → ReferenceError setiap kali
+       // logger aktif, dan setiap sub-agent (mis. "researcher") gagal (uji mutu RAG 2026-09-14).
+       // WOULD_DENY hanya dihasilkan saat shadow mode, jadi mode dapat dibaca dari keputusannya.
+       dispatcher_mode: decision === 'WOULD_DENY' ? 'SHADOW' : 'ENFORCED',
        tool_name: toolName,
        target: targetResource,
        decision: decision,
