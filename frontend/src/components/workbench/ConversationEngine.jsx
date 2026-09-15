@@ -81,7 +81,6 @@ export default function ConversationEngine({ sessionId }) {
   const KNOWN_TOOL_LABELS = {
     web_search: 'Web',
     memory_manager: 'Memory',
-    file_reader: 'File Reader',
     deep_research: 'Deep Research',
     word_to_pdf: 'Word → PDF'
   };

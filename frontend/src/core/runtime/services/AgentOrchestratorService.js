@@ -38,20 +38,14 @@ export class AgentOrchestratorService {
       category: 'research'
     });
 
-    // Agen: file_analyzer
-    this.registerAgent({
-      name: 'file_analyzer',
-      description: 'Membaca dan menganalisis berbagai format file',
-      tools: ['file_reader'],
-      status: 'active',
-      category: 'analysis'
-    });
+    // Agen file_analyzer (tool file_reader) dihapus 2026-09-15: hanya kerangka, tidak pernah dijalankan;
+    // berkas dibaca lewat lampiran 📎 (AssistantService.buildFileData).
 
     // Agen: deep_researcher
     this.registerAgent({
       name: 'deep_researcher',
       description: 'Riset mendalam multi-langkah dengan sintesis dan pelaporan',
-      tools: ['web_search', 'memory_manager', 'file_reader'],
+      tools: ['web_search', 'memory_manager'],
       status: 'active',
       category: 'research'
     });
@@ -59,7 +53,6 @@ export class AgentOrchestratorService {
     // Emit event setelah semua agen terdaftar
     this.eventBus.emit('Agent:Registered', { name: 'memory_manager' });
     this.eventBus.emit('Agent:Registered', { name: 'researcher' });
-    this.eventBus.emit('Agent:Registered', { name: 'file_analyzer' });
     this.eventBus.emit('Agent:Registered', { name: 'deep_researcher' });
     
     this.eventBus.emit('AgentOrchestrator:Ready', { status: 'READY', timestamp: Date.now() });

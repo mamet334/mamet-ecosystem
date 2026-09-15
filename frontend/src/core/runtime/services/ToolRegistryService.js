@@ -25,7 +25,7 @@ export class ToolRegistryService {
 
     this.isInitialized = true;
 
-    // Tidak ada lagi tool hardcode di sini — semua tool (termasuk memory_manager, file_reader,
+    // Tidak ada lagi tool hardcode di sini — semua tool (termasuk memory_manager,
     // deep_research, web_search) sekarang datang dari folder tools/ di root repo, lihat
     // scanToolsFolder(). Konsisten dengan prinsip "semua tool terkumpul di satu tempat".
 
