@@ -5,16 +5,27 @@ import { persistTelemetryLog } from '../../verification/verification_service.ts'
 import { eventBus } from '../../event/event_bus.ts';
 import { koreksiLabel } from '../../verification/label_sumber.ts';
 import { sisipkanNalar } from '../../adapters/reasoning_openrouter.ts';
+import { CATATAN_TERPOTONG, susunBahanLanjutan, susunPromptLanjutan, tenggatJawaban } from '../../streaming/batas_waktu.ts';
 
 /** Jawaban akhir. Nalar model ikut ditampilkan (`<think>`) hanya bila Thinking dinyalakan eksplisit. */
-async function jawabanAkhir(prompt: string, sistem: string, riwayat: any[], rctx: any): Promise<string> {
+async function jawabanAkhir(prompt: string, sistem: string, riwayat: any[], rctx: any, tanpaNalar = false): Promise<string> {
   // Hybrid: nalar dialirkan ke klien sambil model berpikir; jawaban tetap dirakit utuh & diperiksa di bawah.
-  const kirim = rctx?.model?.thinking === true ? rctx?.stream?.kirimNalar : undefined;
-  const opsi = kirim
+  const kirim = rctx?.model?.thinking === true && !tanpaNalar ? rctx?.stream?.kirimNalar : undefined;
+  const opsi: any = kirim
     ? { onNalar: (teks: string) => kirim({ tipe: 'nalar', teks }), onIsiMulai: () => kirim({ tipe: 'nalar_selesai' }) }
     : {};
+  // Tenggat sebelum batas waktu dinding Supabase (2026-09-15): yang sudah ditulis disimpan, bukan dibuang.
+  opsi.tenggat = tenggatJawaban(rctx);
+  // Lanjutan jawaban terpotong: nalarnya sudah dibayar dan ditampilkan di pesan sebelumnya, dan diserahkan lewat prompt.
+  // Live v444: lanjutan yang bernalar ulang dari nol terpotong lagi sebelum sempat menulis satu huruf pun.
+  if (tanpaNalar) opsi.thinking = false;
   const r = await runLLMDenganNalar(prompt, sistem, riwayat, rctx, opsi);
-  return rctx?.model?.thinking === true ? sisipkanNalar(r.result, r.reasoning) : r.result;
+  let teks = rctx?.model?.thinking === true ? sisipkanNalar(r.result, r.reasoning) : r.result;
+  if (r.terpotong) {
+    rctx.stream.jawabanTerpotong = true;
+    teks = `${teks || ''}${CATATAN_TERPOTONG}`;
+  }
+  return teks;
 }
 
 export const SynthesisHandler = {
@@ -32,6 +43,8 @@ export const SynthesisHandler = {
       routingDecision, 
       contractValidation 
     } = state;
+    // Pesan "lanjutkan" untuk jawaban yang terpotong batas waktu (core_engine.ts, streaming/batas_waktu.ts).
+    const lanjutan = state.lanjutan || null;
     
     const stream = ctx.request.stream;
     const extractedImage = ctx.request.extractedImage;
@@ -48,7 +61,11 @@ export const SynthesisHandler = {
       .filter((t: any) => typeof t === 'string' && t.trim());
     let replyMessage = 'Gagal memproses jawaban.';
 
-    if (isChatBiasa || !maef.shouldExecutePhase('ORCHESTRATION')) {
+    if (lanjutan) {
+        // Riset/sub-agent tidak diulang: bahan dan jawaban sejauh ini diambil dari metadata pesan yang terpotong.
+        ctx.state.processingSteps.push('⏩ Melanjutkan jawaban yang terpotong — Coordinator & sub-agent tidak dijalankan ulang');
+        replyMessage = await jawabanAkhir(susunPromptLanjutan(lanjutan), fullSystemContext, lanjutan.riwayat, rctx, true);
+    } else if (isChatBiasa || !maef.shouldExecutePhase('ORCHESTRATION')) {
         ctx.state.processingSteps.push('✍️ Menghubungi Model AI untuk menjawab langsung...');
         
         if (stream && !extractedImage) {
@@ -234,7 +251,14 @@ export const SynthesisHandler = {
           // `...sub-agent.${fullSystemContext}`, sehingga seluruh prompt sistem — termasuk semua
           // potongan dokumen — terkirim DUA KALI. Terukur lewat [PROMPT_KOMPOSISI]: pertanyaan 80
           // huruf menjadi pesan 28.519 huruf di atas sistem 27.802 huruf (15.272 token).
-          const synthesisPrompt = `Anda telah menugaskan beberapa sub-agent.\n\nPermintaan Awal User: "${ctx.request.finalMessage}"\n\nRiwayat pekerjaan sub-agent:\n${accumulatedContext}\n\nJAWABLAH pesan/pertanyaan user dengan ramah dan natural berdasarkan informasi dari sub-agent di atas. \n\nPENTING: \n- JANGAN gunakan format kaku seperti "Laporan Hasil Kerja".\n- Langsung berikan jawaban, sapaan balik, atau solusi.\n- Sertakan gambar jika ada.\n- Jangan pernah mengarang data palsu!\n- Gunakan format Tabel Markdown HANYA jika menyajikan data terstruktur.\n- DILARANG KERAS menggunakan blok \`\`\`mermaid\`\`\` KECUALI diminta.`;
+          // Deep Research (2026-09-15) menyerahkan bahan artikel mentah dan pengguna memang meminta laporan riset, jadi
+          // larangan "format kaku seperti laporan" tidak berlaku bila bahannya benar-benar ada.
+          const adaBahanDeepResearch = (subagentRuns || []).some((r: any) =>
+            r?.subagent === 'deep_research' && String(r?.output || '').startsWith('Bahan DEEP RESEARCH'));
+          const aturanFormat = adaBahanDeepResearch
+            ? `- Pengguna menyalakan Deep Research: tulis LAPORAN RISET terstruktur (ringkasan, temuan utama, tabel perbandingan bila datanya mendukung, kesimpulan) dengan nomor sumber [n] dan nama situsnya.\n- Awali dengan sapaan singkat, lalu langsung laporan.`
+            : `- JANGAN gunakan format kaku seperti "Laporan Hasil Kerja".\n- Langsung berikan jawaban, sapaan balik, atau solusi.`;
+          const synthesisPrompt = `Anda telah menugaskan beberapa sub-agent.\n\nPermintaan Awal User: "${ctx.request.finalMessage}"\n\nRiwayat pekerjaan sub-agent:\n${accumulatedContext}\n\nJAWABLAH pesan/pertanyaan user dengan ramah dan natural berdasarkan informasi dari sub-agent di atas. \n\nPENTING: \n${aturanFormat}\n- Sertakan gambar jika ada.\n- Jangan pernah mengarang data palsu!\n- Gunakan format Tabel Markdown HANYA jika menyajikan data terstruktur.\n- DILARANG KERAS menggunakan blok \`\`\`mermaid\`\`\` KECUALI diminta.`;
           
           ctx.state.processingSteps.push('📝 Merangkum dan menyintesis jawaban akhir...');
           
@@ -313,7 +337,18 @@ export const SynthesisHandler = {
       subagentRuns,
       processingSteps: ctx.state.processingSteps,
       timestamp: new Date(),
-      userId: ctx.auth.userId
+      userId: ctx.auth.userId,
+      // Terpotong batas waktu: bahan untuk "lanjutkan" ikut tersimpan di metadata pesan (chats.messages) dan dikirim
+      // kembali oleh desktop lewat riwayat. jawabanSebelumnya berantai bila lanjutan pun terpotong lagi.
+      ...(rctx.stream?.jawabanTerpotong ? {
+        terpotong: true,
+        bahanLanjutan: susunBahanLanjutan(
+          replyMessage,
+          lanjutan,
+          ctx.request.finalMessage,
+          (subagentRuns || []).length > 0 ? accumulatedContext : '',
+        ),
+      } : {})
     };
 
     maef.requestTransition('COMPLETED', 'Execution Completed');

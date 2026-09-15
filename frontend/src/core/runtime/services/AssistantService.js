@@ -965,6 +965,13 @@ export class AssistantService {
     const toolPreferencesService = this.serviceManager?.get('ToolPreferencesService');
     const ragToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'rag') : true;
     const webSearchToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'web_search') : true;
+    const deepResearchToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'deep_research') : false;
+    // "lanjutkan" untuk jawaban yang terpotong batas waktu server (2026-09-15): server meneruskan dari bahan & nalar yang
+    // tersimpan di metadata pesan. Mencari web/RAG untuk teks "lanjutkan" hanya memasukkan dokumen tak relevan ke prompt
+    // (live v444: berita saham & sepak bola membingungkan model). Pola sama dengan POLA_LANJUTKAN di server (batas_waktu.ts).
+    const pesanModelTerakhir = [...(history || [])].reverse().find((m) => m?.role === 'model');
+    const lanjutanTerpotong = pesanModelTerakhir?.metadata?.terpotong === true &&
+      /^\s*(tolong\s+|mohon\s+)?(lanjut(kan|in)?|teruskan|terusin|continue)(\s+(lagi|jawaban(nya)?|laporan(nya)?|tulisan(nya)?))?\s*[.!]*\s*$/i.test(userMsg || '');
 
     const requestTraceId = crypto.randomUUID();
     let knowledgeContext = _injectedKnowledgeContext || '';
@@ -974,7 +981,7 @@ export class AssistantService {
     // KnowledgeService — hanya menggandakan dokumen ke prompt, jadi selalu dilewati; orkestrator
     // dipanggil hanya untuk Web (Tier 3). Selama RAG menyala, panduan Tier 2 ("tidak ada dokumen
     // lokal") juga dilewati karena hanya server yang tahu apakah dokumen ditemukan.
-    if (!knowledgeContext && retrievalOrchestrator && !isLiteMode && webSearchToolEnabled) {
+    if (!knowledgeContext && retrievalOrchestrator && !isLiteMode && webSearchToolEnabled && !lanjutanTerpotong) {
       try {
         const retrievalResult = await retrievalOrchestrator.retrieve(userMsg, {
           userId,
@@ -1066,13 +1073,17 @@ export class AssistantService {
       stream: false,
       // Hybrid (2026-09-14): nalar dialirkan lebih dulu, jawaban tetap JSON utuh — hanya bila Thinking menyala.
       streamNalar: aiThinking === true,
-      ragEnabled: ragToolEnabled,
+      ragEnabled: ragToolEnabled && !lanjutanTerpotong,
       model: formattedModel || undefined,
       thinking: aiThinking, // true/false tier dikirim apa adanya; false kini mematikan nalar di OpenRouter (2026-09-13)
       clientTimezone: zonaWaktuBrowser(), // mis. "Asia/Jakarta" — server menghitung jam lokal (2026-09-13)
       file: fileData || undefined,
       requestedFilePath: isEngineerMode ? this.extractFilePathFromMessage(userMsg) : undefined,
-      tools: isLiteMode ? ['rag_search', 'web_search', 'deep_research'] : undefined,
+      // Tombol Deep Research (2026-09-15): dikirim ke server tanpa 'web_search' — pencarian web desktop tetap jalan di
+      // perangkat — sehingga server mengalihkan tugas riset Coordinator ke sub-agent deep_research.
+      tools: isLiteMode
+        ? ['rag_search', 'web_search', 'deep_research']
+        : (deepResearchToolEnabled && !isEngineerMode ? ['deep_research'] : undefined),
       cache_hint: true,
       _token_meta: { estimated_before: tokensBefore, estimated_after: tokensAfter, saved: tokensSaved },
       _request_type: 'CONVERSATION'

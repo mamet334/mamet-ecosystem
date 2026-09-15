@@ -6,6 +6,7 @@ import { IntentRouterHandler } from './handlers/intent_router.ts';
 import { ExecutionPlannerHandler } from './handlers/execution_handler.ts';
 import { SynthesisHandler } from './handlers/synthesis_handler.ts';
 import { EngineeringLifecycleManager } from './lifecycle/engineering_lifecycle.ts';
+import { temukanLanjutan } from '../streaming/batas_waktu.ts';
 
 export const coreEngine = {
   async execute(ctx: any, rctx: any): Promise<MAEFExecutionResult> {
@@ -46,8 +47,20 @@ export const coreEngine = {
     const { fullSystemContext, evidenceReport, confidenceReport } = contextResult;
     routingDecision = contextResult.routingDecision || routingDecision;
 
+    // --- LANJUTAN JAWABAN TERPOTONG (2026-09-15) ---
+    // "lanjutkan" sesudah jawaban yang dipotong batas waktu: Intent Router, Coordinator, dan sub-agent dilewati —
+    // bahan riset diambil dari metadata pesan yang terpotong, jadi riset tidak diulang dan tidak dibayar dua kali.
+    // Hanya jalur JSON/hybrid (desktop); jalur SSE penuh tidak memakai tenggat.
+    const lanjutan = !ctx.request.stream ? temukanLanjutan(ctx.request.finalMessage, ctx.request.history) : null;
+
     // --- PHASE 2: INTENT ROUTING ---
-    const routerResult = await IntentRouterHandler.handle(ctx, rctx, maef);
+    let routerResult: any;
+    if (lanjutan) {
+      maef.evaluatePhaseResult('CONTEXT_BUILD', { skipPhases: ['ORCHESTRATION', 'TOOL_EXECUTION'] });
+      routerResult = { isChatBiasa: true, plan: [], contractValidation };
+    } else {
+      routerResult = await IntentRouterHandler.handle(ctx, rctx, maef);
+    }
     const { isChatBiasa, plan } = routerResult;
     contractValidation = routerResult.contractValidation || contractValidation;
 
@@ -72,7 +85,8 @@ export const coreEngine = {
       toolExecution,
       subagentRuns,
       routingDecision,
-      contractValidation
+      contractValidation,
+      lanjutan
     };
 
     return await SynthesisHandler.handle(synthesisState, ctx, rctx, maef);

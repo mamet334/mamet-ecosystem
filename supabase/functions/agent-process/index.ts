@@ -21,6 +21,10 @@ const DEPLOYED_COMMIT_SHA = Deno.env.get('DEPLOYED_COMMIT_SHA') || 'unknown';
 const DEPLOYED_BRANCH = Deno.env.get('DEPLOYED_BRANCH') || 'unknown';
 const DEPLOYED_AT = Deno.env.get('DEPLOYED_AT') || null;
 
+// Umur worker saat permintaan masuk dicatat untuk memastikan batas waktu dinding dihitung per permintaan
+// (log live v443: tiap chat mem-boot worker baru, dimatikan tepat 150 detik setelah permintaan).
+const WAKTU_BOOT_WORKER = Date.now();
+
 let envValidationStatus = 'OK';
 let missingEnvs: string[] = [];
 
@@ -35,6 +39,7 @@ try {
 }
 
 serve(async (req) => {
+  const mulaiPermintaan = Date.now();
   try {
     // PRIORITY 2: DEEP HEALTH CHECK SYSTEM
     const url = new URL(req.url);
@@ -150,6 +155,8 @@ serve(async (req) => {
     if (pipelineResult.response) return pipelineResult.response;
 
     const { ctx, rctx } = pipelineResult;
+    rctx.stream.mulaiPermintaan = mulaiPermintaan;
+    console.log(`[BATAS_WAKTU] permintaan diterima; umur worker ${mulaiPermintaan - WAKTU_BOOT_WORKER} ms`);
 
     // --- HYBRID: NALAR DIALIRKAN, JAWABAN TETAP JSON UTUH (2026-09-14) ---
     // Owner memilih nalar tampil SEBELUM jawaban (gaya DeepSeek) tanpa melepas pemeriksaan label, verifikasi,

@@ -24,8 +24,9 @@ export const callLLMWithMetadata = async (
   rctx: RuntimeContext,
   tools: string[] = [],
   // thinking: menimpa rctx.model.thinking untuk panggilan ini saja (Intent Router/Coordinator: false).
-  opsi: { onNalar?: (teks: string) => void; onIsiMulai?: () => void; thinking?: boolean } = {}
-): Promise<{ result: string; metadata?: any; reasoning?: string }> => {
+  // tenggat: waktu (ms epoch) berhenti membaca jawaban — hasil sebagian dikembalikan dengan terpotong=true (batas_waktu.ts).
+  opsi: { onNalar?: (teks: string) => void; onIsiMulai?: () => void; thinking?: boolean; tenggat?: number } = {}
+): Promise<{ result: string; metadata?: any; reasoning?: string; terpotong?: boolean }> => {
   await CapabilityRegistry.initializeAdapters(rctx);
 
   const buildPayload = (tools: string[] = []) => {
@@ -136,12 +137,14 @@ export const callLLMWithMetadata = async (
         model: modelCocokUntukAdapter,
         thinking: opsi.thinking,
         onNalar: opsi.onNalar,
-        onIsiMulai: opsi.onIsiMulai
+        onIsiMulai: opsi.onIsiMulai,
+        tenggat: opsi.tenggat
       };
 
         const result = await adapter.execute(adapterInput, { trace_id: rctx.traceId || rctx.tasks?.traceId || 'unknown' });
       
-      if (result && result.result) {
+      // Jawaban terpotong pada tenggat tetap diterima walau isinya kosong (terhenti saat bernalar): nalarnya sudah dibayar.
+      if (result && (result.result || result.terpotong)) {
         if (!rctx.stream.isStream) {
           // result.usageCostUsd = biaya sesungguhnya dari provider kalau dilaporkan.
           // Kalau undefined, logApiUsage jatuh ke perkiraan tabel tarif.
@@ -161,7 +164,7 @@ export const callLLMWithMetadata = async (
         }
         console.log(`✅ ${adapter.name} succeeded`);
         eventBus.emit({ type: 'Capability.Executed', source: adapter.name, payload: { success: true, rctx } });
-        return { result: result.result, metadata: result.metadata, reasoning: result.reasoning };
+        return { result: result.result || '', metadata: result.metadata, reasoning: result.reasoning, terpotong: result.terpotong === true };
       }
 
       console.log(`⚠️  ${adapter.name} returned empty.`);
@@ -239,8 +242,8 @@ export function catatKomposisiPrompt(promptText: string, systemPromptText: strin
 /** Seperti runLLM, tetapi ikut mengembalikan nalar model (`reasoning`) — dipakai jawaban akhir di synthesis_handler. */
 export const runLLMDenganNalar = async (
   promptText: string, systemPromptText = '', chatHistory: any[] = [], rctx: RuntimeContext,
-  opsi: { onNalar?: (teks: string) => void; onIsiMulai?: () => void } = {}
-): Promise<{ result: string; metadata?: any; reasoning?: string }> => {
+  opsi: { onNalar?: (teks: string) => void; onIsiMulai?: () => void; tenggat?: number; thinking?: boolean } = {}
+): Promise<{ result: string; metadata?: any; reasoning?: string; terpotong?: boolean }> => {
   if (rctx.policy.canUseDesktopTools && !systemPromptText.includes('DESKTOP NATIVE AWARENESS ENABLED')) {
      systemPromptText += `\n[STATUS: DESKTOP NATIVE AWARENESS ENABLED]\nAnda WAJIB mengeluarkan perintah Windows di dalam tag <terminal>. DILARANG menyebut sub-agent atau menolak. Contoh: <terminal>dir %USERPROFILE%\\Desktop</terminal>\n`;
   }

@@ -80,6 +80,10 @@ export interface StreamConfig {
   streamNalar?: boolean;
   /** Diisi index.ts saat hybrid aktif — mengirim event nalar ke klien. */
   kirimNalar?: (ev: { tipe: 'nalar' | 'nalar_selesai'; teks?: string }) => void;
+  /** Waktu (ms epoch) permintaan diterima index.ts — dasar tenggat batas waktu dinding Supabase (streaming/batas_waktu.ts). */
+  mulaiPermintaan?: number;
+  /** Diisi synthesis_handler bila jawaban akhir dipotong pada tenggat. */
+  jawabanTerpotong?: boolean;
 }
 
 // ─────────────────────────────────────────────

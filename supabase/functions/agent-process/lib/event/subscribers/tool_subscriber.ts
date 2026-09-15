@@ -4,6 +4,8 @@ import { CapabilityRegistry } from '../../adapters/adapter_registry.ts';
 import { ToolDispatcher } from '../../orchestration/dispatcher/tool_dispatcher.ts';
 
 const PER_PLUGIN_TIMEOUT_MS = 12000;
+// deep_research membaca beberapa artikel lalu menulis laporan panjang — tidak muat 12 detik (2026-09-15).
+const BATAS_WAKTU_KHUSUS_MS: Record<string, number> = { deep_research: 25000 };
 
 export const initializeToolSubscriber = () => {
   eventBus.subscribe('Tool.Requested', async (event: MAEFEvent) => {
@@ -115,6 +117,7 @@ export const initializeToolSubscriber = () => {
     };
 
     const startTime = Date.now();
+    const batasWaktuMs = BATAS_WAKTU_KHUSUS_MS[subagent] ?? PER_PLUGIN_TIMEOUT_MS;
     let lifecycleState = 'CREATED';
     const abortController = new AbortController();
 
@@ -155,7 +158,7 @@ export const initializeToolSubscriber = () => {
                     abortController.abort(new Error('TIMEOUT_ABORT'));
                     reject(new Error('HARD_TIMEOUT_REACHED'));
                 }
-            }, PER_PLUGIN_TIMEOUT_MS);
+            }, batasWaktuMs);
         });
         
         const result = await Promise.race([isolatedExecutionPromise, timeoutPromise]) as any;
@@ -183,7 +186,7 @@ export const initializeToolSubscriber = () => {
         
         let subagentResText = '';
         if (status === 'timeout') {
-            subagentResText = `[SISTEM DILINDUNGI OLEH MAMET HEALER]: Eksekusi sub-agent "${subagent}" dibatalkan permanen (Hard Timeout ${PER_PLUGIN_TIMEOUT_MS/1000}s).`;
+            subagentResText = `[SISTEM DILINDUNGI OLEH MAMET HEALER]: Eksekusi sub-agent "${subagent}" dibatalkan permanen (Hard Timeout ${batasWaktuMs/1000}s).`;
         } else {
             subagentResText = `[SISTEM DILINDUNGI OLEH MAMET HEALER]: Eksekusi sub-agent gagal pada mode terisolasi (${err.message || 'Unknown'}).`;
         }

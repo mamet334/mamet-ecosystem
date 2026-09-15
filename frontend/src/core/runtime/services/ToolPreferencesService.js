@@ -12,11 +12,14 @@
 
 const STORAGE_KEY = 'mamet:toolPreferences';
 
-// Tool yang didukung saat ini. Menambah tool baru (mis. 'deep_research') di masa depan
+// Tool yang didukung saat ini. Menambah tool baru di masa depan
 // cukup menambah entrinya di sini — struktur data & UI tidak perlu berubah.
 const DEFAULT_TOOLS = {
   rag: true,
-  web_search: true
+  web_search: true,
+  // Deep Research (2026-09-15) mati bawaan: satu riset ±20–30 detik dan memakai kredit OpenRouter lebih banyak,
+  // jadi hanya jalan bila pengguna menyalakannya sendiri.
+  deep_research: false
 };
 
 export class ToolPreferencesService {

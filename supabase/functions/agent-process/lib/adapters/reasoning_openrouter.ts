@@ -73,12 +73,16 @@ export function pembungkusNalarStream() {
  */
 export async function bacaSseOpenRouter(
   res: Response,
-  opsi: { onNalar?: (teks: string) => void; onIsiMulai?: () => void } = {}
+  // tenggat (ms epoch, 2026-09-15): berhenti membaca pada waktu ini dan kembalikan yang sudah ada dengan `terpotong: true`,
+  // sebelum Supabase mematikan worker (batas waktu dinding) dan semua token yang sudah dibayar hilang.
+  opsi: { onNalar?: (teks: string) => void; onIsiMulai?: () => void; tenggat?: number } = {}
 ): Promise<any> {
   const reader = res.body?.getReader();
   if (!reader) throw new Error('No body');
   const dekoder = new TextDecoder();
   let sisa = ''; let isi = ''; let nalar = ''; let usage: any; let provider: string | undefined; let isiMulai = false;
+  let terpotong = false;
+  const HABIS = Symbol('tenggat');
   const olah = (baris: string) => {
     if (!baris.startsWith('data: ') || baris.includes('[DONE]')) return;
     let data: any;
@@ -92,8 +96,25 @@ export async function bacaSseOpenRouter(
     const c = delta?.content || '';
     if (c) { if (!isiMulai) { isiMulai = true; opsi.onIsiMulai?.(); } isi += c; }
   };
+  const baca = async (): Promise<any> => {
+    if (typeof opsi.tenggat !== 'number') return reader.read();
+    const sisaMs = opsi.tenggat - Date.now();
+    if (sisaMs <= 0) return HABIS;
+    let t: number | undefined;
+    try {
+      return await Promise.race([reader.read(), new Promise((ok) => { t = setTimeout(() => ok(HABIS), sisaMs); })]);
+    } finally {
+      if (t !== undefined) clearTimeout(t);
+    }
+  };
   while (true) {
-    const { done, value } = await reader.read();
+    const bacaan = await baca();
+    if (bacaan === HABIS) {
+      terpotong = true;
+      reader.cancel().catch(() => { /* koneksi sudah ditutup */ });
+      break;
+    }
+    const { done, value } = bacaan;
     if (done) break;
     sisa += dekoder.decode(value, { stream: true });
     const baris = sisa.split('\n');
@@ -101,7 +122,7 @@ export async function bacaSseOpenRouter(
     for (const b of baris) olah(b.trim());
   }
   if (sisa.trim()) olah(sisa.trim());
-  return { choices: [{ message: { content: isi, reasoning: nalar } }], usage, provider };
+  return { choices: [{ message: { content: isi, reasoning: nalar } }], usage, provider, terpotong };
 }
 
 /** Model yang terbukti menolak reasoning dimatikan — diisi saat berjalan, hidup selama instans. */

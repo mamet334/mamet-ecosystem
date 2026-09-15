@@ -95,6 +95,19 @@ export const IntentRouterHandler = {
         plan = parseResult.plan;
         contractValidation = parseResult.validation as any;
 
+        // Tombol Deep Research (desktop mengirim tools ['deep_research'] tanpa 'web_search', 2026-09-15): pengguna meminta
+        // riset mendalam, jadi tugas "researcher" dari Coordinator dialihkan ke deep_research. Mode Lite / Mametlite yang
+        // mengirim keduanya tetap dibiarkan memilih sendiri.
+        if (Array.isArray(tools) && tools.includes('deep_research') && !tools.includes('web_search')) {
+            let dialihkan = 0;
+            plan = plan.map((p: any) => {
+                if (p?.subagent !== 'researcher') return p;
+                dialihkan++;
+                return { ...p, subagent: 'deep_research' };
+            });
+            if (dialihkan > 0) ctx.state.processingSteps.push(`🔬 Deep Research menyala: ${dialihkan} tugas "researcher" dialihkan ke "deep_research"`);
+        }
+
         if (plan.length > 0) {
             ctx.state.processingSteps.push(`📋 Rencana: ${plan.length} sub-agent akan ditugaskan → ${plan.map((p: any) => p.subagent).join(', ')}`);
         } else if (contractValidation.status === "REJECTED") {

@@ -366,9 +366,12 @@ export class OpenRouterAdapter implements CapabilityAdapter {
       context.trace_id
     );
 
+    // Hybrid: bila pemanggil meminta nalar dialirkan (onNalar), permintaan dikirim sebagai stream lalu dirakit ulang.
+    // Tenggat (2026-09-15): jawaban akhir juga dikirim sebagai stream agar bisa dipotong sebelum batas waktu dinding
+    // Supabase — respons non-stream tidak bisa dibaca sebagian, sehingga semua token yang sudah dibayar ikut hilang.
+    const pakaiStream = typeof input.onNalar === 'function' || typeof input.tenggat === 'number';
     const res = await kirimOpenRouterDenganReasoning(
-      // Hybrid: bila pemanggil meminta nalar dialirkan (onNalar), permintaan dikirim sebagai stream lalu dirakit ulang.
-      { model: openRouterModel, messages, temperature: 0.1, max_tokens: 8192, ...(typeof input.onNalar === 'function' ? { stream: true } : {}) },
+      { model: openRouterModel, messages, temperature: 0.1, max_tokens: 8192, ...(pakaiStream ? { stream: true } : {}) },
       // Pemanggil boleh menimpa pilihan nalar untuk satu panggilan (Intent Router/Coordinator/peringkas: false).
       typeof input.thinking === 'boolean' ? input.thinking : this.rctx.model.thinking,
       (body) => fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -383,9 +386,13 @@ export class OpenRouterAdapter implements CapabilityAdapter {
       })
     );
     if (!res.ok) throw new Error(`OpenRouter API Error: ${res.status} ${await res.text()}`);
-    const data = typeof input.onNalar === 'function'
-      ? await bacaSseOpenRouter(res, { onNalar: input.onNalar, onIsiMulai: input.onIsiMulai })
+    const data = pakaiStream
+      ? await bacaSseOpenRouter(res, { onNalar: input.onNalar, onIsiMulai: input.onIsiMulai, tenggat: input.tenggat })
       : await res.json();
+    if (data.terpotong) {
+      const m = data.choices?.[0]?.message || {};
+      console.warn(`[BATAS_WAKTU] jawaban OpenRouter dipotong pada tenggat: isi ${String(m.content || '').length} huruf, nalar ${String(m.reasoning || '').length} huruf (token sudah ditagih, tidak dibuang)`);
+    }
     const answer = data.choices?.[0]?.message?.content || '';
 
     const usage = data.usage || {};
@@ -440,7 +447,8 @@ export class OpenRouterAdapter implements CapabilityAdapter {
       trace_id: context.trace_id,
       usageCostUsd: actualCostUsd,
       modelUsed: openRouterModel,
-      reasoning: teksNalar(data.choices?.[0]?.message)
+      reasoning: teksNalar(data.choices?.[0]?.message),
+      terpotong: data.terpotong === true
     };
   }
 
