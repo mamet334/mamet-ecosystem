@@ -1353,4 +1353,13 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
     - **Deploy v435 (14.40.57 UTC, penanda kode aktif diperiksa).** **Putaran 5 (14.46):** 9/26 galat "Invalid or expired token" — skrip set uji memakai satu token untuk semua panggilan (diperbaiki di skrip, di luar git); 17 terjawab: 14 benar, 2 perlu cek, **1 salah: HCDP-03 #1 "80%" untuk Tahun 5 (dokumen 80,0 poin; 80% = IKU 2025) tetap VERIFIED** — contoh nyata pertama celah pasangan angka di kalimat bebas; HCDP-07 #1 turun karena Sumber parafrase judul (isi benar, aturan sengaja ketat).
     - **Graf kode:** `graphify-out/` diperbarui Owner dari `5c02a45` (1.950 node, 2.794 edge) — ikut di-commit.
     - **Sisa:** pasangan angka–tahun di kalimat bebas; keputusan Sumber parafrase; putaran 6 lengkap untuk bukti live B & Sumber tanpa kutip.
-    - **Status:** ✅ dideploy (v435). Bukti live keputusan B pada nalar berangka belum teramati.
+    - **Status:** ✅ dideploy (v435). Bukti live keputusan B pada nalar berangka belum teramati. Lanjutan → Item 81.
+
+81. **Pasangan Angka–Tahun di Kalimat Bebas, Sumber Parafrase Diterima — Uji Mutu RAG Putaran 6–7 (2026-09-14/15):**
+    - **Putaran 6 (v435):** 26/26 tanpa galat, isi 22/22 (20 benar + 2 perlu cek), 0 salah, 0 label keliru; HCDP-07 #2 "±43/57%" layak turun. Changelog: [`2026-09-15-pasangan-kalimat-sumber-parafrase-putaran-6-7.md`](../project-memory/changelog/2026-09-15-pasangan-kalimat-sumber-parafrase-putaran-6-7.md).
+    - **Keputusan Owner:** (1) pasangan angka–tahun di kalimat biasa diperiksa; (2) Sumber parafrase judul diterima bila sebagian besar cocok.
+    - **`label_sumber.ts`:** `periksaPasanganKalimat` — kalimat dengan tepat satu periode dan satu angka; turun hanya bila dokumen punya kolom periode itu tetapi angkanya tidak di sana. `parafraseDiIsi` — deret kata berurutan ≥6 kata dan ≥60% kutipan tertulis di potongan.
+    - **Uji:** 132 VERIFIED asli putaran 1–6 — berubah 6, semua ditelaah (P5 HCDP-03 #1 dan P1/P2 HCDP-03 "80% pada tahun 5" kini turun; HCDP-07 #1 parafrase dan HCDP-04 #2 judul tabel kini lolos); kontrol & regresi label lolos.
+    - **Deploy v436 (2026-09-15 02.37 UTC, penanda diperiksa). Putaran 7:** 26/26 tanpa galat, isi 22/22, 0 salah, 0 label keliru; Sumber parafrase terbukti live (HCDP-07 #2); HCDP-04 #1 turun karena "kenaikan 3%" hitungan model.
+    - **Batas disadari (tidak dikejar):** kalimat berangka ganda; tambahan karangan di baris Sumber diterima; angka hitungan model menurunkan label. Log: Gemini koordinator 403 RATE_LIMIT (jawaban tetap keluar).
+    - **Status:** ✅ **Selesai, dideploy (v436). Uji mutu RAG dinyatakan cukup oleh Owner.**

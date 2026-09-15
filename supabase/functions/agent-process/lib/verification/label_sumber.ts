@@ -23,7 +23,8 @@
  *     tabel sumber: tak ada label yang sama dengan judul kolom LAIN, dan minimal satu label = judul
  *     kolom sel itu atau disebut di baris yang sama. Bila judul kolom sumber tidak ada di konteks dan
  *     labelnya tidak ada di baris itu, pasangan tidak bisa dibuktikan.
- * Batas: pasangan di kalimat bebas ("tahun ke-3 adalah 20,0%") belum diperiksa.
+ * Pasangan di kalimat bebas ("tahun ke-3 adalah 20,0%") diperiksa sejak uji mutu RAG putaran 5 — lihat
+ * `periksaPasanganKalimat`.
  *
  * NOMOR HALAMAN JUGA DIPERIKSA (Item 77, uji live web 2026-09-14). Jawaban benar HCDP ditulis
  * `Sumber: "DOKUMEN HCDP 2025-2026.docx" [Halaman 1]` — padahal .docx tidak punya penanda halaman dan
@@ -217,6 +218,48 @@ export function periksaAngkaSumber(jawaban: string, isiDokumen: string[]): strin
     if (bentrok) return `angka ${angka} ditulis untuk "${bentrok.teksLabel}", tetapi di tabel sumber angka itu berada di kolom lain`;
     if (takTerbukti) return `pasangan "${takTerbukti.teksLabel}" = ${angka} tidak bisa dibuktikan — judul kolom tabel sumbernya tidak ada di dokumen yang dibaca`;
   }
+  return periksaPasanganKalimat(teks, isi, peta);
+}
+
+// ── Pasangan angka–tahun di kalimat bebas ────────────────────────────────────────────────────
+// Uji mutu RAG putaran 5 (HCDP-03 #1): "Target IP-ASN pada tahun 5 adalah 80%." tetap VERIFIED. Tabel program menulis
+// 80,0 poin di kolom "Tahun 5"; "80%" di dokumen ada di tabel IKU kolom "Target". Semua pemeriksaan di atas hanya membaca
+// tabel dan `Label: angka`, jadi kalimat biasa lolos. Keputusan Owner: pasangan di kalimat bebas ikut diperiksa.
+// Sengaja sempit agar jawaban benar tidak turun: hanya kalimat yang memuat TEPAT SATU periode dan SATU angka, dan hanya
+// diturunkan bila dokumen PUNYA kolom periode itu tetapi angkanya tidak ada di sana. Angka yang juga tertulis di teks
+// biasa atau di baris tabel tanpa judul kolom tidak bisa dibuktikan salah → dibiarkan.
+const URUTAN: Record<string, string> = {
+  pertama: '1', kedua: '2', ketiga: '3', keempat: '4', kelima: '5',
+  keenam: '6', ketujuh: '7', kedelapan: '8', kesembilan: '9', kesepuluh: '10'
+};
+const POLA_PERIODE = /\b(?:tahun|thn\.?)\s*(?:ke\s*-?\s*)?(\d{1,4}|pertama|kedua|ketiga|keempat|kelima|keenam|ketujuh|kedelapan|kesembilan|kesepuluh)\b/gi;
+const KATA_KOLOM_PERIODE = new Set(['tahun', 'thn', 'th', 'ke', 'target']);
+
+/** Judul kolom menunjuk periode itu: memuat nomornya dan selebihnya kata periode ("Tahun 5", "Thn 5", "2025", "Target 2025"). */
+function kolomPeriode(nomor: string, judul: string[] | null): boolean {
+  return !!judul && judul.includes(nomor) && judul.every((w) => w === nomor || KATA_KOLOM_PERIODE.has(w));
+}
+
+function periksaPasanganKalimat(teks: string, isi: string[], peta: Map<string, Kemunculan[]>): string | null {
+  const kunciProsa = new Set(
+    isi.join('\n').split('\n').filter((b) => !barisTabel(b)).flatMap((b) => (b.match(POLA_ANGKA) || []).map(kunciAngka))
+  );
+  const kolomAda = (nomor: string) => [...peta.values()].some((daftar) => daftar.some((t) => t.semuaJudul.some((j) => kolomPeriode(nomor, j))));
+
+  const kalimat = teks.split('\n').filter((b) => !barisTabel(b)).flatMap((b) => bersihMarkdown(b).split(/(?<=[.!?])\s+/));
+  for (const k of kalimat) {
+    const periode = [...k.matchAll(POLA_PERIODE)];
+    const nomor = [...new Set(periode.map((m) => URUTAN[m[1].toLowerCase()] || String(Number(m[1]))))];
+    const angka = [...new Set((k.match(POLA_ANGKA) || []).map((a) => a.trim()))];
+    if (nomor.length !== 1 || angka.length !== 1) continue;
+
+    const kunci = kunciAngka(angka[0]);
+    const tempat = peta.get(kunci);
+    if (!tempat?.length || kunciProsa.has(kunci)) continue;
+    const sah = tempat.some((t) => kolomPeriode(nomor[0], t.judulKolom) || labelDiBaris(['tahun', nomor[0]], t.barisKata));
+    if (sah || tempat.some((t) => !t.judulKolom) || !kolomAda(nomor[0])) continue;
+    return `angka ${angka[0]} ditulis untuk "${periode[0][0].trim()}", tetapi di tabel sumber angka itu tidak berada di kolom tahun ${nomor[0]}`;
+  }
   return null;
 }
 
@@ -263,7 +306,28 @@ export function periksaRujukanSumber(jawaban: string, isiDokumen: string[]): str
   return `rujukan ${[...karangan].slice(0, 3).join(', ')} tidak tertulis di dokumen yang dilampirkan`;
 }
 
-export type HasilLabel = { jawaban: string; dikoreksi: boolean; alasan: string; catatan: string };
+// ── Sumber berupa parafrase judul ────────────────────────────────────────────────────────────
+// Uji mutu RAG putaran 5 (HCDP-07 #1): `Sumber: Dokumen Perencanaan Pengembangan Kompetensi ASN (Human Capital Development
+// Plan/HCDP) Kabupaten Ogan Komering Ulu Tahun 2025–2026.` diturunkan walau isinya benar — 11 dari 17 katanya tertulis
+// berurutan di dokumen, sisanya disusun model. Keputusan Owner: parafrase diterima bila SEBAGIAN BESAR teksnya cocok.
+// Ukurannya deret kata BERURUTAN terpanjang (bukan kata tersebar, supaya kata-kata umum dokumen tak bisa dirangkai
+// menjadi judul karangan): minimal 6 kata dan minimal 60% kata kutipan.
+const PARAFRASE_MIN_KATA = 6;
+const PARAFRASE_MIN_PORSI = 0.6;
+
+/** q dan teks sudah dirapikan. */
+export function parafraseDiIsi(q: string, teks: string): boolean {
+  const kata = q.split(' ').filter(Boolean);
+  const perlu = Math.max(PARAFRASE_MIN_KATA, Math.ceil(kata.length * PARAFRASE_MIN_PORSI));
+  if (kata.length < perlu) return false;
+  const t = ` ${teks} `;
+  for (let i = 0; i + perlu <= kata.length; i++) {
+    if (t.includes(` ${kata.slice(i, i + perlu).join(' ')} `)) return true;
+  }
+  return false;
+}
+
+export type HasilLabel ={ jawaban: string; dikoreksi: boolean; alasan: string; catatan: string };
 
 /**
  * @param jawaban teks jawaban model
@@ -314,7 +378,7 @@ export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiD
     ...[...tampil.matchAll(/sumber\s*:\s*([^"“”\n]{20,300})$/gim)].map((m) => m[1].replace(/[.\s]+$/, ''))
   ]
     .map((q) => rapikan(q))
-    .some((q) => q.length >= 20 && isiRapi.some((t) => t.includes(q)));
+    .some((q) => q.length >= 20 && isiRapi.some((t) => t.includes(q) || parafraseDiIsi(q, t)));
   const adaYangCocok = judul.length > 0 && (kutipanDiIsi || kutipan.some((k) => judul.some((j) => judulDisebut(k, j))));
   if (!adaYangCocok) {
     const alasan = judul.length === 0
