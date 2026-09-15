@@ -1363,3 +1363,13 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
     - **Deploy v436 (2026-09-15 02.37 UTC, penanda diperiksa). Putaran 7:** 26/26 tanpa galat, isi 22/22, 0 salah, 0 label keliru; Sumber parafrase terbukti live (HCDP-07 #2); HCDP-04 #1 turun karena "kenaikan 3%" hitungan model.
     - **Batas disadari (tidak dikejar):** kalimat berangka ganda; tambahan karangan di baris Sumber diterima; angka hitungan model menurunkan label. Log: Gemini koordinator 403 RATE_LIMIT (jawaban tetap keluar).
     - **Status:** ✅ **Selesai, dideploy (v436). Uji mutu RAG dinyatakan cukup oleh Owner.**
+
+82. **Coordinator & Sub-Agent Lewat OpenRouter; Kunci Server Gemini/Groq Dihapus (2026-09-15):**
+    - **Asal:** log putaran 7 — ketiga kunci `GEMINI_API_KEY` gratis gagal (#0/#2 403, #1 429), `runCoordinatorLLM` dipatok ke Gemini tanpa cadangan → Intent Router & Coordinator gagal di setiap pesan, **sub-agent tak pernah jalan** (penjelasan backlog researcher sejak putaran 1), ±3–6 s terbuang per pesan. Changelog: [`2026-09-15-coordinator-openrouter-kunci-gemini-groq-dihapus.md`](../project-memory/changelog/2026-09-15-coordinator-openrouter-kunci-gemini-groq-dihapus.md).
+    - **Keputusan Owner:** fokus OpenRouter; secret `GEMINI_API_KEY`/`GROQ_API_KEY` dihapus (Gemini/Groq hanya BYOK). `APIFY_API_TOKEN` dibiarkan (paket gratis, $0).
+    - **Kode:** Intent Router/Coordinator & peringkas riwayat → OpenRouter pengguna dengan `thinking: false` (`opsi.thinking` → `input.thinking`); sub-agent OpenRouter dulu, nalar mati; riset Google hanya Gemini BYOK; Deep Research menyaring kunci kosong; bawaan penyedia `openrouter`; peta `gemini-2.5-flash` → `google/gemini-2.5-flash`.
+    - **Bug lama diperbaiki:** `keys.openRouter` jatuh ke `OPENROUTER_API_KEY` sistem (saldo Owner) untuk pengguna penyedia lain; BYOK Gemini tertimpa kunci server.
+    - **Uji:** `uji-coordinator-openrouter` 8/8; regresi nalar OpenRouter, hybrid, tasks.fire lolos.
+    - **Live:** v439 — Coordinator merencanakan researcher (pertama kali), tetapi researcher `late` (Grounding lewat OpenRouter 9–17 s > batas 12 s). v440 — researcher selesai 213 ms, tanpa `late`; DuckDuckGo dari server kosong → jawaban jujur dari cuplikan tool web (desktop, Bing News RSS).
+    - **Keputusan Owner B:** berhenti di sini. **Pilihan A untuk nanti:** researcher memakai Bing News RSS → Google News RSS, membaca 1–2 artikel teratas lewat `r.jina.ai` (≤5 s, URL asli dari `apiclick`), rangkum tanpa nalar, dalam anggaran 12 s — rincian & risiko di changelog.
+    - **Status:** ✅ **Selesai, dideploy (v440) & terbukti live.** Riset web mendalam (A) ⏸ ditunda.

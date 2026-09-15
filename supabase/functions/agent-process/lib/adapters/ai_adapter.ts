@@ -348,6 +348,8 @@ export class OpenRouterAdapter implements CapabilityAdapter {
         // Model lama sudah hilang dari katalog OpenRouter (dicek 2026-09-09) — dipetakan
         // ke penerus termurah yang tersedia agar key lawas tidak menghasilkan 404.
         'openrouter-google-gemini-2.0-flash-exp': 'google/gemini-3.5-flash-lite',
+        // mametlite mengirim model 'gemini-2.5-flash'; tanpa BYOK Gemini penyedianya menjadi OpenRouter.
+        'gemini-2.5-flash': 'google/gemini-2.5-flash',
         'claude-3.5-sonnet': 'anthropic/claude-3.5-sonnet:beta',
       };
 
@@ -367,7 +369,8 @@ export class OpenRouterAdapter implements CapabilityAdapter {
     const res = await kirimOpenRouterDenganReasoning(
       // Hybrid: bila pemanggil meminta nalar dialirkan (onNalar), permintaan dikirim sebagai stream lalu dirakit ulang.
       { model: openRouterModel, messages, temperature: 0.1, max_tokens: 8192, ...(typeof input.onNalar === 'function' ? { stream: true } : {}) },
-      this.rctx.model.thinking,
+      // Pemanggil boleh menimpa pilihan nalar untuk satu panggilan (Intent Router/Coordinator/peringkas: false).
+      typeof input.thinking === 'boolean' ? input.thinking : this.rctx.model.thinking,
       (body) => fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {

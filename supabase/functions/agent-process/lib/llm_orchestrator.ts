@@ -19,11 +19,12 @@ export const callLLMWithMetadata = async (
   promptText: string,
   systemPromptText = '',
   chatHistory: any[] = [],
-  preferredProvider: string = 'gemini',
+  preferredProvider: string = 'openrouter',
   extractedImage: { mimeType: string; data: string } | null = null,
   rctx: RuntimeContext,
   tools: string[] = [],
-  opsi: { onNalar?: (teks: string) => void; onIsiMulai?: () => void } = {}
+  // thinking: menimpa rctx.model.thinking untuk panggilan ini saja (Intent Router/Coordinator: false).
+  opsi: { onNalar?: (teks: string) => void; onIsiMulai?: () => void; thinking?: boolean } = {}
 ): Promise<{ result: string; metadata?: any; reasoning?: string }> => {
   await CapabilityRegistry.initializeAdapters(rctx);
 
@@ -85,7 +86,7 @@ export const callLLMWithMetadata = async (
     cascadeOrder = [preferredProvider];
   } else {
     // Fallback to default only if no provider specified
-    cascadeOrder = ['gemini'];
+    cascadeOrder = ['openrouter'];
   }
 
   // Filter available via cooldown check in Registry
@@ -133,6 +134,7 @@ export const callLLMWithMetadata = async (
         payload,
         forceDefaultModel: (adapter.name === 'OpenRouterAdapter' && preferredProvider !== 'openrouter') ? true : false,
         model: modelCocokUntukAdapter,
+        thinking: opsi.thinking,
         onNalar: opsi.onNalar,
         onIsiMulai: opsi.onIsiMulai
       };
@@ -190,7 +192,7 @@ export const callLLMWithCascade = async (
   promptText: string,
   systemPromptText = '',
   chatHistory: any[] = [],
-  preferredProvider: string = 'gemini',
+  preferredProvider: string = 'openrouter',
   extractedImage: { mimeType: string; data: string } | null = null,
   rctx: RuntimeContext
 ): Promise<string> => {
@@ -245,7 +247,7 @@ export const runLLMDenganNalar = async (
   catatKomposisiPrompt(promptText, systemPromptText, chatHistory);
 
   // === PRIORITAS USER-EXPLICIT MODEL SELECTION via UI provider (if provided) ===
-  let preferredProvider = 'gemini';
+  let preferredProvider = 'openrouter';
 
   const uiProviderRaw =
     (rctx as any)?.model?.provider ||
@@ -378,6 +380,8 @@ export const runCoordinatorLLM = async (promptText: string, systemPromptText = '
   //   } catch(e) { console.warn('Traffic Light Groq failed, cascading to Gemini...', e); }
   // }
 
-  // Always use default cascade: Gemini -> OpenRouter
-  return await callLLMWithCascade(promptText, systemPromptText, [], 'gemini', null, rctx);
+  // OpenRouter dengan model & kunci PENGGUNA, nalar dimatikan (tugasnya pendek: satu kata / rencana JSON).
+  // Sampai 2026-09-15 dipatok ke 'gemini' (kunci server gratis) tanpa cadangan — ketiga kunci 403/429 sehingga
+  // Intent Router & Coordinator gagal di SETIAP pesan dan sub-agent tidak pernah jalan (uji mutu RAG putaran 1–7).
+  return (await callLLMWithMetadata(promptText, systemPromptText, [], 'openrouter', null, rctx, [], { thinking: false })).result;
 };

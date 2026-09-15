@@ -173,7 +173,9 @@ Silakan lakukan Cognitive Compression berformat JSON.`;
        const { CapabilityRegistry } = await import('../lib/adapters/adapter_registry.ts');
        await CapabilityRegistry.initializeAdapters(rctx);
        
-       const adapters = CapabilityRegistry.getAvailableAIAdapters(['groq', 'gemini']);
+       // OpenRouter dulu (2026-09-15, kunci server Gemini/Groq dihapus). Gemini/Groq kini hanya ada bila pengguna
+       // memakai BYOK-nya. Dulu hanya ['groq','gemini'] — tanpa kunci server peringkas tidak pernah jalan.
+       const adapters = CapabilityRegistry.getAvailableAIAdapters(['openrouter', 'gemini', 'groq']);
        
        const adapterPayload = {
          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
@@ -188,6 +190,7 @@ Silakan lakukan Cognitive Compression berformat JSON.`;
              chatHistory: [],
              payload: adapterPayload,
              forceDefaultModel: false,
+             thinking: false,
              model: adapter.name === 'GroqAdapter' ? 'openai/gpt-oss-20b' : 'gemini-2.5-flash'
            };
            const result = await adapter.execute(adapterInput, { trace_id: rctx?.tasks?.traceId || 'unknown' });

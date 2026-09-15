@@ -37,12 +37,8 @@ export const initializeToolSubscriber = () => {
 
     const customRunLLM = async (prompt: string, sys: string, hist: any[]) => {
         await CapabilityRegistry.initializeAdapters(rctx);
-        let preferredOrder = ['gemini', 'groq', 'openrouter'];
-        if (subagent === 'coder' || subagent === 'debate') {
-            preferredOrder = ['openrouter', 'gemini', 'groq'];
-        } else if (subagent === 'scraper' || subagent === 'communicator' || subagent === 'youtube_analyst' || subagent === 'file_analyzer') {
-            preferredOrder = ['groq', 'gemini', 'openrouter'];
-        }
+        // Semua sub-agent OpenRouter dulu (2026-09-15, kunci server Gemini/Groq dihapus); Gemini/Groq hanya BYOK.
+        const preferredOrder = ['openrouter', 'gemini', 'groq'];
         
         const adapters = CapabilityRegistry.getAvailableAIAdapters(preferredOrder);
         const adapterPayload = {
@@ -66,6 +62,10 @@ export const initializeToolSubscriber = () => {
                     chatHistory: hist,
                     payload: adapterPayload,
                     forceDefaultModel: false,
+                    // Nalar mati di dalam sub-agent (2026-09-15): tugasnya merangkum hasil pencarian, dan batas per
+                    // plugin 12 detik (execution_handler). Dengan tier Thinking menyala, satu panggilan researcher
+                    // makan 9–17 detik lalu hasilnya dibuang "late". Jawaban akhir tetap bernalar sesuai tier.
+                    thinking: false,
                     // 'google/gemini-2.0-flash-exp:free' dipakai di sini sampai 2026-09-09,
                     // padahal model itu sudah TIDAK ADA di katalog OpenRouter (diverifikasi
                     // langsung ke https://openrouter.ai/api/v1/models). Artinya setiap sub-agent
@@ -84,7 +84,12 @@ export const initializeToolSubscriber = () => {
 
     const customRunResearch = async (prompt: string, context: string): Promise<{ text: string, sources: any[] }> => {
         await CapabilityRegistry.initializeAdapters(rctx);
-        const adapters = CapabilityRegistry.getAvailableAIAdapters(['gemini', 'groq', 'openrouter']);
+        // Hanya Gemini yang punya Google Search (`tools: googleSearch` + groundingMetadata). OpenRouter/Groq mengabaikan
+        // payload itu dan tak pernah mengembalikan sumber, sehingga researcher selalu menolak hasilnya — tapi panggilannya
+        // tetap memakan 9–17 detik dan melewati batas 12 detik (uji live 2026-09-15, "late. Result DISCARDED").
+        // Tanpa adapter Gemini (BYOK), gagal seketika → researcher langsung ke DuckDuckGo.
+        const adapters = CapabilityRegistry.getAvailableAIAdapters(['gemini']);
+        if (adapters.length === 0) throw new Error('Google Search grounding butuh kunci Gemini (BYOK) — dilewati');
         const sys = 'Anda adalah asisten peneliti yang objektif.';
         const fullPrompt = `Cari informasi mengenai: ${prompt}\n\nKonteks:\n${context}`;
         const adapterPayload = {

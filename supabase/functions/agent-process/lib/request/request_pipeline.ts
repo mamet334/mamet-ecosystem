@@ -13,11 +13,6 @@ import { rapikanRiwayat } from './history_compressor.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { konteksWaktuPengguna, zonaWaktuSah } from './waktu_pengguna.ts';
 
-const getAllKeys = (envVarName: string): string[] => {
-  const keysString = Deno.env.get(envVarName) || '';
-  if (!keysString) return [];
-  return keysString.split(',').map(k => k.trim()).filter(k => k);
-};
 
 /**
  * Embedding untuk pencarian memori — lewat generateEmbedding (rag/embedding.ts), pintu
@@ -53,11 +48,10 @@ export async function executeRequestPipeline(
     enableAsyncMemoryWrite: Deno.env.get('ENABLE_ASYNC_MEMORY_WRITE') !== 'false'
   };
 
-  // Read all provider API keys for embedding & LLM adapters
-  const allGeminiKeys = getAllKeys('GEMINI_API_KEY');
-  const primaryGeminiKey = allGeminiKeys.length > 0 ? allGeminiKeys[0] : '';
+  // Kunci SERVER Gemini & Groq tidak lagi dibaca (keputusan Owner 2026-09-15, fokus OpenRouter): ketiga kunci
+  // Gemini gratis mati (403/429) sehingga Intent Router & Coordinator gagal di setiap pesan, dan kunci gratis pihak
+  // lain berisiko berubah kebijakan/biaya. Secret-nya sudah dihapus dari Supabase. Gemini/Groq hanya dengan BYOK.
   const openAIKey = Deno.env.get('OPENAI_API_KEY') || '';
-  const groqKey = Deno.env.get('GROQ_API_KEY') || '';
 
   const bypassCooldown = request.headers.get('x-bypass-cooldown') === 'true';
   if (bypassCooldown) {
@@ -107,8 +101,8 @@ export async function executeRequestPipeline(
   //
   // Aturannya kini sama untuk semua mode, menggeneralisasi penjagaan yang sudah
   // lebih dulu ada untuk mode ENGINEER (2026-07-30): pemakaian harus punya
-  // pemiliknya. Key sistem Gemini TIDAK terpengaruh — ia dipakai untuk fungsi
-  // internal (embedding, Intent Router), bukan untuk melayani chat orang lain.
+  // pemiliknya. (Key sistem Gemini untuk fungsi internal sudah dihapus 2026-09-15 —
+  // Intent Router/Coordinator kini memakai kunci OpenRouter pengguna.)
   const providerApiKey = (byokProviderKey || '').trim();
 
   const finalProvider = providerApiKey ? provider : 'openrouter';
@@ -184,15 +178,19 @@ export async function executeRequestPipeline(
   const rctx: RuntimeContext = {
     traceId,
     keys: {
-      [finalProvider]: finalApiKey,
-      openRouter: finalProvider === 'openrouter' ? finalApiKey : (Deno.env.get('OPENROUTER_API_KEY') || ''),
-      // Embedding memakai kunci OpenRouter PENGGUNA saja — bukan `openRouter` di atas, yang bisa
-      // jatuh ke kunci sistem (Item 63–65).
+      // Semua kunci LLM kini milik PENGGUNA (2026-09-15). Dulu `gemini`/`allGemini`/`groq` diisi kunci server dan
+      // DITULIS SESUDAH `[finalProvider]`, sehingga BYOK Gemini pengguna tertimpa kunci server; dan `openRouter`
+      // jatuh ke `OPENROUTER_API_KEY` sistem bila pengguna memilih penyedia lain — Intent Router/Coordinator yang
+      // kini lewat OpenRouter akan diam-diam memakai saldo Owner. Tanpa kunci OpenRouter pengguna, adapter tidak
+      // tersedia dan Coordinator dilewati.
+      openRouter: finalProvider === 'openrouter'
+        ? finalApiKey
+        : (request.headers.get('x-byok-openrouter') || '').replace(/[^\x00-\x7F]/g, '').trim(),
+      // Embedding memakai kunci OpenRouter PENGGUNA saja (Item 63–65).
       openRouterByok: (request.headers.get('x-byok-openrouter') || '').replace(/[^\x00-\x7F]/g, '').trim(),
-      // Keep existing keys for embedding adapters
-      gemini: primaryGeminiKey,
-      allGemini: allGeminiKeys,
-      groq: groqKey,
+      gemini: finalProvider === 'gemini' ? finalApiKey : '',
+      allGemini: finalProvider === 'gemini' && finalApiKey ? [finalApiKey] : [],
+      groq: finalProvider === 'groq' ? finalApiKey : '',
       openAI: finalProvider === 'openai' ? finalApiKey : openAIKey,
     },
 

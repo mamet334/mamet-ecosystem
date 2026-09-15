@@ -74,9 +74,10 @@ export default {
         tools: [{ googleSearch: {} }]
       };
       
-      const keys = env.allGeminiKeys && env.allGeminiKeys.length > 0
-        ? env.allGeminiKeys
-        : [env.GEMINI_API_KEY];
+      // Kunci server Gemini dihapus (2026-09-15): tanpa BYOK Gemini daftar ini kosong dan pencarian langsung
+      // memakai DuckDuckGo di bawah, tanpa permintaan sia-sia ke Google dengan kunci kosong.
+      const keys = (env.allGeminiKeys && env.allGeminiKeys.length > 0 ? env.allGeminiKeys : [env.GEMINI_API_KEY])
+        .filter((k: string) => typeof k === 'string' && k.trim());
 
       let searchData: any = null;
       let lastError: any = null;
