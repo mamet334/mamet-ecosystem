@@ -17,13 +17,7 @@ export const IntentRouterHandler = {
     ctx.request.lowerMsg = ctx.request.finalMessage.toLowerCase();
     ctx.state.processingSteps.push('🔍 Menganalisis permintaan user...');
     
-    const desktopLocalKeywords = ["desktop", "terminal", "cmd", "powershell", "hardisk", "hard disk", "folder saya", "file saya", "komputer saya", "laptop saya", "daftar file", "cek file", "isi desktop", "isi folder", "buka terminal", "jalankan perintah", "eksekusi", "direktori"];
-    const isDesktopLocalRequest = ctx.policy.canUseDesktopTools && desktopLocalKeywords.some(kw => ctx.request.lowerMsg.includes(kw));
-
-    if (isDesktopLocalRequest) {
-      isChatBiasa = true;
-      ctx.state.processingSteps.push('🖥️ Intent Router: Tugas lokal Desktop terdeteksi → Mamet langsung menangani (bypass Sub-Agent)');
-    } else {
+    {
       const actionKeywords = [
         "jadwal", "cron", "otomatis", "remind", "ingatkan",
         "cari", "temukan", "search", "google", "internet", "web",
@@ -35,7 +29,7 @@ export const IntentRouterHandler = {
         "youtube", "yt", "video", "transkrip", "link", "url", "http",
         "slack", "discord", "telegram", "api", "webhook", "post", "send", "kirim",
         "login", "masuk", "sign in", "scrape", "credential", "username", "password", "sesi",
-        "workspace", "folder", "analisis file", "periksa file", "scan folder", "baca file", "isi folder", "struktur folder", "LOCAL FOLDER CONTENT",
+        "workspace", "folder", "analisis file", "periksa file", "scan folder", "baca file", "isi folder", "struktur folder",
         "ingat", "ingatlah", "catat", "nama saya", "panggil saya", "saya suka", "favorit saya", "saya alergi", "kebiasaan saya", "informasi penting",
         "debat", "rapat", "diskusikan", "direksi", "ceo", "cfo", "cto", "board of directors", "keputusan bisnis",
         "shopee", "affiliate", "afiliate", "promosi", "produk", "jual", "komisi"
@@ -70,13 +64,9 @@ export const IntentRouterHandler = {
     });
 
     if (maef.shouldExecutePhase('ORCHESTRATION')) {
-        let coordinatorSystemPrompt = `Tugas Anda adalah menganalisis permintaan user dan memilih sub-agent yang tepat.\nAnda memiliki tim Sub-Agent nyata berikut ini:\n${getPluginPromptList(tools)}\n\nPENTING:\n1. Anda adalah mesin parsing JSON. Anda DILARANG KERAS merespons dengan kalimat atau teks biasa. Anda WAJIB mengembalikan HANYA sebuah Array JSON murni. Jika tidak butuh sub-agent, kembalikan [].\n2. Jika user menanyakan informasi aktual, fakta terbaru, atau info di luar batas pengetahuan internal Anda, Anda WAJIB memanggil sub-agent "researcher" atau "deep_research".\n3. Jika user meminta penjadwalan, panggil "cron_manager".\n4. JIKA pertanyaan user adalah tentang data spesifik yang ada di Pangkalan Data RAG/Dokumen internal user, kembalikan [].\n5. RULE KETAT KNOWLEDGE WORKSPACE:\n- MACRO QUERY: panggil "knowledge_manager".\n- MICRO QUERY: kembalikan [].\n- LOKAL FOLDER: panggil "file_analyzer".\nContoh Output Wajib: [{"subagent": "researcher", "task": "Cari pemenang MotoGP 2026"}]`;
+        let coordinatorSystemPrompt = `Tugas Anda adalah menganalisis permintaan user dan memilih sub-agent yang tepat.\nAnda memiliki tim Sub-Agent nyata berikut ini:\n${getPluginPromptList(tools)}\n\nPENTING:\n1. Anda adalah mesin parsing JSON. Anda DILARANG KERAS merespons dengan kalimat atau teks biasa. Anda WAJIB mengembalikan HANYA sebuah Array JSON murni. Jika tidak butuh sub-agent, kembalikan [].\n2. Jika user menanyakan informasi aktual, fakta terbaru, atau info di luar batas pengetahuan internal Anda, Anda WAJIB memanggil sub-agent "researcher" atau "deep_research".\n3. Jika user meminta penjadwalan, panggil "cron_manager".\n4. JIKA pertanyaan user adalah tentang data spesifik yang ada di Pangkalan Data RAG/Dokumen internal user, kembalikan [].\n5. RULE KETAT KNOWLEDGE WORKSPACE:\n- MACRO QUERY: panggil "knowledge_manager".\n- MICRO QUERY: kembalikan [].\nContoh Output Wajib: [{"subagent": "researcher", "task": "Cari pemenang MotoGP 2026"}]`;
         
         coordinatorSystemPrompt += (ctx.request.guardianPromptDirective || '');
-
-        if (ctx.request.desktopOSMode) {
-          coordinatorSystemPrompt += `\nCATATAN DESKTOP MODE: Jika permintaan eksekusi lokal (Terminal, Cmd, Folder Lokal), MAKA ITU "CHAT_BIASA", balas []!`;
-        }
 
         let planText = '[]';
         maef.requestTransition('ORCHESTRATION', 'Starting Execution Planning');

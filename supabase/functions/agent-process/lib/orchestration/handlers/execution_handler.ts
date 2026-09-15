@@ -12,7 +12,7 @@ export const ExecutionPlannerHandler = {
         return { accumulatedContext, subagentRuns };
     }
 
-    const INDEPENDENT_PLUGINS = new Set(['scraper', 'researcher', 'deep_research', 'youtube_analyst', 'file_analyzer', 'shopee_ninja', 'memory_manager', 'cron_manager']);
+    const INDEPENDENT_PLUGINS = new Set(['scraper', 'researcher', 'deep_research', 'youtube_analyst', 'shopee_ninja', 'memory_manager', 'cron_manager']);
     const executionTiers: any[][] = [];
     let currentTier: any[] = [];
     const seenTasks = new Set();

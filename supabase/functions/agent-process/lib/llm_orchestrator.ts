@@ -244,9 +244,6 @@ export const runLLMDenganNalar = async (
   promptText: string, systemPromptText = '', chatHistory: any[] = [], rctx: RuntimeContext,
   opsi: { onNalar?: (teks: string) => void; onIsiMulai?: () => void; tenggat?: number; thinking?: boolean } = {}
 ): Promise<{ result: string; metadata?: any; reasoning?: string; terpotong?: boolean }> => {
-  if (rctx.policy.canUseDesktopTools && !systemPromptText.includes('DESKTOP NATIVE AWARENESS ENABLED')) {
-     systemPromptText += `\n[STATUS: DESKTOP NATIVE AWARENESS ENABLED]\nAnda WAJIB mengeluarkan perintah Windows di dalam tag <terminal>. DILARANG menyebut sub-agent atau menolak. Contoh: <terminal>dir %USERPROFILE%\\Desktop</terminal>\n`;
-  }
   catatKomposisiPrompt(promptText, systemPromptText, chatHistory);
 
   // === PRIORITAS USER-EXPLICIT MODEL SELECTION via UI provider (if provided) ===

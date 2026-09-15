@@ -1,8 +1,10 @@
-export type WorkspaceTarget = 'AUTO' | 'SUPABASE' | 'LOCAL';
+// Jalur folder lokal (target LOCAL, plugin file_analyzer, penanda [LOCAL FOLDER CONTENT]) dihapus 2026-09-15 (Item 85):
+// tidak ada klien yang mengirimnya. Folder kerja Assistant dibangun ulang sebagai jalur baru berpagar
+// (docs/roadmap/ROADMAP-FOLDER-KERJA-ASSISTANT.md). Penjaga ini kini hanya mengunci operasi workspace ke Cloud RAG.
+export type WorkspaceTarget = 'AUTO' | 'SUPABASE';
 
 export interface GuardianState {
-  workspaceTarget: WorkspaceTarget;
-  localWorkspaceEnabled: boolean;
+  workspaceTarget: string;
   message: string;
 }
 
@@ -14,42 +16,19 @@ export class WorkspaceGuardian {
   }
 
   // 1. Otoritas penentuan target
-  public determineTarget(): 'SUPABASE' | 'LOCAL' {
-    if (this.state.workspaceTarget === 'SUPABASE') return 'SUPABASE';
-    if (this.state.workspaceTarget === 'LOCAL' && this.state.localWorkspaceEnabled) return 'LOCAL';
-    
-    // Logika AUTO
-    if (this.state.localWorkspaceEnabled) {
-      if (/knowledge workspace|knowledge space|rag|arsip cloud/i.test(this.state.message)) {
-        return 'SUPABASE';
-      }
-      if (/desktop|folder|directory|hardisk|local file|lokal/i.test(this.state.message)) {
-        return 'LOCAL';
-      }
-      return 'LOCAL'; // Default fallback ke lokal jika izin aktif
-    }
-
-    return 'SUPABASE'; // Fallback pamungkas
+  public determineTarget(): 'SUPABASE' {
+    return 'SUPABASE';
   }
 
   // 2. Proteksi tool (Mencegah LLM salah pilih)
-  public filterTools(tools: string[], target: 'SUPABASE' | 'LOCAL'): string[] {
-    let safeTools = [...(tools || [])];
-    if (target === 'SUPABASE') {
-      safeTools = safeTools.filter(t => t !== 'file_analyzer');
-      if (!safeTools.includes('knowledge_manager')) safeTools.push('knowledge_manager');
-    } else if (target === 'LOCAL') {
-      safeTools = safeTools.filter(t => t !== 'knowledge_manager');
-      if (!safeTools.includes('file_analyzer')) safeTools.push('file_analyzer');
-    }
+  public filterTools(tools: string[], _target: 'SUPABASE'): string[] {
+    const safeTools = [...(tools || [])];
+    if (!safeTools.includes('knowledge_manager')) safeTools.push('knowledge_manager');
     return safeTools;
   }
 
   // 3. Otoritas Prompt LLM (Instruksi Mutlak)
-  public getGuardianPrompt(target: 'SUPABASE' | 'LOCAL'): string {
-    if (target === 'SUPABASE') {
-      return `\n[WORKSPACE GUARDIAN: SUPABASE LOCKED] Anda DILARANG menggunakan tool file_analyzer. Seluruh operasi CRUD Folder/Workspace WAJIB diarahkan ke knowledge_manager (Cloud RAG).`;
-    }
-    return `\n[WORKSPACE GUARDIAN: LOCAL LOCKED] Anda DILARANG menggunakan tool knowledge_manager. Seluruh operasi CRUD Direktori/File WAJIB diarahkan ke file_analyzer atau tag <terminal>.`;
+  public getGuardianPrompt(_target: 'SUPABASE'): string {
+    return `\n[WORKSPACE GUARDIAN: SUPABASE LOCKED] Seluruh operasi CRUD Folder/Workspace WAJIB diarahkan ke knowledge_manager (Cloud RAG).`;
   }
 }

@@ -12,7 +12,6 @@ export interface UnifiedExecutionContext {
     stream?: boolean; 
     history?: any[]; 
     globalMemory?: any; 
-    localWorkspaceEnabled?: boolean; 
     workspaceTarget?: string; 
     storageTarget?: string; 
     desktopOSMode?: boolean; 
@@ -29,7 +28,7 @@ export interface UnifiedExecutionContext {
     contractValidation?: any;
     guardianPromptDirective?: string;
   };
-  policy: { mode: MametCapabilityMode; decision: "ALLOW" | "ALLOW_WITH_LIMIT" | "BLOCK"; toolsEnabled: boolean; webSearchEnabled: boolean; riskScore: number; ragTopK: number; ragThreshold: number; webHint?: string; canReadRAG: boolean; canReadMemory: boolean; canWriteMemory: boolean; canWriteKnowledge: boolean; canUseWorkspace: boolean; canUseAutomation: boolean; canUseDesktopTools: boolean; };
+  policy: { mode: MametCapabilityMode; decision: "ALLOW" | "ALLOW_WITH_LIMIT" | "BLOCK"; toolsEnabled: boolean; webSearchEnabled: boolean; riskScore: number; ragTopK: number; ragThreshold: number; webHint?: string; canReadRAG: boolean; canReadMemory: boolean; canWriteMemory: boolean; canWriteKnowledge: boolean; canUseWorkspace: boolean; canUseAutomation: boolean; };
   state: { ragArray: any[]; memoryArray: any[]; processingSteps: string[]; };
   rag: { topK: number; threshold: number; allowLongDocs: boolean; compressionLevel: "low" | "high"; };
   execution: { memoryPriority: "memory_first" | "balanced"; webSearchEnabled: boolean; subAgentEnabled: boolean; webHint?: string; };

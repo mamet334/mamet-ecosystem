@@ -7,7 +7,7 @@ export async function parseRequestParams(req: Request, user: any) {
   } catch(e) {
     reqJson = {};
   }
-  let { message, tools, model, userId: _clientUserId, userName, file, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource: clientAppSource = 'assistant', workspaceTarget = 'AUTO', localWorkspaceEnabled = false, auditMode = 'OFF', mode: clientMode, provider, thinking, traceId: clientTraceId, requestId, clientTimezone, streamNalar, memoryEnabled } = reqJson;
+  let { message, tools, model, userId: _clientUserId, userName, file, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource: clientAppSource = 'assistant', workspaceTarget = 'AUTO', auditMode = 'OFF', mode: clientMode, provider, thinking, traceId: clientTraceId, requestId, clientTimezone, streamNalar, memoryEnabled } = reqJson;
   const traceId = clientTraceId || requestId || null;
   const mode = clientMode || 'ASSISTANT';
   console.log('[RequestParser] Mode diterima:', mode);
@@ -26,13 +26,8 @@ export async function parseRequestParams(req: Request, user: any) {
     : (jwtAppSource ?? 'assistant');
   const appSource = resolvedAppSource;
   
-  if (message && (message.includes('[LOCAL FOLDER CONTENT]') || message.includes('[DESKTOP DIRECTORY ABSOLUTE PATH]'))) {
-    localWorkspaceEnabled = true;
-  }
-
   const guardian = new WorkspaceGuardian({
     workspaceTarget,
-    localWorkspaceEnabled,
     message: message || ''
   });
 

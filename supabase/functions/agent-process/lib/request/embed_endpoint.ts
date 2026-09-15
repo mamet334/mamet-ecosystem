@@ -92,7 +92,7 @@ export async function handleEmbedRequest(
       openRouterByok: (request.headers.get('x-byok-openrouter') || '').replace(/[^\x00-\x7F]/g, '').trim()
     },
     model: { model: '', provider: 'gemini', thinking: false },
-    policy: { canUseDesktopTools: false },
+    policy: {},
     stream: { isStream: false, desktopOSMode: false, auditMode: 'OFF' },
     env: runtimeEnv,
     logger: createRuntimeLogger(user.id, tasks, false, runtimeEnv),

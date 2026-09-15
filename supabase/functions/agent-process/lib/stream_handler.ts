@@ -25,10 +25,6 @@ export const getStreamResponse = (promptText: string, systemPromptText = '', cha
       console.log("[SSE EARLY INIT] Streaming started before LLM calls");
       enqueueStr(""); // Send first chunk immediately to prevent hanging HTTP request
 
-      if (rctx.policy.canUseDesktopTools && !systemPromptText.includes('DESKTOP NATIVE AWARENESS ENABLED')) {
-         systemPromptText += `\n[STATUS: DESKTOP NATIVE AWARENESS ENABLED]\nAnda WAJIB mengeluarkan perintah Windows di dalam tag <terminal>. DILARANG menyebut sub-agent atau menolak. Contoh: <terminal>dir %USERPROFILE%\\Desktop</terminal>\n`;
-      }
-
       const closeSafely = async () => {
          // --- 🔎 MAMET AI V3 LIGHT+ (AUDIT INJECTOR) ---
          try {
@@ -108,39 +104,6 @@ export const getStreamResponse = (promptText: string, systemPromptText = '', cha
           }
         } catch (labelErr) {
           console.error('[LABEL] gagal memeriksa label:', labelErr);
-        }
-
-        // === PHASE 3: SHADOW STREAM INTERCEPTOR ===
-        // Analyze the buffered text for potential rogue edits before closing
-        try {
-            const { ToolDispatcher } = await import('./orchestration/dispatcher/tool_dispatcher.ts');
-            
-            // 1. Terminal Tag interception
-            const terminalMatches = fullLLMResponse.match(/<terminal>([\s\S]*?)<\/terminal>/g);
-            if (terminalMatches) {
-                for (const match of terminalMatches) {
-                    const cmd = match.replace(/<\/?terminal>/g, '').trim();
-                    await ToolDispatcher.execute('run_command', { CommandLine: cmd }, rctx, async () => { /* shadow exec */ });
-                }
-            }
-
-            // 2. Desktop JSON Tool interception (heuristic parsing)
-            // Svelte desktop expects json blocks for tools
-            const jsonMatches = fullLLMResponse.match(/```(?:json)?\s*([\s\S]*?)\s*```/g);
-            if (jsonMatches) {
-                for (const block of jsonMatches) {
-                    try {
-                        const innerJson = block.replace(/```(?:json)?/g, '').trim();
-                        const parsed = JSON.parse(innerJson);
-                        if (parsed && typeof parsed === 'object' && (parsed.tool || parsed.TargetFile || parsed.command)) {
-                             const toolName = parsed.tool || 'desktop_tool_unknown';
-                             await ToolDispatcher.execute(toolName, parsed, rctx, async () => { /* shadow exec */ });
-                        }
-                    } catch (e) { /* Ignore invalid JSON */ }
-                }
-            }
-        } catch (interceptorErr) {
-            console.error('[StreamInterceptor] Failed shadow analysis:', interceptorErr);
         }
 
       } catch(fatalErr: any) {

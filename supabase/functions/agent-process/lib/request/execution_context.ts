@@ -28,7 +28,7 @@ export function buildUnifiedExecutionContext(input: { message: string, desktopOS
   const webHint = needsWeb ? "HIGH_PRIORITY" : "NORMAL";
 
   const engineerPolicy = isMametEngineer ? {
-    canReadRAG: true, canReadMemory: true, canWriteMemory: false, canWriteKnowledge: false, canUseWorkspace: true, canUseAutomation: false, canUseDesktopTools: false
+    canReadRAG: true, canReadMemory: true, canWriteMemory: false, canWriteKnowledge: false, canUseWorkspace: true, canUseAutomation: false
   } : null;
   
   const ctx: UnifiedExecutionContext = {
@@ -45,8 +45,7 @@ export function buildUnifiedExecutionContext(input: { message: string, desktopOS
         canWriteMemory: isMemoryEnabled && (engineerPolicy?.canWriteMemory ?? ((mode === "ENGINEER" || mode === "ASSISTANT" || mode === "AI") && !isMametLite)),
         canWriteKnowledge: engineerPolicy?.canWriteKnowledge ?? ((mode === "ENGINEER" || mode === "ASSISTANT" || mode === "AI") && !isMametLite),
         canUseWorkspace: engineerPolicy?.canUseWorkspace ?? !isMametLite,
-        canUseAutomation: engineerPolicy?.canUseAutomation ?? (mode === "AI" && !isMametLite),
-        canUseDesktopTools: engineerPolicy?.canUseDesktopTools ?? (mode === "AI")
+        canUseAutomation: engineerPolicy?.canUseAutomation ?? (mode === "AI" && !isMametLite)
     },
     state: { ragArray: [], memoryArray: [], processingSteps: [] },
     rag: { topK: mode === "LITE" ? 10 : 5, threshold: dynamicThreshold, allowLongDocs: mode !== "LITE", compressionLevel: mode === "LITE" ? "high" : "low" },

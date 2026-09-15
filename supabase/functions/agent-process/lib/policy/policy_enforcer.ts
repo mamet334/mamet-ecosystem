@@ -68,7 +68,7 @@ export class PolicyEnforcer {
     if (ws === 'ws-assistant') return 'ALLOW';
     
     if (ws === 'ws-engineer') {
-      const engineeringAgents = ['database_explorer', 'code_reviewer', 'shell_executor', 'file_analyzer'];
+      const engineeringAgents = ['database_explorer', 'code_reviewer', 'shell_executor'];
       if (engineeringAgents.includes(agent_name)) return 'ALLOW';
       return 'DENY';
     }

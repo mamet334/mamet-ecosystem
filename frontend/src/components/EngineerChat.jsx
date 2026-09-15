@@ -90,7 +90,6 @@ export default function EngineerChat({ userId }) {
         tools: ['web_search', 'code_executor', 'api_caller'],
         history: newMessages.slice(-10),
         auditMode: 'FULL',
-        localWorkspaceEnabled: false,
         desktopOSMode: false
       };
 

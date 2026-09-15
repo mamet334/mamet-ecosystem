@@ -8,7 +8,6 @@ import debate from './debate.ts';
 import deepResearch from './deep_research.ts';
 import youtubeAnalyst from './youtube_analyst.ts';
 import cronManager from './cron_manager.ts';
-import fileAnalyzer from './file_analyzer.ts';
 import shopeeNinja from './shopee_ninja.ts';
 import { knowledgeManagerPlugin } from './knowledge_manager.ts';
 
@@ -24,7 +23,6 @@ export const plugins = [
   deepResearch,
   youtubeAnalyst,
   cronManager,
-  fileAnalyzer,
   shopeeNinja,
   knowledgeManagerPlugin
 ];

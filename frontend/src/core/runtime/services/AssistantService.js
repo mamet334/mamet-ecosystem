@@ -22,7 +22,6 @@ const AGENT_ENDPOINT = 'https://uuyzdjifhdfyyvpxsofu.supabase.co/functions/v1/ag
 
 import { supabase } from '../../../supabase.js';
 import { statusLaptop, kirimKeLaptop, sidikJari, cariDiCache, KUOTA_CACHE_MB } from './remoteConversionClient.js';
-import { runDesktopInterceptors } from '../../../components/AIAgent/hooks/useDesktopInterceptor.js';
 
 // PR#2: Import governor dari versi JS lokal (bukan cross-boundary ke lib/ TypeScript)
 import {
@@ -1327,52 +1326,9 @@ export class AssistantService {
     if (userId) {
       await this.finalizeAssistantSession({ userId });
     }
-
-    // OS Execution Interceptor (Electron only)
-    await this._runOSInterceptor(finalText, userMsg, workspaceManager, onChunk, onDone, onError);
-  }
-
-  // =============================================
-  // OS EXECUTION INTERCEPTOR
-  // =============================================
-
-  /**
-   * Jalankan desktop interceptor setelah AI selesai merespons.
-   * Memanfaatkan `runDesktopInterceptors` dari useDesktopInterceptor.js
-   * yang sudah ada — tidak duplikasi logika.
-   *
-   * @private
-   */
-  async _runOSInterceptor(finalAiResponseText, originalUserMsg, workspaceManager, onChunk, onDone, onError) {
-    if (!window.electronAPI) return;
-
-    // Ambil osState dari workspaceManager jika tersedia
-    const osState = workspaceManager?.osState;
-    if (!osState?.capabilities?.includes('cap:code-execution')) return;
-
-    try {
-      const { interceptHit, autoReply } = await runDesktopInterceptors(finalAiResponseText);
-
-      if (interceptHit && autoReply) {
-        // Feed output kembali ke AI setelah 1 detik
-        setTimeout(() => {
-          this.processMessage({
-            userMsg: `[OS EXECUTION REPORT]\nBerikut adalah hasil eksekusi dari tindakan otomatis Anda di sistem operasi lokal user.\n${autoReply}`,
-            history: [],
-            workspaceId: workspaceManager?.activeWorkspaceId || 'ws-assistant',
-            userId: null,
-            token: '',
-            attachedFile: null,
-            workspaceManager,
-            onChunk,
-            onDone,
-            onError
-          });
-        }, 1000);
-      }
-    } catch (e) {
-      console.warn('[AssistantService] OS Interceptor import failed:', e);
-    }
+    // Interceptor OS lama (<terminal>/<edit_file>/<search_disk>/<run_airdrop>) dihapus 2026-09-15 (Item 85):
+    // tidak pernah aktif (butuh cap:code-execution) dan tanpa pagar folder. Folder kerja Assistant dibangun ulang,
+    // lihat docs/roadmap/ROADMAP-FOLDER-KERJA-ASSISTANT.md.
   }
 
   // =============================================

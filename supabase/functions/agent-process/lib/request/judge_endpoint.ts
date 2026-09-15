@@ -126,7 +126,7 @@ export async function handleJudgeConflictRequest(
     // sehari-hari dan terbukti hidup. Sengaja TIDAK menebak nama model di sini;
     // katalog penyedia berubah lebih cepat daripada kode (Item 41, 53).
     model: { model: typeof body?.model === 'string' ? body.model : '', provider, thinking: false },
-    policy: { canUseDesktopTools: false },
+    policy: {},
     stream: { isStream: false, desktopOSMode: false, auditMode: 'OFF' },
     env: runtimeEnv,
     logger: createRuntimeLogger(user.id, tasks, false, runtimeEnv),

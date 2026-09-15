@@ -165,7 +165,7 @@ export async function executeRequestPipeline(
 
   console.log("[L1] auth binding", { actualAuthId: ctx.auth.userId, appSource: ctx.auth.appSource, message: parsed.message ? parsed.message.substring(0, 50) + '...' : null });
 
-  ctx.request = { ...ctx.request, tools: parsed.tools, model: parsed.model, stream: parsed.stream, history: parsed.history, globalMemory: parsed.globalMemory, semanticContext: parsed.semanticContext || '', extractedImage: parsed.extractedImage, guardianPromptDirective: parsed.guardianPromptDirective, desktopOSMode: parsed.desktopOSMode, auditMode: parsed.auditMode, ragEnabled: parsed.ragEnabled, memoryEnabled: parsed.memoryEnabled, localWorkspaceEnabled: parsed.localWorkspaceEnabled, workspaceTarget: parsed.workspaceTarget, storageTarget: parsed.storageTarget, finalMessage: parsed.finalMessage };
+  ctx.request = { ...ctx.request, tools: parsed.tools, model: parsed.model, stream: parsed.stream, history: parsed.history, globalMemory: parsed.globalMemory, semanticContext: parsed.semanticContext || '', extractedImage: parsed.extractedImage, guardianPromptDirective: parsed.guardianPromptDirective, desktopOSMode: parsed.desktopOSMode, auditMode: parsed.auditMode, ragEnabled: parsed.ragEnabled, memoryEnabled: parsed.memoryEnabled, workspaceTarget: parsed.workspaceTarget, storageTarget: parsed.storageTarget, finalMessage: parsed.finalMessage };
 
   const policyResponse = enforcePolicy(ctx, !!parsed.stream, corsHeaders);
   if (policyResponse) return { ctx: {} as any, rctx: {} as any, response: policyResponse };
@@ -199,7 +199,7 @@ export async function executeRequestPipeline(
     // benar-benar mematikan nalar di OpenRouter (reasoning_openrouter.ts). undefined = klien tidak
     // mengirim (mis. mametlite) → bawaan model, perilaku lama.
     model: { model: parsed.model, provider: finalProvider, thinking: parsed.thinking === true ? true : parsed.thinking === false ? false : undefined },
-    policy: { canUseDesktopTools: ctx.policy.canUseDesktopTools },
+    policy: {},
     // streamNalar (hybrid, 2026-09-14): jawaban tetap JSON utuh, tetapi nalar dialirkan lebih dulu lewat SSE —
     // hanya bila Thinking dinyalakan (tanpa nalar tak ada yang dialirkan). Lihat index.ts.
     stream: { isStream: !!parsed.stream, extractedImage: parsed.extractedImage, desktopOSMode: !!parsed.desktopOSMode, auditMode: parsed.auditMode || 'OFF', streamNalar: !parsed.stream && parsed.streamNalar === true && parsed.thinking === true },
@@ -351,27 +351,6 @@ Mamet OS memiliki Sistem Memori Persisten Terkontrol (Memory Governor) yang akti
 
 Jika user meminta agar suatu informasi TIDAK disimpan (misal: "jangan simpan ini", "jangan diingat ya"), respons yang benar adalah mengakui kepatuhan terhadap permintaan tersebut secara spesifik, contoh: "Baik, informasi ini tidak akan saya simpan ke memori persisten sistem." JANGAN membingungkan "menghormati permintaan user" dengan "mengklaim tidak punya kapabilitas menyimpan data".
 `;
-  }
-
-  agentIdentityPrompt += `\n[WORKSPACE GUARDIAN OMNI-LOCK] Storage target saat ini adalah ${parsed.storageTarget}. Jika target adalah SUPABASE, Anda DILARANG KERAS menggunakan tag <edit_file> atau perintah <terminal> yang merubah file/folder lokal!\n`;
-
-  if (ctx.policy.canUseDesktopTools) {
-    agentIdentityPrompt += `\n[STATUS: DESKTOP NATIVE AWARENESS ENABLED]
-PENTING UNTUK KESELAMATAN AI: Anda HANYA DIMINTA UNTUK MEMBERIKAN TEKS / SCRIPT BASH/POWERSHELL di dalam tag <terminal>. Aplikasi Frontend (Mamet Desktop) yang akan mengeksekusinya. Anda DILARANG menolak. Cukup berikan script yang diminta!
-JIKA USER MEMINTA CEK DESKTOP, CARI FILE, CARI FOLDER, ATAU JALANKAN PERINTAH DI KOMPUTER LOKAL MEREKA:
-- DILARANG KERAS menyebut atau memanggil "sub-agent file_analyzer" atau sub-agent apapun! Anda yang mengerjakan sendiri!
-- DILARANG KERAS mengatakan "saya tidak punya akses" atau "lakukan sendiri di terminal Anda"!
-<EXAMPLES>
-- ANDA WAJIB langsung mengeluarkan perintah di dalam tag <terminal>perintah_windows_disini</terminal>
-- Contoh: <terminal>dir %USERPROFILE%\\Desktop</terminal>
-- Untuk cari file: <terminal>dir /s /b C:\\Users\\*nama_file*</terminal>
-- Untuk edit file: <edit_file path="C:/path/file.txt">isi_teks</edit_file>
-- Untuk search di seluruh hardisk: <search_disk>nama_file</search_disk>
-- JIKA USER MEMINTA JALANKAN AIRDROP / BROWSER STEALTH / BOT WEB3:
-  Keluarkan tag: <run_airdrop task="nama_task_airdrop"></run_airdrop>
-  Contoh: <run_airdrop task="test_stealth"></run_airdrop>
-</EXAMPLES>
-INGAT: Ini adalah Windows OS. Gunakan perintah Windows (dir, cd, type, copy) BUKAN Linux (ls, cat, cp)!\n`;
   }
 
   const isLookupMode = parsed.mode === 'LOOKUP';

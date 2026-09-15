@@ -756,77 +756,8 @@ ipcMain.handle('get-app-version', () => {
   return app.getVersion();
 });
 
-// 6. Docker status check
-ipcMain.handle('check-docker-status', async () => {
-  try {
-    execSync('docker info', { timeout: 5000, stdio: 'pipe' });
-    return { available: true, message: 'Docker Desktop aktif dan siap digunakan.' };
-  } catch (error) {
-    return { available: false, message: 'Docker tidak terdeteksi. Sandbox akan menggunakan Piston API sebagai fallback.' };
-  }
-});
-
-// 7. Run code in Docker sandbox
-ipcMain.handle('run-docker-sandbox', async (event, { code, language }) => {
-  try {
-    if (!code || typeof code !== 'string' || code.trim().length < 5) {
-      return { success: false, output: '', error: 'Kode terlalu pendek atau tidak valid.' };
-    }
-    if (!['python', 'javascript'].includes(language)) {
-      return { success: false, output: '', error: `Bahasa "${language}" tidak didukung. Gunakan python atau javascript.` };
-    }
-
-    const dangerousPatterns = [
-      /import\s+subprocess/i, /import\s+socket/i, /import\s+http\.server/i,
-      /require\s*\(\s*['"]child_process['"]/i, /require\s*\(\s*['"]net['"]/i,
-      /require\s*\(\s*['"]fs['"]/i, /process\.exit/i, /os\.system\s*\(/i,
-      /exec\s*\(/i, /__import__\s*\(/i, /eval\s*\(/i,
-    ];
-    const isCodeDangerous = dangerousPatterns.some(pattern => pattern.test(code));
-    if (isCodeDangerous) {
-      return { success: false, output: '', error: 'DITOLAK: Kode mengandung pola berbahaya (akses sistem/jaringan) yang diblokir oleh sandbox.' };
-    }
-
-    try {
-      execSync('docker info', { timeout: 5000, stdio: 'pipe' });
-    } catch (e) {
-      return { success: false, output: '', error: 'DOCKER_NOT_AVAILABLE: Docker Desktop tidak terdeteksi atau belum berjalan.' };
-    }
-
-    const config = language === 'python'
-      ? { image: 'python:3.12-slim', cmd: 'python', ext: '.py' }
-      : { image: 'node:20-slim', cmd: 'node', ext: '.js' };
-
-    const tmpDir = path.join(app.getPath('temp'), 'mamet-sandbox');
-    if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-    const tmpFile = path.join(tmpDir, `sandbox_code${config.ext}`);
-    fs.writeFileSync(tmpFile, code, 'utf8');
-
-    const dockerCmd = [
-      'docker', 'run', '--rm', '--network=none', '--memory=128m', '--cpus=0.5',
-      '--read-only', '--tmpfs', '/tmp:size=64m', '--no-new-privileges',
-      '--user', '1000:1000', '-v', `"${tmpFile.replace(/\\/g, '/')}:/app/code${config.ext}:ro"`,
-      '-w', '/app', config.image, config.cmd, `/app/code${config.ext}`
-    ].join(' ');
-
-    return new Promise((resolve) => {
-      exec(dockerCmd, { timeout: 30000, maxBuffer: 1024 * 1024, windowsHide: true }, (error, stdout, stderr) => {
-        try { fs.unlinkSync(tmpFile); } catch (e) {}
-        if (error) {
-          resolve({
-            success: false,
-            output: stdout || '',
-            error: error.killed ? 'TIMEOUT: Eksekusi kode melebihi batas waktu 30 detik.' : (stderr || error.message)
-          });
-        } else {
-          resolve({ success: true, output: (stdout || '').trim(), error: (stderr || '').trim() });
-        }
-      });
-    });
-  } catch (err) {
-    return { success: false, output: '', error: `Docker Sandbox error: ${err.message}` };
-  }
-});
+// 6–7. IPC Docker sandbox (check-docker-status, run-docker-sandbox) dihapus 2026-09-15 (Item 85):
+// pemakainya hanya interceptor OS lama yang ikut dihapus.
 
 // =============================================
 // 8. FILE SYSTEM HANDLERS (StorageManager Backend)

@@ -53,13 +53,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   editFileSurgical: (filePath, content) => ipcRenderer.invoke('edit-file-surgical', { filePath, content }),
 
   // =============================================
-  // DOCKER SANDBOX
-  // =============================================
-
-  checkDockerStatus: () => ipcRenderer.invoke('check-docker-status'),
-  runDockerSandbox: (code, language) => ipcRenderer.invoke('run-docker-sandbox', { code, language }),
-
-  // =============================================
   // AIRDROP STEALTH ENGINE
   // =============================================
 

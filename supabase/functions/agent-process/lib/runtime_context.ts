@@ -126,9 +126,9 @@ export interface ModelConfig {
 // 5. POLICY CONFIG
 // ─────────────────────────────────────────────
 
-export interface PolicyConfig {
-  canUseDesktopTools: boolean;
-}
+// canUseDesktopTools dihapus 2026-09-15 (Item 85) bersama jalur desktop lama. Objek tetap ada karena
+// ToolDispatcher menolak RuntimeContext tanpa `policy`.
+export type PolicyConfig = Record<string, never>;
 
 // ─────────────────────────────────────────────
 // 6. RUNTIME STATE
