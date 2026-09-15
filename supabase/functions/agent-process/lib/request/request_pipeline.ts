@@ -156,6 +156,7 @@ export async function executeRequestPipeline(
       desktopOSMode: parsed.desktopOSMode,
       tools: parsed.tools,
       ragEnabled: parsed.ragEnabled,
+      memoryEnabled: parsed.memoryEnabled,
       userId: user.id,
       userName: parsed.userName,
       appSource: parsed.appSource,
@@ -164,7 +165,7 @@ export async function executeRequestPipeline(
 
   console.log("[L1] auth binding", { actualAuthId: ctx.auth.userId, appSource: ctx.auth.appSource, message: parsed.message ? parsed.message.substring(0, 50) + '...' : null });
 
-  ctx.request = { ...ctx.request, tools: parsed.tools, model: parsed.model, stream: parsed.stream, history: parsed.history, globalMemory: parsed.globalMemory, semanticContext: parsed.semanticContext || '', extractedImage: parsed.extractedImage, guardianPromptDirective: parsed.guardianPromptDirective, desktopOSMode: parsed.desktopOSMode, auditMode: parsed.auditMode, ragEnabled: parsed.ragEnabled, localWorkspaceEnabled: parsed.localWorkspaceEnabled, workspaceTarget: parsed.workspaceTarget, storageTarget: parsed.storageTarget, finalMessage: parsed.finalMessage };
+  ctx.request = { ...ctx.request, tools: parsed.tools, model: parsed.model, stream: parsed.stream, history: parsed.history, globalMemory: parsed.globalMemory, semanticContext: parsed.semanticContext || '', extractedImage: parsed.extractedImage, guardianPromptDirective: parsed.guardianPromptDirective, desktopOSMode: parsed.desktopOSMode, auditMode: parsed.auditMode, ragEnabled: parsed.ragEnabled, memoryEnabled: parsed.memoryEnabled, localWorkspaceEnabled: parsed.localWorkspaceEnabled, workspaceTarget: parsed.workspaceTarget, storageTarget: parsed.storageTarget, finalMessage: parsed.finalMessage };
 
   const policyResponse = enforcePolicy(ctx, !!parsed.stream, corsHeaders);
   if (policyResponse) return { ctx: {} as any, rctx: {} as any, response: policyResponse };
@@ -238,7 +239,11 @@ export async function executeRequestPipeline(
       // SELURUH akun lalu menyuntikkan hasilnya ke prompt user ini (Item 45).
       const ragUserId = ctx.auth?.userId;
 
-      if (!ragUserId) {
+      if (parsed.memoryEnabled === false) {
+        // Tombol Memory mati (2026-09-15): vektor pertanyaan tetap dibuat di atas karena pencarian DOKUMEN memakainya,
+        // tetapi tabel memori tidak disentuh.
+        console.log('[RAG] Tombol Memory mati — pencarian memori dilewati.');
+      } else if (!ragUserId) {
         // Gagal ke arah TERTUTUP. Tanpa identitas pemilik, satu-satunya
         // pencarian yang mungkin adalah pencarian lintas pengguna — jadi lebih
         // baik tidak mencari sama sekali daripada membocorkan memori orang lain.
@@ -329,12 +334,24 @@ export async function executeRequestPipeline(
   agentIdentityPrompt += `
 IDENTITAS ANDA: Anda adalah "Mamet", asisten cerdas buatan yang merupakan hak paten dari aplikasi ini. Selalu perkenalkan diri Anda sebagai Mamet. JANGAN katakan Anda buatan Google atau OpenAI. Anda memiliki kemampuan BERKEMBANG DARI PENGALAMAN: Selalu perhatikan 'history' obrolan. Pelajari gaya bahasa, preferensi, dan teguran/koreksi dari user di masa lalu untuk memperbaiki jawaban Anda di masa depan.
 MODEL AI YANG ANDA GUNAKAN SAAT INI: ${parsed.model || 'gemini-2.5-flash'}. Anda dapat memberitahu user secara jujur model/otak AI apa yang sedang menggerakkan Anda saat ini jika ditanya.
+`;
 
+  // Blok kesadaran memori mengikuti tombol Memory (2026-09-15). Teks lama selalu menyatakan memori AKTIF menyimpan —
+  // bila tombolnya mati, model akan mengaku menyimpan/mengingat padahal jalur baca & tulis sudah diputus.
+  if (parsed.memoryEnabled === false) {
+    agentIdentityPrompt += `
+KESADARAN SISTEM MEMORI (MEMORI SEDANG DIMATIKAN):
+Mamet OS memiliki Sistem Memori Persisten, tetapi pengguna SEDANG MEMATIKANNYA lewat tombol Memory. Pada percakapan ini Anda TIDAK membaca memori lama dan TIDAK menyimpan informasi baru ke memori persisten. Yang tetap Anda lihat hanya riwayat obrolan sesi ini.
+Jika user meminta Anda mengingat sesuatu untuk sesi berikutnya, atau menanyakan hal pribadi yang pernah disimpan sebelumnya, jelaskan jujur bahwa memori sedang dimatikan dan dapat dinyalakan kembali di menu Tools → Memory. JANGAN mengaku sudah menyimpan, dan JANGAN mengarang isi memori lama.
+`;
+  } else {
+    agentIdentityPrompt += `
 KESADARAN SISTEM MEMORI:
 Mamet OS memiliki Sistem Memori Persisten Terkontrol (Memory Governor) yang aktif menyimpan informasi lintas sesi atas seizin dan kendali Owner. Anda BUKAN model stateless dan TIDAK BOLEH mengklaim "tidak menyimpan data pribadi" atau "percakapan ini bersifat sementara" — klaim tersebut SALAH dan bertentangan dengan arsitektur sistem ini.
 
 Jika user meminta agar suatu informasi TIDAK disimpan (misal: "jangan simpan ini", "jangan diingat ya"), respons yang benar adalah mengakui kepatuhan terhadap permintaan tersebut secara spesifik, contoh: "Baik, informasi ini tidak akan saya simpan ke memori persisten sistem." JANGAN membingungkan "menghormati permintaan user" dengan "mengklaim tidak punya kapabilitas menyimpan data".
 `;
+  }
 
   agentIdentityPrompt += `\n[WORKSPACE GUARDIAN OMNI-LOCK] Storage target saat ini adalah ${parsed.storageTarget}. Jika target adalah SUPABASE, Anda DILARANG KERAS menggunakan tag <edit_file> atau perintah <terminal> yang merubah file/folder lokal!\n`;
 

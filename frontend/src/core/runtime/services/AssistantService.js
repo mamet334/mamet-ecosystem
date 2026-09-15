@@ -194,7 +194,7 @@ export class AssistantService {
    * @param {string} userId
    * @returns {Promise<{ localContext: string, semanticContext: string }>}
    */
-  async buildContextInjection(userMsg, resolvedMode, userId) {
+  async buildContextInjection(userMsg, resolvedMode, userId, memoryEnabled = true) {
     let localContext = '';
     let semanticContext = '';
 
@@ -207,9 +207,11 @@ export class AssistantService {
     const retrievalOrchestrator = this.serviceManager?.get('RetrievalOrchestrator');
     const isTemporal = retrievalOrchestrator?.isTemporalQuery?.(userMsg) || false;
 
-    // Memory injection
-    let memoryService = this.serviceManager.get('MemoryService');
-    if (!memoryService) {
+    // Memory injection — dilewati bila tombol Memory mati (2026-09-15); server juga memutus baca & tulis memorinya.
+    let memoryService = memoryEnabled ? this.serviceManager.get('MemoryService') : null;
+    if (!memoryEnabled) {
+      console.log('[AssistantService] Tombol Memory mati — memori tidak diambil.');
+    } else if (!memoryService) {
       await new Promise(r => setTimeout(r, 1000));
       memoryService = this.serviceManager.get('MemoryService');
     }
@@ -369,6 +371,13 @@ export class AssistantService {
 
     // Dispatch MEMORY_STORE (PR#8 Intent Unification)
     if (requestType === 'MEMORY_STORE') {
+      // Tombol Memory mati (2026-09-15): perintah "ingat …" tidak disimpan, dan pengguna diberi tahu alasannya.
+      const preferensiTool = this.serviceManager?.get('ToolPreferencesService');
+      if (preferensiTool && !preferensiTool.getEffective(workspaceId, 'memory_manager')) {
+        console.log('[AssistantService] Tombol Memory mati — MEMORY_STORE tidak disimpan.');
+        onDone?.('ℹ️ Memory sedang dimatikan, jadi info ini tidak saya simpan. Nyalakan kembali di menu Tools → Memory bila ingin saya mengingatnya.', [], null);
+        return;
+      }
       return this._handleMemoryStore({
         ...handlerParams,
         contentToStore: classifierMeta.contentToStore,
@@ -612,6 +621,8 @@ export class AssistantService {
     // Pencarian makna di server murah: satu embedding pertanyaan + potongan teratas.
     const toolPreferencesService = this.serviceManager?.get('ToolPreferencesService');
     const ragToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'rag') : true;
+    // LOOKUP tidak mengambil memori di klien, tetapi server tetap membaca/menulis memori — tombol Memory ikut dikirim.
+    const memoryToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'memory_manager') : true;
 
     // Get AI provider config
     // LOOKUP selalu memakai tier KECIL tanpa classifier: jalur ini memang sudah dirancang ringan
@@ -645,6 +656,7 @@ export class AssistantService {
       semanticContext: '',         // sengaja kosong
       stream: false,
       ragEnabled: ragToolEnabled,  // dokumen dicari di server (Item 65)
+      memoryEnabled: memoryToolEnabled,
       model: formattedModel || undefined,
       thinking: aiThinking, // true/false tier dikirim apa adanya; false kini mematikan nalar di OpenRouter (2026-09-13)
       clientTimezone: zonaWaktuBrowser(), // mis. "Asia/Jakarta" — server menghitung jam lokal (2026-09-13)
@@ -953,16 +965,19 @@ export class AssistantService {
       console.warn('[AssistantService] BrainService not available:', e);
     }
 
+    // Tombol Memory (2026-09-15): kunci 'memory_manager' dari chip Tools; tanpa pilihan tersimpan bernilai nyala.
+    const toolPreferencesService = this.serviceManager?.get('ToolPreferencesService');
+    const memoryToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'memory_manager') : true;
+
     // 4. Inject memory + semantic context
     const { localContext, semanticContext } = await this.buildContextInjection(
-      userMsg, resolvedMode, userId
+      userMsg, resolvedMode, userId, memoryToolEnabled
     );
 
     // 4b. PR#9: 3-Tier Retrieval Orchestrator — ambil knowledge/RAG context (terpisah dari memory)
     // Toggle per-tool (ToolPreferencesService): RAG & Web Search independen. retrieve() tetap
     // dipanggil kalau salah satu nyala; RAG mati diteruskan sebagai skipLocalKnowledge supaya
     // Tier 1 (dokumen lokal) dilewati tapi Tier 3 (web) tetap bisa jalan kalau Web nyala.
-    const toolPreferencesService = this.serviceManager?.get('ToolPreferencesService');
     const ragToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'rag') : true;
     const webSearchToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'web_search') : true;
     const deepResearchToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'deep_research') : false;
@@ -1074,6 +1089,7 @@ export class AssistantService {
       // Hybrid (2026-09-14): nalar dialirkan lebih dulu, jawaban tetap JSON utuh — hanya bila Thinking menyala.
       streamNalar: aiThinking === true,
       ragEnabled: ragToolEnabled && !lanjutanTerpotong,
+      memoryEnabled: memoryToolEnabled, // false → server tidak membaca/menulis memori & blok kesadaran menyesuaikan
       model: formattedModel || undefined,
       thinking: aiThinking, // true/false tier dikirim apa adanya; false kini mematikan nalar di OpenRouter (2026-09-13)
       clientTimezone: zonaWaktuBrowser(), // mis. "Asia/Jakarta" — server menghitung jam lokal (2026-09-13)

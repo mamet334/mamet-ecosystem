@@ -7,7 +7,7 @@ export async function parseRequestParams(req: Request, user: any) {
   } catch(e) {
     reqJson = {};
   }
-  let { message, tools, model, userId: _clientUserId, userName, file, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource: clientAppSource = 'assistant', workspaceTarget = 'AUTO', localWorkspaceEnabled = false, auditMode = 'OFF', mode: clientMode, provider, thinking, traceId: clientTraceId, requestId, clientTimezone, streamNalar } = reqJson;
+  let { message, tools, model, userId: _clientUserId, userName, file, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource: clientAppSource = 'assistant', workspaceTarget = 'AUTO', localWorkspaceEnabled = false, auditMode = 'OFF', mode: clientMode, provider, thinking, traceId: clientTraceId, requestId, clientTimezone, streamNalar, memoryEnabled } = reqJson;
   const traceId = clientTraceId || requestId || null;
   const mode = clientMode || 'ASSISTANT';
   console.log('[RequestParser] Mode diterima:', mode);
@@ -78,6 +78,9 @@ export async function parseRequestParams(req: Request, user: any) {
   }
 
   return {
-    message, finalMessage, tools, model, userName, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource, auditMode, extractedImage, guardianPromptDirective, storageTarget, workspaceTarget, mode, provider, thinking, traceId, clientTimezone, streamNalar
+    message, finalMessage, tools, model, userName, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource, auditMode, extractedImage, guardianPromptDirective, storageTarget, workspaceTarget, mode, provider, thinking, traceId, clientTimezone, streamNalar,
+    // Tombol Memory desktop (2026-09-15). Hanya `false` yang mematikan — klien yang tidak mengirim (mametlite, versi
+    // lama) tetap memakai memori seperti sebelumnya.
+    memoryEnabled: memoryEnabled !== false
   };
 }

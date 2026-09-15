@@ -1383,4 +1383,13 @@ jujur** — `usage.cost` mengalir, 30 panggilan, $0,0659, nol baris berbiaya nol
     - **Uji:** pencarian 20/20, alih Deep Research 6/6, batas waktu & lanjutan 36/36, replay tugas live terhadap web sungguhan; regresi Coordinator/nalar/SSE hybrid lolos.
     - **Live:** v441–v443 (researcher ±1 s 7 sumber; deep research 8 sumber) → v444/v445 dengan batas uji 60 s: pemotongan tanpa galat, nalar & bahan tersimpan, "lanjutkan" menulis laporan sampai selesai berlabel status tanpa riset ulang. Secret uji sudah dihapus.
     - **Batas disadari:** sambungan bisa mengulang beberapa baris; mutu laporan tergantung model & bahan; lanjutan hanya jalur JSON/hybrid; beberapa situs terbaca kurang bersih.
-    - **Status:** ✅ **Selesai, dideploy (v445) & terbukti live.**
+    - **Status:** ✅ **Selesai, dideploy (v445) & terbukti live.** Tombol Memory → dikerjakan di Item 84.
+
+84. **Tombol Memory Memutus Lima Jalur Memori (2026-09-15):**
+    - **Asal:** temuan Item 83 bahwa tombol Memory desktop hanya tampilan. Owner: putus jalur 1–5 sekaligus, nyala bawaan, blok kesadaran menyesuaikan. Changelog: [`2026-09-15-tombol-memory-memutus-jalur-memori.md`](../project-memory/changelog/2026-09-15-tombol-memory-memutus-jalur-memori.md).
+    - **Jalur:** (1) ambil memori desktop, (2) simpan eksplisit "ingat…" (ditolak dengan penjelasan), (3) `match_memories`, (4) `loadProjectMemory` lewat `canReadMemory`, (5) tulis fakta otomatis lewat `canWriteMemory`.
+    - **Kode:** payload CONVERSATION & LOOKUP mengirim `memoryEnabled`; parser hanya mematikan pada `false` (mametlite/klien lama tak berubah); `execution_context.ts` menggabungkan tombol dengan aturan mode; blok "KESADARAN SISTEM MEMORI" dua versi (mati = jujur tidak membaca/menyimpan, tunjuk Tools → Memory).
+    - **Uji:** `uji-tombol-memory.mjs` 17/17, sintaks esbuild lolos.
+    - **Live:** mati → `memoryArray size=0`, tanpa pengambilan memori & audit tulis, blok mati masuk prompt, "ingat bahwa saya suka kopi" ditolak; nyala → `size=5`, "Pak Slamet" dari memori. Tanpa baris baru di `user_memories`; prompt sistem 6.888 → 5.236 huruf.
+    - **Batas disadari:** riwayat sesi yang sama tetap terlihat; embedding tetap dibuat bila RAG nyala; gpt-4o-mini belum menyebut Tools → Memory; File Reader masih tampilan.
+    - **Status:** ✅ **Selesai, dideploy & terbukti live.**

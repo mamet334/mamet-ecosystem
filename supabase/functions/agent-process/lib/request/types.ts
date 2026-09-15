@@ -22,6 +22,7 @@ export interface UnifiedExecutionContext {
     agentIdentityPrompt?: string; 
     userContextPrompt?: string; 
     ragEnabled?: boolean;
+    memoryEnabled?: boolean;
     isRagEnabled?: boolean;
     effectiveRagThreshold?: number;
     effectiveRagMatchCount?: number;
