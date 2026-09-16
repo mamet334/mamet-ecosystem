@@ -103,23 +103,36 @@ function teksDariAnotasi(data) {
 // Galat sementara yang layak dicoba ulang. Dengan beberapa halaman dikirim serentak, 429 (batas laju)
 // lebih mungkin muncul — tanpa coba ulang, satu halaman gagal membatalkan seluruh unggahan.
 const STATUS_COBA_ULANG = new Set([429, 500, 502, 503, 504]);
-const PERCOBAAN_MAKS = 3;
-const JEDA_DASAR_MS = 1000;
+// Batas laju mistral-ocr TIDAK selalu datang sebagai 429: OpenRouter meneruskannya sebagai 400 berisi
+// "The document parsing engine is currently rate limited. Please retry shortly." (buku Kepbup 1.004
+// halaman, 2026-09-16 — halaman ke-4 gagal dan SELURUH unggahan batal). Karena itu galat sementara
+// dikenali dari isi pesan juga, bukan dari status saja.
+const POLA_BATAS_LAJU = /rate.?limit|too many requests|retry shortly|try again/i;
+const PERCOBAAN_MAKS = 5;
+const JEDA_DASAR_MS = 2000;
+const JEDA_MAKS_MS = 30000;
 const tunggu = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const bolehCobaUlang = (status, isi) => STATUS_COBA_ULANG.has(status) || POLA_BATAS_LAJU.test(isi || '');
 
 /** Kirim satu halaman (bytes PDF satu halaman) ke mistral-ocr via OpenRouter, kembalikan teks bersih. */
 export async function ocrHalamanPdf(bytesSatuHalaman, kunci) {
   for (let percobaan = 1; ; percobaan++) {
     const res = await kirimOcr(bytesSatuHalaman, kunci);
-    if (res.ok || !STATUS_COBA_ULANG.has(res.status) || percobaan >= PERCOBAAN_MAKS) return bacaHasilOcr(res);
-    // Hormati Retry-After bila ada (detik), selain itu jeda berlipat: 1 s, 2 s.
+    if (res.ok) return bacaHasilOcr(res);
+    const isi = await res.text().catch(() => res.statusText);
+    if (percobaan >= PERCOBAAN_MAKS || !bolehCobaUlang(res.status, isi)) throw new GagalOcr(res.status, isi);
+    // Hormati Retry-After bila ada (detik), selain itu jeda berlipat + acak (2, 4, 8, 16 s; maks 30 s).
+    // Acak supaya halaman-halaman yang kena batas laju bersamaan tidak mencoba ulang serentak.
     const detik = Number(res.headers?.get?.('retry-after'));
-    await tunggu(Number.isFinite(detik) && detik > 0 ? Math.min(detik, 30) * 1000 : JEDA_DASAR_MS * 2 ** (percobaan - 1));
+    const jeda = Number.isFinite(detik) && detik > 0
+      ? Math.min(detik, 30) * 1000
+      : Math.min(JEDA_DASAR_MS * 2 ** (percobaan - 1), JEDA_MAKS_MS) * (0.75 + Math.random() * 0.5);
+    await tunggu(jeda);
   }
 }
 
 async function bacaHasilOcr(res) {
-  if (!res.ok) throw new GagalOcr(res.status, await res.text().catch(() => res.statusText));
   const bagian = teksDariAnotasi(await res.json());
   if (!bagian.length) {
     throw new GagalOcr('KOSONG', 'OpenRouter tidak mengembalikan hasil mistral-ocr (annotations kosong).');
@@ -151,37 +164,53 @@ function kirimOcr(bytesSatuHalaman, kunci) {
 }
 
 // Jumlah halaman yang dikirim serentak. Uji live KATALOG-PENDAS (±130 halaman berurutan) terasa lama;
-// hampir seluruh waktunya menunggu jaringan, bukan memotong PDF. Dibatasi agar tidak memicu 429 massal.
-export const OCR_SERENTAK = 5;
+// hampir seluruh waktunya menunggu jaringan, bukan memotong PDF. Diturunkan 5 → 2 pada 2026-09-16:
+// dengan 5 halaman serentak, buku Kepbup memicu batas laju mistral-ocr sejak halaman ke-4.
+export const OCR_SERENTAK = 2;
+
+// Di atas jumlah ini OCR dianggap massal: pemanggil wajib meminta konfirmasi kedua (lama + biaya).
+export const OCR_BANYAK_HALAMAN = 100;
+
+/** Perkiraan lama OCR dalam menit: ±5 detik per halaman, dibagi jumlah halaman yang dikirim serentak. */
+export function perkiraanMenitOcr(jumlahHalaman, serentak = OCR_SERENTAK) {
+  return Math.max(1, Math.ceil((jumlahHalaman / Math.max(1, serentak)) * 5 / 60));
+}
 
 /**
  * Jalankan OCR untuk sejumlah halaman terdeteksi bertabel, hingga `serentak` halaman sekaligus. PDF
  * sumber dimuat SEKALI — versi pertama memuat ulang seluruh berkas untuk setiap halaman (Operator
- * Handbook: 152× berkas 436 halaman di browser). Satu halaman gagal (sesudah coba ulang) → halaman
- * yang belum dimulai tidak dikirim, galat pertama dilempar (unggahan dibatalkan, sama seperti dulu).
+ * Handbook: 152× berkas 436 halaman di browser).
+ *
+ * Sejak 2026-09-16 satu halaman yang tetap gagal (sesudah coba ulang) TIDAK lagi membatalkan seluruh
+ * unggahan: halaman itu dilewati — teks pdf.js untuk halaman tersebut tetap dipakai — dan nomornya
+ * dikembalikan lewat `halamanGagal` supaya pemanggil bisa memberitahu pengguna apa adanya.
  * `onProgress` dipanggil tiap halaman SELESAI; `ke` = jumlah yang selesai, bukan urutan halaman.
- * @returns {Promise<Map<number, string>>} nomor halaman (1-based) → teks bersih, urut sesuai daftar masukan
+ * @returns {Promise<{ peta: Map<number, string>, halamanGagal: number[] }>} peta: nomor halaman (1-based) → teks bersih
  */
 export async function terapkanOcrHalaman(fileBytes, nomorHalamanList, kunci, onProgress, { serentak = OCR_SERENTAK } = {}) {
   const { PDFDocument } = await import('pdf-lib');
   const asal = await PDFDocument.load(fileBytes);
   const teks = new Array(nomorHalamanList.length);
-  let berikut = 0; let selesai = 0; let galat = null;
+  const halamanGagal = [];
+  let berikut = 0; let selesai = 0;
 
   const pekerja = async () => {
-    while (!galat && berikut < nomorHalamanList.length) {
+    while (berikut < nomorHalamanList.length) {
       const i = berikut++;
       const n = nomorHalamanList[i];
       try {
         teks[i] = await ocrHalamanPdf(await pisahHalamanPdf(asal, n), kunci);
       } catch (e) {
-        galat ??= e;
-        return;
+        console.warn(`[OCR] Halaman ${n} dilewati: ${e?.message || e}`);
+        halamanGagal.push(n);
       }
-      onProgress?.({ tahap: 'ocr', halaman: n, ke: ++selesai, total: nomorHalamanList.length });
+      onProgress?.({ tahap: 'ocr', halaman: n, ke: ++selesai, total: nomorHalamanList.length, gagal: halamanGagal.length });
     }
   };
   await Promise.all(Array.from({ length: Math.max(1, Math.min(serentak, nomorHalamanList.length)) }, pekerja));
-  if (galat) throw galat;
-  return new Map(nomorHalamanList.map((n, i) => [n, teks[i]]));
+
+  const peta = new Map();
+  nomorHalamanList.forEach((n, i) => { if (teks[i] != null) peta.set(n, teks[i]); });
+  halamanGagal.sort((a, b) => a - b);
+  return { peta, halamanGagal };
 }

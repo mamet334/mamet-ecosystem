@@ -3,7 +3,7 @@ import { supabase } from '../../supabase';
 import { kernel } from '../../core/runtime/Kernel';
 import { Search, Upload, Trash2, FileText, Loader2, Database, PlusCircle } from 'lucide-react';
 import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from '../../core/runtime/services/documentTextExtractor.js';
-import { perkiraanOcr, terapkanOcrHalaman } from '../../core/runtime/services/pdfOcrService.js';
+import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN, OCR_SERENTAK } from '../../core/runtime/services/pdfOcrService.js';
 
 // Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
 const POTONGAN_PERLU_KONFIRMASI = 150; // ±105 ribu huruf ≈ $0,006 (potongan 800 huruf, Item 70)
@@ -132,14 +132,31 @@ export default function ResearchApp() {
                     `Perbaiki dengan OCR (mistral-ocr)? Perkiraan biaya ±$${perkiraanOcr(jumlah).toFixed(3)} ` +
                     `dari saldo OpenRouter Anda, di luar biaya embedding.`
                 );
-                if (lanjutOcr) {
+                // OCR massal (2026-09-16): buku Kepbup 1.004 halaman menandai 939 halaman bertabel —
+                // ±$1,9 dan berjam-jam. Konfirmasi kedua menyebut lama pengerjaan sebelum uang terpakai.
+                const lanjutMassal = lanjutOcr && (jumlah <= OCR_BANYAK_HALAMAN || window.confirm(
+                    `${jumlah} halaman itu banyak.\n\n` +
+                    `Perkiraan: ±${perkiraanMenitOcr(jumlah)} menit dan ±$${perkiraanOcr(jumlah).toFixed(3)}, ` +
+                    `dikirim ${OCR_SERENTAK} halaman sekaligus agar tidak kena batas laju.\n` +
+                    `Halaman yang tetap gagal akan dilewati (teks biasa tetap dipakai), bukan membatalkan unggahan.\n\n` +
+                    `Lanjutkan OCR?`
+                ));
+                if (lanjutMassal) {
                     setStatusUnggah(`Membaca ulang ${jumlah} halaman tabel dengan OCR…`);
-                    const petaOcr = await terapkanOcrHalaman(
+                    const { peta: petaOcr, halamanGagal } = await terapkanOcrHalaman(
                         new Uint8Array(await file.arrayBuffer()),
                         hasil.halamanBertabelTerdeteksi,
                         openRouterKey,
-                        ({ ke, total }) => setStatusUnggah(`OCR halaman ${ke}/${total}…`)
+                        ({ ke, total, gagal }) => setStatusUnggah(`OCR halaman ${ke}/${total}${gagal ? ` (${gagal} dilewati)` : ''}…`)
                     );
+                    if (halamanGagal.length) {
+                        console.warn(`[ResearchApp] OCR melewati ${halamanGagal.length} halaman:`, halamanGagal.join(', '));
+                        alert(
+                            `${halamanGagal.length} dari ${jumlah} halaman gagal di-OCR dan dilewati — ` +
+                            `teks biasa untuk halaman itu tetap dipakai.\n\n` +
+                            `Halaman: ${halamanGagal.slice(0, 20).join(', ')}${halamanGagal.length > 20 ? ', …' : ''}`
+                        );
+                    }
                     hasil = await ekstrakTeksDokumen(file, { petaOcrHalaman: petaOcr });
                 }
             }
