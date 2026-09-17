@@ -73,3 +73,20 @@ terpengaruh.
 - Satu penggalan kata ("…Jabatan Pemerintahan.") dari baris di atas batas belah hal. 897 ikut ke identitas 197.
 - Research App membaca kunci lewat `kernel` modul; sesudah HMR berulang kunci terbaca kosong — pulih dengan Ctrl+R.
 - Berkas uji lama `UJI-Kepbup-Sekretaris-DPRD-hal4-9.pdf` masih ada (isi ganda dengan 001) — dihapus sesudah buku penuh.
+
+## Pembaruan: unggah 101–221 selesai + pemeriksaan buku penuh
+
+Unggah dari web live (mamet-ecosystem.vercel.app): tahap 041–100 sempat gagal di tengah (18 berkas) dengan
+`Setting up fake worker failed: Failed to fetch dynamically imported module …/pdf.worker.min-….mjs` saat Owner membuka
+halaman Billing — gagal di tahap baca, tanpa biaya/data setengah jadi (deploy tunggal 14:25 UTC, bukan pergantian versi);
+diulang dari halaman yang sama → berhasil. 101–221: "Berhasil 119 · Dilewati 3 · Gagal 0".
+
+Database: **221/221 jabatan**, 3.368 potongan, semua bervektor, 0 nomor hilang/ganda, **identitas bercampur 0**;
+23 potongan blok centang "tidak pasti" (tanda di tengah sel, blok memberi catatan sendiri). Tiga pengecualian, diperiksa
+ke PDF asli:
+
+| No | Temuan | Penyebab | Penanganan (keputusan Owner) |
+|---|---|---|---|
+| 191 Kabid Kewaspadaan Nasional | tanpa baris konteks | pdf.js membaca identitas lengkap; **OCR hal. 1 melewatkan kotak identitas** | unggah ulang sekali |
+| 177 Bidang Pencegahan (Damkar) | tanpa blok centang | centang = **"Ö" (U+00D6, font Symbol, tampil √)** — satu-satunya pemakai dari 222 berkas | `tabelCentang.js` (+ salinan Mametlite) mengenali "Ö" bila berdiri sendiri; regresi 222 berkas: hanya 177 berubah (Diklat Teknis Manajemen Kesekretariatan → Penting, Pengalaman Kerja → Mutlak, label perkiraan); unggah ulang |
+| 159 Kabid Lalu Lintas & Angkutan | tanpa blok centang | tanda **bukan teks** (tanpa item teks; halaman berisi gambar), OCR juga tidak membaca | dicatat sebagai keterbatasan |

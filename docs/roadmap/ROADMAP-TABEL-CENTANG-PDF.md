@@ -196,7 +196,7 @@ memisahkan baris "Kolom:" dari butirnya — periksa potongan live.
 2. ✅ **Diputuskan (2026-09-17): Tahap 2 (server) sesudah Tahap 1 terbukti**, karena hasil Tahap 1 (jumlah
    halaman "tidak pasti" di buku penuh) menentukan seberapa penting aturan label.
 3. ✅ **Diputuskan (2026-09-17): unggah buku penuh, dipecah per jabatan (222 berkas) lewat fitur unggah banyak
-   berkas, bertahap.** Status & sisa: 42/221 jabatan masuk bersih; **sisa** 041–221 (196/197 sudah), hapus berkas uji
+   berkas, bertahap.** Status & sisa: **221/221 jabatan masuk** (3.368 potongan); **sisa** unggah ulang 191 (OCR melewatkan identitas) & 177 (centang "Ö" font Symbol, sudah dikenali kode), 159 tanpa blok centang (tanda bukan teks — keterbatasan), hapus berkas uji
    lama `UJI-Kepbup-Sekretaris-DPRD-hal4-9.pdf`, set uji buku penuh (Camat per kecamatan), `000` pembuka (PDF
    pindaian) belum terunggah. [log](../project-memory/changelog/2026-09-17-buku-kepbup-per-jabatan-dan-unggah-banyak.md)
    *Catatan asal:* (sisa Item 86 ikut di sini — jalur OCR batas laju 400 dan konfirmasi kedua >100 halaman belum pernah teruji live karena buku penuh belum diunggah) buku Kepbup penuh baru diunggah (OCR ±$1,88, ±40 menit) **setelah** Tahap 3

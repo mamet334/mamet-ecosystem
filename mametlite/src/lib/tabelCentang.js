@@ -24,7 +24,10 @@
 
 // √ ✓ ✔ ☑ ☒, dan glyph Wingdings (ü → U+F0FC, þ → U+F0FE) bila font simbol dipetakan ke area pribadi.
 const HURUF_CENTANG = '√✓✔☑☒';
-const POLA_CENTANG_SAJA = new RegExp(`^[${HURUF_CENTANG}]{1,2}$`);
+// "Ö" (U+00D6) = centang font Symbol yang tampil sebagai √ tetapi terbaca huruf Ö. Satu-satunya pemakai di buku
+// Kepbup OKU: jabatan 177 (Bidang Pencegahan Damkar, 2026-09-17) — tanpa ini blok TABEL CENTANG jabatan itu hilang.
+// Hanya bila berdiri sendiri sebagai satu potongan teks; sejajar judul kolom tetap disyaratkan seperti centang lain.
+const POLA_CENTANG_SAJA = new RegExp(`^(?:[${HURUF_CENTANG}]{1,2}|\\u00D6)$`);
 const POLA_CENTANG_GLOBAL = new RegExp(`[${HURUF_CENTANG}]`, 'g');
 
 export const TOLERANSI_SEJAJAR = 12;   // pt; centang di luar rentang deret judul lebih dari ini → tidak pasti
