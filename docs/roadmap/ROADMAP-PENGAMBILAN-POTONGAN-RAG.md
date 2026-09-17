@@ -2,7 +2,7 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Pencarian dokumen (`agent-process` `lib/rag/document_search.ts`, RPC `match_documents`), pemotongan (`vector_utils.ts`), alat uji (`frontend/node_modules/.uji-rag/`, di luar git)
-**Status:** 📝 **Rencana disetujui (2026-09-17) — Tahap A siap dikerjakan**
+**Status:** 🟡 **Tahap A selesai (2026-09-17, recall@8 13/14) — Tahap B sedang diukur**
 **Tanggal:** 2026-09-17
 **Roadmap Index:** Item 90 (payung Item 89)
 
@@ -49,7 +49,7 @@ sini supaya tidak ada lagi sisa yang tercecer; bullet lama diberi rujukan ke bag
 | U1 | Item 78–81 | "Uji mutu RAG dinyatakan cukup" diukur pada HCDP + KATALOG-PENDAS. **KATALOG-PENDAS (813 potongan) & Operator Handbook (827) sudah tidak ada di database** — akun Owner kini 11 dokumen / 288 potongan; KAT-01..03 tak bisa dijalankan. Set tidak memuat PDF-OCR maupun dokumen peraturan. | **Dikerjakan di Tahap A** — set dibangun ulang dari dokumen yang ada. |
 | U2 | Item 76 (riset PDF) vs Item 89 | Awalan judul bagian per potongan pernah **dibuang** (rata skor 0,7476 → 0,7021/0,7139; semua pertanyaan kata kuncinya ada di potongan). Item 89 mengukur **naik** +0,08–0,12 untuk pertanyaan yang menyebut nama jabatan yang tak ada di potongan. Belum pernah didamaikan. | **Dikerjakan di Tahap C** — Item 89 Tahap 2 wajib mengukur kedua jenis pertanyaan; ditolak bila jenis pertama turun di bawah batas masuk. |
 | U3 | Item 70 | 9 dokumen lama (Mei–September) masih berpotongan **1.000–4.500 huruf** (183 potongan: C++, Matematika Dasar, `2026-06-24_AI.txt`, `20260910_ArsitekturRAG…`, dll.) dan ikut bersaing peringkat (`2026-06-24_AI.txt` #10 untuk Q2). | ✅ **Selesai 2026-09-17** — Owner menghapus kesembilannya sendiri (ringkasan/Wikipedia, pemotongan lama). Diperiksa di database: tersisa 2 dokumen / 105 potongan (HCDP DOCX 87, UJI-Kepbup 18), potongan yatim 0. |
-| U4 | Item 67 | Ambang 0,55 dekat dasar derau (dokumen tak berhubungan 0,544–0,547); Q1 Item 89: skor #1–#16 rapat 0,702–0,648. | **Diukur di Tahap A** (skor NEG & sebaran skor); ambang tidak diubah sebelum ada angka. |
+| U4 | Item 67 | Ambang 0,55 dekat dasar derau (dokumen tak berhubungan 0,544–0,547); Q1 Item 89: skor #1–#16 rapat 0,702–0,648. | **Diukur 2026-09-17:** skor ke-1 NEG 0,558–0,776 vs skor bukti 0,636–0,770 — bertumpuk penuh; ambang **tidak** dinaikkan (tidak memisahkan). |
 | U5 | Item 76 keterbatasan, 76b, 86 | Uji mutu jawaban jalur PDF, cek salah baca OCR, dan OCR massal buku penuh belum pernah dijalankan; detektor menandai 939/1.004 halaman Kepbup → OCR menggabungkan tabel (akar Item 88–89). | **Tahap A** memuat pertanyaan berkas uji Kepbup; OCR massal tetap menunggu keputusan 3 Item 88. |
 | U6 | Item 65, 87 | `document_chunks` tanpa nomor urut → potongan tetangga mustahil. | **Ditunda** (§5) — dinilai sesudah angka Tahap A–C. |
 | U7 | Item 70 | Pertanyaan bahasa Indonesia ke dokumen berbahasa Inggris ±0,05–0,10 lebih rendah; terjemahan saat pencarian kosong belum dibuat. | **Ditunda** — tidak ada dokumen berbahasa Inggris di akun saat ini (Operator Handbook terhapus). |
@@ -87,6 +87,10 @@ sini supaya tidak ada lagi sisa yang tercecer; bullet lama diberi rujukan ke bag
 - **Keluaran:** berkas JSON + ringkasan; hasil baseline dicatat di changelog sebagai angka acuan.
 - **Biaya:** ±16 embedding pertanyaan per putaran (< $0,001).
 - **Selesai bila:** baseline tercatat; skrip bisa diulang dengan hasil identik (kontrol: skor = database).
+- ✅ **Selesai 2026-09-17** — set 17 pertanyaan (HCDP-01..08, KEP-01..06, NEG-01..03; kunci diperiksa ke DOCX/PDF
+  asli 17/17), skrip `uji-pengambilan.js`. **Acuan: recall@8 13/14** — gagal KEP-01 (#15), KEP-05 di batas (#8);
+  skor ke-1 NEG 0,558–0,776 bertumpuk dengan skor bukti 0,636–0,770 (U4: ambang bukan jalan keluar). Rincian:
+  [changelog](../project-memory/changelog/2026-09-17-uji-pengambilan-potongan-baseline.md).
 
 ### Tahap B — Pencarian Hybrid (kata kunci + vektor)
 
@@ -126,10 +130,10 @@ ulang) sehingga efeknya terukur bersih; C mengubah potongan dan butuh unggah ula
 
 ## 6. Risiko
 
-- **Set uji kecil** (±16 pertanyaan, 3 dokumen) — angka bisa menyesatkan untuk dokumen lain; diperluas
+- **Set uji kecil** (17 pertanyaan, 2 dokumen) — angka bisa menyesatkan untuk dokumen lain; diperluas
   bertahap, tiap dokumen baru minimal 3 pertanyaan.
 - **Kata kunci bahasa Indonesia** tanpa stemming (`simple`): "pelatihan" ≠ "latih" — hybrid membantu istilah
   persis, bukan variasi kata.
-- **Kunci jawaban set uji** masih draf; salah kunci = angka salah. Owner mengonfirmasi sebelum baseline.
+- **Kunci jawaban set uji** — diperiksa ke dokumen asli 2026-09-17 (17/17); pertanyaan baru wajib diperiksa sama.
 - **Dokumen di akun berubah** (terhapus/diunggah ulang) mengubah angka. Setiap hasil Tahap A mencatat daftar
   dokumen & jumlah potongan saat diukur — pelajaran U1.
