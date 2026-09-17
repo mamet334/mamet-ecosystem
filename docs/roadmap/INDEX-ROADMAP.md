@@ -23,7 +23,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 
 | Item | Status | Dokumen (sisa pekerjaan ada di sana) |
 |---|---|---|
-| 90 Pengambilan potongan RAG | 🟡 Tahap A ✅ (acuan recall@8 13/14); **Tahap B berikutnya** (hybrid); utang lama U1–U10 | [`ROADMAP-PENGAMBILAN-POTONGAN-RAG.md`](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) |
+| 90 Pengambilan potongan RAG | 🟡 Tahap A–B ✅ (recall@8 13/14 → 14/14, hybrid live v455); **Tahap C berikutnya** (= Item 89); utang lama U1–U10 | [`ROADMAP-PENGAMBILAN-POTONGAN-RAG.md`](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) |
 | 89 Konteks potongan RAG | 📝 disetujui, dikerjakan sebagai Tahap C Item 90 | [`ROADMAP-KONTEKS-POTONGAN-RAG.md`](./ROADMAP-KONTEKS-POTONGAN-RAG.md) |
 | 88 Tabel centang PDF (+ sisa 86 OCR massal) | 🟡 Tahap 1–2 live (v454); Tahap 3 menunggu Item 89/90; keputusan 3 belum | [`ROADMAP-TABEL-CENTANG-PDF.md`](./ROADMAP-TABEL-CENTANG-PDF.md) |
 | 85 Folder kerja Assistant | 📝 Tahap 0 sebagian; sisa pagar IPC `folder:*`; Tahap 1 menunggu aba-aba | [`ROADMAP-FOLDER-KERJA-ASSISTANT.md`](./ROADMAP-FOLDER-KERJA-ASSISTANT.md) |
@@ -165,4 +165,4 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 87. ✅ Potongan RAG Tidak Memenggal Daftar Bernomor (2026-09-16) — [log](../project-memory/changelog/2026-09-16-potongan-tidak-memenggal-daftar-bernomor.md)
 88. 🟡 Tabel Centang PDF — Kolom dari Koordinat, Bukan dari OCR (2026-09-17) — [rancangan](./ROADMAP-TABEL-CENTANG-PDF.md) · [log](../project-memory/changelog/2026-09-17-tabel-centang-pdf-dari-koordinat.md) · [log](../project-memory/changelog/2026-09-17-tabel-centang-kontrak-dan-label.md)
 89. 📝 Konteks Potongan RAG — Bagian Tidak Tercampur & Judul Konteks (2026-09-17) — [rancangan](./ROADMAP-KONTEKS-POTONGAN-RAG.md) Tahap C Item 90
-90. 📝 Pengambilan Potongan RAG — Diukur Dulu, Pola Standar Hanya Bila Cocok (2026-09-17) — [rancangan](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) · [log](../project-memory/changelog/2026-09-17-utang-lama-rag-dan-kode-mati.md) · [log A](../project-memory/changelog/2026-09-17-uji-pengambilan-potongan-baseline.md)
+90. 📝 Pengambilan Potongan RAG — Diukur Dulu, Pola Standar Hanya Bila Cocok (2026-09-17) — [rancangan](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) · [log](../project-memory/changelog/2026-09-17-utang-lama-rag-dan-kode-mati.md) · [log A](../project-memory/changelog/2026-09-17-uji-pengambilan-potongan-baseline.md) · [log B](../project-memory/changelog/2026-09-17-pencarian-gabungan-vektor-kata.md)

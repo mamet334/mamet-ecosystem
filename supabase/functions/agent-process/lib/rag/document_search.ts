@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { RuntimeContext } from '../runtime_context.ts';
 import { RagDocument, FormattedRagContext, RoutingDecision } from './types.ts';
+import { kataKunciPencarian } from '../../../../../frontend/src/core/runtime/services/KnowledgeService.js';
 
 export const searchDocuments = async (
   queryEmbedding: number[],
@@ -24,13 +25,29 @@ export const searchDocuments = async (
   // pun otomatis memilih space terbaru saat mengunggah, jadi dokumen jarang berada di CORE.
   const spaceId = routingDecision?.scope === 'WORKSPACE' ? routingDecision.workspace_id : null;
 
-  const { data: matchedDocs, error: matchError } = await supabaseClient.rpc('match_documents', {
+  // PENCARIAN GABUNGAN (Item 90 Tahap B, 2026-09-17): peringkat vektor + peringkat kata kunci (RRF k=60)
+  // di dalam database, SEBELUM dipotong ke batas jumlah potongan. Vektor saja menaruh tabel persyaratan
+  // Kepbup di #15 untuk "tingkat kepentingan pelatihan teknis Sekretaris DPRD" (hanya 8 diambil); gabungan
+  // #3, set uji 13/14 → 14/14. Ambang & batas tidak berubah. Kata kunci dibatasi 30 karena finalMessage
+  // bisa memuat isi lampiran. Bila RPC gabungan gagal, jatuh ke match_documents (vektor saja).
+  const kataKunci = kataKunciPencarian(finalMessage).slice(0, 30);
+  const argumenDasar = {
     query_embedding: queryEmbedding,
     match_threshold: effectiveRagThreshold,
     match_count: effectiveRagMatchCount,
     p_user_id: userId,
     p_space_id: spaceId
+  };
+  let { data: matchedDocs, error: matchError } = await supabaseClient.rpc('match_documents_hybrid', {
+    ...argumenDasar,
+    query_words: kataKunci
   });
+  if (matchError) {
+    console.warn(`[RAG] match_documents_hybrid gagal (${matchError.message}) — cadangan match_documents (vektor saja).`);
+    ({ data: matchedDocs, error: matchError } = await supabaseClient.rpc('match_documents', argumenDasar));
+  } else {
+    console.log(`[RAG] Pencarian gabungan vektor+kata: ${matchedDocs?.length ?? 0} potongan, ${kataKunci.length} kata kunci [${kataKunci.join(', ').slice(0, 160)}]`);
+  }
 
   if (matchError) {
     throw new Error(`RAG_DB_FAIL: ${matchError.message}`);

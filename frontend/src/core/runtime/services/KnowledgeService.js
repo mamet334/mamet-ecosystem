@@ -25,6 +25,19 @@ const DEFAULT_STOPWORDS = new Set([
   'info', 'informasi', 'data', 'anda', 'kamu', 'kita', 'kami', 'punya', 'milik'
 ]);
 
+/**
+ * Kata kunci untuk pencarian dokumen gabungan (RPC `match_documents_hybrid`, Item 90 Tahap B).
+ * Satu aturan dipakai server (`agent-process` document_search.ts) DAN skrip uji pengambilan, supaya yang
+ * diukur sama dengan yang berjalan: huruf kecil, pecah pada selain a-z0-9, panjang > 2, buang kata umum.
+ * Kata persis (tanpa pemotong imbuhan) — kamus 'indonesian' Postgres diukur lebih buruk di set uji.
+ * @param {string} teks
+ * @returns {string[]}
+ */
+export function kataKunciPencarian(teks = '') {
+  if (!teks || typeof teks !== 'string') return [];
+  return [...new Set(teks.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !DEFAULT_STOPWORDS.has(w)))];
+}
+
 export class KnowledgeService {
   /**
    * @param {Object} [deps] - serviceManager (client) atau { supabaseClient, eventBus } (Deno/Edge)

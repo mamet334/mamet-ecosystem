@@ -2,7 +2,7 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Pencarian dokumen (`agent-process` `lib/rag/document_search.ts`, RPC `match_documents`), pemotongan (`vector_utils.ts`), alat uji (`frontend/node_modules/.uji-rag/`, di luar git)
-**Status:** 🟡 **Tahap A selesai (2026-09-17, recall@8 13/14) — Tahap B sedang diukur**
+**Status:** 🟡 **Tahap A–B selesai (2026-09-17): recall@8 13/14 → 14/14, live v455 — Tahap C (Item 89) berikutnya**
 **Tanggal:** 2026-09-17
 **Roadmap Index:** Item 90 (payung Item 89)
 
@@ -31,7 +31,7 @@ cocok tetapi belum dipakai · **Ditolak** = tidak cocok.
 | Membaca dokumen | Parser tata letak di server (Docling, Unstructured, LlamaParse) | pdf.js/mammoth di browser (69), tabel DOCX→Markdown (76), OCR tabel PDF (76b/86), centang dari koordinat (88) | **Jalan sendiri** — ekstraksi di browser, tanpa server Python; parser server = perubahan arsitektur, belum diperlukan sebelum ada angka |
 | Memotong | Potong menurut struktur + konteks dokumen di tiap potongan | 800 huruf (70) + judul tabel diulang (76) + daftar bernomor utuh (87) | **Belum** (sebagian): konteks bagian/identitas berbasis aturan → **Item 89** |
 | Konteks potongan buatan model | Contextual Retrieval: model menulis konteks tiap potongan | — | **Ditolak** — dibayar saldo pengguna per potongan (Kepbup ±2.500 potongan), butuh pemrosesan latar tanpa kunci sistem (BYOK) |
-| Mencari | Hybrid: kata kunci (full-text/BM25) + vektor, digabung | Vektor saja, 8 teratas, ambang 0,55 (65); penulisan ulang pertanyaan (67) | **Belum** — full-text Postgres sudah ada di Supabase, tanpa biaya model → **Tahap B** |
+| Mencari | Hybrid: kata kunci (full-text/BM25) + vektor, digabung | Vektor saja, 8 teratas, ambang 0,55 (65); penulisan ulang pertanyaan (67) | ✅ **Dipakai (Tahap B, 2026-09-17)** — `match_documents_hybrid`: RRF vektor + kata persis di database, live v455 |
 | Mengurutkan ulang | Reranker (model/API) | — | **Ditunda** — butuh panggilan model berbayar per pertanyaan; dinilai hanya bila Tahap B + Item 89 belum cukup |
 | Potongan tetangga / induk | Parent–child, tetangga | Tidak ada (`document_chunks` tanpa nomor urut — Item 87) | **Ditunda** (U6) — perubahan skema + unggah ulang; dinilai sesudah angka Tahap A–C |
 | Menjawab & mengutip | Kutipan ID potongan | Label VERIFIED dijaga kode: sumber (71), kutipan (73), angka (77/81), rujukan (79), centang (88) | **Jalan sendiri** — tuntutan "kebenaran di atas biaya"; **dibekukan**: tidak ditambah aturan baru sampai pengambilan dibenahi |
@@ -53,7 +53,7 @@ sini supaya tidak ada lagi sisa yang tercecer; bullet lama diberi rujukan ke bag
 | U5 | Item 76 keterbatasan, 76b, 86 | Uji mutu jawaban jalur PDF, cek salah baca OCR, dan OCR massal buku penuh belum pernah dijalankan; detektor menandai 939/1.004 halaman Kepbup → OCR menggabungkan tabel (akar Item 88–89). | **Tahap A** memuat pertanyaan berkas uji Kepbup; OCR massal tetap menunggu keputusan 3 Item 88. |
 | U6 | Item 65, 87 | `document_chunks` tanpa nomor urut → potongan tetangga mustahil. | **Ditunda** (§5) — dinilai sesudah angka Tahap A–C. |
 | U7 | Item 70 | Pertanyaan bahasa Indonesia ke dokumen berbahasa Inggris ±0,05–0,10 lebih rendah; terjemahan saat pencarian kosong belum dibuat. | **Ditunda** — tidak ada dokumen berbahasa Inggris di akun saat ini (Operator Handbook terhapus). |
-| U8 | Item 65 | RAG Mametlite (mode LITE) & jalur tanpa kunci OpenRouter (cadangan pencocokan kata) belum terbukti live. | **Ditunda** — dicatat; Tahap B mengubah pencarian sehingga pembuktian dilakukan sesudahnya. |
+| U8 | Item 65 | RAG Mametlite (mode LITE) & jalur tanpa kunci OpenRouter (cadangan pencocokan kata) belum terbukti live. | **Ditunda** — Tahap B selesai (LITE memakai RPC yang sama lewat server); pembuktian live LITE & jalur tanpa kunci belum. |
 | U9 | Item 73 | Aturan kutipan persis hanya prompt, tidak ditegakkan kode. | **Tidak dikerjakan** — label dibekukan (§2). |
 | U10 | Item 88 Tahap 3 (konteks chat 2026-09-17) | Prompt mode LOOKUP memuat **dua instruksi label yang bertentangan**: `request_pipeline.ts` "Untuk mode LOOKUP: [Pengetahuan umum AI …]" dan BLOK 6 (Evidence Gate PASSED) "VERIFIED / HYPOTHESIS / INSUFFICIENT". Tidak memengaruhi pengambilan potongan (vektor & batas 8 sama dengan ASSISTANT). | **Ditunda** — dinilai sesudah Tahap A; menyelaraskan instruksi, bukan aturan label baru. |
 
@@ -98,7 +98,7 @@ sini supaya tidak ada lagi sisa yang tercecer; bullet lama diberi rujukan ke bag
 potongan yang hanya mirip makna.
 
 - **Nilai kecocokan dulu (lokal/SQL, $0):** full-text Postgres pada `document_chunks.content`. Konfigurasi
-  `simple` (Postgres tidak punya kamus bahasa Indonesia) + daftar kata umum yang dibuang — mulai dari
+  `simple` + daftar kata umum yang dibuang — mulai dari
   `DEFAULT_STOPWORDS` yang sudah ada di `KnowledgeService.js` (cadangan pencocokan kata server), bukan daftar baru. Ukur di set Tahap A **sebelum** mengubah server: dengan SQL langsung, apakah potongan bukti naik
   peringkat bila skor kata kunci digabung.
 - **Penggabungan:** Reciprocal Rank Fusion (peringkat vektor + peringkat kata kunci) — tanpa menyetel bobot
@@ -107,6 +107,19 @@ potongan yang hanya mirip makna.
   sebelum diterapkan; RPC lama tetap ada sampai hybrid terbukti.
 - **Ditolak bila:** recall@8 tidak naik, atau NEG-01/02 mulai mengambil potongan yang menyesatkan.
 - **Selesai bila:** recall@8 set Tahap A naik tanpa penurunan pertanyaan yang sudah benar; live terbukti.
+- ✅ **Selesai 2026-09-17** — migrasi `20260917073305_match_documents_hybrid` (kolom `fts` + GIN, RPC
+  `match_documents_hybrid`, anon tanpa hak), `document_search.ts` memakai RPC gabungan + cadangan
+  `match_documents`, kata kunci dari `kataKunciPencarian` (`KnowledgeService.js`, dipakai server & skrip uji).
+  **recall@8 13/14 → 14/14** (KEP-01 #15 → #3, KEP-05 #8 → #5), stabil pada k 10–100. Live v455: Q1 dijawab
+  "Penting" VERIFIED (sebelumnya pengetahuan umum/HYPOTHESIS). Rincian:
+  [changelog](../project-memory/changelog/2026-09-17-pencarian-gabungan-vektor-kata.md).
+- **Penyimpangan dari rancangan:** catatan "Postgres tidak punya kamus bahasa Indonesia" **keliru** — PostgreSQL
+  17 membawa konfigurasi `indonesian`. Diukur: sama 14/14 pada k=60, tetapi KEP-04/05 & HCDP-04 turun peringkat
+  dan KEP-05 gagal pada k=10 (pemotong imbuhan kebablasan: "berapa"→apa, "pengalaman"→alam, "jabatan"→jabat).
+  **Tetap `simple`; kamus = opsi terukur**, diukur ulang bila set uji memuat pertanyaan berbentuk kata berbeda
+  dari dokumen (mis. "seberapa penting" vs "Tingkat Pentingnya") yang gagal.
+- **Tidak berubah:** skor ke-1 pertanyaan NEG tetap bertumpuk dengan skor bukti (U4); potongan halaman 1 Kepbup
+  (satu-satunya yang memuat nama jabatan) masih di #1 untuk KEP-03/04/06 → Tahap C.
 
 ### Tahap C — Konteks Potongan (Item 89)
 
@@ -132,8 +145,10 @@ ulang) sehingga efeknya terukur bersih; C mengubah potongan dan butuh unggah ula
 
 - **Set uji kecil** (17 pertanyaan, 2 dokumen) — angka bisa menyesatkan untuk dokumen lain; diperluas
   bertahap, tiap dokumen baru minimal 3 pertanyaan.
-- **Kata kunci bahasa Indonesia** tanpa stemming (`simple`): "pelatihan" ≠ "latih" — hybrid membantu istilah
-  persis, bukan variasi kata.
+- **Kata kunci bahasa Indonesia** tanpa pemotong imbuhan (`simple`): "pelatihan" ≠ "latih" — hybrid membantu
+  istilah persis, bukan variasi kata. Kamus `indonesian` sudah diukur (lebih buruk di set sekarang, Tahap B).
+- **Skrip uji di `node_modules/.uji-rag`** tidak dipantau Vite — skrip yang diubah wajib nama berkas baru
+  (`uji-pengambilan-v3.js` sekarang).
 - **Kunci jawaban set uji** — diperiksa ke dokumen asli 2026-09-17 (17/17); pertanyaan baru wajib diperiksa sama.
 - **Dokumen di akun berubah** (terhapus/diunggah ulang) mengubah angka. Setiap hasil Tahap A mencatat daftar
   dokumen & jumlah potongan saat diukur — pelajaran U1.
