@@ -13,9 +13,10 @@
  * Kini potongan yang DIMULAI di tengah tabel diawali baris judul + garis pemisah tabel itu. Ini isi
  * asli dokumen, bukan awalan buatan. Potongan jadi lebih panjang dari 800 huruf sebanyak judulnya.
  *
- * Murni, tanpa impor — diuji di Node (vector_utils.ts memakai parameter properties yang tak bisa
- * dijalankan Node tanpa kompilasi).
+ * Murni — diuji di Node (vector_utils.ts memakai parameter properties yang tak bisa dijalankan Node
+ * tanpa kompilasi). Satu impor murni: pengenal judul bagian (Item 89).
  */
+import { judulBagian } from './konteks_potongan.ts';
 
 const BARIS_TABEL = /^\s*\|.*\|\s*$/;
 const BARIS_PEMISAH = /^\s*\|(\s*:?-{3,}:?\s*\|)+\s*$/;
@@ -37,11 +38,15 @@ export function judulTabelUntuk(teks: string, posisi: number): string | null {
   const [awalBaris, akhirBaris] = batasBaris(teks, posisi);
   if (!BARIS_TABEL.test(teks.slice(awalBaris, akhirBaris))) return null;
 
-  // Naik ke baris paling atas dari deretan baris tabel yang bersambung.
+  // Naik ke baris paling atas dari deretan baris tabel yang bersambung. Judul bagian di tengah tabel
+  // ("| III. PERSYARATAN JABATAN | | |", tabel gabungan OCR — Item 89) memutus tabel: judul tabel di
+  // atasnya bukan milik baris sesudahnya.
+  if (judulBagian(teks.slice(awalBaris, akhirBaris))) return null;
   let atas = awalBaris;
   while (atas > 0) {
     const [awalSebelum, akhirSebelum] = batasBaris(teks, atas - 1);
-    if (!BARIS_TABEL.test(teks.slice(awalSebelum, akhirSebelum))) break;
+    const sebelum = teks.slice(awalSebelum, akhirSebelum);
+    if (!BARIS_TABEL.test(sebelum) || judulBagian(sebelum)) break;
     atas = awalSebelum;
   }
 

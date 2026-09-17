@@ -23,9 +23,9 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 
 | Item | Status | Dokumen (sisa pekerjaan ada di sana) |
 |---|---|---|
-| 90 Pengambilan potongan RAG | 🟡 Tahap A–B ✅ (recall@8 13/14 → 14/14, hybrid live v455); **Tahap C berikutnya** (= Item 89); utang lama U1–U10 | [`ROADMAP-PENGAMBILAN-POTONGAN-RAG.md`](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) |
-| 89 Konteks potongan RAG | 📝 disetujui, dikerjakan sebagai Tahap C Item 90 | [`ROADMAP-KONTEKS-POTONGAN-RAG.md`](./ROADMAP-KONTEKS-POTONGAN-RAG.md) |
-| 88 Tabel centang PDF (+ sisa 86 OCR massal) | 🟡 Tahap 1–2 live (v454); Tahap 3 menunggu Item 89/90; keputusan 3 belum | [`ROADMAP-TABEL-CENTANG-PDF.md`](./ROADMAP-TABEL-CENTANG-PDF.md) |
+| 90 Pengambilan potongan RAG | ✅ Tahap A–C (recall@8 14/14, bukti Kepbup #1, live); sisa utang U4, U6–U8, U10 | [`ROADMAP-PENGAMBILAN-POTONGAN-RAG.md`](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) |
+| 89 Konteks potongan RAG | ✅ live (Tahap C Item 90); sisa: 23 potongan bercampur buku penuh (menunggu keputusan 3 Item 88) | [`ROADMAP-KONTEKS-POTONGAN-RAG.md`](./ROADMAP-KONTEKS-POTONGAN-RAG.md) |
+| 88 Tabel centang PDF (+ sisa 86 OCR massal) | 🟡 Tahap 1–3 ✅ (Q1 VERIFIED live); **keputusan 3 belum** (buku penuh + OCR massal) | [`ROADMAP-TABEL-CENTANG-PDF.md`](./ROADMAP-TABEL-CENTANG-PDF.md) |
 | 85 Folder kerja Assistant | 📝 Tahap 0 sebagian; sisa pagar IPC `folder:*`; Tahap 1 menunggu aba-aba | [`ROADMAP-FOLDER-KERJA-ASSISTANT.md`](./ROADMAP-FOLDER-KERJA-ASSISTANT.md) |
 | 72 Adaptive Shell (UI multi-device) | 📋 belum dikerjakan | [`roadmap-adaptive-shell.md`](./roadmap-adaptive-shell.md) |
 | 33, 48, 49, 50, 91 Temuan audit tanpa rancangan | ⏳ T1 izin tool Lite · T2 dasbor yatim · T3 rute mati backend · T4 `match_documents` ke `anon` · T6 `verification_audit_logs.metadata` tak ada (400) | [`ROADMAP-TEMUAN-TERBUKA.md`](./ROADMAP-TEMUAN-TERBUKA.md) |
@@ -36,8 +36,8 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 
 | Dokumen | Status | Cakupan |
 |---|---|---|
-| `ROADMAP-PENGAMBILAN-POTONGAN-RAG.md` | 📝 Item 90 | peta jalur RAG vs pola umum, utang lama, set uji → hybrid → konteks |
-| `ROADMAP-KONTEKS-POTONGAN-RAG.md` | 📝 Item 89 | pemisah bagian tabel OCR + baris konteks potongan |
+| `ROADMAP-PENGAMBILAN-POTONGAN-RAG.md` | ✅ Item 90 (A–C) | peta jalur RAG vs pola umum, utang lama, set uji → hybrid → konteks |
+| `ROADMAP-KONTEKS-POTONGAN-RAG.md` | ✅ Item 89 | pemisah bagian tabel OCR + baris konteks potongan |
 | `ROADMAP-TABEL-CENTANG-PDF.md` | 🟡 Item 88 | kolom centang dari koordinat pdf.js, kontrak & label |
 | `ROADMAP-TEMUAN-TERBUKA.md` | ⏳ T1–T4, T6 (T5 ✅) | temuan audit tanpa rancangan sendiri |
 | `ROADMAP-FOLDER-KERJA-ASSISTANT.md` | 📝 Item 85 | tombol 📁 sebagai tempat kerja Assistant |
@@ -164,6 +164,6 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 86. 🔧 OCR PDF: Batas Laju & Konfirmasi OCR Massal (2026-09-16) — [rancangan](./ROADMAP-TABEL-CENTANG-PDF.md) sisa di §7 no. 3 · [log](../project-memory/changelog/2026-09-16-ocr-batas-laju-dan-konfirmasi-massal.md)
 87. ✅ Potongan RAG Tidak Memenggal Daftar Bernomor (2026-09-16) — [log](../project-memory/changelog/2026-09-16-potongan-tidak-memenggal-daftar-bernomor.md)
 88. 🟡 Tabel Centang PDF — Kolom dari Koordinat, Bukan dari OCR (2026-09-17) — [rancangan](./ROADMAP-TABEL-CENTANG-PDF.md) · [log](../project-memory/changelog/2026-09-17-tabel-centang-pdf-dari-koordinat.md) · [log](../project-memory/changelog/2026-09-17-tabel-centang-kontrak-dan-label.md)
-89. 📝 Konteks Potongan RAG — Bagian Tidak Tercampur & Judul Konteks (2026-09-17) — [rancangan](./ROADMAP-KONTEKS-POTONGAN-RAG.md) Tahap C Item 90
-90. 📝 Pengambilan Potongan RAG — Diukur Dulu, Pola Standar Hanya Bila Cocok (2026-09-17) — [rancangan](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) · [log](../project-memory/changelog/2026-09-17-utang-lama-rag-dan-kode-mati.md) · [log A](../project-memory/changelog/2026-09-17-uji-pengambilan-potongan-baseline.md) · [log B](../project-memory/changelog/2026-09-17-pencarian-gabungan-vektor-kata.md)
+89. ✅ Konteks Potongan RAG — Bagian Tidak Tercampur & Judul Konteks (2026-09-17) — [rancangan](./ROADMAP-KONTEKS-POTONGAN-RAG.md) · [log](../project-memory/changelog/2026-09-17-konteks-potongan-bagian-dan-identitas.md)
+90. ✅ Pengambilan Potongan RAG — Diukur Dulu, Pola Standar Hanya Bila Cocok (2026-09-17) — [rancangan](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) · [log](../project-memory/changelog/2026-09-17-utang-lama-rag-dan-kode-mati.md) · [log A](../project-memory/changelog/2026-09-17-uji-pengambilan-potongan-baseline.md) · [log B](../project-memory/changelog/2026-09-17-pencarian-gabungan-vektor-kata.md) · [log C](../project-memory/changelog/2026-09-17-konteks-potongan-bagian-dan-identitas.md)
 91. ✅ Hapus Dokumen RAG — Cek Baris Terhapus & Muat Ulang Daftar (2026-09-17) — [log](../project-memory/changelog/2026-09-17-hapus-dokumen-cek-baris-terhapus.md) · web live ✅, hapus desktop/mametlite belum teruji

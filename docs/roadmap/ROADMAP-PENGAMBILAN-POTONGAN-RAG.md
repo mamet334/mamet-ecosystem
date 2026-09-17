@@ -2,7 +2,7 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Pencarian dokumen (`agent-process` `lib/rag/document_search.ts`, RPC `match_documents`), pemotongan (`vector_utils.ts`), alat uji (`frontend/node_modules/.uji-rag/`, di luar git)
-**Status:** 🟡 **Tahap A–B selesai (2026-09-17): recall@8 13/14 → 14/14, live v455 — Tahap C (Item 89) berikutnya**
+**Status:** ✅ **Tahap A–C selesai (2026-09-17)**: recall@8 13/14 → 14/14 (B), bukti Kepbup #1 semua (C); live
 **Tanggal:** 2026-09-17
 **Roadmap Index:** Item 90 (payung Item 89)
 
@@ -47,7 +47,7 @@ sini supaya tidak ada lagi sisa yang tercecer; bullet lama diberi rujukan ke bag
 | # | Asal | Temuan (bukti hari ini) | Keputusan |
 |---|---|---|---|
 | U1 | Item 78–81 | "Uji mutu RAG dinyatakan cukup" diukur pada HCDP + KATALOG-PENDAS. **KATALOG-PENDAS (813 potongan) & Operator Handbook (827) sudah tidak ada di database** — akun Owner kini 11 dokumen / 288 potongan; KAT-01..03 tak bisa dijalankan. Set tidak memuat PDF-OCR maupun dokumen peraturan. | **Dikerjakan di Tahap A** — set dibangun ulang dari dokumen yang ada. |
-| U2 | Item 76 (riset PDF) vs Item 89 | Awalan judul bagian per potongan pernah **dibuang** (rata skor 0,7476 → 0,7021/0,7139; semua pertanyaan kata kuncinya ada di potongan). Item 89 mengukur **naik** +0,08–0,12 untuk pertanyaan yang menyebut nama jabatan yang tak ada di potongan. Belum pernah didamaikan. | **Dikerjakan di Tahap C** — Item 89 Tahap 2 wajib mengukur kedua jenis pertanyaan; ditolak bila jenis pertama turun di bawah batas masuk. |
+| U2 | Item 76 (riset PDF) vs Item 89 | Awalan judul bagian per potongan pernah **dibuang** (rata skor 0,7476 → 0,7021/0,7139; semua pertanyaan kata kuncinya ada di potongan). Item 89 mengukur **naik** +0,08–0,12 untuk pertanyaan yang menyebut nama jabatan yang tak ada di potongan. Belum pernah didamaikan. | ✅ **Didamaikan (Tahap C, 2026-09-17)** — konteks hanya untuk dokumen beridentitas: HCDP (kata kunci ada di potongan) identik & peringkat sama; Kepbup (nama jabatan tak ada di potongan) naik +0,07–0,12. [log](../project-memory/changelog/2026-09-17-konteks-potongan-bagian-dan-identitas.md) |
 | U3 | Item 70 | 9 dokumen lama (Mei–September) masih berpotongan **1.000–4.500 huruf** (183 potongan: C++, Matematika Dasar, `2026-06-24_AI.txt`, `20260910_ArsitekturRAG…`, dll.) dan ikut bersaing peringkat (`2026-06-24_AI.txt` #10 untuk Q2). | ✅ **Selesai 2026-09-17** — Owner menghapus kesembilannya sendiri (ringkasan/Wikipedia, pemotongan lama). Diperiksa di database: tersisa 2 dokumen / 105 potongan (HCDP DOCX 87, UJI-Kepbup 18), potongan yatim 0. |
 | U4 | Item 67 | Ambang 0,55 dekat dasar derau (dokumen tak berhubungan 0,544–0,547); Q1 Item 89: skor #1–#16 rapat 0,702–0,648. | **Diukur 2026-09-17:** skor ke-1 NEG 0,558–0,776 vs skor bukti 0,636–0,770 — bertumpuk penuh; ambang **tidak** dinaikkan (tidak memisahkan). |
 | U5 | Item 76 keterbatasan, 76b, 86 | Uji mutu jawaban jalur PDF, cek salah baca OCR, dan OCR massal buku penuh belum pernah dijalankan; detektor menandai 939/1.004 halaman Kepbup → OCR menggabungkan tabel (akar Item 88–89). | **Tahap A** memuat pertanyaan berkas uji Kepbup; OCR massal tetap menunggu keputusan 3 Item 88. |
@@ -127,10 +127,15 @@ Dikerjakan sesuai [`ROADMAP-KONTEKS-POTONGAN-RAG.md`](./ROADMAP-KONTEKS-POTONGAN
 sudah diambil), **diukur dengan set Tahap A** bersama hasil Tahap B — bukan berdiri sendiri. Tahap 2 Item 89
 ("ukur skor keluaran kode") memakai skrip Tahap A dan mengukur **kedua** jenis pertanyaan (U2).
 
-> **Wajib sebelum Tahap C (2026-09-17):** dokumen KEP dihapus lalu diunggah ulang (`b604d31b…`, 19 potongan;
-> total 106 vs 105 saat acuan Tahap B). Ukur ulang recall@8 dengan skrip Tahap A di `npm run desktop` dan jadikan
-> itu acuan baru — ID dan batas potongan sudah berubah. Lihat
-> [changelog Item 91](../project-memory/changelog/2026-09-17-hapus-dokumen-cek-baris-terhapus.md).
+- ✅ **Selesai 2026-09-17** — `rag-process` + `agent-process` di-deploy, berkas uji diunggah ulang (`b604d31b…`,
+  19 potongan, korpus 106). Set uji hybrid: recall@8 **14/14**; KEP-01 #3 → **#1**, KEP-03/04 #2 → #1, KEP-05 #5 → #1,
+  KEP-06 #3 → #1 (skor bukti +0,07–0,17); HCDP sama. Web live: Q1 menyebut ketiga pelatihan "Penting", Q2 eselon III,
+  keduanya VERIFIED. Rincian: [changelog](../project-memory/changelog/2026-09-17-konteks-potongan-bagian-dan-identitas.md).
+- **Diluruskan:** catatan "wajib ukur ulang acuan sebelum Tahap C" (Item 91) — unggahan ulang `b604d31b…` sudah
+  **hasil pemotong Tahap C**, jadi pengukurannya adalah hasil Tahap C, bukan acuan baru. Hapus ganda:
+  [changelog Item 91](../project-memory/changelog/2026-09-17-hapus-dokumen-cek-baris-terhapus.md).
+- **Sisa:** pertanyaan NEG tetap membawa potongan ke konteks (U4, penjaga = label); buku Kepbup penuh menunggu
+  keputusan 3 Item 88; U6–U8, U10 tetap ditunda (§3).
 
 **Urutan A → B → C** dipilih karena A adalah alat ukur keduanya; B tidak mengubah potongan (tanpa unggah
 ulang) sehingga efeknya terukur bersih; C mengubah potongan dan butuh unggah ulang (keputusan 3 Item 89).

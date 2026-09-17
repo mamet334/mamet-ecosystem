@@ -2,7 +2,7 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Ekstraksi PDF di browser (`documentTextExtractor.js`, salinan Mametlite) & kontrak label jawaban (`agent-process`)
-**Status:** 🟡 **Tahap 1–2 live 2026-09-17 (`agent-process` v454) — Tahap 3 sebagian; tertahan temuan pengambilan potongan → [Item 89](./ROADMAP-KONTEKS-POTONGAN-RAG.md) / [Item 90](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md)** (keputusan §7 nomor 1–2 diambil; nomor 3 menunggu)
+**Status:** 🟡 **Tahap 1–3 selesai 2026-09-17** (Tahap 3 lulus lewat [Item 90](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) B–C / [Item 89](./ROADMAP-KONTEKS-POTONGAN-RAG.md)) — **sisa: keputusan §7 nomor 3** (unggah buku Kepbup penuh + OCR massal, sisa Item 86)
 **Tanggal:** 2026-09-17
 **Roadmap Index:** Item 88
 
@@ -180,7 +180,10 @@ memisahkan baris "Kolom:" dari butirnya — periksa potongan live.
 
 ### Tahap 3 — Bukti live
 - [x] Deploy, hapus & unggah ulang berkas uji dengan OCR — blok utuh dalam satu potongan.
-- [ ] Tanya: "Apa tingkat kepentingan pelatihan teknis untuk Sekretaris DPRD?" → **Penting**, berlabel VERIFIED.
+- [x] Tanya: "Apa tingkat kepentingan pelatihan teknis untuk Sekretaris DPRD?" → **Penting**, berlabel VERIFIED.
+      ✅ **Lulus 2026-09-17** sesudah Item 90 Tahap B (hybrid, v455: "Penting" VERIFIED) dan Tahap C / Item 89
+      (web live: Tata Naska Dinas, Sertifikasi Barang Dan Jasa, Perencanaan dan Keuangan → Penting, VERIFIED).
+      [log](../project-memory/changelog/2026-09-17-konteks-potongan-bagian-dan-identitas.md)
       **Gagal 2× (v453, v454):** mode LOOKUP, potongan tabel persyaratan tidak terambil (8 potongan, sebagian besar HCDP) → jawaban pengetahuan umum, HYPOTHESIS. Bukan kesalahan blok. **→ Item 89** (terukur: potongan bercampur & tanpa nama jabatan) dikerjakan lewat **Item 90**.
 - [x] Tanya: "Pengalaman kerja apa yang mutlak?" → **eselon III (Mutlak)**, VERIFIED (v454; v453 sempat salah turun → pemeriksa per kalimat).
 - [x] Periksa `processingSteps`: blok `[TABEL CENTANG …]` dan kalimat kontrak ikut terkirim (mode ASSISTANT).
@@ -193,7 +196,8 @@ memisahkan baris "Kolom:" dari butirnya — periksa potongan live.
 2. ✅ **Diputuskan (2026-09-17): Tahap 2 (server) sesudah Tahap 1 terbukti**, karena hasil Tahap 1 (jumlah
    halaman "tidak pasti" di buku penuh) menentukan seberapa penting aturan label.
 3. ⏳ **Belum diputuskan:** (sisa Item 86 ikut di sini — jalur OCR batas laju 400 dan konfirmasi kedua >100 halaman belum pernah teruji live karena buku penuh belum diunggah) buku Kepbup penuh baru diunggah (OCR ±$1,88, ±40 menit) **setelah** Tahap 3
-   lolos pada berkas uji.
+   lolos pada berkas uji. *Catatan 2026-09-17: Tahap 3 sudah lolos — keputusan ini kini satu-satunya penghalang.
+   Pemotong Item 89 menyisakan 23 potongan bercampur pada teks pdf.js buku penuh; dengan OCR belum terukur.*
 
 ---
 

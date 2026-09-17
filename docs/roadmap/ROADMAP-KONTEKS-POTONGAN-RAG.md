@@ -2,7 +2,7 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Pemotongan teks unggahan (`agent-process/lib/vector_utils.ts` `chunkText`, `judul_tabel.ts`; dipakai `rag-process` & `knowledge_manager`)
-**Status:** 📝 **Rencana disetujui** (keputusan §7 nomor 1–3 diambil 2026-09-17) — **dikerjakan sebagai Tahap C [Item 90](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md)**, sesudah set uji pengambilan potongan & pencarian hybrid
+**Status:** ✅ **Selesai & live 2026-09-17** (Tahap C [Item 90](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md)) — set uji 14/14, semua bukti Kepbup #1; Q1/Q2 VERIFIED di web live. [log](../project-memory/changelog/2026-09-17-konteks-potongan-bagian-dan-identitas.md)
 **Tanggal:** 2026-09-17
 **Roadmap Index:** Item 89 (temuan uji live Item 88 Tahap 3)
 
@@ -112,26 +112,45 @@ benar untuk jenis pertanyaannya masing-masing — rancangan B hanya diterima bil
 ## 6. Tahapan & Kriteria Selesai
 
 ### Tahap 0 — Ukur pola konteks di dokumen nyata ($0)
-- [ ] Jalankan pengenal bagian & identitas pada teks ekstraksi: berkas uji (dengan tabel OCR tersimpan),
+- [x] Jalankan pengenal bagian & identitas pada teks ekstraksi: berkas uji (dengan tabel OCR tersimpan),
       buku Kepbup penuh (pdf.js), HCDP DOCX, KATALOG-PENDAS PDF (berkas lokal di Downloads; di database sudah
       terhapus) dan potongan 3 halaman Operator Handbook (ebook penuhnya tak ada lagi) — laporkan baris yang terdeteksi, salah deteksi, dan contoh baris konteks
       per dokumen.
 
 ### Tahap 1 — Kode A + B (lokal)
-- [ ] Modul murni + uji Node dengan **kontrol** (aturan dimatikan → potongan persyaratan tetap bercampur).
-- [ ] Regresi pemotongan: jumlah & isi potongan HCDP, KATALOG-PENDAS (berkas lokal), Kepbup dibandingkan versi sekarang — perubahan hanya
+- [x] Modul murni + uji Node dengan **kontrol** (aturan dimatikan → potongan persyaratan tetap bercampur).
+- [x] Regresi pemotongan: jumlah & isi potongan HCDP, KATALOG-PENDAS (berkas lokal), Kepbup dibandingkan versi sekarang — perubahan hanya
       baris konteks/titik potong di batas bagian; tidak ada teks hilang (uji Item 87 tetap lolos).
 
 ### Tahap 2 — Ukur skor sebelum deploy (±$0,001)
-- [ ] Diukur dengan **set uji Item 90 Tahap A**: embedding potongan **keluaran kode** (bukan tulisan tangan) →
+- [x] Diukur dengan **set uji Item 90 Tahap A**: embedding potongan **keluaran kode** (bukan tulisan tangan) →
       Q1 masuk 8 besar, Q2 tetap #1, dan pertanyaan yang kata kuncinya **ada** di potongan (HCDP) tidak turun
       di bawah batas masuk — jenis pertanyaan yang dulu membuat awalan judul dibuang (Item 76).
 
 ### Tahap 3 — Bukti live
-- [ ] Deploy `rag-process` (+ `agent-process`, berkas bersama), unggah ulang berkas uji.
-- [ ] Q1 → **Penting**, VERIFIED, blok `[TABEL CENTANG]` di konteks (sekaligus menutup Tahap 3 Item 88).
-- [ ] Q2 tetap benar.
-- [ ] Set uji Item 90 Tahap A diulang setelah dokumen diunggah ulang (keputusan 3).
+- [x] Deploy `rag-process` (+ `agent-process`, berkas bersama), unggah ulang berkas uji.
+- [x] Q1 → **Penting**, VERIFIED, blok `[TABEL CENTANG]` di konteks (sekaligus menutup Tahap 3 Item 88).
+- [x] Q2 tetap benar.
+- [x] Set uji Item 90 Tahap A diulang setelah dokumen diunggah ulang (keputusan 3).
+
+**Hasil (2026-09-17, rincian di [changelog](../project-memory/changelog/2026-09-17-konteks-potongan-bagian-dan-identitas.md)):**
+- Tahap 0: judul Romawi & "Nama Jabatan" terdeteksi di Kepbup; HCDP/Operator Handbook 0 → potongan identik.
+- Tahap 1: 0 kalimat hilang di 5 dokumen; kontrol lulus; Kepbup penuh bercampur 520 → 78.
+- Tahap 2: skor keluaran kode (penghitung kata kunci dibuktikan = Postgres): KEP-06 #7 → #1, KEP-03/04/05 #2 → #1.
+- Tahap 3: unggahan live pertama masih bercampur (fixture pdf.js ≠ OCR asli) → jendela 30% → 60% + perpanjangan
+  maju 240 huruf (0/81 posisi bercampur); unggahan kedua: set uji 14/14, KEP-01..06 #1, Q1 menyebut ketiga
+  pelatihan "Penting" VERIFIED, Q2 eselon III VERIFIED.
+
+**Penyimpangan dari rancangan:**
+- §5 baris konteks **hanya untuk dokumen yang identitasnya terdeteksi** (keputusan Owner 2026-09-17, mempersempit
+  keputusan 2 "semua unggahan"); pemisah bagian (§4) tetap untuk semua.
+- Identitas = "Nama Jabatan" **+ "Urusan Pemerintah"** (pembeda 13× Camat); pola kunci–nilai umum ditolak.
+- §4 jendela 30% diganti **60% + perpanjangan maju** (`awalBagianSesudah`); `chunkText` pindah ke `potong_teks.ts`.
+
+**Sisa pekerjaan:**
+- Buku Kepbup penuh (pdf.js) masih 23 potongan bercampur di luar pembuka jabatan — diukur saat buku penuh
+  diunggah (keputusan 3 Item 88).
+- Pola identitas dokumen jenis lain ditambahkan hanya bila diukur seperti Tahap 0.
 
 ---
 
