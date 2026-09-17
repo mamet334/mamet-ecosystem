@@ -52,3 +52,31 @@ Bundel esbuild `agent-process` & `rag-process` lolos (Deno tidak terpasang di la
 - Aturan tidak pasti berlaku untuk seluruh jawaban bila satu potongan bertanda — bisa menurunkan jawaban
   yang nilainya dari halaman lain (aman ke arah HYPOTHESIS; Kepbup: 11 dari 1.008 halaman bertanda).
 - Belum terbukti live: perlu unggah ulang berkas uji dari frontend yang sudah memuat Tahap 1 (Tahap 3).
+
+## Susulan — uji live v453 & perbaikan per kalimat (v454)
+
+**Uji live v453 (chat `33e249a7…`, 02.10–02.11 UTC)** sesudah push frontend Tahap 1 dan unggah ulang berkas uji:
+- Potongan tersimpan: 18 potongan; blok `[TABEL CENTANG]` **utuh dalam satu potongan** bersama tabel
+  pengalaman kerja; isi blok benar (4 pelatihan Penting, eselon III Mutlak).
+- "Pengalaman kerja apa yang mutlak?" (mode ASSISTANT): konteks memuat blok + kalimat kontrak; jawaban
+  benar (eselon III, Mutlak) tetapi **diturunkan** — kalimat "…pelatihan yang hanya berstatus 'Penting'
+  atau 'Perlu'". "Perlu" memang keliru (tak ada centang Perlu di jabatan ini; kemungkinan dari tabel OCR),
+  tetapi pemeriksa per-jawaban juga menyalahkan "Penting" dan catatannya ("…: Mutlak") membingungkan.
+
+**Perbaikan (`label_sumber.ts`, v454):** dinilai **per kalimat**. Nilai kolom yang tidak dimiliki baris mana
+pun di blok → diturunkan dengan alasan itu. Selain itu nilai dibandingkan dengan baris yang dibahas kalimat
+(≥60% kata label; bila tidak ada, baris yang dibahas jawaban) ditambah baris yang berbagi kata khas
+(≥5 huruf, bukan kata umum/nama kolom) — "pelatihan" membuat "Penting" sah di kalimat eselon III.
+Uji 18/18 (tambahan: potongan tersimpan asli + jawaban live asli sebelum dikoreksi → turun karena "Perlu"
+saja; tanpa "atau 'Perlu'" → tetap VERIFIED); kontrol versi lama gagal di 7 kasus penurunan.
+Deploy pertama gagal (timeout esm.sh di server build Supabase, bukan kode); ulang → **v454**.
+
+**Uji live v454 (chat `b803e6f3…`, 02.19–02.20 UTC):** "Pengalaman kerja apa yang mutlak?" → eselon III,
+**Mutlak**, `[STATUS: VERIFIED]`; konteks memuat blok + kontrak.
+
+**Temuan terbuka (bukan Item 88):** "Apa tingkat kepentingan pelatihan teknis untuk Sekretaris DPRD?" dua kali
+berjalan di **mode LOOKUP**; 8 potongan terambil (sufficiency 0,702), sebagian besar HCDP, **tanpa potongan
+tabel persyaratan** → jawaban pengetahuan umum berlabel HYPOTHESIS (jujur, tetapi dokumen tak terpakai).
+Dugaan belum terbukti: kedua potongan persyaratan diawali judul tabel berulang "| 15 | Advokasi kebijakan
+Otonomi Daerah | …" — OCR menggabungkan tabel kompetensi & persyaratan hal. 6, lalu `tambahJudulTabel`
+(Item 76) memakai baris kompetensi no. 15 sebagai judul, sehingga makna potongan tercampur.

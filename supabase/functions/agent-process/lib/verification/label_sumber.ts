@@ -391,25 +391,42 @@ export function periksaTabelCentang(jawaban: string, isiDokumen: string[]): stri
     const awalKalimat = /(^|[.!?]\s+)[\s>#\-•\d.)]*$/.test(bersihMarkdown(depan));
     return !awalKalimat || /["“'*]\s*$/.test(depan);   // "Perlu" / **Perlu** di awal tetap nilai kolom
   });
-  // Baris yang menyebut SEMUA nama kolom sekaligus ("terdiri dari Mutlak, Penting, Perlu") hanya menjelaskan
-  // skala, bukan menilai baris tertentu — tidak dihitung.
-  const disebut = new Set<string>();
-  for (const baris of String(jawaban || '').split('\n')) {
-    const ada = kolom.filter((k) => menyebut(baris, k));
-    if (kolom.length >= 2 && ada.length === kolom.length) continue;
-    ada.forEach((k) => disebut.add(k));
-  }
-  if (!disebut.size) return null;
-
+  // Dinilai PER KALIMAT (uji live v453, 2026-09-17): "wajib eselon III (mutlak), berbeda dengan persyaratan
+  // pelatihan yang hanya berstatus 'Penting' atau 'Perlu'" — versi per-jawaban menyalahkan "Penting" juga,
+  // karena baris yang dibahas jawaban hanya eselon III (Mutlak), padahal "Penting" milik pelatihan.
+  const kalimat = String(jawaban || '').split('\n').flatMap((b) => b.split(/(?<=[.!?])\s+/));
   const kataJawaban = new Set(kataLabel(jawaban));
-  const dibahas = entri.filter((e) => e.kata.filter((w) => kataJawaban.has(w)).length / e.kata.length >= 0.6);
-  if (dibahas.length) {
-    const sah = new Set(dibahas.flatMap((e) => e.nilai));
-    const salah = [...disebut].filter((k) => !sah.has(k));
+  const dibahasJawaban = entri.filter((e) => e.kata.filter((w) => kataJawaban.has(w)).length / e.kata.length >= 0.6);
+  const semuaNilai = new Set(entri.flatMap((e) => e.nilai));
+  const nilaiDari = (daftar: EntriCentang[]) => new Set(daftar.flatMap((e) => e.nilai));
+  // Kata khas: ≥5 huruf, bukan kata umum tabel persyaratan, bukan nama kolom.
+  const UMUM = new Set(['jabatan', 'pernah', 'memiliki', 'tingkat', 'kepentingan', 'persyaratan', 'dengan', 'untuk', 'sesuai', 'bidang', 'terhadap']);
+  const kataNamaKolom = new Set(kolom.flatMap(kataLabel));
+  const khas = (w: string) => w.length >= 5 && !UMUM.has(w) && !kataNamaKolom.has(w);
+
+  for (const s of kalimat) {
+    const ada = kolom.filter((k) => menyebut(s, k));
+    // Menyebut SEMUA nama kolom sekaligus ("terdiri dari Mutlak, Penting, Perlu") = menjelaskan skala.
+    if (!ada.length || (kolom.length >= 2 && ada.length === kolom.length)) continue;
+    if (entri.length) {
+      const asing = ada.filter((k) => !semuaNilai.has(k));
+      if (asing.length) {
+        return `nilai kolom "${asing.join('", "')}" tidak dimiliki baris mana pun di blok TABEL CENTANG (dibaca dari posisi tanda di PDF), padahal jawaban menyebutnya`;
+      }
+    }
+    const kataS = new Set(kataLabel(s));
+    const kuat = entri.filter((e) => e.kata.filter((w) => kataS.has(w)).length / e.kata.length >= 0.6);
+    const lemah = entri.filter((e) => e.kata.some((w) => khas(w) && kataS.has(w)));
+    const acuan = kuat.length ? kuat : dibahasJawaban;
+    if (!acuan.length) continue;
+    const sah = new Set([...nilaiDari(acuan), ...nilaiDari(lemah)]);
+    const salah = ada.filter((k) => !sah.has(k));
     if (salah.length) {
-      return `nilai kolom "${salah.join('", "')}" bertentangan dengan blok TABEL CENTANG (dibaca dari posisi tanda di PDF: ${[...sah].join(', ')})`;
+      return `nilai kolom "${salah.join('", "')}" bertentangan dengan blok TABEL CENTANG (baris yang dibahas bernilai ${[...nilaiDari(acuan)].join(', ')} menurut posisi tanda di PDF)`;
     }
   }
+  const disebut = kalimat.some((s) => { const ada = kolom.filter((k) => menyebut(s, k)); return ada.length > 0 && !(kolom.length >= 2 && ada.length === kolom.length); });
+  if (!disebut) return null;
   if (adaTidakPasti) {
     const hal = halamanTidakPasti.length ? ` halaman ${halamanTidakPasti.join(', ')}` : '';
     return `potongan sumber memuat penanda TABEL CENTANG TIDAK PASTI${hal} — kolom tanda centang di sana tidak bisa dipastikan`;
