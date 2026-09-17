@@ -327,6 +327,96 @@ export function parafraseDiIsi(q: string, teks: string): boolean {
   return false;
 }
 
+// ── Tabel centang PDF (Item 88) ──────────────────────────────────────────────────────────────
+// Uji live Item 87 (2026-09-16): "Ketiganya memiliki tingkat kepentingan 'Perlu'" berlabel VERIFIED, padahal
+// koordinat PDF membuktikan "Penting" — tabel OCR menggeser kolom centang. Sejak Tahap 1 ekstraktor browser
+// menempelkan blok fakta `[TABEL CENTANG — …] Kolom: A | B | C  - <baris> → B [/TABEL CENTANG]` dan penanda
+// `[TABEL CENTANG TIDAK PASTI — …]`. Dua aturan:
+//  1. BERTENTANGAN: jawaban menyebut nilai kolom (mis. "Perlu") untuk baris yang blok nyatakan bernilai lain.
+//     Pasangan dinilai per JAWABAN, bukan per baris: model sungguhan menulis butir di baris-baris terpisah lalu
+//     satu kalimat "Ketiganya … 'Perlu'". Baris blok dianggap dibahas bila ≥60% kata labelnya ada di jawaban.
+//  2. TIDAK PASTI: potongan memuat penanda tidak pasti dan jawaban menyebut nilai kolom → tidak bisa VERIFIED.
+const TANDA_BLOK_CENTANG = '[TABEL CENTANG';
+const TANDA_TIDAK_PASTI = '[TABEL CENTANG TIDAK PASTI';
+
+type EntriCentang = { kata: string[]; nilai: string[] };
+
+/** Blok centang di potongan → nama kolom, entri (label → nilai), dan halaman bertanda tidak pasti. */
+export function bacaBlokCentang(isiDokumen: string[]) {
+  const kolom = new Set<string>();
+  const entri: EntriCentang[] = [];
+  const halamanTidakPasti: string[] = [];
+  let adaTidakPasti = false;
+  for (const isi of isiDokumen || []) {
+    const t = String(isi || '');
+    if (!t.includes(TANDA_BLOK_CENTANG) && !/^Kolom( \(judul tabel dari halaman \d+\))?: /m.test(t)) continue;
+    let halaman = '';
+    let dalamTidakPasti = false;
+    for (const baris of t.split('\n')) {
+      const hal = baris.match(/^\[Halaman\s+(\d+)\]/);
+      if (hal) halaman = hal[1];
+      if (baris.startsWith(TANDA_TIDAK_PASTI)) {
+        dalamTidakPasti = true; adaTidakPasti = true;
+        if (halaman && !halamanTidakPasti.includes(halaman)) halamanTidakPasti.push(halaman);
+        continue;
+      }
+      if (/^\[\/TABEL CENTANG( TIDAK PASTI)?\]/.test(baris)) { dalamTidakPasti = false; continue; }
+      const k = baris.match(/^Kolom(?: \(judul tabel dari halaman \d+\))?: (.+)$/);
+      if (k) { k[1].split('|').map((s) => s.trim()).filter(Boolean).forEach((s) => kolom.add(s)); continue; }
+      const kol = baris.match(/tanda centang di kolom "([^"]+)"/);
+      if (kol) kolom.add(kol[1]);
+      if (dalamTidakPasti) continue;
+      const e = baris.match(/^- (?:\(label perkiraan\) )?(.+?) → ([^→]+)$/);
+      if (!e) continue;
+      const nilai = e[2].split(',').map((s) => s.trim()).filter(Boolean);
+      nilai.forEach((s) => kolom.add(s));
+      // Nomor butir ("2.", "1") bukan kata label.
+      const kata = kataLabel(e[1]).filter((w) => !/^\d+$/.test(w));
+      if (kata.length >= 2) entri.push({ kata, nilai });
+    }
+  }
+  return { kolom: [...kolom], entri, adaTidakPasti, halamanTidakPasti };
+}
+
+/** null = sah; string = alasan penurunan. */
+export function periksaTabelCentang(jawaban: string, isiDokumen: string[]): string | null {
+  const { kolom, entri, adaTidakPasti, halamanTidakPasti } = bacaBlokCentang(isiDokumen);
+  if (!kolom.length) return null;
+  // Nama kolom dicari PERSIS hurufnya ("Perlu", bukan "perlu") dan bukan di awal kalimat — "Anda perlu
+  // mengecek…" / "Penting dicatat…" adalah kalimat biasa, bukan nilai kolom.
+  const polaKolom = new Map(kolom.map((k) => [k, new RegExp(
+    `(?<![\\p{L}\\p{N}])${k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}])`, 'gu')]));
+  const menyebut = (baris: string, k: string) => [...baris.matchAll(polaKolom.get(k)!)].some((m) => {
+    const depan = baris.slice(0, m.index);
+    const awalKalimat = /(^|[.!?]\s+)[\s>#\-•\d.)]*$/.test(bersihMarkdown(depan));
+    return !awalKalimat || /["“'*]\s*$/.test(depan);   // "Perlu" / **Perlu** di awal tetap nilai kolom
+  });
+  // Baris yang menyebut SEMUA nama kolom sekaligus ("terdiri dari Mutlak, Penting, Perlu") hanya menjelaskan
+  // skala, bukan menilai baris tertentu — tidak dihitung.
+  const disebut = new Set<string>();
+  for (const baris of String(jawaban || '').split('\n')) {
+    const ada = kolom.filter((k) => menyebut(baris, k));
+    if (kolom.length >= 2 && ada.length === kolom.length) continue;
+    ada.forEach((k) => disebut.add(k));
+  }
+  if (!disebut.size) return null;
+
+  const kataJawaban = new Set(kataLabel(jawaban));
+  const dibahas = entri.filter((e) => e.kata.filter((w) => kataJawaban.has(w)).length / e.kata.length >= 0.6);
+  if (dibahas.length) {
+    const sah = new Set(dibahas.flatMap((e) => e.nilai));
+    const salah = [...disebut].filter((k) => !sah.has(k));
+    if (salah.length) {
+      return `nilai kolom "${salah.join('", "')}" bertentangan dengan blok TABEL CENTANG (dibaca dari posisi tanda di PDF: ${[...sah].join(', ')})`;
+    }
+  }
+  if (adaTidakPasti) {
+    const hal = halamanTidakPasti.length ? ` halaman ${halamanTidakPasti.join(', ')}` : '';
+    return `potongan sumber memuat penanda TABEL CENTANG TIDAK PASTI${hal} — kolom tanda centang di sana tidak bisa dipastikan`;
+  }
+  return null;
+}
+
 export type HasilLabel ={ jawaban: string; dikoreksi: boolean; alasan: string; catatan: string };
 
 /**
@@ -395,6 +485,9 @@ export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiD
 
   const alasanAngka = periksaAngkaSumber(tampil, isiDokumen);
   if (alasanAngka) return turunkan(alasanAngka, `_Catatan sistem: label VERIFIED diturunkan — ${alasanAngka}. Periksa angka ini langsung di dokumen._`);
+
+  const alasanCentang = periksaTabelCentang(tampil, isiDokumen);
+  if (alasanCentang) return turunkan(alasanCentang, `_Catatan sistem: label VERIFIED diturunkan — ${alasanCentang}. Periksa tingkat/kolom ini langsung di dokumen asli._`);
   return diam;
 }
 

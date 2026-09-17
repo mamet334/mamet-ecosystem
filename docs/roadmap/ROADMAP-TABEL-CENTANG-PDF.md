@@ -2,7 +2,7 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Ekstraksi PDF di browser (`documentTextExtractor.js`, salinan Mametlite) & kontrak label jawaban (`agent-process`)
-**Status:** 🟡 **Tahap 1 selesai 2026-09-17 (lokal, belum live) — Tahap 2 berikutnya** (keputusan §7 nomor 1–2 diambil; nomor 3 menunggu)
+**Status:** 🟡 **Tahap 1–2 selesai 2026-09-17 (Tahap 2 dideploy `agent-process` v453) — Tahap 3 bukti live berikutnya** (keputusan §7 nomor 1–2 diambil; nomor 3 menunggu)
 **Tanggal:** 2026-09-17
 **Roadmap Index:** Item 88
 
@@ -172,10 +172,11 @@ memuat penanda tidak pasti, label VERIFIED **diturunkan** ke HYPOTHESIS dengan c
 **Temuan untuk Tahap 2–3:** biaya embedding Kepbup +7% (blok 128.769 huruf); pemotong 800 huruf bisa
 memisahkan baris "Kolom:" dari butirnya — periksa potongan live.
 
-### Tahap 2 — Kontrak & label (server)
-- [ ] Kalimat kontrak §4.3.
-- [ ] Aturan penurunan label §5.1 + uji meniru cara model menulis (pelajaran Item 77: contoh uji harus
-      mirip jawaban model sungguhan, termasuk "tingkat kepentingan 'Penting'").
+### Tahap 2 — Kontrak & label (server) — ✅ selesai 2026-09-17, dideploy v453
+- [x] Kalimat kontrak §4.3 — di BLOK 6 `universal_contract.ts`, hanya bila RAG memuat blok.
+- [x] Aturan penurunan label §5.1 + uji meniru cara model menulis — memakai jawaban live asli "Perlu"
+      (diturunkan) dan 6 jawaban benar bergaya model (tetap VERIFIED); 15/15, kontrol versi lama gagal.
+      Tambahan di luar rencana: jawaban yang **bertentangan** dengan blok pasti juga diturunkan.
 
 ### Tahap 3 — Bukti live
 - [ ] Deploy, hapus & unggah ulang berkas uji dengan OCR.

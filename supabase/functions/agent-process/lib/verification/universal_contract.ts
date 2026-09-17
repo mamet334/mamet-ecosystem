@@ -285,6 +285,10 @@ function renderContractAsText(
     text += `Waktu, tanggal, zona waktu pengguna (KONTEKS WAKTU), dan Request ID di header kontrak adalah DATA SISTEM, bukan dokumen — jangan dijadikan Sumber dan jangan menjadi dasar label VERIFIED.\n`;
     text += `Bila INTI jawaban berasal dari data sistem atau pengetahuan Anda sendiri, dan dokumen hanya melengkapi sebagian, JANGAN pakai VERIFIED: pakai [STATUS: HYPOTHESIS - Rekomendasi AI] dan sebutkan bagian mana yang berasal dari dokumen.\n`;
     text += `Dokumen terlampir TIDAK otomatis berarti VERIFIED. Label VERIFIED tanpa baris Sumber yang cocok diturunkan otomatis oleh sistem.\n`;
+    // Item 88: hanya bila konteks memang memuat blok itu — dokumen lain tidak menanggung prompt tambahan.
+    if (String(knowledge.ragSummary || '').includes('[TABEL CENTANG')) {
+      text += `TABEL CENTANG: blok [TABEL CENTANG — …] dibaca dari posisi tanda centang di PDF. Untuk baris yang tercantum di blok itu, nilai kolomnya (mis. Mutlak/Penting/Perlu) WAJIB diambil dari blok, BUKAN dari tabel Markdown/OCR di atasnya — tabel itu bisa bergeser kolom. Butir "(label perkiraan)": kolomnya pasti, cocokkan barisnya dengan tabel. Bila halaman sumber memuat [TABEL CENTANG TIDAK PASTI — …], JANGAN pakai VERIFIED untuk nilai kolom dari halaman itu; katakan bahwa tingkat/kolomnya perlu dicek di dokumen asli halaman tersebut.\n`;
+    }
   } else if (runtime.evidenceGateVerdict === 'WARNING') {
     if (isShortVariant) {
       text += `WAJIB: Karena request ini adalah mode LOOKUP dan Evidence Gate berstatus WARNING (retrieval di-skip by design), Anda WAJIB mencantumkan label ringkas berikut di baris PALING AKHIR jawaban Anda:\n`;
