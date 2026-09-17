@@ -20,7 +20,9 @@
  * seperti tabel DOCX karena tak ada struktur HTML untuk direkonstruksi, hanya posisi teks.
  */
 
-export const EKSTENSI_TEKS = ['.txt', '.md', '.csv', '.json', '.html', '.xml'];
+import { bacaTabelCentang } from './tabelCentang.js';
+
+export const EKSTENSI_TEKS =['.txt', '.md', '.csv', '.json', '.html', '.xml'];
 export const EKSTENSI_DIDUKUNG = [...EKSTENSI_TEKS, '.pdf', '.docx'];
 export const ACCEPT_UNGGAH = EKSTENSI_DIDUKUNG.join(',');
 
@@ -188,8 +190,12 @@ export function deteksiTabelHalaman(items) {
   return (multiKolom / baris.length) >= PORSI_MULTI_KOLOM && (yatim / baris.length) >= PORSI_BARIS_YATIM;
 }
 
-/** Baris per halaman → teks utuh, tanpa judul/kaki halaman berulang, dengan penanda [Halaman N]. */
-export function rakitTeksHalaman(halaman) {
+/**
+ * Baris per halaman → teks utuh, tanpa judul/kaki halaman berulang, dengan penanda [Halaman N].
+ * `tambahan[i]` (Item 88: blok TABEL CENTANG) ditempel SESUDAH pembersihan — barisnya sama di banyak
+ * halaman buku, jadi kalau ikut diperiksa ia akan terbuang sebagai "judul/kaki halaman berulang".
+ */
+export function rakitTeksHalaman(halaman, tambahan = []) {
   const hitung = new Map();
   for (const bs of halaman) {
     const tepi = new Set([...bs.slice(0, 3), ...bs.slice(-3)].map(kunciBaris));
@@ -209,8 +215,9 @@ export function rakitTeksHalaman(halaman) {
     // Sambung kata yang dipotong tanda hubung di akhir baris: "kom-\npetensi" → "kompetensi".
     const teks = bersih.join('\n').replace(/([a-zà-ÿ])-\n([a-zà-ÿ])/g, '$1$2').trim();
     if (teks.replace(/\s/g, '').length < AMBANG_HALAMAN_KOSONG) kosong++;
+    const isi = [teks, tambahan[i]].filter(Boolean).join('\n');
     // Penanda halaman: model bisa menyebut "halaman N" tanpa kolom database baru.
-    return teks ? `[Halaman ${i + 1}]\n${teks}` : '';
+    return isi ? `[Halaman ${i + 1}]\n${isi}` : '';
   });
 
   return { teks: bagian.filter(Boolean).join('\n\n'), halamanKosong: kosong };
@@ -238,6 +245,10 @@ export async function ekstrakPdfDariData(data, pdfjs, onProgress, petaOcr) {
   try {
     const halaman = [];
     const bertabel = [];
+    const blokCentang = [];
+    const centang = { halaman: [], tidakPasti: [] };
+    let judulCentang = null;
+    let itemsSebelumnya = null;
     for (let n = 1; n <= doc.numPages; n++) {
       const page = await doc.getPage(n);
       const isi = await page.getTextContent();
@@ -247,11 +258,21 @@ export async function ekstrakPdfDariData(data, pdfjs, onProgress, petaOcr) {
       halaman.push(teksOcr !== undefined
         ? teksOcr.split('\n').filter(Boolean)
         : baris.map((b) => gabungBaris(b.bagian, cetakUlang)).filter(Boolean));
+      // Item 88: kolom tanda centang dari koordinat pdf.js (OCR menggesernya pada judul bertingkat).
+      const tc = bacaTabelCentang(isi.items, { teksOcr, bawaan: judulCentang, nomorHalaman: n, itemsSebelumnya });
+      judulCentang = tc.bawaan;
+      itemsSebelumnya = isi.items;
+      blokCentang.push(tc.blok);
+      if (tc.blok) centang.halaman.push(n);
+      if (tc.ringkasan.tidakPasti) centang.tidakPasti.push(n);
       page.cleanup();
       onProgress?.({ tahap: 'membaca', halaman: n, total: doc.numPages });
     }
-    const { teks, halamanKosong } = rakitTeksHalaman(halaman);
-    return { jenis: 'pdf', teks, halaman: halaman.length, halamanKosong, halamanBertabelTerdeteksi: bertabel };
+    const { teks, halamanKosong } = rakitTeksHalaman(halaman, blokCentang);
+    return {
+      jenis: 'pdf', teks, halaman: halaman.length, halamanKosong, halamanBertabelTerdeteksi: bertabel,
+      halamanTabelCentang: centang.halaman, halamanCentangTidakPasti: centang.tidakPasti
+    };
   } finally {
     await tugas.destroy();
   }

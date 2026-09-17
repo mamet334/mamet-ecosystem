@@ -2,7 +2,7 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Ekstraksi PDF di browser (`documentTextExtractor.js`, salinan Mametlite) & kontrak label jawaban (`agent-process`)
-**Status:** 📝 **Rencana disetujui sebagian — Tahap 1 siap dikerjakan** (keputusan §7 nomor 1–2 diambil; nomor 3 menunggu)
+**Status:** 🟡 **Tahap 1 selesai 2026-09-17 (lokal, belum live) — Tahap 2 berikutnya** (keputusan §7 nomor 1–2 diambil; nomor 3 menunggu)
 **Tanggal:** 2026-09-17
 **Roadmap Index:** Item 88
 
@@ -148,17 +148,29 @@ memuat penanda tidak pasti, label VERIFIED **diturunkan** ke HYPOTHESIS dengan c
 
 ## 6. Tahapan & Kriteria Selesai
 
-### Tahap 1 — Modul A + B di browser (tanpa server)
-- [ ] `tabelCentang.js` + dipasang di `ekstrakPdfDariData` (web & Mametlite).
-- [ ] Uji Node dengan **PDF asli** `UJI-Kepbup-Sekretaris-DPRD-hal4-9.pdf`:
+### Tahap 1 — Modul A + B di browser (tanpa server) — ✅ selesai 2026-09-17
+- [x] `tabelCentang.js` + dipasang di `ekstrakPdfDariData` (web & Mametlite).
+- [x] Uji Node dengan **PDF asli** `UJI-Kepbup-Sekretaris-DPRD-hal4-9.pdf`:
   - blok memuat 4 pelatihan → **Penting**, pengalaman eselon III → **Mutlak** (kebenaran dari koordinat §1);
   - **kontrol**: teks OCR tersimpan (centang di kolom Perlu) dibuktikan berbeda dari blok.
-- [ ] Regresi: PDF tanpa tabel centang (HCDP, Operator Handbook, KATALOG-PENDAS) → **tidak ada** blok atau
+- [x] Regresi: PDF tanpa tabel centang (HCDP, Operator Handbook, KATALOG-PENDAS) → **tidak ada** blok atau
       penanda tambahan; teks identik dengan sebelumnya.
-- [ ] Uji B dengan data rekaan: jumlah centang berbeda, centang tanpa judul, halaman OCR bercentang tanpa
+- [x] Uji B dengan data rekaan: jumlah centang berbeda, centang tanpa judul, halaman OCR bercentang tanpa
       centang pdf.js → penanda tidak pasti muncul.
-- [ ] Sampel buku penuh (tanpa OCR, $0): jalankan A pada 1.004 halaman Kepbup → laporkan berapa halaman
-      terpetakan penuh, berapa tidak pasti, dan periksa manual ≥10 halaman acak.
+- [x] Sampel buku penuh (tanpa OCR, $0): 1.008 halaman, 246 bercentang, **836/855 centang terpetakan,
+      0 beda dari pembanding independen**, 19 tidak pasti (11 halaman); 10 halaman acak diperiksa manual.
+
+**Penyimpangan dari rancangan §4.1 (dipaksa data buku penuh — rincian di changelog):**
+- Judul kolom tidak lagi "item sejajar ±6 pt": centang harus di dalam lebar judul, judul pertama di kanan
+  label baris, baris tepat di bawah judul mulai di kolom paling kiri tabel.
+- Kolom ditentukan dua aturan yang harus sepakat (rentang dari x judul & titik tengah antarpusat judul).
+- Judul dari halaman sebelumnya hanya bila skala halaman terbukti sama (x centang terpetakan sama, atau x
+  kolom paling kiri tabel sama ±1,5 pt) — hal. 257 berskala lain dari hal. 256.
+- Label: sel rata tengah (centang tanpa teks sebaris) → "(label perkiraan)" + catatan; centang tanpa teks
+  dalam ±8 pt → tidak pasti.
+
+**Temuan untuk Tahap 2–3:** biaya embedding Kepbup +7% (blok 128.769 huruf); pemotong 800 huruf bisa
+memisahkan baris "Kolom:" dari butirnya — periksa potongan live.
 
 ### Tahap 2 — Kontrak & label (server)
 - [ ] Kalimat kontrak §4.3.
