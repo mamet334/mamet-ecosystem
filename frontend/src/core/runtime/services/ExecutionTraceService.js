@@ -605,51 +605,13 @@ export async function fetchExecutionTrace({ traceId, limit = 200 }) {
   const normalizedAgentEvents = (agentLogsRows || [])
     .map(row => enrichEventWithStep(row, normalizeAgentLogsEvent(row)));
 
-  // 2) verification_audit_logs (failure visualization)
-  // We only include rows that match trace_id inside metadata (if it exists).
-  const { data: verifRows, error: verifError } = await supabase
-    .from('verification_audit_logs')
-    .select('id, created_at, decision, status, failures, metadata')
-    .eq('metadata->>trace_id', traceId)
-    .order('created_at', { ascending: true })
-    .limit(50);
+  // verification_audit_logs sengaja TIDAK dikueri (T6, 2026-09-17): tabel itu tidak punya kolom `metadata`
+  // (kueri lama → 400 "column … metadata does not exist" di setiap pemuatan jejak) dan penulis aktifnya
+  // (agent-process verification_service.ts) tidak pernah menyimpan trace id — request_id selalu null,
+  // source_trace berisi teks jejak sumber jawaban. Tidak ada kolom untuk mencocokkan baris ke traceId.
+  // Preseden: useDashboardData.js (2026-09-08) membuang kolom yang sama tanpa mengubah skema.
 
-  if (verifError) {
-    // Verification might not have metadata.trace_id; do not fail the whole trace.
-    console.warn('fetchExecutionTrace: verification_audit_logs error (non-fatal)', verifError);
-  }
-
-  const normalizedVerification = (verifRows || []).map(r => {
-    const createdAt = r.created_at ? new Date(r.created_at).toISOString() : null;
-    const status = r.status || r.decision || 'unknown';
-    const failures = r.failures || r.metadata?.failures || null;
-
-    // Failure visualization: only based on existing fields.
-    // If status/decision indicates failure, mark failed.
-    let uiStatus = 'success';
-    if (typeof status === 'string') {
-      const s = status.toLowerCase();
-      if (s.includes('fail') || s.includes('error')) uiStatus = 'failed';
-      if (s.includes('timeout')) uiStatus = 'timeout';
-    }
-
-    return {
-      type: 'verification',
-      event: 'Verification.Completed',
-      status: uiStatus,
-      step: 'verification',
-      stepLabel: 'Verification',
-      timestamp: createdAt,
-      metadata: {
-        ...(r.metadata || {}),
-        decision: r.decision,
-        status: r.status,
-        failures
-      }
-    };
-  });
-
-  const timeline = [...normalizedAgentEvents, ...normalizedVerification]
+  const timeline = normalizedAgentEvents
     .filter(e => e && e.timestamp)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
@@ -661,7 +623,7 @@ export async function fetchExecutionTrace({ traceId, limit = 200 }) {
     pipeline,
     sources: {
       agent_logs: agentLogsRows?.length || 0,
-      verification_audit_logs: verifRows?.length || 0
+      verification_audit_logs: 0
     }
   };
 }

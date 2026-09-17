@@ -1,7 +1,7 @@
 # ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
 
 **Tipe Dokumen:** Daftar sisa pekerjaan (temuan audit yang belum punya dokumen roadmap sendiri)
-**Status:** ⏳ **5 temuan terbuka** (T1–T4, T6; T5 & T7 ditutup) — masing-masing menunggu keputusan Owner
+**Status:** ⏳ **3 temuan terbuka** (T1–T3; T4–T7 ditutup) — masing-masing menunggu keputusan Owner
 **Tanggal:** 2026-09-17 (dipindah dari INDEX-ROADMAP Item 33, 44, 48, 49, 50 saat perampingan)
 **Aturan:** temuan yang dikerjakan dan tumbuh besar pindah ke dokumen roadmap sendiri; yang selesai dicatat di
 changelog lalu barisnya diberi ✅ di sini.
@@ -44,14 +44,15 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
 - **Keputusan Owner yang dibutuhkan:** hapus rute atau biarkan.
 - **Status:** ⏳ belum dikerjakan.
 
-## T4 — `match_documents` bisa dieksekusi `anon` (asal Item 50, 2026-09-10)
+## T4 — ✅ `match_documents` bisa dieksekusi `anon` (asal Item 50, 2026-09-10)
 
 - **Temuan:** `has_function_privilege('anon', match_documents(...), 'execute') = true` (dicek 2026-09-17).
   Risiko rendah: fungsi `SECURITY INVOKER` sehingga RLS `document_chunks`/`documents` tetap berlaku, tetapi hak
   itu tampaknya tidak disengaja.
 - **Arah solusi:** `REVOKE EXECUTE … FROM anon` lewat migrasi (diajukan ke Owner; pastikan tidak ada pemanggil
   tanpa login — mametlite memanggil dengan sesi).
-- **Status:** ⏳ belum dikerjakan.
+- **Status:** ✅ ditutup 2026-09-17 — migrasi `20260917124719_revoke_anon_match_documents` (anon false,
+  authenticated/service_role tetap). [log](../project-memory/changelog/2026-09-17-t4-t6-hak-anon-dan-kueri-verifikasi.md)
 
 ## T5 — ✅ Hapus dokumen di mametlite: potongan ikut terhapus? (asal Item 91, 2026-09-17)
 
@@ -60,7 +61,7 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
   potongan yatim = 0. Tidak perlu perubahan.
 - **Status:** ✅ ditutup — [changelog](../project-memory/changelog/2026-09-17-hapus-dokumen-cek-baris-terhapus.md).
 
-## T6 — `fetchExecutionTrace` meminta kolom `verification_audit_logs.metadata` yang tidak ada (2026-09-17)
+## T6 — ✅ `fetchExecutionTrace` meminta kolom `verification_audit_logs.metadata` yang tidak ada (2026-09-17)
 
 - **Temuan:** `frontend/src/core/runtime/services/ExecutionTraceService.js:610–615` memilih kolom `metadata` dan
   menyaring `metadata->>trace_id` pada `verification_audit_logs` → **400** `42703 column … metadata does not exist`
@@ -75,7 +76,10 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
 - **Catatan 2026-09-17:** isi kolom sudah dicek — `request_id` selalu `null` (398/398) dan `source_trace` berisi
   teks jejak sumber jawaban, bukan trace id; penulis aktif (`verification_service.ts`) tidak pernah menulis trace id.
   Preseden 2026-09-08 (`useDashboardData.js`): kolom `metadata` dibuang dari kueri tanpa mengubah skema.
-- **Status:** ⏳ belum dikerjakan (berikutnya, disetujui Owner bersama T4).
+- **Status:** ✅ ditutup 2026-09-17 — kueri verifikasi dihapus dari `ExecutionTraceService.js` (tak ada kolom
+  pencocok trace id); build lolos. **Sisa kecil:** pastikan 400 hilang dari konsol sesudah build Vercel / reload
+  desktop. Menampilkan hasil verifikasi di jejak butuh penulis menyimpan trace id (belum diminta).
+  [log](../project-memory/changelog/2026-09-17-t4-t6-hak-anon-dan-kueri-verifikasi.md)
 
 ## T7 — ✅ Kunci API tersimpan di `agent_logs.metadata` (2026-09-17)
 
