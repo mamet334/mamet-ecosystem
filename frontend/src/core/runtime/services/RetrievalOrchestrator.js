@@ -1,25 +1,22 @@
 /**
- * RetrievalOrchestrator.js — 3-Tier Knowledge Retrieval Orchestrator (PR#9)
+ * RetrievalOrchestrator.js — Orkestrator Konteks Web & Panduan Tanpa Dokumen (PR#9)
  *
- * Mengatur orkestrasi pencarian pengetahuan berjenjang (3-Tier):
- * - Tier 1: Lokal (document_chunks / documents via RetrievalStrategyService / Edge Function)
- * - Tier 2: LLM Internal Fallback (Fase 2)
- * - Tier 3: Web Search Comparison (Fase 3, wajib konfirmasi Owner)
+ * - Tier 2: panduan "jawab dari pengetahuan umum" (InternalKnowledgeFallbackService) — hanya saat RAG mati.
+ * - Tier 3: pencarian web pembanding (tool web_search / WebComparisonService).
  *
- * Di Fase 1: Berperan sebagai kerangka bersih yang membungkus pemanggilan Tier 1
- * dan menyediakan interface seragam bagi AssistantService.js agar tidak terjadi
- * penumpukan logika (anti-God File).
+ * Tier 1 (dokumen lokal lewat pencocokan kata KnowledgeService + RetrievalStrategyService) DIHAPUS
+ * 2026-09-17 (Item 90): sejak Item 65 dokumen dicari SERVER berdasarkan makna, dan satu-satunya
+ * pemanggil (AssistantService) selalu mengirim `skipLocalKnowledge: true` — cabang itu tak pernah jalan.
+ * KnowledgeService & RetrievalStrategyService tetap ada: dipakai server sebagai cadangan pencocokan
+ * kata bila vektor tak tersedia (agent-process context_builder.ts).
  */
 
-import { SUFFICIENCY_THRESHOLD, RetrievalStrategyService } from './RetrievalStrategyService.js';
 import { InternalKnowledgeFallbackService } from './InternalKnowledgeFallbackService.js';
 import { WebComparisonService } from './WebComparisonService.js';
 
 export class RetrievalOrchestrator {
   constructor(serviceManager) {
     this.serviceManager = serviceManager;
-    this.knowledgeService = null;
-    this.retrievalStrategyService = null;
     this.internalKnowledgeFallbackService = null;
     this.webComparisonService = null;
     this.eventBus = null;
@@ -31,15 +28,8 @@ export class RetrievalOrchestrator {
 
     if (this.serviceManager) {
       this.eventBus = this.serviceManager.has('EventBus') ? this.serviceManager.get('EventBus') : null;
-      this.knowledgeService = this.serviceManager.has('KnowledgeService') ? this.serviceManager.get('KnowledgeService') : null;
-      this.retrievalStrategyService = this.serviceManager.has('RetrievalStrategyService') ? this.serviceManager.get('RetrievalStrategyService') : null;
       this.internalKnowledgeFallbackService = this.serviceManager.has('InternalKnowledgeFallbackService') ? this.serviceManager.get('InternalKnowledgeFallbackService') : null;
       this.webComparisonService = this.serviceManager.has('WebComparisonService') ? this.serviceManager.get('WebComparisonService') : null;
-    }
-
-    if (!this.retrievalStrategyService) {
-      this.retrievalStrategyService = new RetrievalStrategyService(this.serviceManager);
-      await this.retrievalStrategyService.initialize();
     }
 
     if (!this.internalKnowledgeFallbackService) {
@@ -53,7 +43,7 @@ export class RetrievalOrchestrator {
     }
 
     this.isInitialized = true;
-    console.log('[RetrievalOrchestrator] Initialized (PR#9: Tier 1, Tier 2, and Tier 3 Active)');
+    console.log('[RetrievalOrchestrator] Initialized (Tier 2 & Tier 3; dokumen dicari server)');
   }
 
   /**
@@ -103,93 +93,12 @@ export class RetrievalOrchestrator {
 
     console.log(`[RetrievalOrchestrator] Starting knowledge retrieval for: "${query.substring(0, 60)}..."`);
 
-    let tier1Result = null;
-
-    // ========================================================
-    // TIER 1: LOKAL (KnowledgeService + RetrievalStrategyService)
-    // Dilewati kalau options.skipLocalKnowledge (RAG dimatikan Owner untuk workspace ini) —
-    // supaya Web Search (Tier 3) tetap bisa jalan independen tanpa dokumen pribadi Owner.
-    // ========================================================
-    if (options.skipLocalKnowledge) {
-      console.log('[RetrievalOrchestrator] RAG dimatikan (skipLocalKnowledge) — melewati Tier 1, lanjut ke Tier 2/3.');
-      tier1Result = { chunks: [], strategy: 'skipped_rag_off', sufficiency: 0.0, caseType: 'NONE', tier: 1, isFallback: false };
-    } else {
-      try {
-        const ks = this.knowledgeService || (this.serviceManager?.has('KnowledgeService') ? this.serviceManager.get('KnowledgeService') : null);
-        const strat = this.retrievalStrategyService || (this.serviceManager?.has('RetrievalStrategyService') ? this.serviceManager.get('RetrievalStrategyService') : null);
-
-        let rawChunks = [];
-        if (ks) {
-          rawChunks = await ks.queryKnowledge(query, {
-            supabaseClient: options.supabaseClient,
-            userId: options.userId,
-            spaceId: options.spaceId,
-            limit: options.limit || 10
-          });
-        }
-
-        tier1Result = { chunks: rawChunks, strategy: 'passthrough', sufficiency: 0.5, caseType: 'NONE', tier: 1, isFallback: false };
-        if (strat && rawChunks.length > 0) {
-          tier1Result = await strat.apply(rawChunks, options.supabaseClient, query);
-          tier1Result.isFallback = false;
-        } else if (rawChunks.length === 0) {
-          tier1Result = { chunks: [], strategy: 'empty', sufficiency: 0.0, caseType: 'NONE', tier: 1, isFallback: false };
-        }
-
-        // Deteksi kueri temporal / berita terkini: dokumen lokal statis tidak dapat memuaskan fakta terkini
-        const isTemporal = this.isTemporalQuery(query);
-        if (isTemporal && tier1Result) {
-          console.log('[RetrievalOrchestrator] Temporal/recency query detected. Dokumen statis lokal ditandai insufficient (0.15).');
-          tier1Result.sufficiency = Math.min(tier1Result.sufficiency, 0.15);
-          options.needWebComparison = true;
-        }
-
-        // Jika Tier 1 CUKUP (sufficiency >= 0.4 dan ada chunks), kembalikan langsung Tier 1
-        if (!isTemporal && tier1Result.sufficiency >= SUFFICIENCY_THRESHOLD && tier1Result.chunks && tier1Result.chunks.length > 0) {
-          const formattedContext = this.formatAsContext(tier1Result.chunks);
-
-          if (this.eventBus?.emit) {
-            this.eventBus.emit('Retrieval:Completed', {
-              tier: 1,
-              strategy: tier1Result.strategy,
-              sufficiency: tier1Result.sufficiency,
-              chunksCount: tier1Result.chunks.length
-            });
-          }
-
-          return {
-            chunks: tier1Result.chunks,
-            formattedContext,
-            strategy: tier1Result.strategy,
-            caseType: tier1Result.caseType,
-            sufficiency: tier1Result.sufficiency,
-            tier: 1,
-            isFallback: false
-          };
-        }
-      } catch (err) {
-        console.warn('[RetrievalOrchestrator] Tier 1 retrieval failed:', err.message);
-
-        if (this.eventBus?.emit) {
-          this.eventBus.emit('Retrieval:Failed', { tier: 1, error: err.message });
-        }
-
-        tier1Result = {
-          chunks: [],
-          strategy: 'failed',
-          sufficiency: 0.0,
-          tier: 1,
-          isFallback: true,
-          error: err.message
-        };
-      }
-    }
+    // Dokumen tidak dicari di sini (lihat catatan berkas) — Tier 2 menerima hasil "kosong" yang jujur.
+    const tier1Result = { chunks: [], strategy: 'dokumen_di_server', sufficiency: 0.0, caseType: 'NONE', tier: 1, isFallback: false };
 
     // ========================================================
     // TIER 2: INTERNAL LLM FALLBACK (Fase 2)
-    // Pemicu: sufficiency < 0.4 ATAU 0 chunks ATAU Tier 1 error
     // ========================================================
-    console.log(`[RetrievalOrchestrator] Tier 1 insufficient (sufficiency: ${tier1Result?.sufficiency ?? 0.0}). Switching to Tier 2 (InternalKnowledgeFallbackService)...`);
 
     let tier2Result = null;
     try {
@@ -332,7 +241,7 @@ export class RetrievalOrchestrator {
       sufficiency: 0.0,
       tier: 2,
       isFallback: true,
-      error: 'Tier 1 & Tier 2 fallback failed'
+      error: 'Tier 2 & Tier 3 fallback failed'
     };
   }
 

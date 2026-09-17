@@ -2,7 +2,7 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Ekstraksi PDF di browser (`documentTextExtractor.js`, salinan Mametlite) & kontrak label jawaban (`agent-process`)
-**Status:** 🟡 **Tahap 1–2 live 2026-09-17 (`agent-process` v454) — Tahap 3 sebagian; tertahan temuan pengambilan potongan** (keputusan §7 nomor 1–2 diambil; nomor 3 menunggu)
+**Status:** 🟡 **Tahap 1–2 live 2026-09-17 (`agent-process` v454) — Tahap 3 sebagian; tertahan temuan pengambilan potongan → [Item 89](./ROADMAP-KONTEKS-POTONGAN-RAG.md) / [Item 90](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md)** (keputusan §7 nomor 1–2 diambil; nomor 3 menunggu)
 **Tanggal:** 2026-09-17
 **Roadmap Index:** Item 88
 
@@ -181,7 +181,7 @@ memisahkan baris "Kolom:" dari butirnya — periksa potongan live.
 ### Tahap 3 — Bukti live
 - [x] Deploy, hapus & unggah ulang berkas uji dengan OCR — blok utuh dalam satu potongan.
 - [ ] Tanya: "Apa tingkat kepentingan pelatihan teknis untuk Sekretaris DPRD?" → **Penting**, berlabel VERIFIED.
-      **Gagal 2× (v453, v454):** mode LOOKUP, potongan tabel persyaratan tidak terambil (8 potongan, sebagian besar HCDP) → jawaban pengetahuan umum, HYPOTHESIS. Bukan kesalahan blok; diselidiki terpisah.
+      **Gagal 2× (v453, v454):** mode LOOKUP, potongan tabel persyaratan tidak terambil (8 potongan, sebagian besar HCDP) → jawaban pengetahuan umum, HYPOTHESIS. Bukan kesalahan blok. **→ Item 89** (terukur: potongan bercampur & tanpa nama jabatan) dikerjakan lewat **Item 90**.
 - [x] Tanya: "Pengalaman kerja apa yang mutlak?" → **eselon III (Mutlak)**, VERIFIED (v454; v453 sempat salah turun → pemeriksa per kalimat).
 - [x] Periksa `processingSteps`: blok `[TABEL CENTANG …]` dan kalimat kontrak ikut terkirim (mode ASSISTANT).
 

@@ -14,7 +14,6 @@ import { ModuleLoader } from './module-loader.js';
 import { DiscoveryManager } from './DiscoveryManager.js';
 import { MemoryService } from './services/MemoryService.js';
 import { MemoryGovernorService } from './services/MemoryGovernorService.js';
-import { KnowledgeService } from './services/KnowledgeService.js';
 import { AgentOrchestratorService } from './services/AgentOrchestratorService.js';
 import { ToolRegistryService } from './services/ToolRegistryService.js';
 import { SemanticContextService } from './services/SemanticContextService.js';
@@ -25,7 +24,6 @@ import { RepositoryReaderService } from './services/RepositoryReaderService.js';
 import { AssistantService } from './services/AssistantService.js';
 import { CommandRegistry } from './services/CommandRegistry.js';
 import { AuditLogService } from './services/AuditLogService.js';
-import { RetrievalStrategyService } from './services/RetrievalStrategyService.js';
 import { InternalKnowledgeFallbackService } from './services/InternalKnowledgeFallbackService.js';
 import { WebComparisonService } from './services/WebComparisonService.js';
 import { RetrievalOrchestrator } from './services/RetrievalOrchestrator.js';
@@ -270,10 +268,8 @@ class Kernel {
     await toolPreferencesService.initialize();
     serviceManager.register('ToolPreferencesService', toolPreferencesService);
 
-    // Knowledge Service
-    const knowledgeService = new KnowledgeService(serviceManager);
-    await knowledgeService.initialize();
-    serviceManager.register('KnowledgeService', knowledgeService);
+    // KnowledgeService tidak lagi didaftarkan di browser (Item 90, 2026-09-17): satu-satunya pemakainya,
+    // Tier 1 RetrievalOrchestrator, dihapus. Berkasnya tetap dipakai server (cadangan pencocokan kata).
 
     // Agent Orchestrator Service
     const agentOrchestrator = new AgentOrchestratorService(serviceManager);
@@ -309,12 +305,7 @@ class Kernel {
     serviceManager.register('AuditLogService', auditLogService);
     this.log('INFO', 'CommandRegistry & AuditLogService Initialized & Registered');
 
-    // Retrieval Strategy Service (PR#5 / PR#9) — Kasus A/B Adaptive Retrieval
-    // Prasyarat: PR#4 (source attribution) sudah ada di schema DB
-    const retrievalStrategyService = new RetrievalStrategyService(serviceManager);
-    await retrievalStrategyService.initialize();
-    serviceManager.register('RetrievalStrategyService', retrievalStrategyService);
-    this.log('INFO', 'RetrievalStrategyService Initialized & Registered');
+    // RetrievalStrategyService tidak lagi didaftarkan di browser (Item 90) — alasan sama dengan KnowledgeService di atas.
 
     // Internal Knowledge Fallback Service (PR#9 Fase 2) — Tier 2 Fallback
     const internalKnowledgeFallbackService = new InternalKnowledgeFallbackService(serviceManager);

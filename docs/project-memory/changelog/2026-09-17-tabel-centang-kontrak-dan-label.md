@@ -80,3 +80,5 @@ tabel persyaratan** → jawaban pengetahuan umum berlabel HYPOTHESIS (jujur, tet
 Dugaan belum terbukti: kedua potongan persyaratan diawali judul tabel berulang "| 15 | Advokasi kebijakan
 Otonomi Daerah | …" — OCR menggabungkan tabel kompetensi & persyaratan hal. 6, lalu `tambahJudulTabel`
 (Item 76) memakai baris kompetensi no. 15 sebagai judul, sehingga makna potongan tercampur.
+
+*Susulan 2026-09-17: diukur di Item 89 ([`ROADMAP-KONTEKS-POTONGAN-RAG.md`](../../roadmap/ROADMAP-KONTEKS-POTONGAN-RAG.md)) — dugaan terbukti sebagian: potongan persyaratan #15–16 karena bercampur dengan sisa tabel kompetensi dan tanpa nama jabatan; membuang judul berulang saja tidak cukup untuk potongan pelatihan.*

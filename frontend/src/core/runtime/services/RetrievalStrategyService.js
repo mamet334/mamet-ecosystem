@@ -57,7 +57,7 @@ export class RetrievalStrategyService {
    *
    * @param {Array} topKChunks - hasil similarity search (array of chunk objects)
    *   Setiap chunk: { id, document_id, content, source_url, source_type, similarity }
-   * @param {Object} supabaseClient - Supabase client untuk fallback full-read
+   * @param {Object} supabaseClient - tidak dipakai lagi (full-read dihapus Item 65); dipertahankan demi tanda tangan pemanggil
    * @param {string} [query=''] - Teks query asli pengguna untuk evaluasi temporal/kontekstual
    * @returns {Promise<{ chunks: Array, strategy: string, caseType: 'A'|'B'|'NONE', sufficiency: number, tier: 1 }>}
    */
@@ -110,9 +110,8 @@ export class RetrievalStrategyService {
 
     // Bobot strategi
     let strategyWeight = 0.55;
-    if (strategy === 'case_a_full_read') strategyWeight = 0.95;
-    else if (strategy === 'case_a_neighbor_expansion') strategyWeight = 0.85;
-    else if (strategy === 'case_b_diversity') strategyWeight = 0.75;
+    // case_a_full_read / case_a_neighbor_expansion tak lagi dihasilkan sejak Item 65 — bobotnya dihapus (Item 90).
+    if (strategy === 'case_b_diversity') strategyWeight = 0.75;
     else if (strategy === 'case_a_passthrough') strategyWeight = 0.65;
     else if (strategy === 'passthrough') strategyWeight = 0.55;
 

@@ -2,7 +2,7 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Pemotongan teks unggahan (`agent-process/lib/vector_utils.ts` `chunkText`, `judul_tabel.ts`; dipakai `rag-process` & `knowledge_manager`)
-**Status:** 📝 **Rencana disetujui — Tahap 0 siap dikerjakan** (keputusan §7 nomor 1–3 diambil 2026-09-17)
+**Status:** 📝 **Rencana disetujui** (keputusan §7 nomor 1–3 diambil 2026-09-17) — **dikerjakan sebagai Tahap C [Item 90](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md)**, sesudah set uji pengambilan potongan & pencarian hybrid
 **Tanggal:** 2026-09-17
 **Roadmap Index:** Item 89 (temuan uji live Item 88 Tahap 3)
 
@@ -63,6 +63,13 @@ semua varian tetap #1–#2 (D 0,622 sedikit di bawah C 0,644, tetap #1).
 Catatan jujur: varian D memakai nama jabatan yang **ditulis tangan**. Aturan otomatis bisa menghasilkan teks
 lain — keluaran kode sebenarnya wajib diukur ulang (Tahap 2).
 
+**Bukti lama yang berlawanan (Item 76, riset jalur PDF 2026-09-14 — U2 Item 90):** awalan judul bagian per
+potongan pernah diuji A/B dengan 8 pertanyaan Operator Handbook dan **dibuang**: potongan benar tetap #1 (8/8)
+tetapi rata skor **turun** 0,7476 → 0,7021 (pdf.js) / 0,7139 (Mistral). Semua pertanyaan itu kata kuncinya ada
+di potongan; kasus "kosakata tidak ada di potongan" (seperti Q1 di atas) belum diuji saat itu. Kedua hasil
+benar untuk jenis pertanyaannya masing-masing — rancangan B hanya diterima bila tidak merugikan jenis pertama
+(Tahap 2).
+
 ---
 
 ## 3. Tujuan
@@ -73,9 +80,9 @@ lain — keluaran kode sebenarnya wajib diukur ulang (Tahap 2).
 2. **B — Judul konteks di setiap potongan:** potongan diawali satu baris konteks dari teks sebelumnya yang
    terakhir terlihat (identitas dokumen/bagian), mis.
    `[Konteks: Nama Jabatan: Sekretaris Dewan Perwakilan Rakyat Daerah › III. PERSYARATAN JABATAN]`.
-3. Tidak menurunkan mutu dokumen lain (uji mutu RAG HCDP/KATALOG sebagai regresi).
+3. Tidak menurunkan mutu dokumen lain (set uji Item 90 Tahap A sebagai regresi).
 
-**Di luar cakupan:** mengubah ambang/jumlah potongan, pencarian kata kunci (hybrid), mode LOOKUP.
+**Di luar cakupan:** mengubah ambang/jumlah potongan (U4 Item 90), pencarian kata kunci (Tahap B Item 90), mode LOOKUP.
 
 ---
 
@@ -106,24 +113,25 @@ lain — keluaran kode sebenarnya wajib diukur ulang (Tahap 2).
 
 ### Tahap 0 — Ukur pola konteks di dokumen nyata ($0)
 - [ ] Jalankan pengenal bagian & identitas pada teks ekstraksi: berkas uji (dengan tabel OCR tersimpan),
-      buku Kepbup penuh (pdf.js), HCDP DOCX, KATALOG-PENDAS, Operator Handbook — laporkan baris yang
-      terdeteksi, salah deteksi, dan contoh baris konteks per dokumen.
+      buku Kepbup penuh (pdf.js), HCDP DOCX, KATALOG-PENDAS PDF (berkas lokal di Downloads; di database sudah
+      terhapus) dan potongan 3 halaman Operator Handbook (ebook penuhnya tak ada lagi) — laporkan baris yang terdeteksi, salah deteksi, dan contoh baris konteks
+      per dokumen.
 
 ### Tahap 1 — Kode A + B (lokal)
 - [ ] Modul murni + uji Node dengan **kontrol** (aturan dimatikan → potongan persyaratan tetap bercampur).
-- [ ] Regresi pemotongan: jumlah & isi potongan HCDP/KATALOG dibandingkan versi sekarang — perubahan hanya
+- [ ] Regresi pemotongan: jumlah & isi potongan HCDP, KATALOG-PENDAS (berkas lokal), Kepbup dibandingkan versi sekarang — perubahan hanya
       baris konteks/titik potong di batas bagian; tidak ada teks hilang (uji Item 87 tetap lolos).
 
 ### Tahap 2 — Ukur skor sebelum deploy (±$0,001)
-- [ ] Skrip penyelidikan diperluas: embedding potongan **keluaran kode** (bukan tulisan tangan) → Q1 masuk
-      8 besar, Q2 tetap #1; ditambah 3–5 pertanyaan HCDP dari set uji mutu (skor potongan benar tidak turun
-      di bawah batas masuk).
+- [ ] Diukur dengan **set uji Item 90 Tahap A**: embedding potongan **keluaran kode** (bukan tulisan tangan) →
+      Q1 masuk 8 besar, Q2 tetap #1, dan pertanyaan yang kata kuncinya **ada** di potongan (HCDP) tidak turun
+      di bawah batas masuk — jenis pertanyaan yang dulu membuat awalan judul dibuang (Item 76).
 
 ### Tahap 3 — Bukti live
 - [ ] Deploy `rag-process` (+ `agent-process`, berkas bersama), unggah ulang berkas uji.
 - [ ] Q1 → **Penting**, VERIFIED, blok `[TABEL CENTANG]` di konteks (sekaligus menutup Tahap 3 Item 88).
 - [ ] Q2 tetap benar.
-- [ ] Uji mutu RAG diulang setelah HCDP/KATALOG diunggah ulang (keputusan 3).
+- [ ] Set uji Item 90 Tahap A diulang setelah dokumen diunggah ulang (keputusan 3).
 
 ---
 
@@ -135,7 +143,7 @@ lain — keluaran kode sebenarnya wajib diukur ulang (Tahap 2).
    potongan milik siapa.
 2. ✅ **Diputuskan (2026-09-17): semua unggahan.** Pertanyaan semula: **berlaku untuk semua unggahan** atau hanya PDF? *Usulan: semua*, dengan regresi Tahap 1–2 sebagai
    penjaga.
-3. ✅ **Diputuskan (2026-09-17): unggah ulang sesudah deploy.** Pertanyaan semula: **unggah ulang dokumen lama** (HCDP, KATALOG-PENDAS, dll.) sesudah deploy untuk uji mutu RAG?
+3. ✅ **Diputuskan (2026-09-17): unggah ulang sesudah deploy.** Pertanyaan semula: **unggah ulang dokumen lama** (HCDP, KATALOG-PENDAS, dll.) sesudah deploy untuk uji mutu RAG? *Catatan 2026-09-17: KATALOG-PENDAS & Operator Handbook sudah tidak ada di database; dokumen yang diunggah ulang = yang masih dipakai (U3 Item 90).*
    Biaya embedding kecil (HCDP ±90 potongan), tetapi dokumen lama tidak ikut terbaiki tanpa unggah ulang.
 
 ---

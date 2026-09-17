@@ -248,57 +248,8 @@ export class KnowledgeService {
     return result;
   }
 
-  /**
-   * Mengindeks dokumen baru ke tabel documents.
-   * @param {Object} doc - { title, content, user_id, space_id, source_url, source_type }
-   * @param {Object} [options]
-   * @param {Object} [options.supabaseClient]
-   * @returns {Promise<{ success: boolean, docId: string|null }>}
-   */
-  async indexDocument(doc, options = {}) {
-    const supabase = await this._resolveSupabaseClient(options);
-    if (!supabase) {
-      console.warn('[KnowledgeService] Supabase client tidak tersedia untuk indexDocument');
-      return { success: false, docId: null };
-    }
-
-    console.log(`[KnowledgeService] Indexing document: ${doc.title || 'Untitled'}`);
-    let success = false;
-    let newDocId = doc.id || null;
-
-    try {
-      let userId = doc.user_id;
-      if (!userId && typeof supabase.auth?.getSession === 'function') {
-        const { data: { session } } = await supabase.auth.getSession();
-        userId = session?.user?.id;
-      }
-
-      const payload = {
-        title: doc.title || 'Untitled',
-        user_id: userId || null,
-        space_id: doc.space_id || null,
-        source_url: doc.source_url || null,
-        source_type: doc.source_type || 'manual_entry'
-      };
-
-      const { data, error } = await supabase
-        .from('documents')
-        .insert([payload])
-        .select('id')
-        .single();
-
-      if (error) throw error;
-      if (data?.id) newDocId = data.id;
-      success = true;
-    } catch (err) {
-      console.error('[KnowledgeService] Error indexing document:', err.message);
-    }
-
-    if (this.eventBus?.emit) {
-      this.eventBus.emit('Knowledge:Indexed', { docId: newDocId, success });
-    }
-    return { success, docId: newDocId };
-  }
+  // indexDocument() dihapus 2026-09-17 (Item 90): tanpa pemanggil di web, server, maupun Mametlite, dan
+  // hanya menulis baris `documents` tanpa potongan/vektor. Unggahan dokumen lewat rag-process.
 }
 
 export default KnowledgeService;
