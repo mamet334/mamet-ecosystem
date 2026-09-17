@@ -2,7 +2,7 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Ekstraksi PDF di browser (`documentTextExtractor.js`, salinan Mametlite) & kontrak label jawaban (`agent-process`)
-**Status:** 🟡 **Tahap 1–3 selesai 2026-09-17** (Tahap 3 lulus lewat [Item 90](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) B–C / [Item 89](./ROADMAP-KONTEKS-POTONGAN-RAG.md)) — **keputusan §7 nomor 3 berjalan:** buku dipecah per jabatan, unggah bertahap (42/221 per 2026-09-17)
+**Status:** 🟡 **Tahap 1–3 selesai 2026-09-17** (Tahap 3 lulus lewat [Item 90](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) B–C / [Item 89](./ROADMAP-KONTEKS-POTONGAN-RAG.md)) — **keputusan §7 nomor 3 berjalan:** buku dipecah per jabatan, **221/221 jabatan masuk** (2026-09-17); sisa: set uji buku penuh
 **Tanggal:** 2026-09-17
 **Roadmap Index:** Item 88
 
@@ -196,7 +196,7 @@ memisahkan baris "Kolom:" dari butirnya — periksa potongan live.
 2. ✅ **Diputuskan (2026-09-17): Tahap 2 (server) sesudah Tahap 1 terbukti**, karena hasil Tahap 1 (jumlah
    halaman "tidak pasti" di buku penuh) menentukan seberapa penting aturan label.
 3. ✅ **Diputuskan (2026-09-17): unggah buku penuh, dipecah per jabatan (222 berkas) lewat fitur unggah banyak
-   berkas, bertahap.** Status & sisa: **221/221 jabatan masuk** (3.368 potongan); **sisa** unggah ulang 191 (OCR melewatkan identitas) & 177 (centang "Ö" font Symbol, sudah dikenali kode), 159 tanpa blok centang (tanda bukan teks — keterbatasan), hapus berkas uji
+   berkas, bertahap.** Status & sisa: **221/221 jabatan masuk** (3.368 potongan); 177 ✅ sesudah unggah ulang (centang "Ö" font Symbol dikenali); **keterbatasan dicatat:** 191 tanpa baris konteks (OCR konsisten melewatkan kotak identitas hal. 1 — dua kali unggah), 159 tanpa blok centang (tanda bukan teks), 000 pembuka hasil pindaian tidak terunggah. **Code freeze** pipa RAG selama unggah Kepbup (hanya perbaikan yang memblokir unggah); aturan baru untuk dokumen acak wajib diukur dulu (≥3 pertanyaan per jenis dokumen). **Kandidat sesudah Kepbup:** sisipkan baris identitas pdf.js bila OCR halaman kehilangannya (uji ulang 222 berkas). **Sisa:** hapus berkas uji lama, set uji buku penuh (Camat per kecamatan, posisi tengah/akhir buku, kunci dari PDF)
    lama `UJI-Kepbup-Sekretaris-DPRD-hal4-9.pdf`, set uji buku penuh (Camat per kecamatan), `000` pembuka (PDF
    pindaian) belum terunggah. [log](../project-memory/changelog/2026-09-17-buku-kepbup-per-jabatan-dan-unggah-banyak.md)
    *Catatan asal:* (sisa Item 86 ikut di sini — jalur OCR batas laju 400 dan konfirmasi kedua >100 halaman belum pernah teruji live karena buku penuh belum diunggah) buku Kepbup penuh baru diunggah (OCR ±$1,88, ±40 menit) **setelah** Tahap 3

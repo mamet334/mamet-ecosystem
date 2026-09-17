@@ -1,8 +1,8 @@
-# Buku Kepbup Dipecah per Jabatan + Unggah Banyak Berkas Sekaligus (Item 88 Keputusan 3, sedang berjalan)
+# Buku Kepbup Dipecah per Jabatan + Unggah Banyak Berkas Sekaligus (Item 88 Keputusan 3)
 
 **Tanggal:** 17 September 2026
 **Roadmap:** Item 88 §7 keputusan 3 ([`ROADMAP-TABEL-CENTANG-PDF.md`](../../roadmap/ROADMAP-TABEL-CENTANG-PDF.md)), Item 89 ([`ROADMAP-KONTEKS-POTONGAN-RAG.md`](../../roadmap/ROADMAP-KONTEKS-POTONGAN-RAG.md))
-**Status:** unggah bertahap berjalan — 42/221 jabatan masuk (001–040, 196, 197), semua pemeriksaan bersih. `rag-process` + `agent-process` sudah di-deploy Owner; frontend menunggu push.
+**Status:** ✅ 221/221 jabatan masuk (3.368 potongan). 177 benar sesudah perbaikan centang "Ö" + unggah ulang; 191 & 159 dicatat sebagai keterbatasan.
 
 ## Keputusan Owner
 
@@ -90,3 +90,18 @@ ke PDF asli:
 | 191 Kabid Kewaspadaan Nasional | tanpa baris konteks | pdf.js membaca identitas lengkap; **OCR hal. 1 melewatkan kotak identitas** | unggah ulang sekali |
 | 177 Bidang Pencegahan (Damkar) | tanpa blok centang | centang = **"Ö" (U+00D6, font Symbol, tampil √)** — satu-satunya pemakai dari 222 berkas | `tabelCentang.js` (+ salinan Mametlite) mengenali "Ö" bila berdiri sendiri; regresi 222 berkas: hanya 177 berubah (Diklat Teknis Manajemen Kesekretariatan → Penting, Pengalaman Kerja → Mutlak, label perkiraan); unggah ulang |
 | 159 Kabid Lalu Lintas & Angkutan | tanpa blok centang | tanda **bukan teks** (tanpa item teks; halaman berisi gambar), OCR juga tidak membaca | dicatat sebagai keterbatasan |
+
+### Unggah ulang 177 & 191 (npm run desktop)
+
+- **177:** 14 potongan bervektor, 13 berkonteks, blok centang ada — Manajemen → Penting, Kerja → Mutlak (sama dengan PDF). ✅
+- **191:** 14 potongan bervektor, **0 berkonteks** — OCR kembali melewatkan kotak identitas (hal. 1 mulai dari
+  "JABATAN ADMINISTRATOR / I. IKHTISAR JABATAN"; tak satu potongan memuat "Nama Jabatan"/"Urusan Pemerintah").
+  Masalah konsisten di OCR, bukan acak. Keputusan Owner: **dicatat sebagai keterbatasan**; nama bidang tetap ada di
+  ikhtisar sehingga dokumen masih bisa ditemukan. Perbaikan kode (sisipkan identitas pdf.js) ditunda sesudah Kepbup.
+- Tetap 221 dokumen / 221 nomor unik (tanpa ganda sesudah unggah ulang).
+
+## Code freeze selama unggah Kepbup (kesepakatan Owner)
+
+Pipa RAG (pemotong, konteks, pencarian) dibekukan selama buku Kepbup diunggah — hanya perbaikan yang memblokir unggah
+(contoh: centang "Ö" 177, diuji regresi 222 berkas). Dokumen acak boleh diunggah kapan saja; aturan baru untuk dokumen
+acak wajib diukur dulu (≥3 pertanyaan per jenis dokumen) sebelum dipakai.
