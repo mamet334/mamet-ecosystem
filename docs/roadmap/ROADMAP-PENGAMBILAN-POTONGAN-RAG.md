@@ -127,6 +127,11 @@ Dikerjakan sesuai [`ROADMAP-KONTEKS-POTONGAN-RAG.md`](./ROADMAP-KONTEKS-POTONGAN
 sudah diambil), **diukur dengan set Tahap A** bersama hasil Tahap B — bukan berdiri sendiri. Tahap 2 Item 89
 ("ukur skor keluaran kode") memakai skrip Tahap A dan mengukur **kedua** jenis pertanyaan (U2).
 
+> **Wajib sebelum Tahap C (2026-09-17):** dokumen KEP dihapus lalu diunggah ulang (`b604d31b…`, 19 potongan;
+> total 106 vs 105 saat acuan Tahap B). Ukur ulang recall@8 dengan skrip Tahap A di `npm run desktop` dan jadikan
+> itu acuan baru — ID dan batas potongan sudah berubah. Lihat
+> [changelog Item 91](../project-memory/changelog/2026-09-17-hapus-dokumen-cek-baris-terhapus.md).
+
 **Urutan A → B → C** dipilih karena A adalah alat ukur keduanya; B tidak mengubah potongan (tanpa unggah
 ulang) sehingga efeknya terukur bersih; C mengubah potongan dan butuh unggah ulang (keputusan 3 Item 89).
 

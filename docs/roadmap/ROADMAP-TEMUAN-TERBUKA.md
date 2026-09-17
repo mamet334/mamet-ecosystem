@@ -1,7 +1,7 @@
 # ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
 
 **Tipe Dokumen:** Daftar sisa pekerjaan (temuan audit yang belum punya dokumen roadmap sendiri)
-**Status:** ⏳ **5 temuan terbuka** — masing-masing menunggu keputusan Owner
+**Status:** ⏳ **5 temuan terbuka** (T1–T4, T6; T5 ditutup) — masing-masing menunggu keputusan Owner
 **Tanggal:** 2026-09-17 (dipindah dari INDEX-ROADMAP Item 33, 44, 48, 49, 50 saat perampingan)
 **Aturan:** temuan yang dikerjakan dan tumbuh besar pindah ke dokumen roadmap sendiri; yang selesai dicatat di
 changelog lalu barisnya diberi ✅ di sini.
@@ -53,18 +53,26 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
   tanpa login — mametlite memanggil dengan sesi).
 - **Status:** ⏳ belum dikerjakan.
 
-## T5 — Hapus dokumen di mametlite: potongan ikut terhapus? (asal Item 91, 2026-09-17)
+## T5 — ✅ Hapus dokumen di mametlite: potongan ikut terhapus? (asal Item 91, 2026-09-17)
 
-- **Temuan:** `mametlite/src/App.jsx` `handleDeleteDocument` hanya menghapus baris `documents`; desktop
-  (`ResearchApp.jsx`) menghapus `document_chunks` dulu secara eksplisit. Aturan `ON DELETE CASCADE` dari
-  `document_chunks.document_id` ke `documents` **tidak ditemukan** di `supabase/migrations/` (bisa jadi dibuat
-  sebelum migrasi tercatat).
-- **Dampak bila tanpa cascade:** potongan yatim tetap tersimpan → memakan kuota DB; RLS tetap berlaku.
-- **Arah solusi:** cek skema live secara baca-saja (`information_schema.referential_constraints`); bila tanpa
-  cascade, hapus potongan dulu di mametlite (seperti desktop) atau tambah cascade lewat migrasi (keputusan Owner).
-- **Catatan:** perbaikan utama Item 91 (cek baris terhapus + muat ulang daftar) sudah selesai —
-  [changelog](../project-memory/changelog/2026-09-17-hapus-dokumen-cek-baris-terhapus.md).
-- **Status:** ⏳ belum dicek.
+- **Temuan awal:** mametlite hanya menghapus baris `documents`; cascade tidak terlihat di `supabase/migrations/`.
+- **Dicek di DB live (baca-saja, 2026-09-17):** `document_chunks_document_id_fkey` ber-`ON DELETE CASCADE`;
+  potongan yatim = 0. Tidak perlu perubahan.
+- **Status:** ✅ ditutup — [changelog](../project-memory/changelog/2026-09-17-hapus-dokumen-cek-baris-terhapus.md).
+
+## T6 — `fetchExecutionTrace` meminta kolom `verification_audit_logs.metadata` yang tidak ada (2026-09-17)
+
+- **Temuan:** `frontend/src/core/runtime/services/ExecutionTraceService.js:610–615` memilih kolom `metadata` dan
+  menyaring `metadata->>trace_id` pada `verification_audit_logs` → **400** `42703 column … metadata does not exist`
+  (terlihat di console desktop Owner). Kolom tabel live: `id, created_at, timestamp, provider, model, request_id,
+  user_id, decision, status, score, execution_time_ms, checks, failures, source_trace, confidence, evidence,
+  confidence_score, review_confirmed` — tanpa `metadata`.
+- **Dampak:** non-fatal (ditangkap sebagai `console.warn`), tetapi bagian verifikasi di jejak eksekusi **selalu
+  kosong** dan tiap pemanggilan menambah satu request gagal.
+- **Arah solusi (keputusan Owner):** sesuaikan kueri ke kolom yang ada (mis. `request_id`/`source_trace` bila
+  memang memuat trace id — perlu dicek isinya dulu), atau tambah kolom `metadata` lewat migrasi bila penulisnya
+  memang berniat mengisinya.
+- **Status:** ⏳ belum dikerjakan.
 
 ---
 
