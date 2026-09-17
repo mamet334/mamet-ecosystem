@@ -55,7 +55,21 @@ export function judulBagian(baris: string): string | null {
 
 const NAMA_JABATAN = /^Nama\s*Jabatan\s*:?\s*(.*)$/;
 const URUSAN = /^Urusan\s*Pemerintah(?:an)?\s*:\s*(.+)$/;
-const JARAK_URUSAN = 6;                                     // baris sesudah "Nama Jabatan"
+const JARAK_URUSAN = 8;                                     // baris sesudah "Nama Jabatan" (tabel OCR: pemisah + penanda halaman ikut terhitung)
+
+/**
+ * Baris identitas berbentuk tabel OCR → "Kunci : nilai". Terbukti 2026-09-17 (berkas per jabatan, halaman
+ * identitas di-OCR): `| Urusan Pemerintah | | : | Kecamatan Baturaja Timur | |` — tiga sel berisi, jadi tidak
+ * terbaca sebagai teks tunggal dan urusan hilang dari baris konteks (13 Camat tak terbedakan).
+ */
+function barisKunciNilai(baris: string): string | null {
+  const sel = selBerisi(baris);
+  if (!sel) return teksTunggal(baris);
+  if (sel.length === 1) return sel[0];
+  const isi = sel.filter((s) => s !== ':');
+  if (isi.length < 2 || !/^(Nama\s*Jabatan|Urusan\s*Pemerintah(?:an)?|Kelompok\s*Jabatan|Kode\s*Jabatan)$/i.test(isi[0])) return null;
+  return `${isi[0]} : ${isi.slice(1).join(' ')}`;
+}
 
 export interface PeristiwaKonteks { posisi: number; jenis: 'identitas' | 'bagian'; nilai: string; }
 
@@ -68,7 +82,7 @@ export function petaKonteks(teks: string): PeristiwaKonteks[] {
   for (const b of baris) { awal.push(pos); pos += b.length + 1; }
 
   for (let i = 0; i < baris.length; i++) {
-    const t = teksTunggal(baris[i]);
+    const t = barisKunciNilai(baris[i]);
     if (!t) continue;
     const nama = t.match(NAMA_JABATAN);
     if (nama) {
@@ -83,7 +97,7 @@ export function petaKonteks(teks: string): PeristiwaKonteks[] {
       if (nilai.length < 3) continue;
       let urusan = '';
       for (let j = i + 1; j <= i + JARAK_URUSAN && j < baris.length; j++) {
-        const u = (teksTunggal(baris[j]) || '').match(URUSAN);
+        const u = (barisKunciNilai(baris[j]) || '').match(URUSAN);
         if (u) { urusan = u[1].trim(); break; }
         if (judulBagian(baris[j])) break;
       }

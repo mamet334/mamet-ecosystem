@@ -90,11 +90,18 @@ export default function ResearchApp() {
     // Semuanya kini diserahkan ke `rag-process` — jalur yang sama yang dipakai
     // mametlite, yang memotong per 4.500 karakter, memvektorkan tiap potongan,
     // dan menentukan space CORE milik pengguna yang benar di sisi server.
+    // UNGGAH BANYAK BERKAS (2026-09-17): buku Kepbup dipecah per jabatan (222 berkas). Semua berkas dibaca dulu
+    // (gratis, pdf.js), lalu pengguna menjawab SEKALI untuk OCR dan SEKALI untuk biaya embedding — bukan 222×
+    // dialog. Berkas yang judulnya sudah ada dilewati (unggahan ganda 17 Sep). Berkas diproses berurutan;
+    // satu gagal tidak menghentikan yang lain; ringkasan di akhir. Satu berkas = alur yang sama.
     const handleUpload = async (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        const files = Array.from(e.target.files || []);
+        if (!files.length) return;
+        const banyak = files.length > 1;
+        const namaBerkas = (f) => (banyak ? `${files.indexOf(f) + 1}/${files.length} ` : '') + `"${f.name}"`;
 
         setUploading(true);
+        const hasilAkhir = { berhasil: [], dilewati: [], gagal: [], ocrDilewati: [] };
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) {
@@ -109,112 +116,173 @@ export default function ResearchApp() {
                 const vault = kernel.serviceManager?.get('VaultService');
                 openRouterKey = vault?.getKey('openrouter') || null;
             } catch {
-                // Vault belum siap — rag-process akan menjawab OPENROUTER_KEY_REQUIRED.
+                // Vault belum siap — ditangani di bawah.
+            }
+            // Tanpa kunci: embedding pasti ditolak rag-process DAN tawaran OCR terlewat diam-diam. Dulu tetap
+            // membaca & mencoba tiap berkas → 2/2 gagal dengan pesan sama (uji 17 Sep); untuk 222 berkas = 222×.
+            if (!openRouterKey) {
+                alert('Kunci OpenRouter belum terpasang di aplikasi ini — unggahan dibatalkan sebelum membaca berkas.\n\n' +
+                    'Pasang kunci di Pengaturan (kunci baru bila kunci lama sudah diganti), lalu unggah lagi.');
+                return;
             }
 
-            // PDF/DOCX diambil teksnya di browser (Item 69); berkas teks dibaca apa adanya.
-            // Gagal (scan, terkunci, format lama…) melempar GagalEkstrak berpesan jelas → alert di bawah.
-            setStatusUnggah('Membaca dokumen…');
-            let hasil = await ekstrakTeksDokumen(file, {
-                onProgress: ({ halaman, total }) => {
-                    if (total) setStatusUnggah(`Membaca halaman ${halaman}/${total}…`);
-                }
-            });
+            // Judul yang sudah ada di server (bukan daftar di layar, yang bisa basi) → dilewati.
+            const { data: judulAda, error: errJudul } = await supabase
+                .from('documents').select('title').eq('user_id', session.user.id).limit(10000);
+            if (errJudul) throw errJudul;
+            const sudahAda = new Set((judulAda || []).map((d) => d.title));
 
-            // Halaman PDF yang tampak bertabel (Item 76b): pdf.js meratakan kolomnya jadi satu
-            // baris tanpa jeda. Tawarkan OCR mistral-ocr HANYA untuk halaman itu — opsional, dan
-            // hanya bila ada kunci OpenRouter untuk membayarnya (Human-in-Command, sama seperti
-            // gerbang konfirmasi Tier 3 Web Search).
-            if (hasil.halamanBertabelTerdeteksi?.length && openRouterKey) {
-                const jumlah = hasil.halamanBertabelTerdeteksi.length;
+            // 1. Baca semua berkas. PDF/DOCX diambil teksnya di browser (Item 69); berkas teks dibaca apa adanya.
+            //    Gagal (scan, terkunci, format lama…) = GagalEkstrak berpesan jelas → dicatat, berkas lain lanjut.
+            const siap = [];
+            for (const file of files) {
+                if (sudahAda.has(file.name)) { hasilAkhir.dilewati.push(file.name); continue; }
+                try {
+                    setStatusUnggah(`Membaca ${namaBerkas(file)}…`);
+                    const hasil = await ekstrakTeksDokumen(file, {
+                        onProgress: ({ halaman, total }) => {
+                            if (total) setStatusUnggah(`Membaca ${banyak ? `berkas ${files.indexOf(file) + 1}/${files.length}, ` : ''}halaman ${halaman}/${total}…`);
+                        }
+                    });
+                    siap.push({ file, hasil });
+                } catch (err) {
+                    hasilAkhir.gagal.push({ nama: file.name, pesan: err.message });
+                }
+            }
+
+            // 2. OCR — satu keputusan untuk semua berkas. Halaman PDF yang tampak bertabel (Item 76b): pdf.js
+            //    meratakan kolomnya. OCR mistral-ocr HANYA untuk halaman itu, opsional, dan hanya bila ada kunci
+            //    OpenRouter untuk membayarnya (Human-in-Command, sama seperti gerbang konfirmasi Tier 3 Web Search).
+            const totalTabel = siap.reduce((a, s) => a + (s.hasil.halamanBertabelTerdeteksi?.length || 0), 0);
+            const berkasBertabel = siap.filter((s) => s.hasil.halamanBertabelTerdeteksi?.length).length;
+            let pakaiOcr = false;
+            if (totalTabel && openRouterKey) {
                 const lanjutOcr = window.confirm(
-                    `"${file.name}": ${jumlah} halaman tampak berupa tabel yang mungkin rusak dibaca pdf.js.\n\n` +
-                    `Perbaiki dengan OCR (mistral-ocr)? Perkiraan biaya ±$${perkiraanOcr(jumlah).toFixed(3)} ` +
+                    `${banyak ? `${berkasBertabel} dari ${siap.length} berkas` : `"${siap[0].file.name}"`}: ` +
+                    `${totalTabel} halaman tampak berupa tabel yang mungkin rusak dibaca pdf.js.\n\n` +
+                    `Perbaiki dengan OCR (mistral-ocr)? Perkiraan biaya ±$${perkiraanOcr(totalTabel).toFixed(3)} ` +
                     `dari saldo OpenRouter Anda, di luar biaya embedding.`
                 );
                 // OCR massal (2026-09-16): buku Kepbup 1.004 halaman menandai 939 halaman bertabel —
                 // ±$1,9 dan berjam-jam. Konfirmasi kedua menyebut lama pengerjaan sebelum uang terpakai.
-                const lanjutMassal = lanjutOcr && (jumlah <= OCR_BANYAK_HALAMAN || window.confirm(
-                    `${jumlah} halaman itu banyak.\n\n` +
-                    `Perkiraan: ±${perkiraanMenitOcr(jumlah)} menit dan ±$${perkiraanOcr(jumlah).toFixed(3)}, ` +
+                pakaiOcr = lanjutOcr && (totalTabel <= OCR_BANYAK_HALAMAN || window.confirm(
+                    `${totalTabel} halaman itu banyak.\n\n` +
+                    `Perkiraan: ±${perkiraanMenitOcr(totalTabel)} menit dan ±$${perkiraanOcr(totalTabel).toFixed(3)}, ` +
                     `dikirim ${OCR_SERENTAK} halaman sekaligus agar tidak kena batas laju.\n` +
-                    `Halaman yang tetap gagal akan dilewati (teks biasa tetap dipakai), bukan membatalkan unggahan.\n\n` +
-                    `Lanjutkan OCR?`
+                    `Halaman yang tetap gagal akan dilewati (teks biasa tetap dipakai), bukan membatalkan unggahan.\n` +
+                    (banyak ? 'Biarkan aplikasi tetap terbuka sampai semua berkas selesai.\n' : '') +
+                    `\nLanjutkan OCR?`
                 ));
-                if (lanjutMassal) {
-                    setStatusUnggah(`Membaca ulang ${jumlah} halaman tabel dengan OCR…`);
-                    const { peta: petaOcr, halamanGagal } = await terapkanOcrHalaman(
-                        new Uint8Array(await file.arrayBuffer()),
-                        hasil.halamanBertabelTerdeteksi,
-                        openRouterKey,
-                        ({ ke, total, gagal }) => setStatusUnggah(`OCR halaman ${ke}/${total}${gagal ? ` (${gagal} dilewati)` : ''}…`)
-                    );
-                    if (halamanGagal.length) {
-                        console.warn(`[ResearchApp] OCR melewati ${halamanGagal.length} halaman:`, halamanGagal.join(', '));
-                        alert(
-                            `${halamanGagal.length} dari ${jumlah} halaman gagal di-OCR dan dilewati — ` +
-                            `teks biasa untuk halaman itu tetap dipakai.\n\n` +
-                            `Halaman: ${halamanGagal.slice(0, 20).join(', ')}${halamanGagal.length > 20 ? ', …' : ''}`
-                        );
-                    }
-                    hasil = await ekstrakTeksDokumen(file, { petaOcrHalaman: petaOcr });
-                }
             }
 
-            const text = hasil.teks;
-            const { potongan, dolar } = perkiraanUnggah(hasil.huruf);
-            if (potongan > POTONGAN_PERLU_KONFIRMASI) {
-                const infoHalaman = hasil.halaman ? `${hasil.halaman} halaman, ` : '';
-                const infoKosong = hasil.halamanKosong ? `\n${hasil.halamanKosong} halaman berupa gambar dilewati.` : '';
+            // 3. Biaya embedding — satu konfirmasi (perkiraan dari teks sebelum OCR).
+            const totalPotongan = siap.reduce((a, s) => a + perkiraanUnggah(s.hasil.huruf).potongan, 0);
+            if (totalPotongan > POTONGAN_PERLU_KONFIRMASI) {
+                const totalDolar = siap.reduce((a, s) => a + perkiraanUnggah(s.hasil.huruf).dolar, 0);
+                const totalHalaman = siap.reduce((a, s) => a + (s.hasil.halaman || 0), 0);
+                const infoKosong = siap.reduce((a, s) => a + (s.hasil.halamanKosong || 0), 0);
                 const lanjut = window.confirm(
-                    `"${file.name}": ${infoHalaman}±${potongan} potongan teks.${infoKosong}\n\n` +
-                    `Perkiraan biaya embedding ±$${dolar.toFixed(3)} dari saldo OpenRouter Anda. Lanjutkan?`
+                    `${banyak ? `${siap.length} berkas` : `"${siap[0].file.name}"`}: ` +
+                    `${totalHalaman ? `${totalHalaman} halaman, ` : ''}±${totalPotongan} potongan teks.` +
+                    `${infoKosong ? `\n${infoKosong} halaman berupa gambar dilewati.` : ''}\n\n` +
+                    `Perkiraan biaya embedding ±$${totalDolar.toFixed(3)} dari saldo OpenRouter Anda. Lanjutkan?`
                 );
                 if (!lanjut) return;
             }
-            setStatusUnggah(`Memvektorkan ±${potongan} potongan…`);
 
             const headers = {};
             if (openRouterKey) headers['x-byok-openrouter'] = openRouterKey.replace(/[^\x00-\x7F]/g, '');
 
-            const { data, error } = await supabase.functions.invoke('rag-process', {
-                body: {
-                    title: file.name,
-                    text,
-                    userId: session.user.id,
-                    // Hanya dikirim kalau pengguna memang sedang memilih sebuah space.
-                    // Tanpa ini rag-process mencari space CORE milik pengguna sendiri.
-                    ...(selectedSpace ? { spaceId: selectedSpace } : {}),
-                    source_type: 'user_upload',
-                    retrieved_at: new Date().toISOString()
-                },
-                headers
-            });
-
-            // Untuk status non-2xx supabase-js mengembalikan `error` bermesej umum
-            // ("Edge Function returned a non-2xx status code"); alasan sebenarnya ada di
-            // body jawaban, yang tersedia lewat error.context (Item 63).
-            if (error) {
-                let pesan = error.message;
+            // 4. Proses berurutan: OCR (bila dipilih) → rag-process. Satu berkas gagal tidak menghentikan yang lain.
+            for (const [i, item] of siap.entries()) {
+                const { file } = item;
+                let { hasil } = item;
+                const awalan = banyak ? `Berkas ${i + 1}/${siap.length} · ` : '';
                 try {
-                    const isi = await error.context?.json?.();
-                    if (isi?.error) pesan = isi.error;
-                } catch {
-                    // Body bukan JSON — pakai pesan bawaan.
-                }
-                throw new Error(pesan);
-            }
-            if (data?.error) throw new Error(data.error);
+                    const halamanTabel = hasil.halamanBertabelTerdeteksi || [];
+                    if (pakaiOcr && halamanTabel.length) {
+                        setStatusUnggah(`${awalan}OCR ${halamanTabel.length} halaman tabel…`);
+                        const { peta: petaOcr, halamanGagal } = await terapkanOcrHalaman(
+                            new Uint8Array(await file.arrayBuffer()),
+                            halamanTabel,
+                            openRouterKey,
+                            ({ ke, total, gagal }) => setStatusUnggah(`${awalan}OCR halaman ${ke}/${total}${gagal ? ` (${gagal} dilewati)` : ''}…`)
+                        );
+                        if (halamanGagal.length) {
+                            console.warn(`[ResearchApp] OCR melewati ${halamanGagal.length} halaman di ${file.name}:`, halamanGagal.join(', '));
+                            hasilAkhir.ocrDilewati.push({ nama: file.name, halaman: halamanGagal });
+                        }
+                        hasil = await ekstrakTeksDokumen(file, { petaOcrHalaman: petaOcr });
+                    }
 
-            console.log(`[ResearchApp] ✅ ${file.name}: ${data?.message ?? 'terunggah'} (${hasil.jenis}, ${hasil.huruf} huruf${data?.seconds ? `, ${data.seconds} s` : ''})`);
-            loadDocuments();
+                    setStatusUnggah(`${awalan}Memvektorkan ±${perkiraanUnggah(hasil.huruf).potongan} potongan…`);
+                    const { data, error } = await supabase.functions.invoke('rag-process', {
+                        body: {
+                            title: file.name,
+                            text: hasil.teks,
+                            userId: session.user.id,
+                            // Hanya dikirim kalau pengguna memang sedang memilih sebuah space.
+                            // Tanpa ini rag-process mencari space CORE milik pengguna sendiri.
+                            ...(selectedSpace ? { spaceId: selectedSpace } : {}),
+                            source_type: 'user_upload',
+                            retrieved_at: new Date().toISOString()
+                        },
+                        headers
+                    });
+
+                    // Untuk status non-2xx supabase-js mengembalikan `error` bermesej umum
+                    // ("Edge Function returned a non-2xx status code"); alasan sebenarnya ada di
+                    // body jawaban, yang tersedia lewat error.context (Item 63).
+                    if (error) {
+                        let pesan = error.message;
+                        try {
+                            const isi = await error.context?.json?.();
+                            if (isi?.error) pesan = isi.error;
+                        } catch {
+                            // Body bukan JSON — pakai pesan bawaan.
+                        }
+                        throw new Error(pesan);
+                    }
+                    if (data?.error) throw new Error(data.error);
+
+                    console.log(`[ResearchApp] ✅ ${file.name}: ${data?.message ?? 'terunggah'} (${hasil.jenis}, ${hasil.huruf} huruf${data?.seconds ? `, ${data.seconds} s` : ''})`);
+                    hasilAkhir.berhasil.push(file.name);
+                } catch (err) {
+                    console.error(`[ResearchApp] Gagal upload ${file.name}:`, err);
+                    hasilAkhir.gagal.push({ nama: file.name, pesan: err.message });
+                    // Saldo habis / kunci ditolak berlaku untuk semua berkas berikutnya → berhenti, jangan menagih ulang.
+                    if (/\b(401|402)\b|SALDO_HABIS|KUNCI_TIDAK_VALID|OPENROUTER_KEY_REQUIRED/i.test(err.message)) {
+                        siap.slice(i + 1).forEach((s) => hasilAkhir.gagal.push({ nama: s.file.name, pesan: 'tidak diproses — kunci/saldo OpenRouter bermasalah' }));
+                        break;
+                    }
+                }
+            }
         } catch (err) {
             console.error('[ResearchApp] Gagal upload:', err);
-            alert('Gagal mengunggah dokumen: ' + err.message);
+            hasilAkhir.gagal.push({ nama: banyak ? `(${files.length} berkas)` : files[0].name, pesan: err.message });
         } finally {
             setUploading(false);
             setStatusUnggah('');
             e.target.value = '';
+            loadDocuments();
+
+            const { berhasil, dilewati, gagal, ocrDilewati } = hasilAkhir;
+            if (berhasil.length + dilewati.length + gagal.length > 0) {
+                console.log('[ResearchApp] Ringkasan unggah:', { berhasil: berhasil.length, dilewati, gagal, ocrDilewati });
+                const daftar = (arr, f) => arr.slice(0, 10).map(f).join('\n') + (arr.length > 10 ? `\n… dan ${arr.length - 10} lagi (lihat konsol)` : '');
+                const baris = [];
+                if (banyak || dilewati.length) baris.push(`Berhasil: ${berhasil.length} · Dilewati (judul sudah ada): ${dilewati.length} · Gagal: ${gagal.length}`);
+                if (gagal.length) baris.push(`\nGagal:\n${daftar(gagal, (g) => `- ${g.nama}: ${g.pesan}`)}`);
+                if (dilewati.length && banyak) baris.push(`\nDilewati:\n${daftar(dilewati, (n) => `- ${n}`)}`);
+                if (!banyak && dilewati.length) baris.push('Dokumen berjudul sama sudah ada — hapus dulu bila ingin mengunggah ulang.');
+                if (ocrDilewati.length) {
+                    const jumlah = ocrDilewati.reduce((a, o) => a + o.halaman.length, 0);
+                    baris.push(`\n${jumlah} halaman gagal di-OCR dan dilewati (teks biasa tetap dipakai):\n${daftar(ocrDilewati, (o) => `- ${o.nama}: hal ${o.halaman.join(', ')}`)}`);
+                }
+                // Ditunda sebentar: alert memblokir, dan tanpa jeda layar masih menampilkan status
+                // "Berkas n/n · Memvektorkan…" serta daftar lama (uji 3 berkas 2026-09-17).
+                if (baris.length) setTimeout(() => alert(baris.join('\n')), 300);
+            }
         }
     };
 
@@ -275,7 +343,7 @@ export default function ResearchApp() {
                 <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg cursor-pointer transition-colors text-sm">
                     <Upload className="w-4 h-4" />
                     {uploading ? (statusUnggah || 'Mengunggah...') : 'Upload Dokumen'}
-                    <input type="file" className="hidden" onChange={handleUpload} accept={ACCEPT_UNGGAH} disabled={uploading} />
+                    <input type="file" multiple className="hidden" onChange={handleUpload} accept={ACCEPT_UNGGAH} disabled={uploading} />
                 </label>
             </div>
 

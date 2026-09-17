@@ -2,7 +2,7 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Ekstraksi PDF di browser (`documentTextExtractor.js`, salinan Mametlite) & kontrak label jawaban (`agent-process`)
-**Status:** 🟡 **Tahap 1–3 selesai 2026-09-17** (Tahap 3 lulus lewat [Item 90](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) B–C / [Item 89](./ROADMAP-KONTEKS-POTONGAN-RAG.md)) — **sisa: keputusan §7 nomor 3** (unggah buku Kepbup penuh + OCR massal, sisa Item 86)
+**Status:** 🟡 **Tahap 1–3 selesai 2026-09-17** (Tahap 3 lulus lewat [Item 90](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) B–C / [Item 89](./ROADMAP-KONTEKS-POTONGAN-RAG.md)) — **keputusan §7 nomor 3 berjalan:** buku dipecah per jabatan, unggah bertahap (42/221 per 2026-09-17)
 **Tanggal:** 2026-09-17
 **Roadmap Index:** Item 88
 
@@ -195,7 +195,11 @@ memisahkan baris "Kolom:" dari butirnya — periksa potongan live.
 1. ✅ **Diputuskan (2026-09-17): blok fakta terpisah (§4.2)**, bukan menulis ulang sel tabel OCR.
 2. ✅ **Diputuskan (2026-09-17): Tahap 2 (server) sesudah Tahap 1 terbukti**, karena hasil Tahap 1 (jumlah
    halaman "tidak pasti" di buku penuh) menentukan seberapa penting aturan label.
-3. ⏳ **Belum diputuskan:** (sisa Item 86 ikut di sini — jalur OCR batas laju 400 dan konfirmasi kedua >100 halaman belum pernah teruji live karena buku penuh belum diunggah) buku Kepbup penuh baru diunggah (OCR ±$1,88, ±40 menit) **setelah** Tahap 3
+3. ✅ **Diputuskan (2026-09-17): unggah buku penuh, dipecah per jabatan (222 berkas) lewat fitur unggah banyak
+   berkas, bertahap.** Status & sisa: 42/221 jabatan masuk bersih; **sisa** 041–221 (196/197 sudah), hapus berkas uji
+   lama `UJI-Kepbup-Sekretaris-DPRD-hal4-9.pdf`, set uji buku penuh (Camat per kecamatan), `000` pembuka (PDF
+   pindaian) belum terunggah. [log](../project-memory/changelog/2026-09-17-buku-kepbup-per-jabatan-dan-unggah-banyak.md)
+   *Catatan asal:* (sisa Item 86 ikut di sini — jalur OCR batas laju 400 dan konfirmasi kedua >100 halaman belum pernah teruji live karena buku penuh belum diunggah) buku Kepbup penuh baru diunggah (OCR ±$1,88, ±40 menit) **setelah** Tahap 3
    lolos pada berkas uji. *Catatan 2026-09-17: Tahap 3 sudah lolos — keputusan ini kini satu-satunya penghalang.
    Pemotong Item 89 menyisakan 23 potongan bercampur pada teks pdf.js buku penuh; dengan OCR belum terukur.*
 

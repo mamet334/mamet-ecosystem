@@ -147,9 +147,13 @@ benar untuk jenis pertanyaannya masing-masing — rancangan B hanya diterima bil
 - Identitas = "Nama Jabatan" **+ "Urusan Pemerintah"** (pembeda 13× Camat); pola kunci–nilai umum ditolak.
 - §4 jendela 30% diganti **60% + perpanjangan maju** (`awalBagianSesudah`); `chunkText` pindah ke `potong_teks.ts`.
 
+**Perbaikan kecil 2026-09-17 (unggah per jabatan):** identitas hasil OCR berbentuk baris tabel
+(`| Urusan Pemerintah | | : | … |`) kini terbaca (`barisKunciNilai`, jarak urusan 8 baris) — sebelumnya urusan hilang
+dari konteks 196/197. [log](../project-memory/changelog/2026-09-17-buku-kepbup-per-jabatan-dan-unggah-banyak.md)
+
 **Sisa pekerjaan:**
-- Buku Kepbup penuh (pdf.js) masih 23 potongan bercampur di luar pembuka jabatan — diukur saat buku penuh
-  diunggah (keputusan 3 Item 88).
+- Buku Kepbup diunggah **per jabatan** (bukan satu berkas pdf.js), jadi 23 potongan bercampur buku penuh tidak berlaku
+  bagi unggahan itu; tetap berlaku bila buku utuh diunggah dengan teks pdf.js.
 - Pola identitas dokumen jenis lain ditambahkan hanya bila diukur seperti Tahap 0.
 
 ---
