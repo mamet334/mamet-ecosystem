@@ -28,7 +28,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 | 88 Tabel centang PDF (+ sisa 86 OCR massal) | 🟡 Tahap 1–3 ✅ (Q1 VERIFIED live); **keputusan 3 belum** (buku penuh + OCR massal) | [`ROADMAP-TABEL-CENTANG-PDF.md`](./ROADMAP-TABEL-CENTANG-PDF.md) |
 | 85 Folder kerja Assistant | 📝 Tahap 0 sebagian; sisa pagar IPC `folder:*`; Tahap 1 menunggu aba-aba | [`ROADMAP-FOLDER-KERJA-ASSISTANT.md`](./ROADMAP-FOLDER-KERJA-ASSISTANT.md) |
 | 72 Adaptive Shell (UI multi-device) | 📋 belum dikerjakan | [`roadmap-adaptive-shell.md`](./roadmap-adaptive-shell.md) |
-| 33, 48, 49, 50, 91 Temuan audit tanpa rancangan | ⏳ T1 izin tool Lite · T2 dasbor yatim · T3 rute mati backend · T4 `match_documents` ke `anon` · T6 `verification_audit_logs.metadata` tak ada (400) | [`ROADMAP-TEMUAN-TERBUKA.md`](./ROADMAP-TEMUAN-TERBUKA.md) |
+| 33, 48, 49, 50, 91 Temuan audit tanpa rancangan | ⏳ T1 izin tool Lite · T2 dasbor yatim · T3 rute mati backend · T4 `match_documents` ke `anon` · T6 `verification_audit_logs.metadata` tak ada (400) · T7 ✅ kunci API di `agent_logs` (sisa: Owner ganti kunci) | [`ROADMAP-TEMUAN-TERBUKA.md`](./ROADMAP-TEMUAN-TERBUKA.md) |
 
 ---
 
@@ -39,7 +39,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 | `ROADMAP-PENGAMBILAN-POTONGAN-RAG.md` | ✅ Item 90 (A–C) | peta jalur RAG vs pola umum, utang lama, set uji → hybrid → konteks |
 | `ROADMAP-KONTEKS-POTONGAN-RAG.md` | ✅ Item 89 | pemisah bagian tabel OCR + baris konteks potongan |
 | `ROADMAP-TABEL-CENTANG-PDF.md` | 🟡 Item 88 | kolom centang dari koordinat pdf.js, kontrak & label |
-| `ROADMAP-TEMUAN-TERBUKA.md` | ⏳ T1–T4, T6 (T5 ✅) | temuan audit tanpa rancangan sendiri |
+| `ROADMAP-TEMUAN-TERBUKA.md` | ⏳ T1–T4, T6 (T5, T7 ✅) | temuan audit tanpa rancangan sendiri |
 | `ROADMAP-FOLDER-KERJA-ASSISTANT.md` | 📝 Item 85 | tombol 📁 sebagai tempat kerja Assistant |
 | `roadmap-adaptive-shell.md` | 📋 Item 72 | UI multi-device |
 | `ROADMAP-ADAPTIVE-MODEL-TIERING.md` | ✅ Item 34–35 | tier model & plumbing `thinking` |

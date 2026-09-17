@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { RuntimeContext } from '../runtime_context.ts';
 import { EvidenceReport } from './types.ts';
 import { VerificationReport, VerificationAuditRecord } from './verification_engine.ts';
+import { saringMetadata, samarkanTeks } from '../saring_rahasia.ts';
 
 /**
  * Verification Service — Infrastructure Layer
@@ -120,8 +121,9 @@ export async function persistTelemetryLog(
       user_id: params.userId,
       event_type: params.eventType,
       provider: params.provider,
-      message: params.message,
-      metadata: params.metadata
+      message: samarkanTeks(params.message || ''),
+      // Payload event bisa membawa rctx/env berisi kunci API — selalu disaring (saring_rahasia.ts).
+      metadata: saringMetadata(params.metadata)
     }]);
   } catch (err) {
     console.error('[TELEMETRY_LOG_FAIL]', err);
