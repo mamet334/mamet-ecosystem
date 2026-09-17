@@ -1,7 +1,7 @@
 # ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
 
 **Tipe Dokumen:** Daftar sisa pekerjaan (temuan audit yang belum punya dokumen roadmap sendiri)
-**Status:** ⏳ **4 temuan terbuka** — masing-masing menunggu keputusan Owner
+**Status:** ⏳ **5 temuan terbuka** — masing-masing menunggu keputusan Owner
 **Tanggal:** 2026-09-17 (dipindah dari INDEX-ROADMAP Item 33, 44, 48, 49, 50 saat perampingan)
 **Aturan:** temuan yang dikerjakan dan tumbuh besar pindah ke dokumen roadmap sendiri; yang selesai dicatat di
 changelog lalu barisnya diberi ✅ di sini.
@@ -52,6 +52,19 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
 - **Arah solusi:** `REVOKE EXECUTE … FROM anon` lewat migrasi (diajukan ke Owner; pastikan tidak ada pemanggil
   tanpa login — mametlite memanggil dengan sesi).
 - **Status:** ⏳ belum dikerjakan.
+
+## T5 — Hapus dokumen di mametlite: potongan ikut terhapus? (asal Item 91, 2026-09-17)
+
+- **Temuan:** `mametlite/src/App.jsx` `handleDeleteDocument` hanya menghapus baris `documents`; desktop
+  (`ResearchApp.jsx`) menghapus `document_chunks` dulu secara eksplisit. Aturan `ON DELETE CASCADE` dari
+  `document_chunks.document_id` ke `documents` **tidak ditemukan** di `supabase/migrations/` (bisa jadi dibuat
+  sebelum migrasi tercatat).
+- **Dampak bila tanpa cascade:** potongan yatim tetap tersimpan → memakan kuota DB; RLS tetap berlaku.
+- **Arah solusi:** cek skema live secara baca-saja (`information_schema.referential_constraints`); bila tanpa
+  cascade, hapus potongan dulu di mametlite (seperti desktop) atau tambah cascade lewat migrasi (keputusan Owner).
+- **Catatan:** perbaikan utama Item 91 (cek baris terhapus + muat ulang daftar) sudah selesai —
+  [changelog](../project-memory/changelog/2026-09-17-hapus-dokumen-cek-baris-terhapus.md).
+- **Status:** ⏳ belum dicek.
 
 ---
 

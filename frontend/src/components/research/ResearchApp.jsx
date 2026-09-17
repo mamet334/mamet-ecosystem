@@ -223,21 +223,36 @@ export default function ResearchApp() {
         if (deletingId) return;
         setDeletingId(docId);
         try {
-            // Hapus chunks dulu
-            await supabase.from('document_chunks').delete().eq('document_id', docId);
-            // Hapus dokumen
-            await supabase.from('documents').delete().eq('id', docId);
-            setDocuments(prev => prev.filter(d => d.id !== docId));
+            // supabase-js tidak melempar error — wajib cek { error } sendiri.
+            // Hapus chunks dulu. Nol baris di sini wajar (dokumen bisa tanpa potongan).
+            const { error: errChunks } = await supabase.from('document_chunks').delete().eq('document_id', docId);
+            if (errChunks) throw errChunks;
+
+            // Hapus dokumen dan minta baris yang terhapus dikembalikan:
+            // DELETE yang tidak mengenai baris apa pun tetap 204 tanpa error,
+            // jadi 0 baris = dokumen sudah tidak ada (daftar di layar basi).
+            const { data, error } = await supabase.from('documents').delete().eq('id', docId).select('id');
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                alert('Dokumen tidak ditemukan di server — kemungkinan sudah dihapus sebelumnya atau daftar ini sudah usang. Daftar dokumen dimuat ulang, periksa kembali dokumen yang ingin dihapus.');
+            }
         } catch (err) {
             console.error('[ResearchApp] Gagal menghapus:', err);
+            alert('Gagal menghapus dokumen: ' + (err.message || err));
         } finally {
             setDeletingId(null);
+            // Berhasil atau gagal, selalu muat ulang dari server agar entri basi hilang.
+            loadDocuments();
         }
     };
 
+    // Tampilkan jam juga: dua unggahan berjudul sama di hari yang sama
+    // tidak bisa dibedakan bila hanya tanggal.
     const formatDate = (dateStr) => {
         if (!dateStr) return '';
-        return new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        return new Date(dateStr).toLocaleString('id-ID', {
+            day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
     };
 
     return (

@@ -153,7 +153,7 @@ function App() {
   }, []);
 
   const fetchDocuments = async (userId) => {
-    const { data, error } = await supabase.from('documents').select('id, title').eq('user_id', userId).order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('documents').select('id, title, created_at').eq('user_id', userId).order('created_at', { ascending: false });
     if (!error && data) {
       setDocuments(data);
     }
@@ -164,12 +164,27 @@ function App() {
     if (!confirmDelete) return;
 
     try {
-      const { error } = await supabase.from('documents').delete().eq('id', id);
+      // Minta baris yang terhapus dikembalikan: DELETE yang tidak mengenai baris
+      // apa pun tetap sukses tanpa error, jadi 0 baris = daftar di layar sudah basi.
+      const { data, error } = await supabase.from('documents').delete().eq('id', id).select('id');
       if (error) throw error;
-      setDocuments(prev => prev.filter(doc => doc.id !== id));
+      if (!data || data.length === 0) {
+        alert('Dokumen tidak ditemukan di server — kemungkinan sudah dihapus sebelumnya atau daftar ini sudah usang. Daftar dokumen dimuat ulang, periksa kembali dokumen yang ingin dihapus.');
+      }
     } catch (err) {
       alert(`Gagal menghapus: ${err.message}`);
+    } finally {
+      // Berhasil atau gagal, selalu muat ulang dari server agar entri basi hilang.
+      if (session) fetchDocuments(session.user.id);
     }
+  };
+
+  // Jam ikut ditampilkan agar dua unggahan berjudul sama di hari yang sama bisa dibedakan.
+  const formatWaktu = (dateStr) => {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleString('id-ID', {
+      day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
   };
 
   const handleLogin = async (e) => {
@@ -472,7 +487,7 @@ function App() {
                 <div key={doc.id} className="group text-[11px] text-slate-300 bg-slate-700/50 px-2 py-1.5 rounded flex items-center justify-between border border-slate-600/50 hover:bg-slate-700 transition-colors">
                   <div className="flex items-center gap-2 truncate">
                     <BookOpen className="w-3 h-3 text-indigo-400 shrink-0" />
-                    <span className="truncate">{doc.title}</span>
+                    <span className="truncate" title={formatWaktu(doc.created_at)}>{doc.title}</span>
                   </div>
                   <button onClick={() => handleDeleteDocument(doc.id)} className="opacity-0 group-hover:opacity-100 hover:text-red-400 p-1 transition-opacity shrink-0">
                     <Trash2 className="w-3 h-3" />
