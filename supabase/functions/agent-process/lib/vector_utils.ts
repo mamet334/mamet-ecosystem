@@ -10,8 +10,15 @@
  *
  * Item 76: potongan yang dimulai di tengah tabel Markdown diawali baris judul kolom tabel itu
  * (judul_tabel.ts), sehingga bisa melebihi 800 huruf sepanjang judulnya. Titik potong tidak berubah.
+ *
+ * Item 87 (2026-09-16): potongan tidak lagi berhenti di tengah daftar bernomor (daftar_bernomor.ts) —
+ * butir "3. Perencanaan dan Keuangan" di Kepbup OKU dulu jatuh ke potongan lain yang tak ikut terambil,
+ * sehingga jawaban menyebut 2 dari 3 pelatihan wajib. Titik potong MELAR ke depan, maksimum 2× ukuran
+ * potongan. Tumpang tindih sengaja tetap 100: yang gagal adalah butir SESUDAH titik potong, dan
+ * memperbesar tumpang tindih hanya menambah jumlah potongan (biaya embedding) tanpa menutup kasus ini.
  */
 import { tambahJudulTabel } from './judul_tabel.ts';
+import { akhirTanpaDaftarTerpenggal, KELIPATAN_BATAS_DAFTAR } from './daftar_bernomor.ts';
 
 export const UKURAN_POTONGAN = 800;
 export const TUMPANG_POTONGAN = 100;
@@ -29,6 +36,8 @@ export function chunkText(text: string, maxLength: number = UKURAN_POTONGAN, tum
       if (breakPoint > i) {
         end = breakPoint + 1;
       }
+      // Daftar bernomor yang terpenggal di titik potong ini ditarik masuk (Item 87).
+      end = akhirTanpaDaftarTerpenggal(text, i, end, maxLength * KELIPATAN_BATAS_DAFTAR);
     }
     chunks.push(tambahJudulTabel(text, i, text.substring(i, end).trim()));
     if (end >= text.length) break;
