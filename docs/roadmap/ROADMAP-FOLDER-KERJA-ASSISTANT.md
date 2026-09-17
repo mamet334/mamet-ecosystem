@@ -2,7 +2,7 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Desktop Assistant (`ConversationEngine.jsx`, `AssistantService.js`, `electron/main.cjs`, `preload.cjs`) & `agent-process`
-**Status:** 📝 **Rencana — belum dikerjakan** (menunggu Owner memilih tahap pertama)
+**Status:** 📝 **Tahap 0 sebagian selesai** (jalur lama dihapus, commit `ed19ba1`, v451); **sisa Tahap 0:** pagar alamat IPC `folder:*`; Tahap 1 menunggu aba-aba Owner
 **Tanggal:** 2026-09-15
 **Roadmap Index:** Item 85
 

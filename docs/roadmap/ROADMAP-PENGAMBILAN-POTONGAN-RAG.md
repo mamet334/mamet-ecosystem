@@ -42,7 +42,7 @@ cocok tetapi belum dipakai · **Ditolak** = tidak cocok.
 ## 3. Utang Lama RAG (diperiksa ulang 2026-09-17 terhadap kode & database)
 
 Sisa pekerjaan yang dulu tercatat tersebar di bullet "Dicatat, belum dikerjakan" berbagai item. Dikumpulkan di
-sini supaya tidak ada lagi sisa yang tercecer; bullet lama di INDEX diberi rujukan ke bagian ini.
+sini supaya tidak ada lagi sisa yang tercecer; bullet lama diberi rujukan ke bagian ini (kini di `INDEX-ROADMAP-ARSIP-2026-09-17.md`).
 
 | # | Asal | Temuan (bukti hari ini) | Keputusan |
 |---|---|---|---|

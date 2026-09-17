@@ -1,5 +1,7 @@
 # Roadmap: Adaptive Shell untuk Mamet Ecosystem (UI Multi-Device)
 
+**Status:** 📋 **Rencana terdaftar, belum dikerjakan** (Item 72, telaah 2026-09-12 — lihat bagian Telaah di akhir dokumen)
+
 ## Konteks & Masalah
 
 Mamet Ecosystem saat ini adalah aplikasi Electron (desktop) dengan frontend React + Vite, backend Express di Vercel, dan Supabase untuk persistensi. Saat diakses dari HP (browser/companion), UI berantakan karena layout tidak beradaptasi terhadap device.
@@ -156,3 +158,22 @@ Untuk setiap fitur yang butuh capability tertentu, cek dulu lewat `useDevice().c
 - Jangan menambah dependency/library baru di luar yang sudah disebutkan tanpa memastikan sudah ada di `package.json` project.
 - Jangan implementasikan bagian "Ditunda dengan Sengaja" kecuali diminta eksplisit oleh Mamet.
 - Semua breakpoint dan angka ambang (600px, 1024px) harus jadi konstanta bernama di satu tempat, mudah diubah kalau ternyata tidak cocok setelah dites di device asli.
+
+---
+
+## Telaah terhadap Kode & Saran Urutan (2026-09-12, dipindah dari INDEX Item 72 pada 2026-09-17)
+
+- **Asal:** `docs/roadmap/roadmap-adaptive-shell.md` (158 baris, ditulis di luar sesi ini). Owner meminta ditelaah dan didaftarkan. **Belum dikerjakan.**
+- **Isi rencana:** Fase 1 deteksi device/orientasi di `DiscoveryManager` (validasi silang UA + `innerWidth`, event reaktif, override manual persisten); Fase 2 angkat state kerja ke Context sebelum shell dibangun; Fase 3 empat shell terpisah (`DesktopShell`, `TabletShell`, `PhonePortraitShell`, `PhoneLandscapeShell`) + `AppShell` sebagai selector, dengan feature-gating per capability; Fase 4 PWA (`vite-plugin-pwa`, manifest, service worker) + Supabase realtime untuk approval. Native Android, mDNS, dan `LocalizationManager` sengaja ditunda.
+- **Diperiksa terhadap kode (2026-09-12):**
+  - ✅ **Masalahnya nyata.** `DiscoveryManager.detectDevice()` memang murni regex User-Agent (baris 73–83); `innerWidth` sudah ikut dicatat di `getScreenInfo()` (baris 179) tapi tidak dipakai untuk klasifikasi. `AppShell.jsx` (162 baris) hanya memuat **1** kelas responsif Tailwind — jadi UI HP berantakan bukan dugaan.
+  - ⚠️ **Nama `AppShell` sudah dipakai.** `frontend/src/components/workbench/AppShell.jsx` sudah ada (plus `components/os/OSDesktopShell.jsx`). Membuat `frontend/src/shells/AppShell.jsx` akan menimbulkan dua komponen bernama sama; sebaiknya yang ada dipakai/di-rename, bukan ditambah.
+  - ⚠️ **Fase 4 melanggar aturan rencana itu sendiri.** Dokumen melarang menambah dependency di luar `package.json`, sedangkan `vite-plugin-pwa` (dan workbox) belum ada di `frontend/package.json`. Perlu keputusan eksplisit Owner.
+  - ❔ Klaim "backend Express di Vercel" konsisten dengan adanya `backend/vercel.json`, tapi jalur mana yang benar-benar dipakai versi web belum diverifikasi (lihat Item 49). `EngineerApprovalDialog.jsx` memang ada, jadi use-case approval di HP masuk akal.
+- **Catatan telaah (pendapat saya, keputusan tetap Owner):**
+  1. **Empat shell terpisah mahal untuk pengembang tunggal.** Pemisahan `phone-portrait` vs `phone-landscape` sebagai dua komponen memberi manfaat paling kecil (HP landscape ≈ tablet kecil) dengan biaya rawat paling besar. Saran: **dua** komponen (yang ada untuk desktop/tablet + satu `PhoneShell`), orientasi ditangani CSS/Tailwind.
+  2. **Sebagian Fase 2 muncul karena pilihan Fase 3.** "Data hilang saat rotate" adalah akibat shell di-unmount saat orientasi berubah. Kalau orientasi ditangani CSS, risiko itu hilang dan Fase 2 menyusut jadi sekadar higiene.
+  3. **Ada jalan murah yang tidak tercantum:** rapikan dulu 3 layar yang benar-benar dipakai dari HP (chat Assistant, unggah Research App, dialog approval) dengan breakpoint Tailwind — tanpa perubahan arsitektur. Setelah dipakai nyata, baru dinilai apakah shell terpisah memang perlu.
+  4. **Kenyataan HP dari Item 69 belum masuk rencana:** ekstraksi PDF di HP 3–5× lebih lambat, tab latar belakang bisa dihentikan browser saat unggah, dan batas 60 MB. Ini syarat nyata untuk "companion", layak ditulis sebagai batasan Fase 3/4.
+  5. Ambang 600/1024 px sebagai konstanta bernama: setuju, dan sebaiknya satu sumber yang sama dipakai Tailwind maupun `DiscoveryManager`.
+- **Status:** 📋 **Rencana terdaftar, belum dikerjakan.** Saran urutan: kerjakan poin 3 dulu (murah, langsung terasa), lalu Fase 1 (deteksi + override, berdiri sendiri dan berguna), lalu putuskan Fase 2–3 setelah ada bukti pemakaian.

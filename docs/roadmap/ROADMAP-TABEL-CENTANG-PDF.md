@@ -192,7 +192,7 @@ memisahkan baris "Kolom:" dari butirnya — periksa potongan live.
 1. ✅ **Diputuskan (2026-09-17): blok fakta terpisah (§4.2)**, bukan menulis ulang sel tabel OCR.
 2. ✅ **Diputuskan (2026-09-17): Tahap 2 (server) sesudah Tahap 1 terbukti**, karena hasil Tahap 1 (jumlah
    halaman "tidak pasti" di buku penuh) menentukan seberapa penting aturan label.
-3. ⏳ **Belum diputuskan:** buku Kepbup penuh baru diunggah (OCR ±$1,88, ±40 menit) **setelah** Tahap 3
+3. ⏳ **Belum diputuskan:** (sisa Item 86 ikut di sini — jalur OCR batas laju 400 dan konfirmasi kedua >100 halaman belum pernah teruji live karena buku penuh belum diunggah) buku Kepbup penuh baru diunggah (OCR ±$1,88, ±40 menit) **setelah** Tahap 3
    lolos pada berkas uji.
 
 ---
