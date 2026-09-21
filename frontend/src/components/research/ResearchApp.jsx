@@ -3,13 +3,14 @@ import { supabase } from '../../supabase';
 import { kernel } from '../../core/runtime/Kernel';
 import { Search, Upload, Trash2, FileText, Loader2, Database, PlusCircle } from 'lucide-react';
 import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from '../../core/runtime/services/documentTextExtractor.js';
-import { bacaBerkasExcelAsn, adalahExcel, EKSTENSI_EXCEL } from '../../core/runtime/services/bacaExcelAsn.js';
+import { bacaBerkasExcelAsn, adalahExcel, EKSTENSI_EXCEL, unduhExcelJanggal } from '../../core/runtime/services/bacaExcelAsn.js';
 import PratinjauDataTabel from './PratinjauDataTabel.jsx';
 import DaftarDataTabel from './DaftarDataTabel.jsx';
+import LaporanKejanggalan from './LaporanKejanggalan.jsx';
 import DaftarWorkspace from './DaftarWorkspace.jsx';
 import { pilihRuangAwal, ingatRuangTerpilih, ruangTerpilihTersimpan, buatRuang, gantiNamaRuang, hapusRuangKosong } from '../../core/runtime/services/ruangPengetahuan.js';
 import { opdDariNamaBerkas, siapkanSimpan, dugaVersi, bandingkanIsi, uraiPerbedaan } from '../../core/runtime/services/dataTabelAsn.js';
-import { ambilBerkasAktif, ambilPegawaiBerkas, simpanBerkasAsn, daftarBerkasAsn, hapusBerkasAsn } from '../../core/runtime/services/dataTabelAsnDb.js';
+import { ambilBerkasAktif, ambilPegawaiBerkas, simpanBerkasAsn, daftarBerkasAsn, hapusBerkasAsn, ambilBahanLaporan } from '../../core/runtime/services/dataTabelAsnDb.js';
 import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN, OCR_SERENTAK } from '../../core/runtime/services/pdfOcrService.js';
 
 // Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
@@ -441,6 +442,15 @@ export default function ResearchApp() {
                     }
                 }}
             />
+
+            {daftarTabel.some((b) => !b.digantikan_oleh) && (
+                <LaporanKejanggalan
+                    // Data tabel berubah (simpan / hapus / versi) → laporan lama dibuang, bukan ditampilkan basi.
+                    key={daftarTabel.map((b) => `${b.id}:${b.digantikan_oleh || ''}`).join(',')}
+                    onMuatBahan={() => ambilBahanLaporan(supabase)}
+                    onUnduh={unduhExcelJanggal}
+                />
+            )}
 
             {/* Search Bar */}
             <div className="mb-6">

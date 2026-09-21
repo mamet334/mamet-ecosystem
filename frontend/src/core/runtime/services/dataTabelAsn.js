@@ -14,6 +14,8 @@ const rapat = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
 const kecil = (s) => rapat(s).toLowerCase();
 const NOMOR = /^\d+\.?$/;
 const KOSONG_ISI = (v) => !v || v === '-' || v === '–';
+// Isi sel jenis kelamin yang berupa huruf/kata (bukan tanda √/v/1).
+const hurufJk = (v) => (/^(l|lk|l\.|laki[\s-]*laki|pria)$/i.test(v) ? 'L' : /^(p|pr|p\.|perempuan|wanita)$/i.test(v) ? 'P' : '');
 
 // Judul kolom (gabungan baris judul bertingkat, huruf kecil) → bidang baku. Urutan penting: aturan pertama menang.
 const ATURAN_KOLOM = [
@@ -185,11 +187,22 @@ export function bacaSheetAsn(sheet, { barisAwal = 1, kolomAwal = 0 } = {}) {
       const berikut = nb && (nomorPinjaman || !NOMOR.test(rapat(nb[peta.no])) || salinan.has(`${i + 1},${peta.no}`)) ? nb : [];
       const nip = cariNip(namaMentah, peta.nip !== undefined ? b[peta.nip] : '', ...b) || cariNip(...berikut);
       const nama = rapat(namaMentah.replace(/(?:nip\.?\s*[:.]?\s*)?\d[\d\s]{16,}\d/i, '').replace(/[\/|,;]\s*$/, '').replace(/\s*\/\s*$/, ''));
-      const jl = peta.jk_l !== undefined && !KOSONG_ISI(rapat(b[peta.jk_l]));
-      const jp = peta.jk_p !== undefined && !KOSONG_ISI(rapat(b[peta.jk_p]));
-      let jk = jl && !jp ? 'L' : jp && !jl ? 'P' : '';
-      if (!jk && peta.jk !== undefined) { const v = kecil(b[peta.jk]); jk = /^l/.test(v) ? 'L' : /^p/.test(v) ? 'P' : ''; }
-      if (jl && jp) janggal('jenis_kelamin', `L dan P sama-sama terisi: ${nama}`, barisExcel);
+      // Jenis kelamin: HURUF yang ditulis menang atas posisi kolom. PU PR, Diskominfo, Sosoh Buay Rayap… menulis "L"/"P"
+      // di sel yang digabung melintasi kolom L & P (dulu terbaca "keduanya terisi", jk kosong) atau menulis "P" di
+      // kolom L (dulu terbaca L). Salinan sel gabungan bukan isian kedua. Tanda (√, v, 1) tetap menurut kolomnya.
+      const selJk = (c) => (c === undefined || salinan.has(`${i},${c}`) ? '' : rapat(b[c]));
+      const vl = selJk(peta.jk_l), vp = selJk(peta.jk_p);
+      const hl = hurufJk(vl), hp = hurufJk(vp);
+      let jk = '';
+      if (hl || hp) {
+        jk = hl && hp && hl !== hp ? '' : hl || hp;
+        if (hl && hp && hl !== hp) janggal('jenis_kelamin', `L dan P sama-sama terisi: ${nama}`, barisExcel);
+      } else {
+        const jl = !KOSONG_ISI(vl), jp = !KOSONG_ISI(vp);
+        jk = jl && !jp ? 'L' : jp && !jl ? 'P' : '';
+        if (jl && jp) janggal('jenis_kelamin', `L dan P sama-sama terisi: ${nama}`, barisExcel);
+      }
+      if (!jk && peta.jk !== undefined) jk = hurufJk(rapat(b[peta.jk])) || (/^l/.test(kecil(b[peta.jk])) ? 'L' : /^p/.test(kecil(b[peta.jk])) ? 'P' : '');
       // Nilai bidang dari baris orang; bila kosong, dari baris bawah milik orang yang sama (DPRD menaruh pendidikan &
       // tahun di baris NIP).
       const ambil = (bidang) => { const c = peta[bidang]; if (c === undefined) return ''; const v = rapat(b[c]); return v || rapat(berikut[c]); };

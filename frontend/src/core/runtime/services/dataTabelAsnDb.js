@@ -39,6 +39,25 @@ export async function ambilPegawaiBerkas(supabase, berkasId) {
   return hasil;
 }
 
+/** Bahan laporan kejanggalan (Tahap 4): berkas aktif + ringkasan_sheet + semua pegawainya. Per halaman 1.000 baris. */
+export async function ambilBahanLaporan(supabase) {
+  const { data: berkas, error } = await supabase
+    .from('asn_berkas').select('id, opd, nama_berkas, ringkasan_sheet, created_at').is('digantikan_oleh', null);
+  if (error) throw error;
+  if (!berkas?.length) return { berkas: [], pegawai: [] };
+  const pegawai = [];
+  for (let dari = 0; ; dari += HALAMAN) {
+    const { data, error: e } = await supabase
+      .from('asn_pegawai')
+      .select('berkas_id, sheet, kelompok, baris_asal, no_urut, nama, nip, jenis_kelamin, jabatan')
+      .in('berkas_id', berkas.map((b) => b.id)).order('id').range(dari, dari + HALAMAN - 1);
+    if (e) throw e;
+    pegawai.push(...(data || []));
+    if (!data || data.length < HALAMAN) break;
+  }
+  return { berkas, pegawai };
+}
+
 /**
  * Simpan satu berkas (satu transaksi di database).
  * @param {{p_berkas, p_pegawai}} muatan  dari siapkanSimpan()
