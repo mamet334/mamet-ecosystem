@@ -105,3 +105,19 @@ ke PDF asli:
 Pipa RAG (pemotong, konteks, pencarian) dibekukan selama buku Kepbup diunggah — hanya perbaikan yang memblokir unggah
 (contoh: centang "Ö" 177, diuji regresi 222 berkas). Dokumen acak boleh diunggah kapan saja; aturan baru untuk dokumen
 acak wajib diukur dulu (≥3 pertanyaan per jenis dokumen) sebelum dipakai.
+
+## Daftar dokumen: batas 50 menyembunyikan dokumen lama (perbaikan tampilan)
+
+Berkas uji lama tidak terlihat di Research App padahal masih ada di database: daftar hanya memuat **50 dokumen
+terbaru** tanpa tanda apa pun bahwa ada sisa. Dengan 238 dokumen, 188 di antaranya tidak tampil. Pencarian judul
+tetap menemukannya (kotak cari tidak dibatasi space), dan pengambilan RAG tidak terpengaruh — murni tampilan.
+
+`ResearchApp.jsx`:
+- Total diambil dari server (`select('*', { count: 'exact' })`), ditampilkan "Menampilkan 50 dari 238 dokumen".
+- Tombol **"Muat 50 lagi"** menyambung halaman berikutnya (`.range(dari, sampai - 1)`), bukan memuat ulang.
+- Urutan **created_at desc + id asc**: unggahan massal menghasilkan banyak dokumen berdetik sama, satu kunci saja
+  membuat baris ganda/terlewat antar halaman.
+- Hapus dokumen memuat ulang **sebanyak yang sedang tampil**, daftar tidak melipat kembali ke 50.
+
+Diuji Owner di `npm run desktop`: tombol menambah dokumen berbeda, daftar tetap panjang sesudah hapus. `vite build` exit 0.
+Berkas uji `UJI-Kepbup-Sekretaris-DPRD-hal4-9.pdf` sudah dihapus lewat pencarian (19 potongan ikut hilang).

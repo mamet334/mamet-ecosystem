@@ -7,9 +7,14 @@ import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN
 
 // Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
 const POTONGAN_PERLU_KONFIRMASI = 150; // ±105 ribu huruf ≈ $0,006 (potongan 800 huruf, Item 70)
+// Daftar dimuat per halaman; total diambil dari server agar dokumen lama tidak hilang diam-diam
+// (buku Kepbup 221 berkas: batas 50 menyembunyikan dokumen terlama tanpa tanda apa pun).
+const DOKUMEN_PER_HALAMAN = 50;
 
 export default function ResearchApp() {
     const [documents, setDocuments] = useState([]);
+    const [totalDokumen, setTotalDokumen] = useState(0);
+    const [memuatLagi, setMemuatLagi] = useState(false);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState(() => {
         return sessionStorage.getItem('research_search_query') || '';
@@ -43,13 +48,16 @@ export default function ResearchApp() {
     };
 
     // Load documents
-    const loadDocuments = async () => {
-        setLoading(true);
+    // tambah = true → sambung halaman berikutnya; selain itu muat ulang sebanyak yang sudah tampil (min. satu halaman).
+    const loadDocuments = async (tambah = false) => {
+        const dari = tambah ? documents.length : 0;
+        const sampai = tambah ? dari + DOKUMEN_PER_HALAMAN : Math.max(documents.length, DOKUMEN_PER_HALAMAN);
+        if (tambah) setMemuatLagi(true); else setLoading(true);
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
 
-            let query = supabase.from('documents').select('*').eq('user_id', session.user.id);
+            let query = supabase.from('documents').select('*', { count: 'exact' }).eq('user_id', session.user.id);
             // Jika ada query pencarian khusus, jangan batasi ke space tertentu agar dokumen selalu ditemukan
             if (selectedSpace && !searchQuery.trim()) {
                 query = query.eq('space_id', selectedSpace);
@@ -58,13 +66,18 @@ export default function ResearchApp() {
                 query = query.ilike('title', `%${searchQuery.trim()}%`);
             }
 
-            const { data, error } = await query.order('created_at', { ascending: false }).limit(50);
+            // id sebagai pengurut kedua: created_at yang sama tidak membuat baris ganda/terlewat antar halaman.
+            const { data, error, count } = await query
+                .order('created_at', { ascending: false }).order('id', { ascending: true })
+                .range(dari, sampai - 1);
             if (error) throw error;
-            setDocuments(data || []);
+            setDocuments((lama) => (tambah ? [...lama, ...(data || [])] : (data || [])));
+            setTotalDokumen(count ?? 0);
         } catch (err) {
             console.error('[ResearchApp] Gagal memuat dokumen:', err);
         } finally {
             setLoading(false);
+            setMemuatLagi(false);
         }
     };
 
@@ -73,6 +86,7 @@ export default function ResearchApp() {
     }, []);
 
     useEffect(() => {
+        setDocuments([]);
         loadDocuments();
     }, [selectedSpace, searchQuery]);
 
@@ -419,12 +433,27 @@ export default function ResearchApp() {
                             </button>
                         </div>
                     ))}
+                    {documents.length < totalDokumen && (
+                        <div className="flex flex-col items-center gap-2 pt-2">
+                            <p className="text-[11px] text-slate-500">
+                                Menampilkan {documents.length} dari {totalDokumen} dokumen — dokumen lama juga bisa dicari lewat judul
+                            </p>
+                            <button
+                                onClick={() => loadDocuments(true)}
+                                disabled={memuatLagi}
+                                className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-blue-300 border border-blue-500/30 hover:bg-blue-500/10 transition-all disabled:opacity-50"
+                            >
+                                {memuatLagi && <Loader2 className="w-3 h-3 animate-spin" />}
+                                Muat {Math.min(DOKUMEN_PER_HALAMAN, totalDokumen - documents.length)} lagi
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
 
             {/* Stats */}
             <div className="mt-6 text-center text-[10px] text-slate-600">
-                {documents.length} dokumen • {knowledgeSpaces.length} spaces
+                {documents.length < totalDokumen ? `${documents.length} dari ${totalDokumen}` : documents.length} dokumen • {knowledgeSpaces.length} spaces
             </div>
         </div>
     );
