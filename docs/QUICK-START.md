@@ -173,7 +173,7 @@ npm run dev
 
 - `GET /api/health` - Check server status
 - `GET /api/tools` - Daftar tools tersedia
-- `POST /api/agent/process` - Process message dengan agent
+- `POST /api/chat` - Chat mode Engineer (rute lama `/api/agent/process` dihapus 2026-09-21, T3)
 
 ---
 

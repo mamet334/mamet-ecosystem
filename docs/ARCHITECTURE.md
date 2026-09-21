@@ -69,7 +69,7 @@ backend/
 
 2. **Frontend calls backend API**
    ```javascript
-   POST /api/agent/process
+   POST /api/chat   (dulu /api/agent/process — dihapus 2026-09-21, T3; chat Assistant/Lite kini lewat Supabase Edge Function agent-process)
    {
      message: "user message",
      tools: ["web_search", "api_caller"],
@@ -228,7 +228,7 @@ npm test
 ```bash
 # Test endpoints
 curl http://localhost:3000/api/health
-curl -X POST http://localhost:3000/api/agent/process
+curl -X POST http://localhost:3000/api/chat
 ```
 
 ## 🔄 Future Enhancements

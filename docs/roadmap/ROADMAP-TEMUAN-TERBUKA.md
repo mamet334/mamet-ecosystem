@@ -1,7 +1,7 @@
 # ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
 
 **Tipe Dokumen:** Daftar sisa pekerjaan (temuan audit yang belum punya dokumen roadmap sendiri)
-**Status:** ⏳ **3 temuan terbuka** (T1–T3; T4–T7 ditutup) — masing-masing menunggu keputusan Owner
+**Status:** ⏳ **2 temuan terbuka** (T1–T2; T3–T7 ditutup) — masing-masing menunggu keputusan Owner
 **Tanggal:** 2026-09-17 (dipindah dari INDEX-ROADMAP Item 33, 44, 48, 49, 50 saat perampingan)
 **Aturan:** temuan yang dikerjakan dan tumbuh besar pindah ke dokumen roadmap sendiri; yang selesai dicatat di
 changelog lalu barisnya diberi ✅ di sini.
@@ -35,14 +35,14 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
 - **Keputusan Owner yang dibutuhkan:** per komponen — pasang (dengan angka diperiksa) atau hapus.
 - **Status:** ⏳ menunggu keputusan.
 
-## T3 — Rute mati `/api/agent/process` di `backend/server.js` (asal Item 49, 2026-09-10)
+## T3 — ✅ Rute mati `/api/agent/process` di `backend/server.js` (asal Item 49, 2026-09-10)
 
 - **Temuan:** rute masih ada (`backend/server.js:309`), tanpa pemanggil di frontend maupun mametlite; memetakan ke
   model OpenRouter yang sudah hilang (`google/gemini-2.0-flash-exp:free`) dan mengabaikan model pilihan pengguna.
   `/api/chat` yang dipakai Engineer bersih. `self_healing.ts` dari item yang sama sudah dihapus (`c902361`).
 - **Risiko:** tidak ada selama tak disambungkan; menggigit bila dipakai ulang tanpa dibaca.
-- **Keputusan Owner yang dibutuhkan:** hapus rute atau biarkan.
-- **Status:** ⏳ belum dikerjakan.
+- **Keputusan Owner (2026-09-21):** hapus.
+- **Status:** ✅ dihapus 2026-09-21 (1.170 baris; tanpa pemanggil, tanpa fungsi bantu yatim; `/api/chat` tidak disentuh) — [log](../project-memory/changelog/2026-09-21-t3-hapus-rute-mati-agent-process.md). Sisa: bukti live Engineer `/api/chat` sesudah backend dinyalakan.
 
 ## T4 — ✅ `match_documents` bisa dieksekusi `anon` (asal Item 50, 2026-09-10)
 
