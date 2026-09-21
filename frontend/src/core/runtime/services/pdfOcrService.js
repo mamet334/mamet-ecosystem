@@ -43,6 +43,12 @@ export function perkiraanOcr(jumlahHalaman) {
   return jumlahHalaman * DOLAR_PER_HALAMAN_OCR;
 }
 
+/** Jumlah halaman PDF (pdf-lib, di perangkat) — untuk perkiraan biaya sebelum OCR seluruh halaman (Item 92 Tahap 5). */
+export async function hitungHalamanPdf(bytes) {
+  const { PDFDocument } = await import('pdf-lib');
+  return (await PDFDocument.load(bytes)).getPageCount();
+}
+
 /** Potong satu halaman (1-based) dari PDFDocument pdf-lib yang SUDAH dimuat menjadi PDF tersendiri. */
 export async function pisahHalamanPdf(asal, nomorHalaman) {
   const { PDFDocument } = await import('pdf-lib');

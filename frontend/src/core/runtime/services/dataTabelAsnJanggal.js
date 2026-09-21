@@ -9,6 +9,8 @@
 // + 1 digit jenis kelamin (1 laki-laki, 2 perempuan) + 3 digit nomor urut. Pengukuran 2026-09-21: 825 NIP PPPK
 // (kode "21") di 53 berkas — tanpa aturan PPPK semuanya akan dituduh "TMT mustahil".
 
+import { uraiBaris } from './dataTabelAsnOcr.js';
+
 export const TINGKAT = {
   salah: 'Perlu dibetulkan',
   lengkapi: 'Perlu dilengkapi',
@@ -22,6 +24,7 @@ export const JENIS = {
   nip_tak_sah: { tingkat: 'salah', label: 'NIP tidak sah (susunan angka mustahil)' },
   nip_berkas_lain: { tingkat: 'salah', label: 'NIP juga tercatat di berkas aktif lain' },
   nip_ganda: { tingkat: 'salah', label: 'NIP tercatat lebih dari sekali di berkas ini' },
+  nip_tak_lengkap: { tingkat: 'salah', label: 'NIP hasil OCR tidak 18 digit' },
   nomor_ganda: { tingkat: 'salah', label: 'Nomor urut dipakai lebih dari sekali di sheet yang sama' },
   lp_ganda: { tingkat: 'salah', label: 'Kolom L dan P sama-sama terisi' },
   struktur: { tingkat: 'salah', label: 'Susunan sheet tidak terbaca' },
@@ -88,6 +91,7 @@ export function susunLaporanJanggal({ berkas = [], pegawai = [], tahunKini = new
 
     // 1. Catatan tingkat sheet dari pembaca (tersimpan di ringkasan_sheet saat unggah).
     const infoSheet = new Map();
+    const nipTerpotong = new Set();
     for (const s of b.ringkasan_sheet || []) {
       const bidang = new Set((s.pemetaan || []).map((m) => m.bidang));
       infoSheet.set(s.sheet, {
@@ -97,6 +101,11 @@ export function susunLaporanJanggal({ berkas = [], pegawai = [], tahunKini = new
       for (const k of s.kejanggalan || []) {
         if (k.jenis === 'jumlah_salah' || k.jenis === 'jumlah_lp_beda' || k.jenis === 'struktur') {
           tambah(k.jenis, null, k.pesan, { sheet: s.sheet, baris: k.baris ?? null });
+        } else if (k.jenis === 'nip_tak_lengkap') {
+          // PDF pindaian (Tahap 5): angka NIP terpotong OCR. Orangnya tidak ikut dilaporkan "tanpa NIP" lagi.
+          const p = orangDi(s.sheet, k.baris);
+          if (p) nipTerpotong.add(p);
+          tambah('nip_tak_lengkap', p, `${(k.pesan.match(/angka NIP terbaca \d+ digit/) || ['angka NIP tidak 18 digit'])[0]} — cocokkan dengan berkas kertas`, { sheet: s.sheet, baris: k.baris ?? null });
         } else if (k.jenis === 'jenis_kelamin') {
           tambah('lp_ganda', orangDi(s.sheet, k.baris), 'isi kolom L dan P bertentangan', { sheet: s.sheet, baris: k.baris ?? null });
         }
@@ -116,7 +125,7 @@ export function susunLaporanJanggal({ berkas = [], pegawai = [], tahunKini = new
     for (const p of orang) {
       const info = infoSheet.get(p.sheet) || { adaJabatan: true, adaJk: true };
       if (!p.nip) {
-        tambah('tanpa_nip', p, p.kelompok === 'paruh_waktu' ? 'PPPK paruh waktu — periksa apakah NIP sudah terbit' : 'NIP belum diisi atau tidak 18 digit');
+        if (!nipTerpotong.has(p)) tambah('tanpa_nip', p, p.kelompok === 'paruh_waktu' ? 'PPPK paruh waktu — periksa apakah NIP sudah terbit' : 'NIP belum diisi atau tidak 18 digit');
       } else {
         const u = uraiNip(p.nip, tahunKini);
         if (!u.sah) tambah('nip_tak_sah', p, u.alasan.join('; '));
@@ -125,7 +134,7 @@ export function susunLaporanJanggal({ berkas = [], pegawai = [], tahunKini = new
         }
         const dobel = nipDalam.get(p.nip);
         if (dobel.length > 1) {
-          const lain = dobel.filter((x) => x !== p).map((x) => `${x.sheet} baris ${x.baris_asal}`);
+          const lain = dobel.filter((x) => x !== p).map((x) => `${x.sheet} ${x.baris_asal < 0 ? uraiBaris(x.baris_asal) : `baris ${x.baris_asal}`}`);
           tambah('nip_ganda', p, `juga di ${lain.join(', ')}`);
         }
         const berkasLain = [...(nipDi.get(p.nip) || [])].filter((id) => id !== b.id).map((id) => namaBerkas.get(id));
@@ -163,12 +172,12 @@ export function lembarExcelOpd(lap, tanggal = new Date()) {
   const aoa = [
     [`Daftar kejanggalan data rekonsiliasi ASN — ${lap.opd}`],
     [`Berkas: ${lap.nama_berkas} · ${lap.jumlah_orang} orang terbaca · disusun ${tgl}`],
-    [`${lap.salah} perlu dibetulkan · ${lap.lengkapi} perlu dilengkapi. Nomor baris = baris di berkas Excel yang dikirim OPD.`],
+    [`${lap.salah} perlu dibetulkan · ${lap.lengkapi} perlu dilengkapi. Baris = nomor baris di berkas Excel yang dikirim OPD; PDF pindaian: halaman dan urutan baris tabel.`],
     [],
-    ['No', 'Tingkat', 'Masalah', 'Sheet', 'Baris Excel', 'Nama', 'NIP', 'Keterangan'],
+    ['No', 'Tingkat', 'Masalah', 'Sheet', 'Baris', 'Nama', 'NIP', 'Keterangan'],
   ];
   lap.butir.forEach((x, i) => aoa.push([
-    i + 1, TINGKAT[x.tingkat], JENIS[x.jenis].label, x.sheet, x.baris ?? '', x.nama, x.nip ? String(x.nip) : '', x.keterangan,
+    i + 1, TINGKAT[x.tingkat], JENIS[x.jenis].label, x.sheet, x.baris == null ? '' : x.baris < 0 ? uraiBaris(x.baris) : x.baris, x.nama, x.nip ? String(x.nip) : '', x.keterangan,
   ]));
   if (!lap.butir.length) aoa.push(['', '', 'Tidak ada kejanggalan yang ditemukan pemeriksaan otomatis.']);
   return aoa;

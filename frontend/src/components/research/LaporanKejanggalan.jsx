@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AlertTriangle, ChevronDown, ChevronRight, Download, Loader2, RefreshCw } from 'lucide-react';
+import { uraiBaris } from '../../core/runtime/services/dataTabelAsnOcr.js';
 import { susunLaporanJanggal, lembarExcelOpd, lembarRingkasan, namaLembar, JENIS, TINGKAT } from '../../core/runtime/services/dataTabelAsnJanggal.js';
 
 // LAPORAN KEJANGGALAN PER OPD (Item 92 Tahap 4): diperiksa kode dari data tersimpan (berkas aktif), tanpa AI.
@@ -76,7 +77,7 @@ export default function LaporanKejanggalan({ onMuatBahan, onUnduh }) {
       </div>
       <p className="text-[10px] text-slate-500 mb-2">
         Diperiksa kode dari data tersimpan, tanpa AI. NIP diperiksa menurut susunannya: tanggal lahir, TMT (PPPK: tahun + kode 21),
-        digit ke-15 jenis kelamin (1 = L, 2 = P). "Baris Excel" = nomor baris di berkas kiriman OPD.
+        digit ke-15 jenis kelamin (1 = L, 2 = P). "Baris" = nomor baris di berkas Excel kiriman OPD; PDF pindaian: "hal. N baris M".
       </p>
 
       <div className="space-y-1">
@@ -116,7 +117,7 @@ export default function LaporanKejanggalan({ onMuatBahan, onUnduh }) {
                           <tr key={i} className="align-top border-t border-slate-800/60">
                             <td className={`pr-2 py-0.5 ${b.tingkat === 'salah' ? 'text-red-300' : 'text-amber-300'}`} title={TINGKAT[b.tingkat]}>{JENIS[b.jenis].label}</td>
                             <td className="pr-2 py-0.5 text-slate-400">{b.sheet}</td>
-                            <td className="pr-2 py-0.5 text-slate-400">{b.baris ?? ''}</td>
+                            <td className="pr-2 py-0.5 text-slate-400 whitespace-nowrap">{b.baris == null ? '' : uraiBaris(b.baris)}</td>
                             <td className="pr-2 py-0.5 text-slate-200">{b.nama}</td>
                             <td className="pr-2 py-0.5 font-mono text-slate-400">{b.nip}</td>
                             <td className="py-0.5 text-slate-400">{b.keterangan}</td>

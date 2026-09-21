@@ -2,7 +2,7 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Jalur unggah baru (browser) + penyimpanan baris data (Supabase) + alat saring/hitung untuk AI (`agent-process`)
-**Status:** 📝 **Tahap 1 selesai 2026-09-21** (pembaca + pratinjau Excel, uji 53 berkas lulus, terbukti Owner) — [log](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap1-pembaca-pratinjau.md); **Tahap 2 selesai 2026-09-21** (simpan + versi, terbukti live: INSPEKTORAT senin tersimpan sebagai riwayat, aktif 2 berkas / 619 orang) — [log Tahap 2](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap2-simpan-versi.md); **Tahap 3 selesai 2026-09-21** (chip Data Tabel di chat; uji live putaran 3: 5/5 VERIFIED, 0 NIP karangan, 0 NIP di prompt) — [log Tahap 3](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap3-tanya-jawab.md); **Tahap 4 selesai 2026-09-21** (laporan kejanggalan per OPD + Excel; live RSUD 15/158, INSPEKTORAT 1/2 sama persis dengan uji) — [log Tahap 4](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap4-kejanggalan-per-opd.md); Tahap 5 menunggu aba-aba Owner
+**Status:** 📝 **Tahap 1 selesai 2026-09-21** (pembaca + pratinjau Excel, uji 53 berkas lulus, terbukti Owner) — [log](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap1-pembaca-pratinjau.md); **Tahap 2 selesai 2026-09-21** (simpan + versi, terbukti live: INSPEKTORAT senin tersimpan sebagai riwayat, aktif 2 berkas / 619 orang) — [log Tahap 2](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap2-simpan-versi.md); **Tahap 3 selesai 2026-09-21** (chip Data Tabel di chat; uji live putaran 3: 5/5 VERIFIED, 0 NIP karangan, 0 NIP di prompt) — [log Tahap 3](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap3-tanya-jawab.md); **Tahap 4 selesai 2026-09-21** (laporan kejanggalan per OPD + Excel; live RSUD 15/158, INSPEKTORAT 1/2 sama persis dengan uji) — [log Tahap 4](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap4-kejanggalan-per-opd.md); **Tahap 5 selesai 2026-09-21** (PDF pindaian lewat OCR; ukur 3 pasangan PDF–xlsx: orang & L/P 100%, NIP ±1,6% salah satu digit → peringatan tetap; live Kel. Baturaja Lama) — [log Tahap 5](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap5-pdf-pindaian.md); sisa: koreksi pemetaan (ditunda), kejanggalan lewat chat (bila dibutuhkan)
 **Tanggal:** 2026-09-21
 **Roadmap Index:** Item 92
 
@@ -127,7 +127,7 @@ terpetakan disimpan mentah (tidak dibuang diam-diam).
 - [ ] Kejanggalan lewat chat (chip Data Tabel) — bila dibutuhkan.
 
 ### Tahap 5 — PDF & pindaian
-- [ ] Lewat OCR tabel yang sudah ada (mistral-ocr) → pengenal struktur yang sama; `.doc` → minta simpan ulang.
+- [x] Lewat OCR tabel yang sudah ada (mistral-ocr) → pengenal struktur yang sama; `.doc` → minta simpan ulang. ✅ `dataTabelAsnOcr.js` + `bacaPdfAsn.js` + tombol "PDF → Data Tabel". **Penyimpangan:** SEMUA halaman di-OCR (10/10 PDF = gambar, bukan hanya halaman bertabel); satu-satunya `.doc` = surat pengantar (bukan data), tidak perlu jalur. **Batas yang diterima:** salah baca OCR yang tetap membentuk NIP sah tak terdeteksi kode — pratinjau memasang peringatan tetap.
 
 ## 6. Risiko & Pertanyaan Terbuka
 

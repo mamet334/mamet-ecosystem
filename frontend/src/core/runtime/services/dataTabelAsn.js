@@ -13,7 +13,14 @@
 const rapat = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
 const kecil = (s) => rapat(s).toLowerCase();
 const NOMOR = /^\d+\.?$/;
-const KOSONG_ISI = (v) => !v || v === '-' || v === '–';
+// "=" dan "_" juga berarti kosong: Ulu Ogan mengetik "=" di xlsx-nya, dan OCR membaca tanda strip sebagai "=" (Tahap 5).
+// "Tidak ada" / "belum" juga kosong: Perdagangan menulis "Tidak ada" di sel PIM — dulu terhitung SUDAH PIM.
+const KOSONG_ISI = (v) => !v || /^[-–—=_]+$/.test(v) || /^(tidak ada|tdk ada|belum ada|belum|nihil)\.?$/i.test(v);
+// Tingkat PIM yang ditulis di sel ("PIM IV", "Diklatpim Tk. III", "IV") — urutan romawi panjang dulu.
+const tingkatTertulis = (v) => {
+  if (/^(iv|iii|ii)$/i.test(v)) return [v.toUpperCase()];
+  return [...String(v).matchAll(/(?:pim|diklatpim|kepemimpinan|tingkat|tk\.?)\s*(iv|iii|ii)\b/gi)].map((m) => m[1].toUpperCase());
+};
 // Isi sel jenis kelamin yang berupa huruf/kata (bukan tanda √/v/1).
 const hurufJk = (v) => (/^(l|lk|l\.|laki[\s-]*laki|pria)$/i.test(v) ? 'L' : /^(p|pr|p\.|perempuan|wanita)$/i.test(v) ? 'P' : '');
 
@@ -30,7 +37,8 @@ const ATURAN_KOLOM = [
   ['pendidikan_cpns', (l) => /(pendidikan|pendidkan).*(cpns|awal)/.test(l)],
   // DPRD: "KUALIFIKASI PENDIDIKAN" dengan subjudul "PENDIDIKAN" / "TAHUN" → label gabungan berulang kata.
   ['tahun_lulus', (l) => /(pendidikan|kualifikasi).*\btahun( lulus)?$/.test(l)],
-  ['pendidikan_akhir', (l) => /(pendidikan|pendidkan).*(akhir|ahkir|terakhir)/.test(l) || /^(kualifikasi )?pendidikan( pendidikan| terakhir)?$/.test(l)],
+  // "AKHIR" sendirian: hasil OCR kehilangan sel gabungan "PENDIDIKAN" di atas CPNS | AKHIR (Baturaja Lama hal. 3–4).
+  ['pendidikan_akhir', (l) => /(pendidikan|pendidkan).*(akhir|ahkir|terakhir)/.test(l) || /^(kualifikasi )?pendidikan( pendidikan| terakhir)?$/.test(l) || /^(akhir|ahkir|terakhir)$/.test(l)],
   ['pim2', (l) => /pim\s*(ii|2)$/.test(l)],
   ['pim3', (l) => /pim\s*(iii|3)$/.test(l)],
   ['pim4', (l) => /pim\s*(iv|4)$/.test(l)],
@@ -47,7 +55,7 @@ export function kelompokSheet(nama) {
   const s = kecil(nama);
   if (/paruh|\bpw\b/.test(s) && !/pppk dan/.test(s)) return 'paruh_waktu';
   if (/pppk|p3k/.test(s)) return 'pppk';
-  if (/struktural|\bjpt\b|administrator|pengawas/.test(s)) return 'struktural';
+  if (/str?uktural|sruktural|\bjpt\b|administrator|pengawas/.test(s)) return 'struktural';
   if (/\bjft\b|fungsional tertentu/.test(s)) return 'jft';
   if (/pelaksana|\bjfu\b|fungs umum|umum/.test(s)) return 'pelaksana';
   if (/fungsional/.test(s)) return 'jft';
@@ -163,7 +171,8 @@ export function bacaSheetAsn(sheet, { barisAwal = 1, kolomAwal = 0 } = {}) {
       }
       break;
     }
-    const namaMentah = rapat(b[kolomNama]);
+    // Nama "-" / "=" = baris templat (Semidang Aji JFT "1. | - | - …", Ulu Ogan "="), bukan orang.
+    const namaMentah = KOSONG_ISI(rapat(b[kolomNama])) ? '' : rapat(b[kolomNama]);
     // Baris ini sudah dipakai sebagai baris-NIP orang di atasnya (nomor "dipinjam" ke baris nama) → bukan orang baru.
     if (dipinjam.has(i)) continue;
     // Nomor di baris NIP, nama di baris atasnya tanpa nomor (DPRD Struktural no. 3): baris ini = awal orang, nomornya
@@ -206,7 +215,11 @@ export function bacaSheetAsn(sheet, { barisAwal = 1, kolomAwal = 0 } = {}) {
       // Nilai bidang dari baris orang; bila kosong, dari baris bawah milik orang yang sama (DPRD menaruh pendidikan &
       // tahun di baris NIP).
       const ambil = (bidang) => { const c = peta[bidang]; if (c === undefined) return ''; const v = rapat(b[c]); return v || rapat(berikut[c]); };
-      const pim = kolomPim.filter(([, c]) => !KOSONG_ISI(rapat(b[c]))).map(([t]) => t);
+      // Tingkat PIM yang TERTULIS menang atas kolomnya: OCR menggeser "PIM IV" ke kolom PIM II (Semidang Aji), dan
+      // satu sel bisa memuat dua tingkat ("PIM III TAHUN 2017 / PIM IV TAHUN 2004"). Tanda (√, 1, tahun) → kolomnya.
+      // Salinan sel gabungan dilewati: satu sel "PIM IV" yang digabung melintasi kolom II–IV = satu isian, bukan tiga.
+      const pim = [...new Set(kolomPim.filter(([, c]) => !salinan.has(`${i},${c}`) && !KOSONG_ISI(rapat(b[c])))
+        .flatMap(([t, c]) => { const d = tingkatTertulis(rapat(b[c])); return d.length ? d : [t]; }))];
       if (peta.pim !== undefined) { const v = rapat(b[peta.pim]); if (!KOSONG_ISI(v)) pim.push(v); }
       hasil.orang.push({
         no: (nomorPinjaman || noteks).replace('.', ''), baris_asal: barisExcel, nama, nip, jenis_kelamin: jk,
@@ -296,7 +309,7 @@ export function dariSheetJS(wb, XLSX) {
  * "KEL.TJ.AGUNG"; "DATA RPK KEC. LENGKITI.xlsx" → "KEC. LENGKITI". Awalan "revisi/rekon/data/edaran" dibuang.
  */
 export function opdDariNamaBerkas(nama = '') {
-  let s = rapat(String(nama).replace(/\.(xlsx|xls|xlsm)$/i, '')).replace(/^\d+[.)]\s*/, '');
+  let s = rapat(String(nama).replace(/\.(xlsx|xls|xlsm|pdf)$/i, '')).replace(/^\d+[.)]\s*/, '');
   const buang = [
     /^(revisi\s+)?format\s+data\s+asa?n\s*/i,
     /^(belum ada nip\s+)?/i,
@@ -307,7 +320,7 @@ export function opdDariNamaBerkas(nama = '') {
   ];
   for (let ulang = 0; ulang < 3; ulang++) for (const p of buang) s = s.replace(p, '');
   s = rapat(s.replace(/^[-–—\s]+/, ''));
-  return s || rapat(String(nama).replace(/\.(xlsx|xls|xlsm)$/i, ''));
+  return s || rapat(String(nama).replace(/\.(xlsx|xls|xlsm|pdf)$/i, ''));
 }
 
 /** Bentuk masukan fungsi database asn_simpan_berkas dari hasil bacaWorkbookAsn. */
@@ -322,6 +335,8 @@ export function siapkanSimpan(hasil, opd) {
     sheet: s.sheet, kelompok: s.kelompok, status: s.status, jumlah: s.orang.length,
     jumlah_tertulis: s.jumlahTertulis, kejanggalan: s.kejanggalan,
     pemetaan: s.pemetaan.map((p) => ({ huruf: p.huruf, bidang: p.bidang })),
+    // PDF pindaian (Tahap 5): baris_asal negatif = halaman/baris PDF; laporan & chat menampilkannya sebagai "hal. …".
+    ...(s.sumber ? { sumber: s.sumber, halaman: s.halaman } : {}),
   }));
   return { p_berkas: { opd: rapat(opd), nama_berkas: hasil.berkas, ringkasan_sheet }, p_pegawai: pegawai };
 }

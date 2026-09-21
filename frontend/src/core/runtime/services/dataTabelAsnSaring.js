@@ -10,6 +10,10 @@
 // Murni & tanpa impor: dipakai server (agent-process, lewat impor relatif seperti KnowledgeService.js) dan diuji di Node
 // dengan data 53 berkas `D:\REKONSIALISASI 2026`.
 
+// Baris asal: Excel → "baris 12"; PDF pindaian (Tahap 5, disandikan negatif −(halaman×1000 + baris)) → "hal. 3 baris 5".
+// Disalin dari dataTabelAsnOcr.uraiBaris supaya modul ini (dipakai server) tidak menarik pembaca Excel.
+const teksBaris = (n) => (Number.isInteger(n) && n < 0 ? `hal. ${Math.floor(-n / 1000)} baris ${-n % 1000}` : `baris ${n}`);
+
 export const KELOMPOK = ['struktural', 'jft', 'pelaksana', 'pppk', 'paruh_waktu', 'tidak_dikenal'];
 export const BIDANG = {
   nama: 'nama pegawai',
@@ -115,7 +119,7 @@ export function saringPegawai(pegawai, rencana) {
     (!rencana.opd.length || rencana.opd.includes(p.opd))
     && (!rencana.kelompok.length || rencana.kelompok.includes(p.kelompok))
     && rencana.syarat.every((s) => cocokSyarat(p, s)));
-  const urut = [...cocok].sort((a, b) => (a.opd || '').localeCompare(b.opd || '') || (a.sheet || '').localeCompare(b.sheet || '') || a.baris_asal - b.baris_asal);
+  const urut = [...cocok].sort((a, b) => (a.opd || '').localeCompare(b.opd || '') || (a.sheet || '').localeCompare(b.sheet || '') || Math.abs(a.baris_asal) - Math.abs(b.baris_asal));
   let rincian = null;
   if (rencana.kelompokkan) {
     rincian = {};
@@ -200,7 +204,7 @@ export function susunTeksUntukModel(hasil, rencana) {
   const tampil = hasil.daftar.slice(0, MAKS_NAMA_UNTUK_MODEL);
   if (tampil.length) {
     baris.push(`Nama (${tampil.length}${hasil.jumlah > tampil.length ? ` dari ${hasil.jumlah}` : ''}), jabatan, OPD, sumber:`);
-    tampil.forEach((p, i) => baris.push(`${i + 1}. ${p.nama} — ${p.jabatan || '(jabatan kosong)'} — ${p.opd} (sheet ${p.sheet}, baris ${p.baris_asal})`));
+    tampil.forEach((p, i) => baris.push(`${i + 1}. ${p.nama} — ${p.jabatan || '(jabatan kosong)'} — ${p.opd} (sheet ${p.sheet}, ${teksBaris(p.baris_asal)})`));
   }
   baris.push(`Kalimat hasil & tabel lengkap (dengan NIP) DITEMPEL OTOMATIS oleh sistem di atas & di bawah jawaban Anda — JANGAN membuat tabel sendiri, JANGAN menulis ulang daftar nama panjang, JANGAN menulis NIP.`);
   return baris.join('\n');
@@ -217,7 +221,7 @@ export function susunLampiran(hasil, rencana) {
     '_Disusun langsung dari data tersimpan (bukan ditulis AI). Sumber = berkas, sheet, dan baris Excel._', '',
     '| No | Nama | NIP | Jabatan | OPD | Sheet | Baris |', '|---|---|---|---|---|---|---|',
   ];
-  const isi = tampil.map((p, i) => `| ${i + 1} | ${sel(p.nama)} | ${p.nip || '—'} | ${sel(p.jabatan) || '—'} | ${sel(p.opd)} | ${sel(p.sheet)} | ${p.baris_asal} |`);
+  const isi = tampil.map((p, i) => `| ${i + 1} | ${sel(p.nama)} | ${p.nip || '—'} | ${sel(p.jabatan) || '—'} | ${sel(p.opd)} | ${sel(p.sheet)} | ${teksBaris(p.baris_asal).replace(/^baris /, '')} |`);
   const ekor = hasil.jumlah > tampil.length ? ['', `_…${hasil.jumlah - tampil.length} baris berikutnya tidak ditampilkan — persempit pertanyaan (mis. per OPD atau kelompok)._`] : [];
   return [...kepala, ...isi, ...ekor].join('\n');
 }

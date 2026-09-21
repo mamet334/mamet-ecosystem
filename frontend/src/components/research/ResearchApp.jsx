@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabase';
 import { kernel } from '../../core/runtime/Kernel';
-import { Search, Upload, Trash2, FileText, Loader2, Database, PlusCircle } from 'lucide-react';
+import { Search, Upload, Trash2, FileText, Loader2, Database, PlusCircle, ScanLine } from 'lucide-react';
 import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from '../../core/runtime/services/documentTextExtractor.js';
 import { bacaBerkasExcelAsn, adalahExcel, EKSTENSI_EXCEL, unduhExcelJanggal } from '../../core/runtime/services/bacaExcelAsn.js';
 import PratinjauDataTabel from './PratinjauDataTabel.jsx';
@@ -12,6 +12,7 @@ import { pilihRuangAwal, ingatRuangTerpilih, ruangTerpilihTersimpan, buatRuang, 
 import { opdDariNamaBerkas, siapkanSimpan, dugaVersi, bandingkanIsi, uraiPerbedaan } from '../../core/runtime/services/dataTabelAsn.js';
 import { ambilBerkasAktif, ambilPegawaiBerkas, simpanBerkasAsn, daftarBerkasAsn, hapusBerkasAsn, ambilBahanLaporan } from '../../core/runtime/services/dataTabelAsnDb.js';
 import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN, OCR_SERENTAK } from '../../core/runtime/services/pdfOcrService.js';
+import { adalahPdf, perkiraanPdfAsn, bacaBerkasPdfAsn } from '../../core/runtime/services/bacaPdfAsn.js';
 
 // Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
 const POTONGAN_PERLU_KONFIRMASI = 150; // ±105 ribu huruf ≈ $0,006 (potongan 800 huruf, Item 70)
@@ -344,6 +345,43 @@ export default function ResearchApp() {
         }
     };
 
+    // PDF PINDAIAN → DATA TABEL (Item 92 Tahap 5). PDF biasa tetap ke RAG lewat "Upload Dokumen"; tombol ini khusus berkas
+    // rekonsiliasi hasil pindaian (10/10 PDF kiriman OPD = gambar, 0 huruf). Semua halaman di-OCR — dibayar kunci
+    // OpenRouter pengguna, jadi jumlah halaman & biaya ditanyakan dulu. Hasilnya pratinjau yang sama dengan Excel.
+    const handlePdfDataTabel = async (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file) return;
+        if (!adalahPdf(file.name)) { alert('Pilih berkas PDF. Excel diunggah lewat "Upload Dokumen".'); return; }
+        let kunci = null;
+        try { kunci = kernel.serviceManager?.get('VaultService')?.getKey('openrouter') || null; } catch { /* vault belum siap */ }
+        if (!kunci) {
+            alert('Kunci OpenRouter belum terpasang — OCR PDF dibayar dari saldo OpenRouter Anda. Pasang kunci di Pengaturan, lalu coba lagi.');
+            return;
+        }
+        setUploading(true);
+        setStatusUnggah('Menghitung halaman PDF…');
+        try {
+            const p = await perkiraanPdfAsn(file);
+            const lanjut = window.confirm(
+                `"${file.name}": ${p.halaman} halaman.\n\n` +
+                `Semua halaman dibaca dengan OCR (mistral-ocr): perkiraan ±$${p.dolar.toFixed(3)} dari saldo OpenRouter Anda, ` +
+                `±${perkiraanMenitOcr(p.halaman)} menit.\n\n` +
+                'Hasilnya tampil sebagai pratinjau Data Tabel — belum disimpan sampai Anda menekan Simpan. Lanjutkan?'
+            );
+            if (!lanjut) return;
+            const hasil = await bacaBerkasPdfAsn(file, p, kunci, ({ ke, total, gagal }) =>
+                setStatusUnggah(`OCR halaman ${ke}/${total}${gagal ? ` (${gagal} gagal)` : ''}…`));
+            setPratinjauTabel({ ...hasil, _unggahan: `${Date.now()}-${Math.random()}` });
+        } catch (err) {
+            console.error('[ResearchApp] Gagal membaca PDF data tabel:', err);
+            alert(`Gagal membaca ${file.name}: ${err.message || err}`);
+        } finally {
+            setUploading(false);
+            setStatusUnggah('');
+        }
+    };
+
     // Delete document
     const handleDelete = async (docId) => {
         if (deletingId) return;
@@ -398,11 +436,18 @@ export default function ResearchApp() {
                 </div>
 
                 {/* Upload Button */}
+                <div className="flex items-center gap-2">
+                <label className="flex items-center gap-2 px-3 py-2 border border-amber-500/40 text-amber-200 hover:bg-amber-500/10 rounded-lg cursor-pointer transition-colors text-sm" title="Berkas rekonsiliasi ASN hasil pindaian (PDF) → Data Tabel, lewat OCR">
+                    <ScanLine className="w-4 h-4" />
+                    PDF → Data Tabel
+                    <input type="file" className="hidden" onChange={handlePdfDataTabel} accept=".pdf" disabled={uploading} />
+                </label>
                 <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg cursor-pointer transition-colors text-sm">
                     <Upload className="w-4 h-4" />
                     {uploading ? (statusUnggah || 'Mengunggah...') : 'Upload Dokumen'}
                     <input type="file" multiple className="hidden" onChange={handleUpload} accept={[ACCEPT_UNGGAH, ...EKSTENSI_EXCEL].join(',')} disabled={uploading} />
                 </label>
+                </div>
             </div>
 
             {pratinjauTabel && (

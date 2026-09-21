@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, AlertTriangle, CheckCircle2, FileSpreadsheet, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { X, AlertTriangle, CheckCircle2, FileSpreadsheet, ChevronDown, ChevronRight, Loader2, ScanLine } from 'lucide-react';
+import { uraiBaris, labelBaris, SUMBER_OCR } from '../../core/runtime/services/dataTabelAsnOcr.js';
 
 // PRATINJAU DATA TABEL (Item 92 Tahap 1): hasil pembacaan Excel rekonsiliasi ASN ditampilkan untuk diperiksa Owner
 // SEBELUM apa pun disimpan (penyimpanan = Tahap 2). Semua dibaca di perangkat; tidak ada yang dikirim.
@@ -40,7 +41,7 @@ function KartuSheet({ s, terbukaAwal }) {
         <div className="px-4 pb-4 space-y-3 text-xs">
           {s.jumlahTertulis && (
             <p className="text-slate-400">
-              Baris JUMLAH di Excel (baris {s.jumlahTertulis.baris}):{' '}
+              Baris JUMLAH di {s.sumber === SUMBER_OCR ? 'PDF' : 'Excel'} ({labelBaris(s.jumlahTertulis.baris)}):{' '}
               {s.jumlahTertulis.l === null ? s.jumlahTertulis.total : `L${s.jumlahTertulis.l} + P${s.jumlahTertulis.p} = ${s.jumlahTertulis.total}`}
               {' '}— terbaca {s.orang.length} orang
             </p>
@@ -50,7 +51,7 @@ function KartuSheet({ s, terbukaAwal }) {
               {s.kejanggalan.map((k, i) => (
                 <div key={i} className="flex items-start gap-2 text-amber-200">
                   <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-400" />
-                  <span>{k.pesan}{k.baris ? ` (baris ${k.baris})` : ''}</span>
+                  <span>{k.pesan}{k.baris ? ` (${labelBaris(k.baris)})` : ''}</span>
                 </div>
               ))}
             </div>
@@ -98,7 +99,7 @@ function KartuSheet({ s, terbukaAwal }) {
                           <td className="px-2 py-1">{o.pim.join(', ') || '—'}</td>
                           <td className="px-2 py-1">{o.pelatihan.length || '—'}</td>
                           <td className="px-2 py-1">{o.nilai_ipa}</td>
-                          <td className="px-2 py-1 text-slate-500">{o.baris_asal}</td>
+                          <td className="px-2 py-1 text-slate-500 whitespace-nowrap">{uraiBaris(o.baris_asal)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -119,7 +120,9 @@ export default function PratinjauDataTabel({ hasil, onTutup, opdAwal, onPeriksaV
   return (
     <div className="mb-6 border border-blue-500/30 rounded-xl bg-slate-900/70 p-4">
       <div className="flex items-start gap-3 mb-3">
-        <FileSpreadsheet className="w-5 h-5 text-emerald-400 mt-0.5 shrink-0" />
+        {hasil.sumber === SUMBER_OCR
+          ? <ScanLine className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
+          : <FileSpreadsheet className="w-5 h-5 text-emerald-400 mt-0.5 shrink-0" />}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-slate-100 truncate">{hasil.berkas}</p>
           <p className="text-xs text-slate-400">
@@ -134,8 +137,19 @@ export default function PratinjauDataTabel({ hasil, onTutup, opdAwal, onPeriksaV
         {perluCek ? `${perluCek} sheet perlu dicek — lihat kejanggalan di bawah.` : 'Semua sheet terbaca tanpa kejanggalan berat.'}
         {r.nipGandaAntarSheet > 0 && <span className="text-amber-300"> · {r.nipGandaAntarSheet} NIP muncul di lebih dari satu sheet</span>}
       </div>
+      {hasil.sumber === SUMBER_OCR && (
+        // PDF pindaian (Item 92 Tahap 5): uji 3 pasangan PDF–xlsx — 121 NIP tepat, 2 NIP 18 digit beda SATU digit (tak
+        // terdeteksi susunan NIP), sisanya terpotong (dicatat). Maka NIP hasil OCR wajib dicocokkan sebelum dikirim balik.
+        <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-100 space-y-1">
+          <p>
+            <b>Dibaca dari PDF pindaian lewat OCR.</b> Jumlah orang dan L/P umumnya tepat, tetapi <b>digit NIP bisa salah baca</b>{' '}
+            tanpa terdeteksi — cocokkan NIP dengan berkas kertasnya sebelum dipakai. Nomor baris = halaman PDF dan urutan baris tabel.
+          </p>
+          {hasil.catatanOcr?.map((c, i) => <p key={i} className="text-amber-200/80">• {c.pesan}</p>)}
+        </div>
+      )}
       <p className="text-[11px] text-slate-500 mb-3">
-        Dibaca di perangkat ini — <b>belum disimpan</b> sampai Anda menekan Simpan. Tanya-jawab dari data ini menyusul (Item 92 Tahap 3).
+        {hasil.sumber === SUMBER_OCR ? 'Hasil OCR ditampilkan di perangkat ini' : 'Dibaca di perangkat ini'} — <b>belum disimpan</b> sampai Anda menekan Simpan.
       </p>
       <div className="space-y-2">
         {hasil.sheets.map((s, i) => <KartuSheet key={s.sheet + i} s={s} terbukaAwal={s.status === 'PERLU_CEK' || s.status === 'GAGAL'} />)}
