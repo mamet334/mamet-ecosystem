@@ -25,7 +25,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 |---|---|---|
 | 90 Pengambilan potongan RAG | ✅ Tahap A–C (recall@8 14/14, bukti Kepbup #1, live); sisa utang U4, U6–U8, U10 | [`ROADMAP-PENGAMBILAN-POTONGAN-RAG.md`](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) |
 | 89 Konteks potongan RAG | ✅ live (Tahap C Item 90); identitas tabel OCR ✅ | [`ROADMAP-KONTEKS-POTONGAN-RAG.md`](./ROADMAP-KONTEKS-POTONGAN-RAG.md) |
-| 88 Tabel centang PDF (+ sisa 86 OCR massal) | 🟡 Tahap 1–3 ✅; keputusan 3: buku per jabatan **221/221** masuk; 177 ✅, 191/159 keterbatasan; sisa set uji buku penuh | [`ROADMAP-TABEL-CENTANG-PDF.md`](./ROADMAP-TABEL-CENTANG-PDF.md) |
+| 88 Tabel centang PDF (+ sisa 86 OCR massal) | 🟡 Tahap 1–3 ✅; keputusan 3: buku per jabatan **221/221** masuk; 177 ✅, 191/159 keterbatasan; set uji buku penuh **13/14**; sisa BUKU-10 (blok centang miskin kata, sesudah code freeze) | [`ROADMAP-TABEL-CENTANG-PDF.md`](./ROADMAP-TABEL-CENTANG-PDF.md) |
 | 85 Folder kerja Assistant | 📝 Tahap 0 sebagian; sisa pagar IPC `folder:*`; Tahap 1 menunggu aba-aba | [`ROADMAP-FOLDER-KERJA-ASSISTANT.md`](./ROADMAP-FOLDER-KERJA-ASSISTANT.md) |
 | 72 Adaptive Shell (UI multi-device) | 📋 belum dikerjakan | [`roadmap-adaptive-shell.md`](./roadmap-adaptive-shell.md) |
 | 33, 48, 49, 50, 91 Temuan audit tanpa rancangan | ⏳ T1 izin tool Lite · T2 dasbor yatim · T3 rute mati backend · T4 ✅ · T6 ✅ · T7 ✅ kunci API di `agent_logs` (sisa: Owner ganti kunci) | [`ROADMAP-TEMUAN-TERBUKA.md`](./ROADMAP-TEMUAN-TERBUKA.md) |
