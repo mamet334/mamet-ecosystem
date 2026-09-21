@@ -4,7 +4,6 @@ export function enforcePolicy(ctx: UnifiedExecutionContext, stream: boolean, cor
   if (ctx.request.tools && Array.isArray(ctx.request.tools)) {
     ctx.request.tools = ctx.request.tools.filter(t => {
       if (t === 'cron_manager' && !ctx.policy.canUseAutomation) { console.warn(`[CAPABILITY_BLOCK] Tool '${t}' blocked: canUseAutomation=false (mode=${ctx.policy.mode})`); return false; }
-      if (t === 'knowledge_manager' && !ctx.policy.canWriteKnowledge) { console.warn(`[CAPABILITY_BLOCK] Tool '${t}' blocked at orchestrator: canWriteKnowledge=false (mode=${ctx.policy.mode})`); return false; }
       return true;
     });
   }

@@ -11,7 +11,7 @@ import { embedLewatOpenRouter, EMBED_DIMENSI } from '../vector_utils.ts';
  *
  * Riwayat: konstanta ini dulu 768 — sisa era model lama — sehingga generateEmbedding()
  * selalu mengembalikan array kosong tanpa ada yang tahu (Item 39). Penjaga 768 kedua
- * tercecer di knowledge_manager.ts (Item 46), karena itu angkanya diekspor dari satu sumber.
+ * tercecer di knowledge_manager.ts (Item 46; plugin itu dihapus di T9), karena itu angkanya diekspor dari satu sumber.
  */
 export const EMBEDDING_DIMENSIONS = EMBED_DIMENSI;
 

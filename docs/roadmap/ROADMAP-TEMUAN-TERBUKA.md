@@ -1,7 +1,7 @@
 # ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
 
 **Tipe Dokumen:** Daftar sisa pekerjaan (temuan audit yang belum punya dokumen roadmap sendiri)
-**Status:** ⏳ **3 temuan terbuka** (T1, T8, T9; T2–T7 ditutup) — masing-masing menunggu keputusan Owner
+**Status:** ⏳ **2 temuan terbuka** (T1, T8; T2–T7 & T9 ditutup) — masing-masing menunggu keputusan Owner
 **Tanggal:** 2026-09-17 (dipindah dari INDEX-ROADMAP Item 33, 44, 48, 49, 50 saat perampingan)
 **Aturan:** temuan yang dikerjakan dan tumbuh besar pindah ke dokumen roadmap sendiri; yang selesai dicatat di
 changelog lalu barisnya diberi ✅ di sini.
@@ -155,7 +155,10 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
   Research App kini bisa membuat / mengganti nama / menghapus (bila kosong) workspace, dan mengingat pilihan terakhir —
   bukan lagi otomatis space terbaru. Space Kepbup dinamai "Kepbup OKU 2025"; dua space "Observasi Pasar…" kosong dihapus
   Owner dari UI.
-- **Status:** 🟡 dicabut dari Coordinator; perbaikan/penghapusan plugin menunggu keputusan.
+- **Keputusan Owner (2026-09-21): HAPUS.** Plugin, filter mutu Groq, penyuntikan di `workspace_guardian.ts`, dan aturan
+  di `policy_middleware.ts` dihapus; bukti: 0 dokumen tersimpan dari chat, 0 ringkasan workspace. Live sesudah deploy: tak
+  ada `knowledge_manager`, tak ada workspace baru — [log](../project-memory/changelog/2026-09-21-t9-hapus-knowledge-manager.md).
+- **Status:** ✅ ditutup. Gagasan (tidak dikerjakan): "simpan jawaban ke workspace" sebagai tombol UI berkonfirmasi, bukan keputusan AI.
 
 ## Ditutup saat perampingan (tidak perlu dikerjakan)
 
