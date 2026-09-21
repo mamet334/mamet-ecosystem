@@ -5,6 +5,9 @@ import { Search, Upload, Trash2, FileText, Loader2, Database, PlusCircle } from 
 import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from '../../core/runtime/services/documentTextExtractor.js';
 import { bacaBerkasExcelAsn, adalahExcel, EKSTENSI_EXCEL } from '../../core/runtime/services/bacaExcelAsn.js';
 import PratinjauDataTabel from './PratinjauDataTabel.jsx';
+import DaftarDataTabel from './DaftarDataTabel.jsx';
+import { opdDariNamaBerkas, siapkanSimpan, dugaVersi } from '../../core/runtime/services/dataTabelAsn.js';
+import { ambilBerkasAktif, simpanBerkasAsn, daftarBerkasAsn, hapusBerkasAsn } from '../../core/runtime/services/dataTabelAsnDb.js';
 import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN, OCR_SERENTAK } from '../../core/runtime/services/pdfOcrService.js';
 
 // Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
@@ -27,6 +30,12 @@ export default function ResearchApp() {
     const [knowledgeSpaces, setKnowledgeSpaces] = useState([]);
     // Pratinjau data tabel Excel (Item 92 Tahap 1) — hanya di layar, belum disimpan.
     const [pratinjauTabel, setPratinjauTabel] = useState(null);
+    // Data tabel tersimpan (Item 92 Tahap 2).
+    const [daftarTabel, setDaftarTabel] = useState([]);
+    const muatDaftarTabel = async () => {
+        try { setDaftarTabel(await daftarBerkasAsn(supabase)); }
+        catch (err) { console.error('[ResearchApp] Gagal memuat data tabel:', err); }
+    };
     const [selectedSpace, setSelectedSpace] = useState(null);
 
     // Load knowledge spaces
@@ -87,6 +96,7 @@ export default function ResearchApp() {
 
     useEffect(() => {
         loadSpaces();
+        muatDaftarTabel();
     }, []);
 
     useEffect(() => {
@@ -128,7 +138,9 @@ export default function ResearchApp() {
             setUploading(true);
             setStatusUnggah('Membaca Excel...');
             try {
-                setPratinjauTabel(await bacaBerkasExcelAsn(excel[0]));
+                // Tanda unik per unggahan: dua berkas bernama sama (INSPEKTORAT senin & selasa) dulu memakai ulang layar
+                // lama — termasuk tulisan "Tersimpan" — sehingga berkas kedua tampak tersimpan padahal tidak.
+                setPratinjauTabel({ ...(await bacaBerkasExcelAsn(excel[0])), _unggahan: `${Date.now()}-${Math.random()}` });
             } catch (err) {
                 console.error('[ResearchApp] Gagal membaca Excel:', err);
                 alert(`Gagal membaca ${excel[0].name}: ${err.message || err}`);
@@ -388,7 +400,36 @@ export default function ResearchApp() {
                 </label>
             </div>
 
-            {pratinjauTabel && <PratinjauDataTabel hasil={pratinjauTabel} onTutup={() => setPratinjauTabel(null)} />}
+            {pratinjauTabel && (
+                <PratinjauDataTabel
+                    key={pratinjauTabel._unggahan}
+                    hasil={pratinjauTabel}
+                    onTutup={() => setPratinjauTabel(null)}
+                    opdAwal={opdDariNamaBerkas(pratinjauTabel.berkas)}
+                    onPeriksaVersi={async (opd) => {
+                        const { p_pegawai } = siapkanSimpan(pratinjauTabel, opd);
+                        return dugaVersi(p_pegawai.map((p) => p.nip), await ambilBerkasAktif(supabase), pratinjauTabel.berkas);
+                    }}
+                    onSimpan={async (opd, pilihan) => {
+                        await simpanBerkasAsn(supabase, siapkanSimpan(pratinjauTabel, opd), pilihan);
+                        await muatDaftarTabel();
+                    }}
+                />
+            )}
+
+            <DaftarDataTabel
+                daftar={daftarTabel}
+                onHapus={async (id) => {
+                    try {
+                        const n = await hapusBerkasAsn(supabase, id);
+                        if (!n) alert('Data tabel tidak ditemukan di server — daftar dimuat ulang.');
+                    } catch (err) {
+                        alert('Gagal menghapus data tabel: ' + (err.message || err));
+                    } finally {
+                        await muatDaftarTabel();
+                    }
+                }}
+            />
 
             {/* Search Bar */}
             <div className="mb-6">

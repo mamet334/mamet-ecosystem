@@ -2,7 +2,7 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Jalur unggah baru (browser) + penyimpanan baris data (Supabase) + alat saring/hitung untuk AI (`agent-process`)
-**Status:** 📝 **Tahap 1 selesai 2026-09-21** (pembaca + pratinjau Excel, uji 53 berkas lulus, terbukti Owner) — [log](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap1-pembaca-pratinjau.md); Tahap 2 menunggu aba-aba Owner
+**Status:** 📝 **Tahap 1 selesai 2026-09-21** (pembaca + pratinjau Excel, uji 53 berkas lulus, terbukti Owner) — [log](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap1-pembaca-pratinjau.md); **Tahap 2 selesai 2026-09-21** (simpan + versi, terbukti live: INSPEKTORAT senin tersimpan sebagai riwayat, aktif 2 berkas / 619 orang) — [log Tahap 2](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap2-simpan-versi.md); Tahap 3 menunggu aba-aba Owner
 **Tanggal:** 2026-09-21
 **Roadmap Index:** Item 92
 
@@ -109,9 +109,10 @@ terpetakan disimpan mentah (tidak dibuang diam-diam).
 - [x] **Kriteria:** 53 berkas ukur — 0 gagal; 48/48 JUMLAH & 5/5 total kunci tetap cocok; kejanggalan §3 muncul. ✅ semua lulus + DPRD 47 / pendidikan 47/47; kejanggalan baru dari pratinjau: L & P terisi bersamaan, pembagian L/P ≠ JUMLAH, NIP ganda RSUD.
 
 ### Tahap 2 — Simpan + versi
-- [ ] Tabel + RLS; simpan hanya sesudah konfirmasi; koreksi pemetaan disimpan & dipakai ulang.
-- [ ] Dugaan versi dari NIP sama ("60 NIP sama dengan INSPEKTORAT senin — ganti yang lama?").
-- [ ] **Kriteria:** 5 pasangan versi §3 terdeteksi (termasuk DPPKB/REKON); total unik = 2.312 − 137 ganda − duplikat dalam berkas.
+- [x] Tabel + RLS; simpan hanya sesudah konfirmasi. ✅ `asn_berkas` / `asn_pegawai` / `asn_simpan_berkas` (satu transaksi).
+- [ ] Koreksi pemetaan disimpan & dipakai ulang — **ditunda**: semua berkas uji terpetakan benar oleh aturan; dikerjakan saat pertama kali ada berkas yang kolomnya salah baca.
+- [x] Dugaan versi dari NIP sama. ✅ **Tiga pilihan** (lebih baru / justru versi lama / terpisah) — mesin tak tahu arah; simulasi urutan acak membalik PBJ, Owner sendiri mengunggah selasa sebelum senin.
+- [x] **Kriteria:** 5 pasangan versi §3 terdeteksi (termasuk DPPKB/REKON); total unik = 2.312 − 137 ganda − duplikat dalam berkas. ✅ simulasi 5/5, 48 berkas aktif; live INSPEKTORAT 59 NIP / 100%.
 
 ### Tahap 3 — Alat saring & hitung untuk AI
 - [ ] Alat server `data_tabel_hitung` / `data_tabel_saring` (filter: OPD, kelompok, kolom kosong/terisi, teks di

@@ -147,6 +147,7 @@ export function bacaSheetAsn(sheet, { barisAwal = 1, kolomAwal = 0 } = {}) {
   const kolomPim = [['II', peta.pim2], ['III', peta.pim3], ['IV', peta.pim4]].filter(([, c]) => c !== undefined);
 
   const mulai = hj + 1 + nSub;
+  const dipinjam = new Set();
   for (let i = mulai; i < baris.length; i++) {
     const b = baris[i];
     const noteks = rapat(b[peta.no]);
@@ -161,13 +162,27 @@ export function bacaSheetAsn(sheet, { barisAwal = 1, kolomAwal = 0 } = {}) {
       break;
     }
     const namaMentah = rapat(b[kolomNama]);
-    const nomorBaru = NOMOR.test(noteks) && !(salinan.has(`${i},${peta.no}`) && hasil.orang.length && hasil.orang[hasil.orang.length - 1].no === noteks.replace('.', ''));
+    // Baris ini sudah dipakai sebagai baris-NIP orang di atasnya (nomor "dipinjam" ke baris nama) → bukan orang baru.
+    if (dipinjam.has(i)) continue;
+    // Nomor di baris NIP, nama di baris atasnya tanpa nomor (DPRD Struktural no. 3): baris ini = awal orang, nomornya
+    // dipinjam dari baris bawah. Syarat: nama di sini tanpa NIP, dan sel nama baris bawah hanya berisi NIP.
+    let nomorPinjaman = '';
+    if (!NOMOR.test(noteks) && namaMentah && !cariNip(namaMentah)) {
+      const nb = baris[i + 1];
+      if (nb && NOMOR.test(rapat(nb[peta.no])) && !salinan.has(`${i + 1},${peta.no}`) && cariNip(nb[kolomNama])
+          && !rapat(nb[kolomNama]).replace(/nip\.?\s*[:.]?/i, '').replace(/[\d\s]/g, '')) {
+        nomorPinjaman = rapat(nb[peta.no]);
+        dipinjam.add(i + 1);
+      }
+    }
+    const nomorBaru = !!nomorPinjaman || (NOMOR.test(noteks) && !(salinan.has(`${i},${peta.no}`) && hasil.orang.length && hasil.orang[hasil.orang.length - 1].no === noteks.replace('.', '')));
 
     if (nomorBaru) {
       if (!namaMentah) { hasil.dilewati.push({ baris: barisExcel, alasan: 'baris bernomor tanpa nama (templat kosong)' }); continue; }
-      // Baris bawah milik orang yang sama bila nomornya kosong ATAU hasil salinan sel gabungan (DPRD: "NIP. …" di bawah nama)
+      // Baris bawah milik orang yang sama bila nomornya kosong ATAU hasil salinan sel gabungan (DPRD: "NIP. …" di bawah
+      // nama) ATAU nomornya baru saja dipinjam ke baris ini.
       const nb = baris[i + 1];
-      const berikut = nb && (!NOMOR.test(rapat(nb[peta.no])) || salinan.has(`${i + 1},${peta.no}`)) ? nb : [];
+      const berikut = nb && (nomorPinjaman || !NOMOR.test(rapat(nb[peta.no])) || salinan.has(`${i + 1},${peta.no}`)) ? nb : [];
       const nip = cariNip(namaMentah, peta.nip !== undefined ? b[peta.nip] : '', ...b) || cariNip(...berikut);
       const nama = rapat(namaMentah.replace(/(?:nip\.?\s*[:.]?\s*)?\d[\d\s]{16,}\d/i, '').replace(/[\/|,;]\s*$/, '').replace(/\s*\/\s*$/, ''));
       const jl = peta.jk_l !== undefined && !KOSONG_ISI(rapat(b[peta.jk_l]));
@@ -181,7 +196,7 @@ export function bacaSheetAsn(sheet, { barisAwal = 1, kolomAwal = 0 } = {}) {
       const pim = kolomPim.filter(([, c]) => !KOSONG_ISI(rapat(b[c]))).map(([t]) => t);
       if (peta.pim !== undefined) { const v = rapat(b[peta.pim]); if (!KOSONG_ISI(v)) pim.push(v); }
       hasil.orang.push({
-        no: noteks.replace('.', ''), baris_asal: barisExcel, nama, nip, jenis_kelamin: jk,
+        no: (nomorPinjaman || noteks).replace('.', ''), baris_asal: barisExcel, nama, nip, jenis_kelamin: jk,
         status: ambil('status'), pendidikan_cpns: ambil('pendidikan_cpns'), pendidikan_akhir: ambil('pendidikan_akhir'),
         tahun_lulus: ambil('tahun_lulus'), jabatan: ambil('jabatan'), pangkat: ambil('pangkat'),
         pim, pelatihan: ambilPelatihan(b), nilai_ipa: ambil('nilai_ipa'),
@@ -256,4 +271,72 @@ export function dariSheetJS(wb, XLSX) {
     }));
     return { nama, baris, gabungan, barisAwal: awal.r + 1, kolomAwal: awal.c };
   });
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// TAHAP 2 — simpan & versi (murni; akses database ada di dataTabelAsnDb.js)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Usulan nama OPD dari nama berkas — Owner tetap bisa membetulkannya di pratinjau sebelum menyimpan.
+ * "2. Bappleitbangda.xlsx" → "Bappleitbangda"; "REKONSILIASI RENCANA PENGEMBANGAN KOMPETENSI ASN KEL.TJ.AGUNG.xlsx" →
+ * "KEL.TJ.AGUNG"; "DATA RPK KEC. LENGKITI.xlsx" → "KEC. LENGKITI". Awalan "revisi/rekon/data/edaran" dibuang.
+ */
+export function opdDariNamaBerkas(nama = '') {
+  let s = rapat(String(nama).replace(/\.(xlsx|xls|xlsm)$/i, '')).replace(/^\d+[.)]\s*/, '');
+  const buang = [
+    /^(revisi\s+)?format\s+data\s+asa?n\s*/i,
+    /^(belum ada nip\s+)?/i,
+    /^(edaran\s+)?rekon(sil[i]?[a]?siasi|siliasi|sialiasi)?\b[\s-]*/i,
+    /^rencana\s+pengembangan\s+kompetensi\s+asn\s*/i,
+    /^(data\s+)?(rpk|pegawai|asn)?\s*/i,
+    /^data\s+/i,
+  ];
+  for (let ulang = 0; ulang < 3; ulang++) for (const p of buang) s = s.replace(p, '');
+  s = rapat(s.replace(/^[-–—\s]+/, ''));
+  return s || rapat(String(nama).replace(/\.(xlsx|xls|xlsm)$/i, ''));
+}
+
+/** Bentuk masukan fungsi database asn_simpan_berkas dari hasil bacaWorkbookAsn. */
+export function siapkanSimpan(hasil, opd) {
+  const pegawai = hasil.sheets.flatMap((s) => s.orang.map((o) => ({
+    sheet: s.sheet, kelompok: s.kelompok, baris_asal: o.baris_asal, no: o.no, nama: o.nama,
+    nip: /^\d{18}$/.test(o.nip) ? o.nip : '', jenis_kelamin: o.jenis_kelamin, status: o.status,
+    pendidikan_cpns: o.pendidikan_cpns, pendidikan_akhir: o.pendidikan_akhir, tahun_lulus: o.tahun_lulus || '',
+    jabatan: o.jabatan, pangkat: o.pangkat, pim: o.pim, pelatihan: o.pelatihan, nilai_ipa: o.nilai_ipa,
+  })));
+  const ringkasan_sheet = hasil.sheets.map((s) => ({
+    sheet: s.sheet, kelompok: s.kelompok, status: s.status, jumlah: s.orang.length,
+    jumlah_tertulis: s.jumlahTertulis, kejanggalan: s.kejanggalan,
+    pemetaan: s.pemetaan.map((p) => ({ huruf: p.huruf, bidang: p.bidang })),
+  }));
+  return { p_berkas: { opd: rapat(opd), nama_berkas: hasil.berkas, ringkasan_sheet }, p_pegawai: pegawai };
+}
+
+// Ambang dugaan versi, diukur pada 53 berkas: 5 pasangan revisi berbagi 15–60 NIP (≥ 40% dari berkas yang lebih
+// kecil); kebetulan terbesar di antara OPD berbeda hanya 1 NIP (PERKIM ↔ EDARAN susulan). Minimal 3 NIP DAN 30%.
+export const AMBANG_VERSI = { minSama: 3, minRasio: 0.3 };
+
+/**
+ * Berkas aktif mana yang tampaknya versi lama dari berkas yang akan disimpan.
+ * @param {string[]} nipBaru  NIP di berkas baru
+ * @param {Array<{id, opd, nama_berkas, nips:string[]}>} berkasAktif
+ * @param {string} [namaBerkasBaru]  nama berkas sama persis juga dianggap versi (berkas tanpa NIP, mis. PPPK PW)
+ * @returns {Array<{id, opd, nama_berkas, sama:number, rasio:number, alasan:string}>}  urut dari yang paling mirip
+ */
+export function dugaVersi(nipBaru, berkasAktif, namaBerkasBaru = '', ambang = AMBANG_VERSI) {
+  const baru = new Set(nipBaru.filter(Boolean));
+  const hasil = [];
+  for (const b of berkasAktif) {
+    const lama = new Set((b.nips || []).filter(Boolean));
+    let sama = 0;
+    for (const n of baru) if (lama.has(n)) sama++;
+    const kecil = Math.min(baru.size, lama.size);
+    const rasio = kecil ? sama / kecil : 0;
+    const namaSama = namaBerkasBaru && kecil === 0 && rapat(b.nama_berkas).toLowerCase() === rapat(namaBerkasBaru).toLowerCase();
+    if ((sama >= ambang.minSama && rasio >= ambang.minRasio) || namaSama) {
+      hasil.push({ id: b.id, opd: b.opd, nama_berkas: b.nama_berkas, sama, rasio, alasan: namaSama ? 'nama berkas sama' : `${sama} NIP sama` });
+    }
+  }
+  return hasil.sort((a, b) => b.sama - a.sama || b.rasio - a.rasio);
 }

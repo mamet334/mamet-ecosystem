@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, AlertTriangle, CheckCircle2, FileSpreadsheet, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, AlertTriangle, CheckCircle2, FileSpreadsheet, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 
 // PRATINJAU DATA TABEL (Item 92 Tahap 1): hasil pembacaan Excel rekonsiliasi ASN ditampilkan untuk diperiksa Owner
 // SEBELUM apa pun disimpan (penyimpanan = Tahap 2). Semua dibaca di perangkat; tidak ada yang dikirim.
@@ -113,7 +113,7 @@ function KartuSheet({ s, terbukaAwal }) {
   );
 }
 
-export default function PratinjauDataTabel({ hasil, onTutup }) {
+export default function PratinjauDataTabel({ hasil, onTutup, opdAwal, onPeriksaVersi, onSimpan }) {
   const r = hasil.ringkasan;
   const perluCek = hasil.sheets.filter((s) => s.status === 'PERLU_CEK' || s.status === 'GAGAL').length;
   return (
@@ -135,11 +135,127 @@ export default function PratinjauDataTabel({ hasil, onTutup }) {
         {r.nipGandaAntarSheet > 0 && <span className="text-amber-300"> · {r.nipGandaAntarSheet} NIP muncul di lebih dari satu sheet</span>}
       </div>
       <p className="text-[11px] text-slate-500 mb-3">
-        Pratinjau saja — dibaca di perangkat ini, <b>belum disimpan</b> dan tidak dikirim ke mana pun. Penyimpanan & tanya-jawab menyusul (Item 92 Tahap 2–3).
+        Dibaca di perangkat ini — <b>belum disimpan</b> sampai Anda menekan Simpan. Tanya-jawab dari data ini menyusul (Item 92 Tahap 3).
       </p>
       <div className="space-y-2">
         {hasil.sheets.map((s, i) => <KartuSheet key={s.sheet + i} s={s} terbukaAwal={s.status === 'PERLU_CEK' || s.status === 'GAGAL'} />)}
       </div>
+      {onSimpan && <BagianSimpan hasil={hasil} opdAwal={opdAwal} onPeriksaVersi={onPeriksaVersi} onSimpan={onSimpan} />}
+    </div>
+  );
+}
+
+// SIMPAN (Item 92 Tahap 2). Mesin hanya tahu dua berkas BERBAGI NIP; ia tidak tahu mana yang lebih baru (simulasi 53
+// berkas dengan urutan acak: "PBJ.xlsx" lama sempat "menggantikan" "PBJ yg baru.xlsx"). Arah versi = keputusan Owner.
+function BagianSimpan({ hasil, opdAwal, onPeriksaVersi, onSimpan }) {
+  const [opd, setOpd] = useState(opdAwal || '');
+  const [tahap, setTahap] = useState('siap'); // siap → memeriksa → pilih → menyimpan → tersimpan | galat
+  const [kandidat, setKandidat] = useState([]);
+  const [pilihan, setPilihan] = useState('ganti'); // untuk satu kandidat: ganti | lama | terpisah
+  const [diganti, setDiganti] = useState({}); // untuk beberapa kandidat: id → true
+  const [pesan, setPesan] = useState('');
+  const kosong = hasil.ringkasan.jumlahOrang === 0;
+
+  const simpan = async (opsi) => {
+    setTahap('menyimpan');
+    try {
+      await onSimpan(opd.trim(), opsi);
+      setTahap('tersimpan');
+    } catch (e) {
+      setPesan(e?.message || String(e));
+      setTahap('galat');
+    }
+  };
+
+  const mulai = async () => {
+    if (!opd.trim()) { setPesan('Isi nama OPD dulu.'); setTahap('galat'); return; }
+    setTahap('memeriksa');
+    try {
+      const k = await onPeriksaVersi(opd.trim());
+      if (!k.length) return simpan({ gantikan: [], versiLamaDari: null });
+      setKandidat(k);
+      setPilihan('ganti');
+      setDiganti(Object.fromEntries(k.map((x) => [x.id, true])));
+      setTahap('pilih');
+    } catch (e) {
+      setPesan(e?.message || String(e));
+      setTahap('galat');
+    }
+  };
+
+  const konfirmasi = () => {
+    if (kandidat.length === 1) {
+      const id = kandidat[0].id;
+      return simpan(pilihan === 'ganti' ? { gantikan: [id] } : pilihan === 'lama' ? { gantikan: [], versiLamaDari: id } : { gantikan: [] });
+    }
+    return simpan({ gantikan: kandidat.filter((x) => diganti[x.id]).map((x) => x.id) });
+  };
+
+  if (tahap === 'tersimpan') {
+    return (
+      <div className="mt-4 flex items-center gap-2 text-sm text-emerald-300">
+        <CheckCircle2 className="w-4 h-4" /> Tersimpan: {opd} — {hasil.ringkasan.jumlahOrang} orang. Lihat di "Data Tabel Tersimpan" di bawah.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 border-t border-slate-800 pt-4 space-y-3 text-xs">
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="text-slate-400">Nama OPD</label>
+        <input
+          value={opd}
+          onChange={(e) => setOpd(e.target.value)}
+          disabled={tahap !== 'siap' && tahap !== 'galat'}
+          className="flex-1 min-w-[220px] bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 focus:border-blue-500 focus:outline-none"
+          placeholder="mis. RSUD dr. H. Ibnu Sutowo"
+        />
+        {(tahap === 'siap' || tahap === 'galat') && (
+          <button onClick={mulai} disabled={kosong} className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-semibold">
+            Simpan {hasil.ringkasan.jumlahOrang} orang
+          </button>
+        )}
+        {(tahap === 'memeriksa' || tahap === 'menyimpan') && (
+          <span className="flex items-center gap-2 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /> {tahap === 'memeriksa' ? 'Memeriksa versi…' : 'Menyimpan…'}</span>
+        )}
+      </div>
+      {tahap === 'galat' && <p className="text-red-300">Gagal: {pesan}</p>}
+
+      {tahap === 'pilih' && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+          <p className="text-amber-200">
+            Berkas ini berbagi NIP dengan data yang sudah tersimpan — kemungkinan versi dari data yang sama. Sistem tidak tahu mana yang lebih baru; Anda yang menentukan.
+          </p>
+          {kandidat.length === 1 ? (
+            <>
+              <p className="text-slate-300">
+                <b>{kandidat[0].opd}</b> — {kandidat[0].nama_berkas} ({kandidat[0].alasan}, {Math.round(kandidat[0].rasio * 100)}%)
+              </p>
+              {[
+                ['ganti', 'Berkas ini lebih baru — gantikan yang lama (yang lama disimpan sebagai riwayat, tidak dihitung)'],
+                ['lama', 'Berkas ini justru versi lama — simpan sebagai riwayat saja, yang aktif tetap yang sudah ada'],
+                ['terpisah', 'Bukan versi — simpan terpisah (keduanya dihitung)'],
+              ].map(([nilai, teks]) => (
+                <label key={nilai} className="flex items-start gap-2 text-slate-200 cursor-pointer">
+                  <input type="radio" name="pilihan-versi" checked={pilihan === nilai} onChange={() => setPilihan(nilai)} className="mt-0.5" />
+                  {teks}
+                </label>
+              ))}
+            </>
+          ) : (
+            kandidat.map((k) => (
+              <label key={k.id} className="flex items-start gap-2 text-slate-200 cursor-pointer">
+                <input type="checkbox" checked={!!diganti[k.id]} onChange={(e) => setDiganti((d) => ({ ...d, [k.id]: e.target.checked }))} className="mt-0.5" />
+                Gantikan <b>{k.opd}</b> — {k.nama_berkas} ({k.alasan}, {Math.round(k.rasio * 100)}%)
+              </label>
+            ))
+          )}
+          <div className="flex gap-2 pt-1">
+            <button onClick={konfirmasi} className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold">Simpan</button>
+            <button onClick={() => setTahap('siap')} className="px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200">Batal</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
