@@ -22,7 +22,24 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
 - **Arah solusi:** tabel `tool → flag policy` (data-driven) menggantikan `if` per tool, lalu flag baru
   mis. `canUseWebSearch` per mode.
 - **Keputusan Owner (2026-09-09):** di luar cakupan saat itu ("tidak perlu untuk ws lite karena ada mametlite").
-- **Status:** ⏳ belum dikerjakan.
+- **Pemeriksaan ulang 2026-09-21 (baca kode, belum diuji live) — kekhawatiran awal terbalik:**
+  - **Pencarian web tidak memakai uang/token Owner.** `plugins/researcher.ts`: (1) Google Search grounding **hanya
+    dengan kunci Gemini BYOK pengguna**; (2) bila tidak ada → RSS Bing/Google News **gratis tanpa kunci**. Model
+    perangkum memakai kunci pengguna. Sisa risiko pencarian web: waktu tunggu & IP server dibatasi Bing bila berlebihan.
+  - **Risiko sebenarnya: daftar sub-agent ditentukan klien.** `plugins/registry.ts:39` menyaring sub-agent untuk
+    Coordinator dari `tools` kiriman **klien**; `tools` kosong = **semua** sub-agent ditawarkan. Server hanya
+    memblokir `cron_manager` & `knowledge_manager` (`policy_middleware.ts`). `plugins/youtube_analyst.ts:34`
+    memakai **token Apify server (milik Owner)** → pengguna login mana pun (termasuk eksternal Mametlite) secara teori
+    bisa memicu pemakaian Apify Owner dengan mengirim `tools` lain. Mametlite resmi menyaring `tools` di klien —
+    bukan pengaman.
+- **Arah disetujui Owner (2026-09-21):** daftar izin sub-agent **di server** per asal aplikasi — Mametlite hanya
+  `rag_search`, `researcher`, `deep_research`; permintaan lain dibuang; `tools` kosong ≠ semua. Sub-agent yang
+  memakai token server (`youtube_analyst`, dan yang sejenis — periksa `scraper`, `communicator`, `shopee_ninja`,
+  `coder`) hanya dari desktop Owner. Menggantikan arah lama (`canUseWebSearch` per mode).
+- **Urutan (keputusan Owner):** dicatat dulu; dikerjakan **sesudah Owner mengganti token Apify** (sisa T7).
+  Pembuktian nanti: permintaan Mametlite dengan `tools: ['youtube_analyst']` / `tools: []` harus tidak menawarkan
+  sub-agent itu (log Coordinator), sementara desktop tetap bisa.
+- **Status:** ⏳ arah disetujui, menunggu penggantian token Apify (T7).
 
 ## T2 — ✅ Lima komponen dasbor yatim (asal Item 48, 2026-09-10)
 
