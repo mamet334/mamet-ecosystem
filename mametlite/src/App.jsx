@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Upload, Send, User, Bot, Loader2, LogOut, Globe, BookOpen, Lock, Plus, MessageSquare, Trash2, Copy, Check } from 'lucide-react';
+import { Search, Upload, Send, User, Bot, Loader2, LogOut, Globe, BookOpen, Lock, Plus, MessageSquare, Trash2, Copy, Check, Settings, KeyRound } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { callAgentSimple, parseSSEStream } from './lib/callAgentSimple';
 import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from './lib/documentTextExtractor';
@@ -7,6 +7,12 @@ import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN
 
 // Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
 const POTONGAN_PERLU_KONFIRMASI = 150; // ±105 ribu huruf ≈ $0,006 (potongan 800 huruf, Item 70)
+
+// Kunci OpenRouter pengguna. Mametlite MEMBACA localStorage 'x-byok-openrouter' di tiga tempat (chat,
+// unggah, OCR) tetapi dulu tak punya tempat mengisinya — pesan galatnya menyuruh "buka Pengaturan"
+// yang tidak ada, jadi chat & unggah selalu ditolak server dengan NO_API_KEY (U8 Item 90, 2026-09-21).
+const KUNCI_OPENROUTER = 'x-byok-openrouter';
+const bacaKunci = () => (localStorage.getItem(KUNCI_OPENROUTER) || '').trim();
 
 // Custom lightweight Markdown parser to avoid React 19 crashes with react-markdown
 const parseMarkdown = (text) => {
@@ -84,6 +90,11 @@ function App() {
   const [statusUnggah, setStatusUnggah] = useState('');
   const [documents, setDocuments] = useState([]);
   const [activeModes, setActiveModes] = useState({ rag: true, websearch: false, research: false });
+
+  // Pengaturan kunci: hanya panjang kunci yang disimpan di state layar, bukan isinya.
+  const [panelPengaturan, setPanelPengaturan] = useState(false);
+  const [kunciTerpasang, setKunciTerpasang] = useState(() => bacaKunci().length > 0);
+  const [isianKunci, setIsianKunci] = useState('');
 
   // Chat History State
   const [conversations, setConversations] = useState(() => {
@@ -213,7 +224,8 @@ function App() {
     // dokumen lama lebih dulu, jadi unggahan yang pasti gagal karena tanpa kunci akan
     // ikut menghilangkan dokumen lama.
     if (!(localStorage.getItem('x-byok-openrouter') || '').trim()) {
-      alert('Unggah dokumen ke RAG memakai kunci OpenRouter Anda sendiri. Pasang kunci OpenRouter di Pengaturan, lalu coba lagi.');
+      alert('Unggah dokumen ke RAG memakai kunci OpenRouter Anda sendiri. Pasang kunci di Pengaturan (ikon gerigi di kiri atas), lalu coba lagi.');
+      setPanelPengaturan(true);
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
@@ -335,8 +347,31 @@ function App() {
     }
   };
 
+  const simpanKunci = () => {
+    // Huruf non-ASCII dibuang: kunci yang disalin dari halaman OpenRouter kadang membawa spasi
+    // tak terlihat, dan header HTTP menolaknya (jalur yang sama dipakai unggah & OCR).
+    const bersih = isianKunci.replace(/[^\x00-\x7F]/g, '').trim();
+    if (!bersih) { alert('Kunci masih kosong.'); return; }
+    localStorage.setItem(KUNCI_OPENROUTER, bersih);
+    setKunciTerpasang(true);
+    setIsianKunci('');
+    setPanelPengaturan(false);
+  };
+
+  const hapusKunci = () => {
+    if (!confirm('Hapus kunci OpenRouter dari perangkat ini? Chat dan unggah dokumen akan berhenti bekerja sampai kunci dipasang lagi.')) return;
+    localStorage.removeItem(KUNCI_OPENROUTER);
+    setKunciTerpasang(false);
+  };
+
   const handleSend = async () => {
     if (!input.trim()) return;
+    // Ditahan di sini supaya pengguna melihat tempat memperbaikinya, bukan galat NO_API_KEY dari server.
+    if (!bacaKunci()) {
+      setPanelPengaturan(true);
+      alert('Mametlite memakai kunci OpenRouter Anda sendiri. Pasang kunci di Pengaturan (ikon gerigi di kiri atas), lalu kirim lagi.');
+      return;
+    }
     const userMsg = { role: 'user', content: input };
     updateMessages(prev => [...prev, userMsg]);
     const currentInput = input;
@@ -463,7 +498,57 @@ function App() {
           <div className="flex items-center gap-2 text-emerald-400 font-bold text-xl">
             <Search className="w-6 h-6" /> Mamet Lite
           </div>
+          <button
+            onClick={() => setPanelPengaturan((b) => !b)}
+            title="Pengaturan kunci OpenRouter"
+            className={`p-2 rounded-lg transition-colors ${kunciTerpasang ? 'text-slate-400 hover:text-emerald-400 hover:bg-slate-700' : 'text-amber-400 bg-amber-400/10 hover:bg-amber-400/20'}`}
+          >
+            <Settings className="w-5 h-5" />
+          </button>
         </div>
+
+        {!kunciTerpasang && !panelPengaturan && (
+          <button
+            onClick={() => setPanelPengaturan(true)}
+            className="mb-3 text-left text-[11px] leading-snug text-amber-300 bg-amber-400/10 border border-amber-400/30 rounded-lg px-3 py-2 shrink-0"
+          >
+            Kunci OpenRouter belum dipasang — chat dan unggah dokumen belum bisa dipakai. Klik untuk memasang.
+          </button>
+        )}
+
+        {panelPengaturan && (
+          <div className="mb-4 bg-slate-900/70 border border-slate-700 rounded-xl p-3 shrink-0">
+            <div className="flex items-center gap-2 text-slate-200 text-sm font-semibold mb-2">
+              <KeyRound className="w-4 h-4 text-emerald-400" /> Kunci OpenRouter
+            </div>
+            <p className="text-[11px] text-slate-400 leading-snug mb-2">
+              Kunci disimpan di perangkat ini saja (localStorage), dikirim langsung untuk permintaan Anda sendiri.
+              Dipakai untuk chat, embedding dokumen, dan OCR PDF.
+            </p>
+            <input
+              type="password"
+              value={isianKunci}
+              onChange={(e) => setIsianKunci(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') simpanKunci(); }}
+              placeholder={kunciTerpasang ? 'Kunci sudah terpasang — isi untuk mengganti' : 'Tempel kunci OpenRouter di sini'}
+              autoComplete="off"
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
+            />
+            <div className="flex items-center gap-2 mt-2">
+              <button onClick={simpanKunci} className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                Simpan
+              </button>
+              {kunciTerpasang && (
+                <button onClick={hapusKunci} className="text-xs text-slate-400 hover:text-red-400 px-2 py-1.5 transition-colors">
+                  Hapus kunci
+                </button>
+              )}
+              <span className={`ml-auto text-[10px] ${kunciTerpasang ? 'text-emerald-400' : 'text-amber-400'}`}>
+                {kunciTerpasang ? 'terpasang' : 'belum ada'}
+              </span>
+            </div>
+          </div>
+        )}
 
         <input type="file" ref={fileInputRef} onChange={handleUpload} className="hidden" accept={ACCEPT_UNGGAH} />
         <button 

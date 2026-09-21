@@ -53,7 +53,7 @@ sini supaya tidak ada lagi sisa yang tercecer; bullet lama diberi rujukan ke bag
 | U5 | Item 76 keterbatasan, 76b, 86 | Uji mutu jawaban jalur PDF, cek salah baca OCR, dan OCR massal buku penuh belum pernah dijalankan; detektor menandai 939/1.004 halaman Kepbup → OCR menggabungkan tabel (akar Item 88–89). | **Tahap A** memuat pertanyaan berkas uji Kepbup; OCR massal tetap menunggu keputusan 3 Item 88. |
 | U6 | Item 65, 87 | `document_chunks` tanpa nomor urut → potongan tetangga mustahil. | **Ditunda** (§5) — dinilai sesudah angka Tahap A–C. |
 | U7 | Item 70 | Pertanyaan bahasa Indonesia ke dokumen berbahasa Inggris ±0,05–0,10 lebih rendah; terjemahan saat pencarian kosong belum dibuat. | **Ditunda** — tidak ada dokumen berbahasa Inggris di akun saat ini (Operator Handbook terhapus). |
-| U8 | Item 65 | RAG Mametlite (mode LITE) & jalur tanpa kunci OpenRouter (cadangan pencocokan kata) belum terbukti live. | **Ditunda** — Tahap B selesai (LITE memakai RPC yang sama lewat server); pembuktian live LITE & jalur tanpa kunci belum. |
+| U8 | Item 65 | RAG Mametlite (mode LITE) & jalur tanpa kunci OpenRouter (cadangan pencocokan kata) belum terbukti live. | **U8a ✅ 2026-09-21** — RAG Mametlite terbukti live (7 potongan, VERIFIED + Sumber benar) sesudah dua perbaikan: layar Pengaturan kunci (Mametlite buntu di `NO_API_KEY`) dan `judulDokumen`/`isiDokumen` di dua jalur streaming `synthesis_handler.ts` (VERIFIED sah selalu diturunkan). [log](../project-memory/changelog/2026-09-21-mametlite-pengaturan-kunci-dan-label-stream.md). **U8b terbuka, rumusan dikoreksi:** "tanpa kunci" tak tercapai (gerbang BYOK menolak lebih dulu); yang perlu dibuktikan = cadangan pencocokan kata saat **kunci ada tetapi embedding gagal**. **Temuan baru:** mode LITE tak pernah aktif — `request_parser.ts` memberi bawaan `ASSISTANT`, Mametlite dapat 8 potongan bukan 10 (memori tetap benar lewat `appSource`); keputusan Owner sesudah diukur. |
 | U9 | Item 73 | Aturan kutipan persis hanya prompt, tidak ditegakkan kode. | **Tidak dikerjakan** — label dibekukan (§2). |
 | U10 | Item 88 Tahap 3 (konteks chat 2026-09-17) | Prompt mode LOOKUP memuat **dua instruksi label yang bertentangan**: `request_pipeline.ts` "Untuk mode LOOKUP: [Pengetahuan umum AI …]" dan BLOK 6 (Evidence Gate PASSED) "VERIFIED / HYPOTHESIS / INSUFFICIENT". Tidak memengaruhi pengambilan potongan (vektor & batas 8 sama dengan ASSISTANT). | ✅ **Selesai 2026-09-21** — `request_pipeline.ts` menunjuk ke BLOK 6 (satu-satunya yang tahu ada/tidaknya dokumen). Bukti live: LOOKUP + dokumen → VERIFIED + Sumber; LOOKUP tanpa dokumen → label ringkas. [log](../project-memory/changelog/2026-09-21-label-lookup-satu-sumber-aturan.md) |
 
@@ -135,7 +135,7 @@ sudah diambil), **diukur dengan set Tahap A** bersama hasil Tahap B — bukan be
   **hasil pemotong Tahap C**, jadi pengukurannya adalah hasil Tahap C, bukan acuan baru. Hapus ganda:
   [changelog Item 91](../project-memory/changelog/2026-09-17-hapus-dokumen-cek-baris-terhapus.md).
 - **Sisa:** pertanyaan NEG tetap membawa potongan ke konteks (U4, penjaga = label); buku Kepbup penuh menunggu
-  keputusan 3 Item 88; U6–U8 tetap ditunda (§3); U10 ✅ selesai 2026-09-21.
+  keputusan 3 Item 88; U6, U7, U8b tetap ditunda (§3); U8a & U10 ✅ selesai 2026-09-21.
 
 **Urutan A → B → C** dipilih karena A adalah alat ukur keduanya; B tidak mengubah potongan (tanpa unggah
 ulang) sehingga efeknya terukur bersih; C mengubah potongan dan butuh unggah ulang (keputusan 3 Item 89).

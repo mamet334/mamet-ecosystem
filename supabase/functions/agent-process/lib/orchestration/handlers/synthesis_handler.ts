@@ -277,7 +277,11 @@ export const SynthesisHandler = {
                 processingSteps: ctx.state.processingSteps, 
                 auditMode: ctx.request.auditMode, 
                 routingDecision, 
-                contractValidation 
+                contractValidation,
+                // Tanpa dua data ini pemeriksa label di stream_handler mengira tidak ada dokumen dan
+                // menurunkan SETIAP VERIFIED (Mametlite, 2026-09-21: "dokumen dilampirkan: 0" walau 7 potongan).
+                judulDokumen,
+                isiDokumen
               }, 
               snapshot: maef.getSnapshot() 
             };
@@ -299,7 +303,11 @@ export const SynthesisHandler = {
                 processingSteps: ctx.state.processingSteps, 
                 auditMode: ctx.request.auditMode, 
                 routingDecision, 
-                contractValidation 
+                contractValidation,
+                // Tanpa dua data ini pemeriksa label di stream_handler mengira tidak ada dokumen dan
+                // menurunkan SETIAP VERIFIED (Mametlite, 2026-09-21: "dokumen dilampirkan: 0" walau 7 potongan).
+                judulDokumen,
+                isiDokumen
               }, 
               snapshot: maef.getSnapshot() 
             };
