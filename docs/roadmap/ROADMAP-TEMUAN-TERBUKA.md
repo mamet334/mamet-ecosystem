@@ -1,7 +1,7 @@
 # ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
 
 **Tipe Dokumen:** Daftar sisa pekerjaan (temuan audit yang belum punya dokumen roadmap sendiri)
-**Status:** ⏳ **2 temuan terbuka** (T1–T2; T3–T7 ditutup) — masing-masing menunggu keputusan Owner
+**Status:** ⏳ **1 temuan terbuka** (T1; T2–T7 ditutup) — masing-masing menunggu keputusan Owner
 **Tanggal:** 2026-09-17 (dipindah dari INDEX-ROADMAP Item 33, 44, 48, 49, 50 saat perampingan)
 **Aturan:** temuan yang dikerjakan dan tumbuh besar pindah ke dokumen roadmap sendiri; yang selesai dicatat di
 changelog lalu barisnya diberi ✅ di sini.
@@ -24,7 +24,7 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
 - **Keputusan Owner (2026-09-09):** di luar cakupan saat itu ("tidak perlu untuk ws lite karena ada mametlite").
 - **Status:** ⏳ belum dikerjakan.
 
-## T2 — Lima komponen dasbor yatim (asal Item 48, 2026-09-10)
+## T2 — ✅ Lima komponen dasbor yatim (asal Item 48, 2026-09-10)
 
 - **Temuan:** tak diimpor/dipasang di mana pun (dicek 2026-09-17, 0 pemakai):
   `MemoryHealthDashboard.jsx`, `MonitoringDashboard.jsx`, `ObservabilityDashboard.jsx`, `EngineerDashboard.jsx`,
@@ -33,7 +33,8 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
 - **Peringatan dari pemasangan BillingDashboard:** jangan pasang layar berisi angka basi (batas hardcode $0,50
   vs batas nyata $3) — setiap dasbor wajib memakai sumber angka yang sama dengan server.
 - **Keputusan Owner yang dibutuhkan:** per komponen — pasang (dengan angka diperiksa) atau hapus.
-- **Status:** ⏳ menunggu keputusan.
+- **Keputusan Owner (2026-09-21):** hapus semua.
+- **Status:** ✅ keenamnya dihapus 2026-09-21 (1.364 baris; `ShopeeDashboard` membaca tabel `shopee_queue` yang sudah tidak ada; build lolos) — [log](../project-memory/changelog/2026-09-21-t2-hapus-dasbor-yatim.md).
 
 ## T3 — ✅ Rute mati `/api/agent/process` di `backend/server.js` (asal Item 49, 2026-09-10)
 
