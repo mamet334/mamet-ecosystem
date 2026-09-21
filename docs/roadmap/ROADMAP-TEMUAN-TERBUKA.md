@@ -28,7 +28,7 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
     perangkum memakai kunci pengguna. Sisa risiko pencarian web: waktu tunggu & IP server dibatasi Bing bila berlebihan.
   - **Risiko sebenarnya: daftar sub-agent ditentukan klien.** `plugins/registry.ts:39` menyaring sub-agent untuk
     Coordinator dari `tools` kiriman **klien**; `tools` kosong = **semua** sub-agent ditawarkan. Server hanya
-    memblokir `cron_manager` & `knowledge_manager` (`policy_middleware.ts`). `plugins/youtube_analyst.ts:34`
+    memblokir `cron_manager` (`policy_middleware.ts`; aturan `knowledge_manager` ikut terhapus bersama pluginnya di T9). `plugins/youtube_analyst.ts:34`
     memakai **token Apify server (milik Owner)** → pengguna login mana pun (termasuk eksternal Mametlite) secara teori
     bisa memicu pemakaian Apify Owner dengan mengirim `tools` lain. Mametlite resmi menyaring `tools` di klien —
     bukan pengaman.
