@@ -149,6 +149,12 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
 - **Langkah darurat (keputusan Owner 2026-09-21):** `knowledge_manager` DICABUT dari daftar sub-agent (`plugins/registry.ts`)
   & aturan Coordinator "MACRO QUERY → knowledge_manager" diganti; space kosong dihapus (0 dokumen/chat/memori/ringkasan).
   Sisa: `workspace_guardian.ts` masih menyebut knowledge_manager di arahan prompt; nasib plugin (perbaiki atau hapus).
+- **Terbukti sesudah deploy v465 (2026-09-21):** pertanyaan Kepbup kembali VERIFIED dari 2 potongan tepat; tidak ada
+  space baru. (Uji hanya chip RAG → Coordinator tidak berjalan; plugin tetap tak bisa dipilih karena keluar dari daftar.)
+- **Sumber masalah di UI ikut ditutup (2026-09-21, [log](../project-memory/changelog/2026-09-21-workspace-research-app.md)):**
+  Research App kini bisa membuat / mengganti nama / menghapus (bila kosong) workspace, dan mengingat pilihan terakhir —
+  bukan lagi otomatis space terbaru. Space Kepbup dinamai "Kepbup OKU 2025"; dua space "Observasi Pasar…" kosong dihapus
+  Owner dari UI.
 - **Status:** 🟡 dicabut dari Coordinator; perbaikan/penghapusan plugin menunggu keputusan.
 
 ## Ditutup saat perampingan (tidak perlu dikerjakan)

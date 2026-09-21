@@ -6,6 +6,8 @@ import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from '../../core/r
 import { bacaBerkasExcelAsn, adalahExcel, EKSTENSI_EXCEL } from '../../core/runtime/services/bacaExcelAsn.js';
 import PratinjauDataTabel from './PratinjauDataTabel.jsx';
 import DaftarDataTabel from './DaftarDataTabel.jsx';
+import DaftarWorkspace from './DaftarWorkspace.jsx';
+import { pilihRuangAwal, ingatRuangTerpilih, ruangTerpilihTersimpan, buatRuang, gantiNamaRuang, hapusRuangKosong } from '../../core/runtime/services/ruangPengetahuan.js';
 import { opdDariNamaBerkas, siapkanSimpan, dugaVersi, bandingkanIsi, uraiPerbedaan } from '../../core/runtime/services/dataTabelAsn.js';
 import { ambilBerkasAktif, ambilPegawaiBerkas, simpanBerkasAsn, daftarBerkasAsn, hapusBerkasAsn } from '../../core/runtime/services/dataTabelAsnDb.js';
 import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN, OCR_SERENTAK } from '../../core/runtime/services/pdfOcrService.js';
@@ -36,7 +38,10 @@ export default function ResearchApp() {
         try { setDaftarTabel(await daftarBerkasAsn(supabase)); }
         catch (err) { console.error('[ResearchApp] Gagal memuat data tabel:', err); }
     };
-    const [selectedSpace, setSelectedSpace] = useState(null);
+    const [selectedSpace, setSelectedSpaceMentah] = useState(null);
+    // Pilihan workspace diingat: dulu bawaannya selalu space TERBARU, jadi space buatan knowledge_manager
+    // ("Berapa pejabat struktural …?") diam-diam menjadi tujuan unggahan RAG (T9, 2026-09-21).
+    const setSelectedSpace = (id) => { setSelectedSpaceMentah(id); ingatRuangTerpilih(id); };
 
     // Load knowledge spaces
     const loadSpaces = async () => {
@@ -52,9 +57,8 @@ export default function ResearchApp() {
 
             if (error) throw error;
             setKnowledgeSpaces(data || []);
-            if (data && data.length > 0 && !selectedSpace) {
-                setSelectedSpace(data[0].id);
-            }
+            // Pilihan sekarang dipertahankan selama masih ada; bila tidak, pilihan terakhir yang tersimpan, lalu terbaru.
+            setSelectedSpaceMentah((kini) => pilihRuangAwal(data || [], (data || []).some((s) => s.id === kini) ? kini : ruangTerpilihTersimpan()));
         } catch (err) {
             console.error('[ResearchApp] Gagal memuat spaces:', err);
         }
@@ -453,22 +457,27 @@ export default function ResearchApp() {
             </div>
 
             {/* Knowledge Spaces */}
-            {knowledgeSpaces.length > 0 && (
-                <div className="mb-6 flex gap-2 flex-wrap">
-                    {knowledgeSpaces.map(space => (
-                        <button
-                            key={space.id}
-                            onClick={() => setSelectedSpace(space.id)}
-                            className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${selectedSpace === space.id
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                                }`}
-                        >
-                            {space.name}
-                        </button>
-                    ))}
-                </div>
-            )}
+            <DaftarWorkspace
+                daftar={knowledgeSpaces}
+                terpilih={selectedSpace}
+                onPilih={setSelectedSpace}
+                jumlahDokumen={searchQuery.trim() || loading ? null : totalDokumen}
+                onBuat={async (nama) => {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (!session) throw new Error('Sesi tidak ditemukan. Silakan masuk kembali.');
+                    const baru = await buatRuang(supabase, session.user.id, nama);
+                    setSelectedSpace(baru.id);
+                    await loadSpaces();
+                }}
+                onGantiNama={async (id, nama) => {
+                    try { await gantiNamaRuang(supabase, id, nama); }
+                    finally { await loadSpaces(); }
+                }}
+                onHapus={async (ruang) => {
+                    try { await hapusRuangKosong(supabase, ruang); }
+                    finally { await loadSpaces(); }
+                }}
+            />
 
             {/* Document List */}
             {loading ? (
