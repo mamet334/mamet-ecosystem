@@ -2,7 +2,7 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Desktop Assistant (`ConversationEngine.jsx`, `AssistantService.js`, `electron/main.cjs`, `preload.cjs`) & `agent-process`
-**Status:** 📝 **Tahap 0 sebagian selesai** (jalur lama dihapus, commit `ed19ba1`, v451); **sisa Tahap 0:** pagar alamat IPC `folder:*`; Tahap 1 menunggu aba-aba Owner
+**Status:** 📝 **Tahap 0 selesai 2026-09-21** (jalur lama dihapus `ed19ba1`; pagar `folder:*` + `pagarFolder.cjs`, uji serangan 33/33, uji Owner 4/4 — [log](../project-memory/changelog/2026-09-21-folder-kerja-tahap0-pagar.md)); **Tahap 1 menunggu aba-aba Owner**
 **Tanggal:** 2026-09-15
 **Roadmap Index:** Item 85
 
@@ -121,9 +121,14 @@ cara pipeline sekarang memproses jawaban (JSON/hybrid dengan nalar).
 ## 5. Tahapan
 
 ### Tahap 0 — Pagar & Pembersihan (prasyarat)
-- [ ] IPC baru `folder:*` di `main.cjs` dengan satu fungsi pagar alamat (folder akar dicatat di proses utama saat
-      dipilih, bukan dipercaya dari layar setiap panggilan).
-- [ ] **Hapus jalur lama** (keputusan Owner). Setiap penghapusan didahului pencarian pemakai; yang ternyata masih dipakai
+- [x] IPC baru `folder:*` di `main.cjs` dengan satu fungsi pagar alamat (folder akar dicatat di proses utama saat
+      dipilih, bukan dipercaya dari layar setiap panggilan). ✅ 2026-09-21: `folder:pilih`/`status`/`lepas` +
+      `frontend/electron/pagarFolder.cjs` (`akarFolderSah`, `alamatDalamPagar` — dinilai dari alamat sebenarnya,
+      junction ke luar ditolak). Alat Tahap 1+ WAJIB memakai `alamatDalamPagar`.
+- [x] **Hapus jalur lama** (keputusan Owner). ✅ `ed19ba1` (2026-09-15); `edit-file-surgical` **dipertahankan** (masih
+      dipakai `CommandRegistry.writeFile`); mode `AI` diperiksa 2026-09-21 — **tidak pernah aktif** (parser mengisi
+      `ASSISTANT`), akibatnya `cron_manager` selalu diblokir & `subAgentEnabled` selalu salah; dilaporkan, tidak diubah
+      (keputusan Owner). Setiap penghapusan didahului pencarian pemakai; yang ternyata masih dipakai
       jalur lain dilaporkan dulu, tidak ikut dihapus diam-diam:
   - prompt `[STATUS: DESKTOP NATIVE AWARENESS ENABLED]` di `request_pipeline.ts`, `llm_orchestrator.ts`,
     `stream_handler.ts`, beserta "shadow interceptor" `<terminal>` di `stream_handler.ts`;
@@ -139,8 +144,9 @@ cara pipeline sekarang memproses jawaban (JSON/hybrid dengan nalar).
     `desktopOSMode`) — dilaporkan ke Owner sebelum diubah.
   - **Tidak disentuh:** `run-terminal-command` (dipakai Engineer & `ModuleDiscoveryService`), `airdropEngine.cjs` & IPC
     `run-airdrop-stealth` (sengaja dinonaktifkan Owner, keputusan terpisah).
-- [ ] Putuskan nasib `fs:writeFile`/`fs:deleteFile` tanpa pagar (dipakai `StorageManager` & Engineer) — dibatasi atau
-      dibiarkan untuk Engineer.
+- [x] Putuskan nasib `fs:writeFile`/`fs:deleteFile` tanpa pagar (dipakai `StorageManager` & Engineer) — dibatasi atau
+      dibiarkan untuk Engineer. ✅ **dibiarkan untuk Engineer**; folder kerja tidak memakainya. Temuan terkait: T8
+      (perintah PowerShell dari alamat mentah di `CommandRegistry.js`).
 
 ### Tahap 1 — Baca Saja
 - [ ] 📁 hanya tampil di `ws-assistant`; alamat disimpan & dipulihkan tanpa kunci bertitik dua (mis. `localStorage`

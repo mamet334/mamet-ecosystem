@@ -31,6 +31,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // =============================================
+  // FOLDER KERJA ASSISTANT (Item 85) — hanya nama folder yang sampai ke layar; alamat lengkap tetap di proses utama
+  // =============================================
+
+  folderKerja: {
+    pilih: () => ipcRenderer.invoke('folder:pilih'),
+    status: () => ipcRenderer.invoke('folder:status'),
+    lepas: () => ipcRenderer.invoke('folder:lepas'),
+  },
+
+  // =============================================
   // TERMINAL COMMAND
   // =============================================
 

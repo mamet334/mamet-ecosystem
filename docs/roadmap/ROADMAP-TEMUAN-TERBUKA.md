@@ -1,7 +1,7 @@
 # ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
 
 **Tipe Dokumen:** Daftar sisa pekerjaan (temuan audit yang belum punya dokumen roadmap sendiri)
-**Status:** ⏳ **1 temuan terbuka** (T1; T2–T7 ditutup) — masing-masing menunggu keputusan Owner
+**Status:** ⏳ **2 temuan terbuka** (T1, T8; T2–T7 ditutup) — masing-masing menunggu keputusan Owner
 **Tanggal:** 2026-09-17 (dipindah dari INDEX-ROADMAP Item 33, 44, 48, 49, 50 saat perampingan)
 **Aturan:** temuan yang dikerjakan dan tumbuh besar pindah ke dokumen roadmap sendiri; yang selesai dicatat di
 changelog lalu barisnya diberi ✅ di sini.
@@ -111,6 +111,21 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
   masih aktif di tempat lain.
 
 ---
+
+## T8 — Perintah PowerShell disusun dengan menyisipkan alamat mentah (asal Item 85 Tahap 0, 2026-09-21)
+
+- **Temuan:** `frontend/src/core/runtime/services/CommandRegistry.js` (sekitar baris 202–240: `readFile`,
+  `createFolder`, `deleteFolder`, `deleteFile`, `moveFile`, dst.) menyusun perintah
+  `powershell -Command "… -Path '${args.path}'"` lalu menjalankannya lewat `run-terminal-command`. Alamat yang memuat
+  tanda petik tunggal (`'`) keluar dari tanda kutip dan bisa menambah perintah PowerShell lain.
+- **Jalur pemicu:** tombol perintah Engineer di `ConversationEngine.jsx` (`handleRunCommand` →
+  `AssistantService.runCommand` → `CommandRegistry.executeConfirmed`) — sesudah pengguna mengklik. Nilai `args` berasal
+  dari jawaban model, jadi dokumen/berkas yang dibaca model bisa memengaruhinya.
+- **Risiko:** nyata tetapi sempit (butuh klik pengguna; desktop Owner saja). Belum diuji live — hasil baca kode.
+- **Arah solusi:** jangan menyusun perintah dari teks — operasi berkas lewat `fs` Node di proses utama (atau
+  argumen terpisah `execFile`), dan bila folder kerja aktif, lewat `pagarFolder.cjs` (Item 85).
+- **Keputusan Owner (2026-09-21):** dicatat, belum diperbaiki.
+- **Status:** ⏳ belum dikerjakan.
 
 ## Ditutup saat perampingan (tidak perlu dikerjakan)
 

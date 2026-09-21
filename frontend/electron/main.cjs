@@ -739,6 +739,28 @@ ipcMain.handle('select-folder', async () => {
   return result.canceled ? null : result.filePaths[0];
 });
 
+// 3b. FOLDER KERJA ASSISTANT (Item 85 Tahap 0, 2026-09-21). Akar dicatat DI SINI saat dipilih lewat dialog —
+// tidak pernah diterima dari layar — dan layar hanya menerima namanya. Alat folder (Tahap 1+) wajib memakai
+// alamatDalamPagar(folderKerjaAkar, relatif); jalur `fs:*` & `edit-file-surgical` tidak berpagar dan bukan untuk ini.
+const { akarFolderSah } = require('./pagarFolder.cjs');
+let folderKerjaAkar = null;
+
+ipcMain.handle('folder:pilih', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] });
+  if (result.canceled || !result.filePaths[0]) return { aktif: !!folderKerjaAkar, nama: folderKerjaAkar ? path.basename(folderKerjaAkar) : null, dibatalkan: true };
+  const sah = akarFolderSah(result.filePaths[0]);
+  if (!sah.ok) return { aktif: !!folderKerjaAkar, nama: folderKerjaAkar ? path.basename(folderKerjaAkar) : null, ditolak: sah.alasan };
+  folderKerjaAkar = sah.akar;
+  return { aktif: true, nama: sah.nama };
+});
+
+ipcMain.handle('folder:status', () => ({ aktif: !!folderKerjaAkar, nama: folderKerjaAkar ? path.basename(folderKerjaAkar) : null }));
+
+ipcMain.handle('folder:lepas', () => {
+  folderKerjaAkar = null;
+  return { aktif: false, nama: null };
+});
+
 // 4. Check for updates manually
 ipcMain.handle('check-for-updates', async () => {
   if (isDev) return { status: 'dev-mode', message: 'Auto-updater dinonaktifkan dalam mode development.' };
