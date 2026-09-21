@@ -2,7 +2,7 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Jalur unggah baru (browser) + penyimpanan baris data (Supabase) + alat saring/hitung untuk AI (`agent-process`)
-**Status:** 📋 **Rancangan terdaftar 2026-09-21** — pengukuran selesai (§3); Tahap 1 menunggu aba-aba Owner
+**Status:** 📝 **Tahap 1 selesai 2026-09-21** (pembaca + pratinjau Excel, uji 53 berkas lulus, terbukti Owner) — [log](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap1-pembaca-pratinjau.md); Tahap 2 menunggu aba-aba Owner
 **Tanggal:** 2026-09-21
 **Roadmap Index:** Item 92
 
@@ -15,7 +15,7 @@ Owner mengelola berkas **rekonsiliasi / rencana pengembangan kompetensi ASN** ki
 
 - "Berapa pejabat yang menduduki jabatan struktural?" (satu OPD — RSUD: **14**)
 - "Siapa saja yang belum mengikuti pelatihan …?" (RSUD: PIM → **14 dari 14** struktural; teknis → 1 struktural,
-  130 pelaksana, 154 JFT)
+  131 pelaksana, 155 JFT — koreksi 2026-09-21: kunci awal 130/154 salah, blok tanda tangan terhitung pelatihan)
 - dan wajar menyusul: "berapa pejabat struktural **se-kabupaten** yang belum PIM?" (lintas ~40 OPD)
 
 **RAG tidak bisa menjawab ini dengan benar — di ws-lite maupun ws-assistant** (keduanya memakai mesin pencarian
@@ -104,9 +104,9 @@ terpetakan disimpan mentah (tidak dibuang diam-diam).
 ## 5. Tahapan & Kriteria Selesai
 
 ### Tahap 1 — Pembaca & pratinjau Excel (browser, tanpa menyimpan)
-- [ ] Pengenal struktur dari pembaca percobaan dipindah ke modul murni (bisa diuji di Node), `.xlsx`/`.csv` diterima.
-- [ ] Layar pratinjau: pemetaan kolom, jumlah orang vs JUMLAH, daftar kejanggalan, baris yang dilewati & alasannya.
-- [ ] **Kriteria:** 53 berkas ukur — 0 gagal; 48/48 JUMLAH & 5/5 total kunci tetap cocok; kejanggalan §3 muncul.
+- [x] Pengenal struktur dari pembaca percobaan dipindah ke modul murni (bisa diuji di Node), `.xlsx`/`.csv` diterima. ✅ `dataTabelAsn.js` + `bacaExcelAsn.js` (SheetJS 0.20.3 dari CDN resmi — 0.18.5 npm ber-CVE). **Penyimpangan:** hanya `.xlsx`/`.xls`; `.csv` tetap ke RAG seperti sebelumnya (belum ada contoh CSV rekonsiliasi).
+- [x] Layar pratinjau: pemetaan kolom, jumlah orang vs JUMLAH, daftar kejanggalan, baris yang dilewati & alasannya. ✅ `PratinjauDataTabel.jsx` di Research App (huruf kolom Excel, "⚠ N catatan" di kepala kartu, tabel semua orang).
+- [x] **Kriteria:** 53 berkas ukur — 0 gagal; 48/48 JUMLAH & 5/5 total kunci tetap cocok; kejanggalan §3 muncul. ✅ semua lulus + DPRD 47 / pendidikan 47/47; kejanggalan baru dari pratinjau: L & P terisi bersamaan, pembagian L/P ≠ JUMLAH, NIP ganda RSUD.
 
 ### Tahap 2 — Simpan + versi
 - [ ] Tabel + RLS; simpan hanya sesudah konfirmasi; koreksi pemetaan disimpan & dipakai ulang.
@@ -118,7 +118,7 @@ terpetakan disimpan mentah (tidak dibuang diam-diam).
       pelatihan, pendidikan, jabatan); hasil membawa berkas/sheet/baris.
 - [ ] Label: angka dari alat = VERIFIED dengan sumber; tanpa alat = tidak boleh mengarang angka.
 - [ ] **Kriteria (kunci):** RSUD struktural **14**; belum PIM **14**; belum teknis struktural **1** (Kabid Bina
-      Pelayanan Medik), pelaksana **130**, JFT **154**; lintas OPD tanpa hitung ganda versi.
+      Pelayanan Medik), pelaksana **131**, JFT **155** (kunci awal 130/154 salah — blok tanda tangan di baris orang terakhir terhitung pelatihan; ditemukan modul Tahap 1); lintas OPD tanpa hitung ganda versi.
 
 ### Tahap 4 — Daftar kejanggalan per OPD
 - [ ] Laporan per OPD: JUMLAH ≠ orang, jabatan kosong, nomor/NIP ganda, tanpa NIP — siap dikirim balik ke OPD.
@@ -128,7 +128,7 @@ terpetakan disimpan mentah (tidak dibuang diam-diam).
 
 ## 6. Risiko & Pertanyaan Terbuka
 
-- **Privasi (keputusan Owner belum diberikan):** baris yang relevan untuk sebuah jawaban (nama, NIP) ikut terkirim
+- **Privasi — usulan 2026-09-21 (belum diputuskan):** NIP **tidak** disamarkan sebagian; model tidak pernah melihat NIP — alat mengirim penanda `[P-0231]`, kode menukarnya dengan NIP asli sesudah model menjawab (privasi + ketepatan). Nama: dikirim atau ikut penanda, keputusan sebelum Tahap 3. Catatan lama: baris yang relevan untuk sebuah jawaban (nama, NIP) ikut terkirim
   ke penyedia model saat bertanya. Alternatif: alat mengembalikan hitungan + daftar nama, NIP disamarkan kecuali diminta.
 - **Nama pelatihan tidak baku** ("PIM IV", "Diklat PIM IV", "Diklat Kepemimpinan Tingkat IV", tanda "√"/"V"):
   aturan normalisasi PIM perlu diuji di 53 berkas; pelatihan teknis dicari sebagai teks, bukan disamakan.

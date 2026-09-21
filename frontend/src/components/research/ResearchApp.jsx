@@ -3,6 +3,8 @@ import { supabase } from '../../supabase';
 import { kernel } from '../../core/runtime/Kernel';
 import { Search, Upload, Trash2, FileText, Loader2, Database, PlusCircle } from 'lucide-react';
 import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from '../../core/runtime/services/documentTextExtractor.js';
+import { bacaBerkasExcelAsn, adalahExcel, EKSTENSI_EXCEL } from '../../core/runtime/services/bacaExcelAsn.js';
+import PratinjauDataTabel from './PratinjauDataTabel.jsx';
 import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN, OCR_SERENTAK } from '../../core/runtime/services/pdfOcrService.js';
 
 // Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
@@ -23,6 +25,8 @@ export default function ResearchApp() {
     const [statusUnggah, setStatusUnggah] = useState('');
     const [deletingId, setDeletingId] = useState(null);
     const [knowledgeSpaces, setKnowledgeSpaces] = useState([]);
+    // Pratinjau data tabel Excel (Item 92 Tahap 1) — hanya di layar, belum disimpan.
+    const [pratinjauTabel, setPratinjauTabel] = useState(null);
     const [selectedSpace, setSelectedSpace] = useState(null);
 
     // Load knowledge spaces
@@ -111,6 +115,29 @@ export default function ResearchApp() {
     const handleUpload = async (e) => {
         const files = Array.from(e.target.files || []);
         if (!files.length) return;
+
+        // EXCEL → jalur DATA TABEL (Item 92), bukan RAG: RAG tak bisa menghitung / mencari sel kosong. Tahap 1 hanya
+        // membaca & menampilkan pratinjau di perangkat — tanpa kunci, tanpa biaya, tanpa menyimpan.
+        const excel = files.filter((f) => adalahExcel(f.name));
+        if (excel.length) {
+            e.target.value = '';
+            if (excel.length !== files.length || excel.length > 1) {
+                alert('Berkas Excel dibaca lewat jalur data tabel, satu berkas setiap kali. Pilih satu berkas Excel saja (dokumen lain diunggah terpisah).');
+                return;
+            }
+            setUploading(true);
+            setStatusUnggah('Membaca Excel...');
+            try {
+                setPratinjauTabel(await bacaBerkasExcelAsn(excel[0]));
+            } catch (err) {
+                console.error('[ResearchApp] Gagal membaca Excel:', err);
+                alert(`Gagal membaca ${excel[0].name}: ${err.message || err}`);
+            } finally {
+                setUploading(false);
+                setStatusUnggah('');
+            }
+            return;
+        }
         const banyak = files.length > 1;
         const namaBerkas = (f) => (banyak ? `${files.indexOf(f) + 1}/${files.length} ` : '') + `"${f.name}"`;
 
@@ -357,9 +384,11 @@ export default function ResearchApp() {
                 <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg cursor-pointer transition-colors text-sm">
                     <Upload className="w-4 h-4" />
                     {uploading ? (statusUnggah || 'Mengunggah...') : 'Upload Dokumen'}
-                    <input type="file" multiple className="hidden" onChange={handleUpload} accept={ACCEPT_UNGGAH} disabled={uploading} />
+                    <input type="file" multiple className="hidden" onChange={handleUpload} accept={[ACCEPT_UNGGAH, ...EKSTENSI_EXCEL].join(',')} disabled={uploading} />
                 </label>
             </div>
+
+            {pratinjauTabel && <PratinjauDataTabel hasil={pratinjauTabel} onTutup={() => setPratinjauTabel(null)} />}
 
             {/* Search Bar */}
             <div className="mb-6">

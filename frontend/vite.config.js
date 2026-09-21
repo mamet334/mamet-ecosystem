@@ -19,6 +19,8 @@ export default defineConfig({
         // import('pdf-lib') (Item 76b): string array obfuscator menyembunyikan nama paket dari Vite,
         // pdf-lib tak ikut dibundel dan browser gagal "Failed to resolve module specifier 'pdf-lib'".
         'src/core/runtime/services/pdfOcrService.js',
+        // import('xlsx') (Item 92): alasan sama dengan pdf-lib di atas.
+        'src/core/runtime/services/bacaExcelAsn.js',
         'src/core/application/AppRegistry.js'
       ],
       compact: true,
