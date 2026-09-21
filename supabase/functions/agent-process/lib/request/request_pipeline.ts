@@ -365,8 +365,8 @@ Isi tag think harus mencakup:
 5. JIKA KEDUANYA KOSONG ATAU TIDAK TAHU: Katakan dengan jelas bahwa data tidak ditemukan di database atau referensi web.
 
 ATURAN WAJIB LABEL STATUS PADA JAWABAN AKHIR:
-Di luar tag <think>, pada baris TERAKHIR jawaban Anda, Anda WAJIB mencetak TEPAT SATU label status berikut secara eksplisit:
-${isLookupMode ? `- Untuk mode LOOKUP: [Pengetahuan umum AI — tidak diverifikasi dari dokumen Anda]` : `- Jika didukung oleh dokumen <RAG>/Web: [STATUS: VERIFIED]
+Di luar tag <think>, pada baris TERAKHIR jawaban Anda, Anda WAJIB mencetak TEPAT SATU label status berikut secara eksplisit (mode LOOKUP: aturan rincinya di BLOK 6, yang tahu ada/tidaknya dokumen — U10 Item 90):
+${isLookupMode ? `- Mode LOOKUP: ikuti [BLOK 6: OUTPUT FORMAT & STATUS LABEL] di bawah — bila ada dokumen di BLOK 4/<RAG>, pakai [STATUS: VERIFIED] (wajib dengan baris Sumber) / [STATUS: HYPOTHESIS - Rekomendasi AI] / [STATUS: INSUFFICIENT]; bila tidak ada dokumen sama sekali, pakai [Pengetahuan umum AI — tidak diverifikasi dari dokumen Anda]` : `- Jika didukung oleh dokumen <RAG>/Web: [STATUS: VERIFIED]
 - Jika menggunakan rekomendasi/pengetahuan internal tanpa dokumen pendukung: [STATUS: HYPOTHESIS - Rekomendasi AI]
 - Jika data tidak ditemukan dan tidak cukup informasi: [STATUS: INSUFFICIENT]`}
 

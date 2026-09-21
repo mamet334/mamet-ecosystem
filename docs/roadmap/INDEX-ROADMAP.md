@@ -23,7 +23,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 
 | Item | Status | Dokumen (sisa pekerjaan ada di sana) |
 |---|---|---|
-| 90 Pengambilan potongan RAG | ✅ Tahap A–C (recall@8 14/14, bukti Kepbup #1, live); sisa utang U4, U6–U8, U10 | [`ROADMAP-PENGAMBILAN-POTONGAN-RAG.md`](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) |
+| 90 Pengambilan potongan RAG | ✅ Tahap A–C (recall@8 14/14, bukti Kepbup #1, live); U10 ✅ (label LOOKUP satu sumber aturan); sisa utang U4, U6–U8 | [`ROADMAP-PENGAMBILAN-POTONGAN-RAG.md`](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) |
 | 89 Konteks potongan RAG | ✅ live (Tahap C Item 90); identitas tabel OCR ✅ | [`ROADMAP-KONTEKS-POTONGAN-RAG.md`](./ROADMAP-KONTEKS-POTONGAN-RAG.md) |
 | 88 Tabel centang PDF (+ sisa 86 OCR massal) | 🟡 Tahap 1–3 ✅; keputusan 3: buku per jabatan **221/221** masuk; 177 ✅, 191/159 keterbatasan; set uji buku penuh **13/14**; sisa BUKU-10 (blok centang miskin kata, sesudah code freeze) | [`ROADMAP-TABEL-CENTANG-PDF.md`](./ROADMAP-TABEL-CENTANG-PDF.md) |
 | 85 Folder kerja Assistant | 📝 Tahap 0 sebagian; sisa pagar IPC `folder:*`; Tahap 1 menunggu aba-aba | [`ROADMAP-FOLDER-KERJA-ASSISTANT.md`](./ROADMAP-FOLDER-KERJA-ASSISTANT.md) |

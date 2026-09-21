@@ -55,7 +55,7 @@ sini supaya tidak ada lagi sisa yang tercecer; bullet lama diberi rujukan ke bag
 | U7 | Item 70 | Pertanyaan bahasa Indonesia ke dokumen berbahasa Inggris ±0,05–0,10 lebih rendah; terjemahan saat pencarian kosong belum dibuat. | **Ditunda** — tidak ada dokumen berbahasa Inggris di akun saat ini (Operator Handbook terhapus). |
 | U8 | Item 65 | RAG Mametlite (mode LITE) & jalur tanpa kunci OpenRouter (cadangan pencocokan kata) belum terbukti live. | **Ditunda** — Tahap B selesai (LITE memakai RPC yang sama lewat server); pembuktian live LITE & jalur tanpa kunci belum. |
 | U9 | Item 73 | Aturan kutipan persis hanya prompt, tidak ditegakkan kode. | **Tidak dikerjakan** — label dibekukan (§2). |
-| U10 | Item 88 Tahap 3 (konteks chat 2026-09-17) | Prompt mode LOOKUP memuat **dua instruksi label yang bertentangan**: `request_pipeline.ts` "Untuk mode LOOKUP: [Pengetahuan umum AI …]" dan BLOK 6 (Evidence Gate PASSED) "VERIFIED / HYPOTHESIS / INSUFFICIENT". Tidak memengaruhi pengambilan potongan (vektor & batas 8 sama dengan ASSISTANT). | **Ditunda** — dinilai sesudah Tahap A; menyelaraskan instruksi, bukan aturan label baru. |
+| U10 | Item 88 Tahap 3 (konteks chat 2026-09-17) | Prompt mode LOOKUP memuat **dua instruksi label yang bertentangan**: `request_pipeline.ts` "Untuk mode LOOKUP: [Pengetahuan umum AI …]" dan BLOK 6 (Evidence Gate PASSED) "VERIFIED / HYPOTHESIS / INSUFFICIENT". Tidak memengaruhi pengambilan potongan (vektor & batas 8 sama dengan ASSISTANT). | ✅ **Selesai 2026-09-21** — `request_pipeline.ts` menunjuk ke BLOK 6 (satu-satunya yang tahu ada/tidaknya dokumen). Bukti live: LOOKUP + dokumen → VERIFIED + Sumber; LOOKUP tanpa dokumen → label ringkas. [log](../project-memory/changelog/2026-09-21-label-lookup-satu-sumber-aturan.md) |
 
 **Kode mati yang dibersihkan (2026-09-17, diperiksa pemanggilnya lebih dulu):**
 - `RetrievalOrchestrator` Tier 1 (dokumen lewat pencocokan kata di browser) — satu-satunya pemanggil
@@ -135,7 +135,7 @@ sudah diambil), **diukur dengan set Tahap A** bersama hasil Tahap B — bukan be
   **hasil pemotong Tahap C**, jadi pengukurannya adalah hasil Tahap C, bukan acuan baru. Hapus ganda:
   [changelog Item 91](../project-memory/changelog/2026-09-17-hapus-dokumen-cek-baris-terhapus.md).
 - **Sisa:** pertanyaan NEG tetap membawa potongan ke konteks (U4, penjaga = label); buku Kepbup penuh menunggu
-  keputusan 3 Item 88; U6–U8, U10 tetap ditunda (§3).
+  keputusan 3 Item 88; U6–U8 tetap ditunda (§3); U10 ✅ selesai 2026-09-21.
 
 **Urutan A → B → C** dipilih karena A adalah alat ukur keduanya; B tidak mengubah potongan (tanpa unggah
 ulang) sehingga efeknya terukur bersih; C mengubah potongan dan butuh unggah ulang (keputusan 3 Item 89).
