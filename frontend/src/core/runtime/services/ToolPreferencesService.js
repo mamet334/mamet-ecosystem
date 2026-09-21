@@ -19,7 +19,10 @@ const DEFAULT_TOOLS = {
   web_search: true,
   // Deep Research (2026-09-15) mati bawaan: satu riset ±20–30 detik dan memakai kredit OpenRouter lebih banyak,
   // jadi hanya jalan bila pengguna menyalakannya sendiri.
-  deep_research: false
+  deep_research: false,
+  // Data Tabel (Item 92 Tahap 3) mati bawaan: kosakatanya sama dengan buku Kepbup di RAG, jadi hanya jalan bila
+  // pengguna sengaja menyalakannya.
+  data_tabel: false
 };
 
 export class ToolPreferencesService {

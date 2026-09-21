@@ -313,6 +313,48 @@ export function siapkanSimpan(hasil, opd) {
   return { p_berkas: { opd: rapat(opd), nama_berkas: hasil.berkas, ringkasan_sheet }, p_pegawai: pegawai };
 }
 
+// Kolom yang dibandingkan antar-versi (baris_asal/no TIDAK: posisi baris bergeser antar revisi — INSPEKTORAT senin
+// JUMLAH Pelaksana di baris 26, selasa di baris 27).
+const KOLOM_BANDING = ['kelompok', 'nama', 'jenis_kelamin', 'status', 'pendidikan_cpns', 'pendidikan_akhir', 'tahun_lulus', 'jabatan', 'pangkat', 'pim', 'pelatihan', 'nilai_ipa'];
+const NAMA_KOLOM = { kelompok: 'kelompok', nama: 'nama', jenis_kelamin: 'L/P', status: 'status', pendidikan_cpns: 'pend. CPNS', pendidikan_akhir: 'pend. akhir', tahun_lulus: 'tahun lulus', jabatan: 'jabatan', pangkat: 'pangkat', pim: 'PIM', pelatihan: 'pelatihan', nilai_ipa: 'nilai IPA' };
+const nilaiBanding = (p, k) => (Array.isArray(p[k]) ? [...p[k]].map(rapat).sort().join('|') : rapat(p[k] ?? ''));
+const kunciOrang = (p) => (p.nip ? `nip:${p.nip}` : `nama:${kecil(p.sheet)}|${kecil(p.nama)}`);
+
+/**
+ * Bandingkan isi berkas baru dengan berkas tersimpan — per orang (kunci NIP, atau sheet+nama bila tanpa NIP), per kolom.
+ * NIP yang sama belum tentu isi sama: INSPEKTORAT senin & selasa berbagi 59/59 NIP, tetapi satu pejabat struktural
+ * berbeda PIM-nya. `identik` = tidak ada orang yang berbeda, bertambah, atau berkurang.
+ * @returns {{identik:boolean, berubah:Array<{sheet,nama,kolom:string[]}>, hanyaBaru:number, hanyaLama:number}}
+ */
+export function bandingkanIsi(pegawaiBaru, pegawaiLama) {
+  const lama = new Map(pegawaiLama.map((p) => [kunciOrang(p), p]));
+  const berubah = []; let hanyaBaru = 0;
+  const terlihat = new Set();
+  for (const p of pegawaiBaru) {
+    const k = kunciOrang(p); terlihat.add(k);
+    const q = lama.get(k);
+    if (!q) { hanyaBaru++; continue; }
+    const kolom = KOLOM_BANDING.filter((c) => nilaiBanding(p, c) !== nilaiBanding(q, c)).map((c) => NAMA_KOLOM[c]);
+    if (kolom.length) berubah.push({ sheet: p.sheet, nama: p.nama, kolom });
+  }
+  const hanyaLama = [...lama.keys()].filter((k) => !terlihat.has(k)).length;
+  return { identik: !berubah.length && !hanyaBaru && !hanyaLama, berubah, hanyaBaru, hanyaLama };
+}
+
+/** Ringkasan perbedaan untuk kotak versi: "1 orang berubah (STRUKTURAL: PIM) · 2 hanya di berkas ini". */
+export function uraiPerbedaan(b) {
+  if (b.identik) return 'isi sama persis';
+  const bagian = [];
+  if (b.berubah.length) {
+    const perSheet = {};
+    for (const x of b.berubah) for (const k of x.kolom) (perSheet[x.sheet] ||= new Set()).add(k);
+    bagian.push(`${b.berubah.length} orang berubah (${Object.entries(perSheet).map(([s, k]) => `${s}: ${[...k].join(', ')}`).join('; ')})`);
+  }
+  if (b.hanyaBaru) bagian.push(`${b.hanyaBaru} orang hanya di berkas ini`);
+  if (b.hanyaLama) bagian.push(`${b.hanyaLama} orang hanya di berkas tersimpan`);
+  return bagian.join(' · ');
+}
+
 // Ambang dugaan versi, diukur pada 53 berkas: 5 pasangan revisi berbagi 15–60 NIP (≥ 40% dari berkas yang lebih
 // kecil); kebetulan terbesar di antara OPD berbeda hanya 1 NIP (PERKIM ↔ EDARAN susulan). Minimal 3 NIP DAN 30%.
 export const AMBANG_VERSI = { minSama: 3, minRasio: 0.3 };

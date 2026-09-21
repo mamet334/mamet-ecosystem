@@ -2,7 +2,7 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Jalur unggah baru (browser) + penyimpanan baris data (Supabase) + alat saring/hitung untuk AI (`agent-process`)
-**Status:** 📝 **Tahap 1 selesai 2026-09-21** (pembaca + pratinjau Excel, uji 53 berkas lulus, terbukti Owner) — [log](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap1-pembaca-pratinjau.md); **Tahap 2 selesai 2026-09-21** (simpan + versi, terbukti live: INSPEKTORAT senin tersimpan sebagai riwayat, aktif 2 berkas / 619 orang) — [log Tahap 2](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap2-simpan-versi.md); Tahap 3 menunggu aba-aba Owner
+**Status:** 📝 **Tahap 1 selesai 2026-09-21** (pembaca + pratinjau Excel, uji 53 berkas lulus, terbukti Owner) — [log](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap1-pembaca-pratinjau.md); **Tahap 2 selesai 2026-09-21** (simpan + versi, terbukti live: INSPEKTORAT senin tersimpan sebagai riwayat, aktif 2 berkas / 619 orang) — [log Tahap 2](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap2-simpan-versi.md); **Tahap 3 selesai 2026-09-21** (chip Data Tabel di chat; uji live putaran 3: 5/5 VERIFIED, 0 NIP karangan, 0 NIP di prompt) — [log Tahap 3](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap3-tanya-jawab.md); Tahap 4–5 menunggu aba-aba Owner
 **Tanggal:** 2026-09-21
 **Roadmap Index:** Item 92
 
@@ -115,11 +115,12 @@ terpetakan disimpan mentah (tidak dibuang diam-diam).
 - [x] **Kriteria:** 5 pasangan versi §3 terdeteksi (termasuk DPPKB/REKON); total unik = 2.312 − 137 ganda − duplikat dalam berkas. ✅ simulasi 5/5, 48 berkas aktif; live INSPEKTORAT 59 NIP / 100%.
 
 ### Tahap 3 — Alat saring & hitung untuk AI
-- [ ] Alat server `data_tabel_hitung` / `data_tabel_saring` (filter: OPD, kelompok, kolom kosong/terisi, teks di
-      pelatihan, pendidikan, jabatan); hasil membawa berkas/sheet/baris.
-- [ ] Label: angka dari alat = VERIFIED dengan sumber; tanpa alat = tidak boleh mengarang angka.
+- [x] Alat server `data_tabel_hitung` / `data_tabel_saring` (filter: OPD, kelompok, kolom kosong/terisi, teks di
+      pelatihan, pendidikan, jabatan); hasil membawa berkas/sheet/baris. ✅ **Penyimpangan:** bukan sub-agent Coordinator, melainkan bendera `dataTabel` (chip) → perencana (JSON) → `dataTabelAsnSaring.js` → dokumen bukti + penutup jawaban oleh kode (`lib/data_tabel/data_tabel.ts`). Data tabel berhasil → Coordinator, sub-agent, dan potongan RAG/web dilewati.
+- [x] Label: angka dari alat = VERIFIED dengan sumber; tanpa alat = tidak boleh mengarang angka. ✅ ditegakkan KODE (putaran 1 membuktikan perintah ke model tidak cukup): kalimat hasil dari kode di baris teratas, NIP karangan disamarkan, riwayat dibersihkan dari tabel/NIP, gagal → HYPOTHESIS + peringatan. NIP: model tidak pernah menerima NIP; tabel ber-NIP ditempel kode.
 - [ ] **Kriteria (kunci):** RSUD struktural **14**; belum PIM **14**; belum teknis struktural **1** (Kabid Bina
       Pelayanan Medik), pelaksana **131**, JFT **155** (kunci awal 130/154 salah — blok tanda tangan di baris orang terakhir terhitung pelatihan; ditemukan modul Tahap 1); lintas OPD tanpa hitung ganda versi.
+      ✅ live: 14 / 14 / 155 / INSPEKTORAT per PIM (II+III+IV 1, III+IV 1, IV 5, belum 1) / 619; pertanyaan Kepbup dilewati.
 
 ### Tahap 4 — Daftar kejanggalan per OPD
 - [ ] Laporan per OPD: JUMLAH ≠ orang, jabatan kosong, nomor/NIP ganda, tanpa NIP — siap dikirim balik ke OPD.
@@ -129,7 +130,7 @@ terpetakan disimpan mentah (tidak dibuang diam-diam).
 
 ## 6. Risiko & Pertanyaan Terbuka
 
-- **Privasi — usulan 2026-09-21 (belum diputuskan):** NIP **tidak** disamarkan sebagian; model tidak pernah melihat NIP — alat mengirim penanda `[P-0231]`, kode menukarnya dengan NIP asli sesudah model menjawab (privasi + ketepatan). Nama: dikirim atau ikut penanda, keputusan sebelum Tahap 3. Catatan lama: baris yang relevan untuk sebuah jawaban (nama, NIP) ikut terkirim
+- **Privasi — diputuskan & diterapkan 2026-09-21 (Tahap 3):** model tidak menerima NIP; tabel ber-NIP ditempel kode; riwayat dibersihkan. Nama dikirim (≤30). Catatan usulan awal: NIP **tidak** disamarkan sebagian; model tidak pernah melihat NIP — alat mengirim penanda `[P-0231]`, kode menukarnya dengan NIP asli sesudah model menjawab (privasi + ketepatan). Nama: dikirim atau ikut penanda, keputusan sebelum Tahap 3. Catatan lama: baris yang relevan untuk sebuah jawaban (nama, NIP) ikut terkirim
   ke penyedia model saat bertanya. Alternatif: alat mengembalikan hitungan + daftar nama, NIP disamarkan kecuali diminta.
 - **Nama pelatihan tidak baku** ("PIM IV", "Diklat PIM IV", "Diklat Kepemimpinan Tingkat IV", tanda "√"/"V"):
   aturan normalisasi PIM perlu diuji di 53 berkas; pelatihan teknis dicari sebagai teks, bukan disamakan.

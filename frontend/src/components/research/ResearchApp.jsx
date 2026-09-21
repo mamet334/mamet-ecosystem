@@ -6,8 +6,8 @@ import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from '../../core/r
 import { bacaBerkasExcelAsn, adalahExcel, EKSTENSI_EXCEL } from '../../core/runtime/services/bacaExcelAsn.js';
 import PratinjauDataTabel from './PratinjauDataTabel.jsx';
 import DaftarDataTabel from './DaftarDataTabel.jsx';
-import { opdDariNamaBerkas, siapkanSimpan, dugaVersi } from '../../core/runtime/services/dataTabelAsn.js';
-import { ambilBerkasAktif, simpanBerkasAsn, daftarBerkasAsn, hapusBerkasAsn } from '../../core/runtime/services/dataTabelAsnDb.js';
+import { opdDariNamaBerkas, siapkanSimpan, dugaVersi, bandingkanIsi, uraiPerbedaan } from '../../core/runtime/services/dataTabelAsn.js';
+import { ambilBerkasAktif, ambilPegawaiBerkas, simpanBerkasAsn, daftarBerkasAsn, hapusBerkasAsn } from '../../core/runtime/services/dataTabelAsnDb.js';
 import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN, OCR_SERENTAK } from '../../core/runtime/services/pdfOcrService.js';
 
 // Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
@@ -408,7 +408,14 @@ export default function ResearchApp() {
                     opdAwal={opdDariNamaBerkas(pratinjauTabel.berkas)}
                     onPeriksaVersi={async (opd) => {
                         const { p_pegawai } = siapkanSimpan(pratinjauTabel, opd);
-                        return dugaVersi(p_pegawai.map((p) => p.nip), await ambilBerkasAktif(supabase), pratinjauTabel.berkas);
+                        const kandidat = dugaVersi(p_pegawai.map((p) => p.nip), await ambilBerkasAktif(supabase), pratinjauTabel.berkas);
+                        // Isi dibandingkan per orang & per kolom: NIP sama belum tentu isi sama (INSPEKTORAT senin/selasa).
+                        for (const k of kandidat) {
+                            const b = bandingkanIsi(p_pegawai, await ambilPegawaiBerkas(supabase, k.id));
+                            k.identik = b.identik;
+                            k.perbedaan = uraiPerbedaan(b);
+                        }
+                        return kandidat;
                     }}
                     onSimpan={async (opd, pilihan) => {
                         await simpanBerkasAsn(supabase, siapkanSimpan(pratinjauTabel, opd), pilihan);

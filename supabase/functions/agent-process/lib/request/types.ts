@@ -22,6 +22,7 @@ export interface UnifiedExecutionContext {
     userContextPrompt?: string; 
     ragEnabled?: boolean;
     memoryEnabled?: boolean;
+    dataTabel?: boolean; // tombol Data Tabel (Item 92 Tahap 3)
     isRagEnabled?: boolean;
     effectiveRagThreshold?: number;
     effectiveRagMatchCount?: number;

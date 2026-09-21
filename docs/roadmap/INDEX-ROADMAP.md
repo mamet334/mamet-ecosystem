@@ -23,13 +23,13 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 
 | Item | Status | Dokumen (sisa pekerjaan ada di sana) |
 |---|---|---|
-| 92 Data tabel rekonsiliasi ASN | 📝 Tahap 1–2 ✅ (pratinjau Excel; simpan + versi 3 pilihan, live); sisa koreksi pemetaan (ditunda); Tahap 3 (alat hitung/saring untuk AI) menunggu aba-aba | [`ROADMAP-DATA-TABEL-REKONSILIASI-ASN.md`](./ROADMAP-DATA-TABEL-REKONSILIASI-ASN.md) |
+| 92 Data tabel rekonsiliasi ASN | 📝 Tahap 1–3 ✅ (pratinjau Excel; simpan + versi; tanya-jawab chip Data Tabel, live 5/5 VERIFIED, NIP tidak ke model); sisa koreksi pemetaan (ditunda), Tahap 4 kejanggalan per OPD, Tahap 5 PDF | [`ROADMAP-DATA-TABEL-REKONSILIASI-ASN.md`](./ROADMAP-DATA-TABEL-REKONSILIASI-ASN.md) |
 | 90 Pengambilan potongan RAG | ✅ Tahap A–C (recall@8 14/14, bukti Kepbup #1, live); U8a ✅ (RAG Mametlite live + layar kunci + label stream), U10 ✅; sisa utang U4, U6, U7, U8b, mode LITE tak aktif | [`ROADMAP-PENGAMBILAN-POTONGAN-RAG.md`](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) |
 | 89 Konteks potongan RAG | ✅ live (Tahap C Item 90); identitas tabel OCR ✅ | [`ROADMAP-KONTEKS-POTONGAN-RAG.md`](./ROADMAP-KONTEKS-POTONGAN-RAG.md) |
 | 88 Tabel centang PDF (+ sisa 86 OCR massal) | 🟡 Tahap 1–3 ✅; keputusan 3: buku per jabatan **221/221** masuk; 177 ✅, 191/159 keterbatasan; set uji buku penuh **13/14**; sisa BUKU-10 (blok centang miskin kata, sesudah code freeze) | [`ROADMAP-TABEL-CENTANG-PDF.md`](./ROADMAP-TABEL-CENTANG-PDF.md) |
 | 85 Folder kerja Assistant | 📝 Tahap 0 ✅ (pagar `folder:*`, uji 33/33); Tahap 1 menunggu aba-aba | [`ROADMAP-FOLDER-KERJA-ASSISTANT.md`](./ROADMAP-FOLDER-KERJA-ASSISTANT.md) |
 | 72 Adaptive Shell (UI multi-device) | 📋 belum dikerjakan | [`roadmap-adaptive-shell.md`](./roadmap-adaptive-shell.md) |
-| 33, 48, 49, 50, 91 Temuan audit tanpa rancangan | ⏳ T1 daftar izin sub-agent di server (arah disetujui; sesudah ganti token Apify) · T2 ✅ dasbor yatim dihapus · T3 ✅ rute mati dihapus · T4 ✅ · T6 ✅ · T7 ✅ kunci API di `agent_logs` (sisa: Owner ganti kunci) · T8 perintah PowerShell dari alamat mentah (dicatat) | [`ROADMAP-TEMUAN-TERBUKA.md`](./ROADMAP-TEMUAN-TERBUKA.md) |
+| 33, 48, 49, 50, 91 Temuan audit tanpa rancangan | ⏳ T1 daftar izin sub-agent di server (arah disetujui; sesudah ganti token Apify) · T2 ✅ dasbor yatim dihapus · T3 ✅ rute mati dihapus · T4 ✅ · T6 ✅ · T7 ✅ kunci API di `agent_logs` (sisa: Owner ganti kunci) · T8 perintah PowerShell dari alamat mentah (dicatat) · T9 knowledge_manager rusak — dicabut dari Coordinator, nasib plugin menunggu keputusan | [`ROADMAP-TEMUAN-TERBUKA.md`](./ROADMAP-TEMUAN-TERBUKA.md) |
 
 ---
 
@@ -37,11 +37,11 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 
 | Dokumen | Status | Cakupan |
 |---|---|---|
-| `ROADMAP-DATA-TABEL-REKONSILIASI-ASN.md` | 📝 Item 92 (Tahap 1–2 ✅) | xlsx ASN → baris data, pratinjau Owner, hitung/saring oleh kode (bukan RAG) |
+| `ROADMAP-DATA-TABEL-REKONSILIASI-ASN.md` | 📝 Item 92 (Tahap 1–3 ✅) | xlsx ASN → baris data, pratinjau Owner, hitung/saring oleh kode (bukan RAG) |
 | `ROADMAP-PENGAMBILAN-POTONGAN-RAG.md` | ✅ Item 90 (A–C) | peta jalur RAG vs pola umum, utang lama, set uji → hybrid → konteks |
 | `ROADMAP-KONTEKS-POTONGAN-RAG.md` | ✅ Item 89 | pemisah bagian tabel OCR + baris konteks potongan |
 | `ROADMAP-TABEL-CENTANG-PDF.md` | 🟡 Item 88 | kolom centang dari koordinat pdf.js, kontrak & label |
-| `ROADMAP-TEMUAN-TERBUKA.md` | ⏳ T1, T8 (T2–T7 ✅) | temuan audit tanpa rancangan sendiri |
+| `ROADMAP-TEMUAN-TERBUKA.md` | ⏳ T1, T8, T9 (T2–T7 ✅) | temuan audit tanpa rancangan sendiri |
 | `ROADMAP-FOLDER-KERJA-ASSISTANT.md` | 📝 Item 85 | tombol 📁 sebagai tempat kerja Assistant |
 | `roadmap-adaptive-shell.md` | 📋 Item 72 | UI multi-device |
 | `ROADMAP-ADAPTIVE-MODEL-TIERING.md` | ✅ Item 34–35 | tier model & plumbing `thinking` |
@@ -168,5 +168,5 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 88. 🟡 Tabel Centang PDF — Kolom dari Koordinat, Bukan dari OCR (2026-09-17) — [rancangan](./ROADMAP-TABEL-CENTANG-PDF.md) · [log](../project-memory/changelog/2026-09-17-tabel-centang-pdf-dari-koordinat.md) · [log](../project-memory/changelog/2026-09-17-tabel-centang-kontrak-dan-label.md) · [log per jabatan](../project-memory/changelog/2026-09-17-buku-kepbup-per-jabatan-dan-unggah-banyak.md)
 89. ✅ Konteks Potongan RAG — Bagian Tidak Tercampur & Judul Konteks (2026-09-17) — [rancangan](./ROADMAP-KONTEKS-POTONGAN-RAG.md) · [log](../project-memory/changelog/2026-09-17-konteks-potongan-bagian-dan-identitas.md)
 90. ✅ Pengambilan Potongan RAG — Diukur Dulu, Pola Standar Hanya Bila Cocok (2026-09-17) — [rancangan](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) · [log](../project-memory/changelog/2026-09-17-utang-lama-rag-dan-kode-mati.md) · [log A](../project-memory/changelog/2026-09-17-uji-pengambilan-potongan-baseline.md) · [log B](../project-memory/changelog/2026-09-17-pencarian-gabungan-vektor-kata.md) · [log C](../project-memory/changelog/2026-09-17-konteks-potongan-bagian-dan-identitas.md)
-92. 📝 Data Tabel Rekonsiliasi ASN — Hitung & Saring oleh Kode, Bukan RAG (2026-09-21) — [rancangan](./ROADMAP-DATA-TABEL-REKONSILIASI-ASN.md) · [log Tahap 1](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap1-pembaca-pratinjau.md) · [log Tahap 2](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap2-simpan-versi.md)
+92. 📝 Data Tabel Rekonsiliasi ASN — Hitung & Saring oleh Kode, Bukan RAG (2026-09-21) — [rancangan](./ROADMAP-DATA-TABEL-REKONSILIASI-ASN.md) · [log Tahap 1](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap1-pembaca-pratinjau.md) · [log Tahap 2](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap2-simpan-versi.md) · [log Tahap 3](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap3-tanya-jawab.md)
 91. ✅ Hapus Dokumen RAG — Cek Baris Terhapus & Muat Ulang Daftar (2026-09-17) — [log](../project-memory/changelog/2026-09-17-hapus-dokumen-cek-baris-terhapus.md) · web live ✅, hapus desktop/mametlite belum teruji

@@ -221,7 +221,18 @@ function BagianSimpan({ hasil, opdAwal, onPeriksaVersi, onSimpan }) {
       </div>
       {tahap === 'galat' && <p className="text-red-300">Gagal: {pesan}</p>}
 
-      {tahap === 'pilih' && (
+      {/* ISI SAMA PERSIS (Item 92): INSPEKTORAT senin tersimpan dua kali karena ditawarkan sebagai "versi" — padahal
+          tidak ada yang perlu dipilih. Tidak ada tombol Simpan. */}
+      {tahap === 'pilih' && kandidat.length === 1 && kandidat[0].identik && (
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
+          <p className="text-emerald-200">
+            Isi berkas ini <b>sama persis</b> dengan data yang sudah tersimpan: <b>{kandidat[0].opd}</b> — {kandidat[0].nama_berkas}. Tidak perlu disimpan lagi.
+          </p>
+          <button onClick={() => setTahap('siap')} className="px-3 py-1.5 rounded-lg text-slate-300 hover:text-white border border-slate-700">Tutup</button>
+        </div>
+      )}
+
+      {tahap === 'pilih' && !(kandidat.length === 1 && kandidat[0].identik) && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
           <p className="text-amber-200">
             Berkas ini berbagi NIP dengan data yang sudah tersimpan — kemungkinan versi dari data yang sama. Sistem tidak tahu mana yang lebih baru; Anda yang menentukan.
@@ -231,6 +242,7 @@ function BagianSimpan({ hasil, opdAwal, onPeriksaVersi, onSimpan }) {
               <p className="text-slate-300">
                 <b>{kandidat[0].opd}</b> — {kandidat[0].nama_berkas} ({kandidat[0].alasan}, {Math.round(kandidat[0].rasio * 100)}%)
               </p>
+              {kandidat[0].perbedaan && <p className="text-slate-400">Beda isi dengan yang tersimpan: {kandidat[0].perbedaan}</p>}
               {[
                 ['ganti', 'Berkas ini lebih baru — gantikan yang lama (yang lama disimpan sebagai riwayat, tidak dihitung)'],
                 ['lama', 'Berkas ini justru versi lama — simpan sebagai riwayat saja, yang aktif tetap yang sudah ada'],
@@ -246,7 +258,7 @@ function BagianSimpan({ hasil, opdAwal, onPeriksaVersi, onSimpan }) {
             kandidat.map((k) => (
               <label key={k.id} className="flex items-start gap-2 text-slate-200 cursor-pointer">
                 <input type="checkbox" checked={!!diganti[k.id]} onChange={(e) => setDiganti((d) => ({ ...d, [k.id]: e.target.checked }))} className="mt-0.5" />
-                Gantikan <b>{k.opd}</b> — {k.nama_berkas} ({k.alasan}, {Math.round(k.rasio * 100)}%)
+                Gantikan <b>{k.opd}</b> — {k.nama_berkas} ({k.alasan}, {Math.round(k.rasio * 100)}%{k.perbedaan ? ` · ${k.perbedaan}` : ''})
               </label>
             ))
           )}

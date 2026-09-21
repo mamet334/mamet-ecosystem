@@ -622,6 +622,9 @@ export class AssistantService {
     const ragToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'rag') : true;
     // LOOKUP tidak mengambil memori di klien, tetapi server tetap membaca/menulis memori — tombol Memory ikut dikirim.
     const memoryToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'memory_manager') : true;
+    // Data Tabel (Item 92 Tahap 3): pertanyaan pendek "berapa … / siapa …" sering lewat LOOKUP — bendera wajib ikut.
+    const dataTabelToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'data_tabel') : false;
+    const lookupLite = resolvedMode === 'LITE';
 
     // Get AI provider config
     // LOOKUP selalu memakai tier KECIL tanpa classifier: jalur ini memang sudah dirancang ringan
@@ -659,6 +662,9 @@ export class AssistantService {
       model: formattedModel || undefined,
       thinking: aiThinking, // true/false tier dikirim apa adanya; false kini mematikan nalar di OpenRouter (2026-09-13)
       clientTimezone: zonaWaktuBrowser(), // mis. "Asia/Jakarta" — server menghitung jam lokal (2026-09-13)
+      // Data Tabel (Item 92 Tahap 3): bendera tersendiri, BUKAN lewat `tools` — daftar tools juga menyaring sub-agent
+      // Coordinator, jadi ['data_tabel'] akan diam-diam mematikan pencarian web.
+      dataTabel: dataTabelToolEnabled && !lookupLite ? true : undefined,
       cache_hint: true,
       _request_type: 'LOOKUP'
     };
@@ -980,6 +986,7 @@ export class AssistantService {
     const ragToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'rag') : true;
     const webSearchToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'web_search') : true;
     const deepResearchToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'deep_research') : false;
+    const dataTabelToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'data_tabel') : false;
     // "lanjutkan" untuk jawaban yang terpotong batas waktu server (2026-09-15): server meneruskan dari bahan & nalar yang
     // tersimpan di metadata pesan. Mencari web/RAG untuk teks "lanjutkan" hanya memasukkan dokumen tak relevan ke prompt
     // (live v444: berita saham & sepak bola membingungkan model). Pola sama dengan POLA_LANJUTKAN di server (batas_waktu.ts).
@@ -1099,6 +1106,9 @@ export class AssistantService {
       tools: isLiteMode
         ? ['rag_search', 'web_search', 'deep_research']
         : (deepResearchToolEnabled && !isEngineerMode ? ['deep_research'] : undefined),
+      // Data Tabel (Item 92 Tahap 3): bendera tersendiri, BUKAN lewat `tools` — daftar tools juga menyaring sub-agent
+      // Coordinator, jadi ['data_tabel'] akan diam-diam mematikan pencarian web.
+      dataTabel: dataTabelToolEnabled && !isLiteMode && !isEngineerMode ? true : undefined,
       cache_hint: true,
       _token_meta: { estimated_before: tokensBefore, estimated_after: tokensAfter, saved: tokensSaved },
       _request_type: 'CONVERSATION'

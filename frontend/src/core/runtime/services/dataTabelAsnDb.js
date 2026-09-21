@@ -24,6 +24,21 @@ export async function ambilBerkasAktif(supabase) {
   return [...peta.values()];
 }
 
+/** Semua pegawai satu berkas (untuk bandingkanIsi di kotak versi). Per halaman 1.000 baris. */
+export async function ambilPegawaiBerkas(supabase, berkasId) {
+  const hasil = [];
+  for (let dari = 0; ; dari += HALAMAN) {
+    const { data, error } = await supabase
+      .from('asn_pegawai')
+      .select('sheet, kelompok, nama, nip, jenis_kelamin, status, pendidikan_cpns, pendidikan_akhir, tahun_lulus, jabatan, pangkat, pim, pelatihan, nilai_ipa')
+      .eq('berkas_id', berkasId).order('id').range(dari, dari + HALAMAN - 1);
+    if (error) throw error;
+    hasil.push(...(data || []));
+    if (!data || data.length < HALAMAN) break;
+  }
+  return hasil;
+}
+
 /**
  * Simpan satu berkas (satu transaksi di database).
  * @param {{p_berkas, p_pegawai}} muatan  dari siapkanSimpan()

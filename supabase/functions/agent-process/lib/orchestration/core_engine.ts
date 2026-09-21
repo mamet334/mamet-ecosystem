@@ -55,9 +55,14 @@ export const coreEngine = {
 
     // --- PHASE 2: INTENT ROUTING ---
     let routerResult: any;
-    if (lanjutan) {
+    // DATA TABEL berhasil dihitung (Item 92 Tahap 3): jawabannya sudah ada dari kode — Coordinator & sub-agent dilewati.
+    // Uji live 2026-09-21: Coordinator menugaskan knowledge_manager yang rusak (T9); pesan galatnya masuk konteks dan
+    // model menulis "tidak bisa menjawab" + INSUFFICIENT tepat di bawah angka yang benar.
+    const dataTabelSelesai = (ctx.state as any).dataTabel?.status === 'ok';
+    if (lanjutan || dataTabelSelesai) {
       maef.evaluatePhaseResult('CONTEXT_BUILD', { skipPhases: ['ORCHESTRATION', 'TOOL_EXECUTION'] });
       routerResult = { isChatBiasa: true, plan: [], contractValidation };
+      if (dataTabelSelesai) ctx.state.processingSteps.push('📊 [DATA TABEL] jawaban dari data tabel — Coordinator & sub-agent dilewati');
     } else {
       routerResult = await IntentRouterHandler.handle(ctx, rctx, maef);
     }

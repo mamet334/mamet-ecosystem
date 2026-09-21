@@ -82,6 +82,7 @@ export default function ConversationEngine({ sessionId }) {
     web_search: 'Web',
     memory_manager: 'Memory',
     deep_research: 'Deep Research',
+    data_tabel: 'Data Tabel',
     word_to_pdf: 'Word → PDF'
   };
   const formatToolLabel = (name) => KNOWN_TOOL_LABELS[name]

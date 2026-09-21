@@ -4,6 +4,7 @@ import { VerificationEngine } from '../../verification/verification_engine.ts';
 import { persistTelemetryLog } from '../../verification/verification_service.ts';
 import { eventBus } from '../../event/event_bus.ts';
 import { koreksiLabel } from '../../verification/label_sumber.ts';
+import { tutupJawabanDataTabel } from '../../data_tabel/data_tabel.ts';
 import { sisipkanNalar } from '../../adapters/reasoning_openrouter.ts';
 import { CATATAN_TERPOTONG, susunBahanLanjutan, susunPromptLanjutan, tenggatJawaban } from '../../streaming/batas_waktu.ts';
 
@@ -336,6 +337,16 @@ export const SynthesisHandler = {
 
     // Label VERIFIED hanya boleh bertahan bila jawaban mengutip dokumen yang dilampirkan (Item 71).
     replyMessage = koreksiLabel(replyMessage, judulDokumen, requestMode, isiDokumen);
+    // Tabel data (Item 92 Tahap 3) disusun kode dari database — ditempel SESUDAH label diperiksa, di luar jawaban model.
+    const dataTabel = (ctx.state as any).dataTabel;
+    if (dataTabel) {
+      const tutup = tutupJawabanDataTabel(replyMessage, dataTabel);
+      replyMessage = tutup.teks;
+      if (tutup.nipDisamarkan) {
+        console.warn(`[DataTabel] ${tutup.nipDisamarkan} angka berbentuk NIP di teks model disamarkan (karangan — model tidak menerima NIP).`);
+        ctx.state.processingSteps.push(`🛡️ [DATA TABEL] ${tutup.nipDisamarkan} NIP karangan model disamarkan`);
+      }
+    }
 
     const aiResponse = {
       message: replyMessage,

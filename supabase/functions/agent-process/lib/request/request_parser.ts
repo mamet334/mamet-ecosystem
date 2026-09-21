@@ -7,7 +7,7 @@ export async function parseRequestParams(req: Request, user: any) {
   } catch(e) {
     reqJson = {};
   }
-  let { message, tools, model, userId: _clientUserId, userName, file, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource: clientAppSource = 'assistant', workspaceTarget = 'AUTO', auditMode = 'OFF', mode: clientMode, provider, thinking, traceId: clientTraceId, requestId, clientTimezone, streamNalar, memoryEnabled } = reqJson;
+  let { message, tools, model, userId: _clientUserId, userName, file, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource: clientAppSource = 'assistant', workspaceTarget = 'AUTO', auditMode = 'OFF', mode: clientMode, provider, thinking, traceId: clientTraceId, requestId, clientTimezone, streamNalar, memoryEnabled, dataTabel } = reqJson;
   const traceId = clientTraceId || requestId || null;
   const mode = clientMode || 'ASSISTANT';
   console.log('[RequestParser] Mode diterima:', mode);
@@ -76,6 +76,9 @@ export async function parseRequestParams(req: Request, user: any) {
     message, finalMessage, tools, model, userName, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource, auditMode, extractedImage, guardianPromptDirective, storageTarget, workspaceTarget, mode, provider, thinking, traceId, clientTimezone, streamNalar,
     // Tombol Memory desktop (2026-09-15). Hanya `false` yang mematikan — klien yang tidak mengirim (mametlite, versi
     // lama) tetap memakai memori seperti sebelumnya.
-    memoryEnabled: memoryEnabled !== false
+    memoryEnabled: memoryEnabled !== false,
+    // Tombol Data Tabel desktop (Item 92 Tahap 3). Bendera tersendiri, BUKAN lewat `tools`: daftar tools juga menyaring
+    // sub-agent Coordinator, jadi mengirim ['data_tabel'] diam-diam mematikan pencarian web.
+    dataTabel: dataTabel === true
   };
 }

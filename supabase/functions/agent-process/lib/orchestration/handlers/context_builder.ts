@@ -1,5 +1,6 @@
 import { generateEmbedding, EMBEDDING_DIMENSIONS } from '../../rag/embedding.ts';
 import { searchDocuments } from '../../rag/document_search.ts';
+import { jalankanDataTabel } from '../../data_tabel/data_tabel.ts';
 import { tulisUlangPertanyaan, riwayatSebelumPesan, samaDenganAsli } from '../../rag/query_rewrite.ts';
 import { executeRoutingDecision } from '../../rag/routing_decider.ts';
 import { loadProjectMemory } from '../../rag/project_memory.ts';
@@ -298,7 +299,29 @@ export const ContextBuilderHandler = {
       }
     }
 
-    const combinedRawRag = [...(ragArray || []), ...processedExternalDocs];
+    // DATA TABEL (Item 92 Tahap 3): hanya bila tombol Data Tabel menyala. Hasil hitungan kode masuk sebagai dokumen bukti
+    // PERTAMA (tidak terpotong batas potongan), jadi label VERIFIED & pemeriksa angka memperlakukannya seperti dokumen RAG.
+    // Tabel ber-NIP disimpan terpisah dan ditempel kode di akhir jawaban — tidak pernah masuk prompt.
+    const dokumenDataTabel: any[] = [];
+    if (ctx.request.dataTabel && rctx.stream?.isStream) {
+      // Jalur streaming mengirim teks model huruf demi huruf — NIP karangan tidak bisa disamarkan sebelum sampai ke
+      // pengguna. Desktop selalu non-stream; klien stream yang mengirim bendera ini tidak dilayani jalur data tabel.
+      ctx.state.processingSteps.push('📊 [DATA TABEL] dilewati: permintaan streaming (penyamaran NIP butuh jawaban utuh)');
+    } else if (ctx.request.dataTabel) {
+      const dt = await jalankanDataTabel(ctx.request.finalMessage || '', ctx.auth.userId, rctx);
+      ctx.state.processingSteps.push(dt.langkah);
+      if (dt.dokumen) dokumenDataTabel.push(dt.dokumen);
+      if (dt.status !== 'lewat') (ctx.state as any).dataTabel = { status: dt.status, judul: dt.judul, lampiran: dt.lampiran };
+    }
+
+    // Data tabel BERHASIL dihitung → hanya dokumen itu yang dikirim. Uji live 2026-09-21: 5–6 potongan buku Kepbup tentang
+    // PERSYARATAN PIM ikut masuk, dan model mencampur persyaratan jabatan dengan data pegawai ("dokumen tidak memuat siapa
+    // yang belum PIM"). Bila data tabel gagal / tidak relevan, jalur biasa (RAG + web) tetap utuh.
+    const dataTabelSelesai = (ctx.state as any).dataTabel?.status === 'ok';
+    if (dataTabelSelesai && ((ragArray || []).length || processedExternalDocs.length)) {
+      ctx.state.processingSteps.push(`📊 [DATA TABEL] ${(ragArray || []).length + processedExternalDocs.length} potongan RAG/web tidak dikirim — jawaban dari data tabel`);
+    }
+    const combinedRawRag = dataTabelSelesai ? [...dokumenDataTabel] : [...dokumenDataTabel, ...(ragArray || []), ...processedExternalDocs];
 
 
     ctx.state.ragArray = (combinedRawRag || []).map((r: any, idx: number) => {

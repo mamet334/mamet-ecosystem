@@ -12,6 +12,7 @@ import { generateEmbedding, EMBEDDING_DIMENSIONS } from '../rag/embedding.ts';
 import { rapikanRiwayat } from './history_compressor.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { konteksWaktuPengguna, zonaWaktuSah } from './waktu_pengguna.ts';
+import { bersihkanRiwayatDataTabel } from '../../../../../frontend/src/core/runtime/services/dataTabelAsnSaring.js';
 
 
 /**
@@ -165,7 +166,7 @@ export async function executeRequestPipeline(
 
   console.log("[L1] auth binding", { actualAuthId: ctx.auth.userId, appSource: ctx.auth.appSource, message: parsed.message ? parsed.message.substring(0, 50) + '...' : null });
 
-  ctx.request = { ...ctx.request, tools: parsed.tools, model: parsed.model, stream: parsed.stream, history: parsed.history, globalMemory: parsed.globalMemory, semanticContext: parsed.semanticContext || '', extractedImage: parsed.extractedImage, guardianPromptDirective: parsed.guardianPromptDirective, desktopOSMode: parsed.desktopOSMode, auditMode: parsed.auditMode, ragEnabled: parsed.ragEnabled, memoryEnabled: parsed.memoryEnabled, workspaceTarget: parsed.workspaceTarget, storageTarget: parsed.storageTarget, finalMessage: parsed.finalMessage };
+  ctx.request = { ...ctx.request, tools: parsed.tools, model: parsed.model, stream: parsed.stream, history: parsed.history, globalMemory: parsed.globalMemory, semanticContext: parsed.semanticContext || '', extractedImage: parsed.extractedImage, guardianPromptDirective: parsed.guardianPromptDirective, desktopOSMode: parsed.desktopOSMode, auditMode: parsed.auditMode, ragEnabled: parsed.ragEnabled, memoryEnabled: parsed.memoryEnabled, dataTabel: parsed.dataTabel === true, workspaceTarget: parsed.workspaceTarget, storageTarget: parsed.storageTarget, finalMessage: parsed.finalMessage };
 
   const policyResponse = enforcePolicy(ctx, !!parsed.stream, corsHeaders);
   if (policyResponse) return { ctx: {} as any, rctx: {} as any, response: policyResponse };
@@ -438,6 +439,11 @@ Instruksi ENGINEER lain (RULE 1-6 di konteks Two-Brain) merujuk ke sini, tidak m
   ctx.request.effectiveRagThreshold = ctx.policy.ragThreshold;
 
   ctx.request.history = rapikanRiwayat(ctx.request.history || [], parsed.message);
+  // DATA TABEL (Item 92 Tahap 3): jawaban lama bisa memuat tabel ber-NIP asli. Uji live 2026-09-21 — tabel itu ikut
+  // riwayat, NIP sampai ke model, dan model meniru tabelnya dengan 30 NIP KARANGAN. Dibersihkan untuk SEMUA permintaan
+  // (tombol Data Tabel boleh sudah mati, riwayatnya tetap memuat tabel).
+  ctx.request.history = (ctx.request.history || []).map((m: any) =>
+    m && m.role !== 'user' && typeof m.content === 'string' ? { ...m, content: bersihkanRiwayatDataTabel(m.content) } : m);
 
   return { ctx, rctx };
 }

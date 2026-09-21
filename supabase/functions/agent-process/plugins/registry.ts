@@ -9,7 +9,10 @@ import deepResearch from './deep_research.ts';
 import youtubeAnalyst from './youtube_analyst.ts';
 import cronManager from './cron_manager.ts';
 import shopeeNinja from './shopee_ninja.ts';
-import { knowledgeManagerPlugin } from './knowledge_manager.ts';
+// knowledge_manager DICABUT dari daftar sub-agent (T9, keputusan Owner 2026-09-21): rpc get_workspace_stats tidak ada,
+// filter mutunya butuh kunci Groq yang sudah dihapus, dan ia MEMBUAT knowledge_space bernama pertanyaan pengguna
+// (08:59 hari itu) — Research App lalu memilih space kosong itu sebagai bawaan. Uji live: jawaban RAG Kepbup menjadi
+// "dokumen tidak ditemukan" karena galat/daftar workspace-nya masuk konteks. Berkas plugin dibiarkan untuk diperbaiki.
 
 // Daftarkan semua plugin di sini
 export const plugins = [
@@ -23,8 +26,7 @@ export const plugins = [
   deepResearch,
   youtubeAnalyst,
   cronManager,
-  shopeeNinja,
-  knowledgeManagerPlugin
+  shopeeNinja
 ];
 
 // Fungsi helper untuk membangun daftar tool otomatis bagi LLM

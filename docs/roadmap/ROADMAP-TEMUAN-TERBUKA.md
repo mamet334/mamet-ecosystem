@@ -1,7 +1,7 @@
 # ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
 
 **Tipe Dokumen:** Daftar sisa pekerjaan (temuan audit yang belum punya dokumen roadmap sendiri)
-**Status:** ⏳ **2 temuan terbuka** (T1, T8; T2–T7 ditutup) — masing-masing menunggu keputusan Owner
+**Status:** ⏳ **3 temuan terbuka** (T1, T8, T9; T2–T7 ditutup) — masing-masing menunggu keputusan Owner
 **Tanggal:** 2026-09-17 (dipindah dari INDEX-ROADMAP Item 33, 44, 48, 49, 50 saat perampingan)
 **Aturan:** temuan yang dikerjakan dan tumbuh besar pindah ke dokumen roadmap sendiri; yang selesai dicatat di
 changelog lalu barisnya diberi ✅ di sini.
@@ -126,6 +126,30 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
   argumen terpisah `execFile`), dan bila folder kerja aktif, lewat `pagarFolder.cjs` (Item 85).
 - **Keputusan Owner (2026-09-21):** dicatat, belum diperbaiki.
 - **Status:** ⏳ belum dikerjakan.
+
+## T9 — Sub-agent `knowledge_manager` rusak & ikut dipanggil Coordinator (asal Item 92 Tahap 3, 2026-09-21)
+
+- **Temuan (uji live chat Data Tabel, 2026-09-21):** untuk pertanyaan data pegawai, Coordinator menugaskan
+  `knowledge_manager` (`plugins/knowledge_manager.ts`). Dua jalurnya gagal:
+  - statistik: `supabase.rpc('get_workspace_stats', …)` (baris ±189) → "Could not find the function
+    public.get_workspace_stats" — fungsi itu tidak ada di migrasi mana pun;
+  - simpan: `evaluateKnowledgeQuality(…, env.GROQ_API_KEY, …)` (baris ±128) → "Groq API Key tidak tersedia" — kunci
+    Groq server sudah dihapus 2026-09-15 (fokus OpenRouter). Sub-agent itu **mencoba MENYIMPAN pengetahuan** dari
+    pertanyaan data; gagal hanya karena kunci tak ada.
+- **Dampak:** pesan galatnya masuk konteks jawaban → model menulis "tidak bisa menjawab" / "API key tidak tersedia" +
+  label INSUFFICIENT. Untuk Data Tabel sudah diatasi (bila data tabel berhasil, Coordinator & sub-agent dilewati);
+  pertanyaan lain yang memicu `knowledge_manager` tetap kena.
+- **Arah solusi (keputusan Owner):** perbaiki (buat `get_workspace_stats` + pindahkan filter mutu ke OpenRouter) atau
+  cabut `knowledge_manager` dari daftar sub-agent Coordinator. Perlu dicek juga apakah menyimpan pengetahuan dari chat
+  memang dikehendaki.
+- **Tambahan uji live (sesudah dicatat, 2026-09-21):** juga merusak jawaban RAG biasa (pertanyaan Kepbup → "tidak ada
+  dokumen Kepbup", HYPOTHESIS, walau RAG menemukan 2 potongan tepat) dan **membuat knowledge_space bernama pertanyaan
+  pengguna** (08:59, kosong) — Research App memilih space terbaru sebagai bawaan. Tiga space "Observasi Pasar…" (Juni)
+  kemungkinan lahir dengan cara yang sama; salah satunya kini berisi 222 dokumen Kepbup.
+- **Langkah darurat (keputusan Owner 2026-09-21):** `knowledge_manager` DICABUT dari daftar sub-agent (`plugins/registry.ts`)
+  & aturan Coordinator "MACRO QUERY → knowledge_manager" diganti; space kosong dihapus (0 dokumen/chat/memori/ringkasan).
+  Sisa: `workspace_guardian.ts` masih menyebut knowledge_manager di arahan prompt; nasib plugin (perbaiki atau hapus).
+- **Status:** 🟡 dicabut dari Coordinator; perbaikan/penghapusan plugin menunggu keputusan.
 
 ## Ditutup saat perampingan (tidak perlu dikerjakan)
 
