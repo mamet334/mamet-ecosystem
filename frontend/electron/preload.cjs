@@ -43,10 +43,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // =============================================
-  // TERMINAL COMMAND
+  // ENGINEER — tombol [MAMET_CMD] (T8): satu kalimat perintah → dipecah tanpa shell di proses utama, dialog izin.
+  // Menggantikan runTerminalCommand (shell bebas) yang dihapus 2026-09-22.
   // =============================================
 
-  runTerminalCommand: (command) => ipcRenderer.invoke('run-terminal-command', { command }),
+  engineer: {
+    jalankan: (perintah) => ipcRenderer.invoke('engineer:jalankan', perintah),
+  },
 
   // =============================================
   // ENGINEER ROLLBACK SYSTEM
@@ -57,12 +60,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Rollback ke checkpoint terakhir (dipanggil user via tombol Undo)
   gitRollback: (checkpointLabel) => ipcRenderer.invoke('eng:git-rollback', { checkpointLabel }),
 
-
-  // =============================================
-  // SURGICAL FILE EDITING
-  // =============================================
-
-  editFileSurgical: (filePath, content) => ipcRenderer.invoke('edit-file-surgical', { filePath, content }),
 
   // =============================================
   // AIRDROP STEALTH ENGINE

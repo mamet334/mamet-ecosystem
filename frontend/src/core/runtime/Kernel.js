@@ -22,7 +22,6 @@ import { MetadataService } from '../metadata/MetadataService.js';
 import { NavigationService } from '../metadata/NavigationService.js';
 import { RepositoryReaderService } from './services/RepositoryReaderService.js';
 import { AssistantService } from './services/AssistantService.js';
-import { CommandRegistry } from './services/CommandRegistry.js';
 import { AuditLogService } from './services/AuditLogService.js';
 import { InternalKnowledgeFallbackService } from './services/InternalKnowledgeFallbackService.js';
 import { WebComparisonService } from './services/WebComparisonService.js';
@@ -293,17 +292,14 @@ class Kernel {
     serviceManager.register('AssistantService', assistantService);
     this.log('INFO', 'AssistantService Initialized & Registered');
 
-    // Command Registry (PR#1) — Whitelist-first safe command execution
-    // Harus setelah AssistantService agar AssistantService.runCommand() bisa mengaksesnya
-    const commandRegistry = new CommandRegistry(serviceManager);
-    await commandRegistry.initialize();
-    serviceManager.register('CommandRegistry', commandRegistry);
+    // CommandRegistry (PR#1) dihapus 2026-09-22 (T8): merakit PowerShell dari alamat mentah dan tak pernah menjalankan
+    // perintah nyata. Tombol [MAMET_CMD] Engineer kini lewat IPC engineer:jalankan (tanpa shell, dialog izin).
 
     // Audit Log Service (PR#1) — Log narasi terstruktur aksi AI ke Supabase
     const auditLogService = new AuditLogService(serviceManager);
     await auditLogService.initialize();
     serviceManager.register('AuditLogService', auditLogService);
-    this.log('INFO', 'CommandRegistry & AuditLogService Initialized & Registered');
+    this.log('INFO', 'AuditLogService Initialized & Registered');
 
     // RetrievalStrategyService tidak lagi didaftarkan di browser (Item 90) — alasan sama dengan KnowledgeService di atas.
 

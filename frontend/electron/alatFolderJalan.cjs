@@ -67,6 +67,16 @@ const PROGRAM = {
 };
 const DAFTAR_PROGRAM = Object.keys(PROGRAM);
 
+// PROFIL PERAN (T8, keputusan Owner 2026-09-22): MESIN satu (spawn tanpa shell, cariExe, envBersih, batas waktu,
+// dialog) — KUASA per peran. Assistant bekerja di folder pilihan; Engineer bekerja di repo Mamet SENDIRI, jadi lebih
+// sempit: git hanya baca (perubahan kode lewat jalur patch dengan checkpoint & rollback, commit di tangan Owner) dan
+// tanpa perintah yang mengunduh dari internet (npm/pip install, npx — cukup diusulkan, Owner yang menjalankan).
+const GIT_BACA = ['status', 'log', 'diff', 'show', 'blame', 'grep', 'ls-files', 'rev-parse', 'branch', 'shortlog', 'describe'];
+const PROFIL = {
+  assistant: { nama: 'assistant', tempat: 'folder kerja', waktuBawaanS: BATAS_JALAN.waktuBawaanS, gitSub: PROGRAM.git.izinSub, tanpaInternet: false },
+  engineer: { nama: 'engineer', tempat: 'repo Mamet', waktuBawaanS: 180, gitSub: GIT_BACA, tanpaInternet: true },
+};
+
 // git branch hanya untuk melihat daftar.
 const GIT_BRANCH_UBAH = new Set(['-d', '-D', '--delete', '-m', '-M', '--move', '-c', '-C', '--copy', '-f', '--force', '--set-upstream-to', '-u', '--unset-upstream']);
 // Opsi yang menulis ke berkas di luar keluaran biasa / menjalankan alat luar.
@@ -118,35 +128,41 @@ function rakitProgram(program, akar, env) {
 }
 
 /** Periksa satu argumen: bukan alamat absolut, tidak keluar lewat "..". */
-function periksaArgumen(akar, a) {
+function periksaArgumen(akar, a, tempat = 'folder kerja') {
   if (typeof a !== 'string') return 'argumen harus teks';
   if (a.length > BATAS_JALAN.argumenHurufMaks) return `argumen lebih dari ${BATAS_JALAN.argumenHurufMaks} huruf`;
   if (/[\x00-\x08\x0a-\x1f]/.test(a)) return 'argumen memuat karakter kendali';
   if (OPSI_TERLARANG.test(a)) return `opsi ${a.split('=')[0]} tidak diizinkan`;
   const nilai = /^--?[A-Za-z][\w-]*=/.test(a) ? a.slice(a.indexOf('=') + 1) : a;
-  if (/^[A-Za-z]:/.test(nilai) || /^[\\/]{1,2}/.test(nilai) || /^~[\\/]?/.test(nilai)) return `"${a}" adalah alamat absolut — pakai alamat relatif terhadap folder kerja`;
+  if (/^[A-Za-z]:/.test(nilai) || /^[\\/]{1,2}/.test(nilai) || /^~[\\/]?/.test(nilai)) return `"${a}" adalah alamat absolut — pakai alamat relatif terhadap ${tempat}`;
   if (/(^|[\\/])\.\.([\\/]|$)/.test(nilai)) {
     const p = alamatDalamPagar(akar, nilai);
-    if (!p.ok) return `"${a}" keluar dari folder kerja`;
+    if (!p.ok) return `"${a}" keluar dari ${tempat}`;
   }
   return null;
 }
 
 /** Sub-perintah (argumen pertama yang bukan opsi) → aturan program. */
-function periksaSub(program, argumen) {
+function periksaSub(program, argumen, profil = PROFIL.assistant) {
   const def = PROGRAM[program];
   const sub = (argumen.find((x) => !x.startsWith('-')) || '').toLowerCase();
   if (def.izinSub) {
     // git: argumen PERTAMA wajib sub-perintah — mencegah opsi global (-c, -C, --exec-path) yang mengubah perilaku git.
+    // Daftar sub-perintah dari PROFIL (Engineer: baca saja).
+    const izin = program === 'git' ? profil.gitSub : def.izinSub;
     const pertama = (argumen[0] || '').toLowerCase();
-    if (!def.izinSub.includes(pertama)) return { galat: `${program} ${pertama || '(kosong)'} tidak diizinkan — yang boleh: ${def.izinSub.join(', ')}` };
+    if (!izin.includes(pertama)) return { galat: `${program} ${pertama || '(kosong)'} tidak diizinkan untuk ${profil.tempat} — yang boleh: ${izin.join(', ')}` };
     if (program === 'git' && pertama === 'branch' && argumen.slice(1).some((x) => GIT_BRANCH_UBAH.has(x) || /^--(delete|move|copy|force|set-upstream)/.test(x))) {
       return { galat: 'git branch hanya untuk melihat daftar cabang' };
     }
     return { sub: pertama, internet: false };
   }
   if (def.tolak?.includes(sub)) return { galat: `${program} ${sub} tidak diizinkan (menerbitkan/masuk akun/mengubah pengaturan global)` };
-  return { sub, internet: !!def.internetSelalu || !!def.internet?.includes(sub) };
+  const internet = !!def.internetSelalu || !!def.internet?.includes(sub);
+  if (internet && profil.tanpaInternet) {
+    return { galat: `${program}${sub ? ` ${sub}` : ''} mengunduh/menjalankan paket dari internet — tidak diizinkan untuk ${profil.tempat}; cukup diusulkan, Owner yang menjalankan sendiri` };
+  }
+  return { sub, internet };
 }
 
 /** Pratinjau yang ikut di dialog: isi skrip dari folder, atau script npm yang akan jalan. */
@@ -241,47 +257,48 @@ let sedangJalan = false;
 
 /**
  * Satu pintu untuk IPC. permintaan = {alat:'folder_run', program:'python', argumen:['app.py'], waktu?:60}.
- * deps = { mintaIzin(permintaan) → Promise<boolean>, env? (uji) }.
+ * deps = { mintaIzin(permintaan) → Promise<boolean>, profil? (PROFIL.assistant bawaan | PROFIL.engineer), env? (uji) }.
  */
 async function jalankanAlatJalan(akar, permintaan = {}, deps) {
   const program = typeof permintaan.program === 'string' ? permintaan.program.trim().toLowerCase().replace(/\.exe$/, '') : '';
   const argumen = Array.isArray(permintaan.argumen) ? permintaan.argumen : permintaan.argumen == null ? [] : null;
   const teks = barisPerintah(program || String(permintaan.program ?? ''), (argumen || []).map(String));
-  if (!akar) return gagal(teks, 'folder kerja belum dipilih');
+  const profil = deps?.profil || PROFIL.assistant;
+  if (!akar) return gagal(teks, `${profil.tempat} belum dipilih`);
   if (!deps || typeof deps.mintaIzin !== 'function') return gagal(teks, 'dialog izin tidak tersedia — tidak ada yang dijalankan');
   if (!program) return gagal(teks, 'nama program kosong — isi "program" (mis. "python") dan "argumen" sebagai daftar');
   if (!PROGRAM[program]) return gagal(teks, `program "${program}" tidak ada di daftar izin: ${DAFTAR_PROGRAM.join(', ')}`);
   if (!argumen) return gagal(teks, '"argumen" harus daftar teks, mis. ["app.py", "--versi"]');
   if (argumen.length > BATAS_JALAN.argumenMaks) return gagal(teks, `lebih dari ${BATAS_JALAN.argumenMaks} argumen`);
   for (const a of argumen) {
-    const salah = periksaArgumen(akar, a);
+    const salah = periksaArgumen(akar, a, profil.tempat);
     if (salah) return gagal(teks, salah);
   }
-  const s = periksaSub(program, argumen);
+  const s = periksaSub(program, argumen, profil);
   if (s.galat) return gagal(teks, s.galat);
   const env = envBersih(deps.env || process.env);
   const r = rakitProgram(program, akar, env);
   if (r.galat) return gagal(teks, r.galat);
-  const waktuS = Math.min(BATAS_JALAN.waktuMaksS, Math.max(1, Number.isInteger(permintaan.waktu) ? permintaan.waktu : BATAS_JALAN.waktuBawaanS));
+  const waktuS = Math.min(BATAS_JALAN.waktuMaksS, Math.max(1, Number.isInteger(permintaan.waktu) ? permintaan.waktu : profil.waktuBawaanS));
   if (sedangJalan) return gagal(teks, 'perintah lain masih berjalan — tunggu selesai');
   // Kunci dipasang SEBELUM dialog: dua permintaan tidak bisa sama-sama lolos selagi dialog pertama terbuka.
   sedangJalan = true;
   try {
-    return await izinLaluJalankan(akar, { program, argumen, teks, s, r, env, waktuS }, deps);
+    return await izinLaluJalankan(akar, { program, argumen, teks, s, r, env, waktuS, profil }, deps);
   } finally {
     sedangJalan = false;
   }
 }
 
-async function izinLaluJalankan(akar, { program, argumen, teks, s, r, env, waktuS }, deps) {
+async function izinLaluJalankan(akar, { program, argumen, teks, s, r, env, waktuS, profil }, deps) {
   const setuju = await (async () => {
     try {
       return (await deps.mintaIzin({
         alat: 'folder_run', alamat: teks, berbahaya: true,
-        judul: `Jalankan perintah ini di folder kerja?\n\n${teks}`,
+        judul: `Jalankan perintah ini di ${profil.tempat}?\n\n${teks}`,
         rincian: [
           `Program: ${r.exe}`,
-          `Folder asal: folder kerja · batas waktu ${waktuS} detik · keluaran maks ${BATAS_JALAN.keluaranByte / 1024} KB`,
+          `Folder asal: ${profil.tempat} · batas waktu ${waktuS} detik · keluaran maks ${BATAS_JALAN.keluaranByte / 1024} KB`,
           'PERHATIAN: program yang dijalankan TIDAK dibatasi pagar folder — ia bisa membaca/mengubah berkas di mana pun di laptop. Izinkan hanya bila Anda paham perintah ini.',
           s.internet ? '🌐 Perintah ini bisa MENGUNDUH dan menjalankan paket dari internet.' : '',
         ].filter(Boolean).join('\n'),
@@ -296,4 +313,40 @@ async function izinLaluJalankan(akar, { program, argumen, teks, s, r, env, waktu
   return { ok: true, alat: 'folder_run', alamat: teks, perintah: teks, waktuBatasS: waktuS, ...h };
 }
 
-module.exports = { jalankanAlatJalan, DAFTAR_PROGRAM, BATAS_JALAN, cariExe, envBersih, periksaArgumen };
+/**
+ * T8 (2026-09-22): tombol [MAMET_CMD: npm install] Engineer menulis perintah sebagai SATU kalimat. Dipecah di sini
+ * menjadi program + argumen TANPA shell: spasi memisah, tanda kutip "…"/'…' mengelompokkan (tanpa escape).
+ * Metakarakter shell ditolak — model yang menulis "&&", "|", ">" atau "$(…)" berharap shell, dan tanpa shell
+ * perintahnya tidak akan berarti seperti yang dimaksud; lebih jujur ditolak dengan alasan daripada dijalankan lain.
+ * @returns {{program: string, argumen: string[]} | {galat: string}}
+ */
+function pecahPerintah(teks) {
+  const t = String(teks ?? '').trim();
+  if (!t) return { galat: 'perintah kosong' };
+  if (t.length > 2000) return { galat: 'perintah lebih dari 2000 huruf' };
+  // Live 2026-09-22: `git log --pretty=format:"%h - %s"` ditolak karena "%" — padahal tanpa shell %, $, ^ hanya teks
+  // (HEAD^, format git). Yang ditolak hanya penyambung/pengalih perintah & baris baru: tanda model berharap shell.
+  const meta = t.match(/[&|;<>`\r\n]/);
+  if (meta) return { galat: `perintah memuat "${meta[0] === '\n' || meta[0] === '\r' ? 'baris baru' : meta[0]}" — tidak ada shell: tulis SATU program dengan argumennya (tanpa &&, |, ;, <, >)` };
+  const hasil = [];
+  let kini = '';
+  let adaToken = false;
+  let kutip = null;
+  for (const c of t) {
+    if (kutip) {
+      if (c === kutip) kutip = null; else kini += c;
+    } else if (c === '"' || c === "'") {
+      kutip = c; adaToken = true;
+    } else if (/\s/.test(c)) {
+      if (adaToken) { hasil.push(kini); kini = ''; adaToken = false; }
+    } else {
+      kini += c; adaToken = true;
+    }
+  }
+  if (kutip) return { galat: 'tanda kutip tidak ditutup' };
+  if (adaToken) hasil.push(kini);
+  const [program, ...argumen] = hasil;
+  return { program, argumen };
+}
+
+module.exports = { jalankanAlatJalan, pecahPerintah, PROFIL, DAFTAR_PROGRAM, BATAS_JALAN, cariExe, envBersih, periksaArgumen };

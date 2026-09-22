@@ -236,6 +236,44 @@ export function susunPesanHasil(hasil, { putaran, pertanyaanAsli, galat = [] }) 
   ].join('\n\n');
 }
 
+// Nama program yang boleh dijalankan (sama dengan PROGRAM di electron/alatFolderJalan.cjs — proses utama tetap
+// memeriksa ulang; daftar ini hanya untuk mengenali blok kode yang dimaksud sebagai perintah).
+const PROGRAM_DIKENAL = new Set(['python', 'py', 'pip', 'node', 'npm', 'npx', 'git', 'go', 'cargo', 'rustc', 'deno', 'bun',
+  'php', 'ruby', 'java', 'javac', 'dotnet', 'gcc', 'g++', 'make', 'cmake']);
+const POLA_BLOK_PERINTAH = /```(?:bash|sh|shell|console|cmd|powershell|ps|pwsh|terminal)?[ \t]*\n[ \t]*(?:\$|>|PS>)?[ \t]*([^\n`]+?)[ \t]*\n[ \t]*```/gi;
+
+/**
+ * Engineer (live T8 2026-09-22): setelah aturannya sampai, model menulis perintah sebagai blok ```bash satu baris
+ * ("```bash\ngit status\n```"), bukan penanda [MAMET_CMD: …] — tombol Jalankan tak muncul. Blok SATU baris yang
+ * diawali program dikenal diubah menjadi penanda (tetap butuh klik Owner + dialog izin + aturan profil Engineer).
+ * Blok berbaris banyak atau program lain dibiarkan sebagai contoh kode.
+ * @param {string} teks
+ */
+export function blokKodeKeMametCmd(teks) {
+  return String(teks ?? '').replace(POLA_BLOK_PERINTAH, (blok, baris) => {
+    const program = baris.trim().split(/\s+/)[0].toLowerCase().replace(/\.exe$/, '');
+    return PROGRAM_DIKENAL.has(program) ? `[MAMET_CMD: ${baris.trim()}]` : blok;
+  });
+}
+
+/**
+ * Engineer (T8, 2026-09-22): perintah Engineer hanya jalan saat Owner mengklik tombol [MAMET_CMD]; keluarannya dikirim
+ * balik sebagai pesan "[TERMINAL OUTPUT for: …]" yang disusun dari hasil proses utama (AssistantService.runCommand:
+ * "Kode keluar N" / "Dihentikan — melewati batas waktu"). Klaim "sudah dijalankan … lulus" SAH hanya bila pesan
+ * yang dijawab adalah keluaran seperti itu. Jawaban yang masih mengusulkan [MAMET_CMD] berisi HARAPAN ("output yang
+ * diharapkan: berhasil dijalankan"), bukan klaim — tidak dinilai. Klaim mengubah berkas tidak dinilai: perubahan kode
+ * Engineer lewat jalur patch (usulan → persetujuan → terapkan), bukan klaim teks.
+ * @param {string} teks jawaban Engineer
+ * @param {string} pesanDijawab pesan pengguna yang dijawab
+ * @returns {string|null}
+ */
+export function peringatanKlaimEngineer(teks, pesanDijawab) {
+  if (/\[MAMET_CMD:/.test(String(teks ?? ''))) return null;
+  const p = String(pesanDijawab ?? '');
+  const adaKeluaran = /^\[TERMINAL OUTPUT for: /.test(p) && /Kode keluar -?\d+|Dihentikan — melewati batas waktu/.test(p);
+  return peringatanKlaimTanpaAlat(teks, { jalan: adaKeluaran, ubah: true });
+}
+
 /**
  * Putaran koreksi: jawaban sebelumnya mengaku menjalankan/mengubah padahal tidak ada alat yang diminta. Berawalan
  * PENANDA_HASIL supaya server memperlakukannya sebagai putaran lanjutan folder (tanpa RAG), bukan pertanyaan baru.

@@ -1,7 +1,7 @@
 # ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
 
 **Tipe Dokumen:** Daftar sisa pekerjaan (temuan audit yang belum punya dokumen roadmap sendiri)
-**Status:** ⏳ **2 temuan terbuka** (T1, T8; T2–T7 & T9 ditutup) — masing-masing menunggu keputusan Owner
+**Status:** ⏳ **3 temuan terbuka** (T1, T10, T11; T2–T9 ditutup) — masing-masing menunggu keputusan Owner
 **Tanggal:** 2026-09-17 (dipindah dari INDEX-ROADMAP Item 33, 44, 48, 49, 50 saat perampingan)
 **Aturan:** temuan yang dikerjakan dan tumbuh besar pindah ke dokumen roadmap sendiri; yang selesai dicatat di
 changelog lalu barisnya diberi ✅ di sini.
@@ -125,7 +125,30 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
 - **Arah solusi:** jangan menyusun perintah dari teks — operasi berkas lewat `fs` Node di proses utama (atau
   argumen terpisah `execFile`), dan bila folder kerja aktif, lewat `pagarFolder.cjs` (Item 85).
 - **Keputusan Owner (2026-09-21):** dicatat, belum diperbaiki.
-- **Status:** ⏳ belum dikerjakan.
+- **Pemeriksaan ulang 2026-09-22:** injeksi ternyata tak tercapai — tombol mengirim fungsi sebagai `args`, perintah
+  nyata selalu "tidak terdaftar" (tombol Engineer rusak diam-diam). Keputusan Owner: **A** hapus jalur perintah-teks
+  (`CommandRegistry`, `run-terminal-command`, `edit-file-surgical`) + **B1** tombol lewat mesin `folder_run` dengan
+  **profil peran** (Engineer: repo Mamet, git baca saja, tanpa pemasang paket, 180 s). Ikut ditemukan & diperbaiki:
+  aturan Engineer tak sampai ke model sejak Wave 5.4; pesan hasil mesin jadi kueri Web/RAG/memori.
+- **Status:** ✅ ditutup 2026-09-22 — [log](../project-memory/changelog/2026-09-22-t8-engineer-perintah-tanpa-shell.md).
+
+## T10 — Sumber pengetahuan Engineer (asal T8, 2026-09-22)
+
+- **Temuan (live):** RAG Engineer (scope CORE) mencari di SEMUA space pengguna — "tampilkan 5 commit terakhir"
+  memasukkan 4–7 potongan dokumen kepegawaian (skor 0,56–0,66) ke prompt Engineer. Web desktop berorientasi berita
+  (Google News, Antara, Wikipedia, DuckDuckGo) — untuk pertanyaan teknis hasilnya meleset.
+- **Keputusan Owner (2026-09-22):** RAG & Web tetap menyala di Engineer (pengetahuan internal + dunia terkini); Memory
+  mati di Engineer.
+- **Arah solusi:** space pengetahuan khusus Engineer atau ambang kemiripan lebih ketat untuk mode ENGINEER; sumber web
+  teknis (dokumentasi resmi, npm registry, GitHub release).
+- **Status:** ⏳ dicatat, belum dirancang.
+
+## T11 — `check-keys` bisa dipanggil dengan kunci anon (asal Item 85 Tahap 3, 2026-09-22)
+
+- **Temuan (baca kode):** `verify_jwt` hanya mensyaratkan JWT sah — kunci anon publik lolos. Fungsi menguji kunci
+  OpenRouter server dan menampilkan 8 huruf awalnya; siapa pun bisa memicunya (biaya kecil per panggilan).
+- **Arah solusi:** cek pengguna (`auth.getUser`) + batasi ke Owner, atau hapus bila tak dipakai.
+- **Status:** ⏳ dicatat.
 
 ## T9 — Sub-agent `knowledge_manager` rusak & ikut dipanggil Coordinator (asal Item 92 Tahap 3, 2026-09-21)
 

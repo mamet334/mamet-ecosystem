@@ -482,173 +482,10 @@ ipcMain.handle('run-airdrop-stealth', async (event, { taskName, params }) => {
   }
 });
 
-// 1. Surgical File Editing
-ipcMain.handle('edit-file-surgical', async (event, { filePath, content }) => {
-  try {
-    const normalizedPath = path.resolve(filePath);
-    const dangerousPaths = [
-      process.env.SYSTEMROOT || 'C:\\Windows',
-      process.env.PROGRAMFILES || 'C:\\Program Files',
-      process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)',
-    ];
-    const isDangerousPath = dangerousPaths.some(dp => normalizedPath.toLowerCase().startsWith(dp.toLowerCase()));
-    if (isDangerousPath) {
-      return { success: false, message: `DITOLAK: Menulis ke direktori sistem (${normalizedPath}) dilarang.` };
-    }
-
-    const dangerousExts = ['.exe', '.bat', '.cmd', '.com', '.vbs', '.ps1', '.msi', '.dll', '.sys', '.reg'];
-    const fileExt = path.extname(normalizedPath).toLowerCase();
-    if (dangerousExts.includes(fileExt)) {
-      return { success: false, message: `DITOLAK: Membuat/mengubah file dengan ekstensi ${fileExt} tidak diizinkan.` };
-    }
-
-    const response = await dialog.showMessageBox(mainWindow, {
-      type: 'warning',
-      buttons: ['Batal', 'Izinkan Eksekusi'],
-      defaultId: 0,
-      title: 'Peringatan Keamanan (Surgical Edit)',
-      message: `Mamet AI meminta izin untuk mengubah file secara langsung:\n\n${normalizedPath}\n\nApakah Anda menyetujui perubahan ini?`
-    });
-
-    if (response.response === 1) {
-      fs.writeFileSync(normalizedPath, content, 'utf8');
-      return { success: true, message: 'File berhasil diperbarui.' };
-    } else {
-      return { success: false, message: 'Akses ditolak oleh pengguna.' };
-    }
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-});
-
-// =============================================
-// PATCH: run-terminal-command — versi diperluas
-// Menggantikan blok "// 2. Terminal Command Execution" yang lama.
-//
-// Perubahan dari versi asli:
-// 1. Blocklist Windows LAMA tetap dipertahankan (tidak menghapus proteksi yang sudah ada)
-// 2. Ditambah blocklist Unix/Linux/Mac (rm -rf, dd, mkfs, fork bomb, chmod 777 /, dll)
-//    — penting karena target deploy Mamet Ecosystem bisa ke Linux (Buildroot/Raspberry Pi)
-// 3. Command dipecah dulu berdasarkan operator chaining (; && || |) sebelum dicek,
-//    supaya "echo halo && rm -rf ~" tidak lolos hanya karena diawali command aman
-// 4. Dialog approval sekarang menampilkan alasan/reasoning dari AI (jika ada) dan
-//    highlight bagian mana yang berisiko, bukan cuma command mentah
-// =============================================
-
-// --- Blocklist Windows (dipertahankan dari versi asli) ---
-const BLOCKED_PATTERNS_WINDOWS = [
-  /format\s+[a-z]:/i, /del\s+\/[sf]/i, /rmdir\s+\/[sq]/i, /rd\s+\/[sq]/i,
-  /reg\s+(delete|add)/i, /net\s+user/i, /schtasks\s+\/create/i,
-  /powershell.*-encodedcommand/i, /powershell.*downloadstring/i,
-  /powershell.*invoke-webrequest.*\|.*iex/i, /certutil.*-urlcache/i,
-  /bitsadmin.*\/transfer/i, /shutdown\s+\/[sr]/i,
-];
-
-// --- Blocklist Unix/Linux/Mac (BARU) ---
-const BLOCKED_PATTERNS_UNIX = [
-  /rm\s+-rf\s+\/(\s|$)/i,              // rm -rf / — penghancuran total dari root
-  /rm\s+-rf\s+~(\s|$)/i,               // rm -rf ~ — hapus seluruh home directory
-  /rm\s+-rf\s+\*(\s|$)/i,              // rm -rf * di direktori sensitif
-  /:\(\)\{\s*:\|:&\s*\};:/,            // fork bomb klasik
-  /dd\s+.*of=\/dev\/(sd|hd|nvme|disk)/i, // overwrite raw disk device
-  /mkfs\.\w+/i,                         // format filesystem
-  />\s*\/dev\/(sd|hd|nvme|disk)/i,     // tulis langsung ke disk device
-  /chmod\s+-R\s+777\s+\/(\s|$)/i,      // permission disaster di root
-  /chown\s+-R\s+.*\s+\/(\s|$)/i,       // chown recursive dari root
-  /curl\s+.*\|\s*(ba)?sh/i,            // curl | sh — download & eksekusi langsung
-  /wget\s+.*\|\s*(ba)?sh/i,            // wget | sh — sama, via wget
-  />\s*\/etc\/(passwd|shadow|sudoers)/i, // overwrite file sistem kritis
-  /shutdown\s+-h\s+now/i, /poweroff/i, /reboot\s+-f/i,
-];
-
-const ALL_BLOCKED_PATTERNS = [...BLOCKED_PATTERNS_WINDOWS, ...BLOCKED_PATTERNS_UNIX];
-
-/**
- * Pecah command berdasarkan operator chaining shell (; && || |)
- * supaya tiap bagian bisa dicek terpisah terhadap blocklist.
- * Ini mencegah "echo aman && rm -rf ~" lolos hanya karena
- * bagian pertama terlihat tidak berbahaya.
- *
- * Catatan: ini bukan parser shell lengkap (tidak menangani semua edge
- * case seperti quoting kompleks atau command substitution bersarang),
- * tapi cukup untuk menangkap pola chaining paling umum.
- */
-function splitChainedCommand(command) {
-  return command
-    .split(/(?:&&|\|\||;|\|)/)
-    .map(part => part.trim())
-    .filter(Boolean);
-}
-
-function checkBlockedCommand(command) {
-  const fullLower = command.toLowerCase().replace(/\s+/g, ' ').trim();
-
-  // Cek command utuh dulu (menangkap pattern yang butuh konteks penuh)
-  for (const pattern of ALL_BLOCKED_PATTERNS) {
-    if (pattern.test(fullLower)) {
-      return { blocked: true, matchedPattern: pattern.toString(), segment: fullLower };
-    }
-  }
-
-  // Cek tiap segmen hasil pemecahan chaining
-  const segments = splitChainedCommand(fullLower);
-  if (segments.length > 1) {
-    for (const segment of segments) {
-      for (const pattern of ALL_BLOCKED_PATTERNS) {
-        if (pattern.test(segment)) {
-          return { blocked: true, matchedPattern: pattern.toString(), segment, isChained: true };
-        }
-      }
-    }
-  }
-
-  return { blocked: false };
-}
-
-// 2. Terminal Command Execution (VERSI DIPERLUAS)
-ipcMain.handle('run-terminal-command', async (event, { command, reasoning = '' }) => {
-  try {
-    const blockCheck = checkBlockedCommand(command);
-    if (blockCheck.blocked) {
-      const chainNote = blockCheck.isChained
-        ? `\n\n(Terdeteksi di dalam rangkaian command — bagian berbahaya: "${blockCheck.segment}")`
-        : '';
-      return {
-        success: false,
-        output: `DITOLAK OLEH KEAMANAN: Perintah "${command}" terdeteksi sebagai operasi berbahaya dan telah diblokir.${chainNote}`
-      };
-    }
-
-    const reasoningText = reasoning
-      ? `\n\nAlasan AI menjalankan ini: ${reasoning}`
-      : '\n\n(AI tidak menyertakan alasan untuk command ini — pertimbangkan dengan hati-hati.)';
-
-    const response = await dialog.showMessageBox(mainWindow, {
-      type: 'warning',
-      buttons: ['Batal', 'Izinkan Terminal'],
-      defaultId: 0,
-      title: 'Peringatan Keamanan (Terminal)',
-      message: `Mamet AI meminta izin untuk menjalankan perintah di Terminal / CMD:\n\n"${command}"${reasoningText}\n\nTindakan ini bisa berbahaya. Lanjutkan?`
-    });
-
-    if (response.response === 1) {
-      return new Promise((resolve) => {
-        exec(command, { timeout: 30000 }, (error, stdout, stderr) => {
-          if (error) {
-            resolve({ success: false, output: stderr || error.message });
-          } else {
-            resolve({ success: true, output: stdout });
-          }
-        });
-      });
-    } else {
-      return { success: false, output: 'Akses eksekusi terminal ditolak oleh pengguna.' };
-    }
-  } catch (error) {
-    return { success: false, output: error.message };
-  }
-});
-
+// 1–2. `edit-file-surgical` (tulis ke alamat absolut mana pun) dan `run-terminal-command` (kalimat shell bebas +
+// blocklist) DIHAPUS 2026-09-22 (T8): satu-satunya pemakainya CommandRegistry yang merakit PowerShell dari alamat
+// mentah — dan jalur itu rusak (tombol [MAMET_CMD] selalu "tidak terdaftar"). Perintah Engineer kini lewat
+// `engineer:jalankan` (tanpa shell, daftar izin, dialog) — lihat di bawah blok folder kerja.
 
 // =============================================
 // ENGINEER ROLLBACK SYSTEM
@@ -823,6 +660,46 @@ ipcMain.handle('folder:alat', async (_event, permintaan) => {
     : hasil.ditolakOwner ? 'DITOLAK OWNER' : `DITOLAK: ${hasil.alasan}`;
   const sasaran = p.alat === 'folder_run' ? (hasil.perintah || p.program) : `${p.alamat ?? p.kueri ?? '.'}${p.ke ? ` → ${p.ke}` : ''}`;
   console.log(`[FOLDER] ${p.alat} "${sasaran}" → ${status}`);
+  return hasil;
+});
+
+// ENGINEER — tombol [MAMET_CMD: …] (T8, keputusan Owner B1 2026-09-22). Menggantikan CommandRegistry (PowerShell
+// dirakit dari alamat mentah) & run-terminal-command (shell bebas + blocklist). Kalimat perintah dipecah TANPA shell
+// (pecahPerintah) lalu dijalankan pelaksana yang sama dengan folder_run: daftar izin program, .exe dicari di luar
+// repo, lingkungan tanpa rahasia, batas waktu, dialog izin. Folder asal = repo Mamet (Engineer bekerja di repo).
+// Kuasa Engineer ditentukan PROFIL (alatFolderJalan.cjs): git baca saja, tanpa pemasang paket, batas 180 s.
+const { pecahPerintah, PROFIL } = require('./alatFolderJalan.cjs');
+const depsEngineer = {
+  profil: PROFIL.engineer,
+  mintaIzin: async ({ judul, rincian, pratinjau }) => {
+    const { response } = await dialog.showMessageBox(mainWindow, {
+      type: 'warning',
+      title: 'Mamet Engineer — repo Mamet',
+      message: judul,
+      detail: `${rincian}${pratinjau ? `\n\n${pratinjau}` : ''}`,
+      buttons: ['Tolak', 'Izinkan'],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    });
+    return response === 1;
+  },
+};
+ipcMain.handle('engineer:jalankan', async (_event, perintah) => {
+  const teks = typeof perintah === 'string' ? perintah : '';
+  const p = pecahPerintah(teks);
+  let hasil;
+  if (p.galat) {
+    hasil = { ok: false, alat: 'folder_run', perintah: teks, alasan: p.galat };
+  } else {
+    // Batas waktu dari profil Engineer (180 s — build/test butuh lebih dari bawaan Assistant 60 s).
+    try { hasil = await jalankanAlatJalan(PROJECT_ROOT, { alat: 'folder_run', program: p.program, argumen: p.argumen }, depsEngineer); }
+    catch (e) { hasil = { ok: false, alat: 'folder_run', perintah: teks, alasan: `galat: ${e.code || e.message}` }; }
+  }
+  const status = hasil.ok
+    ? `OK (kode keluar ${hasil.kodeKeluar}${hasil.habisWaktu ? ', HABIS WAKTU' : ''}, ${hasil.waktuMs} ms, ${hasil.byteKeluaran} B)`
+    : hasil.ditolakOwner ? 'DITOLAK OWNER' : `DITOLAK: ${hasil.alasan}`;
+  console.log(`[ENGINEER] "${teks}" → ${status}`);
   return hasil;
 });
 

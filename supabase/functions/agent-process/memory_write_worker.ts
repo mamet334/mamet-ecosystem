@@ -15,6 +15,11 @@ export const processMemoryWriteQueue = async (
   // ditemukan lewat pencarian SQL — bukan pencarian makna (Item 46).
   rctx?: any
 ) => {
+  // Pesan HASIL MESIN (T8, 2026-09-22) — hasil alat folder (isi berkas) & keluaran terminal Engineer — bukan ucapan
+  // pengguna: tidak dinilai sebagai fakta dan TIDAK dicatat di memory_audit_log (dulu 30 pesan hasil folder tersimpan
+  // utuh di sana, s.d. 12 ribu huruf isi berkas). Dicek sebelum apa pun ditulis; klien baru pun sudah tak mengirimnya.
+  if (/^\s*\[(TERMINAL OUTPUT for: |HASIL ALAT FOLDER\])/.test(String(userMessage || ''))) return;
+
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   const logAudit = async (action: string, intent: string, confidence: number, reason: string) => {

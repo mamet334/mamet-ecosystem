@@ -30,7 +30,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 | 88 Tabel centang PDF (+ sisa 86 OCR massal) | 🟡 Tahap 1–3 ✅; keputusan 3: buku per jabatan **221/221** masuk; 177 ✅, 191/159 keterbatasan; set uji buku penuh **13/14**; sisa BUKU-10 (blok centang miskin kata, sesudah code freeze) | [`ROADMAP-TABEL-CENTANG-PDF.md`](./ROADMAP-TABEL-CENTANG-PDF.md) |
 | 85 Folder kerja Assistant | ✅ Tahap 0–3 selesai: pagar `folder:*`; baca; tulis/edit/hapus-ke-Recycle-Bin; jalankan (daftar izin tanpa shell) — semua lewat dialog izin proses utama; laporan tindakan jujur (catatan kaki dari proses utama, klaim tanpa alat dikoreksi) & berlabel VERIFIED terbukti | [`ROADMAP-FOLDER-KERJA-ASSISTANT.md`](./ROADMAP-FOLDER-KERJA-ASSISTANT.md) |
 | 72 Adaptive Shell (UI multi-device) | 📋 belum dikerjakan | [`roadmap-adaptive-shell.md`](./roadmap-adaptive-shell.md) |
-| 33, 48, 49, 50, 91 Temuan audit tanpa rancangan | ⏳ T1 daftar izin sub-agent di server (arah disetujui; sesudah ganti token Apify) · T2 ✅ dasbor yatim dihapus · T3 ✅ rute mati dihapus · T4 ✅ · T6 ✅ · T7 ✅ kunci API di `agent_logs` (sisa: Owner ganti kunci) · T8 perintah PowerShell dari alamat mentah (dicatat) · T9 ✅ knowledge_manager dihapus (workspace dikelola dari UI Research App) | [`ROADMAP-TEMUAN-TERBUKA.md`](./ROADMAP-TEMUAN-TERBUKA.md) |
+| 33, 48, 49, 50, 91 Temuan audit tanpa rancangan | ⏳ T1 daftar izin sub-agent di server (arah disetujui; sesudah ganti token Apify) · T2 ✅ dasbor yatim dihapus · T3 ✅ rute mati dihapus · T4 ✅ · T6 ✅ · T7 ✅ kunci API di `agent_logs` (sisa: Owner ganti kunci) · T8 ✅ perintah Engineer tanpa shell + profil peran (jalur PowerShell/`run-terminal-command` dihapus; aturan Engineer kembali sampai ke model; hasil mesin bukan kueri Web/RAG/memori) · T10 sumber pengetahuan Engineer (dicatat) · T11 `check-keys` terbuka bagi kunci anon (dicatat) · T9 ✅ knowledge_manager dihapus (workspace dikelola dari UI Research App) | [`ROADMAP-TEMUAN-TERBUKA.md`](./ROADMAP-TEMUAN-TERBUKA.md) |
 
 ---
 
@@ -43,7 +43,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 | `ROADMAP-PENGAMBILAN-POTONGAN-RAG.md` | ✅ Item 90 (A–C) | peta jalur RAG vs pola umum, utang lama, set uji → hybrid → konteks |
 | `ROADMAP-KONTEKS-POTONGAN-RAG.md` | ✅ Item 89 | pemisah bagian tabel OCR + baris konteks potongan |
 | `ROADMAP-TABEL-CENTANG-PDF.md` | 🟡 Item 88 | kolom centang dari koordinat pdf.js, kontrak & label |
-| `ROADMAP-TEMUAN-TERBUKA.md` | ⏳ T1, T8 (T2–T7, T9 ✅) | temuan audit tanpa rancangan sendiri |
+| `ROADMAP-TEMUAN-TERBUKA.md` | ⏳ T1, T10, T11 (T2–T9 ✅) | temuan audit tanpa rancangan sendiri |
 | `ROADMAP-FOLDER-KERJA-ASSISTANT.md` | 📝 Item 85 | tombol 📁 sebagai tempat kerja Assistant |
 | `roadmap-adaptive-shell.md` | 📋 Item 72 | UI multi-device |
 | `ROADMAP-ADAPTIVE-MODEL-TIERING.md` | ✅ Item 34–35 | tier model & plumbing `thinking` |

@@ -6,8 +6,7 @@
  * - Inject memory & semantic context ke payload AI
  * - Memanggil Supabase Edge Function (agent-process) dengan streaming/JSON
  * - Menyimpan dan memuat riwayat chat ke/dari Supabase
- * - Menjadi "rumah arsitektur" resmi untuk PR#1 (CommandRegistry),
- *   PR#2 (CognitiveMemoryGovernor), PR#5 (RetrievalStrategy), PR#6 (TokenEfficiency)
+ * - Menjadi "rumah arsitektur" resmi untuk PR#2 (CognitiveMemoryGovernor), PR#5 (RetrievalStrategy), PR#6 (TokenEfficiency)
  *
  * Prinsip: Satu file, satu tanggung jawab — tidak ada JSX, tidak ada useState.
  * Komponen React (ConversationEngine) hanya memanggil service ini dan menampilkan hasil.
@@ -22,7 +21,7 @@ const AGENT_ENDPOINT = 'https://uuyzdjifhdfyyvpxsofu.supabase.co/functions/v1/ag
 
 import { supabase } from '../../../supabase.js';
 import { statusLaptop, kirimKeLaptop, sidikJari, cariDiCache, KUOTA_CACHE_MB } from './remoteConversionClient.js';
-import { ambilPermintaanAlat, susunPesanHasil, susunPesanKoreksi, namaFolderAman, buangKakiTiruan, peringatanKlaimTanpaAlat, MAKS_PUTARAN } from './folderKerjaAlat.js';
+import { ambilPermintaanAlat, susunPesanHasil, susunPesanKoreksi, namaFolderAman, buangKakiTiruan, peringatanKlaimTanpaAlat, peringatanKlaimEngineer, blokKodeKeMametCmd, MAKS_PUTARAN } from './folderKerjaAlat.js';
 
 // Folder kerja (Item 85 Tahap 1): batas total isi berkas yang dibaca per pertanyaan (semua putaran) — riwayat ikut
 // membawa hasil putaran sebelumnya, jadi tanpa batas ini 4 putaran × 5 berkas × 60 KB bisa ±1,2 MB ke model.
@@ -477,6 +476,22 @@ export class AssistantService {
       };
     }
 
+    // ENGINEER (T8): klaim "sudah menjalankan" tanpa keluaran terminal dari proses utama → peringatan sistem. Usulan
+    // patch (extras.hasPatch) dan jawaban yang masih mengusulkan [MAMET_CMD] tidak dinilai (peringatanKlaimEngineer).
+    if (resolvedMode === 'ENGINEER') {
+      const onDoneEngineer = onDone;
+      onDone = (finalText, steps, jsonMetadata, extras = {}) => {
+        let teks = finalText;
+        if (!extras?.hasPatch && typeof teks === 'string') {
+          // Blok ```bash satu baris → [MAMET_CMD: …] (disimpan begitu, jadi tombol tetap ada saat chat dibuka ulang).
+          teks = blokKodeKeMametCmd(teks);
+          const peringatan = peringatanKlaimEngineer(teks, userMsg);
+          if (peringatan) teks += `\n\n${peringatan}`;
+        }
+        return onDoneEngineer?.(teks, steps, jsonMetadata, extras);
+      };
+    }
+
     // 2. PR#8: Classify request type (deterministic, 0 LLM cost). Putaran lanjutan folder kerja selalu CONVERSATION:
     // pesannya berisi hasil alat, bukan perintah pengguna (tidak boleh terbaca sebagai "ingat …" atau DOC_CONVERT).
     const classifier = this.serviceManager.has('RequestClassifierService')
@@ -535,7 +550,6 @@ export class AssistantService {
     }
 
     // COMMAND, ENGINEER, CONVERSATION → semua lewat ConversationHandler
-    // CommandRegistry dipanggil downstream setelah LLM respond (via PR#1 flow)
     return this._handleConversation(handlerParams);
   }
 
@@ -838,7 +852,7 @@ export class AssistantService {
    * 3. Eksekusi steps berurutan:
    *    - 'ask'      → kirim prompt sebagai pesan AI, tunggu jawaban Owner
    *    - 'generate' → kirim ke Edge Function dengan context dari jawaban sebelumnya
-   *    - 'write'    → emit ke CommandRegistry (PR#1 confirmation)
+   *    - 'write'    → belum didukung: dilaporkan apa adanya, tidak ada berkas yang ditulis
    *    - 'read'     → baca file (stub, dikembangkan berikutnya)
    * 4. Log ke AuditLogService
    *
@@ -976,7 +990,7 @@ export class AssistantService {
       // — STEP: write — butuh konfirmasi (PR#1 flow)
       if (step.action === 'write') {
         if (stepPolicy === 'REQUIRE_CONFIRMATION') {
-          const confirmMsg = `⚠️ Skill "${skill.name}" ingin menulis file. Konfirmasi diperlukan via CommandRegistry.`;
+          const confirmMsg = `⚠️ Skill "${skill.name}" ingin menulis file — menulis dari skill belum didukung, jadi TIDAK ada berkas yang ditulis.`;
           onDone?.(confirmMsg, [], null);
           this.eventBus.emit('Skill:StepDone', { skillId: skill.id, step: i + 1, action: 'write', requiresConfirmation: true });
         }
@@ -1111,9 +1125,16 @@ export class AssistantService {
     const toolPreferencesService = this.serviceManager?.get('ToolPreferencesService');
     const memoryToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'memory_manager') : true;
 
+    // PESAN HASIL MESIN (T8, live 2026-09-22): keluaran terminal Engineer "[TERMINAL OUTPUT for: …]" dan hasil alat
+    // folder "[HASIL ALAT FOLDER]" (isi berkas!) BUKAN pertanyaan — tidak pernah dijadikan kueri Web (log: URL DuckDuckGo
+    // memuat daftar berkas `git status`), RAG, maupun memori (memory_audit_log menyimpan 30 pesan hasil folder utuh, s.d.
+    // 12 ribu huruf isi berkas). Pengetahuan putaran pertama tetap terbawa lewat riwayat percakapan.
+    const pesanHasilMesin = folderLanjutan || /^\s*\[(TERMINAL OUTPUT for: |HASIL ALAT FOLDER\])/.test(userMsg || '');
+    const memoryAktif = memoryToolEnabled && !pesanHasilMesin;
+
     // 4. Inject memory + semantic context
     const { localContext, semanticContext } = await this.buildContextInjection(
-      userMsg, resolvedMode, userId, memoryToolEnabled
+      userMsg, resolvedMode, userId, memoryAktif
     );
 
     // 4b. PR#9: 3-Tier Retrieval Orchestrator — ambil knowledge/RAG context (terpisah dari memory)
@@ -1139,7 +1160,8 @@ export class AssistantService {
     // KnowledgeService — hanya menggandakan dokumen ke prompt, jadi selalu dilewati; orkestrator
     // dipanggil hanya untuk Web (Tier 3). Selama RAG menyala, panduan Tier 2 ("tidak ada dokumen
     // lokal") juga dilewati karena hanya server yang tahu apakah dokumen ditemukan.
-    if (!knowledgeContext && retrievalOrchestrator && !isLiteMode && webSearchToolEnabled && !lanjutanTerpotong) {
+    // PRIVASI: pesan hasil mesin (lihat pesanHasilMesin di atas) tidak dicari ke web sama sekali.
+    if (!knowledgeContext && retrievalOrchestrator && !isLiteMode && webSearchToolEnabled && !lanjutanTerpotong && !pesanHasilMesin) {
       try {
         const retrievalResult = await retrievalOrchestrator.retrieve(userMsg, {
           userId,
@@ -1231,8 +1253,8 @@ export class AssistantService {
       stream: false,
       // Hybrid (2026-09-14): nalar dialirkan lebih dulu, jawaban tetap JSON utuh — hanya bila Thinking menyala.
       streamNalar: aiThinking === true,
-      ragEnabled: ragToolEnabled && !lanjutanTerpotong && !folderLanjutan,
-      memoryEnabled: memoryToolEnabled, // false → server tidak membaca/menulis memori & blok kesadaran menyesuaikan
+      ragEnabled: ragToolEnabled && !lanjutanTerpotong && !pesanHasilMesin,
+      memoryEnabled: memoryAktif, // false → server tidak membaca/menulis memori & blok kesadaran menyesuaikan (juga untuk pesan hasil mesin)
       model: formattedModel || undefined,
       thinking: aiThinking, // true/false tier dikirim apa adanya; false kini mematikan nalar di OpenRouter (2026-09-13)
       clientTimezone: zonaWaktuBrowser(), // mis. "Asia/Jakarta" — server menghitung jam lokal (2026-09-13)
@@ -1438,7 +1460,8 @@ export class AssistantService {
     const isInsufficient = /\[STATUS:\s*INSUFFICIENT\]/i.test(finalText) ||
       /\b(saya tidak dapat memberikan informasi terbaru|tidak ditemukan di database.*tidak memiliki informasi|informasi.*tidak cukup.*\[STATUS:\s*INSUFFICIENT\])\b/i.test(finalText);
 
-    if (isInsufficient && !_isPostHocWebRetry && !isEngineerMode) {
+    // Pesan hasil mesin (isi berkas folder / keluaran terminal) tidak pernah dijadikan kueri web, termasuk lewat tawaran ini.
+    if (isInsufficient && !_isPostHocWebRetry && !isEngineerMode && !/^\s*\[(TERMINAL OUTPUT for: |HASIL ALAT FOLDER\])/.test(userMsg || '')) {
       const webService = this.serviceManager?.get('WebComparisonService');
       if (webService && typeof webService.requestConfirmation === 'function') {
         const traceId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
@@ -1584,135 +1607,48 @@ export class AssistantService {
   }
 
   // =============================================
-  // ENGINEER COMMAND (PR#1 integration point)
+  // ENGINEER COMMAND — tombol [MAMET_CMD: …] (T8, 2026-09-22)
   // =============================================
 
   /**
-   * Jalankan command dari Engineer mode melalui CommandRegistry (PR#1).
-   * Whitelist-first: hanya command terdaftar yang bisa dieksekusi.
+   * Jalankan SATU perintah dari penanda [MAMET_CMD: …] Engineer lewat proses utama: kalimat dipecah tanpa shell,
+   * program dari daftar izin, folder asal = repo Mamet, dialog izin asli (bawaan Tolak). Menggantikan CommandRegistry
+   * (PowerShell dirakit dari alamat mentah; selalu "tidak terdaftar" untuk perintah nyata) dan jalur cadangan yang
+   * meneruskan kalimat mentah ke shell.
    *
-   * @param {string} commandName - nama command dari CommandRegistry (atau raw cmd untuk legacy)
-   * @param {Object} args        - { path, content, sourcePath, targetPath, ... }
-   * @param {Object} [context]   - { userMsg, userId } untuk audit log
-   * @returns {Promise<{ output: string, success: boolean, needsConfirmation?: boolean, confirmationReason?: string }>}
+   * @param {string} perintah - mis. "npm test", "git status"
+   * @returns {Promise<{ output: string, success: boolean, ditolakOwner?: boolean }>}
    */
-  async runCommand(commandName, args = {}, context = {}) {
-    const commandRegistry = this.serviceManager.get('CommandRegistry');
-    const auditLogService = this.serviceManager.get('AuditLogService');
-
-    // Fallback: jika CommandRegistry belum siap (boot timing), pakai electronAPI langsung
-    if (!commandRegistry) {
-      console.warn('[AssistantService] CommandRegistry tidak tersedia, fallback ke electronAPI langsung');
-      return this._runCommandLegacy(commandName, context);
+  async runCommand(perintah) {
+    if (!window.electronAPI?.engineer?.jalankan) {
+      return { output: 'Menjalankan perintah hanya tersedia di aplikasi desktop.', success: false };
     }
+    let h;
+    try { h = await window.electronAPI.engineer.jalankan(String(perintah || '')); }
+    catch (err) { return { output: err?.message || String(err), success: false }; }
 
-    // 1. Prepare: cek whitelist + boundary
-    const preparation = commandRegistry.prepareExecution(commandName, args);
-
-    if (!preparation.canProceed) {
-      // Command tidak ada di whitelist — tolak
-      return { output: preparation.reason, success: false };
+    let output;
+    if (h?.ok) {
+      const kaki = h.habisWaktu
+        ? `⏱️ Dihentikan — melewati batas waktu ${h.waktuBatasS} detik.`
+        : `Kode keluar ${h.kodeKeluar} (${((h.waktuMs || 0) / 1000).toFixed(1).replace('.', ',')} s)${h.terpotong ? ` — keluaran dipotong dari ${h.byteKeluaran} byte` : ''}.`;
+      output = `${h.keluaran || '(tanpa keluaran)'}\n\n${kaki}`;
+    } else if (h?.ditolakOwner) {
+      output = 'DITOLAK OWNER di dialog izin — perintah TIDAK dijalankan.';
+    } else {
+      output = `TIDAK DIJALANKAN: ${h?.alasan || 'alasan tidak diketahui'}`;
     }
+    const success = !!h?.ok && !h.habisWaktu && h.kodeKeluar === 0;
 
-    if (preparation.needsConfirmation) {
-      // Emit ke EventBus — UI yang menampilkan dialog, bukan service
-      // Setelah user konfirmasi, UI memanggil assistantService.confirmAndRunCommand()
-      const eventBus = this.serviceManager.get('EventBus');
-      if (eventBus) {
-        eventBus.emit('Command:ConfirmationRequired', {
-          commandName,
-          args,
-          isDestructive: preparation.isDestructive,
-          inWorkspace: preparation.inWorkspace,
-          reason: preparation.reason,
-          context
-        });
-      }
-      return {
-        output: '',
-        success: false,
-        needsConfirmation: true,
-        isDestructive: preparation.isDestructive,
-        inWorkspace: preparation.inWorkspace,
-        confirmationReason: preparation.reason,
-        _pendingCommand: { commandName, args }
-      };
-    }
-
-    // 2. Eksekusi langsung (tidak perlu konfirmasi)
-    return this._executeAndLog({ commandName, args, preparation, context, commandRegistry, auditLogService });
-  }
-
-  /**
-   * Eksekusi command setelah konfirmasi user (dipanggil dari UI).
-   *
-   * @param {string} commandName
-   * @param {Object} args
-   * @param {Object} [context] - { userMsg, userId }
-   * @returns {Promise<{ output: string, success: boolean }>}
-   */
-  async confirmAndRunCommand(commandName, args = {}, context = {}) {
-    const commandRegistry = this.serviceManager.get('CommandRegistry');
-    const auditLogService = this.serviceManager.get('AuditLogService');
-
-    if (!commandRegistry) {
-      return this._runCommandLegacy(commandName, context);
-    }
-
-    const preparation = commandRegistry.prepareExecution(commandName, args);
-    return this._executeAndLog({ commandName, args, preparation, context, commandRegistry, auditLogService });
-  }
-
-  /**
-   * @private Eksekusi + log audit.
-   */
-  async _executeAndLog({ commandName, args, preparation, context, commandRegistry, auditLogService }) {
-    const result = await commandRegistry.executeConfirmed(commandName, args);
-
-    // Audit log (async, tidak blocking)
-    auditLogService?.logCommand({
-      userMsg:      context.userMsg    || '',
-      commandName,
-      targetPath:   args.path || args.targetPath || '',
-      inWorkspace:  preparation.inWorkspace  ?? true,
-      isDestructive: preparation.isDestructive ?? false,
-      success:      result.success,
-      output:       result.output || result.error || '',
-      userId:       context.userId || null
-    }).catch(err => console.warn('[AssistantService] Audit log gagal:', err));
-
-    // Emit audit trail ke Engineer SessionArtifact
+    // Jejak audit Engineer (SessionArtifact) — dari hasil proses utama, bukan dari kata model.
     try {
-      const eventBus = this.serviceManager.get('EventBus');
-      eventBus?.emit('Engineer:CommandExecuted', {
-        command: commandName,
-        status: result.success ? 'success' : 'error',
-        output: result.output || result.error || ''
+      this.serviceManager.get('EventBus')?.emit('Engineer:CommandExecuted', {
+        command: perintah, status: success ? 'success' : 'error', output
       });
     } catch (_) {}
-
-    return { output: result.output || result.error || '', success: result.success };
-  }
-
-  /**
-   * @private Fallback ke electronAPI langsung (backward compat saat boot).
-   */
-  async _runCommandLegacy(rawCmd, context = {}) {
-    if (!window.electronAPI) {
-      return { output: 'Electron API tidak tersedia (bukan desktop mode).', success: false };
-    }
-    try {
-      const result = await window.electronAPI.runTerminalCommand(rawCmd);
-      const output = result?.output || result?.error || 'Command selesai (tidak ada output).';
-      const success = !!result?.success;
-      try {
-        const eventBus = this.serviceManager.get('EventBus');
-        eventBus?.emit('Engineer:CommandExecuted', { command: rawCmd, status: success ? 'success' : 'error', output });
-      } catch (_) {}
-      return { output, success };
-    } catch (err) {
-      return { output: err?.message || String(err), success: false };
-    }
+    // ditolakAturan: pecahPerintah/daftar izin/profil menolak SEBELUM dialog — hasilnya pasti sama tiap kali, jadi UI
+    // tidak mengirimnya balik ke model (live: "npm install lodash" diusulkan ulang 3× setelah tiap penolakan).
+    return { output, success, ditolakOwner: !!h?.ditolakOwner, ditolakAturan: !h?.ok && !h?.ditolakOwner };
   }
 
   /**

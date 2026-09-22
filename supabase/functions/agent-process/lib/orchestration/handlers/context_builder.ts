@@ -484,6 +484,12 @@ export const ContextBuilderHandler = {
     if (brain2Verifications.length > 0) brain2ContextText += `Recent Verifications: ${brain2Verifications.join(', ')}\n`;
 
     let systemBasePrompt = (ctx.request.agentIdentityPrompt || '') + (ctx.request.userContextPrompt || '') + memoryPrompt;
+    // Aturan Engineer (identitas, RULE 1–6 termasuk [MAMET_CMD], Two-Brain) — sejak refactor Wave 5.4 (c310141) prompt
+    // dasar kontrak disusun ulang TANPA ini, dan kontrak menimpa finalContext yang memuatnya: Engineer tak pernah
+    // menerima aturannya (live 2026-09-22: "cek status git" → "saya tidak memiliki akses", tanpa [MAMET_CMD]).
+    if (ctx.policy.mode === 'ENGINEER' && engineerCtx?.engineerContextPrompt) {
+      systemBasePrompt += engineerCtx.engineerContextPrompt;
+    }
     if (ctx.policy.webHint === "HIGH_PRIORITY") {
       systemBasePrompt += `\n[WEB vs RAG COMPARISON CONTRACT]: Jika terdapat perbedaan antara dokumen RAG internal dan Web/Internet, identifikasi mana yang lebih baru secara eksplisit.`;
     }
