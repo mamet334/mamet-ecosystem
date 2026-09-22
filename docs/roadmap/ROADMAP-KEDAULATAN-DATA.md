@@ -1,6 +1,6 @@
 # ROADMAP: KEDAULATAN DATA — Salinan Sendiri yang Terbukti Bisa Dipulihkan, lalu Postgres Lokal (Item 93)
 
-**Status:** 📋 terdaftar 2026-09-22 — belum dikerjakan; Tahap 1 menunggu aba-aba Owner
+**Status:** 📋 terdaftar 2026-09-22 — temuan RLS ✅ ditutup (22 Sep); Tahap 1 cadangan berikutnya
 **Tanggal:** 2026-09-22
 **Roadmap Index:** Item 93
 
@@ -33,6 +33,15 @@ Tujuan jangka dekat: **Supabase hilang besok pun, data utuh dan bisa dibaca.** O
    (termasuk hasil OCR berbayar buku Kepbup).
 2. `asn_berkas` / `asn_pegawai` (Item 92) **tidak ada** di daftar tabel cadangan.
 3. Tidak ada pemanggil di frontend (tak ada tombol) dan tidak tercatat pernah diuji **sampai pemulihan**.
+4. (diperiksa 2026-09-22) PostgREST memotong **diam-diam di 1.000 baris** (`agent_logs` 15.009, `asn_pegawai` 1.313);
+   tabel tanpa `created_at`/`user_id` selalu gagal → kosong; ikut mencadangkan `agent_logs` (pernah berisi kunci API, T7).
+   Arah Tahap 1: cadangan dibuat **dari aplikasi desktop dengan sesi Owner** (RLS membatasi ke milik sendiri, tanpa
+   kunci server), per halaman, jumlah baris dicocokkan dengan hitungan database; `agent_logs` dikecualikan.
+
+**Temuan keamanan saat memeriksa RLS (2026-09-22) — ✅ ditutup:** aturan `USING (true)` membuka `user_memories` &
+`api_usage` (baca **dan tulis**) & `monitors` (tulis) untuk siapa pun tanpa login, dan catatan engineering untuk semua
+pengguna login. Migrasi `20260922003711_rls_tutup_baca_semua` —
+[log](../project-memory/changelog/2026-09-22-rls-tutup-baca-semua.md).
 
 ## 3. Peta Lapisan (keputusan arah — dari diskusi)
 
