@@ -1,6 +1,6 @@
 # ROADMAP: KEDAULATAN DATA — Salinan Sendiri yang Terbukti Bisa Dipulihkan, lalu Postgres Lokal (Item 93)
 
-**Status:** 📝 temuan RLS ✅ ditutup; **Tahap 1 ✅** cadangan lengkap terbukti (22 Sep); Tahap 2 uji pulih menunggu keputusan cara pasang Postgres
+**Status:** 📝 temuan RLS ✅; **Tahap 1 ✅** cadangan lengkap; **Tahap 2 ✅** uji pulih ke Postgres lokal (22 Sep); Tahap 3–4 jangka panjang
 **Tanggal:** 2026-09-22
 **Roadmap Index:** Item 93
 
@@ -68,11 +68,12 @@ skema lewat migrasi di repo, tidak mengunci fitur ke layanan khusus Supabase tan
       [log](../project-memory/changelog/2026-09-22-cadangan-data-lengkap.md).
 
 ### Tahap 2 — Uji pulih ke Postgres lokal
-- [ ] Postgres + pgvector lokal (instalasi biasa atau Docker, diputuskan saat itu), jalankan migrasi repo, pulihkan
-      cadangan.
-- [ ] **Kriteria:** hitungan baris sama; satu pencarian `match_documents_hybrid` lokal (vektor dibuat ulang atau ikut
-      dicadangkan) mengembalikan potongan yang sama dengan Supabase untuk 3 pertanyaan set uji; Data Tabel RSUD
-      struktural = 14.
+- [x] Postgres + pgvector lokal, pulihkan cadangan. ✅ **Penyimpangan:** bukan installer EDB (tanpa pgvector) melainkan
+      PostgreSQL 16 + pgvector dari conda-forge lewat micromamba (tanpa admin/Docker); bukan "jalankan migrasi repo"
+      (banyak bergantung pada skema auth Supabase) melainkan `scripts/kedaulatan/skema-pulih.sql` disalin dari Supabase.
+- [x] **Kriteria:** hitungan baris sama; pencarian gabungan lokal = Supabase untuk 3 kueri; Data Tabel RSUD struktural = 14.
+      ✅ 13/13 tabel, kunci asing lolos, pencarian 8/8 · 8/8 · 7/8 (posisi ke-8 = pembulatan float ARM vs x86, data
+      identik), RSUD 14, aktif 634 — [log](../project-memory/changelog/2026-09-22-uji-pulih-postgres-lokal.md).
 
 ### Tahap 3 — (jangka panjang) Embedding lokal
 - [ ] Uji model 768-D lokal dengan set uji Kepbup 14 pertanyaan, di luar aplikasi, $0. Lolos 14/14 baru dirancang.
