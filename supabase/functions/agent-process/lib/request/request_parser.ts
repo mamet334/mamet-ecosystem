@@ -7,7 +7,7 @@ export async function parseRequestParams(req: Request, user: any) {
   } catch(e) {
     reqJson = {};
   }
-  let { message, tools, model, userId: _clientUserId, userName, file, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource: clientAppSource = 'assistant', workspaceTarget = 'AUTO', auditMode = 'OFF', mode: clientMode, provider, thinking, traceId: clientTraceId, requestId, clientTimezone, streamNalar, memoryEnabled, dataTabel } = reqJson;
+  let { message, tools, model, userId: _clientUserId, userName, file, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource: clientAppSource = 'assistant', workspaceTarget = 'AUTO', auditMode = 'OFF', mode: clientMode, provider, thinking, traceId: clientTraceId, requestId, clientTimezone, streamNalar, memoryEnabled, dataTabel, folderKerja } = reqJson;
   const traceId = clientTraceId || requestId || null;
   const mode = clientMode || 'ASSISTANT';
   console.log('[RequestParser] Mode diterima:', mode);
@@ -79,6 +79,17 @@ export async function parseRequestParams(req: Request, user: any) {
     memoryEnabled: memoryEnabled !== false,
     // Tombol Data Tabel desktop (Item 92 Tahap 3). Bendera tersendiri, BUKAN lewat `tools`: daftar tools juga menyaring
     // sub-agent Coordinator, jadi mengirim ['data_tabel'] diam-diam mematikan pencarian web.
-    dataTabel: dataTabel === true
+    dataTabel: dataTabel === true,
+    // Folder kerja Assistant (Item 85 Tahap 1): hanya NAMA folder & nomor putaran alat — alamat lengkap tetap di
+    // desktop. Disaring ulang di sini (teks pendek tanpa pemisah alamat), putaran dibatasi 0..4.
+    folderKerja: folderKerjaAman(folderKerja)
   };
+}
+
+function folderKerjaAman(f: any): { nama: string; putaran: number } | null {
+  if (!f || typeof f !== 'object') return null;
+  const nama = String(f.nama ?? '').replace(/[\\/:\x00-\x1f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100);
+  if (!nama) return null;
+  const putaran = Number.isInteger(f.putaran) ? Math.min(Math.max(f.putaran, 0), 4) : 0;
+  return { nama, putaran };
 }

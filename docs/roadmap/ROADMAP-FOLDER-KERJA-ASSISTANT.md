@@ -2,7 +2,7 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Desktop Assistant (`ConversationEngine.jsx`, `AssistantService.js`, `electron/main.cjs`, `preload.cjs`) & `agent-process`
-**Status:** 📝 **Tahap 0 selesai 2026-09-21** (jalur lama dihapus `ed19ba1`; pagar `folder:*` + `pagarFolder.cjs`, uji serangan 33/33, uji Owner 4/4 — [log](../project-memory/changelog/2026-09-21-folder-kerja-tahap0-pagar.md)); **Tahap 1 menunggu aba-aba Owner**
+**Status:** 📝 **Tahap 0 selesai 2026-09-21** (jalur lama dihapus `ed19ba1`; pagar `folder:*` + `pagarFolder.cjs`, uji serangan 33/33, uji Owner 4/4 — [log](../project-memory/changelog/2026-09-21-folder-kerja-tahap0-pagar.md)); **Tahap 1 selesai 2026-09-22** (baca saja: folder_list/read/search berpagar, putaran alat ≤4, label dari berkas terbukti dibaca; live `gabut/engine` + pagar DevTools — [log Tahap 1](../project-memory/changelog/2026-09-22-folder-kerja-tahap1-baca.md)); Tahap 2 menunggu aba-aba Owner
 **Tanggal:** 2026-09-15
 **Roadmap Index:** Item 85
 
@@ -149,15 +149,18 @@ cara pipeline sekarang memproses jawaban (JSON/hybrid dengan nalar).
       (perintah PowerShell dari alamat mentah di `CommandRegistry.js`).
 
 ### Tahap 1 — Baca Saja
-- [ ] 📁 hanya tampil di `ws-assistant`; alamat disimpan & dipulihkan tanpa kunci bertitik dua (mis. `localStorage`
-      langsung atau berkas pengaturan di proses utama).
-- [ ] Payload membawa penanda folder aktif; server menambah blok "FOLDER KERJA AKTIF" + alat `folder_list`,
-      `folder_read`, `folder_search`.
-- [ ] Putaran alat: jawaban AI → desktop menjalankan alat baca → hasil kembali ke AI (dengan akun & riwayat) → jawaban
-      akhir. Batas jumlah putaran per pesan.
-- [ ] Tampilan langkah di chat ("📂 membaca `src/app.js`").
+- [x] 📁 hanya tampil di `ws-assistant`; alamat disimpan & dipulihkan tanpa kunci bertitik dua. ✅ `FolderKerjaTombol.jsx`; akar di `userData/folder-kerja.json` (proses utama), disahkan ulang saat dibuka; `FolderSelector.jsx` dihapus.
+- [x] Payload membawa penanda folder aktif; server menambah blok "FOLDER KERJA AKTIF" + alat `folder_list`,
+      `folder_read`, `folder_search`. ✅ format alat diputuskan: tag `<alat_folder>{JSON}</alat_folder>` (`folderKerjaAlat.js`).
+- [x] Putaran alat: jawaban AI → desktop menjalankan alat baca → hasil kembali ke AI (dengan akun & riwayat) → jawaban
+      akhir. Batas jumlah putaran per pesan. ✅ 4 putaran, 5 alat/putaran, 150 KB isi/pertanyaan. **Tambahan:** label
+      VERIFIED dari berkas yang terbukti dibaca (`sumberDariHasilAlat` di pemeriksa label server).
+- [x] Tampilan langkah di chat ("📂 membaca `src/app.js`"). ✅ + daftar berkas yang dibaca di bawah jawaban akhir.
 - **Kriteria selesai:** "jelaskan isi folder ini", "cari di mana fungsi X", dan "ringkas dokumen Y di folder" terjawab
   dari isi berkas nyata; permintaan membaca `..\` atau `C:\Windows` ditolak di proses utama (bukti log).
+  ✅ live: ketiganya terjawab tepat (baris 177 / 8–27 dicek ke berkas), label VERIFIED; `..\..\…\.env` & `C:\Windows\win.ini`
+  → `ok:false` di proses utama (DevTools). **Sisa kecil:** biaya putaran lanjutan (tingkat model Besar) — keputusan
+  Owner; panel Memory Context menampilkan pesan hasil alat sebagai "query terakhir".
 
 ### Tahap 2 — Tulis & Perbarui
 - [ ] Alat `folder_write`, `folder_edit`, `folder_mkdir`, `folder_rename`, `folder_delete` lewat `CommandRegistry`

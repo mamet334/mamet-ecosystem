@@ -13,6 +13,7 @@ import { rapikanRiwayat } from './history_compressor.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { konteksWaktuPengguna, zonaWaktuSah } from './waktu_pengguna.ts';
 import { bersihkanRiwayatDataTabel } from '../../../../../frontend/src/core/runtime/services/dataTabelAsnSaring.js';
+import { blokPromptFolder } from '../../../../../frontend/src/core/runtime/services/folderKerjaAlat.js';
 
 
 /**
@@ -166,7 +167,7 @@ export async function executeRequestPipeline(
 
   console.log("[L1] auth binding", { actualAuthId: ctx.auth.userId, appSource: ctx.auth.appSource, message: parsed.message ? parsed.message.substring(0, 50) + '...' : null });
 
-  ctx.request = { ...ctx.request, tools: parsed.tools, model: parsed.model, stream: parsed.stream, history: parsed.history, globalMemory: parsed.globalMemory, semanticContext: parsed.semanticContext || '', extractedImage: parsed.extractedImage, guardianPromptDirective: parsed.guardianPromptDirective, desktopOSMode: parsed.desktopOSMode, auditMode: parsed.auditMode, ragEnabled: parsed.ragEnabled, memoryEnabled: parsed.memoryEnabled, dataTabel: parsed.dataTabel === true, workspaceTarget: parsed.workspaceTarget, storageTarget: parsed.storageTarget, finalMessage: parsed.finalMessage };
+  ctx.request = { ...ctx.request, tools: parsed.tools, model: parsed.model, stream: parsed.stream, history: parsed.history, globalMemory: parsed.globalMemory, semanticContext: parsed.semanticContext || '', extractedImage: parsed.extractedImage, guardianPromptDirective: parsed.guardianPromptDirective, desktopOSMode: parsed.desktopOSMode, auditMode: parsed.auditMode, ragEnabled: parsed.ragEnabled, memoryEnabled: parsed.memoryEnabled, dataTabel: parsed.dataTabel === true, folderKerja: parsed.folderKerja, workspaceTarget: parsed.workspaceTarget, storageTarget: parsed.storageTarget, finalMessage: parsed.finalMessage };
 
   const policyResponse = enforcePolicy(ctx, !!parsed.stream, corsHeaders);
   if (policyResponse) return { ctx: {} as any, rctx: {} as any, response: policyResponse };
@@ -395,6 +396,13 @@ Wajib ikuti struktur persis seperti contoh di atas!`;
   }
 
   ctx.request.agentIdentityPrompt = agentIdentityPrompt;
+
+  // FOLDER KERJA ASSISTANT (Item 85 Tahap 1): desktop hanya mengirim NAMA folder; blok ini memberi tahu AI cara meminta
+  // alat baca (<alat_folder>{…}</alat_folder>). Alat dijalankan desktop di proses utama Electron (berpagar), bukan di sini.
+  if (parsed.folderKerja) {
+    ctx.request.agentIdentityPrompt += blokPromptFolder(parsed.folderKerja.nama, parsed.folderKerja.putaran);
+    console.log(`[FolderKerja] aktif "${parsed.folderKerja.nama}" · putaran alat ${parsed.folderKerja.putaran}`);
+  }
 
   // =============================================
   // [ENGINEER MODE] Tambahkan instruksi khusus patch proposal

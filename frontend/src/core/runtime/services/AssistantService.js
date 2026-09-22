@@ -22,6 +22,11 @@ const AGENT_ENDPOINT = 'https://uuyzdjifhdfyyvpxsofu.supabase.co/functions/v1/ag
 
 import { supabase } from '../../../supabase.js';
 import { statusLaptop, kirimKeLaptop, sidikJari, cariDiCache, KUOTA_CACHE_MB } from './remoteConversionClient.js';
+import { ambilPermintaanAlat, susunPesanHasil, namaFolderAman, MAKS_PUTARAN } from './folderKerjaAlat.js';
+
+// Folder kerja (Item 85 Tahap 1): batas total isi berkas yang dibaca per pertanyaan (semua putaran) — riwayat ikut
+// membawa hasil putaran sebelumnya, jadi tanpa batas ini 4 putaran × 5 berkas × 60 KB bisa ±1,2 MB ke model.
+const FOLDER_BATAS_BACA_BYTE = 150 * 1024;
 
 // PR#2: Import governor dari versi JS lokal (bukan cross-boundary ke lib/ TypeScript)
 import {
@@ -325,6 +330,18 @@ export class AssistantService {
    * Hanya: resolve mode → memory trigger → classify → dispatch.
    * Logic berat ada di _handleLookup() dan _handleConversation().
    */
+  /** Folder kerja aktif dari proses utama Electron: {nama} atau null (bukan Assistant / bukan desktop / tidak dipilih). */
+  async _statusFolderKerja(workspaceId) {
+    if (workspaceId !== 'ws-assistant' || typeof window === 'undefined' || !window.electronAPI?.folderKerja) return null;
+    try {
+      const s = await window.electronAPI.folderKerja.status();
+      const nama = s?.aktif ? namaFolderAman(s.nama) : null;
+      return nama ? { nama } : null;
+    } catch {
+      return null;
+    }
+  }
+
   async processMessage({
     userMsg,
     history,
@@ -339,7 +356,12 @@ export class AssistantService {
     onNalar, // hybrid: nalar mengalir sebelum jawaban (hanya jalur CONVERSATION dengan Thinking menyala)
     modelTierOverride = null,
     _isPostHocWebRetry = false,
-    _injectedKnowledgeContext = ''
+    _injectedKnowledgeContext = '',
+    // Folder kerja (Item 85 Tahap 1) — diisi putaran alat sendiri, bukan pemanggil luar.
+    _folderPutaran = 0,
+    _folderPertanyaan = null,
+    _folderDibaca = null,
+    _folderByte = 0
   }) {
     if (!userMsg || !token) {
       onError?.('Pesan atau token tidak tersedia.');
@@ -351,12 +373,56 @@ export class AssistantService {
     // 1. Resolve mode
     const { resolvedMode, resolvedAppSource } = this.resolveMode(workspaceId);
 
-    // 2. PR#8: Classify request type (deterministic, 0 LLM cost)
+    // FOLDER KERJA (Item 85 Tahap 1): status dibaca dari PROSES UTAMA setiap pesan (bukan dari layar). Hanya
+    // Assistant & hanya di Electron. Server menerima NAMA folder saja.
+    const folderKerja = await this._statusFolderKerja(workspaceId);
+    const pertanyaanAsli = _folderPertanyaan || userMsg;
+    const dibaca = _folderDibaca || [];
+    if (folderKerja) {
+      const onDoneAsli = onDone;
+      onDone = async (finalText, steps, jsonMetadata, extras = {}) => {
+        const { permintaan, galat } = ambilPermintaanAlat(finalText);
+        if (permintaan.length && _folderPutaran < MAKS_PUTARAN) {
+          const putaran = _folderPutaran + 1;
+          const hasil = [];
+          let byte = _folderByte;
+          for (const p of permintaan) {
+            const label = p.alat === 'folder_search' ? `🔎 mencari "${p.kueri}"` : p.alat === 'folder_list' ? `📂 melihat isi \`${p.alamat || '.'}\`` : `📄 membaca \`${p.alamat}\``;
+            onChunk?.(`${label}…`, `_${label}… (putaran ${putaran}/${MAKS_PUTARAN})_`, steps || []);
+            let h;
+            if (p.alat === 'folder_read' && byte >= FOLDER_BATAS_BACA_BYTE) {
+              h = { ok: false, alat: p.alat, alamat: p.alamat, alasan: `batas baca per pertanyaan (${FOLDER_BATAS_BACA_BYTE / 1024} KB) tercapai — jawab dari yang sudah dibaca` };
+            } else {
+              try { h = await window.electronAPI.folderKerja.alat(p); }
+              catch (e) { h = { ok: false, alat: p.alat, alamat: p.alamat, alasan: `alat gagal: ${e.message || e}` }; }
+            }
+            if (h?.ok && h.alat === 'folder_read') { byte += (h.isi || '').length; if (!dibaca.includes(h.alamat)) dibaca.push(h.alamat); }
+            hasil.push(h);
+          }
+          const pesanHasil = susunPesanHasil(hasil, { putaran, pertanyaanAsli, galat });
+          return this.processMessage({
+            userMsg: pesanHasil,
+            history: [...(history || []), { role: 'model', content: finalText }, { role: 'user', content: pesanHasil }],
+            workspaceId, userId, token, attachedFile: null, workspaceManager,
+            onChunk, onDone: onDoneAsli, onError, onNalar, modelTierOverride,
+            _folderPutaran: putaran, _folderPertanyaan: pertanyaanAsli, _folderDibaca: dibaca, _folderByte: byte,
+          });
+        }
+        // Jawaban akhir: tag yang tersisa (putaran habis) dibuang, berkas yang benar-benar dibaca disebut apa adanya.
+        let teks = permintaan.length ? ambilPermintaanAlat(finalText).teksTanpaTag + `\n\n_⚠️ Batas ${MAKS_PUTARAN} putaran alat folder tercapai — sebagian permintaan baca tidak dijalankan._` : finalText;
+        if (_folderPutaran > 0) teks += `\n\n---\n📂 _Dibaca dari folder **${folderKerja.nama}** (${_folderPutaran} putaran): ${dibaca.length ? dibaca.map((d) => `\`${d}\``).join(', ') : 'daftar/pencarian saja'}_`;
+        return onDoneAsli?.(teks, steps, jsonMetadata, extras);
+      };
+    }
+
+    // 2. PR#8: Classify request type (deterministic, 0 LLM cost). Putaran lanjutan folder kerja selalu CONVERSATION:
+    // pesannya berisi hasil alat, bukan perintah pengguna (tidak boleh terbaca sebagai "ingat …" atau DOC_CONVERT).
     const classifier = this.serviceManager.has('RequestClassifierService')
       ? this.serviceManager.get('RequestClassifierService')
       : null;
-    const classifiedResult = classifier?.classify(userMsg, history, resolvedMode)
-      || { type: 'CONVERSATION', metadata: {} };
+    const classifiedResult = _folderPutaran > 0
+      ? { type: 'CONVERSATION', metadata: {} }
+      : (classifier?.classify(userMsg, history, resolvedMode) || { type: 'CONVERSATION', metadata: {} });
     const requestType = classifiedResult.type;
     const classifierMeta = classifiedResult.metadata || {};
 
@@ -365,7 +431,8 @@ export class AssistantService {
       userMsg, history, workspaceId, userId, token,
       attachedFile, workspaceManager, onChunk, onDone, onError, onNalar,
       resolvedMode, resolvedAppSource, modelTierOverride,
-      _isPostHocWebRetry, _injectedKnowledgeContext
+      _isPostHocWebRetry, _injectedKnowledgeContext,
+      _folderKerja: folderKerja ? { nama: folderKerja.nama, putaran: _folderPutaran } : null
     };
 
     // Dispatch MEMORY_STORE (PR#8 Intent Unification)
@@ -610,7 +677,7 @@ export class AssistantService {
    */
   async _handleLookup({
     userMsg, history, workspaceId, userId, token, workspaceManager,
-    resolvedMode, resolvedAppSource, onChunk, onDone, onError
+    resolvedMode, resolvedAppSource, onChunk, onDone, onError, _folderKerja = null
   }) {
     console.log('[AssistantService] PR#8 → _handleLookup (skip memory/semantic; dokumen dicari server bila RAG nyala)');
 
@@ -665,6 +732,8 @@ export class AssistantService {
       // Data Tabel (Item 92 Tahap 3): bendera tersendiri, BUKAN lewat `tools` — daftar tools juga menyaring sub-agent
       // Coordinator, jadi ['data_tabel'] akan diam-diam mematikan pencarian web.
       dataTabel: dataTabelToolEnabled && !lookupLite ? true : undefined,
+      // Folder kerja (Item 85 Tahap 1): NAMA saja — alamat lengkap tetap di proses utama desktop.
+      folderKerja: _folderKerja || undefined,
       cache_hint: true,
       _request_type: 'LOOKUP'
     };
@@ -920,9 +989,12 @@ export class AssistantService {
     userMsg, history, workspaceId, userId, token,
     attachedFile, workspaceManager, resolvedMode, resolvedAppSource,
     onChunk, onDone, onError, onNalar, modelTierOverride = null,
-    _isPostHocWebRetry = false, _injectedKnowledgeContext = ''
+    _isPostHocWebRetry = false, _injectedKnowledgeContext = '', _folderKerja = null
   }) {
     const isEngineerMode = resolvedMode === 'ENGINEER';
+    // Putaran lanjutan folder kerja: pesannya = hasil alat (bisa puluhan KB) — RAG & Data Tabel tidak dijalankan ulang
+    // atasnya (embedding & perencana atas isi berkas tak berguna dan berbayar).
+    const folderLanjutan = (_folderKerja?.putaran || 0) > 0;
     const isLiteMode = resolvedMode === 'LITE';
 
     console.log(`[AssistantService] Mode check: workspace=${workspaceId}, resolvedMode=${resolvedMode}`);
@@ -1094,7 +1166,7 @@ export class AssistantService {
       stream: false,
       // Hybrid (2026-09-14): nalar dialirkan lebih dulu, jawaban tetap JSON utuh — hanya bila Thinking menyala.
       streamNalar: aiThinking === true,
-      ragEnabled: ragToolEnabled && !lanjutanTerpotong,
+      ragEnabled: ragToolEnabled && !lanjutanTerpotong && !folderLanjutan,
       memoryEnabled: memoryToolEnabled, // false → server tidak membaca/menulis memori & blok kesadaran menyesuaikan
       model: formattedModel || undefined,
       thinking: aiThinking, // true/false tier dikirim apa adanya; false kini mematikan nalar di OpenRouter (2026-09-13)
@@ -1108,7 +1180,9 @@ export class AssistantService {
         : (deepResearchToolEnabled && !isEngineerMode ? ['deep_research'] : undefined),
       // Data Tabel (Item 92 Tahap 3): bendera tersendiri, BUKAN lewat `tools` — daftar tools juga menyaring sub-agent
       // Coordinator, jadi ['data_tabel'] akan diam-diam mematikan pencarian web.
-      dataTabel: dataTabelToolEnabled && !isLiteMode && !isEngineerMode ? true : undefined,
+      dataTabel: dataTabelToolEnabled && !isLiteMode && !isEngineerMode && !folderLanjutan ? true : undefined,
+      // Folder kerja (Item 85 Tahap 1): NAMA saja — alamat lengkap tetap di proses utama desktop.
+      folderKerja: _folderKerja || undefined,
       cache_hint: true,
       _token_meta: { estimated_before: tokensBefore, estimated_after: tokensAfter, saved: tokensSaved },
       _request_type: 'CONVERSATION'

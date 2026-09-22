@@ -38,6 +38,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     pilih: () => ipcRenderer.invoke('folder:pilih'),
     status: () => ipcRenderer.invoke('folder:status'),
     lepas: () => ipcRenderer.invoke('folder:lepas'),
+    // Tahap 1: alat baca — { alat: 'folder_list'|'folder_read'|'folder_search', alamat, kueri, dari, sampai }
+    alat: (permintaan) => ipcRenderer.invoke('folder:alat', permintaan),
   },
 
   // =============================================

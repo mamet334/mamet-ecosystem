@@ -743,22 +743,56 @@ ipcMain.handle('select-folder', async () => {
 // tidak pernah diterima dari layar — dan layar hanya menerima namanya. Alat folder (Tahap 1+) wajib memakai
 // alamatDalamPagar(folderKerjaAkar, relatif); jalur `fs:*` & `edit-file-surgical` tidak berpagar dan bukan untuk ini.
 const { akarFolderSah } = require('./pagarFolder.cjs');
+const { jalankanAlat } = require('./alatFolder.cjs');
 let folderKerjaAkar = null;
+
+// Tahap 1: pilihan folder diingat di berkas pengaturan proses utama (bukan StorageManager — kunci bertitik dua) dan
+// DISAHKAN ULANG lewat akarFolderSah saat aplikasi dibuka: folder yang sudah dihapus/dipindah tidak dipakai diam-diam.
+const berkasFolderKerja = () => path.join(app.getPath('userData'), 'folder-kerja.json');
+function simpanFolderKerja() {
+  try { fs.writeFileSync(berkasFolderKerja(), JSON.stringify({ akar: folderKerjaAkar }), 'utf8'); }
+  catch (e) { console.warn('[FOLDER] Gagal menyimpan pilihan folder:', e.message); }
+}
+function pulihkanFolderKerja() {
+  try {
+    const { akar } = JSON.parse(fs.readFileSync(berkasFolderKerja(), 'utf8'));
+    if (!akar) return;
+    const sah = akarFolderSah(akar);
+    if (sah.ok) { folderKerjaAkar = sah.akar; console.log(`[FOLDER] Folder kerja dipulihkan: "${sah.nama}"`); }
+    else console.warn(`[FOLDER] Folder kerja tersimpan tidak dipakai: ${sah.alasan}`);
+  } catch { /* belum pernah dipilih */ }
+}
+app.whenReady().then(pulihkanFolderKerja);
+
+const statusFolder = () => ({ aktif: !!folderKerjaAkar, nama: folderKerjaAkar ? path.basename(folderKerjaAkar) : null });
 
 ipcMain.handle('folder:pilih', async () => {
   const result = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'] });
-  if (result.canceled || !result.filePaths[0]) return { aktif: !!folderKerjaAkar, nama: folderKerjaAkar ? path.basename(folderKerjaAkar) : null, dibatalkan: true };
+  if (result.canceled || !result.filePaths[0]) return { ...statusFolder(), dibatalkan: true };
   const sah = akarFolderSah(result.filePaths[0]);
-  if (!sah.ok) return { aktif: !!folderKerjaAkar, nama: folderKerjaAkar ? path.basename(folderKerjaAkar) : null, ditolak: sah.alasan };
+  if (!sah.ok) return { ...statusFolder(), ditolak: sah.alasan };
   folderKerjaAkar = sah.akar;
+  simpanFolderKerja();
   return { aktif: true, nama: sah.nama };
 });
 
-ipcMain.handle('folder:status', () => ({ aktif: !!folderKerjaAkar, nama: folderKerjaAkar ? path.basename(folderKerjaAkar) : null }));
+ipcMain.handle('folder:status', () => statusFolder());
 
 ipcMain.handle('folder:lepas', () => {
   folderKerjaAkar = null;
+  simpanFolderKerja();
   return { aktif: false, nama: null };
+});
+
+// Alat BACA (folder_list / folder_read / folder_search). Akar diambil dari variabel proses utama — permintaan dari
+// layar hanya membawa alamat relatif. Setiap panggilan dicatat (bukti penolakan di luar pagar).
+ipcMain.handle('folder:alat', (_event, permintaan) => {
+  const p = permintaan && typeof permintaan === 'object' ? permintaan : {};
+  let hasil;
+  try { hasil = jalankanAlat(folderKerjaAkar, p); }
+  catch (e) { hasil = { ok: false, alat: p.alat, alamat: p.alamat, alasan: `galat: ${e.code || e.message}` }; }
+  console.log(`[FOLDER] ${p.alat} "${p.alamat ?? p.kueri ?? '.'}" → ${hasil.ok ? 'OK' : `DITOLAK: ${hasil.alasan}`}`);
+  return hasil;
 });
 
 // 4. Check for updates manually

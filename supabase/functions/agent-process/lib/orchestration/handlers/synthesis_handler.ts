@@ -4,6 +4,7 @@ import { VerificationEngine } from '../../verification/verification_engine.ts';
 import { persistTelemetryLog } from '../../verification/verification_service.ts';
 import { eventBus } from '../../event/event_bus.ts';
 import { koreksiLabel } from '../../verification/label_sumber.ts';
+import { sumberDariHasilAlat } from '../../../../../../frontend/src/core/runtime/services/folderKerjaAlat.js';
 import { tutupJawabanDataTabel } from '../../data_tabel/data_tabel.ts';
 import { sisipkanNalar } from '../../adapters/reasoning_openrouter.ts';
 import { CATATAN_TERPOTONG, susunBahanLanjutan, susunPromptLanjutan, tenggatJawaban } from '../../streaming/batas_waktu.ts';
@@ -60,6 +61,18 @@ export const SynthesisHandler = {
     const isiDokumen: string[] = (ctx.state.ragArray || [])
       .map((r: any) => r.contentWithId || r.content)
       .filter((t: any) => typeof t === 'string' && t.trim());
+    // Folder kerja (Item 85 Tahap 1): berkas yang TERBUKTI dibaca alat (pesan hasil alat kini + riwayat) ikut menjadi
+    // sumber sah — tanpa ini jawaban dari isi berkas nyata selalu diturunkan ("tidak mengutip dokumen"). Pemeriksaan
+    // tetap sama: nama berkas harus disebut di baris Sumber, angka jawaban harus ada di isi berkas/daftar.
+    if ((ctx.request as any).folderKerja?.putaran > 0) {
+      const sumberFolder = sumberDariHasilAlat([
+        ctx.request.originalMessage || ctx.request.finalMessage,
+        ...(history || []).filter((h: any) => h?.role === 'user').map((h: any) => String(h.content || '')),
+      ]);
+      judulDokumen.push(...sumberFolder.judul);
+      isiDokumen.push(...sumberFolder.isi);
+      ctx.state.processingSteps.push(`📂 Sumber folder kerja untuk pemeriksa label: ${sumberFolder.judul.length} berkas dibaca`);
+    }
     let replyMessage = 'Gagal memproses jawaban.';
 
     if (lanjutan) {

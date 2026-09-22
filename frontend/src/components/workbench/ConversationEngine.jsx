@@ -5,7 +5,7 @@ import { supabase } from '../../supabase';
 import { tautanUnduh } from '../../core/runtime/services/remoteConversionClient';
 import RiwayatKonversi from './RiwayatKonversi';
 import { kernel } from '../../core/runtime/Kernel';
-import FolderSelector from '../FolderSelector';
+import FolderKerjaTombol from './FolderKerjaTombol';
 import ChatHistory from './ChatHistory';
 import MemoryContextPanel from './MemoryContextPanel';
 
@@ -132,7 +132,6 @@ export default function ConversationEngine({ sessionId }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedFolder, setSelectedFolder] = useState('');
   const [copiedIndex, setCopiedIndex] = useState(null);
   // currentChatId diinisialisasi null — ID chat di-restore via useEffect setelah
   // chatStorageKey tersedia (workspace diketahui). Ini mencegah tiga instance
@@ -1703,14 +1702,10 @@ export default function ConversationEngine({ sessionId }) {
               )}
 
               <form onSubmit={handleSend} className="w-full max-w-3xl relative flex items-center gap-1.5 bg-surface-container-low border border-outline-variant rounded-2xl p-1.5 focus-within:border-primary transition-all shadow-lg pulse-focus">
-                {/* Compact Folder Picker di dalam baris input */}
-                {(workspaceManager?.activeWorkspaceId === 'ws-engineer' || workspaceManager?.activeWorkspaceId === 'ws-assistant') && (
+                {/* 📁 Folder kerja — hanya Assistant (Item 85; Engineer tetap bekerja di repo Mamet) */}
+                {workspaceManager?.activeWorkspaceId === 'ws-assistant' && (
                   <div className="shrink-0 ml-1">
-                    <FolderSelector
-                      compact={true}
-                      onSelect={(path) => setSelectedFolder(path)}
-                      currentPath={selectedFolder}
-                    />
+                    <FolderKerjaTombol />
                   </div>
                 )}
 
