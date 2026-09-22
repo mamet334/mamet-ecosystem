@@ -148,6 +148,7 @@ export function buildUniversalContract(params: ContractBuilderInput): UniversalE
     constraint,
     outputContract,
     systemBasePrompt,
+    hasilAlatFolder: params.hasilAlatFolder === true,
     asSystemPromptText: () => renderContractAsText(contract, confidenceReport),
   };
 
@@ -298,6 +299,17 @@ function renderContractAsText(
       text += `- [STATUS: HYPOTHESIS - Rekomendasi AI] (jika memberikan jawaban dari analisis/pengetahuan internal)\n`;
       text += `- [STATUS: INSUFFICIENT] (jika tidak tahu atau data tidak ditemukan)\n`;
     }
+  }
+
+  // Item 85 Tahap 3 (live 2026-09-22): tanpa blok ini laporan tindakan folder kerja ("app.py diedit, python app.py →
+  // Jumlah: 27", "perintah ditolak") selalu berlabel HYPOTHESIS — BLOK 6 hanya mengakui dokumen BLOK 4/<RAG>, jadi model
+  // yang patuh tak punya pilihan lain. Hasil alat dicatat proses utama; pemeriksa label (label_sumber.ts +
+  // sumberDariHasilAlat) membuktikan Sumber & angka terhadap pesan hasil itu, sama ketatnya dengan dokumen.
+  if (contract.hasilAlatFolder) {
+    text += `\n[LABEL UNTUK HASIL ALAT FOLDER KERJA]\n`;
+    text += `Pesan "[HASIL ALAT FOLDER]" di percakapan ini dicatat oleh proses utama aplikasi di laptop pengguna — untuk label, statusnya SETARA dokumen BLOK 4: isi berkas yang dibaca (folder_read), perubahan yang tercatat BERHASIL atau DITOLAK, dan keluaran perintah (folder_run). Aturan ini menggantikan syarat "dokumen BLOK 4/<RAG>" di atas khusus untuk hasil alat folder.\n`;
+    text += `- Inti jawaban melaporkan isi berkas, perubahan, penolakan, atau keluaran perintah persis seperti tercatat → [STATUS: VERIFIED] dengan baris Sumber: yang menyebut alamat berkas atau perintah persis seperti di kepala hasil, mis. Sumber: \`app.py\`, \`python app.py\`. Angka yang Anda sebut harus tertulis di hasil itu.\n`;
+    text += `- Inti jawaban berupa saran, tafsiran, atau rencana Anda sendiri → [STATUS: HYPOTHESIS - Rekomendasi AI].\n`;
   }
 
 

@@ -39,8 +39,8 @@ export default function FolderKerjaTombol() {
           ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25'
           : 'text-on-surface-variant hover:bg-surface-container-high'}`}
         title={status.aktif
-          ? `Folder kerja: ${status.nama} — Mamet bisa MEMBACA isinya dan MENGUBAHNYA setelah Anda izinkan di dialog (hapus = ke Recycle Bin). Isi berkas yang dibaca ikut terkirim ke penyedia model. Klik untuk ganti.`
-          : 'Pilih folder kerja — Mamet bisa membaca isinya, dan mengubahnya hanya dengan izin Anda'}
+          ? `Folder kerja: ${status.nama} — Mamet bisa MEMBACA isinya, serta MENGUBAHNYA dan MENJALANKAN program (python, node, git, …) setelah Anda izinkan di dialog (hapus = ke Recycle Bin). Isi berkas & keluaran perintah ikut terkirim ke penyedia model. Klik untuk ganti.`
+          : 'Pilih folder kerja — Mamet bisa membaca isinya, lalu mengubah atau menjalankan program hanya dengan izin Anda'}
       >
         {status.aktif ? <FolderOpen className="w-4 h-4" /> : <Folder className="w-4 h-4" />}
         {status.aktif && <span className="text-[11px] max-w-[120px] truncate">{status.nama}</span>}

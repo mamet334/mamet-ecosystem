@@ -2,7 +2,7 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Desktop Assistant (`ConversationEngine.jsx`, `AssistantService.js`, `electron/main.cjs`, `preload.cjs`) & `agent-process`
-**Status:** 📝 **Tahap 0 selesai 2026-09-21** (jalur lama dihapus `ed19ba1`; pagar `folder:*` + `pagarFolder.cjs`, uji serangan 33/33, uji Owner 4/4 — [log](../project-memory/changelog/2026-09-21-folder-kerja-tahap0-pagar.md)); **Tahap 1 selesai 2026-09-22** (baca saja: folder_list/read/search berpagar, putaran alat ≤4, label dari berkas terbukti dibaca; live `gabut/engine` + pagar DevTools — [log Tahap 1](../project-memory/changelog/2026-09-22-folder-kerja-tahap1-baca.md)); **Tahap 2 selesai 2026-09-22** (tulis/edit/mkdir/rename/hapus-ke-Recycle-Bin berpagar, dialog izin asli proses utama; live `uji-folder-kerja` + pagar DevTools — [log Tahap 2](../project-memory/changelog/2026-09-22-folder-kerja-tahap2-tulis.md)); Tahap 3 menunggu aba-aba Owner
+**Status:** ✅ **Tahap 0 selesai 2026-09-21** (jalur lama dihapus `ed19ba1`; pagar `folder:*` + `pagarFolder.cjs`, uji serangan 33/33, uji Owner 4/4 — [log](../project-memory/changelog/2026-09-21-folder-kerja-tahap0-pagar.md)); **Tahap 1 selesai 2026-09-22** (baca saja: folder_list/read/search berpagar, putaran alat ≤4, label dari berkas terbukti dibaca; live `gabut/engine` + pagar DevTools — [log Tahap 1](../project-memory/changelog/2026-09-22-folder-kerja-tahap1-baca.md)); **Tahap 2 selesai 2026-09-22** (tulis/edit/mkdir/rename/hapus-ke-Recycle-Bin berpagar, dialog izin asli proses utama; live `uji-folder-kerja` + pagar DevTools — [log Tahap 2](../project-memory/changelog/2026-09-22-folder-kerja-tahap2-tulis.md)); ✅ **Tahap 3 selesai 2026-09-22 — Item 85 selesai** (folder_run: daftar izin tanpa shell, dialog izin; `.git` terkunci; kejujuran laporan tindakan & label hasil alat — [log Tahap 3](../project-memory/changelog/2026-09-22-folder-kerja-tahap3-jalankan.md))
 **Tanggal:** 2026-09-15
 **Roadmap Index:** Item 85
 
@@ -174,9 +174,15 @@ cara pipeline sekarang memproses jawaban (JSON/hybrid dengan nalar).
   ditolak; `..\bocor.txt` ditolak model & proses utama (DevTools), tanpa berkas.
 
 ### Tahap 3 — Perintah
-- [ ] `folder_run` dengan `cwd` = folder kerja, dialog izin & blocklist tetap.
+- [x] `folder_run` dengan `cwd` = folder kerja, dialog izin & blocklist tetap. ✅ **Penyimpangan:** blocklist diganti
+      **daftar izin program + tanpa shell** (`alatFolderJalan.cjs`, `spawn` shell:false, `.exe` dicari sendiri di PATH
+      di luar folder kerja, lingkungan tanpa rahasia, batas waktu mematikan pohon proses); `.git` tak bisa ditulis.
 - **Kriteria selesai:** perintah berjalan di folder terpilih (bukti keluaran `cd`/`dir`), rangkaian perintah berbahaya
   tetap diblokir.
+  ✅ live: `python app.py` → Jumlah 27 / Rata-rata 9.0 (VERIFIED, `Sumber: python app.py`); `git status` kode 128
+  apa adanya; Tolak → tidak jalan; `cmd dir` tidak lolos. `cd`/`dir` tidak dipakai (bawaan cmd = butuh shell) —
+  isi folder lewat `folder_list`. Ikut diperbaiki: catatan kaki tiruan, klaim tanpa alat (peringatan + putaran
+  koreksi), blok ```json diterima, label hasil alat — [log Tahap 3](../project-memory/changelog/2026-09-22-folder-kerja-tahap3-jalankan.md).
 
 ---
 

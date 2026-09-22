@@ -36,6 +36,9 @@ function sahkan(akar, alat, relatif, { bukanAkar = true, cekEkstensi = false } =
   const p = alamatDalamPagar(akar, relatif);
   if (!p.ok) return gagal(alat, relatif, p.alasan);
   if (bukanAkar && p.relatif === '.') return gagal(alat, relatif, 'akar folder kerja tidak boleh diubah, diganti nama, atau dihapus');
+  // Tahap 3: .git berisi hook & konfigurasi yang DIJALANKAN git — menulis di sana membuat "git status/commit" di dialog
+  // izin tampak aman padahal menjalankan kode tersembunyi.
+  if (p.relatif.split(path.sep).some((b) => b.toLowerCase() === '.git')) return gagal(alat, relUnix(p.relatif), 'isi folder .git tidak boleh diubah oleh alat folder (hook & konfigurasi git dijalankan otomatis)');
   if (cekEkstensi && terlarang(p.alamat)) return gagal(alat, relUnix(p.relatif), `ekstensi ${path.extname(p.alamat)} bisa dijalankan — tidak boleh ditulis oleh alat folder`);
   return { ok: true, alamat: p.alamat, rel: relUnix(p.relatif) };
 }

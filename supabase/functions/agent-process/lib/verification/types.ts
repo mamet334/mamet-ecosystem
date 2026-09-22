@@ -190,6 +190,7 @@ export interface UniversalEvidenceContract {
   constraint: ConstraintBlock;
   outputContract: OutputContractBlock;
   systemBasePrompt: string; // Instruksi dasar (Identity, Sub-Agents, Fitur Zip/Chart)
+  hasilAlatFolder?: boolean; // Item 85 Tahap 3: putaran lanjutan folder kerja — hasil alat menjadi sumber label
   // Full text rendition — siap dikirim ke LLM
   asSystemPromptText: () => string;
 }
@@ -214,4 +215,5 @@ export interface ContractBuilderInput {
   policyForbidden: string[];
   systemBasePrompt: string;
   activeConflicts?: number;
+  hasilAlatFolder?: boolean;
 }

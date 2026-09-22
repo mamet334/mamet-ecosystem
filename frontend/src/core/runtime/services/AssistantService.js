@@ -22,7 +22,7 @@ const AGENT_ENDPOINT = 'https://uuyzdjifhdfyyvpxsofu.supabase.co/functions/v1/ag
 
 import { supabase } from '../../../supabase.js';
 import { statusLaptop, kirimKeLaptop, sidikJari, cariDiCache, KUOTA_CACHE_MB } from './remoteConversionClient.js';
-import { ambilPermintaanAlat, susunPesanHasil, namaFolderAman, MAKS_PUTARAN } from './folderKerjaAlat.js';
+import { ambilPermintaanAlat, susunPesanHasil, susunPesanKoreksi, namaFolderAman, buangKakiTiruan, peringatanKlaimTanpaAlat, MAKS_PUTARAN } from './folderKerjaAlat.js';
 
 // Folder kerja (Item 85 Tahap 1): batas total isi berkas yang dibaca per pertanyaan (semua putaran) — riwayat ikut
 // membawa hasil putaran sebelumnya, jadi tanpa batas ini 4 putaran × 5 berkas × 60 KB bisa ±1,2 MB ke model.
@@ -362,7 +362,8 @@ export class AssistantService {
     _folderPertanyaan = null,
     _folderDibaca = null,
     _folderDiubah = null,
-    _folderByte = 0
+    _folderByte = 0,
+    _folderKoreksi = false
   }) {
     if (!userMsg || !token) {
       onError?.('Pesan atau token tidak tersedia.');
@@ -401,6 +402,7 @@ export class AssistantService {
               folder_mkdir: `📁 menunggu izin Anda untuk membuat folder \`${p.alamat}\``,
               folder_rename: `🔀 menunggu izin Anda untuk memindah \`${p.alamat}\` → \`${p.ke}\``,
               folder_delete: `🗑️ menunggu izin Anda untuk memindah \`${p.alamat}\` ke Recycle Bin`,
+              folder_run: `▶️ menunggu izin Anda untuk menjalankan \`${[p.program, ...(p.argumen || [])].join(' ')}\` (lihat dialog), lalu menunggu programnya selesai`,
             }[p.alat] || `⚙️ ${p.alat}`;
             onChunk?.(`${label}…`, `_${label}… (putaran ${putaran}/${MAKS_PUTARAN})_`, steps || []);
             let h;
@@ -415,6 +417,12 @@ export class AssistantService {
             if (h && ['folder_write', 'folder_edit', 'folder_mkdir', 'folder_rename', 'folder_delete'].includes(h.alat)) {
               diubah.push(`${h.ok ? '✅' : h.ditolakOwner ? '🚫 ditolak' : '⚠️ gagal'} \`${h.alamat}\``);
             }
+            // Tahap 3: perintah dicatat dari hasil proses utama — kode keluar & habis waktu apa adanya.
+            if (h?.alat === 'folder_run') {
+              const ket = h.ok ? (h.habisWaktu ? '⏱️ dihentikan (batas waktu)' : h.kodeKeluar === 0 ? '▶️ kode 0' : `⚠️ kode ${h.kodeKeluar}`) : h.ditolakOwner ? '🚫 ditolak' : '⚠️ tidak dijalankan';
+              diubah.push(`${ket} \`${h.perintah || h.alamat}\``);
+              if (h.ok) byte += (h.keluaran || '').length;
+            }
             hasil.push(h);
           }
           const pesanHasil = susunPesanHasil(hasil, { putaran, pertanyaanAsli, galat });
@@ -425,13 +433,45 @@ export class AssistantService {
             onChunk, onDone: onDoneAsli, onError, onNalar,
             modelTierOverride: modelTierOverride || infoFolder.tingkat || null,
             _folderPutaran: putaran, _folderPertanyaan: pertanyaanAsli, _folderDibaca: dibaca, _folderDiubah: diubah, _folderByte: byte,
+            _folderKoreksi, // koreksi hanya sekali per pertanyaan, termasuk sesudah putaran alat berikutnya
           });
         }
         // Jawaban akhir: tag yang tersisa (putaran habis) dibuang, berkas yang benar-benar dibaca disebut apa adanya.
-        let teks = permintaan.length ? ambilPermintaanAlat(finalText).teksTanpaTag + `\n\n_⚠️ Batas ${MAKS_PUTARAN} putaran alat folder tercapai — sebagian permintaan baca tidak dijalankan._` : finalText;
-        if (_folderPutaran > 0) {
-          teks += `\n\n---\n📂 _Dibaca dari folder **${folderKerja.nama}** (${_folderPutaran} putaran): ${dibaca.length ? dibaca.map((d) => `\`${d}\``).join(', ') : 'daftar/pencarian saja'}_`;
-          if (diubah.length) teks += `\n✍️ _Perubahan (dicatat dari proses utama, bukan dari kata model): ${diubah.join(', ')}_`;
+        // Catatan kaki tiruan buatan model dibuang dulu — hanya catatan kaki di bawah ini yang berasal dari proses utama.
+        let teks = buangKakiTiruan(permintaan.length ? ambilPermintaanAlat(finalText).teksTanpaTag : finalText);
+        if (permintaan.length) teks += `\n\n_⚠️ Batas ${MAKS_PUTARAN} putaran alat folder tercapai — sebagian permintaan alat tidak dijalankan._`;
+        // Klaim menjalankan/mengubah tanpa catatan proses utama untuk pertanyaan INI (bukan riwayat).
+        const tercatat = {
+          jalan: diubah.some((d) => /^(▶️|⚠️ kode|⏱️)/.test(d)),
+          ubah: diubah.some((d) => d.startsWith('✅')),
+        };
+        const peringatan = peringatanKlaimTanpaAlat(teks, tercatat);
+        // Live Tahap 3: aturan prompt saja kalah oleh kebiasaan meniru riwayat ("saya jalankan lagi… 27" tanpa tag,
+        // dua kali). Maka SEKALI per pertanyaan jawaban karangan itu tidak ditampilkan: model diberi putaran koreksi
+        // untuk benar-benar meminta alat (dialog izin muncul). Gagal lagi → jawaban ditampilkan dengan peringatan.
+        if (peringatan && !_folderKoreksi && _folderPutaran < MAKS_PUTARAN) {
+          const putaran = _folderPutaran + 1;
+          onChunk?.('🔁 koreksi…', `_🔁 Jawaban mengaku menjalankan/mengubah tanpa alat — meminta model mengulang dengan alat (putaran ${putaran}/${MAKS_PUTARAN})…_`, steps || []);
+          const pesanKoreksi = susunPesanKoreksi({ putaran, pertanyaanAsli, tercatat });
+          return this.processMessage({
+            userMsg: pesanKoreksi,
+            history: [...(history || []), { role: 'model', content: finalText }, { role: 'user', content: pesanKoreksi }],
+            workspaceId, userId, token, attachedFile: null, workspaceManager,
+            onChunk, onDone: onDoneAsli, onError, onNalar,
+            modelTierOverride: modelTierOverride || infoFolder.tingkat || null,
+            _folderPutaran: putaran, _folderPertanyaan: pertanyaanAsli, _folderDibaca: dibaca, _folderDiubah: diubah, _folderByte,
+            _folderKoreksi: true,
+          });
+        }
+        if (peringatan) teks += `\n\n${peringatan}`;
+        // Putaran koreksi bukan putaran alat: tanpa pengurangan ini jawaban tanpa alat apa pun bercatatan "(1 putaran):
+        // daftar/pencarian saja" (live Tahap 3).
+        const putaranAlat = _folderPutaran - (_folderKoreksi ? 1 : 0);
+        if (putaranAlat > 0) {
+          teks += `\n\n---\n📂 _Dibaca dari folder **${folderKerja.nama}** (${putaranAlat} putaran alat${_folderKoreksi ? ' + 1 koreksi sistem' : ''}): ${dibaca.length ? dibaca.map((d) => `\`${d}\``).join(', ') : 'daftar/pencarian saja'}_`;
+          if (diubah.length) teks += `\n✍️ _Perubahan & perintah (dicatat dari proses utama, bukan dari kata model): ${diubah.join(', ')}_`;
+        } else if (_folderKoreksi) {
+          teks += `\n\n---\n🔁 _Koreksi sistem: jawaban pertama mengaku menjalankan/mengubah tanpa alat dan tidak ditampilkan; tidak ada alat folder yang dijalankan._`;
         }
         return onDoneAsli?.(teks, steps, jsonMetadata, extras);
       };

@@ -789,6 +789,8 @@ ipcMain.handle('folder:lepas', () => {
 // Tahap 2: alat TULIS lewat modul terpisah; izin = dialog ASLI proses utama (tak bisa dipalsukan/dilewati layar
 // maupun model), hapus = Recycle Bin (shell.trashItem).
 const { jalankanAlatTulis, ALAT_TULIS } = require('./alatFolderTulis.cjs');
+// Tahap 3: folder_run — program dari daftar izin, tanpa shell, folder asal = folder kerja, dialog izin yang sama.
+const { jalankanAlatJalan } = require('./alatFolderJalan.cjs');
 const depsTulis = {
   mintaIzin: async ({ judul, rincian, pratinjau, berbahaya }) => {
     const { response } = await dialog.showMessageBox(mainWindow, {
@@ -810,12 +812,17 @@ ipcMain.handle('folder:alat', async (_event, permintaan) => {
   const p = permintaan && typeof permintaan === 'object' ? permintaan : {};
   let hasil;
   try {
-    hasil = ALAT_TULIS.includes(p.alat)
-      ? await jalankanAlatTulis(folderKerjaAkar, p, depsTulis)
-      : jalankanAlat(folderKerjaAkar, p);
+    hasil = p.alat === 'folder_run'
+      ? await jalankanAlatJalan(folderKerjaAkar, p, depsTulis)
+      : ALAT_TULIS.includes(p.alat)
+        ? await jalankanAlatTulis(folderKerjaAkar, p, depsTulis)
+        : jalankanAlat(folderKerjaAkar, p);
   } catch (e) { hasil = { ok: false, alat: p.alat, alamat: p.alamat, alasan: `galat: ${e.code || e.message}` }; }
-  const status = hasil.ok ? 'OK' : hasil.ditolakOwner ? 'DITOLAK OWNER' : `DITOLAK: ${hasil.alasan}`;
-  console.log(`[FOLDER] ${p.alat} "${p.alamat ?? p.kueri ?? '.'}${p.ke ? ` → ${p.ke}` : ''}" → ${status}`);
+  const status = hasil.ok
+    ? (p.alat === 'folder_run' ? `OK (kode keluar ${hasil.kodeKeluar}${hasil.habisWaktu ? ', HABIS WAKTU' : ''}, ${hasil.waktuMs} ms, ${hasil.byteKeluaran} B)` : 'OK')
+    : hasil.ditolakOwner ? 'DITOLAK OWNER' : `DITOLAK: ${hasil.alasan}`;
+  const sasaran = p.alat === 'folder_run' ? (hasil.perintah || p.program) : `${p.alamat ?? p.kueri ?? '.'}${p.ke ? ` → ${p.ke}` : ''}`;
+  console.log(`[FOLDER] ${p.alat} "${sasaran}" → ${status}`);
   return hasil;
 });
 

@@ -507,7 +507,9 @@ export const ContextBuilderHandler = {
       policyConstraints: activeConstraints,
       policyForbidden: forbidden,
       systemBasePrompt,
-      activeConflicts: activeConflictsCount
+      activeConflicts: activeConflictsCount,
+      // Item 85 Tahap 3: putaran lanjutan folder kerja membawa pesan [HASIL ALAT FOLDER] — sumber label yang sah.
+      hasilAlatFolder: ((ctx.request as any).folderKerja?.putaran || 0) > 0
     });
 
     fullSystemContext = universalContract.asSystemPromptText();
