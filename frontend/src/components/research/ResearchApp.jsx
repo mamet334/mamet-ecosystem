@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabase';
 import { kernel } from '../../core/runtime/Kernel';
-import { Search, Upload, Trash2, FileText, Loader2, Database, PlusCircle, ScanLine } from 'lucide-react';
+import { Search, Upload, Trash2, FileText, Loader2, Database, PlusCircle, ScanLine, HardDriveDownload } from 'lucide-react';
 import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from '../../core/runtime/services/documentTextExtractor.js';
 import { bacaBerkasExcelAsn, adalahExcel, EKSTENSI_EXCEL, unduhExcelJanggal } from '../../core/runtime/services/bacaExcelAsn.js';
 import PratinjauDataTabel from './PratinjauDataTabel.jsx';
@@ -13,6 +13,7 @@ import { opdDariNamaBerkas, siapkanSimpan, dugaVersi, bandingkanIsi, uraiPerbeda
 import { ambilBerkasAktif, ambilPegawaiBerkas, simpanBerkasAsn, daftarBerkasAsn, hapusBerkasAsn, ambilBahanLaporan } from '../../core/runtime/services/dataTabelAsnDb.js';
 import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN, OCR_SERENTAK } from '../../core/runtime/services/pdfOcrService.js';
 import { adalahPdf, perkiraanPdfAsn, bacaBerkasPdfAsn } from '../../core/runtime/services/bacaPdfAsn.js';
+import { buatCadangan, periksaBerkasCadangan, namaBerkasCadangan } from '../../core/runtime/services/cadanganData.js';
 
 // Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
 const POTONGAN_PERLU_KONFIRMASI = 150; // ±105 ribu huruf ≈ $0,006 (potongan 800 huruf, Item 70)
@@ -382,6 +383,53 @@ export default function ResearchApp() {
         }
     };
 
+    // CADANGAN DATA (Item 93 Tahap 1): satu berkas JSON di laptop pengguna, dibuat dengan sesi pengguna sendiri (RLS),
+    // per halaman, jumlah baris tiap tabel dicocokkan dengan database. Berkas dibaca ulang sebelum diunduh.
+    const handleCadangan = async () => {
+        const lanjut = window.confirm(
+            'Cadangkan semua data Anda ke satu berkas di laptop ini?\n\n' +
+            'Isi: workspace, dokumen + teks & vektor RAG, Data Tabel ASN, chat, memori, pemakaian API. ' +
+            'Log sistem tidak ikut. Ukuran ±40 MB.\n\n' +
+            'Berkas berisi DATA PRIBADI (nama & NIP ASN, memori, chat) — simpan di tempat aman.\n\nLanjutkan?'
+        );
+        if (!lanjut) return;
+        setUploading(true);
+        setStatusUnggah('Menyiapkan cadangan…');
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) { alert('Sesi tidak ditemukan. Silakan masuk kembali.'); return; }
+            const sekarang = new Date();
+            const { berkas, ringkas } = await buatCadangan(supabase, {
+                userId: session.user.id,
+                sekarang,
+                onKemajuan: ({ tabel, ke, total, baris }) => setStatusUnggah(`Cadangan ${ke}/${total}: ${tabel}${baris ? ` (${baris})` : ''}…`),
+            });
+            const teks = JSON.stringify(berkas);
+            // Dibaca ulang dari teks yang akan ditulis — yang diperiksa adalah isi berkas, bukan objek di memori.
+            const cek = periksaBerkasCadangan(JSON.parse(teks));
+            const url = URL.createObjectURL(new Blob([teks], { type: 'application/json' }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = namaBerkasCadangan(sekarang);
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+            const mb = (teks.length / 1048576).toFixed(1);
+            const baris = ringkas.tabel.map((t) => `${t.cocok ? '✓' : '✗'} ${t.nama}: ${t.berkas}${t.cocok ? '' : ` (database ${t.db})`}`).join('\n');
+            alert(
+                (cek.sah ? '✓ Cadangan lengkap — semua tabel cocok dengan database.' : `✗ Cadangan TIDAK lengkap:\n${cek.masalah.join('\n')}`) +
+                `\n\n${a.download} · ${mb} MB\n\n${baris}`
+            );
+        } catch (err) {
+            console.error('[ResearchApp] Gagal membuat cadangan:', err);
+            alert(`Gagal membuat cadangan — tidak ada berkas yang ditulis.\n\n${err.message || err}`);
+        } finally {
+            setUploading(false);
+            setStatusUnggah('');
+        }
+    };
+
     // Delete document
     const handleDelete = async (docId) => {
         if (deletingId) return;
@@ -437,6 +485,15 @@ export default function ResearchApp() {
 
                 {/* Upload Button */}
                 <div className="flex items-center gap-2">
+                <button
+                    onClick={handleCadangan}
+                    disabled={uploading}
+                    className="flex items-center gap-2 px-3 py-2 border border-emerald-500/40 text-emerald-200 hover:bg-emerald-500/10 rounded-lg transition-colors text-sm disabled:opacity-50"
+                    title="Unduh cadangan lengkap data Anda (Item 93)"
+                >
+                    <HardDriveDownload className="w-4 h-4" />
+                    Cadangkan data
+                </button>
                 <label className="flex items-center gap-2 px-3 py-2 border border-amber-500/40 text-amber-200 hover:bg-amber-500/10 rounded-lg cursor-pointer transition-colors text-sm" title="Berkas rekonsiliasi ASN hasil pindaian (PDF) → Data Tabel, lewat OCR">
                     <ScanLine className="w-4 h-4" />
                     PDF → Data Tabel

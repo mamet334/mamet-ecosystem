@@ -24,7 +24,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 | Item | Status | Dokumen (sisa pekerjaan ada di sana) |
 |---|---|---|
 | 92 Data tabel rekonsiliasi ASN | 📝 Tahap 1–5 ✅ (pratinjau Excel; simpan + versi; tanya-jawab chip Data Tabel, live 5/5 VERIFIED, NIP tidak ke model; laporan kejanggalan per OPD + Excel; PDF pindaian lewat OCR); sisa koreksi pemetaan (ditunda), kejanggalan lewat chat (opsional) | [`ROADMAP-DATA-TABEL-REKONSILIASI-ASN.md`](./ROADMAP-DATA-TABEL-REKONSILIASI-ASN.md) |
-| 93 Kedaulatan data | 📋 temuan RLS "baca semua" ✅ ditutup (22 Sep); Tahap 1 cadangan lengkap (temuan: backup-export tak memuat teks RAG & data ASN), Tahap 2 uji pulih ke Postgres lokal; offline penuh jangka sangat panjang | [`ROADMAP-KEDAULATAN-DATA.md`](./ROADMAP-KEDAULATAN-DATA.md) |
+| 93 Kedaulatan data | 📝 temuan RLS "baca semua" ✅ ditutup; Tahap 1 ✅ tombol "Cadangkan data" (13 tabel + vektor, terbukti 13/13 cocok; backup-export lama dihapus); Tahap 2 uji pulih ke Postgres lokal berikutnya; offline penuh jangka sangat panjang | [`ROADMAP-KEDAULATAN-DATA.md`](./ROADMAP-KEDAULATAN-DATA.md) |
 | 90 Pengambilan potongan RAG | ✅ Tahap A–C (recall@8 14/14, bukti Kepbup #1, live); U8a ✅ (RAG Mametlite live + layar kunci + label stream), U10 ✅; sisa utang U4, U6, U7, U8b, mode LITE tak aktif | [`ROADMAP-PENGAMBILAN-POTONGAN-RAG.md`](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) |
 | 89 Konteks potongan RAG | ✅ live (Tahap C Item 90); identitas tabel OCR ✅ | [`ROADMAP-KONTEKS-POTONGAN-RAG.md`](./ROADMAP-KONTEKS-POTONGAN-RAG.md) |
 | 88 Tabel centang PDF (+ sisa 86 OCR massal) | 🟡 Tahap 1–3 ✅; keputusan 3: buku per jabatan **221/221** masuk; 177 ✅, 191/159 keterbatasan; set uji buku penuh **13/14**; sisa BUKU-10 (blok centang miskin kata, sesudah code freeze) | [`ROADMAP-TABEL-CENTANG-PDF.md`](./ROADMAP-TABEL-CENTANG-PDF.md) |
@@ -39,7 +39,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 | Dokumen | Status | Cakupan |
 |---|---|---|
 | `ROADMAP-DATA-TABEL-REKONSILIASI-ASN.md` | 📝 Item 92 (Tahap 1–5 ✅) | xlsx ASN → baris data, pratinjau Owner, hitung/saring oleh kode (bukan RAG) |
-| `ROADMAP-KEDAULATAN-DATA.md` | 📋 Item 93 | cadangan terverifikasi, Postgres lokal, peta lapisan offline |
+| `ROADMAP-KEDAULATAN-DATA.md` | 📝 Item 93 (Tahap 1 ✅) | cadangan terverifikasi, Postgres lokal, peta lapisan offline |
 | `ROADMAP-PENGAMBILAN-POTONGAN-RAG.md` | ✅ Item 90 (A–C) | peta jalur RAG vs pola umum, utang lama, set uji → hybrid → konteks |
 | `ROADMAP-KONTEKS-POTONGAN-RAG.md` | ✅ Item 89 | pemisah bagian tabel OCR + baris konteks potongan |
 | `ROADMAP-TABEL-CENTANG-PDF.md` | 🟡 Item 88 | kolom centang dari koordinat pdf.js, kontrak & label |
@@ -172,4 +172,4 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 90. ✅ Pengambilan Potongan RAG — Diukur Dulu, Pola Standar Hanya Bila Cocok (2026-09-17) — [rancangan](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) · [log](../project-memory/changelog/2026-09-17-utang-lama-rag-dan-kode-mati.md) · [log A](../project-memory/changelog/2026-09-17-uji-pengambilan-potongan-baseline.md) · [log B](../project-memory/changelog/2026-09-17-pencarian-gabungan-vektor-kata.md) · [log C](../project-memory/changelog/2026-09-17-konteks-potongan-bagian-dan-identitas.md)
 92. 📝 Data Tabel Rekonsiliasi ASN — Hitung & Saring oleh Kode, Bukan RAG (2026-09-21) — [rancangan](./ROADMAP-DATA-TABEL-REKONSILIASI-ASN.md) · [log Tahap 1](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap1-pembaca-pratinjau.md) · [log Tahap 2](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap2-simpan-versi.md) · [log Tahap 3](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap3-tanya-jawab.md) · [log Tahap 4](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap4-kejanggalan-per-opd.md) · [log Tahap 5](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap5-pdf-pindaian.md)
 91. ✅ Hapus Dokumen RAG — Cek Baris Terhapus & Muat Ulang Daftar (2026-09-17) — [log](../project-memory/changelog/2026-09-17-hapus-dokumen-cek-baris-terhapus.md) · web live ✅, hapus desktop/mametlite belum teruji
-93. 📋 Kedaulatan Data — Salinan Sendiri yang Terbukti Bisa Dipulihkan, lalu Postgres Lokal (2026-09-22) — [rancangan](./ROADMAP-KEDAULATAN-DATA.md) · [log RLS](../project-memory/changelog/2026-09-22-rls-tutup-baca-semua.md)
+93. 📝 Kedaulatan Data — Salinan Sendiri yang Terbukti Bisa Dipulihkan, lalu Postgres Lokal (2026-09-22) — [rancangan](./ROADMAP-KEDAULATAN-DATA.md) · [log RLS](../project-memory/changelog/2026-09-22-rls-tutup-baca-semua.md) · [log Tahap 1](../project-memory/changelog/2026-09-22-cadangan-data-lengkap.md)

@@ -1,6 +1,6 @@
 # ROADMAP: KEDAULATAN DATA — Salinan Sendiri yang Terbukti Bisa Dipulihkan, lalu Postgres Lokal (Item 93)
 
-**Status:** 📋 terdaftar 2026-09-22 — temuan RLS ✅ ditutup (22 Sep); Tahap 1 cadangan berikutnya
+**Status:** 📝 temuan RLS ✅ ditutup; **Tahap 1 ✅** cadangan lengkap terbukti (22 Sep); Tahap 2 uji pulih menunggu keputusan cara pasang Postgres
 **Tanggal:** 2026-09-22
 **Roadmap Index:** Item 93
 
@@ -59,10 +59,13 @@ skema lewat migrasi di repo, tidak mengunci fitur ke layanan khusus Supabase tan
 ## 4. Tahapan & Kriteria Selesai
 
 ### Tahap 1 — Cadangan yang benar-benar lengkap
-- [ ] `backup-export` ikut mencadangkan **teks** `document_chunks` (vektor boleh dibuang — bisa dibuat ulang dari teks,
-      berbayar embedding) + `asn_berkas`/`asn_pegawai`; perbaiki komentar yang keliru.
-- [ ] Tombol "Cadangkan data" di aplikasi → berkas di laptop Owner (izin unduh per Owner).
-- [ ] **Kriteria:** jumlah baris per tabel di berkas = jumlah di database; teks semua potongan Kepbup ada.
+- [x] Cadangan memuat teks **dan vektor** `document_chunks` + `asn_berkas`/`asn_pegawai`. ✅ **Penyimpangan:** bukan
+      memperbaiki `backup-export`, melainkan `cadanganData.js` di aplikasi dengan sesi Owner (RLS); `backup-export` &
+      `backup-restore` dihapus (keputusan Owner); vektor ikut (keputusan Owner).
+- [x] Tombol "Cadangkan data" di Research App → berkas di laptop Owner (jendela Simpan). ✅
+- [x] **Kriteria:** jumlah baris per tabel di berkas = jumlah di database; teks semua potongan Kepbup ada. ✅ berkas nyata
+      47,9 MB: 13/13 cocok, 3.455/3.455 vektor 768-D, 221 dokumen Kepbup semuanya berpotongan —
+      [log](../project-memory/changelog/2026-09-22-cadangan-data-lengkap.md).
 
 ### Tahap 2 — Uji pulih ke Postgres lokal
 - [ ] Postgres + pgvector lokal (instalasi biasa atau Docker, diputuskan saat itu), jalankan migrasi repo, pulihkan
