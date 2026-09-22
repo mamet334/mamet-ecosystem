@@ -159,8 +159,8 @@ cara pipeline sekarang memproses jawaban (JSON/hybrid dengan nalar).
 - **Kriteria selesai:** "jelaskan isi folder ini", "cari di mana fungsi X", dan "ringkas dokumen Y di folder" terjawab
   dari isi berkas nyata; permintaan membaca `..\` atau `C:\Windows` ditolak di proses utama (bukti log).
   ✅ live: ketiganya terjawab tepat (baris 177 / 8–27 dicek ke berkas), label VERIFIED; `..\..\…\.env` & `C:\Windows\win.ini`
-  → `ok:false` di proses utama (DevTools). **Sisa kecil:** biaya putaran lanjutan (tingkat model Besar) — keputusan
-  Owner; panel Memory Context menampilkan pesan hasil alat sebagai "query terakhir".
+  → `ok:false` di proses utama (DevTools). Tingkat model putaran lanjutan **dikunci** ke putaran pertama
+  (±6× lebih murah, live). **Sisa kecil:** panel Memory Context menampilkan pesan hasil alat sebagai "query terakhir".
 
 ### Tahap 2 — Tulis & Perbarui
 - [ ] Alat `folder_write`, `folder_edit`, `folder_mkdir`, `folder_rename`, `folder_delete` lewat `CommandRegistry`

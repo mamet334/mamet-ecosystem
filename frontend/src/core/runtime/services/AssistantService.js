@@ -378,6 +378,9 @@ export class AssistantService {
     const folderKerja = await this._statusFolderKerja(workspaceId);
     const pertanyaanAsli = _folderPertanyaan || userMsg;
     const dibaca = _folderDibaca || [];
+    // Diisi handler dengan tingkat model yang dipakai putaran ini — putaran lanjutan DIKUNCI ke tingkat itu (keputusan
+    // Owner 2026-09-22): tanpa ini pesan hasil alat yang panjang membuat Auto memilih Besar (±5× biaya per pertanyaan).
+    const infoFolder = folderKerja ? { nama: folderKerja.nama, putaran: _folderPutaran, tingkat: null } : null;
     if (folderKerja) {
       const onDoneAsli = onDone;
       onDone = async (finalText, steps, jsonMetadata, extras = {}) => {
@@ -404,7 +407,8 @@ export class AssistantService {
             userMsg: pesanHasil,
             history: [...(history || []), { role: 'model', content: finalText }, { role: 'user', content: pesanHasil }],
             workspaceId, userId, token, attachedFile: null, workspaceManager,
-            onChunk, onDone: onDoneAsli, onError, onNalar, modelTierOverride,
+            onChunk, onDone: onDoneAsli, onError, onNalar,
+            modelTierOverride: modelTierOverride || infoFolder.tingkat || null,
             _folderPutaran: putaran, _folderPertanyaan: pertanyaanAsli, _folderDibaca: dibaca, _folderByte: byte,
           });
         }
@@ -432,7 +436,7 @@ export class AssistantService {
       attachedFile, workspaceManager, onChunk, onDone, onError, onNalar,
       resolvedMode, resolvedAppSource, modelTierOverride,
       _isPostHocWebRetry, _injectedKnowledgeContext,
-      _folderKerja: folderKerja ? { nama: folderKerja.nama, putaran: _folderPutaran } : null
+      _folderKerja: infoFolder
     };
 
     // Dispatch MEMORY_STORE (PR#8 Intent Unification)
@@ -704,6 +708,7 @@ export class AssistantService {
       const brainService = this.serviceManager.get('BrainService');
       if (brainService) {
         const context = await brainService.getActiveBrainContext('KECIL');
+        if (_folderKerja) _folderKerja.tingkat = 'KECIL'; // LOOKUP selalu Kecil → putaran lanjutan folder ikut Kecil
         aiProvider = context.provider || 'gemini';
         formattedModel = context.model || '';
         aiKey = context.key || '';
@@ -1027,6 +1032,8 @@ export class AssistantService {
           }
         }
         const context = await brainService.getActiveBrainContext(selectedTier);
+        // Folder kerja: tingkat putaran ini dicatat untuk dikunci di putaran lanjutan (lihat processMessage).
+        if (_folderKerja && selectedTier) _folderKerja.tingkat = selectedTier;
         aiProvider = context.provider || 'gemini';
         formattedModel = context.model || '';
         aiKey = context.key || '';

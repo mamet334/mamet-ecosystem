@@ -58,7 +58,9 @@ Putaran 2: chat CosineSimilarity → **tetap VERIFIED** ("Sumber: `core/math.go`
 
 ## Catatan
 
-- Biaya: putaran lanjutan naik ke tingkat model Besar (pesan hasil alat panjang) — ±$0,008–0,015 per pertanyaan
-  folder. Keputusan penguncian tingkat menunggu Owner.
+- **Tingkat model dikunci** (keputusan Owner, sesudah uji): putaran lanjutan memakai tingkat putaran pertama
+  (pil tingkat pilihan Owner tetap menang; LOOKUP = Kecil) — sebelumnya pesan hasil alat yang panjang membuat Auto
+  memilih Besar. Live, pertanyaan CosineSimilarity yang sama: `flash→pro→pro→pro` ±$0,0122 → **`flash→flash→flash`
+  ±$0,0019**, jawaban tetap tepat & VERIFIED (model membaca rentang `core/engine.go` baris 160–190 saja).
 - Kosmetik: panel Memory Context menampilkan pesan `[HASIL ALAT FOLDER]` sebagai "query terakhir".
 - Jalan menulis kode: `\u0000` di isi alat Write ikut diurai jadi karakter NUL — dipakai `\x00` (lihat memori heredoc).
