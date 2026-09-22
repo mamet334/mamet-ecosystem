@@ -171,7 +171,7 @@ cara pipeline sekarang memproses jawaban (JSON/hybrid dengan nalar).
 - **Kriteria selesai:** "buat laporan.md berisi ringkasan" menghasilkan berkas di folder terpilih setelah izin;
   mengedit berkas hanya mengubah potongan yang diminta; penulisan di luar folder ditolak.
   ✅ live: `laporan.md` tercipta; `app.py` hanya 2 nama berubah (edit ambigu ditolak dulu); `catatan.txt` utuh saat
-  ditolak; `..ocor.txt` ditolak model & proses utama (DevTools), tanpa berkas.
+  ditolak; `..\bocor.txt` ditolak model & proses utama (DevTools), tanpa berkas.
 
 ### Tahap 3 — Perintah
 - [ ] `folder_run` dengan `cwd` = folder kerja, dialog izin & blocklist tetap.
