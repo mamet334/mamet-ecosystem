@@ -2,7 +2,7 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Desktop Assistant (`ConversationEngine.jsx`, `AssistantService.js`, `electron/main.cjs`, `preload.cjs`) & `agent-process`
-**Status:** 📝 **Tahap 0 selesai 2026-09-21** (jalur lama dihapus `ed19ba1`; pagar `folder:*` + `pagarFolder.cjs`, uji serangan 33/33, uji Owner 4/4 — [log](../project-memory/changelog/2026-09-21-folder-kerja-tahap0-pagar.md)); **Tahap 1 selesai 2026-09-22** (baca saja: folder_list/read/search berpagar, putaran alat ≤4, label dari berkas terbukti dibaca; live `gabut/engine` + pagar DevTools — [log Tahap 1](../project-memory/changelog/2026-09-22-folder-kerja-tahap1-baca.md)); Tahap 2 menunggu aba-aba Owner
+**Status:** 📝 **Tahap 0 selesai 2026-09-21** (jalur lama dihapus `ed19ba1`; pagar `folder:*` + `pagarFolder.cjs`, uji serangan 33/33, uji Owner 4/4 — [log](../project-memory/changelog/2026-09-21-folder-kerja-tahap0-pagar.md)); **Tahap 1 selesai 2026-09-22** (baca saja: folder_list/read/search berpagar, putaran alat ≤4, label dari berkas terbukti dibaca; live `gabut/engine` + pagar DevTools — [log Tahap 1](../project-memory/changelog/2026-09-22-folder-kerja-tahap1-baca.md)); **Tahap 2 selesai 2026-09-22** (tulis/edit/mkdir/rename/hapus-ke-Recycle-Bin berpagar, dialog izin asli proses utama; live `uji-folder-kerja` + pagar DevTools — [log Tahap 2](../project-memory/changelog/2026-09-22-folder-kerja-tahap2-tulis.md)); Tahap 3 menunggu aba-aba Owner
 **Tanggal:** 2026-09-15
 **Roadmap Index:** Item 85
 
@@ -163,11 +163,15 @@ cara pipeline sekarang memproses jawaban (JSON/hybrid dengan nalar).
   (±6× lebih murah, live). **Sisa kecil:** panel Memory Context menampilkan pesan hasil alat sebagai "query terakhir".
 
 ### Tahap 2 — Tulis & Perbarui
-- [ ] Alat `folder_write`, `folder_edit`, `folder_mkdir`, `folder_rename`, `folder_delete` lewat `CommandRegistry`
-      (`setWorkspace` dipanggil saat folder dipilih).
-- [ ] Dialog izin menampilkan berkas & pratinjau perubahan; tolak = dilaporkan jujur.
+- [x] Alat `folder_write`, `folder_edit`, `folder_mkdir`, `folder_rename`, `folder_delete`. ✅ **Penyimpangan:** BUKAN lewat
+      `CommandRegistry` (merakit PowerShell dari alamat mentah = T8) — `alatFolderTulis.cjs` di proses utama, `fs` langsung,
+      semua alamat lewat pagar; hapus = Recycle Bin; ekstensi yang bisa dijalankan ditolak.
+- [x] Dialog izin menampilkan berkas & pratinjau perubahan; tolak = dilaporkan jujur. ✅ dialog asli proses utama
+      (tombol bawaan Tolak), sebelum → sesudah untuk edit; catatan kaki perubahan dari proses utama.
 - **Kriteria selesai:** "buat laporan.md berisi ringkasan" menghasilkan berkas di folder terpilih setelah izin;
   mengedit berkas hanya mengubah potongan yang diminta; penulisan di luar folder ditolak.
+  ✅ live: `laporan.md` tercipta; `app.py` hanya 2 nama berubah (edit ambigu ditolak dulu); `catatan.txt` utuh saat
+  ditolak; `..ocor.txt` ditolak model & proses utama (DevTools), tanpa berkas.
 
 ### Tahap 3 — Perintah
 - [ ] `folder_run` dengan `cwd` = folder kerja, dialog izin & blocklist tetap.

@@ -786,12 +786,36 @@ ipcMain.handle('folder:lepas', () => {
 
 // Alat BACA (folder_list / folder_read / folder_search). Akar diambil dari variabel proses utama — permintaan dari
 // layar hanya membawa alamat relatif. Setiap panggilan dicatat (bukti penolakan di luar pagar).
-ipcMain.handle('folder:alat', (_event, permintaan) => {
+// Tahap 2: alat TULIS lewat modul terpisah; izin = dialog ASLI proses utama (tak bisa dipalsukan/dilewati layar
+// maupun model), hapus = Recycle Bin (shell.trashItem).
+const { jalankanAlatTulis, ALAT_TULIS } = require('./alatFolderTulis.cjs');
+const depsTulis = {
+  mintaIzin: async ({ judul, rincian, pratinjau, berbahaya }) => {
+    const { response } = await dialog.showMessageBox(mainWindow, {
+      type: berbahaya ? 'warning' : 'question',
+      title: `Mamet — folder kerja "${folderKerjaAkar ? path.basename(folderKerjaAkar) : ''}"`,
+      message: judul,
+      detail: `${rincian}${pratinjau ? `\n\n${pratinjau}` : ''}`,
+      buttons: ['Tolak', 'Izinkan'],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    });
+    return response === 1;
+  },
+  keTempatSampah: (alamat) => shell.trashItem(alamat),
+};
+
+ipcMain.handle('folder:alat', async (_event, permintaan) => {
   const p = permintaan && typeof permintaan === 'object' ? permintaan : {};
   let hasil;
-  try { hasil = jalankanAlat(folderKerjaAkar, p); }
-  catch (e) { hasil = { ok: false, alat: p.alat, alamat: p.alamat, alasan: `galat: ${e.code || e.message}` }; }
-  console.log(`[FOLDER] ${p.alat} "${p.alamat ?? p.kueri ?? '.'}" → ${hasil.ok ? 'OK' : `DITOLAK: ${hasil.alasan}`}`);
+  try {
+    hasil = ALAT_TULIS.includes(p.alat)
+      ? await jalankanAlatTulis(folderKerjaAkar, p, depsTulis)
+      : jalankanAlat(folderKerjaAkar, p);
+  } catch (e) { hasil = { ok: false, alat: p.alat, alamat: p.alamat, alasan: `galat: ${e.code || e.message}` }; }
+  const status = hasil.ok ? 'OK' : hasil.ditolakOwner ? 'DITOLAK OWNER' : `DITOLAK: ${hasil.alasan}`;
+  console.log(`[FOLDER] ${p.alat} "${p.alamat ?? p.kueri ?? '.'}${p.ke ? ` → ${p.ke}` : ''}" → ${status}`);
   return hasil;
 });
 

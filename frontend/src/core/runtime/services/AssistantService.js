@@ -361,6 +361,7 @@ export class AssistantService {
     _folderPutaran = 0,
     _folderPertanyaan = null,
     _folderDibaca = null,
+    _folderDiubah = null,
     _folderByte = 0
   }) {
     if (!userMsg || !token) {
@@ -378,6 +379,7 @@ export class AssistantService {
     const folderKerja = await this._statusFolderKerja(workspaceId);
     const pertanyaanAsli = _folderPertanyaan || userMsg;
     const dibaca = _folderDibaca || [];
+    const diubah = _folderDiubah || [];
     // Diisi handler dengan tingkat model yang dipakai putaran ini — putaran lanjutan DIKUNCI ke tingkat itu (keputusan
     // Owner 2026-09-22): tanpa ini pesan hasil alat yang panjang membuat Auto memilih Besar (±5× biaya per pertanyaan).
     const infoFolder = folderKerja ? { nama: folderKerja.nama, putaran: _folderPutaran, tingkat: null } : null;
@@ -390,7 +392,16 @@ export class AssistantService {
           const hasil = [];
           let byte = _folderByte;
           for (const p of permintaan) {
-            const label = p.alat === 'folder_search' ? `🔎 mencari "${p.kueri}"` : p.alat === 'folder_list' ? `📂 melihat isi \`${p.alamat || '.'}\`` : `📄 membaca \`${p.alamat}\``;
+            const label = {
+              folder_search: `🔎 mencari "${p.kueri}"`,
+              folder_list: `📂 melihat isi \`${p.alamat || '.'}\``,
+              folder_read: `📄 membaca \`${p.alamat}\``,
+              folder_write: `✍️ menunggu izin Anda untuk menulis \`${p.alamat}\` (lihat dialog)`,
+              folder_edit: `✏️ menunggu izin Anda untuk mengedit \`${p.alamat}\` (lihat dialog)`,
+              folder_mkdir: `📁 menunggu izin Anda untuk membuat folder \`${p.alamat}\``,
+              folder_rename: `🔀 menunggu izin Anda untuk memindah \`${p.alamat}\` → \`${p.ke}\``,
+              folder_delete: `🗑️ menunggu izin Anda untuk memindah \`${p.alamat}\` ke Recycle Bin`,
+            }[p.alat] || `⚙️ ${p.alat}`;
             onChunk?.(`${label}…`, `_${label}… (putaran ${putaran}/${MAKS_PUTARAN})_`, steps || []);
             let h;
             if (p.alat === 'folder_read' && byte >= FOLDER_BATAS_BACA_BYTE) {
@@ -400,6 +411,10 @@ export class AssistantService {
               catch (e) { h = { ok: false, alat: p.alat, alamat: p.alamat, alasan: `alat gagal: ${e.message || e}` }; }
             }
             if (h?.ok && h.alat === 'folder_read') { byte += (h.isi || '').length; if (!dibaca.includes(h.alamat)) dibaca.push(h.alamat); }
+            // Tahap 2: yang diubah dicatat dari HASIL proses utama (bukan dari klaim model) — ditolak Owner pun dicatat.
+            if (h && ['folder_write', 'folder_edit', 'folder_mkdir', 'folder_rename', 'folder_delete'].includes(h.alat)) {
+              diubah.push(`${h.ok ? '✅' : h.ditolakOwner ? '🚫 ditolak' : '⚠️ gagal'} \`${h.alamat}\``);
+            }
             hasil.push(h);
           }
           const pesanHasil = susunPesanHasil(hasil, { putaran, pertanyaanAsli, galat });
@@ -409,12 +424,15 @@ export class AssistantService {
             workspaceId, userId, token, attachedFile: null, workspaceManager,
             onChunk, onDone: onDoneAsli, onError, onNalar,
             modelTierOverride: modelTierOverride || infoFolder.tingkat || null,
-            _folderPutaran: putaran, _folderPertanyaan: pertanyaanAsli, _folderDibaca: dibaca, _folderByte: byte,
+            _folderPutaran: putaran, _folderPertanyaan: pertanyaanAsli, _folderDibaca: dibaca, _folderDiubah: diubah, _folderByte: byte,
           });
         }
         // Jawaban akhir: tag yang tersisa (putaran habis) dibuang, berkas yang benar-benar dibaca disebut apa adanya.
         let teks = permintaan.length ? ambilPermintaanAlat(finalText).teksTanpaTag + `\n\n_⚠️ Batas ${MAKS_PUTARAN} putaran alat folder tercapai — sebagian permintaan baca tidak dijalankan._` : finalText;
-        if (_folderPutaran > 0) teks += `\n\n---\n📂 _Dibaca dari folder **${folderKerja.nama}** (${_folderPutaran} putaran): ${dibaca.length ? dibaca.map((d) => `\`${d}\``).join(', ') : 'daftar/pencarian saja'}_`;
+        if (_folderPutaran > 0) {
+          teks += `\n\n---\n📂 _Dibaca dari folder **${folderKerja.nama}** (${_folderPutaran} putaran): ${dibaca.length ? dibaca.map((d) => `\`${d}\``).join(', ') : 'daftar/pencarian saja'}_`;
+          if (diubah.length) teks += `\n✍️ _Perubahan (dicatat dari proses utama, bukan dari kata model): ${diubah.join(', ')}_`;
+        }
         return onDoneAsli?.(teks, steps, jsonMetadata, extras);
       };
     }
