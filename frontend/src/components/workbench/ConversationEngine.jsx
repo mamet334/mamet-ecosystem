@@ -8,6 +8,8 @@ import { kernel } from '../../core/runtime/Kernel';
 import FolderKerjaTombol from './FolderKerjaTombol';
 import ChatHistory from './ChatHistory';
 import MemoryContextPanel from './MemoryContextPanel';
+import { tugasDariUsulan } from '../../core/runtime/services/engineer/UsulanPatch.js';
+import { laporanSetelahMuatUlang } from '../../core/runtime/services/engineer/CatatanPatch.js';
 
 // =============================================
 // HELPER: Parse thinking/answer dari respons AI
@@ -431,7 +433,8 @@ export default function ConversationEngine({ sessionId }) {
           }
           return [...prev, { role: 'model', content: `❌ **Patch Ditolak**\n\n${rec.message}` }];
         });
-      } else if (rec.type === 'PATCH_VERIFICATION_FAILED' || rec.type === 'ERROR') {
+      } else if (['PATCH_VERIFICATION_FAILED', 'ERROR', 'PATCH_FAILED', 'SAFETY_REJECTION', 'CORE_MODIFICATION_BLOCKED'].includes(rec.type)) {
+        // PATCH_FAILED / SAFETY_REJECTION / CORE_MODIFICATION_BLOCKED dulu tak ditampilkan sama sekali (T10, 2026-09-22).
         setMessages(prev => {
           const newMsgs = [...prev];
           const lastIndex = newMsgs.length - 1;
@@ -475,6 +478,20 @@ export default function ConversationEngine({ sessionId }) {
     const unsubPatch = eventBus.on('Engineer:PatchApplied', patchAppliedHandler);
     return unsubPatch;
   }, []);
+
+  // PATCH YANG TERPUTUS MUAT ULANG (T10): menulis berkas aplikasi memuat ulang halaman (Vite) sebelum pesan hasil tampil.
+  // Laporan dibaca ulang dari DISK (CatatanPatch.js) dan tombol Undo dipulihkan.
+  const workspaceAktif = workspaceManager?.activeWorkspaceId;
+  useEffect(() => {
+    const storageManager = kernel.serviceManager?.get('StorageManager');
+    // Hanya di chat Engineer — catatan tak "dimakan" chat Assistant yang kebetulan terbuka lebih dulu.
+    if (!storageManager || workspaceAktif !== 'ws-engineer') return;
+    laporanSetelahMuatUlang((p) => storageManager.read(p)).then((lap) => {
+      if (!lap) return;
+      if (lap.checkpointRef) setLastCheckpoint({ ref: lap.checkpointRef, patchId: lap.patchId, appliedAt: new Date().toLocaleTimeString('id-ID') });
+      setMessages(prev => [...prev, { role: 'model', content: lap.pesan, isPatchResult: true, checkpointRef: lap.checkpointRef }]);
+    }).catch(() => {});
+  }, [workspaceAktif]);
 
   // PERSISTENT PATCH
   useEffect(() => {
@@ -1460,13 +1477,8 @@ export default function ConversationEngine({ sessionId }) {
                             onClick={() => {
                               const eventBus = kernel.serviceManager?.get('EventBus');
                               if (eventBus) {
-                                eventBus.emit('Engineer:GeneratePatch', {
-                                  id: `TASK-${Date.now()}`,
-                                  title: (m.patchOriginalTask || '').substring(0, 100),
-                                  description: m.patchOriginalTask || '',
-                                  files: [],
-                                  llmProposedContent: m.content
-                                });
+                                // Berkas target & usulan yang Owner setujui ikut dikirim (dulu hanya pesan asli → "Mohon diperjelas").
+                                eventBus.emit('Engineer:GeneratePatch', tugasDariUsulan({ pesanAsli: m.patchOriginalTask, jawaban: m.content }));
                                 setMessages(prev => { const next = [...prev]; next[idx] = { ...next[idx], hasPatchProposal: false, content: next[idx].content + '\n\n_⚙️ Engineer patch pipeline dimulai — Reasoning Lock aktif..._' }; return next; });
                               }
                             }}

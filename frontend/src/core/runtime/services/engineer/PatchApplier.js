@@ -17,6 +17,7 @@
  * `onImmutableFileBlocked` — modul ini tidak perlu tahu apa pun soal `this`.
  */
 import { isImmutableFile, isProtectedFile } from './CapabilityGuard.js';
+import { simpanCatatanPatch, hapusCatatanPatch } from './CatatanPatch.js';
 
 /**
  * @param {Object} patch
@@ -54,27 +55,41 @@ export async function executePatchApplication(patch, approvedFiles = [], deps) {
     let skippedCount = 0;
 
     // =============================================
-    // ROLLBACK CHECKPOINT — git stash sebelum write
-    // Dilakukan sekali sebelum semua file ditulis.
-    // Jika ada error, user bisa rollback dengan aman.
+    // ROLLBACK CHECKPOINT — salinan isi asli berkas target (proses utama, eng:git-checkpoint), sekali sebelum menulis.
+    // Dulu `git stash` seluruh working tree dan "non-blocking": live TUGAS-01 (2026-09-22) pekerjaan Owner yang belum
+    // di-commit lenyap ke stash. Kini checkpoint WAJIB berhasil — tanpanya Undo mustahil, jadi tak ada yang ditulis.
     // =============================================
     let checkpointRef = null;
     if (window.electronAPI?.gitCheckpoint) {
+      let cp = null;
       try {
-        const cp = await window.electronAPI.gitCheckpoint(
+        cp = await window.electronAPI.gitCheckpoint(
           patch.taskId || patch.id,
           patch.files.map(f => f.path)
         );
-        if (cp?.success) {
-          checkpointRef = cp.ref || `ENG-CHECKPOINT-${patch.taskId || patch.id}`;
-          console.log(`[Engineer] 💾 Checkpoint dibuat: ${checkpointRef}`);
-        } else {
-          console.warn('[Engineer] ⚠️ Checkpoint gagal dibuat:', cp?.error || cp?.message);
-        }
       } catch (cpErr) {
-        console.warn('[Engineer] Checkpoint error (non-blocking):', cpErr.message);
+        cp = { success: false, error: cpErr.message };
       }
+      if (!cp?.success) {
+        console.error('[Engineer] 🚫 Checkpoint gagal — patch TIDAK ditulis:', cp?.error || cp?.message);
+        emitRecommendation({
+          type: 'SAFETY_REJECTION',
+          taskId: patch.taskId,
+          message: `⚠️ **Patch tidak diterapkan**: checkpoint (salinan isi asli untuk Undo) gagal dibuat — ${cp?.error || 'alasan tidak diketahui'}. Tidak ada berkas yang diubah.`,
+          requiresApproval: false
+        });
+        return { success: false, error: `Checkpoint gagal: ${cp?.error || 'tidak diketahui'}` };
+      }
+      checkpointRef = cp.ref;
+      console.log(`[Engineer] 💾 Checkpoint dibuat: ${checkpointRef}`);
     }
+
+    // Menulis berkas aplikasi memicu muat ulang Vite (mode pengembangan) — catatan ini melaporkan hasil setelahnya.
+    simpanCatatanPatch({
+      patchId: patch.id,
+      checkpointRef,
+      files: patch.files.filter(f => approvedFiles.length === 0 || approvedFiles.includes(f.path)),
+    });
 
     for (const file of patch.files) {
       try {
@@ -155,6 +170,8 @@ export async function executePatchApplication(patch, approvedFiles = [], deps) {
       checkpointRef  // dikirim ke UI untuk tombol Rollback
     };
 
+    // Selesai tanpa muat ulang → alur biasa melapor sendiri; catatan tak diperlukan lagi.
+    hapusCatatanPatch();
     eventBus.emit('Engineer:PatchApplied', result);
     console.log(`[Engineer] 🎯 Patch selesai: ${successCount} applied, ${skippedCount} skipped, ${failCount} failed`);
 

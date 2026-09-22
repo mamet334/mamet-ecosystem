@@ -554,7 +554,9 @@ class Engineer {
 
     // === FASE 1: INTENT DETECTION ===
     this.intentState = 'ANALYZING';
-    const intent = detectIntent(task);
+    // Klik "Apply Patch" = niat MENGUBAH yang eksplisit dari Owner (UsulanPatch.js). Tebakan kata kunci dulu
+    // mengubahnya jadi CLARIFICATION untuk "kerjakan TUGAS-01…" (live T10, 2026-09-22).
+    const intent = task?.dariTombolApply ? 'MODIFY_CODE' : detectIntent(task);
     console.log(`[Engineer] 🎯 Intent detected: ${intent} (task: ${task.title || task.id})`);
 
     if (intent === 'READ_REPO') {
@@ -861,10 +863,12 @@ class Engineer {
       }
     } else {
       if (!patch.verification) {
+        // T10 (2026-09-22): dulu tanpa pesan — Owner tak tahu patch gagal dibuat. Alasan dari model/pembuat patch disebut.
         this._emitRecommendation({
           type: 'PATCH_FAILED',
           taskId: task.id,
           patch,
+          message: `❌ **Patch tidak dibuat** — ${patch.llmError || patch.error || patch.description || 'model tidak menghasilkan perubahan yang bisa diterapkan'}. Tidak ada berkas yang diubah.`,
           confidence: this._calculateConfidence(analysis),
           requiresApproval: false
         });

@@ -83,3 +83,29 @@ export const executeRoutingDecision = async (query: string, userId: string, rctx
 
     return routingDecision;
 };
+
+/**
+ * SPACE PENGETAHUAN ENGINEER (T10 Tahap 1, 2026-09-22). Mode ENGINEER hanya mencari dokumen di space milik pengguna
+ * yang bertanda `engineer` atau bernama "Pengetahuan Engineer" (dibuat Owner di Research App). Tanpa ini Engineer
+ * mencari di SEMUA space: live "tampilkan 5 commit terakhir" memasukkan 4–7 potongan buku Kepbup (skor 0,56–0,66).
+ * @returns id space, atau null bila tak ada (pemanggil melewati RAG dengan catatan jujur)
+ */
+export const cariSpaceEngineer = async (userId: string, rctx: RuntimeContext): Promise<string | null> => {
+    if (!userId) return null;
+    try {
+        const supabaseClient = createClient(rctx.env.supabaseUrl, rctx.env.supabaseServiceKey);
+        const { data } = await supabaseClient
+            .from('knowledge_spaces')
+            .select('id, name, tags, archived, created_at')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: true });
+        const cocok = (data || []).find((s: any) => !s.archived && (
+            (Array.isArray(s.tags) && s.tags.some((t: string) => String(t).toLowerCase() === 'engineer')) ||
+            String(s.name || '').trim().toLowerCase() === 'pengetahuan engineer'
+        ));
+        return cocok?.id || null;
+    } catch (e) {
+        console.error('[RAG] cariSpaceEngineer gagal:', e);
+        return null;
+    }
+};

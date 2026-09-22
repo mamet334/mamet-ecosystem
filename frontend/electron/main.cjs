@@ -488,81 +488,94 @@ ipcMain.handle('run-airdrop-stealth', async (event, { taskName, params }) => {
 // `engineer:jalankan` (tanpa shell, daftar izin, dialog) — lihat di bawah blok folder kerja.
 
 // =============================================
-// ENGINEER ROLLBACK SYSTEM
-// Checkpoint = git stash sebelum apply patch
-// Rollback = git stash pop untuk undo
+// ENGINEER ROLLBACK SYSTEM — salinan berkas, BUKAN git stash (T10 uji Engineer, 2026-09-22)
+//
+// Dulu: checkpoint = `git stash push` SELURUH working tree. Live TUGAS-01: 5 berkas pekerjaan Owner yang belum
+// di-commit (tak berhubungan dengan patch) lenyap dari disk ke stash, Vite memuat ulang aplikasi, patch terputus.
+// Repo bersih → tak ada checkpoint (Undo mustahil); Undo = `git stash pop` stash TERATAS (bisa stash yang salah);
+// label dirakit jadi kalimat shell (`exec`). Kini: proses utama membaca sendiri isi asli HANYA berkas yang akan
+// di-patch (byte persis) ke userData/eng-checkpoint/<label>.json; Undo menulis kembali tepat berkas-berkas itu.
+// Git tidak disentuh; alamat lewat pagar repo (alamatDalamPagar).
 // =============================================
+const { alamatDalamPagar: pagarRepo } = require('./pagarFolder.cjs');
+const BATAS_CHECKPOINT = { berkas: 10, byte: 5 * 1024 * 1024 };
+const folderCheckpoint = () => path.join(app.getPath('userData'), 'eng-checkpoint');
+const labelAman = (s) => String(s || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 80);
 
-// 2a. Git Checkpoint — dipanggil SEBELUM patch apply (silent, tanpa dialog)
-ipcMain.handle('eng:git-checkpoint', async (event, { taskId, files }) => {
+// 2a. Checkpoint — dipanggil SEBELUM patch apply (tanpa dialog). files = alamat relatif repo.
+ipcMain.handle('eng:git-checkpoint', async (_event, { taskId, files } = {}) => {
   try {
-    const label = `ENG-CHECKPOINT-${taskId || Date.now()}`;
-    // Cek apakah ada perubahan yang perlu di-stash
-    const statusResult = await new Promise((resolve) => {
-      exec('git status --porcelain', { cwd: PROJECT_ROOT, timeout: 10000 }, (err, stdout) => {
-        resolve({ hasChanges: stdout?.trim().length > 0, err });
-      });
-    });
-
-    if (!statusResult.hasChanges) {
-      // Tidak ada perubahan bersih — simpan state dengan commit kosong
-      return { success: true, ref: null, message: 'Working tree bersih, tidak perlu checkpoint.' };
+    const label = labelAman(`ENG-CHECKPOINT-${taskId || Date.now()}`);
+    const daftar = Array.isArray(files) ? files.filter((f) => typeof f === 'string' && f.trim()) : [];
+    if (!daftar.length) return { success: false, error: 'tidak ada berkas untuk di-checkpoint' };
+    if (daftar.length > BATAS_CHECKPOINT.berkas) return { success: false, error: `lebih dari ${BATAS_CHECKPOINT.berkas} berkas` };
+    const berkas = [];
+    for (const rel of daftar) {
+      const p = pagarRepo(PROJECT_ROOT, rel);
+      if (!p.ok) return { success: false, error: `"${rel}": ${p.alasan}` };
+      let st = null;
+      try { st = fs.statSync(p.alamat); } catch { /* belum ada */ }
+      if (st && !st.isFile()) return { success: false, error: `"${rel}" bukan berkas` };
+      if (st && st.size > BATAS_CHECKPOINT.byte) return { success: false, error: `"${rel}" lebih dari 5 MB` };
+      berkas.push({ alamat: p.relatif, ada: !!st, isi: st ? fs.readFileSync(p.alamat).toString('base64') : null });
     }
-
-    // Stash dengan label unik
-    const result = await new Promise((resolve) => {
-      exec(`git stash push -m "${label}"`, { cwd: PROJECT_ROOT, timeout: 15000 }, (err, stdout, stderr) => {
-        if (err) resolve({ success: false, error: stderr || err.message });
-        else resolve({ success: true, ref: label, output: stdout.trim() });
-      });
-    });
-
-    console.log(`[ENG-CHECKPOINT] ${result.success ? '✅' : '❌'} ${result.ref || result.error}`);
-    return result;
+    fs.mkdirSync(folderCheckpoint(), { recursive: true });
+    fs.writeFileSync(path.join(folderCheckpoint(), `${label}.json`), JSON.stringify({ label, dibuat: new Date().toISOString(), berkas }), 'utf8');
+    console.log(`[ENG-CHECKPOINT] ✅ ${label}: ${berkas.map((b) => b.alamat).join(', ')}`);
+    return { success: true, ref: label, files: berkas.map((b) => b.alamat) };
   } catch (err) {
+    console.log(`[ENG-CHECKPOINT] ❌ ${err.message}`);
     return { success: false, error: err.message };
   }
 });
 
-// 2b. Git Rollback — dipanggil user untuk undo patch terakhir
-ipcMain.handle('eng:git-rollback', async (event, { checkpointLabel }) => {
+// 2b. Rollback — Owner mengembalikan patch: menulis ulang isi asli tepat berkas yang di-checkpoint.
+ipcMain.handle('eng:git-rollback', async (_event, { checkpointLabel } = {}) => {
   try {
-    // Konfirmasi dari user
+    let label = labelAman(checkpointLabel);
+    if (!label) {
+      // Tanpa label: checkpoint terbaru.
+      const semua = fs.existsSync(folderCheckpoint()) ? fs.readdirSync(folderCheckpoint()).filter((n) => n.endsWith('.json')) : [];
+      semua.sort((a, b) => fs.statSync(path.join(folderCheckpoint(), b)).mtimeMs - fs.statSync(path.join(folderCheckpoint(), a)).mtimeMs);
+      label = semua.length ? semua[0].replace(/\.json$/, '') : '';
+    }
+    const berkasCp = label ? path.join(folderCheckpoint(), `${label}.json`) : '';
+    if (!berkasCp || !fs.existsSync(berkasCp)) return { success: false, error: 'Checkpoint tidak ditemukan. Rollback tidak bisa dilakukan.' };
+    const cp = JSON.parse(fs.readFileSync(berkasCp, 'utf8'));
+    const daftar = (cp.berkas || []).map((b) => `• ${b.alamat}${b.ada ? '' : ' (berkas baru — dipindah ke Recycle Bin)'}`).join('\n');
+
     const confirm = await dialog.showMessageBox(mainWindow, {
       type: 'warning',
       buttons: ['Batal', '↩️ Rollback Sekarang'],
       defaultId: 0,
+      cancelId: 0,
+      noLink: true,
       title: 'Konfirmasi Rollback',
-      message: `Apakah Anda yakin ingin membatalkan patch terakhir?\n\nCheckpoint: ${checkpointLabel || 'terakhir'}\n\nSemua perubahan yang diterapkan akan dikembalikan ke kondisi sebelum patch.`
+      message: 'Kembalikan berkas ke isi sebelum patch?',
+      detail: `Checkpoint: ${label}\n\n${daftar}\n\nHanya berkas di atas yang dikembalikan; perubahan lain di repo tidak disentuh.`,
     });
+    if (confirm.response !== 1) return { success: false, cancelled: true, message: 'Rollback dibatalkan.' };
 
-    if (confirm.response !== 1) {
-      return { success: false, cancelled: true, message: 'Rollback dibatalkan.' };
+    const hasil = [];
+    for (const b of cp.berkas || []) {
+      const p = pagarRepo(PROJECT_ROOT, b.alamat);
+      if (!p.ok) { hasil.push(`❌ ${b.alamat}: ${p.alasan}`); continue; }
+      if (b.ada) {
+        const sementara = `${p.alamat}.mamet-rollback-${process.pid}.tmp`;
+        fs.writeFileSync(sementara, Buffer.from(b.isi, 'base64'));
+        fs.renameSync(sementara, p.alamat);
+        hasil.push(`✅ ${b.alamat} dikembalikan`);
+      } else if (fs.existsSync(p.alamat)) {
+        await shell.trashItem(p.alamat);
+        hasil.push(`✅ ${b.alamat} (berkas baru) dipindah ke Recycle Bin`);
+      } else {
+        hasil.push(`• ${b.alamat} sudah tidak ada`);
+      }
     }
-
-    // Cek apakah ada stash dengan label yang sesuai
-    const stashList = await new Promise((resolve) => {
-      exec('git stash list', { cwd: PROJECT_ROOT, timeout: 10000 }, (err, stdout) => {
-        resolve(stdout || '');
-      });
-    });
-
-    const hasCheckpoint = checkpointLabel ? stashList.includes(checkpointLabel) : stashList.trim().length > 0;
-
-    if (!hasCheckpoint) {
-      return { success: false, error: 'Checkpoint tidak ditemukan di stash list. Rollback tidak bisa dilakukan.' };
-    }
-
-    // Pop stash teratas (yang merupakan checkpoint kita)
-    const result = await new Promise((resolve) => {
-      exec('git stash pop', { cwd: PROJECT_ROOT, timeout: 15000 }, (err, stdout, stderr) => {
-        if (err) resolve({ success: false, error: stderr || err.message });
-        else resolve({ success: true, output: stdout.trim() });
-      });
-    });
-
-    console.log(`[ENG-ROLLBACK] ${result.success ? '✅ Berhasil' : '❌ Gagal'}: ${result.output || result.error}`);
-    return result;
+    fs.unlinkSync(berkasCp);
+    const gagal = hasil.some((h) => h.startsWith('❌'));
+    console.log(`[ENG-ROLLBACK] ${gagal ? '⚠️' : '✅'} ${label}: ${hasil.join(' | ')}`);
+    return { success: !gagal, output: hasil.join('\n'), error: gagal ? hasil.filter((h) => h.startsWith('❌')).join('\n') : undefined };
   } catch (err) {
     return { success: false, error: err.message };
   }

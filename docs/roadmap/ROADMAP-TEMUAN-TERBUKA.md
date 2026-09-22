@@ -141,7 +141,10 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
   mati di Engineer.
 - **Arah solusi:** space pengetahuan khusus Engineer atau ambang kemiripan lebih ketat untuk mode ENGINEER; sumber web
   teknis (dokumentasi resmi, npm registry, GitHub release).
-- **Status:** ⏳ dicatat, belum dirancang.
+- **Rancangan (2026-09-22):** Tahap 1 RAG Engineer hanya dari space "Pengetahuan Engineer" · Tahap 2 web teknis (npm,
+  PyPI, GitHub releases, DuckDuckGo; tanpa sumber berita) · Tahap 3 isi space dengan ADR/roadmap/changelog.
+- **Status:** ⏳ Tahap 1 ✅ live; uji Engineer TUGAS-01 menemukan & memperbaiki jalur patch (checkpoint git stash,
+  pemeriksa format, patch palsu, muat ulang Vite) — uji ulang live belum — [log](../project-memory/changelog/2026-09-22-t10-engineer-pengetahuan-dan-jalur-patch.md).
 
 ## T11 — `check-keys` bisa dipanggil dengan kunci anon (asal Item 85 Tahap 3, 2026-09-22)
 

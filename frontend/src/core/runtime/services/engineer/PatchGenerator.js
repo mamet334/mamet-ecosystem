@@ -94,13 +94,13 @@ export async function generatePatch(task, deps) {
         console.error('[Engineer] LLM call failed:', llmError.message);
         llmErrorMessage = llmError.message;
         isFallback = true;
-        generatedCode = generateFallbackPatch(task, fileContents);
+        generatedCode = {}; // T10: tanpa patch pengganti — kegagalan model dilaporkan, bukan ditutupi TODO
       }
     } else {
       console.warn('[Engineer] ⚠️ BrainService not available or missing executeLLM method');
       llmErrorMessage = 'BrainService not available or missing executeLLM method';
       isFallback = true;
-      generatedCode = generateFallbackPatch(task, fileContents);
+      generatedCode = {}; // T10: tanpa patch pengganti — kegagalan model dilaporkan, bukan ditutupi TODO
     }
 
     const patchFiles = [];
@@ -131,7 +131,19 @@ export async function generatePatch(task, deps) {
                 changeCount++;
                 console.log(`[Engineer] ✅ Search-replace (trimmed) applied`);
               } else {
-                console.warn(`[Engineer] ⚠️ Search pattern not found: "${change.search.substring(0, 80)}"`);
+                // Toleransi sempit (T10, 2026-09-22): model menyalin baris dari kalimat dokumen beserta titik penutupnya
+                // ("…(PR#1).") padahal baris asli tanpa titik → cari-ganti yang benar gagal. Tanda baca penutup boleh
+                // diabaikan HANYA bila sisanya muncul tepat SEKALI di berkas.
+                const tanpaTandaBaca = trimmedSearch.replace(/[.,;]+$/, '');
+                const munculSekali = tanpaTandaBaca !== trimmedSearch && tanpaTandaBaca.length >= 10 &&
+                  workingContent.split(tanpaTandaBaca).length === 2;
+                if (munculSekali) {
+                  workingContent = workingContent.replace(tanpaTandaBaca, change.replace.trim().replace(/[.,;]+$/, ''));
+                  changeCount++;
+                  console.log('[Engineer] ✅ Search-replace applied (tanda baca penutup diabaikan, cocok tepat sekali)');
+                } else {
+                  console.warn(`[Engineer] ⚠️ Search pattern not found: "${change.search.substring(0, 80)}"`);
+                }
               }
             }
           }
@@ -439,10 +451,5 @@ export function extractCodeFromResponse(response) {
   }
 }
 
-export function generateFallbackPatch(task, fileContents) {
-  const result = {};
-  for (const filePath of Object.keys(fileContents)) {
-    result[filePath] = fileContents[filePath] + '\n// TODO: Implement changes for task: ' + (task.title || task.id);
-  }
-  return result;
-}
+// generateFallbackPatch DIHAPUS 2026-09-22 (T10): saat model gagal ia menambahkan "// TODO: Implement changes…" ke
+// berkas lalu patch itu diusulkan & diterapkan seolah hasil kerja (live TUGAS-01). Kegagalan kini dilaporkan apa adanya.

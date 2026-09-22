@@ -2,7 +2,7 @@ import { generateEmbedding, EMBEDDING_DIMENSIONS } from '../../rag/embedding.ts'
 import { searchDocuments } from '../../rag/document_search.ts';
 import { jalankanDataTabel } from '../../data_tabel/data_tabel.ts';
 import { tulisUlangPertanyaan, riwayatSebelumPesan, samaDenganAsli } from '../../rag/query_rewrite.ts';
-import { executeRoutingDecision } from '../../rag/routing_decider.ts';
+import { executeRoutingDecision, cariSpaceEngineer } from '../../rag/routing_decider.ts';
 import { loadProjectMemory } from '../../rag/project_memory.ts';
 import { loadEngineerContext } from '../../rag/engineer_context.ts';
 import { buildContextPipeline } from '../../rag/context_pipeline.ts';
@@ -69,6 +69,20 @@ export const ContextBuilderHandler = {
     }
     ctx.state.processingSteps.push(`🔍 [Routing Decider] Scope: ${routingDecision.scope} (${routingDecision.reason_code})`);
 
+    // T10 Tahap 1: Engineer hanya mencari di space "Pengetahuan Engineer" (atau bertanda `engineer`) — bukan di semua
+    // space (buku Kepbup ikut masuk prompt Engineer). Tak ada space itu → RAG Engineer dilewati, dicatat apa adanya.
+    let ragEngineerTanpaSpace = false;
+    if (ctx.policy.mode === 'ENGINEER' && ctx.request.isRagEnabled) {
+      const idSpace = await cariSpaceEngineer(ctx.auth.userId, rctx);
+      if (idSpace) {
+        routingDecision = { scope: 'WORKSPACE', workspace_id: idSpace, reason_code: 'ENGINEER_KNOWLEDGE_SPACE' };
+        ctx.state.processingSteps.push('📚 [RAG Engineer] hanya mencari di space "Pengetahuan Engineer"');
+      } else {
+        ragEngineerTanpaSpace = true;
+        ctx.state.processingSteps.push('📚 [RAG Engineer] dilewati — belum ada space "Pengetahuan Engineer" (dokumen space lain tidak dipakai Engineer)');
+      }
+    }
+
     if (ctx.auth.userId && ctx.request.finalMessage && typeof ctx.request.finalMessage === 'string' && ctx.request.finalMessage.trim().length > 0) {
       console.log(`[MEMORY_GATEWAY] Edge Function hanya validasi auth dan memproses LLM. Tidak ada auto-save sembunyi.`);
     }
@@ -79,7 +93,7 @@ export const ContextBuilderHandler = {
     // dan ada riwayat — pesan biasa tetap dibatasi 5 detik.
     const TULIS_ULANG_ANGGARAN_MS = 6000;
     const ragPromise = (async () => {
-        if (!ctx.auth.userId || !ctx.request.isRagEnabled) return [];
+        if (!ctx.auth.userId || !ctx.request.isRagEnabled || ragEngineerTanpaSpace) return [];
 
         const mulaiTier1 = Date.now();
         let tenggatTier1 = mulaiTier1 + TIER1_RETRIEVAL_TIMEOUT_MS;

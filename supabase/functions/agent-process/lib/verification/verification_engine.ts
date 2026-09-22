@@ -623,9 +623,16 @@ export class VerificationEngine {
         throw new Error(`Invalid file path format: ${invalidPaths.slice(0, 3).join(', ')}`);
       }
 
+      // Dua bentuk sah: teks isi berkas, atau cari-ganti {"__mode":"search_replace","changes":[{search,replace}]} —
+      // bentuk yang DIMINTA PatchGenerator.js (layar). Dulu hanya teks: live T10 (2026-09-22) patch cari-ganti satu baris
+      // yang benar diblokir "must be a string, got object", lalu layar menggantinya dengan patch TODO palsu.
       for (const [path, content] of Object.entries(parsedPatch)) {
-        if (typeof content !== 'string') {
-          throw new Error(`File content for "${path}" must be a string, got ${typeof content}`);
+        if (typeof content === 'string') continue;
+        const c: any = content;
+        const cariGantiSah = c && typeof c === 'object' && c.__mode === 'search_replace' && Array.isArray(c.changes) && c.changes.length > 0 &&
+          c.changes.every((x: any) => x && typeof x.search === 'string' && x.search.length > 0 && typeof x.replace === 'string');
+        if (!cariGantiSah) {
+          throw new Error(`File content for "${path}" must be a string or a search_replace object ({"__mode":"search_replace","changes":[{"search","replace"}]}), got ${typeof content}`);
         }
       }
 
@@ -665,7 +672,10 @@ export class VerificationEngine {
     // eval() sebagai bagian dari kode deteksi — bukan penggunaan aktual).
     // Kita hanya peduli apakah kode yang AKAN DITULIS ke disk mengandung pola berbahaya.
     if (parsedPatch) {
-      const patchContent = Object.values(parsedPatch).join('\n');
+      // Cari-ganti: yang AKAN DITULIS adalah teks "replace" — tanpa ini objeknya terbaca "[object Object]" dan lolos pindai.
+      const patchContent = Object.values(parsedPatch)
+        .map((v: any) => (typeof v === 'string' ? v : (v?.changes || []).map((x: any) => String(x?.replace ?? '')).join('\n')))
+        .join('\n');
       for (const { pattern, name } of dangerousPatterns) {
         if (pattern.test(patchContent)) {
           foundDangerous.push(name);
@@ -834,9 +844,11 @@ export class VerificationEngine {
     }
 
     // KASUS 3: Flat dictionary map standar { "path/to/file.js": "content" }
-    const result: Record<string, string> = {};
+    // Objek cari-ganti (PatchGenerator.js) ikut dipertahankan — patch campuran dulu kehilangan entri itu diam-diam.
+    const result: Record<string, any> = {};
     for (const [k, v] of Object.entries(parsed)) {
-      if (typeof k === 'string' && k.trim().length > 0 && typeof v === 'string') {
+      const cariGanti = v && typeof v === 'object' && (v as any).__mode === 'search_replace';
+      if (typeof k === 'string' && k.trim().length > 0 && (typeof v === 'string' || cariGanti)) {
         result[k.trim()] = v;
       }
     }

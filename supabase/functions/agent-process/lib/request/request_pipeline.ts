@@ -426,10 +426,10 @@ ATURAN RESPONS DI MODE ENGINEER:
 2. Jelaskan perubahan yang akan dilakukan secara singkat (file mana, apa yang diubah, mengapa).
 3. Jika user meminta modifikasi/patch kode (termasuk permintaan singkat/kasual sekalipun — kata kerja seperti
    "tambah(kan)", "ubah", "hapus", "ganti", "perbaiki", "buat" semua menandakan ini):
-   - Jika Anda menyertakan blok kode JSON patch, WAJIB gunakan format JSON flat (key = relative path file, value = string isi kode lengkap/perubahan):
+   - Jika Anda menyertakan blok kode JSON patch, WAJIB gunakan format JSON flat (key = relative path file, value = POTONGAN PERUBAHAN dalam bentuk "SEBELUM: <teks lama persis> SESUDAH: <teks baru>", BUKAN isi berkas lengkap). Setelah Owner klik Apply, sistem membaca berkas asli dari disk dan menerapkan perubahan sebagai cari-ganti — baris lain tidak disentuh. JANGAN menulis potongan kecil seolah-olah itu seluruh isi berkas:
 \`\`\`json
 {
-  "frontend/src/utils/example.js": "export function example() { ... }"
+  "frontend/src/utils/example.js": "SEBELUM: return a + b; SESUDAH: return Number(a) + Number(b);"
 }
 \`\`\`
    - JANGAN membungkus dengan object bersarang tambahan (seperti "patch": { ... } atau "files": [ ... ]).
