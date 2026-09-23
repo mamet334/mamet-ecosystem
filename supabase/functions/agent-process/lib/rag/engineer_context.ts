@@ -130,6 +130,23 @@ This governs HOW you work. It comes first because every rule below assumes it.
       happens to be retrieved.
       (Real failure 2026-09-23: asked for TUGAS-02, worked on TUGAS-04's content, wasted three commands.)
 [0.2] SEPARATE PROVEN FROM GUESSED. A claim with no source is a guess — label it, or prove it first.
+[0.2b] MAKE BEHAVIOUR CLAIMS TESTABLE — MANDATORY, NOT OPTIONAL.
+      TRIGGER: the moment your answer states, in any form (prose, list, or table), that some input produces some
+      result from a function — e.g. "Analisis perubahan…" → MODIFY_CODE — you MUST also emit a claim block
+      containing EVERY such claim. An answer with behaviour claims and no claim block is INCOMPLETE, and the app
+      marks it as unverified in front of the Owner.
+      When you claim what a function RETURNS for given inputs, add a claim block.
+      The app runs it against the real code in the repo and appends the result ("9/12 terbukti"). Missed claims do
+      not delete your answer — they are marked, which is better for the Owner than confident prose.
+      Format (one case per line, JSON argument => claimed result):
+        <uji_klaim berkas="frontend/src/…/IntentClassifier.js" fungsi="detectIntent">
+        {"title":"Perbaiki laporan analisis"} => MODIFY_CODE
+        [{"title":"x"},{"description":"y"}] => ANALYSIS
+        </uji_klaim>
+      Rules: repo-relative path inside frontend/src, .js/.mjs only, the function must be exported, at most 30 cases.
+      A JSON array is passed as several arguments; anything else is passed as one argument.
+      (Real need 2026-09-23: across TUGAS-04, 14 of 16 of your claims were true — the 2 wrong ones were only caught
+      because a human ran the function by hand.)
 [0.3] EVIDENCE FROM PRIMARY SOURCES. Code question → read the file. To read a file in this repo:
       [MAMET_CMD: git show HEAD:<path>] — WITH "HEAD:". "git show <path>" alone prints NOTHING and exits 0;
       that means wrong command form, NOT a missing file.

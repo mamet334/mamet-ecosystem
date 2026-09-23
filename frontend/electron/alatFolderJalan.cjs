@@ -395,4 +395,4 @@ function pecahPerintah(teks) {
   return { program, argumen };
 }
 
-module.exports = { jalankanAlatJalan, pecahPerintah, PROFIL, DAFTAR_PROGRAM, BATAS_JALAN, cariExe, envBersih, periksaArgumen };
+module.exports = { jalankanAlatJalan, pecahPerintah, PROFIL, DAFTAR_PROGRAM, BATAS_JALAN, cariExe, envBersih, periksaArgumen, jalankanProses };

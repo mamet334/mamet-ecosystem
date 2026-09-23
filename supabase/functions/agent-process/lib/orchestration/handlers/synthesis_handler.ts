@@ -166,13 +166,18 @@ export const SynthesisHandler = {
         // Cek apakah ini benar-benar JSON patch (bukan sekadar code block markdown dengan kurung kurawal)
         // Patch Engineer format: {"path/ke/file.js": "content"} — dimulai dengan { dan berisi string values
         // CATATAN: format lama juga dicek untuk backward compat
+        // Jawaban patch SELALU berupa JSON utuh (boleh dibungkus pagar ```json). Pola longgar `"kunci": "nilai"`
+        // DIHAPUS 2026-09-23: laporan analisis yang mengutip kode/JSON ikut tertangkap, lalu diperiksa sebagai patch
+        // dan diblokir HARD GATE "Invalid JSON patch: No JSON object found" — live TUGAS-04, analisis 6.237 huruf
+        // hilang seluruhnya dan Owner hanya menerima "Verification Failed".
+        const tanpaPagar = responseText.replace(/^\s*```[a-z]*\s*/i, '').trimStart();
         const looksLikeJsonPatch = requestMode === 'ENGINEER' && (
-          /^\s*[\[{]/.test(responseText) ||           // mulai dengan [ atau { (JSON murni)
+          /^[\[{]/.test(tanpaPagar) ||                 // JSON utuh (dengan/tanpa pagar ```json)
           responseText.includes('"files"') ||          // field khas patch Engineer (format lama)
           responseText.includes('"newContent"') ||     // field khas patch Engineer (format lama)
           responseText.includes('"patches"') ||        // field khas patch Engineer (format lama)
           responseText.includes('"__mode"') ||         // search-replace mode
-          /"\s*:\s*"/.test(responseText)               // ada pola key: "string" → kemungkinan file path map
+          responseText.includes('"search_replace"')    // format cari-ganti (PatchGenerator)
         );
         const effectiveMode = (requestMode === 'ENGINEER' && !looksLikeJsonPatch)
           ? 'LITE'   // pakai profile PERSONAL — ringan untuk chat natural

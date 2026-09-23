@@ -81,6 +81,31 @@ export function riwayatPerintahDariPesan(pesan = []) {
   return hasil;
 }
 
+// PENANDA PATCH sebagai SINYAL, bukan sebutan (live 2026-09-23 TUGAS-04): Engineer menulis kalimat
+// "ini analisis, bukan permintaan patch — jadi saya tidak menandai `[MAMET_PATCH_READY]`", dan jalur patch tetap
+// dimulai karena penanda dicari dengan includes() di mana saja. Akibatnya tugas ANALISIS masuk ke pipeline patch,
+// lalu gagal ("Provider returned empty response"), dan penandanya dibuang dari kalimat sehingga tersisa "saya tidak
+// menandai ``". Penanda hanya dihitung bila BERDIRI SENDIRI di satu baris, di luar blok kode dan di luar <think>.
+const PENANDA_PATCH = '[MAMET_PATCH_READY]';
+const POLA_PENANDA_BARIS = /^[ \t>*-]*\[MAMET_PATCH_READY\][ \t]*$/m;
+
+const tanpaKodeDanNalar = (teks) => String(teks ?? '')
+  .replace(/<think>[\s\S]*?<\/think>/gi, '')
+  .replace(/```[\s\S]*?```/g, '')
+  .replace(/`[^`\n]*`/g, '');
+
+/** Apakah jawaban benar-benar MENANDAI patch siap (bukan sekadar menyebut penandanya)? */
+export function adaPenandaPatch(teks) {
+  return POLA_PENANDA_BARIS.test(tanpaKodeDanNalar(teks));
+}
+
+/** Buang HANYA baris penanda; sebutan di dalam kalimat/backtick dibiarkan utuh agar kalimatnya tidak rusak. */
+export function buangPenandaPatch(teks) {
+  const t = String(teks ?? '');
+  if (!adaPenandaPatch(t)) return t;
+  return t.split('\n').filter((b) => !POLA_PENANDA_BARIS.test(b)).join('\n').trim();
+}
+
 const POLA_MINTA_TUGAS = /\bTUGAS[-\s]?\d+/i;
 // Baris wajib: TUGAS YANG DIKERJAKAN: <id> — "<kutipan kalimat sumber>" (kutip lurus atau melengkung).
 // Isi kutipan BOLEH memuat backtick: kalimat dokumen sering menyebut nama fungsi/berkas dalam backtick, dan versi

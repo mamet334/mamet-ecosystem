@@ -698,6 +698,41 @@ const depsEngineer = {
     return response === 1;
   },
 };
+// MESIN UJI KLAIM (ROADMAP-ENGINEER-MANDIRI Tahap 2, 2026-09-23). Klaim Engineer tentang perilaku kode dijalankan
+// terhadap kode NYATA di repo, di proses node TERPISAH: bila modul yang diuji punya efek samping, efeknya mati
+// bersama proses itu — tidak menyentuh aplikasi. Tanpa dialog izin karena tidak ada teks model yang jadi kode:
+// alamat berkas & nama fungsi disaring UjiKlaim.alamatSah, argumen ditanam lewat JSON.stringify.
+const { jalankanProses, cariExe, envBersih } = require('./alatFolderJalan.cjs');
+// Akar repo dibutuhkan penyusun skrip uji di layar (UjiKlaim.susunSkripUji) untuk menyusun alamat absolut modul.
+ipcMain.handle('engineer:akar-repo', () => PROJECT_ROOT);
+
+ipcMain.handle('engineer:uji-klaim', async (_event, permintaan) => {
+  const { berkas, fungsi, kasus, skrip } = permintaan || {};
+  if (typeof skrip !== 'string' || !skrip.trim()) return { galat: 'skrip uji kosong' };
+  if (!/^[A-Za-z_$][\w$]*$/.test(String(fungsi || ''))) return { galat: 'nama fungsi tidak sah' };
+  const p = pagarRepo(PROJECT_ROOT, String(berkas || ''));
+  if (!p.ok) return { galat: `alamat di luar repo: ${p.alasan || berkas}` };
+  if (!fs.existsSync(p.alamat)) return { galat: `berkas tidak ada: ${berkas}` };
+  if (!Array.isArray(kasus) || !kasus.length) return { galat: 'tidak ada kasus uji' };
+
+  const node = cariExe('node', PROJECT_ROOT);
+  if (!node) return { galat: 'node tidak terpasang (uji klaim butuh node)' };
+  const alamatSkrip = path.join(app.getPath('temp'), `mamet-uji-klaim-${Date.now()}.mjs`);
+  try {
+    fs.writeFileSync(alamatSkrip, skrip, 'utf8');
+    const h = await jalankanProses(node, [alamatSkrip], { cwd: PROJECT_ROOT, env: envBersih(process.env), waktuS: 20 });
+    if (h.galat) return { galat: h.galat };
+    if (h.habisWaktu) return { galat: 'uji klaim melewati batas waktu 20 detik' };
+    const baris = String(h.keluaran || '').trim().split('\n').filter(Boolean).pop() || '';
+    try { return JSON.parse(baris); }
+    catch { return { galat: `keluaran uji tidak terbaca: ${baris.slice(0, 200)}` }; }
+  } catch (e) {
+    return { galat: `gagal menjalankan uji: ${e.code || e.message}` };
+  } finally {
+    try { fs.unlinkSync(alamatSkrip); } catch { /* berkas sementara — abaikan */ }
+  }
+});
+
 ipcMain.handle('engineer:jalankan', async (_event, perintah) => {
   const teks = typeof perintah === 'string' ? perintah : '';
   const p = pecahPerintah(teks);

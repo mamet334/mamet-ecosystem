@@ -22,7 +22,8 @@ const AGENT_ENDPOINT = 'https://uuyzdjifhdfyyvpxsofu.supabase.co/functions/v1/ag
 import { supabase } from '../../../supabase.js';
 import { statusLaptop, kirimKeLaptop, sidikJari, cariDiCache, KUOTA_CACHE_MB } from './remoteConversionClient.js';
 import { ambilPermintaanAlat, susunPesanHasil, susunPesanKoreksi, namaFolderAman, buangKakiTiruan, peringatanKlaimTanpaAlat, peringatanKlaimEngineer, blokKodeKeMametCmd, MAKS_PUTARAN } from './folderKerjaAlat.js';
-import { cekPerintahBerulang, petunjukHasilKosong, peringatanTugasTakDiumumkan } from './engineer/ProsedurEngineer.js';
+import { cekPerintahBerulang, petunjukHasilKosong, peringatanTugasTakDiumumkan, adaPenandaPatch, buangPenandaPatch } from './engineer/ProsedurEngineer.js';
+import { peringatanKlaimTakTeruji } from './engineer/UjiKlaim.js';
 
 // Folder kerja (Item 85 Tahap 1): batas total isi berkas yang dibaca per pertanyaan (semua putaran) — riwayat ikut
 // membawa hasil putaran sebelumnya, jadi tanpa batas ini 4 putaran × 5 berkas × 60 KB bisa ±1,2 MB ke model.
@@ -491,6 +492,9 @@ export class AssistantService {
           // Prosedur langkah 0.1: tugas bernama wajib diumumkan + dikutip sumbernya.
           const peringatanTugas = peringatanTugasTakDiumumkan(userMsg, teks);
           if (peringatanTugas) teks += `\n\n${peringatanTugas}`;
+          // Tahap 2 Engineer Mandiri: klaim perilaku tanpa blok <uji_klaim> berarti tidak ada yang mengujinya.
+          const peringatanKlaim = peringatanKlaimTakTeruji(teks);
+          if (peringatanKlaim) teks += `\n\n${peringatanKlaim}`;
         }
         return onDoneEngineer?.(teks, steps, jsonMetadata, extras);
       };
@@ -1374,8 +1378,9 @@ export class AssistantService {
         ? (jsonData.message || jsonData)
         : JSON.stringify(jsonData.message || jsonData);
 
-      const hasPatch = isEngineerMode && rawContent.includes('[MAMET_PATCH_READY]');
-      const cleanContent = hasPatch ? rawContent.replace('[MAMET_PATCH_READY]', '').trim() : rawContent;
+      // Penanda dihitung hanya bila BERDIRI SENDIRI di satu baris — menyebutnya dalam kalimat bukan sinyal (2026-09-23).
+      const hasPatch = isEngineerMode && adaPenandaPatch(rawContent);
+      const cleanContent = hasPatch ? buangPenandaPatch(rawContent) : rawContent;
 
       onDone?.(cleanContent, jsonData.processingSteps || [], jsonData, { hasPatch, patchOriginalTask: hasPatch ? userMsg : undefined });
 
@@ -1448,10 +1453,8 @@ export class AssistantService {
 
     console.log('[LIFECYCLE] Stream completed');
 
-    const hasPatch = isEngineerMode && aiResponseText.includes('[MAMET_PATCH_READY]');
-    const finalText = hasPatch
-      ? aiResponseText.replace('[MAMET_PATCH_READY]', '').trim()
-      : aiResponseText;
+    const hasPatch = isEngineerMode && adaPenandaPatch(aiResponseText);
+    const finalText = hasPatch ? buangPenandaPatch(aiResponseText) : aiResponseText;
 
     onDone?.(finalText, processingSteps, null, {
       hasPatch,

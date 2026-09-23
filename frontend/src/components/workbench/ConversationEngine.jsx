@@ -12,6 +12,7 @@ import { tugasDariUsulan } from '../../core/runtime/services/engineer/UsulanPatc
 import { laporanSetelahMuatUlang } from '../../core/runtime/services/engineer/CatatanPatch.js';
 import { putusanPemulihan, bolehSimpanChat, kunciSimpan } from './pemulihanChat.js';
 import { riwayatPerintahDariPesan } from '../../core/runtime/services/engineer/ProsedurEngineer.js';
+import { ambilBlokKlaim, susunSkripUji, susunLaporanKlaim } from '../../core/runtime/services/engineer/UjiKlaim.js';
 
 // =============================================
 // HELPER: Parse thinking/answer dari respons AI
@@ -531,6 +532,34 @@ export default function ConversationEngine({ sessionId }) {
     const unsubPatch = eventBus.on('Engineer:PatchApplied', patchAppliedHandler);
     return unsubPatch;
   }, []);
+
+  // MESIN UJI KLAIM (ROADMAP-ENGINEER-MANDIRI Tahap 2, 2026-09-23): jawaban Engineer yang memuat blok <uji_klaim>
+  // dijalankan terhadap kode nyata di repo, lalu hasilnya ditempel sebagai pesan tersendiri. Jawaban model TIDAK
+  // diubah — laporan uji berdiri sendiri supaya jelas mana kata model dan mana hasil mesin.
+  const klaimDiprosesRef = useRef(new Set());
+  useEffect(() => {
+    if (workspaceManager?.activeWorkspaceId !== 'ws-engineer') return;
+    const i = messages.length - 1;
+    const pesan = messages[i];
+    if (!pesan || pesan.role !== 'model' || pesan.isUjiKlaim) return;
+    if (klaimDiprosesRef.current.has(i) || !String(pesan.content || '').includes('<uji_klaim')) return;
+    klaimDiprosesRef.current.add(i);
+
+    (async () => {
+      const { blok, galat } = ambilBlokKlaim(pesan.content);
+      if (!blok.length && !galat.length) return;
+      const akar = await (window.electronAPI?.engineer?.akarRepo?.() ?? Promise.resolve(null));
+      const jalan = [];
+      for (const b of blok) {
+        const hasil = window.electronAPI?.engineer?.ujiKlaim
+          ? await window.electronAPI.engineer.ujiKlaim({ berkas: b.berkas, fungsi: b.fungsi, kasus: b.kasus, skrip: susunSkripUji(b, akar || '.') })
+          : { galat: 'uji klaim hanya tersedia di aplikasi desktop' };
+        jalan.push({ blok: b, hasil });
+      }
+      const laporan = susunLaporanKlaim(jalan, galat);
+      if (laporan) setMessages((prev) => [...prev, { role: 'model', content: laporan, isUjiKlaim: true }]);
+    })().catch((e) => console.error('[UjiKlaim] gagal:', e));
+  }, [messages, workspaceManager?.activeWorkspaceId]);
 
   // PATCH YANG TERPUTUS MUAT ULANG (T10): menulis berkas aplikasi memuat ulang halaman (Vite) sebelum pesan hasil tampil.
   // Laporan dibaca ulang dari DISK (CatatanPatch.js) dan tombol Undo dipulihkan.

@@ -1,6 +1,6 @@
 # ROADMAP — Engineer Mandiri (self-maintenance)
 
-**Dibuat:** 23 September 2026 · **Status:** 📝 rancangan, menunggu koreksi Owner · belum ada kode
+**Dibuat:** 23 September 2026 · **Status:** 🟡 Tahap 2 ✅ live; Tahap 3 berikutnya (urutan ditukar atas keputusan Owner)
 
 Lanjutan dari T10 di [`ROADMAP-TEMUAN-TERBUKA.md`](./ROADMAP-TEMUAN-TERBUKA.md). Dasar rancangan ini adalah hasil uji
 Engineer 22–23 September 2026 (TUGAS-01..04), bukan perkiraan.
@@ -67,7 +67,7 @@ anggaran yang tegas:
 **Cara uji:** tugas yang butuh 3 perintah selesai tanpa klik; perintah menulis dalam rangkaian itu **menghentikan**
 lingkaran dan memunculkan dialog; anggaran habis → berhenti dengan laporan jujur, bukan diam.
 
-## Tahap 2 — Mesin uji untuk klaim Engineer
+## Tahap 2 — Mesin uji untuk klaim Engineer ✅ SELESAI (23 September 2026)
 
 **Masalah:** klaim Engineer hari ini hanya terbukti karena **saya** menjalankan `detectIntent` pada tiap kalimatnya
 (7/7 lalu 11/12). Tanpa itu, tidak ada yang tahu mana yang benar.
@@ -77,6 +77,11 @@ diklaim" — dan sistem menjalankannya sendiri terhadap kode nyata, lalu menempe
 `9/12 klaim terbukti, 3 meleset (…)`. Klaim yang meleset tidak menghapus jawaban; ia ditandai.
 
 **Kenapa ini sebelum otonomi penuh:** ini satu-satunya hal yang membuat pekerjaan tanpa pengawasan bisa dipercaya.
+
+**Hasil live 23 September:** Engineer menulis blok klaimnya sendiri; mesin melaporkan **5/10 terbukti**,
+dan kelima yang meleset saya verifikasi ulang — memang meleset. Saat klaim serupa ditulis sebagai prosa dan
+diperiksa manual, ketepatannya tampak 14/16. Mesin ini mengubah gambarannya seluruhnya —
+[log](../project-memory/changelog/2026-09-23-mesin-uji-klaim-engineer.md).
 
 **Cara uji:** tanam sengaja satu klaim salah → sistem harus menandainya; klaim yang benar tidak boleh ditandai salah.
 
@@ -116,8 +121,9 @@ tidak aktif dan alasannya tertulis.
 
 ## Urutan yang disarankan
 
-**Tahap 1 dan 2 dikerjakan bersamaan** — yang satu tanpa yang lain berbahaya: otonomi tanpa mesin uji hanya
-memperbanyak tebakan yang rapi. Lalu Tahap 3, 4, dan 5.
+**Diperbarui 23 September 2026 (keputusan Owner):** Tahap 2 ✅ selesai lebih dulu. Urutan berikutnya **Tahap 3
+(ingatan temuan) SEBELUM Tahap 1 (lingkaran mandiri)** — tanpa ingatan, Engineer yang berjalan otonom akan
+melaporkan temuan yang sama setiap hari sampai Owner berhenti membacanya. Sesudah itu Tahap 1, 4, dan 5.
 
 ## Yang tidak dijanjikan rancangan ini
 
