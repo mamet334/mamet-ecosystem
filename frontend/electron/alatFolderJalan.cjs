@@ -196,6 +196,42 @@ function pratinjau(akar, program, argumen, sub) {
   return bagian.join('\n\n');
 }
 
+// Tanda skrip MENULIS/MENGHAPUS berkas atau menghubungi jaringan. Dipakai hanya untuk MENANDAI di dialog izin —
+// bukan daftar larangan: daftar semacam itu selalu bisa dilewati, dan melarangnya akan memblokir pekerjaan sah
+// (live 2026-09-23: `node -e` membaca berkas dengan nomor baris ditolak, padahal hanya membaca).
+const TANDA_TULIS = [
+  [/writefile|appendfile|createwritestream|\bftruncate\b/i, 'menulis berkas'],
+  [/\bunlink|\brmdir|\brm\b|\brmtree|shutil\.rmtree|os\.remove/i, 'menghapus berkas'],
+  [/\brename\b|\bcopyfile|shutil\.copy|shutil\.move/i, 'memindah/menyalin berkas'],
+  [/\bmkdir\b|makedirs/i, 'membuat folder'],
+  [/open\s*\([^)]*['"][wax]/i, 'membuka berkas untuk ditulis'],
+  [/child_process|execsync|spawnsync|subprocess|os\.system/i, 'menjalankan program lain'],
+  [/\bfetch\s*\(|https?:\/\/|urllib|requests\.|axios/i, 'menghubungi jaringan'],
+];
+
+/**
+ * Skrip sebaris (`node -e`, `python -c`) isinya tidak terlihat dari nama perintah. Fungsi ini menyiapkan baris
+ * peringatan untuk dialog: apa saja yang tampak dilakukan skrip itu. Kalau hanya membaca, tidak ada peringatan.
+ * @returns {string} baris peringatan, atau '' bila tidak ada tanda menulis
+ */
+function peringatanSkripSebaris(argumen) {
+  const i = argumen.findIndex((a) => /^-(e|c|p|ep|pe)$/.test(a));
+  if (i === -1) return '';
+  const skrip = argumen.slice(i + 1).join(' ');
+  if (!skrip) return '';
+  const temuan = TANDA_TULIS.filter(([pola]) => pola.test(skrip)).map(([, nama]) => nama);
+  if (!temuan.length) return '';
+  return `⚠️ SKRIP SEBARIS INI TAMPAK: ${[...new Set(temuan)].join(', ')}. Skrip berjalan dengan hak penuh Anda dan TIDAK dibatasi pagar folder — perubahan di luar repo tidak terlihat di git. Baca skripnya di bawah sebelum mengizinkan.`;
+}
+
+/** Isi skrip sebaris ditampilkan UTUH di dialog — Owner tidak bisa menilai apa yang tidak ia lihat. */
+function skripSebarisPenuh(argumen) {
+  const i = argumen.findIndex((a) => /^-(e|c|p|ep|pe)$/.test(a));
+  if (i === -1) return '';
+  const skrip = argumen.slice(i + 1).join(' ');
+  return skrip ? `Isi skrip yang akan dijalankan (${skrip.length} huruf):\n${potong(skrip, 1200)}` : '';
+}
+
 /** Lingkungan tanpa rahasia; keluaran dipaksa UTF-8 dan tanpa pertanyaan interaktif. */
 function envBersih(env = process.env) {
   const hasil = {};
@@ -301,8 +337,9 @@ async function izinLaluJalankan(akar, { program, argumen, teks, s, r, env, waktu
           `Folder asal: ${profil.tempat} · batas waktu ${waktuS} detik · keluaran maks ${BATAS_JALAN.keluaranByte / 1024} KB`,
           'PERHATIAN: program yang dijalankan TIDAK dibatasi pagar folder — ia bisa membaca/mengubah berkas di mana pun di laptop. Izinkan hanya bila Anda paham perintah ini.',
           s.internet ? '🌐 Perintah ini bisa MENGUNDUH dan menjalankan paket dari internet.' : '',
+          peringatanSkripSebaris(argumen),
         ].filter(Boolean).join('\n'),
-        pratinjau: pratinjau(akar, program, argumen, s.sub),
+        pratinjau: [pratinjau(akar, program, argumen, s.sub), skripSebarisPenuh(argumen)].filter(Boolean).join('\n\n'),
       })) === true;
     } catch { return false; }
   })();
@@ -326,15 +363,24 @@ function pecahPerintah(teks) {
   if (t.length > 2000) return { galat: 'perintah lebih dari 2000 huruf' };
   // Live 2026-09-22: `git log --pretty=format:"%h - %s"` ditolak karena "%" — padahal tanpa shell %, $, ^ hanya teks
   // (HEAD^, format git). Yang ditolak hanya penyambung/pengalih perintah & baris baru: tanda model berharap shell.
-  const meta = t.match(/[&|;<>`\r\n]/);
-  if (meta) return { galat: `perintah memuat "${meta[0] === '\n' || meta[0] === '\r' ? 'baris baru' : meta[0]}" — tidak ada shell: tulis SATU program dengan argumennya (tanpa &&, |, ;, <, >)` };
+  //
+  // Live 2026-09-23: `node -e "const fs=require('fs');const p='…';…"` ditolak karena ";" — padahal titik-koma itu ADA
+  // DI DALAM tanda kutip, yaitu isi skrip yang diteruskan apa adanya sebagai SATU argumen. Karena program dijalankan
+  // langsung tanpa shell, tanda di dalam kutip tidak bisa menyambung perintah apa pun; menolaknya hanya memblokir
+  // pemakaian yang sah. Karena itu penyambung/pengalih diperiksa per huruf, HANYA di luar tanda kutip.
+  const PENYAMBUNG = new Set(['&', '|', ';', '<', '>', '`']);
   const hasil = [];
   let kini = '';
   let adaToken = false;
   let kutip = null;
   for (const c of t) {
+    if (c === '\n' || c === '\r') {
+      return { galat: 'perintah memuat "baris baru" — tidak ada shell: tulis SATU program dengan argumennya (tanpa &&, |, ;, <, >)' };
+    }
     if (kutip) {
       if (c === kutip) kutip = null; else kini += c;
+    } else if (PENYAMBUNG.has(c)) {
+      return { galat: `perintah memuat "${c}" di luar tanda kutip — tidak ada shell: tulis SATU program dengan argumennya (tanpa &&, |, ;, <, >). Bila tanda itu bagian dari isi argumen, bungkus argumennya dengan tanda kutip.` };
     } else if (c === '"' || c === "'") {
       kutip = c; adaToken = true;
     } else if (/\s/.test(c)) {

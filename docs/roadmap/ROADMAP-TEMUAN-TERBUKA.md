@@ -159,9 +159,21 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
   menjalankan `git grep` pembuktian dan melaporkan temuan. Engineer mampu mengikuti prosedur, belum mampu menilai.
 - **TUGAS-03 (live):** menolak mem-patch CORE IMMUTABLE atas kesadaran sendiri ✅, tetapi penjelasan perbaikannya
   salah letak; peringatan Vite diperbaiki Owner (`@vite-ignore`, terbukti dengan uji kendali).
-- **Sisa:** uji pembanding model **belum sah** (setelan model utama tak tersimpan — kedua putaran memakai model yang
-  sama; pemilih tingkat model memang disembunyikan di workspace Engineer) · tombol Undo belum teruji live sesudah
-  perbaikan · TUGAS-04 belum · Tahap 2 (web teknis) & Tahap 3 (isi space) belum.
+- **TUGAS-04 ✅ live (2026-09-23):** dengan `gpt-4o-mini` hanya penjelasan umum; dengan `deepseek-v4-pro-0813`
+  **11 dari 12 klaim terbukti** (saya jalankan `detectIntent` asli pada tiap contoh), menemukan force-check baris 41
+  dan dua kelas cacat di luar kunci jawaban, usulan perbaikannya tepat sasaran —
+  [log](../project-memory/changelog/2026-09-23-uji-engineer-tugas04-dan-pagar-perintah.md).
+- **Kesimpulan uji model:** batasnya memang di model untuk penilaian & kehati-hatian; prosedur yang sama dipakai
+  model kuat sebagai alat (menolak tugas yang tak ada di sumber, verifikasi alamat sebelum membaca, ganti cara sambil
+  menyebut RULE 0.4). Biaya satu sesi ±$0,03.
+- **Belum diperbaiki (Engineer tidak siap dipakai dari aplikasi terpasang):** `PROJECT_ROOT` menunjuk folder
+  instalasi di build `npm run dist` → `git` gagal dan patch akan menulis ke folder instalasi; setelan & riwayat
+  terpisah antara `mamet://app` dan `http://localhost:5173` (model yang diganti di satu sisi tidak berlaku di sisi
+  lain — sempat membuat uji banding model tidak sah tanpa disadari).
+- **Belum diperbaiki (label):** pemeriksa label menolak keluaran terminal sebagai sumber, sehingga jawaban yang
+  paling berbukti justru diturunkan ke HYPOTHESIS.
+- **Sisa:** tombol Undo belum teruji live sesudah perbaikan · perbaikan `IntentClassifier` sesuai temuan Engineer
+  belum dikerjakan · Tahap 2 (web teknis) & Tahap 3 (isi space) belum.
 
 ## T11 — `check-keys` bisa dipanggil dengan kunci anon (asal Item 85 Tahap 3, 2026-09-22)
 

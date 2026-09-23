@@ -101,6 +101,16 @@ export function peringatanTugasTakDiumumkan(pesanPengguna, jawaban) {
   const p = String(pesanPengguna ?? '');
   if (!POLA_MINTA_TUGAS.test(p)) return null;
   if (/^\[TERMINAL OUTPUT for: /.test(p)) return null; // putaran lanjutan, bukan permintaan tugas baru
+
+  // MENOLAK BUKAN PELANGGARAN. Bila Engineer justru berhenti karena tugasnya tidak ada di sumbernya, itu langkah 0.1
+  // yang dijalankan dengan BENAR — menuntut baris pengumuman di situ adalah peringatan palsu.
+  // Live 2026-09-23 10:40 (deepseek-v4-pro): TUGAS-04 belum terunggah, Engineer mendaftar dokumen yang ia punya,
+  // menolak mengerjakan tugas terdekat, dan melabeli jawabannya INSUFFICIENT — lalu tetap kena peringatan.
+  // Risiko yang saya terima sadar: model bisa "kabur" dari penjaga dengan mengaku tugasnya tak ditemukan. Klaim itu
+  // terlihat Owner di layar dan label INSUFFICIENT diperiksa sistem label server, jadi bukan jalan sunyi.
+  const t0 = String(jawaban ?? '');
+  if (/\[STATUS:\s*INSUFFICIENT/i.test(t0)) return null;
+  if (/tidak ada di sumber|tidak ditemukan di (?:sumber|dokumen)|tidak ada di dokumen|belum (?:ter)?unggah|tidak tersedia di konteks/i.test(t0)) return null;
   const t = String(jawaban ?? '').replace(/<think>[\s\S]*?<\/think>/gi, '');
   const diminta = (POLA_MINTA_TUGAS.exec(p) || [''])[0].toUpperCase().replace(/\s/, '-');
   const umumkan = POLA_UMUMKAN.exec(t);
