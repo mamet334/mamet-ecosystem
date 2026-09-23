@@ -170,8 +170,13 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
   instalasi di build `npm run dist` → `git` gagal dan patch akan menulis ke folder instalasi; setelan & riwayat
   terpisah antara `mamet://app` dan `http://localhost:5173` (model yang diganti di satu sisi tidak berlaku di sisi
   lain — sempat membuat uji banding model tidak sah tanpa disadari).
-- **Belum diperbaiki (label):** pemeriksa label menolak keluaran terminal sebagai sumber, sehingga jawaban yang
-  paling berbukti justru diturunkan ke HYPOTHESIS.
+- **Label (2026-09-23) ✅ kode selesai, bukti live menunggu deploy:** keluaran perintah Engineer yang Owner setujui
+  kini sumber sah (`sumberDariKeluaranTerminal` + blok kontrak `[LABEL UNTUK KELUARAN PERINTAH ENGINEER]`); perintah
+  yang ditolak tetap bukan sumber dan pemeriksaan angka tetap jalan —
+  [log](../project-memory/changelog/2026-09-23-label-sumber-keluaran-perintah.md).
+- **Lanjutan jangka panjang:** rancangan [`ROADMAP-ENGINEER-MANDIRI.md`](./ROADMAP-ENGINEER-MANDIRI.md) (disetujui
+  Owner 23 September): lingkaran baca-saja beranggaran, mesin uji klaim, ingatan temuan, antrean kerja, dan Engineer
+  di aplikasi terpasang.
 - **Sisa:** tombol Undo belum teruji live sesudah perbaikan · perbaikan `IntentClassifier` sesuai temuan Engineer
   belum dikerjakan · Tahap 2 (web teknis) & Tahap 3 (isi space) belum.
 

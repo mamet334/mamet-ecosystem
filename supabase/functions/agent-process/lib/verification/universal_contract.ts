@@ -149,6 +149,7 @@ export function buildUniversalContract(params: ContractBuilderInput): UniversalE
     outputContract,
     systemBasePrompt,
     hasilAlatFolder: params.hasilAlatFolder === true,
+    keluaranPerintah: params.keluaranPerintah === true,
     asSystemPromptText: () => renderContractAsText(contract, confidenceReport),
   };
 
@@ -310,6 +311,18 @@ function renderContractAsText(
     text += `Pesan "[HASIL ALAT FOLDER]" di percakapan ini dicatat oleh proses utama aplikasi di laptop pengguna — untuk label, statusnya SETARA dokumen BLOK 4: isi berkas yang dibaca (folder_read), perubahan yang tercatat BERHASIL atau DITOLAK, dan keluaran perintah (folder_run). Aturan ini menggantikan syarat "dokumen BLOK 4/<RAG>" di atas khusus untuk hasil alat folder.\n`;
     text += `- Inti jawaban melaporkan isi berkas, perubahan, penolakan, atau keluaran perintah persis seperti tercatat → [STATUS: VERIFIED] dengan baris Sumber: yang menyebut alamat berkas atau perintah persis seperti di kepala hasil, mis. Sumber: \`app.py\`, \`python app.py\`. Angka yang Anda sebut harus tertulis di hasil itu.\n`;
     text += `- Inti jawaban berupa saran, tafsiran, atau rencana Anda sendiri → [STATUS: HYPOTHESIS - Rekomendasi AI].\n`;
+  }
+
+  // ENGINEER (2026-09-23): setara blok di atas, untuk keluaran perintah Engineer. Tanpa ini, analisis yang seluruhnya
+  // dibangun dari isi berkas nyata (TUGAS-02 & TUGAS-04 live) selalu diturunkan ke HYPOTHESIS "tidak mengutip
+  // dokumen" — jawaban paling berbukti justru dihukum. Pembuktiannya tetap ketat: sumberDariKeluaranTerminal
+  // (synthesis_handler) hanya mengakui perintah yang BENAR-BENAR dijalankan setelah Owner menyetujui dialog izin.
+  if (contract.keluaranPerintah) {
+    text += `\n[LABEL UNTUK KELUARAN PERINTAH ENGINEER]\n`;
+    text += `Pesan "[TERMINAL OUTPUT for: <perintah>]" di percakapan ini adalah keluaran perintah yang dijalankan proses utama di laptop Owner setelah Owner menyetujui dialog izin — untuk label, statusnya SETARA dokumen BLOK 4. Aturan ini menggantikan syarat "dokumen BLOK 4/<RAG>" di atas khusus untuk keluaran perintah.\n`;
+    text += `- Inti jawaban melaporkan isi berkas atau keluaran itu persis seperti tercatat → [STATUS: VERIFIED] dengan baris Sumber: yang menyebut PERINTAHNYA persis seperti di kepala keluaran, mis. Sumber: \`git show HEAD:frontend/src/....js\`. Angka, nomor baris, dan nama yang Anda sebut harus benar-benar ada di keluaran itu.\n`;
+    text += `- Inti jawaban berupa usulan, tafsiran, atau rencana Anda sendiri → [STATUS: HYPOTHESIS - Rekomendasi AI].\n`;
+    text += `- Perintah yang DITOLAK Owner atau tidak dijalankan BUKAN sumber: jangan pernah melabeli VERIFIED atas dasar itu.\n`;
   }
 
 

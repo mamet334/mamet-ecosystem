@@ -4,7 +4,7 @@ import { VerificationEngine } from '../../verification/verification_engine.ts';
 import { persistTelemetryLog } from '../../verification/verification_service.ts';
 import { eventBus } from '../../event/event_bus.ts';
 import { koreksiLabel } from '../../verification/label_sumber.ts';
-import { sumberDariHasilAlat } from '../../../../../../frontend/src/core/runtime/services/folderKerjaAlat.js';
+import { sumberDariHasilAlat, sumberDariKeluaranTerminal } from '../../../../../../frontend/src/core/runtime/services/folderKerjaAlat.js';
 import { tutupJawabanDataTabel } from '../../data_tabel/data_tabel.ts';
 import { sisipkanNalar } from '../../adapters/reasoning_openrouter.ts';
 import { CATATAN_TERPOTONG, susunBahanLanjutan, susunPromptLanjutan, tenggatJawaban } from '../../streaming/batas_waktu.ts';
@@ -72,6 +72,20 @@ export const SynthesisHandler = {
       judulDokumen.push(...sumberFolder.judul);
       isiDokumen.push(...sumberFolder.isi);
       ctx.state.processingSteps.push(`📂 Sumber folder kerja untuk pemeriksa label: ${sumberFolder.judul.length} berkas dibaca`);
+    }
+    // ENGINEER (2026-09-23): keluaran perintah yang Owner setujui — "[TERMINAL OUTPUT for: …]" — ikut menjadi sumber
+    // sah. Tanpa ini, jawaban Engineer yang seluruhnya dibangun dari isi berkas nyata selalu diturunkan ke HYPOTHESIS
+    // "tidak mengutip dokumen" (live TUGAS-02 & TUGAS-04), sementara jawaban tanpa bukti sama sekali tidak dihukum.
+    if (requestMode === 'ENGINEER') {
+      const sumberTerminal = sumberDariKeluaranTerminal([
+        ctx.request.originalMessage || ctx.request.finalMessage,
+        ...(history || []).filter((h: any) => h?.role === 'user').map((h: any) => String(h.content || '')),
+      ]);
+      if (sumberTerminal.judul.length) {
+        judulDokumen.push(...sumberTerminal.judul);
+        isiDokumen.push(...sumberTerminal.isi);
+        ctx.state.processingSteps.push(`⌨️ Sumber keluaran perintah untuk pemeriksa label: ${sumberTerminal.judul.length} perintah`);
+      }
     }
     let replyMessage = 'Gagal memproses jawaban.';
 

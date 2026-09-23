@@ -529,7 +529,9 @@ export const ContextBuilderHandler = {
       systemBasePrompt,
       activeConflicts: activeConflictsCount,
       // Item 85 Tahap 3: putaran lanjutan folder kerja membawa pesan [HASIL ALAT FOLDER] — sumber label yang sah.
-      hasilAlatFolder: ((ctx.request as any).folderKerja?.putaran || 0) > 0
+      hasilAlatFolder: ((ctx.request as any).folderKerja?.putaran || 0) > 0,
+      // 2026-09-23: pesan yang dijawab adalah keluaran perintah Engineer — perintahnya boleh disebut di baris Sumber.
+      keluaranPerintah: /^\[TERMINAL OUTPUT for: /.test(String(ctx.request.originalMessage || ctx.request.finalMessage || ''))
     });
 
     fullSystemContext = universalContract.asSystemPromptText();

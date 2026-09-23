@@ -58,6 +58,36 @@ export function sumberDariHasilAlat(pesan) {
   return { judul, isi };
 }
 
+/**
+ * ENGINEER (2026-09-23): keluaran perintah Engineer dikirim balik ke model sebagai pesan pengguna berbentuk
+ * "[TERMINAL OUTPUT for: <perintah>]\n<keluaran>" — bentuk yang BERBEDA dari hasil alat folder di atas, sehingga
+ * pemeriksa label tidak mengenalinya. Akibatnya (live TUGAS-02 & TUGAS-04) jawaban yang seluruh isinya bersumber
+ * dari berkas nyata justru diturunkan ke HYPOTHESIS dengan alasan "tidak mengutip dokumen" — jawaban paling
+ * berbukti dihukum, sementara jawaban tanpa bukti sama sekali tidak.
+ *
+ * Perintahnya dijalankan proses utama setelah Owner menyetujui dialog izin, jadi keluarannya SETARA dokumen:
+ * perintah boleh disebut di baris Sumber, dan angka jawaban dicocokkan ke keluarannya.
+ *
+ * @param {string[]} pesan pesan pengguna (pesan kini + riwayat)
+ * @returns {{judul: string[], isi: string[]}}
+ */
+export function sumberDariKeluaranTerminal(pesan) {
+  const judul = [];
+  const isi = [];
+  for (const p of pesan || []) {
+    const t = String(p || '');
+    const m = /^\[TERMINAL OUTPUT for: ([\s\S]*?)\]\n([\s\S]*)$/.exec(t);
+    if (!m) continue;
+    const perintah = m[1].trim();
+    const keluaran = m[2];
+    // Perintah yang DITOLAK tidak menghasilkan bukti apa pun — jangan jadikan sumber.
+    if (/^(DITOLAK OWNER|TIDAK DIJALANKAN)/m.test(keluaran)) continue;
+    if (perintah && !judul.includes(perintah)) judul.push(perintah);
+    isi.push(`${perintah}\n${keluaran}`);
+  }
+  return { judul, isi };
+}
+
 // Baris bergaya catatan kaki sistem: emoji + teks miring seluruhnya ("📂 _…_", "✍️ _…_", "⚠️ _…_").
 const BARIS_KAKI = /^\s*(?:📂|✍️?|▶️?|⚠️?|🚫|⛔|⏱️?|🔁)\s*_.*_\s*$/u;
 const KLAIM_SISTEM = /dicatat dari proses utama/i;

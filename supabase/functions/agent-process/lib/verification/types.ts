@@ -191,6 +191,7 @@ export interface UniversalEvidenceContract {
   outputContract: OutputContractBlock;
   systemBasePrompt: string; // Instruksi dasar (Identity, Sub-Agents, Fitur Zip/Chart)
   hasilAlatFolder?: boolean; // Item 85 Tahap 3: putaran lanjutan folder kerja — hasil alat menjadi sumber label
+  keluaranPerintah?: boolean; // 2026-09-23: keluaran perintah Engineer yang disetujui Owner — sumber label yang sah
   // Full text rendition — siap dikirim ke LLM
   asSystemPromptText: () => string;
 }
@@ -216,4 +217,5 @@ export interface ContractBuilderInput {
   systemBasePrompt: string;
   activeConflicts?: number;
   hasilAlatFolder?: boolean;
+  keluaranPerintah?: boolean;
 }
