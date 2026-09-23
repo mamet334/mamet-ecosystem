@@ -10,6 +10,7 @@ import ChatHistory from './ChatHistory';
 import MemoryContextPanel from './MemoryContextPanel';
 import { tugasDariUsulan } from '../../core/runtime/services/engineer/UsulanPatch.js';
 import { laporanSetelahMuatUlang } from '../../core/runtime/services/engineer/CatatanPatch.js';
+import { putusanPemulihan, bolehSimpanChat, kunciSimpan } from './pemulihanChat.js';
 
 // =============================================
 // HELPER: Parse thinking/answer dari respons AI
@@ -235,6 +236,9 @@ export default function ConversationEngine({ sessionId }) {
 
   const lastSavedKeyRef = useRef('');
   const isSavingRef = useRef(false);
+  // Pemulihan riwayat gagal karena gangguan (bukan karena chatnya hilang): penunjuk chat lama dipertahankan
+  // supaya riwayatnya tidak "dilupakan" aplikasi, dan chat lama tidak ditimpa pesan baru.
+  const pemulihanGagalRef = useRef(false);
   const osStateRef = useRef(osState);
   osStateRef.current = osState;
 
@@ -245,10 +249,13 @@ export default function ConversationEngine({ sessionId }) {
     // Jangan auto-save jika tidak ada pesan atau sedang streaming
     if (!messages || messages.length === 0 || isLoading) return;
 
-    const currentLength = messages.length;
-    const lastMsg = messages[messages.length - 1];
-    const lastContentLen = (lastMsg?.content || '').length;
-    const saveKey = `${currentChatId || 'new'}_${currentLength}_${lastContentLen}_${lastMsg?.role || ''}`;
+    // [FIX 2026-09-23] Pesan yang dibuat sistem sendiri (laporan penalaran Engineer, dialog konfirmasi,
+    // laporan patch setelah muat ulang) tidak boleh MELAHIRKAN chat baru. Tanpa penjaga ini, pesan seperti itu
+    // tersimpan sebagai chat tersendiri yang judulnya isi laporan — live 2026-09-23 satu tugas Engineer
+    // terpecah jadi empat baris di tabel `chats`. Bila chat sudah ada, pesan sistem tetap ikut tersimpan.
+    if (!bolehSimpanChat({ currentChatId, messages })) return;
+
+    const saveKey = kunciSimpan({ chatId: currentChatId, messages });
 
     // Lewati jika pesan belum berubah sejak penyimpanan terakhir
     if (saveKey === lastSavedKeyRef.current) {
@@ -297,12 +304,19 @@ export default function ConversationEngine({ sessionId }) {
   // =============================================
   useEffect(() => {
     if (!chatStorageKey) return; // Tunggu hingga workspace diketahui
+    // [FIX 2026-09-23] Effect ini dideklarasikan SEBELUM effect pemulihan, jadi pada commit yang sama ia
+    // berjalan lebih dulu. Setelah muat ulang currentChatId selalu null, sehingga dulu kunci DIHAPUS tepat
+    // sebelum effect pemulihan membacanya → pemulihan chat tidak pernah berhasil dan pesan berikutnya
+    // melahirkan chat baru. Bukti: batch LevelDB seq 5433 & 5473 menghapus kunci ketiga workspace sekaligus
+    // pada dua kali muat ulang, padahal keempat baris chat masih ada di DB. Jangan sentuh kunci sebelum
+    // pemulihan selesai.
+    if (!initialRestoreDone) return;
     if (currentChatId) {
       localStorage.setItem(chatStorageKey, currentChatId);
-    } else {
+    } else if (!pemulihanGagalRef.current) {
       localStorage.removeItem(chatStorageKey);
     }
-  }, [currentChatId, chatStorageKey]);
+  }, [currentChatId, chatStorageKey, initialRestoreDone]);
 
   // =============================================
   // RESTORE: Chat dari localStorage saat workspace pertama kali diketahui
@@ -328,19 +342,37 @@ export default function ConversationEngine({ sessionId }) {
     const loadSavedChat = async () => {
       const assistantService = getAssistantService();
       // Fallback ke supabase langsung jika service belum ready (boot delay)
-      let msgs = null;
+      let hasil = null;
       if (assistantService) {
-        msgs = await assistantService.loadChat(savedChatId);
+        hasil = await assistantService.loadChat(savedChatId);
       } else {
-        const { data, error } = await supabase.from('chats').select('*').eq('id', savedChatId).single();
-        if (!error && data) msgs = data.messages;
+        const { data, error } = await supabase.from('chats').select('*').eq('id', savedChatId).maybeSingle();
+        hasil = error
+          ? { messages: null, hilang: false, error: error.message }
+          : { messages: data ? (data.messages || []) : null, hilang: !data, error: null };
       }
-      if (msgs !== null) {
-        setMessages(msgs || []);
-      } else {
-        console.warn('[ConversationEngine] Saved chatId not found in DB, resetting');
+
+      const putusan = putusanPemulihan(hasil);
+      if (putusan === 'pakai') {
+        setMessages(hasil.messages);
+        // Isi ini baru saja dibaca DARI database — tandai sudah tersimpan supaya muat ulang tidak
+        // menulis ulang baris yang sama (live 2026-09-23: tiap Ctrl+R menaikkan updated_at tanpa perubahan).
+        lastSavedKeyRef.current = kunciSimpan({ chatId: savedChatId, messages: hasil.messages });
+      } else if (putusan === 'lepas') {
+        // Baris chatnya memang tidak ada lagi — penunjuk boleh dilepas.
+        console.warn('[ConversationEngine] Chat tersimpan tidak ada lagi di DB, penunjuk dilepas');
         setCurrentChatId(null);
         localStorage.removeItem(chatStorageKey);
+      } else {
+        // Gagal membaca (gangguan sesaat, sesi belum siap, jaringan). Penunjuk JANGAN dihapus dan
+        // chat lama JANGAN ditimpa: pesan baru akan masuk ke chat baru, riwayat lama tetap di sidebar.
+        console.warn('[ConversationEngine] Riwayat chat gagal dimuat, penunjuk dipertahankan:', hasil.error);
+        pemulihanGagalRef.current = true;
+        setCurrentChatId(null);
+        setMessages([{
+          role: 'model',
+          content: `⚠️ **Riwayat chat gagal dimuat** — ${hasil.error || 'sebab tidak diketahui'}.\n\nChat lama **tidak hilang**; buka dari daftar riwayat. Pesan baru di sini akan tersimpan sebagai chat baru.`,
+        }]);
       }
       setInitialRestoreDone(true);
     };
@@ -366,6 +398,7 @@ export default function ConversationEngine({ sessionId }) {
   // =============================================
   const handleNewChat = () => {
     isNewChatInitiatedByUser.current = true;
+    pemulihanGagalRef.current = false; // Owner memilih chat baru dengan sadar — penunjuk lama boleh dilepas
     setMessages([]);
     setCurrentChatId(null);
     setModelTierOverride(null); // chat baru selalu kembali ke Auto (roadmap §3)
@@ -378,15 +411,26 @@ export default function ConversationEngine({ sessionId }) {
   // =============================================
   const handleLoadChat = async (chatId) => {
     const assistantService = getAssistantService();
-    let msgs = null;
+    let hasil = null;
     if (assistantService) {
-      msgs = await assistantService.loadChat(chatId);
+      hasil = await assistantService.loadChat(chatId);
     } else {
-      const { data, error } = await supabase.from('chats').select('*').eq('id', chatId).single();
-      if (error) { console.error(error); return; }
-      msgs = data?.messages;
+      const { data, error } = await supabase.from('chats').select('*').eq('id', chatId).maybeSingle();
+      hasil = error
+        ? { messages: null, hilang: false, error: error.message }
+        : { messages: data ? (data.messages || []) : null, hilang: !data, error: null };
     }
-    if (msgs !== null) setMessages(msgs || []);
+    if (hasil.messages === null) {
+      // Gagal membaca → jangan pindah ke chat itu dengan layar kosong (isinya bisa tertimpa pesan baru).
+      console.error('[ConversationEngine] Chat tidak bisa dibuka:', hasil.error || 'baris tidak ada');
+      return;
+    }
+    pemulihanGagalRef.current = false;
+    // MEMBACA BUKAN MENGUBAH: tandai isi yang baru dibaca sebagai sudah tersimpan, supaya membuka chat lama
+    // tidak menulis ulang barisnya. Dulu `updated_at` ikut naik, sehingga chat yang cuma dilihat melompat ke
+    // puncak riwayat (urutannya `updated_at` menurun) dan chat yang sedang dikerjakan malah turun.
+    lastSavedKeyRef.current = kunciSimpan({ chatId, messages: hasil.messages });
+    setMessages(hasil.messages);
     setCurrentChatId(chatId);
     if (window.innerWidth < 768) setIsSidebarOpen(false);
   };

@@ -6,7 +6,7 @@
  * Catatan desain:
  * - Bukan sandbox runtime — skill dibuat Owner sendiri, bukan pihak ketiga
  * - Cukup validasi struktural (field ada, action dikenal, tidak melebihi batas)
- * - Action yang butuh aksi berdampak ('write') → REQUIRE_CONFIRMATION via CommandRegistry (PR#1)
+ * - Action yang butuh aksi berdampak ('write') → REQUIRE_CONFIRMATION (CommandRegistry sudah tidak ada).
  * - Action tidak dikenal → DENY (tidak dieksekusi, pesan error ke Owner)
  *
  * Referensi: docs/roadmap/teknis-skil-implementasi.md

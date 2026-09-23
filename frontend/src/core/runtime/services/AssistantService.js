@@ -1591,19 +1591,27 @@ export class AssistantService {
    * @param {string} chatId
    * @returns {Promise<Array|null>} - array messages atau null jika tidak ditemukan
    */
+  /**
+   * Baca satu chat. Membedakan "baris memang tidak ada" dari "gagal membaca" — dulu keduanya sama-sama
+   * mengembalikan null, dan pemanggilnya menghapus penunjuk chat di localStorage karena mengira chatnya hilang
+   * (perbaikan 2026-09-23). `.maybeSingle()` supaya baris kosong bukan error.
+   *
+   * @returns {Promise<{ messages: object[]|null, hilang: boolean, error: string|null }>}
+   */
   async loadChat(chatId) {
-    if (!chatId) return null;
+    if (!chatId) return { messages: null, hilang: true, error: null };
     const { data, error } = await supabase
       .from('chats')
       .select('*')
       .eq('id', chatId)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      console.error('[AssistantService] loadChat error:', error);
-      return null;
+      console.error('[AssistantService] loadChat gagal membaca (chat TIDAK dianggap hilang):', error);
+      return { messages: null, hilang: false, error: error.message || 'gagal membaca chat' };
     }
-    return data?.messages || [];
+    if (!data) return { messages: null, hilang: true, error: null };
+    return { messages: data.messages || [], hilang: false, error: null };
   }
 
   // =============================================

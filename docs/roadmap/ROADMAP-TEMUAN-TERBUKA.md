@@ -144,7 +144,14 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
 - **Rancangan (2026-09-22):** Tahap 1 RAG Engineer hanya dari space "Pengetahuan Engineer" · Tahap 2 web teknis (npm,
   PyPI, GitHub releases, DuckDuckGo; tanpa sumber berita) · Tahap 3 isi space dengan ADR/roadmap/changelog.
 - **Status:** ⏳ Tahap 1 ✅ live; uji Engineer TUGAS-01 menemukan & memperbaiki jalur patch (checkpoint git stash,
-  pemeriksa format, patch palsu, muat ulang Vite) — uji ulang live belum — [log](../project-memory/changelog/2026-09-22-t10-engineer-pengetahuan-dan-jalur-patch.md).
+  pemeriksa format, patch palsu, muat ulang Vite) — [log](../project-memory/changelog/2026-09-22-t10-engineer-pengetahuan-dan-jalur-patch.md).
+- **TUGAS-01 ✅ live (2026-09-23):** patch Engineer tepat **1 baris komentar** di `SkillGuardService.js` (berkas utuh
+  96 baris, `git stash list` kosong, checkpoint berisi isi asli untuk Undo, verifikasi server confidence A/100).
+- **Temuan sampingan dari uji itu — sudah diperbaiki & terbukti live:** riwayat chat hilang setiap muat ulang (effect
+  sinkronisasi menghapus penunjuk chat sebelum effect pemulihan membacanya), `loadChat` menyamakan "gagal baca" dengan
+  "chat hilang", pesan sistem melahirkan chat siluman, dan membuka chat lama menaikkan `updated_at` sehingga urutan
+  riwayat melompat — [log](../project-memory/changelog/2026-09-23-riwayat-chat-hilang-setelah-muat-ulang.md).
+- **Sisa:** Tahap 2 (web teknis) & Tahap 3 (isi space) belum; TUGAS-02..04 belum dijalankan.
 
 ## T11 — `check-keys` bisa dipanggil dengan kunci anon (asal Item 85 Tahap 3, 2026-09-22)
 
