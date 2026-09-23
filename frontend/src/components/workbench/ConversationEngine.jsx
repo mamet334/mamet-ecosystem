@@ -11,6 +11,7 @@ import MemoryContextPanel from './MemoryContextPanel';
 import { tugasDariUsulan } from '../../core/runtime/services/engineer/UsulanPatch.js';
 import { laporanSetelahMuatUlang } from '../../core/runtime/services/engineer/CatatanPatch.js';
 import { putusanPemulihan, bolehSimpanChat, kunciSimpan } from './pemulihanChat.js';
+import { riwayatPerintahDariPesan } from '../../core/runtime/services/engineer/ProsedurEngineer.js';
 
 // =============================================
 // HELPER: Parse thinking/answer dari respons AI
@@ -249,6 +250,14 @@ export default function ConversationEngine({ sessionId }) {
     // Jangan auto-save jika tidak ada pesan atau sedang streaming
     if (!messages || messages.length === 0 || isLoading) return;
 
+    // [FIX 2026-09-23 putaran 2] JANGAN menyimpan sebelum pemulihan riwayat selesai. Sesudah muat ulang,
+    // currentChatId sudah terisi (dibaca dari localStorage) sementara isi chat MASIH KOSONG karena pembacaan dari
+    // database belum selesai. Pesan baru yang muncul lebih dulu — mis. laporan patch setelah muat ulang Vite —
+    // membuat penyimpanan menimpa baris chat dengan SATU pesan itu saja.
+    // Live TUGAS-02 putaran 1 (2026-09-23 09:29): percakapan lengkap (permintaan, analisis, konfirmasi) hilang,
+    // tersisa satu pesan "Patch diterapkan" — bukti uji ikut terhapus.
+    if (!initialRestoreDone) return;
+
     // [FIX 2026-09-23] Pesan yang dibuat sistem sendiri (laporan penalaran Engineer, dialog konfirmasi,
     // laporan patch setelah muat ulang) tidak boleh MELAHIRKAN chat baru. Tanpa penjaga ini, pesan seperti itu
     // tersimpan sebagai chat tersendiri yang judulnya isi laporan — live 2026-09-23 satu tugas Engineer
@@ -297,7 +306,7 @@ export default function ConversationEngine({ sessionId }) {
       }
     }, 1000);
     return () => clearTimeout(timer);
-  }, [messages, currentChatId, isLoading]);
+  }, [messages, currentChatId, isLoading, initialRestoreDone]);
 
   // =============================================
   // PERSISTENSI: Sync currentChatId ke localStorage (workspace-spesifik)
@@ -529,13 +538,15 @@ export default function ConversationEngine({ sessionId }) {
   useEffect(() => {
     const storageManager = kernel.serviceManager?.get('StorageManager');
     // Hanya di chat Engineer — catatan tak "dimakan" chat Assistant yang kebetulan terbuka lebih dulu.
-    if (!storageManager || workspaceAktif !== 'ws-engineer') return;
+    // Menunggu pemulihan riwayat selesai: bila laporan ditambahkan lebih dulu, pemulihan akan MENGGANTI seluruh
+    // daftar pesan dan laporannya lenyap dari layar (live 2026-09-23 putaran 1).
+    if (!storageManager || workspaceAktif !== 'ws-engineer' || !initialRestoreDone) return;
     laporanSetelahMuatUlang((p) => storageManager.read(p)).then((lap) => {
       if (!lap) return;
       if (lap.checkpointRef) setLastCheckpoint({ ref: lap.checkpointRef, patchId: lap.patchId, appliedAt: new Date().toLocaleTimeString('id-ID') });
       setMessages(prev => [...prev, { role: 'model', content: lap.pesan, isPatchResult: true, checkpointRef: lap.checkpointRef }]);
     }).catch(() => {});
-  }, [workspaceAktif]);
+  }, [workspaceAktif, initialRestoreDone]);
 
   // PERSISTENT PATCH
   useEffect(() => {
@@ -892,23 +903,29 @@ export default function ConversationEngine({ sessionId }) {
   const handleRunCommand = async (cmd, cmdKey) => {
     const assistantService = getAssistantService();
     if (!assistantService) {
-      setEngineerCmdStates(prev => ({ ...prev, [cmdKey]: { status: 'error', output: 'AssistantService tidak tersedia.' } }));
+      // Kernel biasanya belum selesai boot (mis. tepat sesudah aplikasi memuat ulang) — bukan kerusakan permanen.
+      setEngineerCmdStates(prev => ({ ...prev, [cmdKey]: { status: 'error', output: 'Layanan Assistant belum siap — Kernel masih memuat. Tunggu beberapa detik lalu klik Jalankan lagi.' } }));
       return;
     }
 
     setEngineerCmdStates(prev => ({ ...prev, [cmdKey]: { status: 'running', output: '' } }));
 
     // T8: satu kalimat perintah → proses utama memecahnya tanpa shell & meminta izin lewat dialog asli.
-    const { output, success, ditolakOwner, ditolakAturan } = await assistantService.runCommand(cmd);
+    // Riwayat perintah percakapan ini ikut dikirim: perintah identik tidak dijalankan dua kali (prosedur 0.4).
+    const { output, success, ditolakOwner, ditolakAturan, ditolakProsedur } =
+      await assistantService.runCommand(cmd, riwayatPerintahDariPesan(messages));
 
     setEngineerCmdStates(prev => ({
       ...prev,
-      [cmdKey]: { status: ditolakAturan ? 'blocked' : ditolakOwner ? 'skipped' : success ? 'done' : 'error', output }
+      [cmdKey]: { status: (ditolakAturan || ditolakProsedur) ? 'blocked' : ditolakOwner ? 'skipped' : success ? 'done' : 'error', output }
     }));
 
     // Ditolak ATURAN (bukan Owner, bukan hasil program): tidak dikirim ke model — alasannya tetap sama tiap kali, dan
     // live T8 membuktikan model hanya mengusulkan perintah yang sama lagi. Owner melihat alasannya di tombol.
     if (ditolakAturan) return;
+
+    // Ditolak PROSEDUR (perintah identik diulang): justru HARUS sampai ke model — isinya perintah untuk mengganti
+    // pendekatan, bukan sekadar penolakan. Tanpa itu model akan mengulang lagi (live TUGAS-02 2026-09-23).
 
     // Auto-feed output ke LLM
     setTimeout(() => handleSend(null, `[TERMINAL OUTPUT for: ${cmd}]\n${output}`), 300);
@@ -919,14 +936,18 @@ export default function ConversationEngine({ sessionId }) {
   // Delegasi ke AssistantService.rollback()
   // =============================================
   const handleRollback = async () => {
-    const assistantService = getAssistantService();
-    if (!assistantService) {
-      alert('AssistantService tidak tersedia.');
-      return;
-    }
     setRollbackState('loading');
     try {
-      const result = await assistantService.rollback(lastCheckpoint?.ref);
+      // [FIX 2026-09-23] Dulu tombol ini menyerah dengan dialog "AssistantService tidak tersedia" bila Kernel belum
+      // selesai boot — padahal Undo TIDAK memerlukan service itu: AssistantService.rollback hanya pembungkus tipis
+      // di atas IPC eng:git-rollback. Live 2026-09-23: Owner menekan Undo sesudah aplikasi memuat ulang dan
+      // pemulihan patch jadi mustahil sampai aplikasi dibuka ulang. Kini IPC dipakai langsung bila service belum ada.
+      const assistantService = getAssistantService();
+      const result = assistantService?.rollback
+        ? await assistantService.rollback(lastCheckpoint?.ref)
+        : window.electronAPI?.gitRollback
+          ? await window.electronAPI.gitRollback(lastCheckpoint?.ref)
+          : { success: false, error: 'Undo hanya tersedia di aplikasi desktop.' };
       if (result?.cancelled) { setRollbackState('idle'); return; }
       if (result?.success) {
         setRollbackState('done');
@@ -934,7 +955,8 @@ export default function ConversationEngine({ sessionId }) {
         setMessages(prev => [...prev, { role: 'model', content: `↩️ **Rollback Berhasil!** Semua perubahan patch telah dikembalikan.\n\nOutput: ${result.output || 'selesai.'}` }]);
       } else {
         setRollbackState('error');
-        setMessages(prev => [...prev, { role: 'model', content: `❌ **Rollback Gagal:** ${result?.error || 'Unknown error'}\n\nCoba jalankan git stash pop secara manual.` }]);
+        // Checkpoint kini salinan isi berkas di userData (bukan git stash), jadi saran "git stash pop" menyesatkan.
+        setMessages(prev => [...prev, { role: 'model', content: `❌ **Undo gagal:** ${result?.error || 'sebab tidak diketahui'}\n\nIsi asli berkas masih tersimpan di checkpoint \`${lastCheckpoint?.ref || '(tidak diketahui)'}\` (folder \`eng-checkpoint\` di data aplikasi) — tidak ada yang hilang. Berkas yang berubah juga bisa dikembalikan dengan \`git checkout --\` pada berkas itu.` }]);
       }
     } catch (err) {
       setRollbackState('error');

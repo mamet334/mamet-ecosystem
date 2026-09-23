@@ -22,6 +22,7 @@ const AGENT_ENDPOINT = 'https://uuyzdjifhdfyyvpxsofu.supabase.co/functions/v1/ag
 import { supabase } from '../../../supabase.js';
 import { statusLaptop, kirimKeLaptop, sidikJari, cariDiCache, KUOTA_CACHE_MB } from './remoteConversionClient.js';
 import { ambilPermintaanAlat, susunPesanHasil, susunPesanKoreksi, namaFolderAman, buangKakiTiruan, peringatanKlaimTanpaAlat, peringatanKlaimEngineer, blokKodeKeMametCmd, MAKS_PUTARAN } from './folderKerjaAlat.js';
+import { cekPerintahBerulang, petunjukHasilKosong, peringatanTugasTakDiumumkan } from './engineer/ProsedurEngineer.js';
 
 // Folder kerja (Item 85 Tahap 1): batas total isi berkas yang dibaca per pertanyaan (semua putaran) — riwayat ikut
 // membawa hasil putaran sebelumnya, jadi tanpa batas ini 4 putaran × 5 berkas × 60 KB bisa ±1,2 MB ke model.
@@ -487,6 +488,9 @@ export class AssistantService {
           teks = blokKodeKeMametCmd(teks);
           const peringatan = peringatanKlaimEngineer(teks, userMsg);
           if (peringatan) teks += `\n\n${peringatan}`;
+          // Prosedur langkah 0.1: tugas bernama wajib diumumkan + dikutip sumbernya.
+          const peringatanTugas = peringatanTugasTakDiumumkan(userMsg, teks);
+          if (peringatanTugas) teks += `\n\n${peringatanTugas}`;
         }
         return onDoneEngineer?.(teks, steps, jsonMetadata, extras);
       };
@@ -1627,9 +1631,16 @@ export class AssistantService {
    * @param {string} perintah - mis. "npm test", "git status"
    * @returns {Promise<{ output: string, success: boolean, ditolakOwner?: boolean }>}
    */
-  async runCommand(perintah) {
+  async runCommand(perintah, riwayatPerintah = []) {
     if (!window.electronAPI?.engineer?.jalankan) {
       return { output: 'Menjalankan perintah hanya tersedia di aplikasi desktop.', success: false };
+    }
+
+    // Prosedur kerja langkah 0.4: perintah identik yang sudah dijalankan di percakapan ini tidak dijalankan lagi —
+    // hasilnya pasti sama, dan live TUGAS-02 (2026-09-23) model mengulang `git show <alamat>` yang kosong.
+    const berulang = cekPerintahBerulang(perintah, riwayatPerintah);
+    if (berulang.ulang) {
+      return { output: berulang.pesan, success: false, ditolakOwner: false, ditolakAturan: false, ditolakProsedur: true };
     }
     let h;
     try { h = await window.electronAPI.engineer.jalankan(String(perintah || '')); }
@@ -1641,6 +1652,10 @@ export class AssistantService {
         ? `⏱️ Dihentikan — melewati batas waktu ${h.waktuBatasS} detik.`
         : `Kode keluar ${h.kodeKeluar} (${((h.waktuMs || 0) / 1000).toFixed(1).replace('.', ',')} s)${h.terpotong ? ` — keluaran dipotong dari ${h.byteKeluaran} byte` : ''}.`;
       output = `${h.keluaran || '(tanpa keluaran)'}\n\n${kaki}`;
+      // Prosedur langkah 0.3: keluaran kosong yang menyesatkan diberi petunjuk bentuk perintah yang benar.
+      // Perintah Owner TIDAK diubah diam-diam — hanya ditambahi keterangan.
+      const petunjuk = petunjukHasilKosong(perintah, output);
+      if (petunjuk) output += `\n\n${petunjuk}`;
     } else if (h?.ditolakOwner) {
       output = 'DITOLAK OWNER di dialog izin — perintah TIDAK dijalankan.';
     } else {

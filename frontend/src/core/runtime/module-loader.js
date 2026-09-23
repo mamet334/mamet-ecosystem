@@ -48,7 +48,10 @@ export class ModuleLoader {
       objectUrl = URL.createObjectURL(blob);
       
       // 5. Muat module dinamis melalui Object URL
-      const module = await import(objectUrl);
+      // @vite-ignore: alamat Blob hanya ada saat aplikasi berjalan, jadi Vite tak bisa menganalisisnya
+      // saat membangun — tanpa komentar ini setiap `npm run desktop` memunculkan peringatan
+      // "The above dynamic import cannot be analyzed by Vite" (TUGAS-03, izin Owner 2026-09-23).
+      const module = await import(/* @vite-ignore */ objectUrl);
       
       // 6. Simpan di Cache
       this.cache.set(modulePath, module);

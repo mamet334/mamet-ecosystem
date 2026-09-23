@@ -158,6 +158,8 @@ Menjelaskan Core Architecture.
 
 23_HOME_DASHBOARD_SPEC.md
 
+28_PROSEDUR_KERJA_ENGINEER.md
+
 ↓
 
 Menjelaskan implementasi teknis dan spesifikasi UI spesifik.

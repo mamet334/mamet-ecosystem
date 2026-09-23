@@ -31,11 +31,20 @@ export function extractSourceTrace(msg: string): TraceParseResult {
   }
   
   if (startIndex !== -1) {
-    return {
-      replyWithoutTrace: lines.slice(0, startIndex).join('\n').trim(),
-      sourceTrace: lines.slice(startIndex).join('\n').trim()
-    };
+    const replyWithoutTrace = lines.slice(0, startIndex).join('\n').trim();
+    // Penjaga: SOURCE TRACE adalah EKOR jawaban, jadi memotongnya tidak boleh menghabiskan seluruh jawaban.
+    // Tanpa penjaga ini, satu ID di BARIS PERTAMA membuat seluruh jawaban dianggap trace dan teks jawaban jadi
+    // kosong → CHECK_001_RESPONSE_NOT_EMPTY gagal → HARD GATE memblokir, Owner tidak menerima jawaban apa pun.
+    // Terbukti live 2026-09-23 01:53: baris pertama "TUGAS YANG DIKERJAKAN: TASK-0014 — …" cocok dengan
+    // formatRegex (potongan "ASK-0014"), jawaban Engineer yang utuh hilang seluruhnya.
+    // Bila pemotongan menyisakan jawaban kosong, anggap saja tidak ada trace yang bisa dipisahkan.
+    if (replyWithoutTrace.length > 0) {
+      return {
+        replyWithoutTrace,
+        sourceTrace: lines.slice(startIndex).join('\n').trim()
+      };
+    }
   }
-  
+
   return { replyWithoutTrace: msg, sourceTrace: undefined };
 }

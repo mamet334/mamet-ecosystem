@@ -83,6 +83,9 @@ export function findRelevantADR(task) {
   const text = `${task.title || ''} ${task.description || ''}`.toLowerCase();
 
   const adrMapping = [
+    // Prosedur kerja didahulukan: kata-kata ini muncul justru saat Engineer diminta MENGERJAKAN sesuatu,
+    // dan di situlah urutan langkahnya (umumkan tugas → bukti → ganti cara bila gagal) paling dibutuhkan.
+    { keywords: ['prosedur', 'langkah kerja', 'cara kerja', 'tugas uji', 'bukti'], file: 'constitution/28_PROSEDUR_KERJA_ENGINEER.md' },
     { keywords: ['event', 'bus', 'emit', 'listener'], file: 'constitution/11_MAEF_EVENT_SYSTEM.md' },
     { keywords: ['kernel', 'boot', 'phase', 'service'], file: 'constitution/02_MAEF_KERNEL.md' },
     { keywords: ['adapter', 'vendor', 'openrouter', 'gemini'], file: 'constitution/12_CAPABILITY_ADAPTER_SPEC.md' },

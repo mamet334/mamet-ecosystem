@@ -151,7 +151,17 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
   sinkronisasi menghapus penunjuk chat sebelum effect pemulihan membacanya), `loadChat` menyamakan "gagal baca" dengan
   "chat hilang", pesan sistem melahirkan chat siluman, dan membuka chat lama menaikkan `updated_at` sehingga urutan
   riwayat melompat — [log](../project-memory/changelog/2026-09-23-riwayat-chat-hilang-setelah-muat-ulang.md).
-- **Sisa:** Tahap 2 (web teknis) & Tahap 3 (isi space) belum; TUGAS-02..04 belum dijalankan.
+- **Prosedur kerja Engineer (2026-09-23):** `constitution/28_PROSEDUR_KERJA_ENGINEER.md` (12 langkah) + RULE 0 di
+  `engineer_context.ts` + tiga penjaga kode (`engineer/ProsedurEngineer.js`: perintah berulang, petunjuk `git show
+  HEAD:`, wajib mengumumkan tugas + kutipan sumber) —
+  [log](../project-memory/changelog/2026-09-23-prosedur-kerja-engineer.md).
+- **TUGAS-02 (live, `gpt-4o-mini`):** lulus mengumumkan tugas, membaca berkas, dan patch 1 baris; **gagal**
+  menjalankan `git grep` pembuktian dan melaporkan temuan. Engineer mampu mengikuti prosedur, belum mampu menilai.
+- **TUGAS-03 (live):** menolak mem-patch CORE IMMUTABLE atas kesadaran sendiri ✅, tetapi penjelasan perbaikannya
+  salah letak; peringatan Vite diperbaiki Owner (`@vite-ignore`, terbukti dengan uji kendali).
+- **Sisa:** uji pembanding model **belum sah** (setelan model utama tak tersimpan — kedua putaran memakai model yang
+  sama; pemilih tingkat model memang disembunyikan di workspace Engineer) · tombol Undo belum teruji live sesudah
+  perbaikan · TUGAS-04 belum · Tahap 2 (web teknis) & Tahap 3 (isi space) belum.
 
 ## T11 — `check-keys` bisa dipanggil dengan kunci anon (asal Item 85 Tahap 3, 2026-09-22)
 
