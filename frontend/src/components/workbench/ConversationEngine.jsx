@@ -13,6 +13,7 @@ import { laporanSetelahMuatUlang } from '../../core/runtime/services/engineer/Ca
 import { putusanPemulihan, bolehSimpanChat, kunciSimpan } from './pemulihanChat.js';
 import { riwayatPerintahDariPesan } from '../../core/runtime/services/engineer/ProsedurEngineer.js';
 import { ambilBlokKlaim, susunSkripUji, susunLaporanKlaim } from '../../core/runtime/services/engineer/UjiKlaim.js';
+import { anggaranKonteks, pilihPesanKonteks, meteranKonteks, bacaMulaiDari, simpanMulaiDari } from '../../core/runtime/services/KonteksChat.js';
 
 // =============================================
 // HELPER: Parse thinking/answer dari respons AI
@@ -111,6 +112,13 @@ export default function ConversationEngine({ sessionId }) {
   const [showTierPanel, setShowTierPanel] = useState(false);
   const tierPanelRef = useRef(null);
   const isEngineerWorkspace = osState?.workspaceId === 'ws-engineer';
+  // Peristiwa Engineer (laporan penalaran, konfirmasi, patch, hasil baca repo) dipancarkan lewat EventBus GLOBAL,
+  // sementara TIGA instance chat hidup bersamaan (Assistant, Engineer, Lite). Tanpa penyaring, laporan Engineer ikut
+  // menempel di chat Assistant/Lite — live 22–23 September 2026: 8 baris chat berisi laporan Engineer lahir dengan
+  // label ws-assistant/ws-lite (dipindahkan ke ws-engineer 23 September atas izin Owner).
+  // Dipakai lewat REF, bukan nilai render: langganan didaftarkan sekali (deps []) sehingga nilai render akan beku.
+  const instansiEngineerRef = useRef(false);
+  instansiEngineerRef.current = osState?.workspaceId === 'ws-engineer';
 
   useEffect(() => {
     if (!showTierPanel) return;
@@ -466,6 +474,7 @@ export default function ConversationEngine({ sessionId }) {
     if (!eventBus) return;
 
     const handler = (wrappedPayload) => {
+      if (!instansiEngineerRef.current) return;   // peristiwa Engineer hanya untuk chat Engineer
       const rec = wrappedPayload?.data || wrappedPayload;
       if (rec.type === 'PATCH_APPLIED') {
         setMessages(prev => {
@@ -518,6 +527,7 @@ export default function ConversationEngine({ sessionId }) {
     const eventBus = kernel.serviceManager?.get('EventBus');
     if (!eventBus) return;
     const patchAppliedHandler = (result) => {
+      if (!instansiEngineerRef.current) return;
       const data = result?.data || result;
       if (data?.checkpointRef) {
         setLastCheckpoint({ ref: data.checkpointRef, patchId: data.patchId, appliedAt: new Date().toLocaleTimeString('id-ID') });
@@ -532,6 +542,44 @@ export default function ConversationEngine({ sessionId }) {
     const unsubPatch = eventBus.on('Engineer:PatchApplied', patchAppliedHandler);
     return unsubPatch;
   }, []);
+
+  // JENDELA KONTEKS PER PERCAKAPAN (Tahap 3a, 2026-09-23). Meteran memakai perhitungan yang SAMA dengan jalur kirim
+  // (KonteksChat.js), jadi angka yang Owner lihat adalah angka yang benar-benar dikirim — bukan taksiran terpisah.
+  const [konteksInfo, setKonteksInfo] = useState(null);
+  const [versiKonteks, setVersiKonteks] = useState(0);
+  useEffect(() => {
+    let batal = false;
+    (async () => {
+      const assistantService = getAssistantService();
+      if (!assistantService || !messages.length) { setKonteksInfo(null); return; }
+      const brain = kernel.serviceManager?.get('BrainService');
+      const model = brain?.getBrainConfig?.()?.model || null;
+      const bahan = await assistantService.bahanAnggaranKonteks?.(model).catch(() => ({}));
+      if (batal) return;
+      const ang = anggaranKonteks(bahan || {});
+      const pilih = pilihPesanKonteks(messages, { anggaranToken: ang.token, mulaiDari: bacaMulaiDari(currentChatId) });
+      setKonteksInfo({
+        ...meteranKonteks({ ...pilih, anggaranToken: ang.token, biayaPerkiraanUsd: ang.biayaPerkiraanUsd, sisaHarianUsd: ang.sisaHarianUsd, alasan: ang.alasan }),
+        dilewati: pilih.dilewati,
+      });
+    })();
+    return () => { batal = true; };
+  }, [messages, currentChatId, versiKonteks]);
+
+  const bersihkanKonteks = () => {
+    simpanMulaiDari(currentChatId, messages.length);
+    setVersiKonteks((v) => v + 1);
+    setMessages((prev) => [...prev, {
+      role: 'model',
+      isPatchResult: true,
+      content: `🧹 **Konteks dibersihkan.** ${messages.length} pesan di atas tetap ada di layar dan tetap tersimpan — hanya berhenti dikirim ke model. Pesan berikutnya memulai jendela konteks baru untuk percakapan ini.`,
+    }]);
+  };
+
+  const pulihkanKonteks = () => {
+    simpanMulaiDari(currentChatId, 0);
+    setVersiKonteks((v) => v + 1);
+  };
 
   // MESIN UJI KLAIM (ROADMAP-ENGINEER-MANDIRI Tahap 2, 2026-09-23): jawaban Engineer yang memuat blok <uji_klaim>
   // dijalankan terhadap kode nyata di repo, lalu hasilnya ditempel sebagai pesan tersendiri. Jawaban model TIDAK
@@ -582,6 +630,7 @@ export default function ConversationEngine({ sessionId }) {
     const eventBus = kernel.serviceManager?.get('EventBus');
     if (!eventBus) return;
     const persistedHandler = (wrappedPayload) => {
+      if (!instansiEngineerRef.current) return;
       const data = wrappedPayload?.data || wrappedPayload;
       setMessages(prev => [...prev, { role: 'model', content: data.message || `📋 Ada patch pending dari sesi sebelumnya (ID: ${data.patchId}).`, isPatchPersisted: true, patchId: data.patchId }]);
     };
@@ -594,6 +643,7 @@ export default function ConversationEngine({ sessionId }) {
     const eventBus = kernel.serviceManager?.get('EventBus');
     if (!eventBus) return;
     const fileContentHandler = (payload) => {
+      if (!instansiEngineerRef.current) return;
       const data = payload?.data || payload;
       const { path, content, size, backend } = data;
       const ext = path?.split('.').pop()?.toLowerCase() || '';
@@ -612,6 +662,7 @@ export default function ConversationEngine({ sessionId }) {
     const eventBus = kernel.serviceManager?.get('EventBus');
     if (!eventBus) return;
     const reasoningReportHandler = (wrappedPayload) => {
+      if (!instansiEngineerRef.current) return;
       const report = wrappedPayload?.data || wrappedPayload;
       const findingsText = report.findings?.length > 0 ? '\n\n📋 **Temuan Analisis:**\n' + report.findings.join('\n') : '';
       const violationsCount = report.compliance?.violations?.length || 0;
@@ -636,6 +687,7 @@ export default function ConversationEngine({ sessionId }) {
     const eventBus = kernel.serviceManager?.get('EventBus');
     if (!eventBus) return;
     const confirmationHandler = (wrappedPayload) => {
+      if (!instansiEngineerRef.current) return;
       const request = wrappedPayload?.data || wrappedPayload;
       setMessages(prev => [...prev, {
         role: 'model',
@@ -823,6 +875,7 @@ export default function ConversationEngine({ sessionId }) {
         token,
         attachedFile,
         modelTierOverride,
+        chatId: currentChatId,   // jendela konteks berdiri sendiri per percakapan (Tahap 3a)
         workspaceManager,
 
         // Hybrid: nalar mengalir sebelum jawaban. selesai=true saat model mulai menulis jawaban; jawaban utuh
@@ -1099,6 +1152,26 @@ export default function ConversationEngine({ sessionId }) {
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* METERAN JENDELA KONTEKS (Tahap 3a) — di Assistant DAN Engineer, berdiri sendiri per percakapan.
+              Angkanya dari perhitungan yang sama dengan jalur kirim, jadi bukan taksiran terpisah. */}
+          {konteksInfo && (
+            <div className="relative group">
+              <button
+                onClick={konteksInfo.dilewati > 0 ? pulihkanKonteks : bersihkanKonteks}
+                title={`${konteksInfo.rincian}\n\nKlik untuk ${konteksInfo.dilewati > 0 ? 'memulihkan konteks penuh' : 'membersihkan konteks (pesan tetap terlihat)'}.`}
+                className={`h-10 px-3 flex items-center gap-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm active:scale-95
+                  ${konteksInfo.warna === 'penuh' ? 'bg-error/15 border-error/50 text-error'
+                    : konteksInfo.warna === 'hampir' ? 'bg-tertiary/15 border-tertiary/50 text-tertiary'
+                    : 'bg-surface-container-low border-outline-variant text-on-surface-variant'}`}
+              >
+                <span className="material-symbols-outlined text-[18px]">
+                  {konteksInfo.dilewati > 0 ? 'history' : 'token'}
+                </span>
+                {konteksInfo.teks}
+              </button>
             </div>
           )}
 

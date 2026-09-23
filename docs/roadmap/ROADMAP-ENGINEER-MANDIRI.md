@@ -1,6 +1,6 @@
 # ROADMAP — Engineer Mandiri (self-maintenance)
 
-**Dibuat:** 23 September 2026 · **Status:** 🟡 Tahap 2 ✅ live; Tahap 3 berikutnya (urutan ditukar atas keputusan Owner)
+**Dibuat:** 23 September 2026 · **Status:** 🟡 Tahap 2 ✅ & Tahap 3a ✅ live; berikutnya Tahap 3b (ingatan temuan), lalu Tahap 1
 
 Lanjutan dari T10 di [`ROADMAP-TEMUAN-TERBUKA.md`](./ROADMAP-TEMUAN-TERBUKA.md). Dasar rancangan ini adalah hasil uji
 Engineer 22–23 September 2026 (TUGAS-01..04), bukan perkiraan.
@@ -85,7 +85,19 @@ diperiksa manual, ketepatannya tampak 14/16. Mesin ini mengubah gambarannya selu
 
 **Cara uji:** tanam sengaja satu klaim salah → sistem harus menandainya; klaim yang benar tidak boleh ditandai salah.
 
-## Tahap 3 — Ingatan kerja Engineer
+## Tahap 3a — Jendela konteks per percakapan ✅ SELESAI (23 September 2026)
+
+**Masalah:** yang dikirim ke model hanya 10 pesan terakhir (`history.slice(-10)`), jadi konteks bukan percakapan
+melainkan jendela geser — pada tugas panjang Engineer kehilangan benang merah.
+
+**Hasil:** percakapan = konteks, dibatasi anggaran token dari batas biaya harian Owner (5% sisa per pesan);
+meteran per percakapan di Assistant & Engineer; "Bersihkan konteks" menggeser batas TANPA menghapus pesan.
+Sekalian: peristiwa Engineer tidak lagi bocor ke chat Assistant/Lite, dan 8 baris chat berlabel salah dipindah —
+[log](../project-memory/changelog/2026-09-23-jendela-konteks-per-percakapan.md).
+
+**Sisa:** tombol "Padatkan" (ringkasan sesi) dan batas jendela model belum dihitung.
+
+## Tahap 3b — Ingatan kerja Engineer
 
 **Masalah:** setiap chat mulai dari nol. Memory sengaja dimatikan di Engineer, dan itu benar untuk memori percakapan
 — tapi Engineer tidak punya catatan **temuan**.

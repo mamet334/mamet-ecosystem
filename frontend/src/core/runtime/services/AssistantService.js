@@ -24,6 +24,7 @@ import { statusLaptop, kirimKeLaptop, sidikJari, cariDiCache, KUOTA_CACHE_MB } f
 import { ambilPermintaanAlat, susunPesanHasil, susunPesanKoreksi, namaFolderAman, buangKakiTiruan, peringatanKlaimTanpaAlat, peringatanKlaimEngineer, blokKodeKeMametCmd, MAKS_PUTARAN } from './folderKerjaAlat.js';
 import { cekPerintahBerulang, petunjukHasilKosong, peringatanTugasTakDiumumkan, adaPenandaPatch, buangPenandaPatch } from './engineer/ProsedurEngineer.js';
 import { peringatanKlaimTakTeruji } from './engineer/UjiKlaim.js';
+import { anggaranKonteks, pilihPesanKonteks, bacaMulaiDari } from './KonteksChat.js';
 
 // Folder kerja (Item 85 Tahap 1): batas total isi berkas yang dibaca per pertanyaan (semua putaran) — riwayat ikut
 // membawa hasil putaran sebelumnya, jadi tanpa batas ini 4 putaran × 5 berkas × 60 KB bisa ±1,2 MB ke model.
@@ -356,6 +357,7 @@ export class AssistantService {
     onError,
     onNalar, // hybrid: nalar mengalir sebelum jawaban (hanya jalur CONVERSATION dengan Thinking menyala)
     modelTierOverride = null,
+    chatId = null,            // jendela konteks berdiri sendiri per percakapan (Tahap 3a)
     _isPostHocWebRetry = false,
     _injectedKnowledgeContext = '',
     // Folder kerja (Item 85 Tahap 1) — diisi putaran alat sendiri, bukan pemanggil luar.
@@ -515,7 +517,7 @@ export class AssistantService {
     const handlerParams = {
       userMsg, history, workspaceId, userId, token,
       attachedFile, workspaceManager, onChunk, onDone, onError, onNalar,
-      resolvedMode, resolvedAppSource, modelTierOverride,
+      resolvedMode, resolvedAppSource, modelTierOverride, chatId,
       _isPostHocWebRetry, _injectedKnowledgeContext,
       _folderKerja: infoFolder
     };
@@ -1074,6 +1076,7 @@ export class AssistantService {
     userMsg, history, workspaceId, userId, token,
     attachedFile, workspaceManager, resolvedMode, resolvedAppSource,
     onChunk, onDone, onError, onNalar, modelTierOverride = null,
+    chatId = null,            // jendela konteks berdiri sendiri per percakapan (Tahap 3a)
     _isPostHocWebRetry = false, _injectedKnowledgeContext = '', _folderKerja = null
   }) {
     const isEngineerMode = resolvedMode === 'ENGINEER';
@@ -1248,6 +1251,17 @@ export class AssistantService {
     console.log(`[PR#6 TokenEfficiency] RAG: ${rawRagLen}→${trimmedRagContext.length} chars | Semantic: ${rawSemLen}→${trimmedSemanticContext.length} chars`);
     console.log(`[PR#6 TokenEfficiency] Estimasi token: ${tokensBefore} → ${tokensAfter} (hemat ~${tokensSaved} token)`);
 
+    // JENDELA KONTEKS PER PERCAKAPAN (Tahap 3a, 2026-09-23). Dulu `history.slice(-10)`: sepuluh pesan terakhir
+    // tanpa memandang panjangnya, sehingga pada tugas panjang Engineer kehilangan benang merah dan keluaran perintah
+    // lama lenyap. Kini percakapan ITULAH konteksnya, dibatasi anggaran token yang diturunkan dari batas biaya harian
+    // Owner (Settings) — konteks besar dibayar SETIAP pesan. Pesan sebelum batas "Bersihkan konteks" tidak dikirim,
+    // tetapi TIDAK dihapus (keputusan Owner: riwayat tetap utuh untuk dibaca).
+    const biaya = await this.bahanAnggaranKonteks(formattedModel);
+    const ang = anggaranKonteks({ ...biaya, porsi: isLiteMode ? 0.02 : undefined });
+    const konteks = pilihPesanKonteks(history, { anggaranToken: ang.token, mulaiDari: bacaMulaiDari(chatId) });
+    this.konteksTerakhir = { ...konteks, ...ang, chatId, dikirim: undefined };
+    console.log(`[Konteks] ${konteks.tokenTerpakai} / ${ang.token} token (${konteks.dikirim.length} pesan dikirim, ${konteks.dilewati} dilewati) — ${ang.alasan}`);
+
     // 7. Build payload
     const payload = {
       message: userMsg,
@@ -1255,7 +1269,7 @@ export class AssistantService {
       appSource: resolvedAppSource,
       workspaceTarget: workspaceId,
       traceId: requestTraceId,
-      history: history.slice(isLiteMode ? -5 : -10),
+      history: konteks.dikirim,
       globalMemory: trimmedRagContext,
       semanticContext: trimmedSemanticContext,
       stream: false,
@@ -1489,7 +1503,7 @@ export class AssistantService {
               await this._handleConversation({
                 userMsg, history, workspaceId, userId, token,
                 attachedFile, workspaceManager, resolvedMode, resolvedAppSource,
-                onChunk, onDone, onError,
+                onChunk, onDone, onError, chatId,
                 _isPostHocWebRetry: true,
                 _injectedKnowledgeContext: webContext
               });
@@ -1524,6 +1538,42 @@ export class AssistantService {
    * @param {Function} params.onNewChatId - callback(newId) saat INSERT berhasil
    * @returns {Promise<void>}
    */
+  /**
+   * Bahan anggaran jendela konteks: batas biaya harian Owner (Settings), pemakaian hari ini, harga token masuk
+   * model aktif, dan jendela model. Di-cache 2 menit — dipanggil tiap kirim pesan, jadi tidak boleh menambah
+   * satu putaran jaringan penuh setiap kali.
+   * @param {string} model id model aktif (mis. "deepseek/deepseek-v4-pro-0813")
+   */
+  async bahanAnggaranKonteks(model) {
+    const sekarang = Date.now();
+    if (this._anggaranCache && this._anggaranCache.model === model && sekarang - this._anggaranCache.waktu < 120000) {
+      return this._anggaranCache.nilai;
+    }
+    const nilai = { batasHarianUsd: undefined, terpakaiHariIniUsd: 0, hargaInput1M: undefined, batasModel: undefined };
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const batas = Number(user?.user_metadata?.daily_budget_cap_usd);
+      if (Number.isFinite(batas) && batas > 0) nilai.batasHarianUsd = batas;
+
+      if (model) {
+        const { data: harga } = await supabase.from('model_pricing')
+          .select('input_price_per_1m').eq('model', model).maybeSingle();
+        const h = Number(harga?.input_price_per_1m);
+        if (Number.isFinite(h) && h > 0) nilai.hargaInput1M = h;
+      }
+      if (user?.id) {
+        const awalHari = new Date(); awalHari.setHours(0, 0, 0, 0);
+        const { data: pakai } = await supabase.from('api_usage')
+          .select('cost_usd').eq('user_id', user.id).gte('created_at', awalHari.toISOString());
+        nilai.terpakaiHariIniUsd = (pakai || []).reduce((t, r) => t + (Number(r.cost_usd) || 0), 0);
+      }
+    } catch (e) {
+      console.warn('[Konteks] gagal membaca bahan anggaran, memakai bawaan:', e.message);
+    }
+    this._anggaranCache = { model, waktu: sekarang, nilai };
+    return nilai;
+  }
+
   async saveChatToDB({ messages, chatId, userId, workspaceId, onNewChatId }) {
     if (!messages || messages.length === 0) return;
     if (!userId) return;
