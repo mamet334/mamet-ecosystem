@@ -44,3 +44,6 @@ token github.txt
 .vercel
 .env*
 
+
+# Data uji berisi NIP/nama pegawai — TIDAK boleh masuk repo publik (lihat uji/README.md)
+uji/data-lokal/
