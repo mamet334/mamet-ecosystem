@@ -143,18 +143,41 @@ export async function handleJudgeConflictRequest(
     if (adapters.length === 0) throw new Error(`Tidak ada adapter aktif untuk provider "${provider}".`);
 
     let mentah = '';
+    // Bahan pencatatan biaya dari jawaban adapter — lihat blok `logApiUsage` di bawah.
+    let biayaAsliUsd: number | undefined;
+    let modelTercatat = '';
     for (const adapter of adapters) {
       try {
         const res = await adapter.execute(
           { promptText: prompt, systemPromptText: SISTEM, chatHistory: [], forceDefaultModel: false },
           { trace_id: traceId }
         );
-        if (res?.result) { mentah = String(res.result); break; }
+        if (res?.result) {
+          mentah = String(res.result);
+          biayaAsliUsd = typeof (res as any).usageCostUsd === 'number' ? (res as any).usageCostUsd : undefined;
+          modelTercatat = String((res as any).modelUsed || '');
+          break;
+        }
       } catch (e: any) {
         console.warn(`[Judge] Adapter ${adapter.name} gagal:`, e.message);
       }
     }
     if (!mentah) throw new Error('Semua adapter gagal menjawab.');
+
+    // `api_usage` (ditambahkan 24 September 2026). Adapter hanya menulis `cost_ledger`, yang dibaca
+    // circuit breaker. `api_usage` dibaca RPC pemakaian DAN oleh anggaran jendela konteks di klien —
+    // tanpa baris ini, panggilan hakim konflik adalah pengeluaran yang tak terlihat oleh keduanya.
+    // Celah yang sama ditemukan dan diperbaiki di `padatkan_endpoint.ts` pada hari yang sama.
+    //
+    // Argumen kelima adalah biaya sesungguhnya dari penyedia; tanpa itu `logApiUsage` jatuh ke
+    // tabel tarif dan mencatat terlalu murah (terukur 2,6x pada uji Padatkan 24 September 01:11).
+    rctx.logger.logApiUsage(
+      provider,
+      modelTercatat || rctx.model.model || '',
+      `${SISTEM}\n${prompt}`,
+      mentah,
+      biayaAsliUsd
+    );
 
     // Model kadang membungkus JSON dengan ```json — ambil objek pertamanya.
     const cocok = mentah.match(/\{[\s\S]*\}/);
@@ -177,6 +200,10 @@ export async function handleJudgeConflictRequest(
     // persis keluhan yang melahirkan Item 55. Melewatkan satu pertentangan jauh
     // lebih murah daripada mengarantina fakta yang sah.
     console.error(`[Judge] ⚠️ Tidak dapat memutuskan (user ${user.id}): ${err.message}. Dianggap TIDAK berkonflik.`);
+    // Tugas latar ditunggu JUGA di jalur gagal. Tanpa `EdgeRuntime.waitUntil`, satu-satunya yang
+    // menahan proses adalah `awaitAll` — putusan yang gagal diparse tetap panggilan model yang
+    // sudah dibayar, dan barisnya tidak boleh hilang bersama prosesnya.
+    await tasks.awaitAll();
     return jawab({
       putusan: null,
       error: 'JUDGE_FAILED',

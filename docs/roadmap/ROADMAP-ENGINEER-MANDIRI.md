@@ -1,6 +1,7 @@
 # ROADMAP — Engineer Mandiri (self-maintenance)
 
-**Dibuat:** 23 September 2026 · **Status:** 🟡 Tahap 2 ✅ & Tahap 3a ✅ live; berikutnya Tahap 3b (ingatan temuan), lalu Tahap 1
+**Dibuat:** 23 September 2026 · **Status:** 🟡 Tahap 2 ✅ & Tahap 3a ✅ **tuntas** (sisa pekerjaannya ditutup
+24 September: batas jendela model + tombol "Padatkan"); berikutnya Tahap 3b (ingatan temuan), lalu Tahap 1
 
 Lanjutan dari T10 di [`ROADMAP-TEMUAN-TERBUKA.md`](./ROADMAP-TEMUAN-TERBUKA.md). Dasar rancangan ini adalah hasil uji
 Engineer 22–23 September 2026 (TUGAS-01..04), bukan perkiraan.
@@ -95,7 +96,23 @@ meteran per percakapan di Assistant & Engineer; "Bersihkan konteks" menggeser ba
 Sekalian: peristiwa Engineer tidak lagi bocor ke chat Assistant/Lite, dan 8 baris chat berlabel salah dipindah —
 [log](../project-memory/changelog/2026-09-23-jendela-konteks-per-percakapan.md).
 
-**Sisa:** tombol "Padatkan" (ringkasan sesi) dan batas jendela model belum dihitung.
+**Sisa Tahap 3a ✅ ditutup 24 September 2026** — [log](../project-memory/changelog/2026-09-24-batas-jendela-model-dan-padatkan.md):
+
+- **Batas jendela model** kini ikut dihitung. Kolom `model_pricing.context_length` diisi dari katalog
+  OpenRouter live; anggaran dipotong ke 60% jendela. Ini menutup cacat nyata, bukan pencegahan: pada
+  batas $3/hari, `gpt-4o-mini` menghasilkan anggaran 1.000.000 token melawan jendela 128.000 dan
+  `llama-3.1-8b` 3.000.000 melawan 131.072. Model yang jendelanya belum diketahui dibiarkan `NULL` dan
+  jatuh ke perilaku lama — bukan diisi tebakan (Item 42).
+- **Tombol "Padatkan"** selesai: pesan lama diringkas jadi satu pesan yang TETAP dikirim, batas konteks
+  digeser ke ringkasan itu. Tiga putaran live, hemat 91–92%, pesan lama tetap utuh di layar dan di
+  database. Peringkasannya berjalan di `agent-process` (bukan panggilan langsung dari klien) supaya
+  biayanya tercatat.
+- **Ikut ketemu & ditutup:** biaya panggilan model di endpoint samping (`padatkan`, `judge`) tidak
+  masuk ke `api_usage` — tabel yang justru dipakai menghitung anggaran jendela konteks.
+
+**Yang masih tersisa:** jumlah token di `api_usage` masih perkiraan `panjang/4` (biayanya sudah benar,
+jadi batas harian tidak terpengaruh); perbaikan `judge_endpoint.ts` belum terbukti live karena belum ada
+konflik memori yang memicunya sejak deploy.
 
 ## Tahap 3b — Ingatan kerja Engineer
 

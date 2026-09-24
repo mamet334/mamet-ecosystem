@@ -6,6 +6,7 @@ import { corsHeaders } from './lib/stream_handler.ts';
 import { pingHeartbeat } from './lib/adapters/heartbeat.ts';
 import { handleEmbedRequest } from './lib/request/embed_endpoint.ts';
 import { handleJudgeConflictRequest } from './lib/request/judge_endpoint.ts';
+import { handlePadatkanRequest } from './lib/request/padatkan_endpoint.ts';
 
 // PRIORITY 2: ENVIRONMENT VALIDATION (STARTUP)
 const REQUIRED_ENV_VARS = [
@@ -106,6 +107,11 @@ serve(async (req) => {
         // Sama alasannya: di luar penelan galat, dan memeriksa JWT sendiri.
         const judgeResponse = await handleJudgeConflictRequest(req, parsedBody, corsHeaders);
         if (judgeResponse) return judgeResponse;
+
+        // ENDPOINT PADATKAN KONTEKS (Tahap 3a) — `{ action: 'padatkan', pesan, model }`.
+        // Sama alasannya: di luar penelan galat, dan memeriksa JWT sendiri.
+        const padatkanResponse = await handlePadatkanRequest(req, parsedBody, corsHeaders);
+        if (padatkanResponse) return padatkanResponse;
       }
 
       try {

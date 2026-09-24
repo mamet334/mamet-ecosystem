@@ -1557,9 +1557,13 @@ export class AssistantService {
 
       if (model) {
         const { data: harga } = await supabase.from('model_pricing')
-          .select('input_price_per_1m').eq('model', model).maybeSingle();
+          .select('input_price_per_1m, context_length').eq('model', model).maybeSingle();
         const h = Number(harga?.input_price_per_1m);
         if (Number.isFinite(h) && h > 0) nilai.hargaInput1M = h;
+        // Jendela model. NULL di tabel berarti "belum diketahui" — biarkan undefined supaya anggaran
+        // jatuh ke perilaku lama (hanya biaya yang membatasi), BUKAN diisi angka tebakan.
+        const j = Number(harga?.context_length);
+        if (Number.isFinite(j) && j > 0) nilai.batasModel = j;
       }
       if (user?.id) {
         const awalHari = new Date(); awalHari.setHours(0, 0, 0, 0);
@@ -1572,6 +1576,49 @@ export class AssistantService {
     }
     this._anggaranCache = { model, waktu: sekarang, nilai };
     return nilai;
+  }
+
+  /**
+   * Padatkan konteks: minta server meringkas pesan-pesan yang masih dikirim jadi satu ringkasan.
+   *
+   * Lewat `agent-process` (bukan panggilan langsung ke OpenRouter) supaya `recordUsage` menuliskan
+   * biayanya ke `api_usage` — panggilan ini berbayar, dan anggaran jendela konteks dihitung dari tabel
+   * itu. Klien tidak boleh menulis `api_usage` sendiri (RLS hanya SELECT), jadi panggilan langsung
+   * akan jadi pengeluaran yang tak terlihat oleh batas hariannya sendiri.
+   *
+   * @param {Array<{role: string, content: string}>} pesan
+   * @param {string|null} model
+   * @returns {Promise<{ringkasan: string, jumlahPesan: number}>} melempar Error bila gagal
+   */
+  async padatkanKonteks(pesan, model) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) throw new Error('Sesi tidak aktif — masuk ulang lalu coba lagi.');
+
+    // getActiveBrainContext() tanpa tier = MODEL UTAMA, jalur yang sama dengan Engineer — dan ia yang
+    // membawa kunci dari VaultService. getBrainConfig() tidak memuat kuncinya sama sekali.
+    const brain = this.serviceManager?.has('BrainService') ? this.serviceManager.get('BrainService') : null;
+    const cfg = (await brain?.getActiveBrainContext?.()) || {};
+    if (!cfg.key) throw new Error('Memadatkan konteks memerlukan API Key Anda sendiri. Buka Settings → AI Provider.');
+    const headers = this.buildHeaders(session.access_token, cfg.provider, cfg.key);
+
+    const { data, error } = await supabase.functions.invoke('agent-process', {
+      body: { action: 'padatkan', pesan: (pesan || []).map((p) => ({ role: p.role, content: p.content })), model: model || cfg.model || '' },
+      headers,
+    });
+    if (error) {
+      // Alasan sebenarnya ada di body jawaban (Item 64), bukan di error.message yang umum.
+      let alasan = error.message;
+      try {
+        const isi = await error.context?.json?.();
+        if (isi?.message || isi?.error) alasan = isi.message || isi.error;
+      } catch { /* body bukan JSON */ }
+      throw new Error(alasan);
+    }
+    // Endpoint menjawab 200 dengan { error } saat peringkasannya gagal — diperiksa sendiri,
+    // karena supabase-js tidak melemparnya.
+    if (data?.error) throw new Error(data.message || data.error);
+    if (!data?.ringkasan) throw new Error('Server tidak mengembalikan ringkasan.');
+    return { ringkasan: String(data.ringkasan), jumlahPesan: Number(data.jumlahPesan) || 0 };
   }
 
   async saveChatToDB({ messages, chatId, userId, workspaceId, onNewChatId }) {

@@ -7,6 +7,7 @@ architecture
 arrow_forward
 attach_file
 auto_stories
+blocked
 bolt
 build
 cancel
@@ -16,6 +17,7 @@ check
 check_circle
 chevron_right
 close
+compress
 content_copy
 crisis_alert
 database
@@ -36,6 +38,7 @@ hourglass_top
 key
 keyboard_double_arrow_left
 layers
+lock
 logout
 memory
 menu

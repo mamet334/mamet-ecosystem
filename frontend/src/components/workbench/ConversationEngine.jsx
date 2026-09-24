@@ -13,7 +13,7 @@ import { laporanSetelahMuatUlang } from '../../core/runtime/services/engineer/Ca
 import { putusanPemulihan, bolehSimpanChat, kunciSimpan } from './pemulihanChat.js';
 import { riwayatPerintahDariPesan } from '../../core/runtime/services/engineer/ProsedurEngineer.js';
 import { ambilBlokKlaim, susunSkripUji, susunLaporanKlaim } from '../../core/runtime/services/engineer/UjiKlaim.js';
-import { anggaranKonteks, pilihPesanKonteks, meteranKonteks, bacaMulaiDari, simpanMulaiDari } from '../../core/runtime/services/KonteksChat.js';
+import { anggaranKonteks, pilihPesanKonteks, meteranKonteks, bacaMulaiDari, simpanMulaiDari, pesanUntukDipadatkan, bolehPadatkan, bentukPesanRingkasan, tokenPesan, MIN_PESAN_PADATKAN } from '../../core/runtime/services/KonteksChat.js';
 
 // =============================================
 // HELPER: Parse thinking/answer dari respons AI
@@ -559,7 +559,15 @@ export default function ConversationEngine({ sessionId }) {
       const ang = anggaranKonteks(bahan || {});
       const pilih = pilihPesanKonteks(messages, { anggaranToken: ang.token, mulaiDari: bacaMulaiDari(currentChatId) });
       setKonteksInfo({
-        ...meteranKonteks({ ...pilih, anggaranToken: ang.token, biayaPerkiraanUsd: ang.biayaPerkiraanUsd, sisaHarianUsd: ang.sisaHarianUsd, alasan: ang.alasan }),
+        ...meteranKonteks({
+          ...pilih,
+          anggaranToken: ang.token,
+          biayaPerkiraanUsd: ang.biayaPerkiraanUsd,
+          sisaHarianUsd: ang.sisaHarianUsd,
+          alasan: ang.alasan,
+          batasModel: ang.batasModel,
+          dibatasiJendelaModel: ang.dibatasiJendelaModel,
+        }),
         dilewati: pilih.dilewati,
       });
     })();
@@ -579,6 +587,63 @@ export default function ConversationEngine({ sessionId }) {
   const pulihkanKonteks = () => {
     simpanMulaiDari(currentChatId, 0);
     setVersiKonteks((v) => v + 1);
+  };
+
+  // PADATKAN KONTEKS — pesan lama diringkas jadi SATU pesan yang tetap dikirim, lalu batas konteks
+  // digeser ke ringkasan itu. Beda dengan "Bersihkan" yang membuang ingatannya sama sekali.
+  const [sedangMemadatkan, setSedangMemadatkan] = useState(false);
+  const [panelKonteks, setPanelKonteks] = useState(false);
+  const panelKonteksRef = useRef(null);
+  const bisaPadatkan = bolehPadatkan(messages, bacaMulaiDari(currentChatId));
+  useEffect(() => {
+    if (!panelKonteks) return;
+    const klikDiLuar = (e) => {
+      if (panelKonteksRef.current && !panelKonteksRef.current.contains(e.target)) setPanelKonteks(false);
+    };
+    document.addEventListener('mousedown', klikDiLuar);
+    return () => document.removeEventListener('mousedown', klikDiLuar);
+  }, [panelKonteks]);
+
+  const padatkanKonteks = async () => {
+    if (sedangMemadatkan) return;
+    const mulaiDari = bacaMulaiDari(currentChatId);
+    const bahan = pesanUntukDipadatkan(messages, mulaiDari);
+    if (!bolehPadatkan(messages, mulaiDari)) return;
+
+    const assistantService = getAssistantService();
+    if (!assistantService?.padatkanKonteks) {
+      setMessages((prev) => [...prev, { role: 'model', isPatchResult: true, content: '⚠️ **Tidak bisa memadatkan** — layanan belum siap. Coba lagi sebentar lagi.' }]);
+      return;
+    }
+
+    setSedangMemadatkan(true);
+    try {
+      const brain = kernel.serviceManager?.get('BrainService');
+      const model = brain?.getBrainConfig?.()?.model || null;
+      const { ringkasan, jumlahPesan } = await assistantService.padatkanKonteks(bahan, model);
+
+      const tokenSebelum = bahan.reduce((t, p) => t + tokenPesan(p), 0);
+      const pesanRingkas = bentukPesanRingkasan(ringkasan, {
+        jumlahPesan: jumlahPesan || bahan.length,
+        tokenSebelum,
+        tokenSesudah: tokenPesan({ content: ringkasan }),
+      });
+      // URUTAN PENTING: batas digeser ke INDEKS pesan ringkasan, jadi ringkasan itu sendiri yang jadi
+      // pesan pertama yang dikirim. Kalau digeser ke `messages.length + 1`, ringkasannya ikut terbuang
+      // dan "Padatkan" berubah jadi "Bersihkan" yang mahal.
+      simpanMulaiDari(currentChatId, messages.length);
+      setMessages((prev) => [...prev, pesanRingkas]);
+      setVersiKonteks((v) => v + 1);
+    } catch (e) {
+      // GAGAL = TIDAK MENGUBAH APA PUN. Batas konteks tidak digeser, jadi percakapannya tetap utuh.
+      setMessages((prev) => [...prev, {
+        role: 'model',
+        isPatchResult: true,
+        content: `⚠️ **Gagal memadatkan konteks:** ${e.message}\n\nKonteks tidak diubah — percakapan ini tetap utuh seperti sebelumnya.`,
+      }]);
+    } finally {
+      setSedangMemadatkan(false);
+    }
   };
 
   // MESIN UJI KLAIM (ROADMAP-ENGINEER-MANDIRI Tahap 2, 2026-09-23): jawaban Engineer yang memuat blok <uji_klaim>
@@ -1158,20 +1223,80 @@ export default function ConversationEngine({ sessionId }) {
           {/* METERAN JENDELA KONTEKS (Tahap 3a) — di Assistant DAN Engineer, berdiri sendiri per percakapan.
               Angkanya dari perhitungan yang sama dengan jalur kirim, jadi bukan taksiran terpisah. */}
           {konteksInfo && (
-            <div className="relative group">
+            <div className="relative" ref={panelKonteksRef}>
               <button
-                onClick={konteksInfo.dilewati > 0 ? pulihkanKonteks : bersihkanKonteks}
-                title={`${konteksInfo.rincian}\n\nKlik untuk ${konteksInfo.dilewati > 0 ? 'memulihkan konteks penuh' : 'membersihkan konteks (pesan tetap terlihat)'}.`}
+                onClick={() => setPanelKonteks((v) => !v)}
+                title={`${konteksInfo.rincian}\n\nKlik untuk pilihan konteks.`}
                 className={`h-10 px-3 flex items-center gap-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm active:scale-95
                   ${konteksInfo.warna === 'penuh' ? 'bg-error/15 border-error/50 text-error'
                     : konteksInfo.warna === 'hampir' ? 'bg-tertiary/15 border-tertiary/50 text-tertiary'
                     : 'bg-surface-container-low border-outline-variant text-on-surface-variant'}`}
               >
-                <span className="material-symbols-outlined text-[18px]">
-                  {konteksInfo.dilewati > 0 ? 'history' : 'token'}
+                <span className={`material-symbols-outlined text-[18px] ${sedangMemadatkan ? 'animate-spin' : ''}`}>
+                  {sedangMemadatkan ? 'progress_activity' : konteksInfo.dilewati > 0 ? 'history' : 'token'}
                 </span>
                 {konteksInfo.teks}
               </button>
+
+              {panelKonteks && (
+                <div className="absolute left-0 top-12 z-50 w-80 rounded-xl border border-outline-variant bg-surface-container-low shadow-lg p-2">
+                  <div className="px-2 py-1.5 text-[11px] text-on-surface-variant leading-relaxed">
+                    {konteksInfo.rincian}
+                  </div>
+
+                  {/* PADATKAN — meringkas pesan lama jadi satu pesan yang TETAP dikirim.
+                      Berbayar (satu panggilan model), jadi biayanya disebut di sini, bukan disembunyikan. */}
+                  <button
+                    onClick={() => { setPanelKonteks(false); padatkanKonteks(); }}
+                    disabled={sedangMemadatkan || !bisaPadatkan}
+                    className="w-full text-left px-2 py-2 rounded-lg hover:bg-surface-container-highest disabled:opacity-40 disabled:hover:bg-transparent flex items-start gap-2"
+                  >
+                    <span className="material-symbols-outlined text-[18px] mt-0.5">compress</span>
+                    <span>
+                      <span className="block text-xs font-bold text-on-surface">Padatkan</span>
+                      <span className="block text-[11px] text-on-surface-variant">
+                        {bisaPadatkan
+                          ? 'Ringkas pesan lama jadi satu pesan yang tetap dikirim — ingatan percakapan tidak hilang. Satu panggilan model berbayar.'
+                          : `Perlu minimal ${MIN_PESAN_PADATKAN} pesan untuk dipadatkan.`}
+                      </span>
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => { setPanelKonteks(false); bersihkanKonteks(); }}
+                    disabled={sedangMemadatkan}
+                    className="w-full text-left px-2 py-2 rounded-lg hover:bg-surface-container-highest disabled:opacity-40 flex items-start gap-2"
+                  >
+                    <span className="material-symbols-outlined text-[18px] mt-0.5">delete</span>
+                    <span>
+                      <span className="block text-xs font-bold text-on-surface">Bersihkan</span>
+                      <span className="block text-[11px] text-on-surface-variant">
+                        Berhenti mengirim pesan lama tanpa meringkasnya. Gratis, tapi ingatan percakapannya hilang.
+                      </span>
+                    </span>
+                  </button>
+
+                  {konteksInfo.dilewati > 0 && (
+                    <button
+                      onClick={() => { setPanelKonteks(false); pulihkanKonteks(); }}
+                      disabled={sedangMemadatkan}
+                      className="w-full text-left px-2 py-2 rounded-lg hover:bg-surface-container-highest disabled:opacity-40 flex items-start gap-2"
+                    >
+                      <span className="material-symbols-outlined text-[18px] mt-0.5">history</span>
+                      <span>
+                        <span className="block text-xs font-bold text-on-surface">Pulihkan konteks penuh</span>
+                        <span className="block text-[11px] text-on-surface-variant">
+                          Kirim lagi seluruh {konteksInfo.dilewati} pesan lama, sebatas anggaran.
+                        </span>
+                      </span>
+                    </button>
+                  )}
+
+                  <div className="px-2 pt-1.5 pb-0.5 text-[10px] text-on-surface-variant border-t border-outline-variant mt-1">
+                    Tidak ada pilihan di sini yang menghapus pesan. Semuanya tetap terlihat dan tetap tersimpan.
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

@@ -44,7 +44,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 | `ROADMAP-KONTEKS-POTONGAN-RAG.md` | ✅ Item 89 | pemisah bagian tabel OCR + baris konteks potongan |
 | `ROADMAP-TABEL-CENTANG-PDF.md` | 🟡 Item 88 | kolom centang dari koordinat pdf.js, kontrak & label |
 | `ROADMAP-TEMUAN-TERBUKA.md` | ⏳ T1, T10, T11 (T2–T9 ✅) | temuan audit tanpa rancangan sendiri |
-| `ROADMAP-ENGINEER-MANDIRI.md` | 🟡 Tahap 2 ✅ (mesin uji klaim live: 5/10 klaim Engineer terbukti) · Tahap 3a ✅ (jendela konteks per percakapan + meteran; peristiwa Engineer tak bocor) | Engineer memelihara Mamet sendiri: lingkaran baca-saja beranggaran, mesin uji klaim, ingatan temuan; menulis tetap butuh izin Owner |
+| `ROADMAP-ENGINEER-MANDIRI.md` | 🟡 Tahap 2 ✅ (mesin uji klaim live: 5/10 klaim Engineer terbukti) · Tahap 3a ✅ **tuntas** (jendela konteks per percakapan + meteran; batas jendela model dari `model_pricing.context_length`; tombol "Padatkan" hemat 91–92% live; biaya endpoint samping masuk `api_usage`) | Engineer memelihara Mamet sendiri: lingkaran baca-saja beranggaran, mesin uji klaim, ingatan temuan; menulis tetap butuh izin Owner |
 | `ROADMAP-FOLDER-KERJA-ASSISTANT.md` | 📝 Item 85 | tombol 📁 sebagai tempat kerja Assistant |
 | `roadmap-adaptive-shell.md` | 📋 Item 72 | UI multi-device |
 | `ROADMAP-ADAPTIVE-MODEL-TIERING.md` | ✅ Item 34–35 | tier model & plumbing `thinking` |
