@@ -246,6 +246,37 @@ sama. Di aplikasi terpasang, langkah 1–4 berjalan tanpa gangguan.
 **Cara uji:** tanam sengaja satu patch yang merusak berkas beruji → uji gagal → berkas **kembali sendiri** ke isi
 sebelum patch, dan laporannya menyebut berkas uji serta keluarannya. Kendali: patch yang benar tidak dipulihkan.
 
+### PRASYARAT — uji yang MENIRU kode tidak boleh dihitung sebagai bukti keselamatan
+
+Ditemukan saat mengukur suite, 24 September. Dari 676 asersi, hanya **7%** yang sekadar mencocokkan teks sumber —
+jadi suite ini **tidak** didominasi uji struktural. Tetapi ada kategori ketiga yang lebih halus dan lebih berbahaya.
+
+Bila logika berada di dalam komponen React atau di tengah fungsi panjang, ia tidak bisa diimpor. Jalan pintas yang
+dipakai berulang kali hari itu: **menyalin logikanya ke dalam berkas uji**, lalu menguji salinannya.
+
+```
+uji-patch-crlf.mjs            → const jalankan = (…) => { … }        (tiruan jalur cari-ganti)
+uji-temuan-terpasang-v2.mjs   → const hitungBelumSimpan = (…) => { … } ("tiruan useMemo")
+uji-laporan-patch-bertahan.mjs→ const pasang = (…) => { … }           (tiruan effect penempelan)
+```
+
+Tiga berkas, semuanya ditulis 24 September, semuanya menguji **cermin** — bukan bendanya. Kalau kode aslinya
+berubah dan cerminnya tidak, ujinya **tetap hijau**: ia hanya membuktikan cermin itu konsisten dengan dirinya
+sendiri. Akarnya sama dengan dua uji yang gagal hari itu (`uji-temuan-terpasang` v1, `uji-padatkan-biaya` v1):
+menguji "apakah kodenya tampak benar", bukan "apakah kodenya bekerja".
+
+**Kenapa ini prasyarat, bukan catatan kecil:** Tahap 6 menjalankan suite untuk memutuskan patch selamat. Uji cermin
+akan memberi rasa aman palsu **dengan wibawa mesin** — jauh lebih meyakinkan daripada rasa aman palsu hari ini,
+karena angkanya terlihat objektif. Owner: *"ini berbahaya karena memberikan rasa aman palsu."*
+
+**Yang harus dilakukan sebelum Tahap 6 dipercaya:**
+
+1. Uji yang meniru logika **ditandai** dan tidak dihitung sebagai bukti keselamatan patch. Bukan dihapus — untuk
+   kode di dalam komponen React ia kadang satu-satunya cara — tetapi jujur tentang apa yang ia buktikan.
+2. Bila ada usahanya: **pindahkan logikanya keluar dari komponen** supaya bisa diimpor. Pola ini sudah terbukti di
+   `pemulihanChat.js`, `KonteksChat.js`, `IngatanTemuan.js` — ketiganya diuji sungguhan, bukan ditiru. Masalahnya
+   bukan polanya belum ada, melainkan ia ditinggalkan saat terburu-buru.
+
 ---
 
 ## Urutan yang disarankan
@@ -272,3 +303,39 @@ Engineer tidak akan menjadi sepintar model yang menggerakkannya. Terbukti 23 Sep
 kali mengerjakan tugas yang salah; dengan `deepseek-v4-pro-0813` ia menolak tugas yang tidak ada di sumbernya dan
 menemukan cacat yang tidak ada di kunci jawaban. Prosedur, pagar, dan mesin uji memperbaiki **ketertiban dan
 kejujuran** — kecerdasan tetap dibeli lewat tingkat model (±$0,03 per sesi uji pada tarif `v4-pro`).
+
+## Sampai mana "memelihara diri sendiri" itu benar (diskusi Owner, 24 September 2026)
+
+Owner meragukan gagasan Mamet memelihara dirinya, dengan analogi: **manusia yang mengobati atau mengganti
+jantungnya sendiri tanpa bantuan orang lain.** Analogi itu tepat — dan ketepatannya bergantung pada mode.
+
+| Mode | Yang dibedah | Yang berjalan |
+|---|---|---|
+| `npm run desktop` | berkas sumber | **berkas sumber yang sama** — Vite memuat ulang, kode baru seketika hidup |
+| `npm run dist` | berkas sumber | **salinan terbundel, tidak tersentuh** |
+
+Di mode pengembangan analoginya **harfiah**: operasi pada jantung yang masih berdetak. Tiga dari tujuh cacat
+24 September lahir dari sana. Di aplikasi terpasang, Mamet tidak menyentuh jantungnya — ia **menyunting cetak
+birunya**; yang berjalan tetap versi lama dan utuh, dan perubahan baru hidup saat **Owner** membangun ulang.
+Analogi yang pas untuk mode itu: dokter menulis resep untuk dirinya, yang baru berlaku setelah orang lain
+menebusnya. (Alasan ketiga untuk mendahulukan Tahap 5.)
+
+**Yang tetap benar dari keraguan Owner — dan sudah jadi batas sejak awal:** rantai yang membuat perubahan nyata
+bagi orang lain (GitHub, Vercel, penerapan) tidak pernah bisa disentuh Mamet. Lihat "Batas yang tidak digeser"
+nomor 3: *tidak ada pemasangan paket, tidak ada `git` tulis, tidak ada push.* Naluri Owner sudah tertulis di kode
+sebelum pertanyaannya diajukan.
+
+**Satu hal yang membuat komputasi berbeda dari jantung:** operasi jantung tidak bisa dibatalkan, patch bisa.
+Checkpoint wajib sebelum menulis, `git checkout` mengembalikan, dan Tahap 6 memulihkan otomatis saat uji gagal.
+Kesalahan tidak bisa dicegah seluruhnya, tetapi bisa dibuat **tidak permanen** — pilihan yang tidak dimiliki ahli bedah.
+
+**Yang TIDAK berubah:** sistem tidak bisa memeriksa dirinya dengan bagian yang rusak. Buktinya hari itu —
+pemeriksa `eval(` memblokir berkas yang memuat `eval(` di dalam pemeriksanya sendiri. Itu batas nyata, bukan bug.
+
+Karena itu penilaian akhir tidak pernah berpindah ke mesin. Kata Owner, yang menutup diskusi ini:
+
+> **"Hasil akhirnya penciptanyalah yang menentukan, yaitu saya."**
+
+Itu bukan sekadar sikap — ia sudah jadi arsitektur: `constitution/04_OWNER_SOVEREIGNTY.md`, checkpoint wajib,
+dialog izin, CORE IMMUTABLE, dan larangan `git` tulis. Seluruh roadmap ini menambah **kemampuan** Engineer;
+tidak satu pun tahapnya memindahkan **keputusan**.

@@ -166,6 +166,19 @@ harus menunjukkan gejalanya, keadaan **sesudah** tidak.
 > peringatan itu, jadi build bukan alat ukurnya. Pembuktian sebenarnya lewat server pengembangan: versi lama
 > memunculkan peringatan, versi baru tidak.
 
+## 8b. Jangan menguji cermin
+
+Ditambahkan 24 September 2026. Bila logika ada di dalam komponen React atau di tengah fungsi panjang, ia tidak bisa
+diimpor — dan jalan pintasnya adalah **menyalin logikanya ke dalam berkas uji** lalu menguji salinannya. Uji seperti
+itu **tetap hijau** walau kode aslinya berubah: ia hanya membuktikan cermin itu konsisten dengan dirinya sendiri.
+
+Tiga berkas uji yang ditulis dalam satu hari jatuh ke pola ini. Akarnya sama dengan dua uji yang **lulus padahal
+fiturnya rusak** di hari yang sama: menguji "apakah kodenya tampak benar", bukan "apakah kodenya bekerja".
+
+Jalan keluarnya bukan menghapus uji cermin — kadang ia satu-satunya cara — melainkan: **pindahkan logikanya keluar
+dari komponen supaya bisa diimpor**, dan bila terpaksa meniru, tandai dan jangan hitung sebagai bukti keselamatan.
+Pola yang sudah terbukti di proyek ini: `pemulihanChat.js`, `KonteksChat.js`, `IngatanTemuan.js`.
+
 ## 9. Periksa akibat sampingan sebelum menyerahkan
 
 Sekurang-kurangnya: sintaks berkas yang disentuh, karakter kendali, berkas lain yang ikut berubah, dan keadaan
