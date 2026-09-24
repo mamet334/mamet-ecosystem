@@ -185,7 +185,22 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
 - **Temuan (baca kode):** `verify_jwt` hanya mensyaratkan JWT sah — kunci anon publik lolos. Fungsi menguji kunci
   OpenRouter server dan menampilkan 8 huruf awalnya; siapa pun bisa memicunya (biaya kecil per panggilan).
 - **Arah solusi:** cek pengguna (`auth.getUser`) + batasi ke Owner, atau hapus bila tak dipakai.
-- **Status:** ⏳ dicatat.
+- **Pemutakhiran 2026-09-24 — bobotnya naik, bukan temuan baru.** Saat T11 ditulis, risikonya diperkirakan
+  sebagai "siapa pun yang punya kunci anon". Sekarang bisa dipastikan kunci itu **tertulis di repositori publik**:
+  ```
+  .github/workflows/build.yml:37   VITE_SUPABASE_ANON_KEY=eyJhbGciOi…
+  repo: github.com/mamet334/mamet-ecosystem — visibility PUBLIC
+  ```
+  **Ini BUKAN kebocoran.** Kunci anon memang dirancang publik — ia ikut terbundel di frontend, jadi siapa pun
+  bisa mengambilnya dari sana; yang melindungi data adalah RLS (sudah ditutup 22 September,
+  `rls_tutup_baca_semua`), bukan kerahasiaan kuncinya. Yang berubah hanyalah **kemudahan jalan masuknya**:
+  memicu `check-keys` tidak lagi menuntut seseorang membongkar bundel aplikasi, cukup membuka GitHub. Setiap
+  panggilan menguji kunci OpenRouter server dan menampilkan 8 huruf awalnya, dan ada biayanya.
+  Ditemukan saat memindai repo setelah Owner menyambungkan GitHub untuk kredit sesi cloud — bukan dari audit
+  terjadwal. Konteks sambungan itu sendiri: repo ini memang sudah publik, jadi sambungannya tidak menambah
+  paparan repo ini; yang perlu Owner periksa sendiri adalah apakah izin GitHub mencakup repo **privat** lain
+  (GitHub → Settings → Applications → Authorized GitHub Apps).
+- **Status:** ⏳ dicatat; bobot dinaikkan 2026-09-24, menunggu keputusan Owner.
 
 ## T12 — Membaca berkas = mengirimnya keluar, dan tak ada satu pun pemberitahuan (diskusi Owner, 2026-09-24)
 
