@@ -408,14 +408,43 @@ class Kernel {
       verifyEvidence: () => ({ verdict: 'PASS' }),
       // [FIX 2026-07-30] Verifikasi patch dengan cek keamanan nyata, bukan auto-PASS.
       // Mencegah patch berbahaya (eval, new Function, vendor API langsung) lolos tanpa pemeriksaan.
+      /**
+       * Pemeriksaan pola berbahaya pada patch Engineer.
+       *
+       * YANG DIPERIKSA ADALAH PENAMBAHAN, BUKAN KEBERADAAN (diperbaiki 24 September 2026).
+       *
+       * Versi lama memindai SELURUH isi berkas hasil patch dengan `includes('eval(')`. Akibatnya setiap
+       * berkas yang KEBETULAN menyebut pola itu — termasuk dalam komentar atau dalam kode pemeriksanya
+       * sendiri — tidak akan pernah bisa di-patch, bahkan untuk perbaikan satu komentar.
+       *
+       * Terbukti live 24 September, putaran kelima tugas "perbaiki komentar engineer.js:1035":
+       * "Patch tidak lolos verifikasi: 2 masalah kritis". Dua-duanya palsu. `engineer.js` memuat
+       * `eval(` dan `new Function(` di baris 928 — DI DALAM pemeriksa aturan MAEF-nya sendiri, yaitu
+       * kode yang bertugas mendeteksi keduanya. Jadi pemeriksa itu memblokir berkas yang memuat dirinya.
+       *
+       * Sekarang jumlah kemunculan pada isi BARU dibandingkan dengan isi ASLI: pelanggaran dilaporkan
+       * hanya bila patch benar-benar MENAMBAH. Pagar keamanannya tidak melemah — patch yang benar-benar
+       * menyisipkan `eval(` tetap diblokir — tetapi berkas yang sekadar menyebutnya tidak lagi tersandera.
+       * Bila isi asli tidak dikirim, perilakunya kembali seperti semula (menganggap 0 kemunculan awal).
+       */
       verifyPatchEngineering: (context) => {
         const failures = [];
         try {
           const responseText = context?.responseText || '';
-          if (responseText.includes('eval('))      failures.push({ severity: 'CRITICAL', message: 'Terdeteksi penggunaan eval() yang dilarang' });
-          if (responseText.includes('new Function(')) failures.push({ severity: 'CRITICAL', message: 'Terdeteksi new Function() yang dilarang' });
-          if (/fetch\(['"]https:\/\/(api\.openai\.com|generativelanguage\.googleapis\.com)/.test(responseText))
-            failures.push({ severity: 'HIGH', message: 'Terdeteksi pemanggilan vendor API langsung tanpa Adapter Layer' });
+          const originalText = context?.originalText || '';
+          const jumlah = (teks, pola) => teks.split(pola).length - 1;
+          const bertambah = (pola) => jumlah(responseText, pola) > jumlah(originalText, pola);
+
+          if (bertambah('eval(')) failures.push({ id: 'CHECK_P03_EVAL', severity: 'CRITICAL', message: 'Patch MENAMBAH pemanggilan eval() yang dilarang' });
+          if (bertambah('new Function(')) failures.push({ id: 'CHECK_P03_NEW_FUNCTION', severity: 'CRITICAL', message: 'Patch MENAMBAH new Function() yang dilarang' });
+
+          // Tanda kutip boleh didahului backslash: isi berkas sampai ke sini sudah dibungkus
+          // JSON.stringify oleh pemanggil, jadi `fetch("https://…` menjadi `fetch(\"https://…`.
+          // Tanpa `\\?` pola ini tidak pernah cocok sama sekali — pemeriksa vendor yang selalu diam.
+          const polaVendor = /fetch\(\\?['"]https:\/\/(api\.openai\.com|generativelanguage\.googleapis\.com)/g;
+          const vendorBaru = (String(responseText).match(polaVendor) || []).length
+            > (String(originalText).match(polaVendor) || []).length;
+          if (vendorBaru) failures.push({ id: 'CHECK_P03_VENDOR', severity: 'HIGH', message: 'Patch MENAMBAH pemanggilan vendor API langsung tanpa Adapter Layer' });
         } catch (e) {
           // Jika parsing gagal, tetap lanjut dengan failures kosong
         }

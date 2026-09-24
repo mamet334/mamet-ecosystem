@@ -34,13 +34,26 @@ export function hapusCatatanPatch(ls) {
  * Dipanggil layar saat dimuat. Mengembalikan laporan berdasarkan isi berkas di disk, atau null bila tak ada catatan.
  * @param {(path: string) => Promise<string|null>} bacaBerkas
  */
-export async function laporanSetelahMuatUlang(bacaBerkas, ls, sekarang = Date.now()) {
+/**
+ * @param {boolean} [hapusSekarang] false = catatan DIBIARKAN sampai pemanggil memastikan laporannya
+ *   benar-benar sampai ke layar, lalu memanggil `hapusCatatanPatch()` sendiri.
+ *
+ *   Kenapa opsi ini ada (live 24 September 09:19:47): catatan dihapus di baris pertama, jadi ia SEKALI
+ *   PAKAI. Laporannya lalu tertimpa pemulihan riwayat, dan pada muat ulang berikutnya tidak ada lagi
+ *   yang bisa dibaca — Owner kehilangan pesan "Patch diterapkan" DAN tombol Undo untuk patch yang
+ *   sebenarnya berhasil. Menghapus bukti sebelum bukti itu tersampaikan adalah urutan yang salah.
+ *   Pengaman terhadap pengulangan tak berujung tetap ada: usia catatan dibatasi USIA_MAKS_MS, dan
+ *   pemanggil mencocokkan `patchId` sehingga laporan yang sudah ada tidak pernah dobel.
+ */
+export async function laporanSetelahMuatUlang(bacaBerkas, ls, sekarang = Date.now(), hapusSekarang = true) {
   const s = penyimpanan(ls);
   if (!s) return null;
   let catatan = null;
   try { catatan = JSON.parse(s.getItem(KUNCI) || 'null'); } catch { catatan = null; }
-  hapusCatatanPatch(s);
-  if (!catatan || !Array.isArray(catatan.files) || sekarang - (catatan.waktu || 0) > USIA_MAKS_MS) return null;
+  const basi = !catatan || !Array.isArray(catatan.files) || sekarang - (catatan.waktu || 0) > USIA_MAKS_MS;
+  // Catatan basi/rusak SELALU dibuang — ia tidak akan pernah jadi laporan yang sah.
+  if (hapusSekarang || basi) hapusCatatanPatch(s);
+  if (basi) return null;
 
   const baris = [];
   let semuaTerapan = true;

@@ -103,6 +103,10 @@ export async function generatePatch(task, deps) {
       generatedCode = {}; // T10: tanpa patch pengganti — kegagalan model dilaporkan, bukan ditutupi TODO
     }
 
+    generatedCode = bakukanBentukPatch(generatedCode);
+
+    // Alasan per berkas, dikumpulkan supaya kegagalan bisa dijelaskan — bukan sekadar "tidak ada perubahan".
+    const alasanGagal = [];
     const patchFiles = [];
     for (const [filePath, newContent] of Object.entries(generatedCode || {})) {
       if (filePath === 'message' || filePath === 'reply' || filePath === 'content') continue;
@@ -112,13 +116,31 @@ export async function generatePatch(task, deps) {
       // === HANDLE FORMAT SEARCH-REPLACE ===
       if (newContent && typeof newContent === 'object' && newContent.__mode === 'search_replace') {
         const originalContent = fileContents[filePath] || '';
-        let workingContent = originalContent;
+
+        // AKHIR BARIS DISERAGAMKAN SEBELUM DICOCOKKAN (terbukti live 24 September 2026).
+        //
+        // Berkas di repo ini tersimpan dengan CRLF (Windows) — `file engineer.js` melaporkan "with CRLF
+        // line terminators", dan git pun memperingatkan "LF will be replaced by CRLF". Model menulis
+        // `search` sebagai string JSON dengan "\n" biasa. Akibatnya `includes()` GAGAL untuk setiap
+        // cari-ganti yang melintasi lebih dari satu baris — bukan kadang-kadang, tapi SELALU di repo ini.
+        //
+        // Gejalanya menyesatkan: bentuk JSON-nya benar, alamatnya benar, teksnya benar, verifikasi
+        // Supabase lulus — lalu patch sunyi tanpa satu pun berkas berubah.
+        //
+        // Pencocokan dilakukan dalam LF, lalu hasilnya dikembalikan ke CRLF bila berkas aslinya CRLF.
+        // Tanpa pengembalian itu, satu perbaikan komentar akan menulis ulang akhir baris SELURUH berkas
+        // dan menghasilkan diff yang tak bisa dibaca Owner.
+        const pakaiCRLF = originalContent.includes('\r\n');
+        const seragam = (t) => String(t).replace(/\r\n/g, '\n');
+
+        let workingContent = seragam(originalContent);
         let changeCount = 0;
 
         if (Array.isArray(newContent.changes)) {
-          for (const change of newContent.changes) {
-            if (!change.search || typeof change.search !== 'string') continue;
-            if (typeof change.replace !== 'string') continue;
+          for (const changeAsli of newContent.changes) {
+            if (!changeAsli.search || typeof changeAsli.search !== 'string') continue;
+            if (typeof changeAsli.replace !== 'string') continue;
+            const change = { search: seragam(changeAsli.search), replace: seragam(changeAsli.replace) };
 
             if (workingContent.includes(change.search)) {
               workingContent = workingContent.replace(change.search, change.replace);
@@ -150,10 +172,13 @@ export async function generatePatch(task, deps) {
         }
 
         if (changeCount > 0) {
-          finalContent = workingContent;
-          console.log(`[Engineer] 🔄 Search-replace mode: ${changeCount} perubahan diterapkan ke ${filePath}`);
+          // Akhir baris dikembalikan ke bentuk asli berkas — hanya baris yang benar-benar diubah yang berbeda.
+          finalContent = pakaiCRLF ? workingContent.replace(/\n/g, '\r\n') : workingContent;
+          console.log(`[Engineer] 🔄 Search-replace mode: ${changeCount} perubahan diterapkan ke ${filePath}${pakaiCRLF ? ' (CRLF dipertahankan)' : ''}`);
         } else {
           console.error(`[Engineer] ❌ Search-replace mode: tidak ada perubahan berhasil diterapkan ke ${filePath}`);
+          const contoh = (newContent.changes || [])[0]?.search;
+          alasanGagal.push(`\`${filePath}\`: teks yang dicari model tidak ditemukan di berkas${contoh ? ` — cuplikan pertama: "${seragam(contoh).slice(0, 120).replace(/\n/g, '⏎')}"` : ''}`);
           continue;
         }
       }
@@ -187,6 +212,16 @@ export async function generatePatch(task, deps) {
       extractedCodeKeys: Object.keys(generatedCode || {}),
       modelUsed: modelUsed,
       isFallback: isFallback,
+      // Kegagalan tanpa galat model TIDAK boleh dilaporkan dengan kalimat tugas Owner. Live 24 September
+      // 01:51: verifikasi Supabase LULUS (PATCH_ENGINEERING, skor 100) tetapi tidak ada berkas yang lahir,
+      // dan Owner hanya melihat "Patch tidak dibuat — <kalimat perintahnya sendiri>" karena pesan itu
+      // jatuh ke `patch.description`. Bentuk JSON yang diterima disebut di sini supaya sebabnya terlihat.
+      error: !llmErrorMessage && patchFiles.length === 0 && rawLLMResponse
+        ? (alasanGagal.length
+          // Bentuknya benar, isinya yang tidak cocok — sebutkan berkas dan cuplikannya, bukan cuma "gagal".
+          ? `model menjawab dengan bentuk yang benar, tetapi cari-ganti tidak menemukan sasarannya:\n${alasanGagal.map((a) => `- ${a}`).join('\n')}`
+          : `model menjawab, tetapi tidak ada perubahan yang bisa diterapkan. Kunci JSON yang diterima: ${JSON.stringify(Object.keys(generatedCode || {}))}. Yang diminta: {"<alamat berkas>": {"__mode":"search_replace","changes":[…]}}`)
+        : undefined,
       llmError: llmErrorMessage
     };
 
@@ -207,6 +242,44 @@ export async function generatePatch(task, deps) {
  * file besar seperti versi lama.
  * @param {Object} deps - { brain, injectArtifactIntoPrompt }
  */
+/**
+ * Bakukan bentuk JSON patch dari model ke bentuk yang dipahami pemasang: `{ "<alamat>": { __mode, changes } }`.
+ *
+ * KENAPA ADA (terbukti live 24 September 2026, dua putaran):
+ * Prompt meminta bentuk berkunci-alamat, tetapi model kuat berkali-kali menjawab dengan bentuk daftar:
+ *   { "files": [ { "path": "…", "changes": [ { "search": …, "replace": … } ] } ] }
+ * Isinya SAMA PERSIS dan sah — cuma dibungkus berbeda. Karena `Object.entries` hanya melihat kunci "files"
+ * yang nilainya array (bukan objek ber-`__mode`), seluruh patch dilewati diam-diam dan Owner menerima
+ * "Patch tidak dibuat" tanpa sebab. Verifikasi Supabase sendiri LULUS (skor 100) — jadi patch yang benar
+ * hilang di langkah paling akhir.
+ *
+ * Ini BUKAN menebak maksud dari prosa: kedua bentuk sama-sama JSON eksplisit dengan field yang sama.
+ * Bentuk lain yang tidak dikenali sengaja TIDAK diterka — ia dikembalikan apa adanya supaya gagal terang.
+ */
+export function bakukanBentukPatch(kode) {
+  if (!kode || typeof kode !== 'object') return kode;
+  const daftar = Array.isArray(kode.files) ? kode.files : null;
+  if (!daftar) return kode;
+
+  const hasil = {};
+  for (const f of daftar) {
+    const alamat = typeof f?.path === 'string' ? f.path : null;
+    if (!alamat || !Array.isArray(f?.changes)) continue;
+    // Bila satu alamat muncul dua kali, perubahannya digabung — bukan yang terakhir menimpa yang pertama.
+    const sebelumnya = hasil[alamat]?.changes || [];
+    hasil[alamat] = { __mode: 'search_replace', changes: [...sebelumnya, ...f.changes] };
+  }
+  // Tidak ada satu pun entri sah → jangan menukar jawaban model dengan objek kosong yang menyesatkan.
+  if (Object.keys(hasil).length === 0) return kode;
+
+  // Kunci lain di luar "files" (mis. bentuk campuran) tetap dibawa.
+  for (const [k, v] of Object.entries(kode)) {
+    if (k !== 'files' && !(k in hasil)) hasil[k] = v;
+  }
+  console.log(`[Engineer] 🔁 Bentuk patch "files[]" dibakukan jadi ${Object.keys(hasil).length} entri beralamat.`);
+  return hasil;
+}
+
 export function buildPatchPrompt(task, fileContents, deps) {
   const { brain, injectArtifactIntoPrompt } = deps;
 

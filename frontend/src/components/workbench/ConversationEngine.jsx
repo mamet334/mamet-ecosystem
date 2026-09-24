@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Loader2, Globe } from 'lucide-react';
 import { useWorkspace } from '../../core/workspaces/WorkspaceContext';
 import { supabase } from '../../supabase';
@@ -9,10 +9,11 @@ import FolderKerjaTombol from './FolderKerjaTombol';
 import ChatHistory from './ChatHistory';
 import MemoryContextPanel from './MemoryContextPanel';
 import { tugasDariUsulan } from '../../core/runtime/services/engineer/UsulanPatch.js';
-import { laporanSetelahMuatUlang } from '../../core/runtime/services/engineer/CatatanPatch.js';
+import { laporanSetelahMuatUlang, hapusCatatanPatch } from '../../core/runtime/services/engineer/CatatanPatch.js';
 import { putusanPemulihan, bolehSimpanChat, kunciSimpan } from './pemulihanChat.js';
 import { riwayatPerintahDariPesan } from '../../core/runtime/services/engineer/ProsedurEngineer.js';
 import { ambilBlokKlaim, susunSkripUji, susunLaporanKlaim } from '../../core/runtime/services/engineer/UjiKlaim.js';
+import { ambilBlokTemuan, bacaBerkasTemuan, susunBerkasTemuan, gabungTemuan, laporanTemuan, ringkasanUntukKonteks, ALAMAT_BERKAS as ALAMAT_TEMUAN } from '../../core/runtime/services/engineer/IngatanTemuan.js';
 import { anggaranKonteks, pilihPesanKonteks, meteranKonteks, bacaMulaiDari, simpanMulaiDari, pesanUntukDipadatkan, bolehPadatkan, bentukPesanRingkasan, tokenPesan, MIN_PESAN_PADATKAN } from '../../core/runtime/services/KonteksChat.js';
 
 // =============================================
@@ -674,21 +675,157 @@ export default function ConversationEngine({ sessionId }) {
     })().catch((e) => console.error('[UjiKlaim] gagal:', e));
   }, [messages, workspaceManager?.activeWorkspaceId]);
 
+  // INGATAN TEMUAN ENGINEER (Tahap 3b, 2026-09-24).
+  // Blok <temuan> dalam jawaban Engineer dibandingkan dengan catatan di repo: yang sudah pernah dilaporkan
+  // atau sudah DITUTUP Owner tidak diangkat lagi. Penulisannya ke disk MENUNGGU tombol Owner — batas
+  // "menulis berkas selalu lewat persetujuan Owner" tidak digeser untuk kenyamanan.
+  const [temuanTersimpan, setTemuanTersimpan] = useState([]);
+  const temuanDiprosesRef = useRef(new Set());
+
+  const bacaCatatanTemuan = async () => {
+    const isi = await (window.electronAPI?.readFile?.(ALAMAT_TEMUAN) ?? Promise.resolve(null));
+    return bacaBerkasTemuan(isi);
+  };
+
+  // Catatan dibaca sekali saat workspace Engineer dibuka, supaya perbandingan memakai isi disk yang nyata
+  // (termasuk suntingan tangan Owner), bukan ingatan layar.
+  useEffect(() => {
+    if (workspaceManager?.activeWorkspaceId !== 'ws-engineer') return;
+    bacaCatatanTemuan().then(setTemuanTersimpan).catch(() => setTemuanTersimpan([]));
+  }, [workspaceManager?.activeWorkspaceId]);
+
+  useEffect(() => {
+    if (workspaceManager?.activeWorkspaceId !== 'ws-engineer') return;
+    const i = messages.length - 1;
+    const pesan = messages[i];
+    if (!pesan || pesan.role !== 'model' || pesan.isTemuan) return;
+    if (temuanDiprosesRef.current.has(i) || !String(pesan.content || '').includes('<temuan')) return;
+    temuanDiprosesRef.current.add(i);
+
+    (async () => {
+      const { temuan, galat } = ambilBlokTemuan(pesan.content);
+      if (!temuan.length && !galat.length) return;
+      // Dibandingkan dengan DISK, bukan dengan state: Owner bisa menyunting berkasnya di luar aplikasi.
+      const tersimpan = await bacaCatatanTemuan();
+      const { baru, kembar, pernahDitutup } = gabungTemuan([...tersimpan, ...temuanBelumSimpan], temuan);
+      setTemuanTersimpan(tersimpan);
+      const laporan = laporanTemuan({ baru, kembar, pernahDitutup, galat });
+      if (laporan) setMessages((prev) => [...prev, { role: 'model', content: laporan, isTemuan: true }]);
+    })().catch((e) => console.error('[Temuan] gagal:', e));
+  }, [messages, workspaceManager?.activeWorkspaceId]);
+
+  /**
+   * Temuan yang belum tertulis ke repo — DITURUNKAN dari seluruh percakapan, bukan disimpan sebagai state.
+   *
+   * Sebelumnya ini `useState` yang hanya diisi saat pesan TERAKHIR memuat blok <temuan>. Akibatnya terbukti
+   * live 24 September: Owner melanjutkan percakapan yang sama, blok <temuan>-nya sudah beberapa pesan di atas,
+   * dan tombol "Simpan temuan" TIDAK MUNCUL — temuan yang sah seolah hilang. Hal yang sama terjadi setiap kali
+   * Vite memuat ulang halaman, karena state React tidak bertahan.
+   *
+   * Diturunkan dari daftar pesan, tombolnya muncul selama temuannya masih terlihat di layar — di percakapan
+   * lanjutan maupun sesudah muat ulang. Jadi Owner TIDAK perlu membuka chat baru.
+   */
+  const temuanBelumSimpan = useMemo(() => {
+    if (!isEngineerWorkspace) return [];
+    const semua = [];
+    for (const p of messages) {
+      if (p?.role !== 'model' || p.isTemuan) continue;
+      const isi = String(p.content || '');
+      if (!isi.includes('<temuan')) continue;
+      semua.push(...ambilBlokTemuan(isi).temuan);
+    }
+    if (!semua.length) return [];
+    const baru = gabungTemuan(temuanTersimpan, semua).baru;
+    // Jejak yang bisa dibaca Owner di Console saat tombolnya tidak muncul: tiga angka ini menjawab
+    // "apakah blok terbaca", "apakah sudah tersimpan", dan "apakah tombolnya seharusnya muncul".
+    console.log(`[Temuan] blok terbaca: ${semua.length} · sudah tersimpan: ${temuanTersimpan.length} · belum tersimpan: ${baru.length}`);
+    return baru;
+  }, [messages, temuanTersimpan, isEngineerWorkspace]);
+
+  const simpanTemuan = async () => {
+    if (!temuanBelumSimpan.length) return;
+    try {
+      // Dibaca ulang tepat sebelum menulis: kalau Owner menyunting berkasnya sejak dibaca tadi,
+      // menulis dari salinan lama akan menghapus suntingannya.
+      const tersimpan = await bacaCatatanTemuan();
+      const { daftar, baru } = gabungTemuan(tersimpan, temuanBelumSimpan);
+      const ok = await window.electronAPI?.writeFile?.(ALAMAT_TEMUAN, susunBerkasTemuan(daftar));
+      if (!ok) throw new Error('penulisan berkas ditolak sistem berkas');
+      // `temuanBelumSimpan` diturunkan dari daftar pesan dibanding `temuanTersimpan` — begitu daftar
+      // tersimpan diperbarui, temuan yang barusan ditulis otomatis berhenti dihitung "belum simpan"
+      // dan tombolnya hilang sendiri. Tidak ada state kedua yang bisa jadi tidak sinkron.
+      setTemuanTersimpan(daftar);
+      setMessages((prev) => [...prev, {
+        role: 'model',
+        isTemuan: true,
+        content: `💾 **${baru.length} temuan disimpan** ke \`${ALAMAT_TEMUAN}\` (${daftar.filter((t) => t.status !== 'DITUTUP').length} terbuka seluruhnya).\n\nBerkasnya ikut di repo — silakan sunting, gabungkan, atau tutup temuan dengan tangan. Temuan berstatus \`DITUTUP\` tidak akan diangkat lagi oleh Engineer.`,
+      }]);
+    } catch (e) {
+      setMessages((prev) => [...prev, {
+        role: 'model',
+        isTemuan: true,
+        content: `⚠️ **Gagal menyimpan temuan:** ${e.message}\n\nTemuannya masih tersimpan di layar ini dan bisa dicoba lagi — tidak ada yang hilang.`,
+      }]);
+    }
+  };
+
   // PATCH YANG TERPUTUS MUAT ULANG (T10): menulis berkas aplikasi memuat ulang halaman (Vite) sebelum pesan hasil tampil.
   // Laporan dibaca ulang dari DISK (CatatanPatch.js) dan tombol Undo dipulihkan.
-  const workspaceAktif = workspaceManager?.activeWorkspaceId;
+  // INSTANCE ini, bukan workspace yang sedang tampil. `workspaceManager.activeWorkspaceId` bernilai SAMA di
+  // ketiga instance chat yang hidup bersamaan, jadi memakainya berarti instance Assistant pun ikut berebut
+  // catatan patch — dan yang menang MENGHAPUS catatannya. Pelajaran yang sama dengan kebocoran peristiwa
+  // Engineer (23 September): penjaga harus menanyakan "apakah AKU Engineer", bukan "apakah Engineer aktif".
+  const iniInstansiEngineer = osState?.workspaceId === 'ws-engineer';
+  const [laporanPatchTertunda, setLaporanPatchTertunda] = useState(null);
+
   useEffect(() => {
     const storageManager = kernel.serviceManager?.get('StorageManager');
-    // Hanya di chat Engineer — catatan tak "dimakan" chat Assistant yang kebetulan terbuka lebih dulu.
-    // Menunggu pemulihan riwayat selesai: bila laporan ditambahkan lebih dulu, pemulihan akan MENGGANTI seluruh
-    // daftar pesan dan laporannya lenyap dari layar (live 2026-09-23 putaran 1).
-    if (!storageManager || workspaceAktif !== 'ws-engineer' || !initialRestoreDone) return;
-    laporanSetelahMuatUlang((p) => storageManager.read(p)).then((lap) => {
+    if (!storageManager || !iniInstansiEngineer || !initialRestoreDone) return;
+    // `false` = catatan TIDAK dihapus di sini. Ia baru dibuang sesudah laporannya terbukti ada di layar
+    // (effect di bawah). Menghapus bukti sebelum bukti itu tersampaikan adalah urutan yang salah — live
+    // 24 September, Owner kehilangan pesan hasil DAN tombol Undo untuk patch yang sebenarnya berhasil.
+    laporanSetelahMuatUlang((p) => storageManager.read(p), undefined, undefined, false).then((lap) => {
       if (!lap) return;
       if (lap.checkpointRef) setLastCheckpoint({ ref: lap.checkpointRef, patchId: lap.patchId, appliedAt: new Date().toLocaleTimeString('id-ID') });
-      setMessages(prev => [...prev, { role: 'model', content: lap.pesan, isPatchResult: true, checkpointRef: lap.checkpointRef }]);
+      // Laporannya DISIMPAN, bukan langsung ditempel sekali lalu dilupakan — lihat effect di bawah.
+      setLaporanPatchTertunda(lap);
     }).catch(() => {});
-  }, [workspaceAktif, initialRestoreDone]);
+  }, [iniInstansiEngineer, initialRestoreDone]);
+
+  /**
+   * Laporan patch dipastikan ADA di layar, bukan sekadar pernah ditempel.
+   *
+   * Live 24 September 09:19:47: patch BERHASIL diterapkan (terbukti di disk), spanduk checkpoint muncul,
+   * tetapi pesan "✅ Patch diterapkan" tidak ada — dan `chats` tersimpan terakhir 09:19:21, tanpa satu pun
+   * pesan berpenanda `isPatchResult`. Owner hanya melihat "Melanjutkan ke pembuatan patch…" lalu sunyi,
+   * padahal pekerjaannya selesai.
+   *
+   * Sebabnya perlombaan urutan: laporan ditempel sekali sesudah pemulihan, lalu pemulihan/sinkronisasi
+   * berikutnya MENGGANTI seluruh daftar pesan dengan salinan database yang belum memuatnya. Spanduk
+   * checkpoint selamat karena ia state terpisah — itulah kenapa gejalanya tampak ganjil.
+   *
+   * Karena itu laporan tidak "ditempel lalu dilupakan": selama ia belum terlihat di daftar pesan, ia
+   * dipasang lagi. Penandanya `patchId`, jadi tidak pernah dobel.
+   */
+  useEffect(() => {
+    if (!laporanPatchTertunda) return;
+    const sudahAda = messages.some((m) => m.isPatchResult && m.patchId === laporanPatchTertunda.patchId);
+    if (sudahAda) {
+      // Baru SEKARANG catatannya dibuang: laporannya sudah di layar dan ikut tersimpan bersama chat,
+      // jadi muat ulang berikutnya membacanya dari database, bukan dari catatan.
+      hapusCatatanPatch();
+      return;
+    }
+    setMessages((prev) => prev.some((m) => m.isPatchResult && m.patchId === laporanPatchTertunda.patchId)
+      ? prev
+      : [...prev, {
+        role: 'model',
+        content: laporanPatchTertunda.pesan,
+        isPatchResult: true,
+        patchId: laporanPatchTertunda.patchId,
+        checkpointRef: laporanPatchTertunda.checkpointRef,
+      }]);
+  }, [laporanPatchTertunda, messages]);
 
   // PERSISTENT PATCH
   useEffect(() => {
@@ -931,10 +1068,22 @@ export default function ConversationEngine({ sessionId }) {
       workspaceManager.osState = osState;
     }
 
+    // INGATAN TEMUAN (Tahap 3b): temuan yang masih TERBUKA dibawa ke setiap kiriman Engineer, supaya ia tidak
+    // melaporkan ulang hal yang sudah tercatat. Disisipkan hanya ke yang DIKIRIM, tidak ke yang tampil dan
+    // tidak ke yang disimpan — catatan ini milik repo, bukan bagian percakapan Owner.
+    // Setiap kiriman, bukan sekali di awal: ringkasannya pendek (±20 baris), dan sekali-di-awal akan hilang
+    // begitu "Bersihkan konteks" atau "Padatkan" menggeser batas jendela.
+    const ringkasanTemuan = isEngineerWorkspace
+      ? ringkasanUntukKonteks([...temuanTersimpan, ...temuanBelumSimpan])
+      : '';
+    const historyKirim = ringkasanTemuan
+      ? [{ role: 'user', content: ringkasanTemuan }, ...newMessages]
+      : newMessages;
+
     try {
       await assistantService.processMessage({
         userMsg,
-        history: newMessages,
+        history: historyKirim,
         workspaceId: workspaceManager?.activeWorkspaceId || 'ws-assistant',
         userId,
         token,
@@ -1298,6 +1447,19 @@ export default function ConversationEngine({ sessionId }) {
                 </div>
               )}
             </div>
+          )}
+
+          {/* SIMPAN TEMUAN (Tahap 3b) — hanya muncul bila ada temuan baru yang belum ditulis ke repo.
+              Klik Owner inilah persetujuan menulis berkasnya; tidak ada penulisan tanpa tindakan Owner. */}
+          {isEngineerWorkspace && temuanBelumSimpan.length > 0 && (
+            <button
+              onClick={simpanTemuan}
+              title={`Tulis ${temuanBelumSimpan.length} temuan baru ke ${ALAMAT_TEMUAN}.\n\n${temuanBelumSimpan.map((t) => `• ${t.berkas} — ${t.ringkasan}`).join('\n')}`}
+              className="h-10 px-3 flex items-center gap-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm active:scale-95 bg-tertiary/15 border-tertiary/50 text-tertiary"
+            >
+              <span className="material-symbols-outlined text-[18px]">save</span>
+              Simpan {temuanBelumSimpan.length} temuan
+            </button>
           )}
 
           {/* Riwayat konversi Word → PDF (cache, Item 58) — hanya di Assistant, satu-satunya

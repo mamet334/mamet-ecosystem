@@ -684,6 +684,13 @@ class Engineer {
               acc[f.path] = f.newContent;
               return acc;
             }, {})),
+            // Isi ASLI ikut dikirim supaya pemeriksa pola berbahaya bisa membandingkan PENAMBAHAN,
+            // bukan sekadar keberadaan. Tanpa ini, berkas yang menyebut `eval(` di komentar atau di
+            // pemeriksanya sendiri tidak akan pernah bisa di-patch (live 24 September: engineer.js).
+            originalText: JSON.stringify(patch.files.reduce((acc, f) => {
+              acc[f.path] = f.originalContent || '';
+              return acc;
+            }, {})),
             runtimeContext: { mode: 'ENGINEER' }
           };
           const verificationResult = verificationEngine.verifyPatchEngineering(vContext);
@@ -711,7 +718,20 @@ class Engineer {
               taskId: task.id,
               patch,
               verification: patch.verification,
-              message: `Patch tidak lolos verifikasi: ${patch.verification.criticalCount} masalah kritis.`,
+              // MASALAHNYA DISEBUT SATU PER SATU, bukan cuma dihitung. Pesan "2 masalah kritis" tanpa
+              // rinciannya memaksa Owner menebak atau membuka Console — live 24 September, putaran kelima
+              // tugas yang sama. Ini kelas kesalahan yang sama dengan "Patch tidak dibuat" tanpa sebab:
+              // kegagalan yang tidak menyebut namanya sendiri membuat Owner buntu.
+              message: [
+                `Patch tidak lolos verifikasi: ${patch.verification.criticalCount} masalah kritis`
+                  + ` dari ${patch.verification.issues?.length || 0} temuan (skor ${patch.verification.score}).`,
+                '',
+                ...(patch.verification.issues || []).map(
+                  (i) => `- **[${i.severity || 'TIDAK DIKETAHUI'}] ${i.id || i.name || 'tanpa id'}** — ${i.message || 'tanpa keterangan'}`
+                ),
+                '',
+                'Tidak ada berkas yang diubah.',
+              ].join('\n'),
               confidence: this._calculateConfidence(analysis),
               requiresApproval: false
             });
@@ -1031,10 +1051,11 @@ class Engineer {
     };
   }
 
-  // [ADR-0017 Fase 7] _generatePatch, _buildPatchPrompt, _extractCodeFromResponse,
-  // _generateFallbackPatch diekstrak ke ./engineer/PatchGenerator.js. §2.1 (Scoped
-  // Snippet Extraction) diimplementasikan sebagai modul baru ./engineer/CodeSnippetExtractor.js,
-  // dipanggil dari dalam PatchGenerator.js — bukan lagi potongan char-count di prompt builder.
+  // [ADR-0017 Fase 7] _generatePatch, _buildPatchPrompt, _extractCodeFromResponse
+  // diekstrak ke ./engineer/PatchGenerator.js; _generateFallbackPatch dihapus total (T10,
+  // 2026-09-22) karena tidak lagi diperlukan. §2.1 (Scoped Snippet Extraction)
+  // diimplementasikan sebagai modul baru ./engineer/CodeSnippetExtractor.js, dipanggil dari
+  // dalam PatchGenerator.js — bukan lagi potongan char-count di prompt builder.
 
   async _generatePatch(task) {
     return generatePatch(task, {

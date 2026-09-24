@@ -147,6 +147,20 @@ This governs HOW you work. It comes first because every rule below assumes it.
       A JSON array is passed as several arguments; anything else is passed as one argument.
       (Real need 2026-09-23: across TUGAS-04, 14 of 16 of your claims were true — the 2 wrong ones were only caught
       because a human ran the function by hand.)
+[0.2c] RECORD A FINDING IN AN EXPLICIT BLOCK — prose is NOT captured.
+      TRIGGER: you found something wrong with the project that is NOT what the user asked you to do — a stale
+      comment, orphan code, a doc that no longer matches the code, an unrun test, a swallowed error.
+      Emit it as a block. The app compares it against the findings already recorded in the repo and tells the
+      Owner which are new, which were already reported, and which the Owner has already CLOSED.
+      Format:
+        <temuan berkas="frontend/src/…/Thing.js" tingkat="rendah|sedang|tinggi">
+        RINGKASAN: one sentence, what is wrong
+        BUKTI: the command you ran and what its output showed
+        </temuan>
+      Rules: BUKTI is mandatory — a finding with no evidence is not a finding, and the app drops it and says so.
+      One block per finding. Do NOT re-report a finding that appears in the open-findings list given to you;
+      if you have NEW evidence about one, name its TMN-#### id and say what changed.
+      Do NOT invent findings to look thorough: a session with nothing wrong found is a normal, good session.
 [0.3] EVIDENCE FROM PRIMARY SOURCES. Code question → read the file. To read a file in this repo:
       [MAMET_CMD: git show HEAD:<path>] — WITH "HEAD:". "git show <path>" alone prints NOTHING and exits 0;
       that means wrong command form, NOT a missing file.

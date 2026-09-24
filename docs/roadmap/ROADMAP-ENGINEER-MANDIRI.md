@@ -1,7 +1,7 @@
 # ROADMAP — Engineer Mandiri (self-maintenance)
 
-**Dibuat:** 23 September 2026 · **Status:** 🟡 Tahap 2 ✅ & Tahap 3a ✅ **tuntas** (sisa pekerjaannya ditutup
-24 September: batas jendela model + tombol "Padatkan"); berikutnya Tahap 3b (ingatan temuan), lalu Tahap 1
+**Dibuat:** 23 September 2026 · **Status:** 🟡 Tahap 2 ✅ · Tahap 3a ✅ · Tahap 3b ✅ (ingatan temuan, live
+24 September). Berikutnya **Tahap 5** — diusulkan naik mendahului Tahap 1, menunggu keputusan Owner
 
 Lanjutan dari T10 di [`ROADMAP-TEMUAN-TERBUKA.md`](./ROADMAP-TEMUAN-TERBUKA.md). Dasar rancangan ini adalah hasil uji
 Engineer 22–23 September 2026 (TUGAS-01..04), bukan perkiraan.
@@ -114,14 +114,25 @@ Sekalian: peristiwa Engineer tidak lagi bocor ke chat Assistant/Lite, dan 8 bari
 jadi batas harian tidak terpengaruh); perbaikan `judge_endpoint.ts` belum terbukti live karena belum ada
 konflik memori yang memicunya sejak deploy.
 
-## Tahap 3b — Ingatan kerja Engineer
+## Tahap 3b — Ingatan kerja Engineer ✅ SELESAI (24 September 2026)
 
 **Masalah:** setiap chat mulai dari nol. Memory sengaja dimatikan di Engineer, dan itu benar untuk memori percakapan
 — tapi Engineer tidak punya catatan **temuan**.
 
-**Rancangan:** penyimpanan terpisah berisi: apa yang sudah diperiksa dan kapan, temuan yang masih terbuka, temuan
-yang sudah ditutup beserta buktinya, dan pelajaran (mis. "`git show <alamat>` tanpa `HEAD:` menghasilkan kosong").
-Bukan obrolan, bukan memori pengguna.
+**Hasil:** temuan ditulis Engineer dalam blok eksplisit `<temuan>` (prosa sengaja TIDAK ditangkap), dibandingkan
+dengan catatan di repo, lalu ditulis ke `docs/project-memory/temuan-engineer/TEMUAN-ENGINEER.md` **atas klik Owner**
+— batas "menulis berkas selalu lewat persetujuan Owner" tidak digeser. Temuan terbuka dibawa ke tiap kiriman
+Engineer dengan instruksi tegas untuk tidak melaporkannya ulang. ID diberi mesin, bukan model.
+Terbukti live: TMN-0001 lahir dari pemeriksaan nyata, dan Engineer **memilah** — ia menolak menjadikan komentar
+`PatchGenerator.js:454` sebagai temuan karena menilainya catatan riwayat yang sah.
+[log](../project-memory/changelog/2026-09-24-tahap3b-ingatan-temuan-dan-tujuh-cacat-jalur-patch.md).
+
+**Batas yang disadari & ditulis di kode:** kunci pembanding memakai alamat berkas + ringkasan yang dinormalkan,
+jadi temuan sama yang ditulis ulang dengan kalimat berbeda tidak tertangkap. Pencocokan makna akan menangkap lebih
+banyak tapi juga membuang temuan berbeda secara senyap — Owner bisa menggabungkan yang kembar, tidak bisa
+memulihkan yang hilang tanpa jejak.
+
+**Belum diuji:** dedup di chat baru (TMN-0001 harus muncul sebagai "sudah pernah dilaporkan").
 
 **Cara uji:** temuan yang sama tidak dilaporkan dua kali; setelah Owner menutup satu temuan, Engineer tidak
 mengangkatnya lagi tanpa bukti baru.
@@ -146,6 +157,31 @@ pesan jelas — bukan gagal dengan galat git yang membingungkan.
 **Cara uji:** di aplikasi terpasang, `git status` Engineer menunjuk repo yang Owner pilih; tanpa pilihan, alatnya
 tidak aktif dan alasannya tertulis.
 
+**Ditambahkan 24 September setelah pertanyaan Owner "apakah folder instalasi bisa jadi folder git?":**
+TIDAK BOLEH, dan aplikasi harus **menolaknya**. Paketnya NSIS dengan `allowToChangeInstallationDirectory`;
+uninstall menghapus folder instalasi — repo beserta seluruh riwayat git ikut terhapus. Update juga menimpa
+berkas aplikasi sehingga git melihat ribuan perubahan yang bukan pekerjaan Owner. Maka tiga tempat dipisah tegas:
+
+| Tempat | Isi | Nasib saat uninstall/update |
+|---|---|---|
+| Folder instalasi | kode aplikasi terbundel | dihapus / ditimpa |
+| `%APPDATA%\Mamet AI` | setelan, kunci, checkpoint | selamat |
+| Repo pilihan Owner | milik Owner; aplikasi hanya menyimpan ALAMATNYA | tidak tersentuh |
+
+Dua penjaga wajib: akar repo yang berada **di dalam folder instalasi ditolak**, dan folder pilihan Owner harus
+terbukti repo git (ada `.git`) sebelum diterima.
+
+**Di laptop lain tanpa repo:** tidak ada yang bisa dipelihara, dan itu wajar — Engineer alat pemelihara, bukan
+wadah yang membawa repo. Owner `git clone` dulu lalu menunjuk foldernya. Mamet meng-clone sendiri adalah
+kemampuan baru yang menembus batas "tidak ada `git` tulis" dan butuh keputusan Owner tersendiri. Tanpa repo,
+yang tersisa hanya mode baca-saja lewat GitHub API (`RepositoryReaderService`) — tanpa perintah, tanpa tulis,
+tanpa checkpoint. Catatan tambahan: mem-patch di laptop lain pun tidak membuat Mamet di sana ikut berubah,
+karena membangun ulang butuh Node + `node_modules`.
+
+**Alasan menaikkan prioritas (24 September):** tiga dari tujuh cacat jalur patch hari itu adalah penyangga
+untuk muat ulang Vite — masalah yang **tidak ada** di aplikasi terpasang. Menjalankan Tahap 1 (lingkaran otonom)
+di mode yang memuat ulang tiap berkas tersentuh berarti menumpuk lapisan penyangga baru di atas yang sudah ada.
+
 ---
 
 ## Urutan yang disarankan
@@ -153,6 +189,14 @@ tidak aktif dan alasannya tertulis.
 **Diperbarui 23 September 2026 (keputusan Owner):** Tahap 2 ✅ selesai lebih dulu. Urutan berikutnya **Tahap 3
 (ingatan temuan) SEBELUM Tahap 1 (lingkaran mandiri)** — tanpa ingatan, Engineer yang berjalan otonom akan
 melaporkan temuan yang sama setiap hari sampai Owner berhenti membacanya. Sesudah itu Tahap 1, 4, dan 5.
+
+**Usul perubahan 24 September (menunggu keputusan Owner): Tahap 5 naik SEBELUM Tahap 1.** Urutan lama menaruh
+Tahap 5 terakhir karena ia soal kenyamanan pemakaian, sementara tahap lain soal kemampuan dan kejujuran —
+penilaian yang masuk akal 23 September dan sudah kedaluwarsa sekarang. Dari tujuh cacat jalur patch 24 September,
+**tiga** berakar pada muat ulang Vite saat Engineer menyentuh kodenya sendiri: laporan tertimpa pemulihan,
+catatan serah-terima habis sekali pakai, dan penjaga instance yang salah. Ketiganya penyangga untuk masalah yang
+tidak ada di aplikasi terpasang. Menjalankan lingkaran otonom (Tahap 1) di mode itu berarti menumpuk penyangga
+baru di atas tiga lapis yang sudah ada.
 
 ## Yang tidak dijanjikan rancangan ini
 
