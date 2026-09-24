@@ -1,7 +1,7 @@
 # ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
 
 **Tipe Dokumen:** Daftar sisa pekerjaan (temuan audit yang belum punya dokumen roadmap sendiri)
-**Status:** ⏳ **3 temuan terbuka** (T1, T10, T11; T2–T9 ditutup) — masing-masing menunggu keputusan Owner
+**Status:** ⏳ **4 temuan terbuka** (T1, T10, T11, T12; T2–T9 ditutup) — masing-masing menunggu keputusan Owner
 **Tanggal:** 2026-09-17 (dipindah dari INDEX-ROADMAP Item 33, 44, 48, 49, 50 saat perampingan)
 **Aturan:** temuan yang dikerjakan dan tumbuh besar pindah ke dokumen roadmap sendiri; yang selesai dicatat di
 changelog lalu barisnya diberi ✅ di sini.
@@ -186,6 +186,38 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
   OpenRouter server dan menampilkan 8 huruf awalnya; siapa pun bisa memicunya (biaya kecil per panggilan).
 - **Arah solusi:** cek pengguna (`auth.getUser`) + batasi ke Owner, atau hapus bila tak dipakai.
 - **Status:** ⏳ dicatat.
+
+## T12 — Membaca berkas = mengirimnya keluar, dan tak ada satu pun pemberitahuan (diskusi Owner, 2026-09-24)
+
+- **Temuan (baca kode):** isi berkas yang dibaca tidak berhenti di layar. `buildPatchPrompt` mengirim isi berkas
+  ke model; alat folder kerja (`alatFolder.cjs`, batas 60 KB / 400 baris per berkas) mengembalikan isinya ke
+  renderer lalu masuk prompt; keluaran perintah Engineer yang Owner setujui juga ikut. Semuanya berakhir di
+  OpenRouter — dan `ai_adapter.ts` sendiri mencatat bahwa **satu nama model bisa dilayani beberapa penyedia hulu**
+  (`penyedia=` di log token, Item 73), jadi tujuannya tidak selalu pihak yang sama.
+  Diperiksa 2026-09-24: **tidak ada satu pun pemberitahuan** di jalur folder kerja maupun jalur Engineer.
+- **Kenapa ini penting justru setelah aturan izin dirumuskan:** Owner merumuskan batas izin sebagai
+  *"yang sulit ditarik kembali"* — hapus kode, pakai saldo, tulis berkas. Dengan ukuran itu, membaca berkas yang
+  **belum pernah keluar dari laptop** masuk kategori yang sama: setelah terkirim, tidak bisa ditarik. Jadi batas
+  yang benar bukan "baca vs tulis", melainkan **"tetap di laptop ini vs keluar dari laptop ini"**.
+- **Yang TIDAK termasuk masalah:** dokumen Kepbup & data ASN sengaja diunggah Owner ke RAG — keputusan sadar,
+  bukan kebocoran. Kunci API tidak pernah ikut (disaring `saring_rahasia.ts`, tidak pernah masuk prompt).
+  Yang belum pernah diperiksa: folder mana saja yang pernah ditunjuk lewat tombol 📁.
+- **Konteks kedaulatan data (Item 93):** Owner sudah memisahkan dua ketergantungan. **Penyimpanan** sudah merdeka —
+  cadangan penuh terbukti bisa dipulihkan ke Postgres lokal (Tahap 1–2 ✅, 22 Sep). **Komputasi** tidak, dan tidak
+  realistis: bukti dari uji kita sendiri, `gpt-4o-mini` (remote, jauh lebih kuat daripada model yang muat di laptop)
+  mengerjakan tugas yang salah tiga kali, sementara `deepseek-v4-pro` menolak tugas yang tak ada di sumbernya.
+  Model lokal bukan kompromi — ia membuang kemampuan yang membuat Engineer berguna. Jadi pertanyaannya bukan
+  "bagaimana 100% privat", melainkan **"isi apa yang diterima untuk dikirim, dan apa imbalannya"** — yang selama ini
+  sudah Owner jawab dengan baik, hanya belum tertulis.
+- **Arah solusi (tidak menambah klik yang sudah ada, hanya menambah kalimat pada klik yang memang dilakukan):**
+  1. Saat folder kerja BARU dipilih: satu baris di dialognya — isi berkas yang dibaca akan ikut dikirim ke penyedia model.
+  2. Saat Engineer hendak membaca alamat di luar akar repo: alamatnya ditandai di dialog izin yang sudah ada.
+  3. Daftar folder yang boleh dibaca ditetapkan sekali; di luar itu ditolak dengan pesan jelas, bukan diam-diam.
+     Ini mengubah privasi dari "bergantung pada ingatan" menjadi "dijaga kode" — 24 September terbukti bahwa
+     ingatan tidak cukup, termasuk ingatan asistennya.
+- **Beririsan dengan Tahap 5** (`ROADMAP-ENGINEER-MANDIRI.md`): momen Owner memilih akar repo di aplikasi terpasang
+  adalah tempat alami menetapkan batas "yang boleh dibaca". Sebaiknya dikerjakan bersama, bukan terpisah.
+- **Status:** ⏳ dicatat atas permintaan Owner. Belum dikerjakan.
 
 ## T9 — Sub-agent `knowledge_manager` rusak & ikut dipanggil Coordinator (asal Item 92 Tahap 3, 2026-09-21)
 
