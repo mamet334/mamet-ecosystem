@@ -44,7 +44,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 | `ROADMAP-KONTEKS-POTONGAN-RAG.md` | ✅ Item 89 | pemisah bagian tabel OCR + baris konteks potongan |
 | `ROADMAP-TABEL-CENTANG-PDF.md` | 🟡 Item 88 | kolom centang dari koordinat pdf.js, kontrak & label |
 | `ROADMAP-TEMUAN-TERBUKA.md` | ⏳ T1, T10, T11, **T12** (membaca berkas = mengirimnya ke penyedia model; tanpa pemberitahuan) (T2–T9 ✅) | temuan audit tanpa rancangan sendiri |
-| `ROADMAP-ENGINEER-MANDIRI.md` | 🟡 Tahap 2 ✅ · 3a ✅ · **3b ✅** (ingatan temuan di repo, TMN-0001 live; tujuh cacat jalur patch ditutup — tugas perbaikan kode Engineer pertama selesai ujung ke ujung). Berikutnya **Tahap 5 diusulkan naik sebelum Tahap 1** — menunggu keputusan Owner | Engineer memelihara Mamet sendiri: lingkaran baca-saja beranggaran, mesin uji klaim, ingatan temuan; menulis tetap butuh izin Owner |
+| `ROADMAP-ENGINEER-MANDIRI.md` | 🟡 Tahap 2 ✅ · 3a ✅ · **3b ✅** (ingatan temuan di repo, TMN-0001 live; tujuh cacat jalur patch ditutup — tugas perbaikan kode Engineer pertama selesai ujung ke ujung). **Tahap 6 baru**: verifikasi patch DIJALANKAN (43 uji = 26,7 dtk, lebih murah dari satu panggilan model) — bergantung Tahap 5. Berikutnya **Tahap 5 diusulkan naik sebelum Tahap 1** — menunggu keputusan Owner | Engineer memelihara Mamet sendiri: lingkaran baca-saja beranggaran, mesin uji klaim, ingatan temuan; menulis tetap butuh izin Owner |
 | `ROADMAP-FOLDER-KERJA-ASSISTANT.md` | 📝 Item 85 | tombol 📁 sebagai tempat kerja Assistant |
 | `roadmap-adaptive-shell.md` | 📋 Item 72 | UI multi-device |
 | `ROADMAP-ADAPTIVE-MODEL-TIERING.md` | ✅ Item 34–35 | tier model & plumbing `thinking` |

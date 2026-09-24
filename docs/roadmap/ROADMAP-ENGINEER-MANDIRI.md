@@ -1,7 +1,8 @@
 # ROADMAP — Engineer Mandiri (self-maintenance)
 
 **Dibuat:** 23 September 2026 · **Status:** 🟡 Tahap 2 ✅ · Tahap 3a ✅ · Tahap 3b ✅ (ingatan temuan, live
-24 September). Berikutnya **Tahap 5** — diusulkan naik mendahului Tahap 1, menunggu keputusan Owner
+24 September). **Tahap 6 baru** (verifikasi patch yang dijalankan) — bergantung pada Tahap 5.
+Berikutnya **Tahap 5**, diusulkan naik mendahului Tahap 1; menunggu keputusan Owner
 
 Lanjutan dari T10 di [`ROADMAP-TEMUAN-TERBUKA.md`](./ROADMAP-TEMUAN-TERBUKA.md). Dasar rancangan ini adalah hasil uji
 Engineer 22–23 September 2026 (TUGAS-01..04), bukan perkiraan.
@@ -184,11 +185,78 @@ di mode yang memuat ulang tiap berkas tersentuh berarti menumpuk lapisan penyang
 
 ---
 
+## Tahap 6 — Verifikasi patch yang DIJALANKAN, bukan dicocokkan (disetujui Owner 24 September 2026)
+
+**Masalah.** Ada tiga lapis verifikasi, dan 24 September ketiganya menunjukkan wataknya sekaligus:
+
+| Lapis | Cara kerja | Hasil hari itu |
+|---|---|---|
+| Verifikasi Supabase (CHECK_P01–P05) | cocokkan pola pada teks | memblokir patch yang **benar**, dua kali |
+| Verifikasi lokal (`Kernel.js`) | cocokkan pola pada teks | **dua pelanggaran palsu** |
+| Mesin uji klaim (`<uji_klaim>`, Tahap 2) | **menjalankan kode sungguhan** | tidak ikut berperan di jalur patch |
+
+Dua lapis pertama salah dengan cara yang sama karena bekerja dengan cara yang sama: menebak dari **bentuk teks**,
+bukan memeriksa dari **perilaku**. `includes('eval(')` menandai berkas yang sekadar menyebutnya; `formatRegex`
+memotong patch JSON karena di dalamnya ada "ADR-0017". Lapis ketiga — satu-satunya yang menjalankan kode — justru
+absen, padahal ia yang menghasilkan satu-satunya angka yang tak terbantahkan hari itu (5/10 klaim terbukti).
+
+**Ongkosnya sudah diukur, bukan diperkirakan (24 September):**
+
+```
+43 berkas uji · total 26,7 detik · rata-rata 619 ms per berkas
+```
+
+Lebih murah daripada **satu** panggilan model (10–30 detik, berbayar), dan tidak memakai saldo Owner sama sekali.
+Angka ini menghapus masalah rancangan yang paling sulit: **pemetaan berkas → berkas uji tidak perlu dibuat.**
+Jalankan semuanya. Pemetaan yang salah justru berbahaya — ia melewatkan uji yang seharusnya menangkap.
+
+**Rancangan — hampir seluruh bagiannya sudah terpasang:**
+
+```
+1. Checkpoint dibuat              ← SUDAH WAJIB hari ini (PatchApplier)
+2. Patch diterapkan ke disk       ← sudah ada
+3. Seluruh berkas uji dijalankan  ← mesinnya sudah ada (engineer:uji-klaim
+                                     memanggil node di proses terpisah, env bersih)
+4a. Semua lulus  → laporkan; tombol Undo tetap tersedia
+4b. Ada yang gagal → PULIHKAN OTOMATIS dari checkpoint, lalu laporkan uji mana
+                     yang gagal BESERTA keluarannya
+```
+
+Yang memungkinkannya: checkpoint sudah wajib sebelum menulis. Jadi patch bisa **diterapkan dulu lalu diputuskan**,
+bukan ditebak sebelum diterapkan. Pertanyaannya berubah dari *"apakah patch ini tampak aman"* menjadi
+*"apakah sistem ini masih benar sesudah patch"*.
+
+Langkah 4b sekaligus menjalankan PRINSIP DASAR (a) di `constitution/28`: kegagalan yang **menyebut namanya
+sendiri**. Bukan "2 masalah kritis", melainkan "`uji-patch-crlf.mjs` gagal, keluarannya begini".
+
+**BERGANTUNG PADA TAHAP 5.** Di `npm run desktop`, langkah 2 menulis berkas → Vite memuat ulang halaman →
+proses yang menjalankan uji kehilangan tempat bergantungnya, persis seperti laporan patch yang hilang
+24 September. Mengerjakan Tahap 6 lebih dulu berarti membangun lapisan penyangga keempat untuk masalah yang
+sama. Di aplikasi terpasang, langkah 1–4 berjalan tanpa gangguan.
+
+**Batas yang jujur — harus tertulis supaya tidak dijanjikan berlebihan:**
+
+- Berkas tanpa uji tetap tak terjaga. 43 berkas uji tidak menutupi seluruh repo.
+- Yang dijanjikan hanya: **patch tidak merusak yang sudah terbukti.** Bukan: patch ini benar. Komentar yang
+  diperbaiki Engineer 24 September tidak diuji berkas uji mana pun.
+- **Uji kita sendiri bisa salah** — dua kali dalam satu hari uji lulus padahal fiturnya rusak
+  (`uji-temuan-terpasang` v1, `uji-padatkan-biaya` v1). Verifikasi yang dijalankan hanya sekuat uji yang
+  menjalankannya. Karena itu langkah 8 (uji harus bisa gagal + uji kendali) tetap berlaku penuh.
+
+**Cara uji:** tanam sengaja satu patch yang merusak berkas beruji → uji gagal → berkas **kembali sendiri** ke isi
+sebelum patch, dan laporannya menyebut berkas uji serta keluarannya. Kendali: patch yang benar tidak dipulihkan.
+
+---
+
 ## Urutan yang disarankan
 
 **Diperbarui 23 September 2026 (keputusan Owner):** Tahap 2 ✅ selesai lebih dulu. Urutan berikutnya **Tahap 3
 (ingatan temuan) SEBELUM Tahap 1 (lingkaran mandiri)** — tanpa ingatan, Engineer yang berjalan otonom akan
 melaporkan temuan yang sama setiap hari sampai Owner berhenti membacanya. Sesudah itu Tahap 1, 4, dan 5.
+
+**Tahap 6 ditambahkan 24 September (disetujui Owner)** dan **bergantung pada Tahap 5** — argumen kedua, dari
+jalur yang sama sekali berbeda, untuk mendahulukan Tahap 5. Owner: *"memang uji itu butuh waktu dan harga;
+itulah yang membuatnya stabil"*.
 
 **Usul perubahan 24 September (menunggu keputusan Owner): Tahap 5 naik SEBELUM Tahap 1.** Urutan lama menaruh
 Tahap 5 terakhir karena ia soal kenyamanan pemakaian, sementara tahap lain soal kemampuan dan kejujuran —
