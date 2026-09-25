@@ -11,7 +11,6 @@ const {
   persistAiSystemLog,
   persistVerificationLog
 } = require('./telemetry');
-const chimeraAdapter = require('./adapters/chimera-adapter');
 require('dotenv').config();
 
 const app = express();
@@ -246,39 +245,7 @@ app.post('/api/chat', async (req, res) => {
       }
     });
 
-    // MAEF Verification Port: Verify LLM reply against CHIMERA Knowledge Base
-    let verification = null;
-    try {
-      verification = await chimeraAdapter.VerifyClaim({
-        claim: replyText,
-        traceId
-      });
-
-      if (verification) {
-        await persistVerificationLog({
-          traceId,
-          decision: verification.status === 'PASS' ? 'APPROVED' : (verification.status === 'FAIL' ? 'REJECTED' : 'FLAGGED'),
-          status: verification.status,
-          failures: verification.contradictions?.length > 0 ? verification.contradictions : null,
-          executionTimeMs: 0,
-          metadata: {
-            confidence: verification.confidence,
-            evidenceStrength: verification.evidenceStrength,
-            reasoningSummary: verification.reasoningSummary
-          }
-        });
-      }
-    } catch (vErr) {
-      console.warn('[/api/chat] Chimera verification skipped/failed:', vErr.message);
-    }
-
-    return res.json({
-      message: replyText,
-      timestamp: new Date(),
-      userId,
-      trace_id: traceId,
-      verification
-    });
+    return res.json({ message: replyText, timestamp: new Date(), userId, trace_id: traceId });
 
   } catch (error) {
     const errData = error.response?.data;
@@ -346,43 +313,9 @@ app.get('/api/tools', (req, res) => {
     { id: 'code_executor', name: 'Code Executor', category: 'compute' },
     { id: 'api_caller', name: 'API Caller', category: 'integration' },
     { id: 'slack_integration', name: 'Slack Integration', category: 'communication' },
-    { id: 'chimera_knowledge', name: 'CHIMERA Living Knowledge', category: 'knowledge' },
-    { id: 'chimera_verify', name: 'CHIMERA Anti-Hallucination Verification', category: 'verification' },
-    { id: 'chimera_dream', name: 'CHIMERA Cognitive Dream State', category: 'cognition' },
   ];
 
   res.json({ tools });
-});
-
-// ===== CHIMERA ENGINE ADAPTER ROUTES (MAEF PORTS) =====
-app.get('/api/chimera/health', async (req, res) => {
-  const health = await chimeraAdapter.HealthCheck();
-  res.json(health);
-});
-
-app.post('/api/chimera/ingest', async (req, res) => {
-  const result = await chimeraAdapter.IngestKnowledge(req.body);
-  res.json(result);
-});
-
-app.post('/api/chimera/query', async (req, res) => {
-  const result = await chimeraAdapter.QueryKnowledge(req.body);
-  res.json(result);
-});
-
-app.post('/api/chimera/verify', async (req, res) => {
-  const result = await chimeraAdapter.VerifyClaim(req.body);
-  res.json(result);
-});
-
-app.get('/api/chimera/cognitive', async (req, res) => {
-  const result = await chimeraAdapter.GetCognitiveStatus();
-  res.json(result);
-});
-
-app.post('/api/chimera/dream', async (req, res) => {
-  const result = await chimeraAdapter.TriggerDream();
-  res.json(result);
 });
 
 // Error handling middleware
