@@ -427,3 +427,46 @@ folder di dalam direktori instalasi → keduanya ditolak dengan alasan yang terb
 
 **Yang TIDAK dikerjakan di sini:** penjaga baca `.env` (usul 2026-09-28, menempel pada T12) — perlu
 persetujuan Owner tersendiri karena mengubah perilaku alat baca yang sudah hidup.
+
+### Tahap 5 TERBUKTI LIVE di aplikasi terpasang (2026-09-28)
+
+Diuji di `.exe` hasil `npm run dist`, bukan `npm run desktop`:
+
+1. Sebelum memilih → tombol **kuning "Pilih repo"**, alat repo mati.
+2. Owner menunjuk folder `mamet os ecosystem` → tombol **hijau** bernama folder itu.
+3. `[MAMET_CMD: git status]` dijalankan:
+
+```
+On branch main
+Your branch is up to date with 'origin/main'.
+nothing to commit, working tree clean
+Kode keluar 0 (0,5 s).
+```
+
+Bukan `not a git repository`. `git show HEAD:frontend/...` juga mengembalikan isi berkas yang sungguhan.
+Kriteria penerimaan Tahap 5 terpenuhi; bug 23 September tertutup.
+
+**Penjaga lain yang ikut terlihat bekerja:** perintah identik kedua ditolak dengan alasan prosedur
+langkah 0.4 ("Mengulangi perintah yang identik tidak akan memberi hasil berbeda"), dan pemecah
+perintah menolak `python -c "…"` berkutip bersarang ("tanda kutip tidak ditutup").
+
+### Sisa pekerjaan yang ketahuan dari uji live itu
+
+**1. Engineer tidak bisa membaca berkas lebih dari 20 KB.** `alatFolderJalan.cjs:27`
+`keluaranByte: 20 * 1024` memotong keluaran perintah; `engineer.js` berukuran **47.767 byte**, jadi
+`git show HEAD:<berkas>` hanya menyampaikan ±40% awalnya. **Baris 1035 — isi temuan TMN-0001 — tidak
+terjangkau**, dan Engineer tidak punya cara lain: `git show` hanya bisa mengeluarkan berkas utuh.
+
+Asimetri yang menunjuk arah perbaikannya: **Assistant sudah punya baca per rentang baris**
+(`folder:alat` menerima `dari`/`sampai`), Engineer tidak punya padanannya untuk repo. Menaikkan batas
+20 KB bukan jawabannya — berkas 47 KB akan menghabiskan jendela konteks. Yang dibutuhkan alat baca
+repo berbasis rentang baris, sejajar dengan milik Assistant.
+
+Selama ini belum ada, temuan yang letaknya di paruh kedua berkas besar **tidak bisa diverifikasi
+Engineer sendiri** — termasuk temuannya sendiri.
+
+**2. Model tidak diberi tahu akar repo-nya.** Uji live 28 Sep: model menulis *"Keduanya dijalankan dari
+direktori kerja yang berbeda"* lalu mengarang perintah `python` untuk menelusuri filesystem mencari
+berkas yang alamatnya sudah ia ketahui. Perintah memang dijalankan dengan `cwd = akarRepo()`, tetapi
+modelnya tidak tahu itu. Sebelum Tahap 5 ini tak bisa diperbaiki karena akarnya sendiri tidak pasti;
+sekarang akarnya eksplisit dan tinggal disebutkan di prompt. Menunggu keputusan Owner (perubahan prompt).

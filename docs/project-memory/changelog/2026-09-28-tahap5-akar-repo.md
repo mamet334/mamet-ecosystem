@@ -83,3 +83,38 @@ terpasang tanpa pilihan Owner **selalu** menghasilkan akar `null`. Itu bug 23 Se
 
 Penjaga baca `.env` (usul hari ini, menempel pada T12) — mengubah perilaku alat baca yang sudah hidup,
 jadi butuh persetujuan Owner tersendiri.
+
+---
+
+## TERBUKTI LIVE di aplikasi terpasang (2026-09-28)
+
+Diuji di `.exe` hasil `npm run dist`. Tombol kuning sebelum memilih → Owner menunjuk folder
+`mamet os ecosystem` → tombol hijau → `[MAMET_CMD: git status]`:
+
+```
+On branch main
+Your branch is up to date with 'origin/main'.
+nothing to commit, working tree clean
+Kode keluar 0 (0,5 s).
+```
+
+Bukan `not a git repository`. `git show HEAD:frontend/...` juga mengembalikan isi berkas sungguhan.
+**Bug 23 September tertutup**, dan seluruh rantai bekerja: dialog → `akarRepoSah` → simpan alamat di
+`%APPDATA%` → sahkan ulang → dipakai sebagai `cwd` perintah.
+
+Ikut terlihat bekerja: penolakan perintah identik kedua (prosedur langkah 0.4) dan penolakan
+`python -c "…"` berkutip bersarang oleh pemecah perintah.
+
+## Dua batas yang ketahuan dari uji live itu
+
+**Engineer tidak bisa membaca berkas > 20 KB.** `alatFolderJalan.cjs:27` `keluaranByte: 20 * 1024`;
+`engineer.js` 47.767 byte, jadi `git show` hanya menyampaikan ±40% awalnya dan **baris 1035 — isi
+TMN-0001 — tidak terjangkau**. Menaikkan batasnya bukan jawaban (berkas 47 KB menghabiskan jendela
+konteks); yang dibutuhkan alat baca repo per rentang baris, sejajar `dari`/`sampai` milik Assistant.
+Selama belum ada, **temuan di paruh kedua berkas besar tidak bisa diverifikasi Engineer sendiri.**
+
+**Model tidak diberi tahu akar repo-nya** — ia menulis "dijalankan dari direktori kerja yang berbeda"
+lalu mengarang perintah `python` untuk mencari berkas yang alamatnya sudah diketahui. Sekarang bisa
+diperbaiki karena akarnya eksplisit; menunggu keputusan Owner (perubahan prompt).
+
+Keduanya dicatat sebagai sisa pekerjaan di `ROADMAP-ENGINEER-MANDIRI.md`.
