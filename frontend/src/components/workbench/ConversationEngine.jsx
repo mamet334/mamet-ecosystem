@@ -11,6 +11,7 @@ import MemoryContextPanel from './MemoryContextPanel';
 import { tugasDariUsulan } from '../../core/runtime/services/engineer/UsulanPatch.js';
 import { laporanSetelahMuatUlang, hapusCatatanPatch } from '../../core/runtime/services/engineer/CatatanPatch.js';
 import { putusanPemulihan, bolehSimpanChat, kunciSimpan } from './pemulihanChat.js';
+import { buatPenandaKiriman, tujuanTulis, pesanTerlantar, layakSimpanTerlantar } from './pengirimanChat.js';
 import { riwayatPerintahDariPesan } from '../../core/runtime/services/engineer/ProsedurEngineer.js';
 import { ambilBlokKlaim, susunSkripUji, susunLaporanKlaim } from '../../core/runtime/services/engineer/UjiKlaim.js';
 import { ambilBlokTemuan, bacaBerkasTemuan, susunBerkasTemuan, gabungTemuan, laporanTemuan, ringkasanUntukKonteks, ALAMAT_BERKAS as ALAMAT_TEMUAN } from '../../core/runtime/services/engineer/IngatanTemuan.js';
@@ -175,6 +176,10 @@ export default function ConversationEngine({ sessionId }) {
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
   const isNewChatInitiatedByUser = useRef(false);
+  // Nomor urut percakapan: naik setiap kali Owner BERPINDAH (chat baru / membuka riwayat). Dipakai
+  // callback jawaban untuk tahu apakah Owner masih di percakapan yang mengirim pertanyaan — lihat
+  // `pengirimanChat.js`. `chatId` saja tidak cukup karena percakapan baru belum punya id.
+  const percakapanSeqRef = useRef(0);
   const isInitialMount = useRef(true);
   const prevSessionIdRef = useRef(sessionId);
 
@@ -416,6 +421,7 @@ export default function ConversationEngine({ sessionId }) {
   // NEW CHAT
   // =============================================
   const handleNewChat = () => {
+    percakapanSeqRef.current += 1; // jawaban yang masih menunggu tidak boleh mendarat di sini
     isNewChatInitiatedByUser.current = true;
     pemulihanGagalRef.current = false; // Owner memilih chat baru dengan sadar — penunjuk lama boleh dilepas
     setMessages([]);
@@ -444,6 +450,7 @@ export default function ConversationEngine({ sessionId }) {
       console.error('[ConversationEngine] Chat tidak bisa dibuka:', hasil.error || 'baris tidak ada');
       return;
     }
+    percakapanSeqRef.current += 1; // jawaban yang masih menunggu tidak boleh mendarat di percakapan ini
     pemulihanGagalRef.current = false;
     // MEMBACA BUKAN MENGUBAH: tandai isi yang baru dibaca sebagai sudah tersimpan, supaya membuka chat lama
     // tidak menulis ulang barisnya. Dulu `updated_at` ikut naik, sehingga chat yang cuma dilihat melompat ke
@@ -1043,6 +1050,35 @@ export default function ConversationEngine({ sessionId }) {
     setMessages(newMessages);
     setIsLoading(true);
 
+    // Identitas kiriman ini (bug 2026-09-28: jawaban mendarat di percakapan yang sedang dilihat).
+    // Disalin SEKARANG — `messages` akan diganti isinya begitu Owner membuka riwayat lain.
+    const penanda = buatPenandaKiriman({ seq: percakapanSeqRef.current, chatId: currentChatId, pesan: newMessages });
+    const diLayar = () => tujuanTulis(penanda, percakapanSeqRef.current) === 'layar';
+
+    // Owner sudah pindah percakapan saat jawaban tiba: jangan sentuh `messages` (itu milik percakapan
+    // lain sekarang), tulis pertanyaan + jawaban ini langsung ke percakapan asalnya. Bila percakapan
+    // itu belum punya id, penyimpanan inilah yang melahirkannya — jadi pertanyaan Owner tidak hilang.
+    const simpanTerlantar = async (jawaban) => {
+      try {
+        if (!layakSimpanTerlantar(penanda, jawaban)) return;
+        const svc = getAssistantService();
+        const wsId = osStateRef.current?.workspaceId;
+        if (!svc || !wsId) return;
+        const { data: { session: sesi } } = await supabase.auth.getSession();
+        if (!sesi?.user?.id) return;
+        await svc.saveChatToDB({
+          messages: pesanTerlantar(penanda, jawaban),
+          chatId: penanda.chatId,
+          userId: sesi.user.id,
+          workspaceId: wsId,
+          onNewChatId: () => {}   // JANGAN pindahkan Owner: ia sedang membaca percakapan lain
+        });
+        console.warn('[ConversationEngine] Owner berpindah percakapan saat menunggu — jawaban disimpan ke percakapan asalnya.');
+      } catch (err) {
+        console.error('[ConversationEngine] Gagal menyimpan jawaban terlantar:', err);
+      }
+    };
+
     const assistantService = getAssistantService();
     if (!assistantService) {
       setMessages(prev => [...prev, { role: 'model', content: '⚠️ AssistantService belum siap. Coba lagi dalam beberapa saat.' }]);
@@ -1095,6 +1131,7 @@ export default function ConversationEngine({ sessionId }) {
         // Hybrid: nalar mengalir sebelum jawaban. selesai=true saat model mulai menulis jawaban; jawaban utuh
         // (sesudah label diperiksa server) datang lewat onDone dan menggantikan isi pesan ini.
         onNalar: (teksNalar, selesai) => {
+          if (!diLayar()) return;   // Owner sudah pindah — nalar tidak boleh menumpang di layar lain
           if (mulaiNalar === null) mulaiNalar = Date.now();
           if (!streamingStarted) {
             streamingStarted = true;
@@ -1112,6 +1149,7 @@ export default function ConversationEngine({ sessionId }) {
         },
 
         onChunk: (chunkText, allText, steps) => {
+          if (!diLayar()) return;   // Owner sudah pindah — potongan jawaban tidak boleh mencemari percakapan lain
           if (!streamingStarted) {
             streamingStarted = true;
             setMessages(prev => [...prev, { role: 'model', content: '', steps: [], isStreaming: true }]);
@@ -1126,6 +1164,13 @@ export default function ConversationEngine({ sessionId }) {
 
         onDone: (finalText, steps, jsonMetadata, extras = {}) => {
           const { hasPatch, patchOriginalTask } = extras;
+          if (!diLayar()) {
+            // Owner sedang membaca percakapan lain. Jawaban + pertanyaannya diselamatkan ke percakapan
+            // asalnya; `isLoading` tetap dilepas supaya kotak kirim tidak terkunci selamanya.
+            simpanTerlantar({ content: finalText, steps, metadata: jsonMetadata, hasPatchProposal: hasPatch || false });
+            setIsLoading(false);
+            return;
+          }
           if (streamingStarted) {
             setMessages(prev => {
               const next = [...prev];
@@ -1170,6 +1215,13 @@ export default function ConversationEngine({ sessionId }) {
         },
 
         onError: (errorMsg) => {
+          if (!diLayar()) {
+            // Galat pun milik percakapan asalnya — disimpan bersama pertanyaannya supaya Owner tahu
+            // apa yang terjadi saat ia kembali, bukan menemukan percakapan kosong.
+            simpanTerlantar({ content: errorMsg });
+            setIsLoading(false);
+            return;
+          }
           if (streamingStarted) {
             setMessages(prev => {
               const next = [...prev];
@@ -1184,7 +1236,9 @@ export default function ConversationEngine({ sessionId }) {
       });
     } catch (err) {
       console.error('[ConversationEngine] handleSend error:', err);
-      setMessages(prev => [...prev, { role: 'model', content: `⚠️ Error: ${err.message}` }]);
+      const pesanGalat = `⚠️ Error: ${err.message}`;
+      if (diLayar()) setMessages(prev => [...prev, { role: 'model', content: pesanGalat }]);
+      else simpanTerlantar({ content: pesanGalat });
       setIsLoading(false);
     }
 
