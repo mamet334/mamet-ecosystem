@@ -1,7 +1,7 @@
 # ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
 
 **Tipe Dokumen:** Daftar sisa pekerjaan (temuan audit yang belum punya dokumen roadmap sendiri)
-**Status:** ⏳ **5 temuan terbuka** (T1, T10, T11, T12, T13; T2–T9 ditutup) — masing-masing menunggu keputusan Owner
+**Status:** ⏳ **6 temuan terbuka** (T1, T10, T11, T12, T13, T14; T2–T9 ditutup) — masing-masing menunggu keputusan Owner
 **Tanggal:** 2026-09-17 (dipindah dari INDEX-ROADMAP Item 33, 44, 48, 49, 50 saat perampingan)
 **Aturan:** temuan yang dikerjakan dan tumbuh besar pindah ke dokumen roadmap sendiri; yang selesai dicatat di
 changelog lalu barisnya diberi ✅ di sini.
@@ -517,6 +517,42 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
   disarankan: **penandaan model sendiri** (`[Pengetahuan umum AI…]` lewat penguatan kontrak) — model
   membuktikan ia TAHU mana pendapatnya, tanpa diminta. Cadangan bila kontrak tidak cukup: **embedding**
   (menyentuh biaya OpenRouter). Keduanya belum diputuskan Owner.
+
+## T14 — Satu model, delapan penyedia: gaya jawaban berubah tanpa kode berubah (2026-09-28)
+
+- **Asalnya:** Owner merasa jawaban menjadi "lebih natural" setelah hakim bayangan menyala. **Hakim
+  bayangan mustahil menjadi sebabnya** — ia berjalan sesudah jawaban selesai dan selesai dikoreksi
+  labelnya, mengembalikan `Promise<void>`, dan tidak menyentuh satu huruf pun teks yang dilihat Owner
+  (pagar ke-2, diuji). Jadi sebabnya dicari, bukan diterima.
+- **Temuan (log `TOKEN METRICS`, ~4 jam, 2026-09-28):** satu model yang sama, `deepseek-v4-flash`,
+  dilayani **8 penyedia berbeda**:
+
+  ```
+  Sail Research 11 · OpenInference 6 · Inceptron 3 · Wafer 2
+  StreamLake 2 · Reka 1 · Together 1 · Relace 1
+  ```
+
+  OpenRouter merutekan tiap panggilan ke penyedia yang tersedia saat itu. Nama modelnya identik, tetapi
+  mesin penyajinya tidak: kuantisasi, tumpukan penyajian, dan perilaku sampling berbeda-beda. **Gaya
+  bahasa jawaban bisa berubah antar-panggilan tanpa satu baris kode pun berubah di sisi kita.**
+- **Kenapa ini penting melampaui soal gaya:** ini menjelaskan juga kenapa **biaya dan waktu tanggap
+  berayun** pada beban yang mirip — panggilan hakim pertama $0,002213/108 detik (Sail Research, nalar
+  menyala) vs $0,000033–0,000121/1,8–7,2 detik sesudahnya di penyedia lain. Setiap pengukuran biaya atau
+  latensi di proyek ini **wajib menyebut penyedianya**, kalau tidak angkanya tidak bisa dibandingkan.
+- **Dampak pada penafsiran:** perubahan mutu jawaban yang dirasakan **tidak boleh** dikaitkan ke
+  perubahan kode sebelum rute penyedianya diperiksa. Tanpa itu, perbaikan yang tidak berpengaruh bisa
+  dianggap berhasil — dan sebaliknya.
+- **Pilihan yang tersedia (belum dibahas, bukan saran):** OpenRouter menerima `provider.order` /
+  `provider.only` di badan permintaan, sehingga model yang sama bisa **dikunci** ke penyedia tertentu.
+  Untung ruginya belum ditimbang: gaya lebih stabil dan angka lebih bisa dibandingkan, tetapi ketersediaan
+  menurun (bila penyedia itu sibuk/mati, panggilan gagal alih-alih dialihkan) dan harganya bisa berbeda.
+- **Yang TIDAK diklaim:** tidak ada bukti jawaban benar-benar membaik. Tiga kemungkinan lain sama
+  masuk akalnya dan tidak terukur dari yang kita simpan — percakapan baru tanpa riwayat panjang,
+  pertanyaan uji yang dirumuskan lebih tajam, dan harapan. `chats.messages` tidak menyimpan penyedia
+  per jawaban, jadi kaitan gaya↔penyedia **tidak bisa diuji surut**.
+- **Arah bila dikerjakan:** simpan nama penyedia di `metadata` pesan (sudah ada di log, tinggal ikut
+  disimpan) — barulah pertanyaan "apakah penyedia X terasa lebih baik" bisa dijawab data, bukan kesan.
+- **Status:** ⏳ dicatat atas permintaan Owner. Belum dikerjakan.
 
 ## T9 — Sub-agent `knowledge_manager` rusak & ikut dipanggil Coordinator (asal Item 92 Tahap 3, 2026-09-21)
 
