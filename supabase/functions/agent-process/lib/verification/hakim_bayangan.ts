@@ -154,6 +154,35 @@ export function labelUsulan(r: RingkasanHakim): 'VERIFIED' | 'PARTIAL' | 'HYPOTH
 export const HAKIM_AKTIF = (env: Record<string, unknown> | undefined): boolean =>
   String((env as any)?.hakimBayangan ?? '') === '1';
 
+/**
+ * Nama kunci di `rctx.keys` TIDAK sama dengan id penyedia, dan itu berbeda antar-jalur:
+ *
+ *   `request_pipeline.ts` (jalur chat)  → keys.openRouter, keys.openAI, keys.gemini, keys.groq
+ *   `judge_endpoint.ts`   (endpoint)    → keys[provider] DAN alias camelCase, keduanya
+ *
+ * Versi pertama berkas ini hanya membaca `keys[provider]`, disalin dari `judge_endpoint`. Akibatnya
+ * di jalur chat `keys['openrouter']` selalu undefined dan hakim berhenti dengan
+ * "tidak ada kunci pengguna" walau kuncinya ada — terbukti live 2026-09-28 05:22, chat pertama
+ * sesudah bendera dinyalakan. Karena itu kedua bentuk dicoba di sini.
+ */
+export function kunciPengguna(rctx: any): string {
+  const provider = String(rctx?.model?.provider || '');
+  if (!provider) return '';
+  const keys = rctx?.keys || {};
+  const alias: Record<string, string[]> = {
+    openrouter: ['openRouter', 'openRouterByok'],
+    openai: ['openAI'],
+    gemini: ['gemini'],
+    groq: ['groq']
+  };
+  const calon = [provider, ...(alias[provider] || [])];
+  for (const nama of calon) {
+    const nilai = keys[nama];
+    if (typeof nilai === 'string' && nilai.trim()) return nilai.trim();
+  }
+  return '';
+}
+
 type BahanHakim = {
   jawaban: string;
   isiDokumen: string[];
@@ -171,7 +200,7 @@ export async function jalankanHakimBayangan(rctx: any, bahan: BahanHakim): Promi
     if (!HAKIM_AKTIF(rctx?.env)) return;
 
     const provider = String(rctx?.model?.provider || '');
-    const kunci = provider ? String(rctx?.keys?.[provider] || '') : '';
+    const kunci = kunciPengguna(rctx);
     if (!provider || !kunci) {
       console.log('[HakimBayangan] dilewati — tidak ada kunci pengguna (BYOK) untuk penyedia ini.');
       return;

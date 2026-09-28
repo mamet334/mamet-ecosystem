@@ -70,6 +70,34 @@ const rctxTanpaKunci = {
 await H.jalankanHakimBayangan(rctxTanpaKunci, { jawaban: 'Satu kalimat yang cukup panjang untuk dinilai. Dua kalimat yang juga panjang.', isiDokumen: ['dokumen'], labelSistem: '' });
 cek(!menyentuhAdapter, 'tanpa kunci BYOK: berhenti sebelum menyentuh model (tidak ada biaya)');
 
+// ── 1b. Nama kunci BYOK — bentuk NYATA dari request_pipeline.ts ──────────────────────────────
+// Versi pertama berkas ini hanya membaca keys[provider], disalin dari judge_endpoint.ts yang memang
+// menyimpan keduanya. Jalur chat hanya menyimpan camelCase, jadi hakim berhenti dengan "tidak ada
+// kunci pengguna" walau kuncinya ada — terbukti live 05:22, chat pertama sesudah bendera menyala.
+// Uji di bawah memakai bentuk keys PERSIS seperti request_pipeline.ts:185-200, bukan bentuk karangan.
+console.log('\n-- nama kunci BYOK (bentuk nyata jalur chat) --');
+const keysJalurChat = (provider, kunci) => ({
+  openRouter: provider === 'openrouter' ? kunci : '',
+  openRouterByok: provider === 'openrouter' ? kunci : '',
+  gemini: provider === 'gemini' ? kunci : '',
+  allGemini: provider === 'gemini' && kunci ? [kunci] : [],
+  groq: provider === 'groq' ? kunci : '',
+  openAI: provider === 'openai' ? kunci : ''
+});
+for (const p of ['openrouter', 'openai', 'gemini', 'groq']) {
+  const rctx = { model: { provider: p }, keys: keysJalurChat(p, 'kunci-rahasia') };
+  cek(H.kunciPengguna(rctx) === 'kunci-rahasia', `kunci ketemu untuk penyedia "${p}" (bentuk jalur chat)`, Object.keys(rctx.keys));
+}
+// Bentuk judge_endpoint (keys[provider]) juga harus tetap jalan.
+cek(H.kunciPengguna({ model: { provider: 'openrouter' }, keys: { openrouter: 'k' } }) === 'k',
+  'bentuk judge_endpoint (keys[provider]) tetap dikenali');
+cek(H.kunciPengguna({ model: { provider: 'openrouter' }, keys: keysJalurChat('gemini', 'k') }) === '',
+  'penyedia lain: TIDAK memakai kunci milik penyedia yang salah');
+cek(H.kunciPengguna({ model: {}, keys: { openRouter: 'k' } }) === '', 'tanpa penyedia → kosong');
+cek(H.kunciPengguna({ model: { provider: 'openrouter' }, keys: { openRouter: '   ' } }) === '',
+  'kunci berisi spasi saja dianggap tidak ada');
+cek(H.kunciPengguna({}) === '' && H.kunciPengguna(null) === '', 'rctx kosong/null → kosong, tidak melempar');
+
 // ── 2. Kalimat yang dikirim ke hakim ─────────────────────────────────────────────────────────
 console.log('\n-- pemilihan kalimat --');
 const JAWABAN = [
