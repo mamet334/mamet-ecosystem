@@ -22,7 +22,7 @@ const AGENT_ENDPOINT = 'https://uuyzdjifhdfyyvpxsofu.supabase.co/functions/v1/ag
 import { supabase } from '../../../supabase.js';
 import { statusLaptop, kirimKeLaptop, sidikJari, cariDiCache, KUOTA_CACHE_MB } from './remoteConversionClient.js';
 import { ambilPermintaanAlat, susunPesanHasil, susunPesanKoreksi, namaFolderAman, buangKakiTiruan, peringatanKlaimTanpaAlat, peringatanKlaimEngineer, blokKodeKeMametCmd, MAKS_PUTARAN } from './folderKerjaAlat.js';
-import { cekPerintahBerulang, petunjukHasilKosong, peringatanTugasTakDiumumkan, adaPenandaPatch, buangPenandaPatch } from './engineer/ProsedurEngineer.js';
+import { cekPerintahBerulang, petunjukHasilKosong, petunjukKeluaranTerpotong, peringatanTugasTakDiumumkan, adaPenandaPatch, buangPenandaPatch } from './engineer/ProsedurEngineer.js';
 import { peringatanKlaimTakTeruji } from './engineer/UjiKlaim.js';
 import { anggaranKonteks, pilihPesanKonteks, bacaMulaiDari } from './KonteksChat.js';
 
@@ -1756,6 +1756,11 @@ export class AssistantService {
       // Perintah Owner TIDAK diubah diam-diam — hanya ditambahi keterangan.
       const petunjuk = petunjukHasilKosong(perintah, output);
       if (petunjuk) output += `\n\n${petunjuk}`;
+      // Prosedur langkah 3a: pembacaan berkas utuh yang terpotong diberi jalan keluarnya (git grep / git blame),
+      // bukan sekadar ditandai "dipotong". Live 2026-09-28: Engineer tahu keluarannya terpotong, tetapi tidak
+      // tahu ada perintah lain — lalu mengarang jalan memutar lewat python.
+      const petunjukPotong = petunjukKeluaranTerpotong(perintah, h);
+      if (petunjukPotong) output += `\n\n${petunjukPotong}`;
     } else if (h?.ditolakOwner) {
       output = 'DITOLAK OWNER di dialog izin — perintah TIDAK dijalankan.';
     } else {

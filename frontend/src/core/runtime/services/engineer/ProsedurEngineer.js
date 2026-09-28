@@ -44,6 +44,40 @@ export function petunjukHasilKosong(perintah, keluaran) {
   return `PETUNJUK SISTEM: "git show ${alamat}" tanpa revisi TIDAK menampilkan isi berkas — git membacanya sebagai penyaring commit, jadi kosong itu normal dan BUKAN tanda berkas hilang. Untuk melihat isinya: git show HEAD:${alamat}`;
 }
 
+/** `git show HEAD:<alamat>` / `git show <sha>:<alamat>` — pembacaan berkas utuh, satu-satunya yang bisa terpotong diam-diam. */
+const POLA_BACA_UTUH = /^git\s+show\s+[^\s:]*:(\S+)\s*$/i;
+
+/**
+ * Keluaran terpotong pada pembacaan berkas utuh → beri jalan keluarnya, bukan sekadar menandai.
+ *
+ * Kejadian nyata 2026-09-28: TMN-0001 menunjuk komentar di `engineer.js` sekitar baris 1035. Engineer
+ * menjalankan `git show HEAD:…`, menerima 20 KB pertama dari 47.767 bita, TAHU keluarannya terpotong —
+ * ia menuliskannya sendiri — lalu mengarang perintah `python` untuk menelusuri filesystem mencari berkas
+ * yang alamatnya sudah ia ketahui. Yang kurang bukan kesadaran, melainkan **jalan keluarnya**:
+ * `git grep` dan `git blame` sudah diizinkan sejak lama, hanya tidak pernah disebutkan kepadanya.
+ *
+ * Sejalan dengan `petunjukHasilKosong`: saat sistem tahu bentuk perintahnya yang keliru, ia menyebut
+ * bentuk yang benar — bukan membiarkan model menebak.
+ *
+ * @param {string} perintah perintah yang dijalankan
+ * @param {{terpotong?: boolean, byteKeluaran?: number}} hasil hasil dari penjalan perintah
+ * @returns {string|null} petunjuk untuk model, atau null bila tidak berlaku
+ */
+export function petunjukKeluaranTerpotong(perintah, hasil) {
+  if (!hasil?.terpotong) return null;
+  const cocok = POLA_BACA_UTUH.exec(String(perintah || '').trim());
+  if (!cocok) return null;
+  const alamat = cocok[1];
+  const ukuran = Number(hasil.byteKeluaran) || 0;
+  return [
+    `PETUNJUK SISTEM: keluaran terpotong — berkas "${alamat}"${ukuran ? ` berukuran ${ukuran.toLocaleString('id-ID')} bita` : ''} dan hanya bagian AWALNYA yang sampai kepada Anda.`,
+    'JANGAN mengulang pembacaan utuh dan jangan mencari jalan lain di luar git. Pakai dua langkah ini (keduanya sudah diizinkan):',
+    `1. Cari sekaligus baca sekitarnya: git grep -n -B2 -A4 "<pola>" -- ${alamat}`,
+    `2. Baca rentang baris tertentu: git blame -L <awal>,<akhir> -- ${alamat}`,
+    'Keduanya mengembalikan nomor baris, dan ratusan kali lebih kecil daripada berkas utuh.',
+  ].join('\n');
+}
+
 /**
  * Penjaga langkah [0.4]: perintah yang sama persis sudah pernah dijalankan pada percakapan ini.
  * Mengulangnya tidak akan memberi hasil berbeda, jadi perintahnya tidak dijalankan lagi.

@@ -452,7 +452,16 @@ perintah menolak `python -c "…"` berkutip bersarang ("tanda kutip tidak ditutu
 
 ### Sisa pekerjaan yang ketahuan dari uji live itu
 
-**1. Engineer tidak bisa membaca berkas lebih dari 20 KB.** `alatFolderJalan.cjs:27`
+**1. ✅ SELESAI hari yang sama — Engineer sudah bisa membaca berkas besar, tanpa kode baru.**
+Lihat [log](../project-memory/changelog/2026-09-28-baca-berkas-besar.md). Yang kurang ternyata bukan
+kemampuan melainkan **pengetahuan**: `git grep` dan `git blame` sudah diizinkan profil Engineer sejak lama
+(`alatFolderJalan.cjs:74`), hanya tidak pernah disebut di prosedur. Diukur: `git show` utuh 47.767 bita
+(terpotong, baris yang dicari tak pernah sampai) vs `git grep -n -B2 -A4` **801 bita** yang justru
+menjangkaunya — **59× lebih kecil**. `constitution/28` §3a kini mengajarkannya, dan
+`petunjukKeluaranTerpotong()` menyodorkan jalan keluarnya saat pembacaan utuh terpotong. TMN-0001 ikut
+ditutup. Uraian lama di bawah disimpan sebagai catatan bagaimana masalahnya dulu dirumuskan keliru:
+
+~~**1. Engineer tidak bisa membaca berkas lebih dari 20 KB.**~~ `alatFolderJalan.cjs:27`
 `keluaranByte: 20 * 1024` memotong keluaran perintah; `engineer.js` berukuran **47.767 byte**, jadi
 `git show HEAD:<berkas>` hanya menyampaikan ±40% awalnya. **Baris 1035 — isi temuan TMN-0001 — tidak
 terjangkau**, dan Engineer tidak punya cara lain: `git show` hanya bisa mengeluarkan berkas utuh.

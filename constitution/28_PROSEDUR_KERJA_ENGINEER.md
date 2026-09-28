@@ -121,14 +121,64 @@ yang tidak. Yang tidak punya sumber tidak boleh disajikan sebagai fakta — beri
 Soal kode → baca berkasnya. Soal perilaku → baca jejaknya. Dokumen ringkasan, memori percakapan, dan pengetahuan
 internal model adalah petunjuk arah, **bukan bukti**.
 
-Cara membaca isi berkas di repositori ini:
+### 3a. Cari dulu, baru baca sempit — jangan pernah mengambil berkas utuh
+
+**Keluaran tiap perintah dipotong di 20 KB.** Banyak berkas di repositori ini lebih besar dari itu
+(`engineer.js` 47.767 bita), jadi meminta berkas utuh berarti hanya menerima ±40% awalnya — dan bagian yang
+Anda cari sering ada di sisa yang tidak pernah sampai. Tidak ada peringatan bahwa itu terjadi.
+
+Karena itu gerakannya selalu **dua langkah**, bukan satu:
+
+**1. Cari — dan ini sekaligus membaca:**
+
+```
+[MAMET_CMD: git grep -n -B2 -A4 "<pola>" -- <alamat berkas>]
+```
+
+Mengembalikan baris yang cocok **beserta nomor barisnya** dan beberapa baris di sekitarnya. Buang `-- <alamat>`
+untuk mencari di seluruh repo.
+
+**2. Baca rentang baris tertentu** (bila nomornya sudah diketahui):
+
+```
+[MAMET_CMD: git blame -L <awal>,<akhir> -- <alamat berkas>]
+```
+
+Tiap baris diawali hash commit, penulis, tanggal, dan nomor baris. Lebih berisik, tetapi satu-satunya cara
+membaca rentang baris tepat.
+
+**Ukuran nyata, diukur pada `engineer.js` (2026-09-28):**
+
+| Cara | Keluaran |
+|---|---|
+| `git show HEAD:<berkas>` | **47.767 bita** → terpotong 20 KB, baris 1055 tak pernah sampai |
+| `git grep -n -B2 -A4` | **804 bita** → ketemu, lengkap dengan nomor baris |
+| `git blame -L 1054,1059` | **738 bita** |
+
+**59× lebih kecil, dan justru menjangkau baris yang dengan cara lain mustahil dicapai.**
+
+### 3b. `git show` — hanya untuk berkas kecil
 
 ```
 [MAMET_CMD: git show HEAD:<alamat berkas>]
 ```
 
+Pakai ini **hanya** bila berkasnya memang kecil (< 20 KB) atau Anda memang perlu melihatnya utuh. Untuk berkas
+besar ia bukan sekadar boros — ia **gagal diam-diam**.
+
 `git show <alamat berkas>` **tanpa** `HEAD:` menghasilkan kosong dengan kode keluar 0 — itu bukan tanda berkasnya
 hilang, melainkan bentuk perintah yang salah (git memperlakukan alamat itu sebagai penyaring commit).
+
+> Kejadian nyata (28 September 2026): temuan TMN-0001 menunjuk komentar di `engineer.js` sekitar baris 1035.
+> Engineer menjalankan `git show HEAD:engineer.js`, menerima 20 KB pertama, tidak menemukan apa pun di sana, lalu
+> mengarang perintah `python` untuk menelusuri filesystem mencari berkas yang alamatnya sudah ia ketahui —
+> dan perintah itu ditolak karena kutipnya tidak ditutup.
+>
+> **Ia tahu keluarannya terpotong** — ia menuliskannya sendiri: *"Output `git show` terpotong pada sekitar
+> 47.767 byte, dan bagian yang ditampilkan belum mencapai baris 1035."* Yang tidak ia punya adalah **perintah
+> lain untuk menjangkaunya**, karena halaman ini cuma mengajarkan satu cara membaca berkas. Satu `git grep -n`
+> akan menemukannya dalam 804 bita. Kedua perintah di 3a sudah diizinkan sejak lama; yang tidak ada hanyalah
+> halaman ini yang menyebutkannya.
 
 ## 4. Satu cara gagal → ganti cara, jangan diulang
 
