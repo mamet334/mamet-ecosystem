@@ -479,3 +479,19 @@ direktori kerja yang berbeda"* lalu mengarang perintah `python` untuk menelusuri
 berkas yang alamatnya sudah ia ketahui. Perintah memang dijalankan dengan `cwd = akarRepo()`, tetapi
 modelnya tidak tahu itu. Sebelum Tahap 5 ini tak bisa diperbaiki karena akarnya sendiri tidak pasti;
 sekarang akarnya eksplisit dan tinggal disebutkan di prompt. Menunggu keputusan Owner (perubahan prompt).
+
+### Kode mati READ_REPO dihapus (2026-09-28)
+
+219 baris di `TaskHandlers.js` + kabelnya di `engineer.js`, `IntentClassifier.js`, dan
+`ConversationEngine.jsx`. [log](../project-memory/changelog/2026-09-28-hapus-read-repo-mati.md).
+
+Kematiannya dibuktikan lebih dulu: `Engineer:GeneratePatch` hanya dipancarkan tombol "Apply Patch",
+tugasnya selalu `dariTombolApply: true`, sehingga `detectIntent()` **tidak pernah dipanggil**; dan
+`Engineer:ReadRepo` hanya punya pendengar tanpa pemancar di seluruh repo.
+
+`RepositoryReaderService` **tetap hidup** — FileExplorer memakainya. Yang dihapus hanya kabel mati dari
+Engineer ke sana.
+
+**Sisa yang belum diputuskan:** `Engineer:AnalyzeTask` dan `Engineer:ReviewChanges` berada dalam kondisi
+yang sama — tidak ada pemancarnya. Begitu pula seluruh `detectIntent()` beserta cabang ANALYSIS dan
+CLARIFICATION-nya. Membongkarnya keputusan tersendiri; dicatat supaya tidak perlu ditelusuri ulang.

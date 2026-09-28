@@ -4,7 +4,7 @@
 import { pathToFileURL } from 'node:url';
 const AKAR = 'D:/SLAMET/other/mamet os ecosystem/frontend/src/core/runtime/services/';
 const K = await import(pathToFileURL(AKAR + 'KonteksChat.js').href + '?v=' + Date.now());
-console.log('uji-konteks-chat v4');
+console.log('uji-konteks-chat v5');
 
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
@@ -102,9 +102,15 @@ for (const ikon of (CE.slice(iTombol, iTombol + 1600).match(/\{konteksInfo\.dile
 cek(/const instansiEngineerRef = useRef\(false\)/.test(CE), 'ref penanda instance Engineer ada');
 cek(/instansiEngineerRef\.current = osState\?\.workspaceId === 'ws-engineer'/.test(CE),
   'ref mengikuti workspace instance ini, bukan workspace yang sedang tampil');
+// Turun dari 6 ke 5 pada 2026-09-28: `fileContentHandler` dihapus bersama jalur READ_REPO yang mati —
+// satu-satunya pemancar `Engineer:FileContent` adalah `handleReadFiles`, yang ikut terhapus.
 const jumlahPenjaga = (CE.match(/if \(!instansiEngineerRef\.current\) return;/g) || []).length;
-cek(jumlahPenjaga >= 6, `enam langganan peristiwa Engineer dijaga (ditemukan ${jumlahPenjaga})`);
-for (const h of ['reasoningReportHandler', 'confirmationHandler', 'patchAppliedHandler', 'persistedHandler', 'fileContentHandler']) {
+cek(jumlahPenjaga >= 5, `lima langganan peristiwa Engineer dijaga (ditemukan ${jumlahPenjaga})`);
+// Yang diperiksa LANGGANANNYA, bukan penyebutannya — komentar yang menjelaskan penghapusan tetap
+// menyebut nama peristiwanya, dan versi pertama uji ini tertipu oleh komentarnya sendiri.
+cek(!/eventBus\.on\(['"]Engineer:FileContent['"]/.test(CE),
+  'langganan Engineer:FileContent sudah tidak ada (jalur READ_REPO dihapus)');
+for (const h of ['reasoningReportHandler', 'confirmationHandler', 'patchAppliedHandler', 'persistedHandler']) {
   const i = CE.indexOf('const ' + h);
   cek(i > 0 && /instansiEngineerRef/.test(CE.slice(i, i + 220)), `penjaga terpasang di ${h}`);
 }

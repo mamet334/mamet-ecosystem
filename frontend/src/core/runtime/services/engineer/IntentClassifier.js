@@ -1,5 +1,5 @@
 /**
- * IntentClassifier — Klasifikasi intent task (ANALYSIS / MODIFY_CODE / READ_REPO / CLARIFICATION).
+ * IntentClassifier — Klasifikasi intent task (ANALYSIS / MODIFY_CODE / CLARIFICATION).
  *
  * Diekstrak dari engineer.js (Fase 2, ADR-0017). Murni deterministik berbasis
  * pattern kata kunci, tanpa panggilan LLM — pola identik dengan
@@ -13,15 +13,8 @@ export function detectIntent(task) {
     return 'CLARIFICATION';
   }
 
-  const readRepoKeywords = [
-    'baca file', 'baca kode', 'baca code', 'tampilkan file', 'tampilkan kode', 'tampilkan code',
-    'read file', 'show file', 'show code', 'open file', 'lihat file', 'lihat kode', 'lihat code',
-    'isi file', 'isi dari', 'content of', 'content dari',
-    'list file', 'list folder', 'daftar file', 'daftar folder', 'list directory',
-    'cari file', 'search file', 'find file', 'dimana file', 'where is file',
-    'struktur folder', 'struktur direktori', 'tree folder', 'tree directory'
-  ];
-
+  // `readRepoKeywords` + cabang READ_REPO dihapus 2026-09-28 bersama handler-nya di TaskHandlers.js —
+  // lihat catatan di sana. Engineer membaca repo lewat [MAMET_CMD: git grep / git blame], bukan lewat intent.
   const analysisKeywords = [
     'analisis', 'review', 'telaah', 'evaluasi', 'cek', 'laporan',
     'analyze', 'analyse', 'check', 'examine', 'inspect',
@@ -43,15 +36,8 @@ export function detectIntent(task) {
   return 'MODIFY_CODE';
   }
 
-  const isReadRepo = readRepoKeywords.some(kw => text.includes(kw));
   const isAnalysis = analysisKeywords.some(kw => text.includes(kw));
   const isModify = modifyKeywords.some(kw => text.includes(kw));
-
-  // 0. READ_REPO — prioritas tertinggi sebelum ambiguity check
-  if (isReadRepo && !isModify) {
-    console.log('[Engineer] Intent detected: READ_REPO');
-    return 'READ_REPO';
-  }
 
   // 1. Jika ambiguous (kedua kategori terdeteksi)
   if (isAnalysis && isModify) {

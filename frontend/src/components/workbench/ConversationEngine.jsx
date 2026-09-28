@@ -522,9 +522,9 @@ export default function ConversationEngine({ sessionId }) {
         setMessages(prev => [...prev, { role: 'model', content: rec.message, isReasoningBlock: false }]);
       } else if (rec.type === 'ASK_CLARIFICATION') {
         setMessages(prev => [...prev, { role: 'model', content: rec.message, isReasoningBlock: false }]);
-      } else if (['READ_REPO_RESULT', 'READ_REPO_LISTING', 'READ_REPO_SEARCH_RESULT', 'READ_REPO_CLARIFICATION', 'READ_REPO_NOT_FOUND', 'READ_REPO_ERROR', 'READ_REPO_EMPTY'].includes(rec.type)) {
-        setMessages(prev => [...prev, { role: 'model', content: rec.message }]);
       }
+      // Cabang READ_REPO_* dihapus 2026-09-28 bersama handler-nya (TaskHandlers.js) — ketujuh jenis
+      // rekomendasi itu tidak punya pemancar lagi.
     };
 
     const unsubscribe = eventBus.on('Engineer:Recommendation', handler);
@@ -848,24 +848,9 @@ export default function ConversationEngine({ sessionId }) {
     return unsubPersisted;
   }, []);
 
-  // READ_REPO: File Content
-  useEffect(() => {
-    const eventBus = kernel.serviceManager?.get('EventBus');
-    if (!eventBus) return;
-    const fileContentHandler = (payload) => {
-      if (!instansiEngineerRef.current) return;
-      const data = payload?.data || payload;
-      const { path, content, size, backend } = data;
-      const ext = path?.split('.').pop()?.toLowerCase() || '';
-      const langMap = { js: 'javascript', jsx: 'javascript', ts: 'typescript', tsx: 'typescript', css: 'css', scss: 'scss', html: 'html', json: 'json', md: 'markdown', py: 'python', yaml: 'yaml', yml: 'yaml', sh: 'bash', txt: 'text' };
-      const lang = langMap[ext] || ext || 'text';
-      const backendLabel = backend === 'github-raw' ? '🌐 GitHub' : backend === 'electron' ? '💻 Electron' : '📦 Cache';
-      const message = `📄 **${path}** — ${size?.toLocaleString() || 0} chars | ${backendLabel}\n\n\`\`\`${lang}\n${content}\n\`\`\``;
-      setMessages(prev => [...prev, { role: 'model', content: message, isFileContent: true, filePath: path }]);
-    };
-    const unsubFileContent = eventBus.on('Engineer:FileContent', fileContentHandler);
-    return unsubFileContent;
-  }, []);
+  // Penampil `Engineer:FileContent` dihapus 2026-09-28: satu-satunya pemancarnya `handleReadFiles`,
+  // yang ikut terhapus bersama jalur READ_REPO. Isi berkas kini sampai ke chat sebagai keluaran
+  // [MAMET_CMD: git grep / git blame] lewat jalur perintah biasa.
 
   // REASONING REPORT
   useEffect(() => {

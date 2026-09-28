@@ -7,7 +7,7 @@ import { savePendingPatch, clearPendingPatch, restorePersistedPatches, saveVerif
 import { readFile, findFiles, extractFileNamesFromTask, findRelevantADR, tryReadFile } from './engineer/FileSystemGateway.js'; // [ADR-0017 Fase 4]
 import { emitReasoningReport, waitForUserConfirmation, handleUserConfirmation } from './engineer/ReasoningLock.js'; // [ADR-0017 Fase 5]
 import { handleApprovalResponse, requestApproval, emitRecommendation } from './engineer/ApprovalGateway.js'; // [ADR-0017 Fase 5]
-import { buildDynamicContext, handleAnalysisTask, handleReviewTask, handleReadRepoTask, handleReadFiles, handleListDirectory, handleSearchFiles } from './engineer/TaskHandlers.js'; // [ADR-0017 Fase 6]
+import { buildDynamicContext, handleAnalysisTask, handleReviewTask } from './engineer/TaskHandlers.js'; // [ADR-0017 Fase 6]
 import { generatePatch } from './engineer/PatchGenerator.js'; // [ADR-0017 Fase 7 + SPESIFIKASI-TEKNIS §2.1]
 import { executePatchApplication } from './engineer/PatchApplier.js'; // [ADR-0017 Fase 8]
 
@@ -57,10 +57,8 @@ class Engineer {
     this.process = serviceManager.get('ProcessManager');
     this.moduleLoader = serviceManager.get('ModuleLoader');
     this.fileIndexService = null; // Akan diinisialisasi setelah StorageManager siap
-    // Repository Reader — kemampuan membaca file dari GitHub/Electron
-    this.repositoryReader = serviceManager.has('RepositoryReaderService')
-      ? serviceManager.get('RepositoryReaderService')
-      : null;
+    // `repositoryReader` dihapus 2026-09-28 bersama jalur READ_REPO yang mati — satu-satunya pemakainya.
+    // `RepositoryReaderService` sendiri TETAP HIDUP dan dipakai FileExplorer.
 
     // Two-Brain Model
     this.brain = {
@@ -411,12 +409,7 @@ class Engineer {
       handleUserConfirmation(response, { pendingConfirmations: this.pendingConfirmations });
     });
 
-    // READ_REPO: Membaca file/folder dari repository
-    this.eventBus.on('Engineer:ReadRepo', (wrappedPayload) => {
-      const task = wrappedPayload?.data || wrappedPayload;
-      this._handleReadRepoTask(task);
-    });
-
+    // (listener Engineer:ReadRepo dihapus 2026-09-28 — tidak ada pemancarnya)
     // AUDIT TRAIL: terminal command dijalankan via [MAMET_CMD:] di ConversationEngine
     this.eventBus.on('Engineer:CommandExecuted', (wrappedPayload) => {
       const data = wrappedPayload?.data || wrappedPayload;
@@ -442,9 +435,8 @@ class Engineer {
   // DYNAMIC CONTEXT (Brain 2) & TASK HANDLING
   // =============================================
 
-  // [ADR-0017 Fase 6] _buildDynamicContext, _handleAnalysisTask, _handleReviewTask,
-  // _handleReadRepoTask, _handleReadFiles, _handleListDirectory, _handleSearchFiles,
-  // dan ketiga _extract*FromPrompt diekstrak ke ./engineer/TaskHandlers.js
+  // [ADR-0017 Fase 6] _buildDynamicContext, _handleAnalysisTask, dan _handleReviewTask diekstrak ke
+  // ./engineer/TaskHandlers.js. Keluarga READ_REPO yang dulu ikut di sana dihapus 2026-09-28.
 
   async _buildDynamicContext(task) {
     return buildDynamicContext(task, {
@@ -483,45 +475,16 @@ class Engineer {
   // READ REPO — Membaca file dari repository
   // =============================================
 
-  /**
-   * Handler utama untuk intent READ_REPO.
-   * Dipanggil dari _handlePatchTask() saat intent = READ_REPO,
-   * dan dari listener Engineer:ReadRepo.
-   */
-  async _handleReadRepoTask(task) {
-    return handleReadRepoTask(task, this._taskHandlerDeps());
-  }
-
-  /**
-   * Membaca satu atau beberapa file dan emit hasilnya ke UI.
-   */
-  async _handleReadFiles(task, paths) {
-    return handleReadFiles(task, paths, this._taskHandlerDeps());
-  }
-
-  /**
-   * Mendaftar isi direktori dan emit hasilnya.
-   */
-  async _handleListDirectory(task, dirPath) {
-    return handleListDirectory(task, dirPath, this._taskHandlerDeps());
-  }
-
-  /**
-   * Mencari file berdasarkan query dan emit hasilnya.
-   */
-  async _handleSearchFiles(task, query) {
-    return handleSearchFiles(task, query, this._taskHandlerDeps());
-  }
-
-  _taskHandlerDeps() {
-    return {
-      repositoryReader: this.repositoryReader,
-      emitRecommendation: (r) => this._emitRecommendation(r),
-      fileIndexService: this.fileIndexService,
-      sessionArtifact: this.sessionArtifact,
-      eventBus: this.eventBus
-    };
-  }
+  // JALUR READ_REPO DIHAPUS (2026-09-28). _handleReadRepoTask, _handleReadFiles, _handleListDirectory,
+  // _handleSearchFiles, dan _taskHandlerDeps mati sejak arsitektur lama: satu-satunya tugas yang pernah
+  // masuk datang dari tombol "Apply Patch" (ConversationEngine.jsx), dan tugas itu selalu membawa
+  // `dariTombolApply: true` sehingga intent dipaksa MODIFY_CODE — `detectIntent()` tidak pernah dipanggil,
+  // jadi cabang READ_REPO tak terjangkau. Pintu satunya, `Engineer:ReadRepo`, hanya punya pendengar:
+  // tidak ada satu pun pemancar di seluruh repo (diperiksa 28 Sep 2026).
+  //
+  // Kemampuan membacanya sendiri TIDAK hilang — dan tidak pernah lewat sini. Yang dipakai Engineer:
+  // `[MAMET_CMD: git grep -n -B2 -A4 …]` dan `git blame -L` (constitution/28 §3a). FileExplorer tetap
+  // memakai `RepositoryReaderService` secara langsung.
 
   async _handlePatchTask(task) {
     // =============================================
@@ -558,13 +521,6 @@ class Engineer {
     // mengubahnya jadi CLARIFICATION untuk "kerjakan TUGAS-01…" (live T10, 2026-09-22).
     const intent = task?.dariTombolApply ? 'MODIFY_CODE' : detectIntent(task);
     console.log(`[Engineer] 🎯 Intent detected: ${intent} (task: ${task.title || task.id})`);
-
-    if (intent === 'READ_REPO') {
-      this.intentState = 'READY';
-      console.log(`[Engineer] 📂 Redirecting to READ_REPO handler`);
-      await this._handleReadRepoTask(task);
-      return;
-    }
 
     if (intent === 'ANALYSIS') {
       this.intentState = 'READY';
