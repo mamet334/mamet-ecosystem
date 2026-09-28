@@ -4,6 +4,7 @@ import { VerificationEngine } from '../../verification/verification_engine.ts';
 import { persistTelemetryLog } from '../../verification/verification_service.ts';
 import { eventBus } from '../../event/event_bus.ts';
 import { koreksiLabel } from '../../verification/label_sumber.ts';
+import { jalankanHakimBayangan } from '../../verification/hakim_bayangan.ts';
 import { sumberDariHasilAlat, sumberDariKeluaranTerminal } from '../../../../../../frontend/src/core/runtime/services/folderKerjaAlat.js';
 import { tutupJawabanDataTabel } from '../../data_tabel/data_tabel.ts';
 import { sisipkanNalar } from '../../adapters/reasoning_openrouter.ts';
@@ -368,7 +369,19 @@ export const SynthesisHandler = {
     await rctx.tasks.awaitAll();
 
     // Label VERIFIED hanya boleh bertahan bila jawaban mengutip dokumen yang dilampirkan (Item 71).
+    const sebelumLabel = replyMessage;
     replyMessage = koreksiLabel(replyMessage, judulDokumen, requestMode, isiDokumen);
+
+    // HAKIM BAYANGAN (T13, 2026-09-28) — menilai per kalimat, TIDAK mengubah apa pun. Letaknya di sini,
+    // sesudah `koreksiLabel`, supaya ia menilai jawaban yang sama dengan yang dilihat Owner dan supaya
+    // label sistem bisa dicatat sebagai pembanding. MATI kecuali env `HAKIM_BAYANGAN=1`.
+    // Ditunggu `tasks.awaitAll()` di index.ts, jadi ia menambah waktu tunggu — itu harga uji coba.
+    await jalankanHakimBayangan(rctx, {
+      jawaban: sebelumLabel,
+      isiDokumen,
+      labelSistem: replyMessage === sebelumLabel ? '(diam)' : 'diturunkan',
+      chatId: (ctx.request as any)?.chatId || ''
+    });
     // Tabel data (Item 92 Tahap 3) disusun kode dari database — ditempel SESUDAH label diperiksa, di luar jawaban model.
     const dataTabel = (ctx.state as any).dataTabel;
     if (dataTabel) {

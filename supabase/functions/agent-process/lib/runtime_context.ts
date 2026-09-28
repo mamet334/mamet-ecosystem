@@ -20,6 +20,12 @@ export interface EnvironmentConfig {
   supabaseAnonKey: string;
   apifyApiToken: string;
   enableAsyncMemoryWrite: boolean;
+  /**
+   * `HAKIM_BAYANGAN=1` menyalakan hakim bayangan per kalimat (T13, `verification/hakim_bayangan.ts`).
+   * MATI secara bawaan dan disengaja: ia menambah satu panggilan model berbayar dan waktu tunggu per
+   * jawaban RAG, sementara vonisnya tidak mengubah apa pun yang Owner lihat — hanya dicatat.
+   */
+  hakimBayangan?: string;
 }
 
 export interface ProviderKeys {

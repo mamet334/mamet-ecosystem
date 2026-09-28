@@ -47,7 +47,9 @@ export async function executeRequestPipeline(
     supabaseServiceKey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '',
     supabaseAnonKey: Deno.env.get('SUPABASE_ANON_KEY') || '',
     apifyApiToken: Deno.env.get('APIFY_API_TOKEN') || '',
-    enableAsyncMemoryWrite: Deno.env.get('ENABLE_ASYNC_MEMORY_WRITE') !== 'false'
+    enableAsyncMemoryWrite: Deno.env.get('ENABLE_ASYNC_MEMORY_WRITE') !== 'false',
+    // Bawaan MATI: tanpa variabel ini tak ada panggilan hakim, tak ada biaya, tak ada tambahan waktu tunggu.
+    hakimBayangan: Deno.env.get('HAKIM_BAYANGAN') || ''
   };
 
   // Kunci SERVER Gemini & Groq tidak lagi dibaca (keputusan Owner 2026-09-15, fokus OpenRouter): ketiga kunci

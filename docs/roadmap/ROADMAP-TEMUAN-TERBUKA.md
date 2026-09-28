@@ -444,6 +444,36 @@ Deploy terkonfirmasi, lalu dua chat live — dan hasilnya membatalkan lapisan in
   ringkasan log — **teks potongan RAG tidak tersimpan**, jadi 83 jawaban lama tidak bisa diputar ulang
   dengan konteks aslinya. Itu sebabnya angka 24% adalah perkiraan, bukan hitungan pasti.
 
+#### Hakim bayangan per kalimat — dibangun, belum dinyalakan (keputusan Owner 2026-09-28)
+
+Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
+[log](../project-memory/changelog/2026-09-28-hakim-bayangan.md).
+
+- **Alasan berpindah dari mengukur ke bertanya:** dua sebaran (kalimat bersandar vs pendapat) memang
+  beririsan, jadi tak ada ambang yang memisahkannya. **Item 55 sudah menghadapi tembok yang sama**
+  (`judge_endpoint.ts`, 10 Sep: 0,8780 BENTROK vs 0,8323 TAJAM — beririsan) dan jalan keluarnya
+  berhenti mengukur, tanya model. Alatnya memang berbeda: "apakah kalimat ini bersandar?" adalah
+  **memahami bacaan**, bukan menghitung kata.
+- **Tiga vonis per kalimat:** `BERSANDAR` (+ nomor potongan) · `TIDAK` · **`PERCAKAPAN`** — kelas
+  terakhir inilah yang tidak dimiliki pendekatan leksikal, dan justru yang membuatnya menuduh 11 dari
+  12 kalimat penutup nyata. Kalimat penutup **tetap dikirim**; apakah hakim mengenalinya dijawab data.
+  Hakim **dilarang** memvonis SALAH. Aturan ragu meniru Item 55: `BERSANDAR` menang atas `TIDAK`.
+- **Tiga pagar (diuji):** (1) mati secara bawaan, butuh env `HAKIM_BAYANGAN=1`, hanya nilai `"1"`;
+  (2) `Promise<void>` — mustahil dipakai mengubah label tanpa mengubah tanda tangannya, dan itu
+  terlihat di diff; (3) gagal dengan diam. Tambahan: tanpa kunci BYOK berhenti **sebelum** menyentuh
+  model (diuji dengan `rctx` yang menandai dirinya bila adapter disentuh).
+- **Biaya:** satu panggilan model per jawaban RAG dengan **kunci pengguna**, dicatat ke `api_usage`
+  lengkap biaya asli penyedia — celah 24 Sep tidak diulang. Batas dipaku: 40 kalimat, 8 potongan,
+  1.200 huruf/potongan. **Menambah waktu tunggu** (ditunggu `awaitAll`) — sebabnya mati secara bawaan.
+- **Tabel `hakim_bayangan`:** ramping dan aman di-DROP — kalimat dipotong 160 huruf, **isi potongan
+  dokumen tidak disimpan**, RLS menyala tanpa policy. Menyimpan `label_sistem` berdampingan dengan
+  `label_usulan` — pasangan itu yang nanti dibandingkan.
+- **`pecahKlaim` dipakai ulang** dari `klaim_sumber.ts`: lapisannya mati, kerjanya tidak terbuang.
+- **Belum dinyalakan.** Tiga langkah Owner: terapkan migrasi `20260928061500_hakim_bayangan.sql` →
+  setel `HAKIM_BAYANGAN=1` → deploy. Mematikannya cukup menghapus variabel, tanpa deploy ulang kode.
+- **Status:** ⏳ 46 berkas uji hijau + bundel lolos esbuild. **Mutu vonis hakim belum diketahui sama
+  sekali** — itu justru pertanyaan yang dibangun untuk dijawab.
+
 - **Status T13:** ⏳ CHIMERA **tidak disalin** (tetap begitu). Gagasan per-klaim diserap, diuji live,
   lalu **dimatikan** — batas alat leksikal kini terukur, bukan diperdebatkan. Arah berikutnya yang
   disarankan: **penandaan model sendiri** (`[Pengetahuan umum AI…]` lewat penguatan kontrak) — model
