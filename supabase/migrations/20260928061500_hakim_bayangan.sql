@@ -39,5 +39,14 @@ create index if not exists hakim_bayangan_created_at_idx on public.hakim_bayanga
 -- jadi dengan RLS menyala tabel ini tertutup bagi klien — sejalan dengan 20260922003711_rls_tutup_baca_semua.
 alter table public.hakim_bayangan enable row level security;
 
+-- RLS tanpa policy menutup SELECT/INSERT/UPDATE/DELETE per baris. Tetapi TRUNCATE, REFERENCES, dan
+-- TRIGGER TIDAK tunduk pada RLS — ketiganya hanya dibatasi GRANT, dan Supabase memberikannya ke anon
+-- & authenticated secara bawaan. Tabel ini tak punya pembaca klien, jadi haknya dicabut seluruhnya.
+--
+-- Cakupan: hak bawaan yang sama ada di 40 tabel publik lain. TIDAK ditutup di sini (perubahan sebesar
+-- itu keputusan Owner) — dicatat di T11, ROADMAP-TEMUAN-TERBUKA.md.
+revoke all on table public.hakim_bayangan from anon;
+revoke all on table public.hakim_bayangan from authenticated;
+
 comment on table public.hakim_bayangan is
   'T13 mode bayangan: vonis hakim per kalimat, dicatat untuk dibandingkan dengan label_sumber.ts. Tidak memengaruhi jawaban. Aman di-DROP.';

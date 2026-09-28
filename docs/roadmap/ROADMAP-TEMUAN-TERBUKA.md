@@ -200,6 +200,25 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
   terjadwal. Konteks sambungan itu sendiri: repo ini memang sudah publik, jadi sambungannya tidak menambah
   paparan repo ini; yang perlu Owner periksa sendiri adalah apakah izin GitHub mencakup repo **privat** lain
   (GitHub → Settings → Applications → Authorized GitHub Apps).
+- **Temuan bersebelahan (2026-09-28, saat membuat tabel `hakim_bayangan`): RLS tidak menutup `TRUNCATE`.**
+  Supabase memberi `anon` dan `authenticated` hak tabel penuh secara bawaan — `SELECT, INSERT, UPDATE,
+  DELETE, TRUNCATE, REFERENCES, TRIGGER` — pada **40 tabel publik**. RLS menyaring empat yang pertama
+  per baris, tetapi **`TRUNCATE`, `REFERENCES`, dan `TRIGGER` tidak tunduk pada RLS**; ketiganya hanya
+  dibatasi `GRANT`. Jadi lapisan yang selama ini kita andalkan (`rls_tutup_baca_semua`) memang tidak
+  pernah dirancang menahan pengosongan tabel.
+  - **Tetapi jalannya TIDAK terbuka lewat kunci anon.** Diperiksa sebelum ditulis di sini: kunci anon
+    adalah JWT untuk PostgREST, dan PostgREST hanya memaparkan SELECT/INSERT/UPDATE/DELETE — keempatnya
+    tetap dijaga RLS. `TRUNCATE` menuntut eksekusi SQL langsung sebagai peran `anon`, yang butuh kredensial
+    koneksi Postgres, **bukan** kunci anon. Jadi ini **pertahanan berlapis yang belum rapat**, bukan pintu
+    terbuka. Sengaja ditulis begini supaya bobotnya tidak dibesar-besarkan.
+  - **Sudah ditutup untuk satu tabel:** `hakim_bayangan` (baru, tanpa pembaca klien) — `revoke all` untuk
+    anon & authenticated, ikut di migrasi `20260928061500`. 40 tabel lain **tidak** disentuh: mencabut hak
+    pada tabel yang memang dibaca aplikasi bisa mematikan fitur, jadi itu keputusan Owner, bukan keputusan
+    asisten.
+  - **Arah bila dikerjakan:** pisahkan per tabel — yang hanya ditulis service role (`api_usage`, `checks`,
+    `incidents`, `service_heartbeat`, `agent_logs`, …) dicabut seluruhnya; yang dibaca klien cukup
+    disisakan `SELECT` (+ `INSERT`/`UPDATE` bila memang dipakai), dan `TRUNCATE`/`REFERENCES`/`TRIGGER`
+    dicabut di semuanya. Perlu daftar pemakai per tabel lebih dulu — jangan dicabut buta.
 - **Status:** ⏳ dicatat; bobot dinaikkan 2026-09-24, menunggu keputusan Owner.
 
 ## T12 — Membaca berkas = mengirimnya keluar, dan tak ada satu pun pemberitahuan (diskusi Owner, 2026-09-24)
