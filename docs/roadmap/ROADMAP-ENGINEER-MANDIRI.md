@@ -560,6 +560,32 @@ Engineer ke sana.
 yang sama — tidak ada pemancarnya. Begitu pula seluruh `detectIntent()` beserta cabang ANALYSIS dan
 CLARIFICATION-nya. Membongkarnya keputusan tersendiri; dicatat supaya tidak perlu ditelusuri ulang.
 
+**KEPUTUSAN OWNER 2026-09-28 — bukan "hapus", melainkan "periksa dulu".** Asisten menyarankan menghapus
+seperti READ_REPO; Owner mengoreksi arahnya: *"cari lagi agar bermanfaat; jika sudah dikerjakan oleh kode
+lain yang lebih baik, tidak masalah dihapus."*
+
+Urutannya karena itu terbalik dari READ_REPO, dan bedanya penting. READ_REPO dihapus **sesudah** terbukti
+ada penggantinya yang lebih baik (`git grep`/`git blame`, `RepositoryReaderService`) — penghapusannya
+adalah kesimpulan, bukan titik mulai. Untuk kedua jalur ini penggantinya **belum diperiksa**, jadi
+menghapusnya sekarang berarti mengambil kesimpulan yang sama tanpa mengerjakan pembuktiannya.
+
+Yang harus dijawab sebelum menghapus — **dengan kode, bukan pendapat**:
+
+1. Apa yang sebenarnya dilakukan `_analyze` dan `_review`, dan apakah keluarannya masih masuk akal hari ini?
+2. Adakah jalur lain yang sudah melakukannya lebih baik? Tersangka: mesin uji klaim (Tahap 2, menjalankan
+   kode sungguhan) dan verifikasi patch yang dijalankan (Tahap 6, menjalankan 51 berkas uji) — keduanya
+   **membuktikan**, sedangkan `_review` hanya menilai dari bentuk teks, persis cara yang sudah terbukti
+   salah 24 September.
+3. Bila TIDAK ada penggantinya: apakah kemampuan itu masih bernilai bagi Owner — misalnya "tinjau perubahan
+   ini tanpa mem-patch"? Bila ya, ia butuh **pemancar**, bukan penghapusan.
+
+Hasil yang mungkin ada tiga, dan ketiganya sah: dihapus (sudah ada yang lebih baik), disambungkan (masih
+berguna dan tak ada penggantinya), atau ditulis ulang untuk kebutuhan hari ini.
+
+**Cara mengoreksi keputusan ini:** bila pemeriksaan itu sendiri berlarut-larut, keputusannya jatuh ke
+menghapus — kode mati yang rapi **tampak hidup**, dan pada 28 September ia sempat menipu asistennya sendiri.
+Biaya membiarkannya nyata; biaya menulis ulang bila ternyata dibutuhkan, kecil.
+
 ### Model diberi tahu akar repo-nya (2026-09-28) — sisa Tahap 5 ditutup
 
 `catatanAkarRepo()` disisipkan ke **tiap kiriman** Engineer, sejajar ringkasan temuan Tahap 3b:

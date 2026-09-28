@@ -1,7 +1,10 @@
 # ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
 
 **Tipe Dokumen:** Daftar sisa pekerjaan (temuan audit yang belum punya dokumen roadmap sendiri)
-**Status:** ⏳ **6 temuan terbuka** (T1, T10, T11, T12, T13, T14; T2–T9 ditutup) — masing-masing menunggu keputusan Owner
+**Status:** ⏳ **6 temuan terbuka** (T1, T10, T11, T12, T13, T14; T2–T9 ditutup).
+**28 September 2026: T11, T12, T13, T14 sudah DIPUTUSKAN Owner** (🟢 di masing-masing bagian) tetapi
+**belum dikerjakan**; tiap keputusan disertai cara mengoreksinya bila kenyataan berbeda. T1 menunggu Owner
+mengganti token Apify; T10 menunggu Tahap 2–3 `ROADMAP-ENGINEER-MANDIRI.md`.
 **Tanggal:** 2026-09-17 (dipindah dari INDEX-ROADMAP Item 33, 44, 48, 49, 50 saat perampingan)
 **Aturan:** temuan yang dikerjakan dan tumbuh besar pindah ke dokumen roadmap sendiri; yang selesai dicatat di
 changelog lalu barisnya diberi ✅ di sini.
@@ -222,7 +225,25 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
     `incidents`, `service_heartbeat`, `agent_logs`, …) dicabut seluruhnya; yang dibaca klien cukup
     disisakan `SELECT` (+ `INSERT`/`UPDATE` bila memang dipakai), dan `TRUNCATE`/`REFERENCES`/`TRIGGER`
     dicabut di semuanya. Perlu daftar pemakai per tabel lebih dulu — jangan dicabut buta.
-- **Status:** ⏳ dicatat; bobot dinaikkan 2026-09-24, menunggu keputusan Owner.
+- **Pemeriksaan ulang 2026-09-28 — keadaannya lebih sederhana dari yang tercatat di atas:**
+  - `check-keys/index.ts` **tidak punya pemeriksaan pengguna sama sekali** di kodenya — bukan sekadar
+    "kunci anon lolos".
+  - **Tidak ada satu pun pemanggil** di `frontend/src` maupun `mametlite/` (dicari dua kali, dua cara).
+    Yang tersisa hanya satu komentar di `agent-process/lib/adapters/ai_adapter.ts:91`.
+  - Ia alat diagnosis sekali pakai (10 Sep) untuk satu pertanyaan — berapa dimensi vektor bila embedding
+    lewat OpenRouter. Pertanyaan itu sudah terjawab dan jawabannya sudah menjadi kode.
+  - Sebagian probenya menguji kunci server **Gemini & Groq yang sudah dihapus 15 September**.
+  - Tiap panggilan melakukan panggilan API **berbayar** ke Gemini, Groq, dan dua model embedding OpenRouter.
+- **KEPUTUSAN OWNER 2026-09-28: hapus fungsinya.** Bukan ditambal dengan pemeriksaan Owner — alat yang
+  sudah menjawab pertanyaannya dan tidak dipanggil siapa pun adalah kode mati, sebentuk dengan jalur
+  READ_REPO yang dihapus hari yang sama.
+  **Cara mengoreksi keputusan ini bila kenyataan berbeda:** bila ternyata ada pemanggil di luar repo ini
+  (skrip Owner, bookmark, alat luar), ia akan gagal dengan 404 — itu tandanya keputusan ini perlu ditinjau,
+  dan fungsinya ditulis ulang untuk pertanyaan hari itu, bukan dipulihkan apa adanya.
+- **Bagian T11 yang TIDAK ikut diputuskan:** 40 tabel dengan hak bawaan berlebih bagi anon/authenticated.
+  Itu perkara terpisah dan tetap ⏳ — mencabut hak pada tabel yang dibaca aplikasi bisa mematikan fitur,
+  jadi perlu daftar pemakai per tabel lebih dulu.
+- **Status:** 🟢 diputuskan (hapus fungsi) · ⏳ hak tabel masih terbuka.
 
 ## T12 — Membaca berkas = mengirimnya keluar, dan tak ada satu pun pemberitahuan (diskusi Owner, 2026-09-24)
 
@@ -254,7 +275,15 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
      ingatan tidak cukup, termasuk ingatan asistennya.
 - **Beririsan dengan Tahap 5** (`ROADMAP-ENGINEER-MANDIRI.md`): momen Owner memilih akar repo di aplikasi terpasang
   adalah tempat alami menetapkan batas "yang boleh dibaca". Sebaiknya dikerjakan bersama, bukan terpisah.
-- **Status:** ⏳ dicatat atas permintaan Owner. Belum dikerjakan.
+- **KEPUTUSAN OWNER 2026-09-28: pasang penjaganya.** Berkas rahasia (`.env`, `*.key`, `*.pem`) ditolak
+  dibaca — dengan pesan yang menyebut alasannya, sebentuk dengan pagar berkas inti, bukan gagal diam-diam.
+  Sisanya (bahwa membaca kode berarti mengirimnya ke penyedia model) ditutup sebagai **batas yang
+  diketahui**, bukan pekerjaan: itu tak bisa dihilangkan selama modelnya di awan.
+  **Cara mengoreksi keputusan ini bila kenyataan berbeda:** bila penjaganya ternyata menolak berkas yang
+  memang perlu dibaca (mis. `.env.example` yang tak berisi rahasia), daftarnya dipersempit — jangan
+  penjaganya dimatikan. Bila sebaliknya ada jalur lain yang mengirim rahasia tanpa lewat penjaga ini,
+  itu temuan baru, bukan kegagalan keputusan ini.
+- **Status:** 🟢 diputuskan (pasang penjaga baca berkas rahasia). Belum dikerjakan.
 
 ## T13 — CHIMERA WASM ditawarkan sebagai pengganti `label_sumber.ts` — ditolak, dengan bukti (2026-09-28)
 
@@ -521,6 +550,17 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
   membuktikan ia TAHU mana pendapatnya, tanpa diminta. Cadangan bila kontrak tidak cukup: **embedding**
   (menyentuh biaya OpenRouter). Keduanya belum diputuskan Owner.
 
+- **KEPUTUSAN OWNER 2026-09-28: hakim bayangan TETAP MEMBAYANGI.** Ia mencatat, tidak menentukan label
+  yang Owner lihat. Alasannya bukan ragu pada hakimnya — ia sudah terbukti mengenali kalimat percakapan,
+  menangkap ekstrapolasi yang lolos lapisan leksikal, dan tidak menuduh jawaban benar. Alasannya **jumlah
+  buktinya masih sedikit**: lapisan leksikal pun tampak benar sampai diukur, lalu ternyata menyentuh 24%
+  jawaban VERIFIED.
+  **Cara mengoreksi keputusan ini — syaratnya terukur, bukan perasaan:** tinjau lagi setelah tabel
+  `hakim_bayangan` memuat cukup pesan untuk dihitung. Yang dilihat: berapa sering usulan hakim BERBEDA
+  dari label sistem, dan dari sampel yang berbeda itu berapa yang hakimnya benar. Bila hakim menang
+  meyakinkan pada sampel yang layak, barulah ia dinaikkan jadi penentu. Bila tidak, ia tetap membayangi —
+  dan itu bukan kegagalan, karena membayangi sendiri sudah berguna.
+
 ## T14 — Satu model, delapan penyedia: gaya jawaban berubah tanpa kode berubah (2026-09-28)
 
 - **Asalnya:** Owner merasa jawaban menjadi "lebih natural" setelah hakim bayangan menyala. **Hakim
@@ -555,7 +595,15 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
   per jawaban, jadi kaitan gaya↔penyedia **tidak bisa diuji surut**.
 - **Arah bila dikerjakan:** simpan nama penyedia di `metadata` pesan (sudah ada di log, tinggal ikut
   disimpan) — barulah pertanyaan "apakah penyedia X terasa lebih baik" bisa dijawab data, bukan kesan.
-- **Status:** ⏳ dicatat atas permintaan Owner. Belum dikerjakan.
+- **KEPUTUSAN OWNER 2026-09-28: simpan nama penyedia per pesan. Penyedianya TIDAK dikunci.**
+  Mengunci (`provider.order`/`provider.only`) menaikkan biaya dan membuat jawaban gagal saat penyedia itu
+  sibuk atau mati, sementara yang benar-benar perlu dihentikan adalah kesalahan penafsiran: **menyalahkan
+  perubahan kode atas perubahan mutu yang sebenarnya soal rute penyedia.** Mencatat sudah cukup untuk itu.
+  **Cara mengoreksi keputusan ini bila kenyataan berbeda:** setelah beberapa minggu data terkumpul, bila
+  ternyata satu penyedia tertentu berulang kali jauh lebih buruk (bukan kesan — dari data yang baru
+  tersimpan ini), barulah mengunci dipertimbangkan, dan hanya untuk **mengecualikan** penyedia itu
+  (`provider.ignore`), bukan memaku ke satu penyedia.
+- **Status:** 🟢 diputuskan (catat penyedia; jangan kunci). Belum dikerjakan.
 
 ## T9 — Sub-agent `knowledge_manager` rusak & ikut dipanggil Coordinator (asal Item 92 Tahap 3, 2026-09-21)
 

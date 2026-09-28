@@ -2,6 +2,22 @@
 
 **Status:** 📋 **Rencana terdaftar, belum dikerjakan** (Item 72, telaah 2026-09-12 — lihat bagian Telaah di akhir dokumen)
 
+> **KEPUTUSAN OWNER 2026-09-28 — TIDAK ditutup; tetap terbuka.**
+>
+> Asisten mengusulkan menutup item ini dengan alasan "Owner memakai Mamet di laptop, dan Mametlite sudah
+> menutupi kebutuhan web". Owner mengoreksi dasarnya: *"itu tentang kerapian suatu aplikasi di berbagai
+> perangkat agar tidak membingungkan pengguna."*
+>
+> Usulan itu salah menimbang **siapa yang diukur**. Kenyamanan Owner bukan ukurannya — `mametlite.vercel.app`
+> punya pengguna di luar Owner, dan merekalah yang menghadapi tata letak berantakan saat membukanya dari
+> HP. Kalimat pembuka dokumen ini sudah menyebutkannya sejak 12 September: *"Saat diakses dari HP
+> (browser/companion), UI berantakan karena layout tidak beradaptasi terhadap device."* Masalahnya tidak
+> hilang karena Owner tidak mengalaminya.
+>
+> **Cara mengoreksi keputusan ini bila kenyataan berbeda:** bila ternyata Mametlite hampir tidak pernah
+> dibuka dari layar kecil (bisa dilihat dari pemakaian nyata, bukan dugaan), bobotnya turun dan item ini
+> boleh mengantre di belakang. Yang TIDAK sah sebagai alasan menutup: bahwa Owner sendiri memakai laptop.
+
 ## Konteks & Masalah
 
 Mamet Ecosystem saat ini adalah aplikasi Electron (desktop) dengan frontend React + Vite, backend Express di Vercel, dan Supabase untuk persistensi. Saat diakses dari HP (browser/companion), UI berantakan karena layout tidak beradaptasi terhadap device.

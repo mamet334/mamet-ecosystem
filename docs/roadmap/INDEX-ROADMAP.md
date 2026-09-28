@@ -202,5 +202,22 @@ setiap sesi berikutnya. Baris yang salah status membuat pekerjaan yang sudah sel
 yang belum selesai dilewati. Itu sudah pernah terjadi: sebuah dokumen audit dikutip dalam bentuk waktu
 sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
 
-**Yang masih menunggu keputusan Owner** (tidak diubah di sini): T11, T12, T13, T14, `Engineer:AnalyzeTask` &
-`ReviewChanges` tanpa pemancar, dan Item 72. Masing-masing: dikerjakan, atau ditutup dengan alasan tertulis.
+---
+
+## 6. Keputusan Owner 2026-09-28 — enam baris, semuanya BELUM dikerjakan
+
+Dicatat lebih dulu atas permintaan Owner: *"catat dulu keputusan saya agar nanti bisa dikoreksi kembali
+dengan kenyataan yang ada."* Tiap keputusan di dokumen sumbernya disertai **cara mengoreksinya** — syarat
+terukur, bukan perasaan.
+
+| | Keputusan | Sumber |
+|---|---|---|
+| **T11** `check-keys` | **hapus fungsinya** — tanpa pemeriksaan pengguna, tanpa pemanggil, pertanyaannya sudah terjawab, tiap panggilan berbayar. (Hak 40 tabel **tidak** ikut diputuskan, tetap ⏳) | `ROADMAP-TEMUAN-TERBUKA.md` T11 |
+| **T12** baca berkas = kirim keluar | **pasang penjaga** `.env`/`*.key`/`*.pem` dengan pesan beralasan; sisanya batas yang diketahui | T12 |
+| **T13** hakim bayangan | **tetap membayangi** — naik jadi penentu label hanya setelah angka ketidaksepakatan cukup untuk dihitung | T13 |
+| **T14** 8 penyedia | **simpan nama penyedia per pesan; JANGAN kunci penyedianya** | T14 |
+| **AnalyzeTask & ReviewChanges** | **periksa dulu, jangan langsung hapus** — Owner mengoreksi usul asisten; hapus hanya bila terbukti ada yang mengerjakannya lebih baik | `ROADMAP-ENGINEER-MANDIRI.md` |
+| **Item 72** Adaptive Shell | **TIDAK ditutup** — Owner mengoreksi usul asisten; ini soal kerapian di berbagai perangkat bagi **pengguna**, bukan kenyamanan Owner | `roadmap-adaptive-shell.md` |
+
+**Dua dari enam adalah koreksi atas usul asisten** (AnalyzeTask dan Item 72). Keduanya dicatat beserta
+alasan usulnya keliru, bukan sekadar hasil akhirnya — supaya kesalahan menimbangnya tidak terulang.
