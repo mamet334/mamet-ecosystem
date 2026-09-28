@@ -320,6 +320,49 @@ birunya**; yang berjalan tetap versi lama dan utuh, dan perubahan baru hidup saa
 Analogi yang pas untuk mode itu: dokter menulis resep untuk dirinya, yang baru berlaku setelah orang lain
 menebusnya. (Alasan ketiga untuk mendahulukan Tahap 5.)
 
+### Pemisahan itu tujuan, bukan keterlambatan (diskusi Owner, 2026-09-28)
+
+Owner membayangkan bentuk akhirnya lewat perbandingan yang tepat: **aplikasi Claude Code sebagai Engineer**,
+menyunting folder `mamet os ecosystem`, menjalankan uji dan `npm run desktop` — *"tetapi belum menerima efeknya
+karena update otomatis belum terpicu."*
+
+Perbandingannya sah, satu bagiannya perlu dibalik: **tidak ada jeda yang akan tersusul.**
+
+- **Claude Code**: program yang **berbeda** dari Mamet. Ia menyunting sumber Mamet; binernya sendiri tidak
+  tersentuh, sekarang maupun nanti. Tidak ada pembaruan apa pun yang akan membuatnya "merasakan" patch itu,
+  karena efeknya memang bukan ditujukan kepadanya. Pemisahannya **permanen**.
+- **Engineer sesudah Tahap 5**: pemisahannya lebih longgar tetapi tetap disengaja —
+  `repo → commit → push → build/release → update → mamet.exe yang berjalan`. Empat langkah, masing-masing
+  dengan keputusan manusia.
+
+**Update otomatis menarik RILIS, bukan repo lokal Owner.** Walau pembaruan otomatis bekerja sempurna, menyunting
+repo di laptop Owner tidak akan pernah memicunya. Kedua hal itu tidak tersambung — dan itu memang seharusnya.
+
+**Karena itu "belum menerima efeknya" adalah keadaan yang dikejar, bukan kekurangan yang ditambal.** Mode yang
+menerima efek seketika sudah ada — `npm run desktop`, dengan Vite memuat ulang saat berkas tersentuh — dan mode
+itulah yang melahirkan tiga dari tujuh cacat 24 September.
+
+**Yang menguji dan yang diuji menjadi dua proses.** Bila Mamet terpasang menjalankan `npm run desktop` pada repo,
+yang lahir adalah **instans Mamet kedua** dari kode yang baru dipatch: efeknya terlihat di instans itu, bukan di
+aplikasi yang sedang bekerja. Pola yang sama dipakai asisten mana pun yang menjalankan uji sebagai proses anak —
+bila uji gagal atau macet, yang mati proses anaknya, pelapornya tetap berdiri. **Uji yang dijalankan di dalam diri
+sendiri akan membungkam pelapornya saat paling dibutuhkan.**
+
+Akibat yang paling berharga: **patch buruk tidak bisa melumpuhkan Engineer yang sedang berjalan.** Paling jauh ia
+merusak build berikutnya, dan git membatalkannya.
+
+**Koreksi kedua dari diskusi yang sama:** Owner sempat merumuskan Tahap 5 sebagai *"Engineer mengambil clone
+kodenya"*. Engineer **tidak** meng-clone. Owner yang `git clone`, lalu **menunjuk** foldernya; aplikasi hanya
+menyimpan **alamatnya**. Meng-clone sendiri berarti Mamet menarik kode dari internet ke disk Owner atas inisiatif
+sendiri — kemampuan baru yang menembus batas "tidak ada `git` tulis" dan butuh keputusan Owner tersendiri.
+
+**Rumusan Owner yang tepat, dan berguna:** Tahap 5 pada dasarnya **pola yang sama dengan tombol 📁 Assistant** —
+Owner memilih folder sekali, aplikasi menyimpan alamatnya. Bedanya tiga: folder wajib repo git (`.git` ada),
+folder di dalam direktori instalasi ditolak, dan yang dibuka bukan hanya berkas melainkan **riwayat** (checkpoint
+& rollback). Assistant bekerja pada berkas; Engineer bekerja pada riwayat — dan riwayat itulah jaring pengamannya.
+Konsekuensi praktisnya: mekanisme pemilihan folder Item 85 sudah hidup dan teruji, jadi **Tahap 5 sebagian besar
+memakai ulang jalan yang sudah ada**, bukan membangun dari nol.
+
 **Yang tetap benar dari keraguan Owner — dan sudah jadi batas sejak awal:** rantai yang membuat perubahan nyata
 bagi orang lain (GitHub, Vercel, penerapan) tidak pernah bisa disentuh Mamet. Lihat "Batas yang tidak digeser"
 nomor 3: *tidak ada pemasangan paket, tidak ada `git` tulis, tidak ada push.* Naluri Owner sudah tertulis di kode
