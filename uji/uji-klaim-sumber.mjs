@@ -208,13 +208,16 @@ cek(baru.putusan === 'parsial', 'lapisan baru menangkapnya pada masukan yang sam
 // ── 6b. TERPASANG: lewat periksaLabelSumber yang asli, bukan lewat modul klaim saja ──────────
 // Tanpa bagian ini, bagian 6 hanya membuktikan modulnya benar — bukan bahwa ia tersambung.
 // Dua uji minggu lalu lulus persis karena kekeliruan itu.
-console.log('\n-- lapisan terpasang di periksaLabelSumber --');
+// LAPISAN INI DIMATIKAN (keputusan Owner, 28 Sep 2026, sesudah uji live). Uji di bawah menjaga
+// bahwa ia benar-benar mati — bukan setengah mati — sehingga perilaku label kembali persis seperti
+// sebelum hari ini. Alasannya ada di komentar `LAPISAN_KLAIM_AKTIF` di label_sumber.ts.
+console.log('\n-- lapisan DIMATIKAN di periksaLabelSumber --');
 const terpasang = L.periksaLabelSumber(jawabanPenuh, JUDUL, ISI);
-cek(terpasang.dikoreksi === true, 'jawaban yang sama kini DIKOREKSI oleh pemeriksa asli', terpasang.alasan);
-cek(terpasang.label === L.LABEL_PARSIAL, 'labelnya PARTIAL, bukan HYPOTHESIS', terpasang.label);
-cek(terpasang.jawaban.includes(L.LABEL_PARSIAL) && !terpasang.jawaban.includes(L.LABEL_VERIFIED),
-  'teks jawaban benar-benar ditukar labelnya');
-cek(terpasang.catatan.includes('kementerian'), 'catatan menunjuk kalimat yang menyimpang', terpasang.catatan.slice(0, 160));
+cek(terpasang.dikoreksi === false && terpasang.jawaban.includes(L.LABEL_VERIFIED),
+  'lapisan mati: jawaban bercampur kembali lolos sebagai VERIFIED (seperti sebelum 28 Sep)',
+  { dikoreksi: terpasang.dikoreksi, label: terpasang.label });
+cek(K.putuskanKlaim(jawabanPenuh, ISI).putusan === 'parsial',
+  'modulnya sendiri tetap hidup dan tetap benar — yang dimatikan hanya pemasangannya');
 
 // Jawaban benar seutuhnya harus tetap lolos lewat jalur asli.
 const jawabanBenarPenuh = [
@@ -244,6 +247,49 @@ const contoh = [kasusB, kasusAE, sebagianAsing, semuaAsing, jawabanPenuh, 'Ketig
 cek(contoh.every((t) => putusanMungkin.has(K.putuskanKlaim(t, ISI).putusan)),
   'putusan hanya diam / parsial / hipotesis — tidak ada vonis "bertentangan"');
 cek(!JSON.stringify(K).includes('CONTRADICT'), 'modul tidak mengenal konsep kontradiksi sama sekali');
+
+// ── 8. SYARAT MENYALAKAN KEMBALI ─────────────────────────────────────────────────────────────
+// Dua kegagalan yang TERUKUR PADA DATA NYATA 28 Sep 2026, ditulis sebagai uji supaya tidak bisa
+// dilupakan. Selama keduanya masih berbunyi "BELUM", `LAPISAN_KLAIM_AKTIF` harus tetap false.
+// Kalau suatu hari keduanya berubah jadi "SUDAH", lapisan itu boleh dinyalakan lagi.
+console.log('\n-- syarat menyalakan kembali (keduanya harus SUDAH) --');
+
+// (1) Kalimat percakapan tidak boleh dituduh. Ini kalimat penutup NYATA dari jawaban VERIFIED Owner,
+//     disalin dari chats.messages. Saat diukur: 11 dari 12 dituduh, dan 20 dari 83 jawaban VERIFIED
+//     (24,1%) memuat kalimat semacam ini — kira-kira satu dari empat jawaban benar akan turun.
+const PENUTUP_NYATA = [
+  'Jika ada yang ingin Anda tambahkan atau ubah, silakan beri tahu saya!',
+  'Jika Anda ingin informasi lebih spesifik tentang salah satu dokumen atau topik tertentu, silakan beri tahu saya!',
+  'Semoga membantu, Pak Slamet.',
+  'Jika ada pertanyaan lain seputar dokumen HCDP OKU, silakan tanya lagi ya!',
+  'Kalau ada langkah yang masih bingung, tanya saja ya.',
+  'Nama panggilan Anda adalah Pak Slamet.'
+];
+const dituduh = PENUTUP_NYATA.filter((k) => K.nilaiKlaim(k, ISI).takBersandar.length);
+console.log(`       (1) kalimat percakapan dituduh: ${dituduh.length} dari ${PENUTUP_NYATA.length} — ${dituduh.length === 0 ? 'SUDAH beres' : 'BELUM beres'}`);
+
+// (2) Ekstrapolasi SEKOSAKATA harus tertangkap. Paragraf ini disalin dari jawaban live 28 Sep 02:58;
+//     ia bicara ASN, kompetensi, pelatihan — kata-kata yang sama dengan dokumennya — lalu mendarat
+//     di zona diam (0,17–0,21) dan lolos. Ekstrapolasi karangan di bagian 4 terlalu mudah karena
+//     asing secara KOSAKATA; yang nyata asing secara ASAL-USUL saja.
+// Potongan di bawah disalin dari document_chunks NYATA (DOKUMEN HCDP 2025-2026.docx), bukan diringkas.
+// Ini penting: percobaan pertama uji ini memakai satu potongan pendek buatan sendiri dan melaporkan
+// porsi 0,12 — "SUDAH beres" — padahal pada konteks live yang sesungguhnya angkanya 0,18 dan kalimat
+// itu LOLOS. Konteks yang lebih miskin membuat porsi lebih rendah, jadi ujinya berbohong ke arah yang
+// menyenangkan. Kesalahan yang sama persis dengan yang sedang dicatat uji ini.
+const EKSTRAPOLASI_NYATA = '**Rekomendasi saya:** Untuk meningkatkan kompetensi ASN secara umum, instansi pemerintah sebaiknya tidak hanya mengandalkan pelatihan klasikal, tetapi juga memadukan pendekatan on-the-job learning seperti coaching, mentoring, rotasi jabatan, dan penugasan lintas unit yang relevan dengan kebutuhan jabatan.';
+const KONTEKS_ASN = [
+  'Keterangan: Kelompok jabatan ini diisi oleh para staf pelaksana administrasi, teknis operasional, dan pelayanan umum yang tersebar di seluruh dinas, badan, sekretariat, hingga kantor kecamatan di OKU. Kelompok rumpun pelaksana ini juga menjadi fokus utama pemetaan karena mencakup porsi terbesar dari 591 pegawai yang sedang diintervensi peningkatan kompetensinya.\n\n• Jabatan Struktural (Eselon II, III, dan IV): ~8,00% (387 pegawai)',
+  'Berdasarkan hasil pelaksanaan pemetaan kompetensi (Asesmen) kepada seluruh pegawai di lingkungan Pemerintah Kabupaten Ogan Komering Ulu, dapat diketahui bahwa sebagian besar pegawai masih memiliki integritas di bawah standar kompetensi yang disyaratkan sesuai jenjang jabatan. Hal ini dapat dilihat bahwa dari hasil pemetaan kompetensi tersebut sebanyak 591 Pegawai masih berada di bawah standar.'
+];
+const tertangkap = K.nilaiKlaim(EKSTRAPOLASI_NYATA, KONTEKS_ASN).takBersandar.length > 0;
+console.log(`       (2) ekstrapolasi sekosakata tertangkap: ${tertangkap ? 'SUDAH' : 'BELUM'} (porsi ${(K.porsiTerbaik(EKSTRAPOLASI_NYATA, KONTEKS_ASN.map(K.akarTeks))?.porsi ?? 0).toFixed(2)})`);
+
+// Uji ini TIDAK gagal karena kedua syarat belum terpenuhi — itu keadaan yang sudah diketahui dan
+// sengaja dipilih. Yang dijaga: selama syaratnya belum beres, lapisannya wajib tetap mati.
+const masihBermasalah = dituduh.length > 0 || !tertangkap;
+cek(!masihBermasalah || terpasang.dikoreksi === false,
+  'selama kedua syarat belum terpenuhi, lapisan wajib tetap MATI di periksaLabelSumber');
 
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));
 process.exit(gagal === 0 ? 0 : 1);

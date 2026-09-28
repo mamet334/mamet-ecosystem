@@ -407,12 +407,48 @@ sendiri), **ambangnya rendah bukan tinggi**.
   uji **terpasang** lewat `periksaLabelSumber` asli (bukan lewat modul klaim saja), dan **uji kendali dengan
   revisi dipaku `8dd5e3b`** — bukan `HEAD`, karena begitu lapisan ini ikut di-commit `HEAD` sudah memuatnya dan
   kendalinya mati diam-diam (uji ini sempat mengalaminya sebelum dipaku).
-- **Belum terbukti live.** Yang terbukti baru: 45 berkas uji hijau + bundel `agent-process` lolos esbuild.
-- **Status:** ⏳ menunggu deploy Owner, lalu uji live: jawaban RAG panjang yang menyelipkan satu kalimat
-  pengetahuan umum harus keluar PARTIAL dengan kalimat itu disebut di catatan.
+#### Diuji live lalu DIMATIKAN hari yang sama (keputusan Owner 2026-09-28)
 
-- **Status T13:** ⏳ CHIMERA **tidak disalin** (tetap begitu); gagasan per-klaim ✅ diserap sebagai TypeScript.
-  Sisa pilihan yang belum diambil: verifikasi makna berbasis **embedding** (menyentuh biaya OpenRouter).
+Deploy terkonfirmasi, lalu dua chat live — dan hasilnya membatalkan lapisan ini.
+[log](../project-memory/changelog/2026-09-28-lapisan-klaim-dimatikan.md).
+
+- **Chat 1 (kendali) LULUS:** pertanyaan HCDP yang jawabannya ada di dokumen → `VERIFIED` bertahan,
+  tanpa `Catatan sistem`. Lapisan berjalan sampai ujung lalu **diam**. Risiko terbesar tidak terjadi.
+- **Chat 2 tidak pernah menyentuhnya:** model menulis sendiri *"paragraf rekomendasi merupakan pendapat
+  saya sendiri"* lalu melabeli seluruhnya HYPOTHESIS. Lapisan hanya jalan pada jawaban VERIFIED →
+  **PARTIAL tak terjangkau dari HYPOTHESIS**, akibat aturan "hanya memperketat" yang dipilih sendiri.
+  Justru di kasus yang paling membutuhkan PARTIAL, label itu tak bisa dicapai.
+- **Dua kegagalan, terukur pada data nyata** (lapisan ter-deploy dijalankan atas jawaban live 02:58 +
+  potongan HCDP asli dari `document_chunks`):
+  - **Melewatkan yang seharusnya ditangkap** — paragraf "Rekomendasi saya: …" mendarat di **0,18**,
+    kalimat berikutnya 0,21: di dalam zona diam, lolos.
+  - **Menuduh yang seharusnya dibiarkan** — kalimat yang dituduh justru kalimat kejujuran model
+    (porsi 0,06). Lalu diukur pada riwayat: **20 dari 83 jawaban VERIFIED (24,1%)** memuat kalimat
+    percakapan, dan **11 dari 12** kalimat penutup nyata dituduh — termasuk *"Semoga membantu, Pak
+    Slamet."* (0,00). Kira-kira **satu dari empat jawaban benar** akan turun ke PARTIAL dengan catatan
+    konyol, yang justru merusak kepercayaan pada labelnya sendiri.
+- **Akar salahnya:** lapisan menganggap setiap kalimat pernyataan adalah klaim tentang dokumen.
+  Sebagian besar jawaban chat adalah **percakapan**. Dan lebih dalam: tumpang-tindih kata tidak bisa
+  memisahkan "klaim tentang kompetensi ASN yang bersandar dokumen" dari "saran umum tentang kompetensi
+  ASN" — keduanya sekosakata. **Instrumennya yang salah, bukan setelannya.** Menambal dengan daftar kata
+  ("semoga", "silakan") adalah jebakan yang persis membuat CHIMERA gagal → ditolak.
+- **Kenapa korpus uji pagi tidak menangkapnya:** kalimat asing yang dikarang asing secara **kosakata**
+  (0,00–0,13); ekstrapolasi nyata asing secara **asal-usul** tapi pribumi secara kosakata (0,18).
+  Bentuk yang sama dengan pelajaran "heuristik wajib diuji di korpus penuh". Terulang sekali lagi saat
+  menulis uji penjaganya: konteks buatan sendiri melapor 0,12 "SUDAH", konteks asli 0,18 "BELUM".
+- **Dimatikan, tidak dihapus:** `LAPISAN_KLAIM_AKTIF = false` di `label_sumber.ts`, dengan alasan dan
+  **syarat menyalakan kembali** yang dicetak tiap kali `uji/uji-klaim-sumber.mjs` dijalankan:
+  (1) kalimat percakapan tidak pernah dituduh — kini **6 dari 6 dituduh**; (2) ekstrapolasi sekosakata
+  tertangkap — kini **BELUM (0,18)**. Selama salah satunya BELUM, uji menjaga lapisan tetap mati.
+- **Batasan basis data yang ikut ketahuan:** `groundingSources` kosong dan `processingSteps` hanya berisi
+  ringkasan log — **teks potongan RAG tidak tersimpan**, jadi 83 jawaban lama tidak bisa diputar ulang
+  dengan konteks aslinya. Itu sebabnya angka 24% adalah perkiraan, bukan hitungan pasti.
+
+- **Status T13:** ⏳ CHIMERA **tidak disalin** (tetap begitu). Gagasan per-klaim diserap, diuji live,
+  lalu **dimatikan** — batas alat leksikal kini terukur, bukan diperdebatkan. Arah berikutnya yang
+  disarankan: **penandaan model sendiri** (`[Pengetahuan umum AI…]` lewat penguatan kontrak) — model
+  membuktikan ia TAHU mana pendapatnya, tanpa diminta. Cadangan bila kontrak tidak cukup: **embedding**
+  (menyentuh biaya OpenRouter). Keduanya belum diputuskan Owner.
 
 ## T9 — Sub-agent `knowledge_manager` rusak & ikut dipanggil Coordinator (asal Item 92 Tahap 3, 2026-09-21)
 

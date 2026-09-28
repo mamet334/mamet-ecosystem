@@ -519,7 +519,34 @@ export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiD
   const alasanCentang = periksaTabelCentang(tampil, isiDokumen);
   if (alasanCentang) return turunkan(alasanCentang, `_Catatan sistem: label VERIFIED diturunkan — ${alasanCentang}. Periksa tingkat/kolom ini langsung di dokumen asli._`);
 
-  // ── Lapisan terakhir: PER-KLAIM (T13, 2026-09-28) ──────────────────────────────────────────
+  // ── Lapisan terakhir: PER-KLAIM (T13, 2026-09-28) — DIMATIKAN hari yang sama ───────────────
+  // Dimatikan atas keputusan Owner sesudah uji live, BUKAN karena gagal dibangun. Angkanya:
+  //
+  //   • 11 dari 12 kalimat penutup NYATA di jawaban VERIFIED Owner akan dituduh "tidak ditemukan
+  //     sandarannya" — termasuk "Semoga membantu, Pak Slamet." (porsi 0,00).
+  //   • 20 dari 83 jawaban VERIFIED (24,1%) memuat kalimat percakapan semacam itu, jadi kira-kira
+  //     satu dari empat jawaban BENAR akan turun ke PARTIAL dengan catatan yang konyol.
+  //   • Sebaliknya, ekstrapolasi yang sesungguhnya (paragraf "Rekomendasi saya: …" pada jawaban live
+  //     28 Sep 02:58) mendarat di porsi 0,17–0,21 — di dalam zona diam, jadi LOLOS.
+  //
+  // Akar salahnya satu kalimat: lapisan ini menganggap setiap kalimat pernyataan adalah klaim
+  // tentang dokumen. Sebagian besar jawaban chat adalah PERCAKAPAN — sapaan, tawaran bantuan,
+  // pengantar, penutup — yang memang tidak punya sandaran dokumen dan memang tidak perlu punya.
+  //
+  // Menambalnya dengan daftar kata ("semoga", "silakan", "beri tahu") adalah jebakan yang sama yang
+  // membuat CHIMERA gagal di T13. Tumpang-tindih kata juga tidak bisa memisahkan "klaim tentang
+  // kompetensi ASN yang bersandar dokumen" dari "saran umum tentang kompetensi ASN": keduanya
+  // sekosakata. Instrumennya yang salah, bukan setelannya.
+  //
+  // Modul, uji, dan seluruh angka di atas sengaja DITINGGALKAN di repo supaya kerja ini tidak hilang
+  // dan tidak diulang buta. Sebelum bendera ini dinyalakan lagi, dua hal harus benar dan dibuktikan
+  // uji — lihat `uji/uji-klaim-sumber.mjs` bagian "syarat menyalakan kembali":
+  //   1. kalimat percakapan tidak pernah dituduh;
+  //   2. ekstrapolasi sekosakata (porsi ~0,20) tertangkap.
+  // Arah yang lebih menjanjikan bukan menebak dari kata, melainkan memakai penandaan model sendiri
+  // (`[Pengetahuan umum AI…]`) — model membuktikan ia TAHU mana pendapatnya, tanpa diminta.
+  const LAPISAN_KLAIM_AKTIF = false;
+  if (!LAPISAN_KLAIM_AKTIF) return diam;
   // Letaknya di sini, SESUDAH semua pemeriksaan di atas lolos, dan itu disengaja: di titik ini
   // jawaban hari ini dilepas apa adanya sebagai VERIFIED. Karena lapisan ini hanya bekerja pada
   // jalur `diam`, ia cuma bisa MEMPERKETAT — tak ada satu pun jawaban yang hari ini diturunkan
