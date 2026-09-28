@@ -381,8 +381,38 @@ memakainya.
 
 - **Bukti dapat diulang:** `uji/uji-chimera-verifier-nyata.mjs` (butuh folder CHIMERA ada di laptop; kode ikut repo,
   binernya tidak).
-- **Status:** ⏳ dicatat atas permintaan Owner. **Tidak disalin, tidak ada perubahan pada `agent-process`.**
-  Menunggu keputusan Owner antara menyerap gagasan per-klaim (TypeScript) atau membiarkan seperti sekarang.
+
+### ✅ Gagasan per-klaim diserap sebagai TypeScript (keputusan Owner 2026-09-28)
+
+`lib/verification/klaim_sumber.ts` (baru) + lapisan terakhir di `periksaLabelSumber`. Bukan salinan CHIMERA —
+ketiga cacat yang menjatuhkannya ditulis sebagai pagar di kepala berkas: **tidak ada vonis "bertentangan"**
+(kecocokan kata tak bisa membuktikan sesuatu salah), **angka bukan urusan lapisan ini** (sudah ada pemeriksanya
+sendiri), **ambangnya rendah bukan tinggi**.
+
+- **Letaknya sesudah semua pemeriksaan lama lolos** — yaitu di jalur `diam`. Karena itu ia hanya bisa
+  MEMPERKETAT: tak ada jawaban yang hari ini diturunkan bisa menjadi lebih longgar. Arah gagal-aman utuh
+  (diuji: penurunan "Sumber tidak cocok" tetap HYPOTHESIS, tidak dilonggarkan jadi PARTIAL).
+- **Perbandingan lewat akar kata Indonesia**, bukan token mentah — `pembayaran` ~ `dibayarkan` bertemu di
+  `bayar`, `menerima` ~ `terima` (huruf yang luruh dikembalikan). Di sinilah CHIMERA jatuh pada kasus F.
+- **DUA ambang, dan ini hasil pengukuran, bukan pilihan rasa.** Rancangan ambang-tunggal 0,34 dibatalkan
+  setelah porsi tiap kalimat diukur: kutipan langsung 0,75–1,00, **kalimat simpulan yang sah 0,25–0,57**,
+  ekstrapolasi 0,00–0,13. Kalimat simpulan ("Dengan demikian, pegawai memperoleh haknya…") miskin kata dokumen
+  karena merujuk balik, bukan membawa fakta baru — **tiga dari lima akan dituduh keliru** oleh ambang tunggal.
+  Maka: ≥0,34 bersandar, ≤0,15 tak bersandar, **di antaranya TIDAK DIPUTUSKAN** dan tidak dihitung ke mana pun.
+- **Label ketiga `[STATUS: PARTIAL - Sebagian Bersandar Dokumen]`**, ditambahkan sistem seperti HYPOTHESIS —
+  **tidak ada perubahan prompt**, BLOK 6 tetap hanya mengenal VERIFIED dan HYPOTHESIS.
+- **`HasilLabel` kini membawa `label`.** `stream_handler.ts` dulu memaku HYPOTHESIS; sejak ada PARTIAL label itu
+  wajib dibaca dari hasil, supaya jalur stream dan non-stream tidak berbeda vonis.
+- **Uji:** `uji/uji-klaim-sumber.mjs` — 28 pemeriksaan, termasuk kelas kalimat simpulan yang hampir dirusak,
+  uji **terpasang** lewat `periksaLabelSumber` asli (bukan lewat modul klaim saja), dan **uji kendali dengan
+  revisi dipaku `8dd5e3b`** — bukan `HEAD`, karena begitu lapisan ini ikut di-commit `HEAD` sudah memuatnya dan
+  kendalinya mati diam-diam (uji ini sempat mengalaminya sebelum dipaku).
+- **Belum terbukti live.** Yang terbukti baru: 45 berkas uji hijau + bundel `agent-process` lolos esbuild.
+- **Status:** ⏳ menunggu deploy Owner, lalu uji live: jawaban RAG panjang yang menyelipkan satu kalimat
+  pengetahuan umum harus keluar PARTIAL dengan kalimat itu disebut di catatan.
+
+- **Status T13:** ⏳ CHIMERA **tidak disalin** (tetap begitu); gagasan per-klaim ✅ diserap sebagai TypeScript.
+  Sisa pilihan yang belum diambil: verifikasi makna berbasis **embedding** (menyentuh biaya OpenRouter).
 
 ## T9 — Sub-agent `knowledge_manager` rusak & ikut dipanggil Coordinator (asal Item 92 Tahap 3, 2026-09-21)
 

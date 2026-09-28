@@ -11,10 +11,12 @@ const F = await import(pathToFileURL(AKAR + '/frontend/src/core/runtime/services
 const { build } = await import(new URL('frontend/node_modules/esbuild/lib/main.js', new URL('../', import.meta.url)).href); // esbuild ada di frontend/node_modules; dirujuk lewat ALAMAT, bukan nama paket, karena berkas uji ini kini di akar repo (di luar frontend/) — lihat uji/README.md
 const SRC = AKAR + '/supabase/functions/agent-process/lib/verification/label_sumber.ts';
 const TMP = AKAR + '/frontend/node_modules/.uji-rag/_label_sumber.mjs';
-writeFileSync(TMP, (await build({ entryPoints: [SRC], bundle: false, write: false, format: 'esm', loader: { '.ts': 'ts' } })).outputFiles[0].text);
+// bundle: true sejak T13 (2026-09-28) — label_sumber.ts mengimpor klaim_sumber.ts, jadi impornya
+// harus ikut dibundel ke berkas sementara; dengan bundle:false Node mencarinya di folder sementara.
+writeFileSync(TMP, (await build({ entryPoints: [SRC], bundle: true, platform: 'neutral', write: false, format: 'esm', loader: { '.ts': 'ts' } })).outputFiles[0].text);
 const L = await import(pathToFileURL(TMP).href + '?v=' + Date.now());
 
-console.log('uji-sumber-terminal v1');
+console.log('uji-sumber-terminal v2');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n      -> ${JSON.stringify(rinci).slice(0, 320)}` : ''}`);

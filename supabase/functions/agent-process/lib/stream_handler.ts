@@ -99,8 +99,11 @@ export const getStreamResponse = (promptText: string, systemPromptText = '', cha
         try {
           const cek = periksaLabelSumber(fullLLMResponse, safeMeta.judulDokumen || [], isiDokumen);
           if (cek.dikoreksi) {
-            console.warn(`[LABEL] stream: label dikoreksi -> HYPOTHESIS (${cek.alasan}); dokumen dilampirkan: ${(safeMeta.judulDokumen || []).length}`);
-            enqueueStr(`\n\n${LABEL_HIPOTESIS}\n${cek.catatan}\n`);
+            // Label dibaca dari hasil, tidak lagi dipaku ke HYPOTHESIS: sejak T13 penurunannya bisa
+            // berhenti di PARTIAL, dan jalur stream harus memberi vonis yang sama dengan non-stream.
+            const label = cek.label || LABEL_HIPOTESIS;
+            console.warn(`[LABEL] stream: label dikoreksi -> ${label} (${cek.alasan}); dokumen dilampirkan: ${(safeMeta.judulDokumen || []).length}`);
+            enqueueStr(`\n\n${label}\n${cek.catatan}\n`);
           }
         } catch (labelErr) {
           console.error('[LABEL] gagal memeriksa label:', labelErr);

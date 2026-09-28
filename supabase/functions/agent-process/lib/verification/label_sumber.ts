@@ -39,8 +39,16 @@
  * sistem menambahkan HYPOTHESIS + catatan (VERIFIED tidak pernah ditambahkan otomatis). Varian penulisan
  * label VERIFIED (`[Status: Verified]`) disamakan dulu agar tidak lolos dari pemeriksaan.
  */
+import { putuskanKlaim, ringkasTakBersandar } from './klaim_sumber.ts';
+
 export const LABEL_VERIFIED = '[STATUS: VERIFIED]';
 export const LABEL_HIPOTESIS = '[STATUS: HYPOTHESIS - Rekomendasi AI]';
+/**
+ * Label ketiga (T13, 2026-09-28). Sistem yang menambahkannya, bukan model — sama seperti HYPOTHESIS,
+ * jadi tidak ada perubahan prompt: BLOK 6 tetap hanya mengenal VERIFIED dan HYPOTHESIS.
+ * Dipakai ketika sebagian pernyataan bersandar dokumen dan sebagian lain tidak.
+ */
+export const LABEL_PARSIAL = '[STATUS: PARTIAL - Sebagian Bersandar Dokumen]';
 export const CATATAN_KOREKSI = '_Catatan sistem: label VERIFIED diturunkan — jawaban ini tidak mengutip dokumen yang tersedia._';
 export const CATATAN_TANPA_LABEL = '_Catatan sistem: model tidak menulis label status — jawaban ini belum diverifikasi sistem terhadap dokumen yang tersedia._';
 
@@ -434,7 +442,12 @@ export function periksaTabelCentang(jawaban: string, isiDokumen: string[]): stri
   return null;
 }
 
-export type HasilLabel ={ jawaban: string; dikoreksi: boolean; alasan: string; catatan: string };
+/**
+ * `label` = label pengganti yang dipakai. Jalur stream tidak bisa menarik teks yang sudah terkirim,
+ * jadi ia MENAMBAHKAN label ini di akhir — dulu nilainya dipaku ke HYPOTHESIS di `stream_handler.ts`.
+ * Sejak adanya PARTIAL, label itu wajib dibaca dari sini supaya kedua jalur tidak berbeda vonis.
+ */
+export type HasilLabel ={ jawaban: string; dikoreksi: boolean; alasan: string; catatan: string; label: string };
 
 /**
  * @param jawaban teks jawaban model
@@ -444,7 +457,7 @@ export type HasilLabel ={ jawaban: string; dikoreksi: boolean; alasan: string; c
 export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiDokumen: string[] = []): HasilLabel {
   // Varian huruf/spasi label VERIFIED disamakan dulu — kalau tidak, `[Status: Verified]` lolos dari semua pemeriksaan.
   const teks = String(jawaban || '').replace(/\[\s*status\s*:\s*verified\s*\]/gi, LABEL_VERIFIED);
-  const diam: HasilLabel = { jawaban: teks, dikoreksi: false, alasan: '', catatan: '' };
+  const diam: HasilLabel = { jawaban: teks, dikoreksi: false, alasan: '', catatan: '', label: '' };
   const judul = (judulDokumen || []).filter((j) => typeof j === 'string' && j.trim());
   // Blok <think>…</think> SENGAJA ditampilkan di chat (transparansi, keputusan Owner 2026-09-14), tetapi label
   // menilai JAWABAN AKHIR saja: label, Sumber, halaman, rujukan, dan angka dibaca di LUAR nalar. Keputusan Owner
@@ -456,12 +469,12 @@ export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiD
   const adaLabel = /\[\s*status\s*:/i.test(tampil) || tampil.includes('[Pengetahuan umum AI');
   if (!adaLabel) {
     if (!judul.length) return diam;
-    return { jawaban: `${teks.trimEnd()}\n\n${LABEL_HIPOTESIS}`, dikoreksi: true, alasan: 'model tidak menulis label status', catatan: CATATAN_TANPA_LABEL };
+    return { jawaban: `${teks.trimEnd()}\n\n${LABEL_HIPOTESIS}`, dikoreksi: true, alasan: 'model tidak menulis label status', catatan: CATATAN_TANPA_LABEL, label: LABEL_HIPOTESIS };
   }
 
   if (!tampil.includes(LABEL_VERIFIED)) return diam;
   const turunkan = (alasan: string, catatan: string): HasilLabel => ({
-    jawaban: teks.split(LABEL_VERIFIED).join(LABEL_HIPOTESIS), dikoreksi: true, alasan, catatan
+    jawaban: teks.split(LABEL_VERIFIED).join(LABEL_HIPOTESIS), dikoreksi: true, alasan, catatan, label: LABEL_HIPOTESIS
   });
   // Kutipan sumber dicari di MANA SAJA, bukan hanya di awal baris: pada uji produksi pertama
   // (2026-09-12) model menulis `[STATUS: VERIFIED] — Sumber: "judul…"` di SATU baris dengan label,
@@ -505,7 +518,30 @@ export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiD
 
   const alasanCentang = periksaTabelCentang(tampil, isiDokumen);
   if (alasanCentang) return turunkan(alasanCentang, `_Catatan sistem: label VERIFIED diturunkan — ${alasanCentang}. Periksa tingkat/kolom ini langsung di dokumen asli._`);
-  return diam;
+
+  // ── Lapisan terakhir: PER-KLAIM (T13, 2026-09-28) ──────────────────────────────────────────
+  // Letaknya di sini, SESUDAH semua pemeriksaan di atas lolos, dan itu disengaja: di titik ini
+  // jawaban hari ini dilepas apa adanya sebagai VERIFIED. Karena lapisan ini hanya bekerja pada
+  // jalur `diam`, ia cuma bisa MEMPERKETAT — tak ada satu pun jawaban yang hari ini diturunkan
+  // bisa menjadi lebih longgar karenanya. Arah gagal-aman berkas ini tetap utuh.
+  //
+  // Celah yang ditutup: jawaban yang menyebut Sumber dengan benar, angka dan halamannya sah, tetapi
+  // menyelipkan satu-dua kalimat dari pengetahuan umum model — bentuk Item 70 pada tingkat kalimat.
+  // `periksaLabelSumber` menilai jawaban sebagai satu gumpalan, jadi kalimat itu ikut terstempel.
+  const putusan = putuskanKlaim(tampil, isiDokumen);
+  if (putusan.putusan === 'diam') return diam;
+
+  const sorot = ringkasTakBersandar(putusan.takBersandar);
+  if (putusan.putusan === 'hipotesis') {
+    return turunkan(putusan.alasan, `_Catatan sistem: label VERIFIED diturunkan — ${putusan.alasan}. Periksa langsung di dokumen: ${sorot}._`);
+  }
+  return {
+    jawaban: teks.split(LABEL_VERIFIED).join(LABEL_PARSIAL),
+    dikoreksi: true,
+    alasan: putusan.alasan,
+    catatan: `_Catatan sistem: label VERIFIED diturunkan menjadi PARTIAL — ${putusan.alasan}. Yang belum ditemukan sandarannya: ${sorot}. Bagian selebihnya tetap bersandar pada dokumen._`,
+    label: LABEL_PARSIAL
+  };
 }
 
 /** Dipakai jalur non-stream: mengoreksi teks sekaligus mencatat alasannya. */

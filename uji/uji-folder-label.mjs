@@ -13,10 +13,20 @@ execFileSync(process.execPath, [path.join(akar, 'frontend/node_modules/esbuild/b
 const L = await import(pathToFileURL(keluar).href + '?v=' + Date.now());
 const F = await import(pathToFileURL(path.join(akar, 'frontend/src/core/runtime/services/folderKerjaAlat.js')).href + '?v=' + Date.now());
 const A = require(path.join(akar, 'frontend/electron/alatFolder.cjs'));
-console.log('uji-folder-label v1');
+console.log('uji-folder-label v2');
 let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}`); if (!ok) gagal++; };
 
-const ENGINE = 'D:/SLAMET/other/gabut/engine';
+// Folder ini DI LUAR repo, jadi ia bisa berubah tanpa satu pun commit di sini — dan itu sudah terjadi:
+// `gabut/engine` diganti nama menjadi `gabut/engine-vector` pada 24 Sep 2026, dan uji ini diam-diam
+// merah selama empat hari sampai ketahuan saat menjalankan seluruh berkas uji (28 Sep). Karena itu
+// sekarang: alamatnya dicari, dan bila tak ada ujinya DILEWATI — bukan gagal — seperti aturan
+// `uji/data-lokal/` di uji/README.md.
+const KANDIDAT_ENGINE = ['D:/SLAMET/other/gabut/engine-vector', 'D:/SLAMET/other/gabut/engine'];
+const ENGINE = KANDIDAT_ENGINE.find((p) => fs.existsSync(path.join(p, 'core/math.go')));
+if (!ENGINE) {
+  console.log(`DILEWATI — folder Vektor Engine tidak ada di laptop ini (dicari: ${KANDIDAT_ENGINE.join(', ')})`);
+  process.exit(0);
+}
 const hasil1 = [A.jalankanAlat(ENGINE, { alat: 'folder_list', alamat: '.' })];
 const pesan1 = F.susunPesanHasil(hasil1, { putaran: 1, pertanyaanAsli: 'cari CosineSimilarity' });
 const hasil2 = [A.jalankanAlat(ENGINE, { alat: 'folder_read', alamat: 'core/math.go' }), A.jalankanAlat(ENGINE, { alat: 'folder_search', kueri: 'CosineSimilarity', alamat: '.' })];
@@ -25,7 +35,11 @@ const pesan2 = F.susunPesanHasil(hasil2, { putaran: 2, pertanyaanAsli: 'cari Cos
 const s = F.sumberDariHasilAlat([pesan2, 'pertanyaan biasa bukan hasil alat', pesan1]);
 cek(s.judul.length === 1 && s.judul[0] === 'core/math.go', `judul sumber = berkas yang dibaca saja (${s.judul.join(', ')})`);
 cek(s.isi.some((t) => t.includes('func CosineSimilarity(a, b []float32)')), 'isi berkas terpotong tepat di pembatas');
-cek(s.isi.some((t) => t.includes('core/engine.go:177')), 'hasil pencarian ikut sebagai isi (baris 177)');
+// Dulu baris ini memaku `core/engine.go:177`. Nomor itu bergeser ke 258 saat engine-nya dikembangkan,
+// padahal yang hendak dibuktikan cuma "hasil pencarian ikut masuk sebagai isi" — nomor barisnya kebetulan.
+// Uji yang memaku hal yang mudah bergeser akan merah karena alasan yang bukan pokok persoalannya.
+cek(s.isi.some((t) => /core\/engine\.go:\d+/.test(t) && t.includes('CosineSimilarity')),
+  'hasil pencarian ikut sebagai isi (core/engine.go:<baris>)');
 cek(s.isi.some((t) => t.includes('vektor_wal.log')), 'daftar folder ikut sebagai isi');
 cek(F.sumberDariHasilAlat(['Tolong baca core/math.go']).judul.length === 0, 'pesan pengguna biasa tidak dianggap bukti');
 
