@@ -95,8 +95,11 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
   teks jejak sumber jawaban, bukan trace id; penulis aktif (`verification_service.ts`) tidak pernah menulis trace id.
   Preseden 2026-09-08 (`useDashboardData.js`): kolom `metadata` dibuang dari kueri tanpa mengubah skema.
 - **Status:** ✅ ditutup 2026-09-17 — kueri verifikasi dihapus dari `ExecutionTraceService.js` (tak ada kolom
-  pencocok trace id); build lolos. **Sisa kecil:** pastikan 400 hilang dari konsol sesudah build Vercel / reload
-  desktop. Menampilkan hasil verifikasi di jejak butuh penulis menyimpan trace id (belum diminta).
+  pencocok trace id); build lolos. Menampilkan hasil verifikasi di jejak butuh penulis menyimpan trace id
+  (belum diminta).
+- **Sisa kecil ditutup 2026-09-28** — dibuktikan dari kode, bukan dari menunggu konsol: di seluruh `frontend/src`
+  tinggal **satu** kueri `verification_audit_logs`, yaitu `useDashboardData.js:116`, dan ia memilih
+  `decision,status,failures,execution_time_ms,timestamp` — tak ada `metadata`. Sumber 400 itu sudah tidak ada.
   [log](../project-memory/changelog/2026-09-17-t4-t6-hak-anon-dan-kueri-verifikasi.md)
 
 ## T7 — ✅ Kunci API tersimpan di `agent_logs.metadata` (2026-09-17)

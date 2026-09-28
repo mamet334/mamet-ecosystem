@@ -2,7 +2,9 @@
 
 **Untuk siapa:** AI coding (bukan Engineer — Engineer memakai `INIT.md`). Baca dokumen ini utuh lebih dulu,
 lalu buka **hanya** dokumen yang ditunjuk.
-**Update terakhir:** 2026-09-17 (perampingan; riwayat detail lama: [`INDEX-ROADMAP-ARSIP-2026-09-17.md`](./INDEX-ROADMAP-ARSIP-2026-09-17.md))
+**Update terakhir:** 2026-09-28 (penyelarasan status: baris yang sudah ✅ di dokumen sumbernya tetapi masih
+⚠️/"belum teruji" di sini — lihat catatan di akhir §4; riwayat detail lama:
+[`INDEX-ROADMAP-ARSIP-2026-09-17.md`](./INDEX-ROADMAP-ARSIP-2026-09-17.md))
 
 ## 0. Peran Dokumen & Aturan
 
@@ -26,11 +28,9 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 | 92 Data tabel rekonsiliasi ASN | 📝 Tahap 1–5 ✅ (pratinjau Excel; simpan + versi; tanya-jawab chip Data Tabel, live 5/5 VERIFIED, NIP tidak ke model; laporan kejanggalan per OPD + Excel; PDF pindaian lewat OCR); sisa koreksi pemetaan (ditunda), kejanggalan lewat chat (opsional) | [`ROADMAP-DATA-TABEL-REKONSILIASI-ASN.md`](./ROADMAP-DATA-TABEL-REKONSILIASI-ASN.md) |
 | 93 Kedaulatan data | 📝 temuan RLS "baca semua" ✅ ditutup; Tahap 1 ✅ tombol "Cadangkan data" (13 tabel + vektor, terbukti 13/13 cocok; backup-export lama dihapus); Tahap 2 ✅ uji pulih ke Postgres lokal (13/13, pencarian sama); Tahap 3 embedding lokal & 4 offline penuh jangka panjang | [`ROADMAP-KEDAULATAN-DATA.md`](./ROADMAP-KEDAULATAN-DATA.md) |
 | 90 Pengambilan potongan RAG | ✅ Tahap A–C (recall@8 14/14, bukti Kepbup #1, live); U8a ✅ (RAG Mametlite live + layar kunci + label stream), U10 ✅; sisa utang U4, U6, U7, U8b, mode LITE tak aktif | [`ROADMAP-PENGAMBILAN-POTONGAN-RAG.md`](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) |
-| 89 Konteks potongan RAG | ✅ live (Tahap C Item 90); identitas tabel OCR ✅ | [`ROADMAP-KONTEKS-POTONGAN-RAG.md`](./ROADMAP-KONTEKS-POTONGAN-RAG.md) |
 | 88 Tabel centang PDF (+ sisa 86 OCR massal) | 🟡 Tahap 1–3 ✅; keputusan 3: buku per jabatan **221/221** masuk; 177 ✅, 191/159 keterbatasan; set uji buku penuh **13/14**; sisa BUKU-10 (blok centang miskin kata, sesudah code freeze) | [`ROADMAP-TABEL-CENTANG-PDF.md`](./ROADMAP-TABEL-CENTANG-PDF.md) |
-| 85 Folder kerja Assistant | ✅ Tahap 0–3 selesai: pagar `folder:*`; baca; tulis/edit/hapus-ke-Recycle-Bin; jalankan (daftar izin tanpa shell) — semua lewat dialog izin proses utama; laporan tindakan jujur (catatan kaki dari proses utama, klaim tanpa alat dikoreksi) & berlabel VERIFIED terbukti | [`ROADMAP-FOLDER-KERJA-ASSISTANT.md`](./ROADMAP-FOLDER-KERJA-ASSISTANT.md) |
 | 72 Adaptive Shell (UI multi-device) | 📋 belum dikerjakan | [`roadmap-adaptive-shell.md`](./roadmap-adaptive-shell.md) |
-| 33, 48, 49, 50, 91 Temuan audit tanpa rancangan | ⏳ T1 daftar izin sub-agent di server (arah disetujui; sesudah ganti token Apify) · T2 ✅ dasbor yatim dihapus · T3 ✅ rute mati dihapus · T4 ✅ · T6 ✅ · T7 ✅ kunci API di `agent_logs` (sisa: Owner ganti kunci) · T8 ✅ perintah Engineer tanpa shell + profil peran (jalur PowerShell/`run-terminal-command` dihapus; aturan Engineer kembali sampai ke model; hasil mesin bukan kueri Web/RAG/memori) · T10 sumber pengetahuan Engineer (Tahap 1 ✅ RAG Engineer hanya space "Pengetahuan Engineer"; TUGAS-01 ✅ live 1 baris; riwayat chat setelah muat ulang & urutan riwayat diperbaiki; **prosedur kerja Engineer** ditulis di `constitution/28` + RULE 0 + 3 penjaga kode — TUGAS-01..04 ✅ live — TUGAS-02 lulus patch tapi gagal pembuktian `git grep`, TUGAS-04 11/12 klaim terbukti dengan model kuat; **Engineer belum siap dari aplikasi terpasang** (akar repo & setelan terpisah); Tahap 2–3 belum) · T11 `check-keys` terbuka bagi kunci anon — **bobot naik 24 Sep**: kunci anon tertulis di repo PUBLIK, jadi jalan masuknya cukup lewat GitHub (bukan kebocoran; RLS tetap penjaganya) · T9 ✅ knowledge_manager dihapus (workspace dikelola dari UI Research App) · T12 membaca berkas = mengirimnya ke penyedia model, tanpa pemberitahuan · T13 CHIMERA ditolak; lapisan per-klaim leksikal dimatikan; hakim bayangan hidup & terbukti — keputusan menaikkannya jadi penentu label belum diambil · T14 satu model, 8 penyedia: gaya/biaya/latensi berayun tanpa kode berubah | [`ROADMAP-TEMUAN-TERBUKA.md`](./ROADMAP-TEMUAN-TERBUKA.md) |
+| 33, 48, 49, 50, 91 Temuan audit tanpa rancangan | ⏳ T1 daftar izin sub-agent di server (arah disetujui; sesudah ganti token Apify) · T2 ✅ dasbor yatim dihapus · T3 ✅ rute mati dihapus · T4 ✅ · T6 ✅ · T7 ✅ kunci API di `agent_logs` (sisa: Owner ganti kunci) · T8 ✅ perintah Engineer tanpa shell + profil peran (jalur PowerShell/`run-terminal-command` dihapus; aturan Engineer kembali sampai ke model; hasil mesin bukan kueri Web/RAG/memori) · T10 sumber pengetahuan Engineer (Tahap 1 ✅ RAG Engineer hanya space "Pengetahuan Engineer"; TUGAS-01 ✅ live 1 baris; riwayat chat setelah muat ulang & urutan riwayat diperbaiki; **prosedur kerja Engineer** ditulis di `constitution/28` + RULE 0 + 3 penjaga kode — TUGAS-01..04 ✅ live — TUGAS-02 lulus patch tapi gagal pembuktian `git grep`, TUGAS-04 11/12 klaim terbukti dengan model kuat; **Engineer sudah siap dari aplikasi terpasang sejak 28 Sep** — akar repo dipilih Owner, terbukti live di .exe (Tahap 5, `ROADMAP-ENGINEER-MANDIRI.md`); setelan & riwayat tetap terpisah dari `npm run desktop`; Tahap 2–3 belum) · T11 `check-keys` terbuka bagi kunci anon — **bobot naik 24 Sep**: kunci anon tertulis di repo PUBLIK, jadi jalan masuknya cukup lewat GitHub (bukan kebocoran; RLS tetap penjaganya) · T9 ✅ knowledge_manager dihapus (workspace dikelola dari UI Research App) · T12 membaca berkas = mengirimnya ke penyedia model, tanpa pemberitahuan · T13 CHIMERA ditolak; lapisan per-klaim leksikal dimatikan; hakim bayangan hidup & terbukti — keputusan menaikkannya jadi penentu label belum diambil · T14 satu model, 8 penyedia: gaya/biaya/latensi berayun tanpa kode berubah | [`ROADMAP-TEMUAN-TERBUKA.md`](./ROADMAP-TEMUAN-TERBUKA.md) |
 
 ---
 
@@ -128,9 +128,9 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 45. ✅ `match_memories` — Kebocoran Memori Lintas Pengguna (ranjau, urutan perbaikan menentukan) — [log](../project-memory/changelog/2026-09-10-pencarian-memori-semantik-akhirnya-hidup.md)
 46. ✅ Skema `user_memories.embedding` Masih Tertinggal di 768 — Pencarian Memori Semantik Belum Pernah Bisa Hidup — [log](../project-memory/changelog/2026-09-10-pencarian-memori-semantik-akhirnya-hidup.md)
 47. ✅ Circuit Breaker Gagal-Terbuka — Perlindungan Dompet Menguap Saat Ada Gangguan — riwayat: arsip
-48. ⚠️ Instrumentasi Sistem Ini Terputus dari Sistemnya — Enam Dasbor Yatim (~1.200 baris) — [rancangan](./ROADMAP-TEMUAN-TERBUKA.md) T2
-49. ⚠️ Ranjau di Kode Mati — Aman Sekarang, Merusak Kalau Disambungkan — [rancangan](./ROADMAP-TEMUAN-TERBUKA.md) T3
-50. ✅ Sisa Temuan Kecil (2026-09-10) — [rancangan](./ROADMAP-TEMUAN-TERBUKA.md) T4 terbuka
+48. ✅ Instrumentasi Sistem Ini Terputus dari Sistemnya — Enam Dasbor Yatim (~1.200 baris) — [rancangan](./ROADMAP-TEMUAN-TERBUKA.md) T2 ditutup
+49. ✅ Ranjau di Kode Mati — Aman Sekarang, Merusak Kalau Disambungkan — [rancangan](./ROADMAP-TEMUAN-TERBUKA.md) T3 ditutup
+50. ✅ Sisa Temuan Kecil (2026-09-10) — [rancangan](./ROADMAP-TEMUAN-TERBUKA.md) T4 ditutup
 51. ✅ Kepemilikan Pemakaian & Kesehatan API Key — BYOK Wajib (2026-09-10) — riwayat: arsip
 52. ✅ Jalur Upload RAG Research App Tak Pernah Memvektorkan — dan Satu Policy RLS `USING (true)` (2026-09-10) — [log](../project-memory/changelog/2026-09-10-jalur-upload-rag-dan-policy-rls-terbuka.md)
 53. ✅ Groq 404 Terbukti: Provider Ketiga yang Modelnya Dipensiunkan Diam-Diam (2026-09-10) — [log](../project-memory/changelog/2026-09-10-groq-model-dipensiunkan-provider-ketiga.md)
@@ -172,6 +172,35 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 89. ✅ Konteks Potongan RAG — Bagian Tidak Tercampur & Judul Konteks (2026-09-17) — [rancangan](./ROADMAP-KONTEKS-POTONGAN-RAG.md) · [log](../project-memory/changelog/2026-09-17-konteks-potongan-bagian-dan-identitas.md)
 90. ✅ Pengambilan Potongan RAG — Diukur Dulu, Pola Standar Hanya Bila Cocok (2026-09-17) — [rancangan](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) · [log](../project-memory/changelog/2026-09-17-utang-lama-rag-dan-kode-mati.md) · [log A](../project-memory/changelog/2026-09-17-uji-pengambilan-potongan-baseline.md) · [log B](../project-memory/changelog/2026-09-17-pencarian-gabungan-vektor-kata.md) · [log C](../project-memory/changelog/2026-09-17-konteks-potongan-bagian-dan-identitas.md)
 92. 📝 Data Tabel Rekonsiliasi ASN — Hitung & Saring oleh Kode, Bukan RAG (2026-09-21) — [rancangan](./ROADMAP-DATA-TABEL-REKONSILIASI-ASN.md) · [log Tahap 1](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap1-pembaca-pratinjau.md) · [log Tahap 2](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap2-simpan-versi.md) · [log Tahap 3](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap3-tanya-jawab.md) · [log Tahap 4](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap4-kejanggalan-per-opd.md) · [log Tahap 5](../project-memory/changelog/2026-09-21-data-tabel-asn-tahap5-pdf-pindaian.md)
-91. ✅ Hapus Dokumen RAG — Cek Baris Terhapus & Muat Ulang Daftar (2026-09-17) — [log](../project-memory/changelog/2026-09-17-hapus-dokumen-cek-baris-terhapus.md) · web live ✅, hapus desktop/mametlite belum teruji
+91. ✅ Hapus Dokumen RAG — Cek Baris Terhapus & Muat Ulang Daftar (2026-09-17) — [log](../project-memory/changelog/2026-09-17-hapus-dokumen-cek-baris-terhapus.md) · web live ✅; T5 ditutup — cascade `document_chunks` dicek di DB live, potongan yatim 0
 93. 📝 Kedaulatan Data — Salinan Sendiri yang Terbukti Bisa Dipulihkan, lalu Postgres Lokal (2026-09-22) — [rancangan](./ROADMAP-KEDAULATAN-DATA.md) · [log RLS](../project-memory/changelog/2026-09-22-rls-tutup-baca-semua.md) · [log Tahap 1](../project-memory/changelog/2026-09-22-cadangan-data-lengkap.md) · [log Tahap 2](../project-memory/changelog/2026-09-22-uji-pulih-postgres-lokal.md)
-94. ✅ Jawaban Mendarat di Percakapan yang Salah — Identitas Kiriman (2026-09-28) — [log](../project-memory/changelog/2026-09-28-jawaban-masuk-percakapan-salah.md) · dilaporkan Owner; uji + build lolos, **belum diuji live**
+94. ✅ Jawaban Mendarat di Percakapan yang Salah — Identitas Kiriman (2026-09-28) — [log](../project-memory/changelog/2026-09-28-jawaban-masuk-percakapan-salah.md) · dilaporkan Owner; **terbukti live 28 Sep** — jawaban tidak lagi tertukar. Batas yang diterima Owner: jawaban yang belum selesai belum muncul di riwayat
+
+---
+
+## 5. Penyelarasan status 2026-09-28 — apa yang diubah dan kenapa
+
+Delapan baris di dokumen ini menyatakan status yang **berbeda dari dokumen sumbernya**. Tidak ada kode yang
+disentuh; tidak ada pekerjaan yang dinyatakan selesai tanpa bukti. Yang berubah hanya baris yang tertinggal.
+
+| Baris | Dulu tertulis | Sumber yang membuktikan |
+|---|---|---|
+| Item 48 | ⚠️ dasbor yatim | `ROADMAP-TEMUAN-TERBUKA.md` T2 ✅ ditutup |
+| Item 49 | ⚠️ ranjau kode mati | T3 ✅ ditutup |
+| Item 50 | "T4 terbuka" | T4 ✅ ditutup |
+| Item 91 | "hapus desktop/mametlite belum teruji" | T5 ✅ — cascade dicek di DB live, potongan yatim 0 |
+| Item 94 | "belum diuji live" | diuji Owner 28 Sep; jawaban tidak lagi tertukar |
+| §1 Item 85 & 89 | ada di **Pekerjaan Terbuka** | keduanya ✅ penuh — barisnya tetap ada di §4 |
+| §1 baris T10 | "Engineer belum siap dari aplikasi terpasang" | Tahap 5 ✅ terbukti live di .exe, 28 Sep |
+| Tanggal kepala | 2026-09-17 | tertinggal 11 hari |
+
+**Item 90 sengaja TIDAK dipindah** dari Pekerjaan Terbuka walau bertanda ✅: barisnya masih menyebut utang
+U4, U6, U7, U8b dan mode LITE yang belum aktif.
+
+**Kenapa ini bukan kosmetik.** Dokumen ini titik masuk AI coding — yang membacanya bukan hanya Owner, tetapi
+setiap sesi berikutnya. Baris yang salah status membuat pekerjaan yang sudah selesai dikerjakan ulang, atau
+yang belum selesai dilewati. Itu sudah pernah terjadi: sebuah dokumen audit dikutip dalam bentuk waktu
+sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
+
+**Yang masih menunggu keputusan Owner** (tidak diubah di sini): T11, T12, T13, T14, `Engineer:AnalyzeTask` &
+`ReviewChanges` tanpa pemancar, dan Item 72. Masing-masing: dikerjakan, atau ditutup dengan alasan tertulis.
