@@ -584,21 +584,62 @@ ipcMain.handle('eng:git-checkpoint', async (_event, { taskId, files } = {}) => {
   }
 });
 
+/** Checkpoint terbaru bila label tidak disebut. */
+function labelCheckpointTerbaru() {
+  const semua = fs.existsSync(folderCheckpoint()) ? fs.readdirSync(folderCheckpoint()).filter((n) => n.endsWith('.json')) : [];
+  semua.sort((a, b) => fs.statSync(path.join(folderCheckpoint(), b)).mtimeMs - fs.statSync(path.join(folderCheckpoint(), a)).mtimeMs);
+  return semua.length ? semua[0].replace(/\.json$/, '') : '';
+}
+
+/**
+ * Menulis kembali isi asli tepat berkas yang di-checkpoint. TANPA dialog.
+ *
+ * Dipakai dua pihak dengan syarat yang berbeda: tombol Undo Owner (`eng:git-rollback`) BERTANYA dulu,
+ * sedangkan pemulihan otomatis Tahap 6 (`eng:verifikasi-patch`) tidak boleh bertanya — kalau ia menunggu
+ * klik, berkas yang merusak uji tetap di disk selama Owner tidak melihat layar, dan di mode pengembangan
+ * layarnya bahkan sudah dimuat ulang oleh Vite.
+ */
+async function pulihkanDariCheckpoint(label) {
+  const berkasCp = label ? path.join(folderCheckpoint(), `${label}.json`) : '';
+  if (!berkasCp || !fs.existsSync(berkasCp)) return { success: false, error: 'Checkpoint tidak ditemukan. Rollback tidak bisa dilakukan.' };
+  const cp = JSON.parse(fs.readFileSync(berkasCp, 'utf8'));
+  const hasil = [];
+  for (const b of cp.berkas || []) {
+    const p = pagarRepo(akarRepo(), b.alamat);
+    if (!p.ok) { hasil.push(`❌ ${b.alamat}: ${p.alasan}`); continue; }
+    if (b.ada) {
+      const sementara = `${p.alamat}.mamet-rollback-${process.pid}.tmp`;
+      fs.writeFileSync(sementara, Buffer.from(b.isi, 'base64'));
+      fs.renameSync(sementara, p.alamat);
+      hasil.push(`✅ ${b.alamat} dikembalikan`);
+    } else if (fs.existsSync(p.alamat)) {
+      await shell.trashItem(p.alamat);
+      hasil.push(`✅ ${b.alamat} (berkas baru) dipindah ke Recycle Bin`);
+    } else {
+      hasil.push(`• ${b.alamat} sudah tidak ada`);
+    }
+  }
+  fs.unlinkSync(berkasCp);
+  const gagal = hasil.some((h) => h.startsWith('❌'));
+  console.log(`[ENG-ROLLBACK] ${gagal ? '⚠️' : '✅'} ${label}: ${hasil.join(' | ')}`);
+  return { success: !gagal, output: hasil.join('\n'), error: gagal ? hasil.filter((h) => h.startsWith('❌')).join('\n') : undefined };
+}
+
+/** Isi checkpoint untuk ditampilkan di dialog — Owner tidak bisa menilai yang tidak ia lihat. */
+function isiCheckpoint(label) {
+  const berkasCp = label ? path.join(folderCheckpoint(), `${label}.json`) : '';
+  if (!berkasCp || !fs.existsSync(berkasCp)) return null;
+  try { return JSON.parse(fs.readFileSync(berkasCp, 'utf8')); } catch { return null; }
+}
+
 // 2b. Rollback — Owner mengembalikan patch: menulis ulang isi asli tepat berkas yang di-checkpoint.
 ipcMain.handle('eng:git-rollback', async (_event, { checkpointLabel } = {}) => {
   const belum = butuhAkarRepo();
   if (belum) return belum;
   try {
-    let label = labelAman(checkpointLabel);
-    if (!label) {
-      // Tanpa label: checkpoint terbaru.
-      const semua = fs.existsSync(folderCheckpoint()) ? fs.readdirSync(folderCheckpoint()).filter((n) => n.endsWith('.json')) : [];
-      semua.sort((a, b) => fs.statSync(path.join(folderCheckpoint(), b)).mtimeMs - fs.statSync(path.join(folderCheckpoint(), a)).mtimeMs);
-      label = semua.length ? semua[0].replace(/\.json$/, '') : '';
-    }
-    const berkasCp = label ? path.join(folderCheckpoint(), `${label}.json`) : '';
-    if (!berkasCp || !fs.existsSync(berkasCp)) return { success: false, error: 'Checkpoint tidak ditemukan. Rollback tidak bisa dilakukan.' };
-    const cp = JSON.parse(fs.readFileSync(berkasCp, 'utf8'));
+    const label = labelAman(checkpointLabel) || labelCheckpointTerbaru();
+    const cp = isiCheckpoint(label);
+    if (!cp) return { success: false, error: 'Checkpoint tidak ditemukan. Rollback tidak bisa dilakukan.' };
     const daftar = (cp.berkas || []).map((b) => `• ${b.alamat}${b.ada ? '' : ' (berkas baru — dipindah ke Recycle Bin)'}`).join('\n');
 
     const confirm = await dialog.showMessageBox(mainWindow, {
@@ -613,26 +654,7 @@ ipcMain.handle('eng:git-rollback', async (_event, { checkpointLabel } = {}) => {
     });
     if (confirm.response !== 1) return { success: false, cancelled: true, message: 'Rollback dibatalkan.' };
 
-    const hasil = [];
-    for (const b of cp.berkas || []) {
-      const p = pagarRepo(akarRepo(), b.alamat);
-      if (!p.ok) { hasil.push(`❌ ${b.alamat}: ${p.alasan}`); continue; }
-      if (b.ada) {
-        const sementara = `${p.alamat}.mamet-rollback-${process.pid}.tmp`;
-        fs.writeFileSync(sementara, Buffer.from(b.isi, 'base64'));
-        fs.renameSync(sementara, p.alamat);
-        hasil.push(`✅ ${b.alamat} dikembalikan`);
-      } else if (fs.existsSync(p.alamat)) {
-        await shell.trashItem(p.alamat);
-        hasil.push(`✅ ${b.alamat} (berkas baru) dipindah ke Recycle Bin`);
-      } else {
-        hasil.push(`• ${b.alamat} sudah tidak ada`);
-      }
-    }
-    fs.unlinkSync(berkasCp);
-    const gagal = hasil.some((h) => h.startsWith('❌'));
-    console.log(`[ENG-ROLLBACK] ${gagal ? '⚠️' : '✅'} ${label}: ${hasil.join(' | ')}`);
-    return { success: !gagal, output: hasil.join('\n'), error: gagal ? hasil.filter((h) => h.startsWith('❌')).join('\n') : undefined };
+    return await pulihkanDariCheckpoint(label);
   } catch (err) {
     return { success: false, error: err.message };
   }
@@ -826,6 +848,62 @@ ipcMain.handle('engineer:uji-klaim', async (_event, permintaan) => {
   } finally {
     try { fs.unlinkSync(alamatSkrip); } catch { /* berkas sementara — abaikan */ }
   }
+});
+
+// =============================================
+// TAHAP 6 — VERIFIKASI PATCH YANG DIJALANKAN (ROADMAP-ENGINEER-MANDIRI, 2026-09-28)
+//
+// Seluruh langkahnya ada DI SINI, satu panggilan, dengan sengaja: di `npm run desktop`, menulis berkas
+// aplikasi memicu Vite memuat ulang halaman, dan layar yang menunggu hasil uji mati di tengah jalan —
+// persis laporan patch yang hilang 24 September. Yang tidak boleh ikut mati adalah PEMULIHANNYA. Jadi
+// jalankan-uji → pulihkan → jalankan-ulang-yang-gagal selesai di proses utama, apa pun nasib layarnya.
+//
+// Langkah terakhir (menjalankan ULANG berkas yang gagal sesudah pemulihan) bukan kemewahan: tanpa itu,
+// satu berkas uji yang sudah merah sebelum patch akan memulihkan SETIAP patch yang benar, selamanya.
+// `uji-folder-label` merah diam-diam empat hari — itu keadaan nyata, bukan kemungkinan teoretis.
+// =============================================
+const BATAS_UJI_S = { semua: 300, ulang: 120 };
+
+async function jalankanBerkasUji(node, daftar, waktuS) {
+  const runner = path.join(akarRepo(), 'uji', 'jalankan-semua.mjs');
+  if (!fs.existsSync(runner)) return { galat: 'uji/jalankan-semua.mjs tidak ada di akar repo yang dipilih' };
+  // JSON lewat berkas, bukan keluaran: keluaran perintah dipotong pada 20 KB, dan JSON terpotong akan
+  // terbaca sebagai "verifikasi gagal" untuk patch yang sebenarnya selamat.
+  const alamatHasil = path.join(app.getPath('temp'), `mamet-uji-${Date.now()}.json`);
+  try {
+    const h = await jalankanProses(node, [runner, `--keluar=${alamatHasil}`, ...daftar], {
+      cwd: akarRepo(), env: envBersih(process.env), waktuS,
+    });
+    if (h.galat) return { galat: h.galat };
+    if (h.habisWaktu) return { galat: `uji melewati batas waktu ${waktuS} detik` };
+    if (!fs.existsSync(alamatHasil)) return { galat: 'penjalan uji tidak menulis hasil' };
+    try { return JSON.parse(fs.readFileSync(alamatHasil, 'utf8')); }
+    catch (e) { return { galat: `hasil uji tidak terbaca: ${e.message}` }; }
+  } finally {
+    try { fs.unlinkSync(alamatHasil); } catch { /* berkas sementara — abaikan */ }
+  }
+}
+
+ipcMain.handle('eng:verifikasi-patch', async (_event, { checkpointRef } = {}) => {
+  const belum = butuhAkarRepo();
+  if (belum) return { sesudahPatch: { galat: belum.error } };
+
+  const node = cariExe('node', akarRepo());
+  if (!node) return { sesudahPatch: { galat: 'node tidak terpasang (verifikasi patch butuh node)' } };
+
+  const sesudahPatch = await jalankanBerkasUji(node, [], BATAS_UJI_S.semua);
+  const gagal = ((sesudahPatch && sesudahPatch.gagal) || []).map((g) => g.nama);
+  console.log(`[ENG-VERIFIKASI] ${sesudahPatch.galat ? `galat: ${sesudahPatch.galat}` : `${sesudahPatch.lulus}/${sesudahPatch.total} lulus, ${gagal.length} gagal`}`);
+  if (sesudahPatch.galat || !gagal.length) return { sesudahPatch, dipulihkan: false };
+
+  const label = labelAman(checkpointRef) || labelCheckpointTerbaru();
+  let pulih = { success: false, error: 'checkpoint tidak ada — berkas tidak bisa dikembalikan' };
+  try { pulih = await pulihkanDariCheckpoint(label); }
+  catch (e) { pulih = { success: false, error: e.message }; }
+  if (!pulih.success) return { sesudahPatch, dipulihkan: false, galatPulih: pulih.error };
+
+  const sesudahPulih = await jalankanBerkasUji(node, gagal, BATAS_UJI_S.ulang);
+  return { sesudahPatch, sesudahPulih, dipulihkan: true };
 });
 
 ipcMain.handle('engineer:jalankan', async (_event, perintah) => {

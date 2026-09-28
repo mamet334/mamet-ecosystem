@@ -7,9 +7,15 @@ atau `N GAGAL` di baris terakhir dan keluar dengan kode 0/1.
 # satu berkas
 node uji/uji-konteks-chat.mjs
 
-# semua (±27 detik untuk 43 berkas)
-cd uji && for f in uji-*.mjs uji-*.cjs; do printf '%-42s ' "$f"; node "$f" | tail -1; done
+# semua (±17 detik untuk 51 berkas) — inilah yang dipakai verifikasi patch Tahap 6
+node uji/jalankan-semua.mjs
 ```
+
+`jalankan-semua.mjs` mencetak kemajuan ke stderr dan satu baris `HASIL_UJI {…}` ke stdout; `--keluar=<berkas>`
+menulis JSON-nya ke berkas (dipakai proses utama, yang memotong keluaran perintah pada 20 KB). Berkas
+`uji-*.js` **tidak** dijalankan — ia modul konsol DevTools, bukan uji baris perintah — tetapi namanya tetap
+dilaporkan di `takDijalankan`, karena pengecualian yang diam adalah cara `uji-folder-label` merah tanpa
+ketahuan selama empat hari.
 
 ---
 
@@ -75,6 +81,11 @@ Ketiganya lahir dari kegagalan nyata; rinciannya di `constitution/28`.
 2. **Jangan menguji cermin** (langkah 8b). Menyalin logika ke dalam berkas uji lalu menguji salinannya akan
    tetap hijau walau kode aslinya berubah. Kalau logikanya terkurung di komponen React, pindahkan keluar
    supaya bisa diimpor — pola yang sudah terbukti di `pemulihanChat.js`, `KonteksChat.js`, `IngatanTemuan.js`.
+
+   Bila benar-benar tidak ada jalan lain, tulis satu baris `UJI-CERMIN:` di berkas itu beserta alasannya.
+   Penanda itu dibaca `jalankan-semua.mjs`, dan berkasnya **tidak dihitung sebagai bukti keselamatan patch**
+   oleh verifikasi Tahap 6 — jumlahnya ikut dilaporkan walau semuanya hijau. Menandai bukan izin untuk
+   menambah uji cermin; ia membuat utangnya terlihat.
 3. **Berkas uji yang diubah diberi nama baru + penanda versi** yang dicetak saat dijalankan
    (mis. `console.log('uji-konteks-chat v4')`), supaya terlihat versi mana yang barusan berjalan.
 

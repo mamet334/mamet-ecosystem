@@ -47,7 +47,10 @@ const pesanPercakapan = [
   { role: 'user', content: 'perbaiki ulang komentar itu' },
   { role: 'model', content: 'Baik, ini patchnya.' },
 ];
-// Tiruan useMemo yang sama persis dengan kode.
+// UJI-CERMIN: tiruan useMemo di ConversationEngine — "sama persis dengan kode" hanya pada hari ia ditulis.
+// Ia memanggil ambilBlokTemuan/gabungTemuan yang sungguhan, jadi keduanya benar-benar terjaga; yang TIDAK
+// terjaga adalah penyaringan di sekitarnya (role model, lewati isTemuan, syarat <temuan). Bila useMemo
+// aslinya berubah, berkas ini tetap hijau. Tahap 6 tidak menghitungnya sebagai bukti keselamatan patch.
 const hitungBelumSimpan = (messages, tersimpan) => {
   const semua = [];
   for (const p of messages) {

@@ -18,6 +18,7 @@
  */
 import { isImmutableFile, isProtectedFile } from './CapabilityGuard.js';
 import { simpanCatatanPatch, hapusCatatanPatch } from './CatatanPatch.js';
+import { laporanVerifikasi, putusanVerifikasi } from './VerifikasiPatch.js';
 
 /**
  * @param {Object} patch
@@ -160,14 +161,44 @@ export async function executePatchApplication(patch, approvedFiles = [], deps) {
       console.warn('[Engineer] Gagal menyimpan ke Project Memory:', e);
     }
 
+    // =============================================
+    // TAHAP 6 — VERIFIKASI YANG DIJALANKAN (2026-09-28)
+    //
+    // Pertanyaannya berubah dari "apakah patch ini TAMPAK aman" menjadi "apakah sistem ini MASIH BENAR
+    // sesudah patch". Itu baru mungkin karena checkpoint sudah wajib di atas: patch boleh diterapkan
+    // dulu, lalu diputuskan. Seluruh langkahnya (jalankan uji → pulihkan → jalankan ulang yang gagal)
+    // dikerjakan proses utama dalam satu panggilan, supaya muat ulang Vite tidak membatalkan pemulihan.
+    //
+    // Dilewati bila tidak ada satu berkas pun yang benar-benar ditulis — tidak ada yang perlu dijaga —
+    // dan di luar Electron (web/Mametlite) tempat node tidak ada.
+    // =============================================
+    let verifikasi = null;
+    let dipulihkan = false;
+    if (successCount > 0 && window.electronAPI?.verifikasiPatch) {
+      let v = null;
+      try { v = await window.electronAPI.verifikasiPatch(checkpointRef); }
+      catch (e) { v = { sesudahPatch: { galat: e.message } }; }
+      dipulihkan = !!v?.dipulihkan;
+      verifikasi = {
+        status: putusanVerifikasi(v?.sesudahPatch).status,
+        dipulihkan,
+        laporan: laporanVerifikasi(v || {}),
+      };
+      console.log(`[Engineer] 🧪 Verifikasi patch: ${verifikasi.status}${dipulihkan ? ' — berkas DIKEMBALIKAN' : ''}`);
+      if (dipulihkan) for (const file of patch.files) if (file.status === 'APPLIED') file.status = 'DIPULIHKAN';
+    }
+
     const result = {
-      success: failCount === 0,
+      success: failCount === 0 && !dipulihkan,
       patchId: patch.id,
       successCount,
       skippedCount,
       failCount,
       files: patch.files,
-      checkpointRef  // dikirim ke UI untuk tombol Rollback
+      // Checkpoint SUDAH TERPAKAI bila berkas dipulihkan otomatis — berkasnya dihapus proses utama,
+      // jadi tombol Undo tidak boleh ditawarkan lagi untuk sesuatu yang sudah dikembalikan.
+      checkpointRef: dipulihkan ? null : checkpointRef,
+      verifikasi
     };
 
     // Selesai tanpa muat ulang → alur biasa melapor sendiri; catatan tak diperlukan lagi.

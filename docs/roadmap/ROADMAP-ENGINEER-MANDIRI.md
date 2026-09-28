@@ -1,8 +1,8 @@
 # ROADMAP — Engineer Mandiri (self-maintenance)
 
 **Dibuat:** 23 September 2026 · **Status:** 🟡 Tahap 2 ✅ · Tahap 3a ✅ · Tahap 3b ✅ (ingatan temuan, live
-24 September). **Tahap 6 baru** (verifikasi patch yang dijalankan) — bergantung pada Tahap 5.
-Berikutnya **Tahap 5**, diusulkan naik mendahului Tahap 1; menunggu keputusan Owner
+24 September) · **Tahap 5 ✅ terbukti live 28 September** · **Tahap 6 ✅ kode selesai 28 September**
+(verifikasi patch yang dijalankan — belum diuji live). Sisa: Tahap 1 dan Tahap 4
 
 Lanjutan dari T10 di [`ROADMAP-TEMUAN-TERBUKA.md`](./ROADMAP-TEMUAN-TERBUKA.md). Dasar rancangan ini adalah hasil uji
 Engineer 22–23 September 2026 (TUGAS-01..04), bukan perkiraan.
@@ -185,7 +185,13 @@ di mode yang memuat ulang tiap berkas tersentuh berarti menumpuk lapisan penyang
 
 ---
 
-## Tahap 6 — Verifikasi patch yang DIJALANKAN, bukan dicocokkan (disetujui Owner 24 September 2026)
+## Tahap 6 — Verifikasi patch yang DIJALANKAN, bukan dicocokkan ✅ KODE SELESAI 28 September 2026
+
+> **Keadaan:** kode selesai, 51 berkas uji hijau, `vite build` lolos. **Belum diuji live** — perlu
+> `npm run dist` + pasang, lalu satu patch yang sengaja merusak berkas beruji.
+> Rancangan di bawah adalah rancangan yang disetujui 24 September; **tiga hal berubah saat dikerjakan**,
+> ditulis di bagian "Yang berubah saat dikerjakan" di akhir bab ini.
+
 
 **Masalah.** Ada tiga lapis verifikasi, dan 24 September ketiganya menunjukkan wataknya sekaligus:
 
@@ -276,6 +282,64 @@ karena angkanya terlihat objektif. Owner: *"ini berbahaya karena memberikan rasa
 2. Bila ada usahanya: **pindahkan logikanya keluar dari komponen** supaya bisa diimpor. Pola ini sudah terbukti di
    `pemulihanChat.js`, `KonteksChat.js`, `IngatanTemuan.js` — ketiganya diuji sungguhan, bukan ditiru. Masalahnya
    bukan polanya belum ada, melainkan ia ditinggalkan saat terburu-buru.
+
+**Dikerjakan 28 September:** ketiga berkas diberi penanda `UJI-CERMIN:` yang menyebutkan apa yang ia buktikan dan
+apa yang tidak. Penanda itu **dibaca mesin** — `uji/jalankan-semua.mjs` mengumpulkannya, dan angkanya masuk ke
+laporan verifikasi **juga saat semuanya hijau**, sehingga "51/51 lulus" tidak pernah berarti lebih daripada yang
+sungguh dibuktikan. Nomor 2 (memindahkan logikanya keluar dari komponen) **belum** dikerjakan; itu pekerjaan
+tersendiri per berkas, dan penandanya membuat utang itu terlihat, bukan hilang.
+
+---
+
+### Yang berubah saat dikerjakan (28 September 2026)
+
+Tiga hal, semuanya ditemukan dari kode atau dari menjalankannya — bukan dari memperkirakan.
+
+**1. Rancangan langkah 4b akan memulihkan patch yang BENAR.** Bunyinya *"ada uji gagal → pulihkan"*. Tetapi suite
+ini tidak selalu hijau sebelum patch: `uji-folder-label` merah diam-diam **empat hari** (24–28 September) karena
+folder di luar repo berganti nama. Satu uji yang sudah merah akan memulihkan setiap patch yang benar, selamanya,
+dengan alasan yang terdengar meyakinkan. Menjalankan suite dua kali (sebelum + sesudah) menggandakan ongkos jadi
+±34 detik. Yang dipakai lebih murah dan lebih jujur:
+
+```
+ada yang gagal → pulihkan dari checkpoint
+               → jalankan ULANG hanya berkas yang gagal tadi
+                 masih gagal → sudah rusak SEBELUM patch. Dikatakan begitu.
+                 kini lulus  → patch ini penyebabnya. Dikatakan begitu.
+```
+
+Ongkos tambahannya satu-dua berkas uji (±1 detik), bukan 17 detik.
+
+**2. Seluruh langkah pindah ke proses utama.** Rancangan lama menaruh urutannya di layar. Tetapi di
+`npm run desktop`, menulis berkas aplikasi memicu Vite memuat ulang halaman — layar yang menunggu hasil uji mati
+di tengah jalan, persis laporan patch yang hilang 24 September. Yang tidak boleh ikut mati adalah
+**pemulihannya**. Karena itu jalankan-uji → pulihkan → jalankan-ulang selesai dalam **satu** panggilan
+`eng:verifikasi-patch` di proses utama, apa pun nasib layarnya.
+
+Ini juga menuntut jalur pemulihan **tanpa dialog**: `eng:git-rollback` yang ada selalu bertanya dulu, dan itu
+benar untuk tombol Undo Owner — tetapi pemulihan otomatis yang menunggu klik berarti berkas rusak tetap di disk
+selama Owner tidak melihat layar. `pulihkanDariCheckpoint()` kini dipakai berdua: tombol Undo bertanya dulu lalu
+memanggilnya, jalur otomatis memanggilnya langsung.
+
+**3. Penjalan uji pertama memberi lima MERAH PALSU** — jenis cacat yang paling berbahaya di sini, karena merah
+palsu memulihkan patch yang benar. Keduanya ketahuan pada jalan pertama, bukan dari membaca ulang kode:
+
+| Cacat | Akibat | Perbaikan |
+|---|---|---|
+| stdout & stderr digabung | 5 berkas "gagal" karena peringatan node `MODULE_TYPELESS_PACKAGE_JSON` jadi baris terakhir | putusan dibaca dari **stdout saja**; stderr tetap dilaporkan, tidak pernah memutuskan |
+| berkas `.js` ikut dijalankan | `uji-pengambilan*.js` adalah modul konsol DevTools, dijalankan node ia diam dan tampak gagal | hanya `.mjs`/`.cjs` dijalankan — tetapi yang `.js` **dilaporkan** di `takDijalankan`, tidak disembunyikan |
+
+Pengecualian yang diam adalah cara `uji-folder-label` merah tanpa ketahuan selama empat hari. Karena itu tidak ada
+berkas yang dikeluarkan dari suite tanpa namanya ikut tertulis di laporan.
+
+**Angka sebenarnya, diukur 28 September:** `node uji/jalankan-semua.mjs` → **51 berkas, 16,9 detik**. Roadmap
+menyebut 43 berkas/26,7 detik pada 24 September; suitenya bertambah dan tetap lebih cepat, karena penjalannya
+tidak lagi lewat shell.
+
+**Batas yang tetap terbuka:** di `npm run desktop`, laporan verifikasi bisa hilang dari layar karena Vite memuat
+ulang halaman di tengah jalan. **Pemulihannya tetap terjadi** (itu di proses utama), hanya laporannya yang
+lenyap. Ini tidak ditambal dengan lapisan penyangga keempat — justru itu yang diperingatkan bab ini sejak awal.
+Di aplikasi terpasang, gangguan itu tidak ada.
 
 ---
 

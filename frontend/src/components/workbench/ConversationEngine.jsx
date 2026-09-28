@@ -542,11 +542,17 @@ export default function ConversationEngine({ sessionId }) {
         setLastCheckpoint({ ref: data.checkpointRef, patchId: data.patchId, appliedAt: new Date().toLocaleTimeString('id-ID') });
         setRollbackState('idle');
       }
-      const files = data?.files?.filter(f => f.status === 'APPLIED').map(f => f.path) || [];
-      const successMsg = data?.successCount > 0
-        ? `✅ **Patch Berhasil!** ${data.successCount} file diubah${data.skippedCount > 0 ? `, ${data.skippedCount} dilewati` : ''}.${files.length > 0 ? '\n\n📁 ' + files.join('\n📁 ') : ''}${data.checkpointRef ? '\n\n💾 Checkpoint dibuat — Anda bisa rollback.' : ''}`
-        : `⚠️ Patch selesai tapi ${data?.failCount || 0} file gagal.`;
-      setMessages(prev => [...prev, { role: 'model', content: successMsg, isPatchResult: true, checkpointRef: data?.checkpointRef || null }]);
+      // Tahap 6: berkas yang sudah DIKEMBALIKAN karena uji gagal tidak boleh dilaporkan sebagai "diubah".
+      const dipulihkan = !!data?.verifikasi?.dipulihkan;
+      const files = data?.files?.filter(f => f.status === (dipulihkan ? 'DIPULIHKAN' : 'APPLIED')).map(f => f.path) || [];
+      const successMsg = dipulihkan
+        ? `↩️ **Patch dibatalkan sendiri** — ${files.length} berkas sempat diubah lalu dikembalikan karena berkas uji gagal.${files.length > 0 ? '\n\n📁 ' + files.join('\n📁 ') : ''}`
+        : data?.successCount > 0
+          ? `✅ **Patch Berhasil!** ${data.successCount} file diubah${data.skippedCount > 0 ? `, ${data.skippedCount} dilewati` : ''}.${files.length > 0 ? '\n\n📁 ' + files.join('\n📁 ') : ''}${data.checkpointRef ? '\n\n💾 Checkpoint dibuat — Anda bisa rollback.' : ''}`
+          : `⚠️ Patch selesai tapi ${data?.failCount || 0} file gagal.`;
+      // Laporan verifikasi ditempel APA ADANYA di bawahnya — termasuk keluaran berkas uji yang gagal.
+      const isi = data?.verifikasi?.laporan ? `${successMsg}\n\n---\n\n${data.verifikasi.laporan}` : successMsg;
+      setMessages(prev => [...prev, { role: 'model', content: isi, isPatchResult: true, checkpointRef: data?.checkpointRef || null }]);
     };
     const unsubPatch = eventBus.on('Engineer:PatchApplied', patchAppliedHandler);
     return unsubPatch;

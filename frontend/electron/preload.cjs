@@ -65,6 +65,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   gitCheckpoint: (taskId, files) => ipcRenderer.invoke('eng:git-checkpoint', { taskId, files }),
   // Rollback ke checkpoint terakhir (dipanggil user via tombol Undo)
   gitRollback: (checkpointLabel) => ipcRenderer.invoke('eng:git-rollback', { checkpointLabel }),
+  // Tahap 6 — jalankan seluruh berkas uji sesudah patch ditulis; bila ada yang gagal, berkas DIKEMBALIKAN
+  // sendiri lalu yang gagal dijalankan ulang untuk tahu apakah patch ini memang penyebabnya.
+  verifikasiPatch: (checkpointRef) => ipcRenderer.invoke('eng:verifikasi-patch', { checkpointRef }),
 
 
   // =============================================

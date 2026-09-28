@@ -50,8 +50,12 @@ cek(/\}, \[laporanPatchTertunda, messages\]\);/.test(CE),
 cek(/patchId: laporanPatchTertunda\.patchId/.test(blokJaga),
   'pesan laporan MEMBAWA patchId — tanpa itu pemeriksaan keberadaannya tak pernah benar');
 
-// ---------- perilaku: ditiru sungguhan ----------
-const lap = { patchId: 'PATCH-1', pesan: '✅ **Patch diterapkan**', checkpointRef: 'ENG-CHECKPOINT-1' };
+// ---------- perilaku ----------
+// UJI-CERMIN: `pasang` di bawah adalah SALINAN effect penempelan laporan di ConversationEngine — effect di
+// dalam komponen React tidak bisa diimpor. Ia membuktikan aturannya masuk akal, BUKAN bahwa effect aslinya
+// masih berbunyi begitu; kalau effect-nya berubah, bagian ini tetap hijau. Tahap 6 tidak menghitungnya
+// sebagai bukti keselamatan patch. Yang menjaga effect aslinya adalah pemeriksaan sumber di atas.
+const lap ={ patchId: 'PATCH-1', pesan: '✅ **Patch diterapkan**', checkpointRef: 'ENG-CHECKPOINT-1' };
 const pasang = (pesan) => (pesan.some((m) => m.isPatchResult && m.patchId === lap.patchId)
   ? pesan
   : [...pesan, { role: 'model', content: lap.pesan, isPatchResult: true, patchId: lap.patchId, checkpointRef: lap.checkpointRef }]);

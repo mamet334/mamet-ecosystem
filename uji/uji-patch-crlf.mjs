@@ -48,7 +48,11 @@ const sesudahSeragam = SRC.slice(SRC.indexOf('\n', iSeragam), SRC.indexOf('if (c
 cek(!/changeAsli/.test(sesudahSeragam),
   'tidak ada cabang yang diam-diam kembali memakai teks mentah model', sesudahSeragam.match(/changeAsli[^\n]*/g));
 
-// ---------- perilaku, dijalankan sungguhan ----------
+// ---------- perilaku ----------
+// UJI-CERMIN: `jalankan` di bawah adalah SALINAN jalur cari-ganti PatchGenerator, bukan kodenya sendiri —
+// logikanya terkurung di tengah fungsi panjang sehingga tidak bisa diimpor. Kalau kode aslinya berubah dan
+// salinan ini tidak, bagian ini TETAP HIJAU. Karena itu berkas ini ditandai dan Tahap 6 tidak menghitungnya
+// sebagai bukti keselamatan patch. Yang sungguh menjaga jalur aslinya adalah pemeriksaan sumber di atas.
 const jalankan = (isiBerkas, perubahan) => {
   const pakaiCRLF = isiBerkas.includes('\r\n');
   const seragam = (t) => String(t).replace(/\r\n/g, '\n');
