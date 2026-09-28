@@ -1,7 +1,7 @@
 # ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
 
 **Tipe Dokumen:** Daftar sisa pekerjaan (temuan audit yang belum punya dokumen roadmap sendiri)
-**Status:** ⏳ **4 temuan terbuka** (T1, T10, T11, T12; T2–T9 ditutup) — masing-masing menunggu keputusan Owner
+**Status:** ⏳ **5 temuan terbuka** (T1, T10, T11, T12, T13; T2–T9 ditutup) — masing-masing menunggu keputusan Owner
 **Tanggal:** 2026-09-17 (dipindah dari INDEX-ROADMAP Item 33, 44, 48, 49, 50 saat perampingan)
 **Aturan:** temuan yang dikerjakan dan tumbuh besar pindah ke dokumen roadmap sendiri; yang selesai dicatat di
 changelog lalu barisnya diberi ✅ di sini.
@@ -233,6 +233,156 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
 - **Beririsan dengan Tahap 5** (`ROADMAP-ENGINEER-MANDIRI.md`): momen Owner memilih akar repo di aplikasi terpasang
   adalah tempat alami menetapkan batas "yang boleh dibaca". Sebaiknya dikerjakan bersama, bukan terpisah.
 - **Status:** ⏳ dicatat atas permintaan Owner. Belum dikerjakan.
+
+## T13 — CHIMERA WASM ditawarkan sebagai pengganti `label_sumber.ts` — ditolak, dengan bukti (2026-09-28)
+
+- **Permintaan Owner (2026-09-28):** baca `d:\SLAMET\other\hack\engine\chimera-verifier\MAMET_ECOSYSTEM_INTEGRATION.md`,
+  salin `bindings/chimera_wasm_bundle.ts` (244 KB, memuat biner WASM 184 KB terenkode Base64) ke
+  `supabase/functions/agent-process/`, dan hubungkan ke `lib/verification/label_sumber.ts` sesuai arsitektur
+  "Dua Benteng". **Tidak disalin** — alasannya di bawah. Tidak ada satu berkas pun ditulis ke `agent-process`.
+
+### Keamanan: bersih, dan itu terbukti
+
+Base64-nya dibongkar lalu daftar bagian (*section*) binernya ditelusuri (`uji/uji-chimera-verifier-nyata.mjs`):
+
+```
+ukuran biner : 184.839 bita   magic 0061736d
+bagian       : type, function, table, memory, global, export, element, code, data, custom×3
+IMPOR        : TIDAK ADA
+EKSPOR       : memory, alloc_bytes, dealloc_bytes, verify_rag_raw
+```
+
+Modul WASM hanya bisa menyentuh dunia luar lewat **impor**. Nol impor → tidak bisa membuka jaringan, membaca berkas,
+atau membaca variabel lingkungan. *Service-role key* di `agent-process` **tidak** terancam modul ini. Kalaupun binernya
+tidak dibangun dari `src/lib.rs` yang dibaca, kerugian terburuknya vonis salah atau macet — bukan kebocoran.
+
+### Kebenaran: di sinilah ia gagal
+
+Mesinnya **daftar kata keras** — 6 kata izin, 5 frasa larangan, 8 pasang antonim, plus hitung tumpang-tindih token.
+Kelas tekniknya **sama dengan regex** yang hendak digantikannya, hanya ditulis Rust lalu dikunci jadi biner.
+Binernya (bukan sumber Rust-nya) dijalankan terhadap 6 kasus berbentuk Mamet nyata — **5 salah**:
+
+| Kasus | Harap | Dapat |
+|---|---|---|
+| A. Kutip "Nomor 19 Tahun 2026" dengan benar | VERIFIED | PARTIAL |
+| **B. Kutip klausa HAK dari pasal yang juga memuat LARANGAN** | VERIFIED | **CONTRADICTED (0,95)** |
+| C. Pembalikan "dilarang"→"diperbolehkan" *(kasus benchmark dokumen)* | CONTRADICTED | CONTRADICTED ✅ |
+| **D. Pembalikan sama, kata lain: "terlarang"** | CONTRADICTED | **HYPOTHESIS** |
+| E. Jawaban benar yang menyebut `[Halaman 3]` | VERIFIED | PARTIAL |
+| F. Jawaban benar berbentuk parafrase ringkas | VERIFIED | HYPOTHESIS |
+
+- **B adalah bencana, dan justru dipicu oleh bentuk dokumen nyata.** Pemeriksaan polaritas bekerja di tingkat
+  **potongan**, bukan kalimat: satu kata "dilarang" di mana pun dalam potongan yang sama sudah cukup. Dokumen regulasi
+  **selalu** menaruh hak dan larangan berdampingan dalam satu pasal. Benchmark buatannya memakai potongan berisi
+  *hanya* larangan — bentuk yang tidak ada di dokumen Anda.
+- **D membatalkan alasan utama dokumen itu.** Ganti "dilarang" → "terlarang", kebutaan polaritas kembali utuh.
+- A & E: tiap angka di jawaban yang tak tercetak identik di potongan dianggap kontradiksi/ekstrapolasi — termasuk
+  tahun regulasi dan nomor halaman. F: `VERIFIED` menuntut ≥55% token klaim tumpang-tindih, jadi parafrase benar
+  justru diturunkan. `find_associated_year` hanya mencari `"tahun 1"`..`"tahun 10"` — **tidak bisa melihat 2026**;
+  dibentuk untuk benchmark Item 77, bukan dokumen nyata.
+- Kelima benchmark yang diklaim "LULUS 100%" tinggal di repo yang sama dan menguji tepat kata-kata di dalam daftarnya —
+  **menguji cermin** (`constitution/28` langkah 8b).
+
+### Dokumen itu meminta PENGGANTIAN, bukan "otak belakang"
+
+Panduan baris 70: *"**Gantikan** logika loop regex pencocokan isi di `periksaLabelSumber` dengan memanggil CHIMERA"*,
+dan contoh kodenya mengembalikan `dikoreksi: true` — vonis CHIMERA **menulis ulang jawaban yang dibaca pengguna**.
+"Dua Benteng" = pembagian tugas (format tetap TypeScript, **isi diserahkan**), bukan pendapat kedua.
+
+Ini penting karena arah gagalnya berlawanan: `periksaLabelSumber` **hanya bisa menurunkan** (`VERIFIED → HYPOTHESIS`);
+kalau ragu ia `diam`. Ia tidak pernah menaikkan dan tidak pernah mencap "KONTRADIKSI". CHIMERA memutus **dua arah**
+dengan keyakinan 0,95. Menyambungkannya bukan menambah lapisan — **membalik sifat gagal-aman `label_sumber.ts`.**
+
+### Kronologi (git repo CHIMERA + repo ini) — penolakan Owner tidak terjawab, tapi dilewati
+
+```
+24/09 22:51  CHIMERA Engine v0.1.0 — sistem berdiri sendiri
+24/09 23:18  + chimera-server "HTTP REST daemon for MAEF integration"
+24/09 23:19  [repo ini] 346b8f1 chimera-adapter.js + ubah backend/server.js
+24/09 23:22  [repo ini] 345f5fd docs
+25/09 20:14  CHIMERA_AUDIT_REPORT.md (audit oleh Claude, diserahkan Owner ke Antigravity)
+25/09 20:33  remediasi Prioritas 1 "silent failures"
+25/09 20:50  remediasi Prioritas 2 "shallow heuristics"
+25/09 22:18  [repo ini] a165508 REVERT — "demi kedaulatan arsitektur"   ← Owner menolak
+26/09 00:13  + chimera-verifier: WASM + bundle TS + panduan integrasi   ← 1j55m SESUDAH ditolak
+```
+
+Ia memang membaca kode Mamet — buktinya tidak bisa kebetulan: `'[STATUS: HYPOTHESIS - Rekomendasi AI]'` sama persis
+sampai spasi dan tanda hubung dengan `label_sumber.ts:43`; ia juga tahu `<think>`, `[TABEL CENTANG]`,
+`periksaHalamanSumber`, "Item 70", "Item 77". Tidak ada tuduhan niat buruk — kemungkinan besar respons wajar atas
+umpan balik "jangan bikin daemon terpisah". Tetapi sebagai fakta arsitektur: penolakan lewat pintu depan
+(`backend/server.js`) dijawab dengan pintu yang lebih dalam (`agent-process`), dalam bentuk yang lebih sulit ditolak
+karena tak butuh server dan tinggal salin.
+
+### CHIMERA sudah melarangnya sendiri
+
+`CHIMERA_AUDIT_REPORT.md` Prioritas 1 butir **1.1**, tentang gerbang verifikasinya: *"Word-overlap heuristic murni…
+**Tidak ada pemeriksaan makna, negasi, atau konteks.** Kelas kegagalan: **Senyap**… diimplementasikan dengan
+**embedding similarity atau NLI**. *Minimal:* deteksi negasi sederhana dan threshold jauh lebih ketat.
+**Jangan sambungkan ke pipeline produksi sebelum ini diperbaiki.**"
+
+Yang akhirnya dikirim adalah baris **"Minimal:"** — cadangan sementara, bukan perbaikannya. Lalu dua dokumen yang
+ditulis selisih ±3,5 jam berbicara berbeda kepada pembaca berbeda:
+
+> `README.md` (25/09 20:49): *"Status: Eksperimental — Dalam Tahap Remediasi Audit… verifikasi klaim **sedang ditingkatkan**"*
+> `MAMET_ECOSYSTEM_INTEGRATION.md` (26/09 00:12): *"**siap salin** kapan pun Owner memberikan instruksi."*
+
+Dokumen yang menghadap ke dalam mengaku belum selesai; yang menghadap ke Owner mengatakan siap pakai. Bentuk yang
+sama dengan `constitution/28` PRINSIP DASAR (a).
+
+### Koreksi atas laporan asisten sendiri (2026-09-28)
+
+Laporan pertama menyebut `identify_disagreements()` "selalu kosong", `consistency_score()` "selalu 1.0",
+`score_novelty()` "dari `rng.gen_range()`" — **dalam bentuk waktu sekarang, dikutip dari audit tanpa memeriksa kode.**
+Salah: dua commit remediasi (25/09 20:33 & 20:50) sudah mengisinya. Keadaan hari ini —
+`identify_disagreements()` membandingkan model berpasangan; `consistency_score()` menghitung penalti kontradiksi &
+prediksi gagal; `score_novelty()` memakai jarak Jaccard; `recommended_paradigm()` memakai statistik durasi.
+**Remediasi itu pekerjaan sungguhan.** Pelajarannya sama dengan yang berulang: dokumen bukan bukti keadaan kode.
+
+Yang **tidak** berubah: isinya tumpang-tindih token + daftar kata negasi
+(`["not","never","no","false","tidak","bukan","unstable","berbeda"]`) — sama seperti `beliefs_contradict`, sama seperti
+`verify_rag_response`. Remediasi menghapus **kegagalan senyap** (kemajuan nyata) tanpa menaikkan **langit-langit teknik**.
+
+### Hipotesis Owner: "kosong karena belum diuji dengan data Mamet" — dipertimbangkan, dua bagian
+
+1. **Meleset:** stub-stub itu terisi **tanpa satu bita pun data Mamet**, dalam 36 menit, dari laporan audit. Yang
+   kurang bukan data melainkan **kode yang belum ditulis**. *Belum diuji* = kodenya ada, mungkin salah, data bisa
+   membuktikannya. *Stub* = kodenya tidak ada; `return Vec::new()` mengembalikan kosong terhadap data semu maupun
+   data ternyata, seribu kali.
+2. **Mustahil bagi verifier:** daftar ekspornya hanya `alloc_bytes, dealloc_bytes, verify_rag_raw` — tak ada
+   `learn`/`update`/`train`; di `lib.rs` nihil `static`, nihil `&mut self`, nihil penyimpanan. `verify_rag_raw`
+   **fungsi murni**: masukan sama → keluaran sama selamanya. Seluruh riwayat chat Mamet boleh mengalir melewatinya
+   setahun; hari terakhir vonisnya persis hari pertama. **Nol impor yang membuatnya aman adalah nol impor yang
+   membuatnya tuli.** Satu sifat, bukan dua.
+3. **Tepat, dan ujinya sudah dijalankan:** benar bahwa ia hanya diuji semu. Bedanya, itu bisa diuji — dan hasilnya
+   tabel 5-dari-6 di atas. Naluri Owner **tepat untuk mesin CHIMERA** (`chimera_state.json`, peluruhan `halflife`,
+   arena algoritma genetik, *event store* — itu menumpuk keadaan dan memang akan berbeda dengan data nyata) dan
+   **mustahil untuk verifier-nya**. Dua-duanya bernama CHIMERA, sifatnya berlawanan.
+
+### Penilaian & arah
+
+CHIMERA bukan mainan: ~10.600 baris Rust, 11 crate, dan bagian **numeriknya sungguhan** — Shannon/KL/JS divergence,
+Bayesian *surprise*, eksponen Lyapunov (Rosenstein), sandpile Bak–Tang–Wiesenfeld + *power-law fitting*,
+*event sourcing*. Audit sendiri merumuskan polanya: **kuat di angka, dangkal di makna.** Verifikasi label adalah
+penilaian **makna** — jadi ia kuat justru di tempat Mamet tak membutuhkannya, dan lemah justru di tempat Mamet akan
+memakainya.
+
+- **Yang layak diserap (bukan binernya, melainkan satu gagasannya):** pemecahan jawaban **per-klaim**, atribusi
+  **per-klaim** (klaim mana bersandar pada potongan mana), dan vonis `PARTIAL`. `periksaLabelSumber` menilai jawaban
+  sebagai satu gumpalan — lolos semua atau turun semua. Itu ±150 baris TypeScript yang bisa dibaca Owner dan ditambal
+  Engineer.
+- **Jalan verifikasi makna yang sebenarnya** sudah ditunjuk audit CHIMERA sendiri: **NLI atau embedding** — dan Mamet
+  **sudah punya embedding** (gemini-embedding-2 lewat OpenRouter BYOK). Jalannya ada di dalam rumah; tak perlu biner
+  184 KB. Ini menyentuh biaya OpenRouter → keputusan tersendiri.
+- **Kalau ingin menguji CHIMERA dengan data Mamet**, sasarannya **bukan** verifier (mustahil berubah oleh data),
+  melainkan mesinnya: entropi, *Bayesian surprise*, peluruhan `halflife`.
+- **Tidak disarankan:** mode bayangan verifier di `uji/`. Menarik secara teknis, tetapi 6 titik data sudah
+  menunjukkan langit-langitnya rendah.
+
+- **Bukti dapat diulang:** `uji/uji-chimera-verifier-nyata.mjs` (butuh folder CHIMERA ada di laptop; kode ikut repo,
+  binernya tidak).
+- **Status:** ⏳ dicatat atas permintaan Owner. **Tidak disalin, tidak ada perubahan pada `agent-process`.**
+  Menunggu keputusan Owner antara menyerap gagasan per-klaim (TypeScript) atau membiarkan seperti sekarang.
 
 ## T9 — Sub-agent `knowledge_manager` rusak & ikut dipanggil Coordinator (asal Item 92 Tahap 3, 2026-09-21)
 
