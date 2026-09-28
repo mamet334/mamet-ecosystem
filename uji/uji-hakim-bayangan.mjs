@@ -127,6 +127,14 @@ cek(H.susunPromptHakim(['Satu.'], [potonganPanjang]).length < 3000, `potongan di
 cek(H.susunPromptHakim(['Satu.'], Array(20).fill('isi')).split('[POTONGAN').length - 1 === H.MAKS_POTONGAN,
   `potongan dibatasi ${H.MAKS_POTONGAN}`);
 
+// Nalar WAJIB mati untuk hakim. Panggilan pertama yang berhasil (05:37) mewarisi thinking dari model
+// Owner: reasoning=4993t dari completion=5146t, 108 detik, $0,002213 — 3,3x biaya jawaban chat itu
+// sendiri, dan ikut membuat sambungan Owner terputus karena hakim ditunggu sebelum respons dikirim.
+const masukan = H.masukanHakim('isi prompt');
+cek(masukan.thinking === false, 'NALAR MATI untuk panggilan hakim (menilai itu membaca, bukan bernalar)', masukan.thinking);
+cek(masukan.systemPromptText === H.SISTEM_HAKIM && masukan.promptText === 'isi prompt', 'masukan membawa prompt & sistem yang benar');
+cek(Array.isArray(masukan.chatHistory) && masukan.chatHistory.length === 0, 'tanpa riwayat chat — hakim hanya melihat kalimat & potongan');
+
 // Prompt sistem harus memuat aturan ragu — inilah yang membuat kesalahannya jatuh ke arah aman,
 // meniru judge_endpoint.ts (Item 55).
 cek(H.SISTEM_HAKIM.includes('Kalau ragu') && H.SISTEM_HAKIM.includes('"BERSANDAR"'),

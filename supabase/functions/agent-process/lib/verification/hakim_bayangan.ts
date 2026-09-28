@@ -77,6 +77,31 @@ export function kalimatUntukHakim(jawaban: string): string[] {
     .slice(0, MAKS_KALIMAT);
 }
 
+/**
+ * Masukan untuk `adapter.execute`. `thinking: false` WAJIB dan bukan penghematan kecil.
+ *
+ * Terukur pada panggilan hakim pertama yang berhasil (2026-09-28 05:37), yang mewarisi `thinking`
+ * dari model Owner:
+ *
+ *   prompt=2550t completion=5146t reasoning=4993t biaya=$0,002213  durasi=107.910 ms
+ *
+ * **97% keluarannya nalar**, 108 detik, dan biayanya 3,3× biaya jawaban chat itu sendiri. Karena hakim
+ * ditunggu sebelum respons dikirim, ia ikut membuat sambungan Owner terputus di tengah jawaban.
+ *
+ * Menilai kalimat terhadap potongan tidak menuntut nalar panjang; ia menuntut membaca. `ai_adapter.ts`
+ * memang menyediakan penimpaan per panggilan untuk itu — dipakai Intent Router, Coordinator, dan
+ * peringkas dengan alasan yang sama.
+ */
+export function masukanHakim(prompt: string) {
+  return {
+    promptText: prompt,
+    systemPromptText: SISTEM_HAKIM,
+    chatHistory: [] as unknown[],
+    forceDefaultModel: false,
+    thinking: false
+  };
+}
+
 export function susunPromptHakim(kalimat: string[], isiDokumen: string[]): string {
   const potongan = (isiDokumen || [])
     .filter((t) => typeof t === 'string' && t.trim())
@@ -214,6 +239,7 @@ export async function jalankanHakimBayangan(rctx: any, bahan: BahanHakim): Promi
     }
 
     const prompt = susunPromptHakim(kalimat, isi);
+    const masukan = masukanHakim(prompt);
     const { CapabilityRegistry } = await import('../adapters/adapter_registry.ts');
     const adapters = CapabilityRegistry.getAvailableAIAdapters([provider]);
     if (!adapters.length) {
@@ -226,10 +252,7 @@ export async function jalankanHakimBayangan(rctx: any, bahan: BahanHakim): Promi
     let modelTercatat = '';
     for (const adapter of adapters) {
       try {
-        const res = await adapter.execute(
-          { promptText: prompt, systemPromptText: SISTEM_HAKIM, chatHistory: [], forceDefaultModel: false },
-          { trace_id: rctx?.traceId || 'hakim' }
-        );
+        const res = await adapter.execute(masukan, { trace_id: rctx?.traceId || 'hakim' });
         if (res?.result) {
           mentah = String(res.result);
           biayaAsliUsd = typeof (res as any).usageCostUsd === 'number' ? (res as any).usageCostUsd : undefined;
