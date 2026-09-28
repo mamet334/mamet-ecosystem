@@ -51,6 +51,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     jalankan: (perintah) => ipcRenderer.invoke('engineer:jalankan', perintah),
     ujiKlaim: (permintaan) => ipcRenderer.invoke('engineer:uji-klaim', permintaan),
     akarRepo: () => ipcRenderer.invoke('engineer:akar-repo'),
+    // Tahap 5 — akar repo dipilih Owner sekali; di aplikasi terpasang tanpa ini alat repo mati.
+    statusAkarRepo: () => ipcRenderer.invoke('engineer:status-akar-repo'),
+    pilihAkarRepo: () => ipcRenderer.invoke('engineer:pilih-akar-repo'),
+    lepasAkarRepo: () => ipcRenderer.invoke('engineer:lepas-akar-repo'),
   },
 
   // =============================================

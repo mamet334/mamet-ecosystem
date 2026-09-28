@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
-console.log('uji-checkpoint-engineer v1');
+console.log('uji-checkpoint-engineer v2');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n      → ${JSON.stringify(rinci).slice(0, 300)}` : ''}`); if (!ok) gagal++; };
 
@@ -36,8 +36,14 @@ const tiruan = {
   shell: { trashItem: async (a) => fs.rmSync(a) },
   app: { getPath: () => userData },
 };
-const jalankan = new Function('require', 'path', 'fs', 'PROJECT_ROOT', 'ipcMain', 'dialog', 'shell', 'app', 'mainWindow', blok);
-jalankan((m) => (m === './pagarFolder.cjs' ? require('../frontend/electron/pagarFolder.cjs') : require(m)), path, fs, repo,
+// Tahap 5 (2026-09-28): blok ini tidak lagi memakai `PROJECT_ROOT`, melainkan `akarRepo()` yang bisa
+// mengembalikan null bila Owner belum memilih repo di aplikasi terpasang, plus penjaga `butuhAkarRepo()`.
+// Keduanya disuntikkan di sini supaya yang diuji tetap SUMBER handler yang asli, bukan salinannya.
+let akarDipilih = repo;
+const akarRepo = () => akarDipilih;
+const butuhAkarRepo = () => (akarDipilih ? null : { success: false, error: 'Akar repo belum dipilih. Buka Pengaturan → Engineer → Pilih folder repo', akarBelumDipilih: true });
+const jalankan = new Function('require', 'path', 'fs', 'akarRepo', 'butuhAkarRepo', 'ipcMain', 'dialog', 'shell', 'app', 'mainWindow', blok);
+jalankan((m) => (m === './pagarFolder.cjs' ? require('../frontend/electron/pagarFolder.cjs') : require(m)), path, fs, akarRepo, butuhAkarRepo,
   tiruan.ipcMain, tiruan.dialog, tiruan.shell, tiruan.app, null);
 
 (async () => {
@@ -77,6 +83,17 @@ jalankan((m) => (m === './pagarFolder.cjs' ? require('../frontend/electron/pagar
   cek(r.success && r.ref === 'ENG-CHECKPOINT-arm-rf', 'label dibersihkan (tak ada karakter shell)', r);
   const tanpaLabel = await handler['eng:git-rollback'](null, {});
   cek(tanpaLabel.success, 'rollback tanpa label → checkpoint terbaru', tanpaLabel);
+
+  // Tahap 5 — tanpa akar repo, alat repo MATI dengan alasan, bukan menulis ke folder instalasi.
+  // Diuji lewat sumber handler yang asli, bukan lewat modul akarRepo.cjs saja.
+  akarDipilih = null;
+  const cpMati = await handler['eng:git-checkpoint'](null, { taskId: 'TASK-X', files: ['src/target.js'] });
+  cek(cpMati.success === false && cpMati.akarBelumDipilih === true,
+    'akar belum dipilih → checkpoint menolak, tidak menyentuh disk', cpMati);
+  cek(/Pengaturan|pilih/i.test(String(cpMati.error)), 'alasannya memberi tahu apa yang harus dilakukan', cpMati.error);
+  const rbMati = await handler['eng:git-rollback'](null, { checkpointLabel: 'ENG-CHECKPOINT-TASK-1' });
+  cek(rbMati.success === false && rbMati.akarBelumDipilih === true, 'rollback ikut menolak', rbMati);
+  akarDipilih = repo;
 
   fs.rmSync(repo, { recursive: true, force: true });
   fs.rmSync(userData, { recursive: true, force: true });

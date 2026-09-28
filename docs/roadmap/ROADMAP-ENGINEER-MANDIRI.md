@@ -382,3 +382,48 @@ Karena itu penilaian akhir tidak pernah berpindah ke mesin. Kata Owner, yang men
 Itu bukan sekadar sikap — ia sudah jadi arsitektur: `constitution/04_OWNER_SOVEREIGNTY.md`, checkpoint wajib,
 dialog izin, CORE IMMUTABLE, dan larangan `git` tulis. Seluruh roadmap ini menambah **kemampuan** Engineer;
 tidak satu pun tahapnya memindahkan **keputusan**.
+
+---
+
+## Tahap 5 — SELESAI (2026-09-28), belum diuji di aplikasi terpasang
+
+**Yang berubah.** `PROJECT_ROOT = path.resolve(__dirname, '..', '..')` dihapus. Akar repo kini ditentukan
+`frontend/electron/akarRepo.cjs`:
+
+| Mode | Akar repo |
+|---|---|
+| `npm run desktop` | folder induk `main.cjs` apa adanya — Owner tak perlu memilih yang sudah pasti |
+| aplikasi terpasang | **hanya** pilihan Owner |
+| terpasang & belum dipilih | **`null`** — alat repo mati dengan alasan |
+
+Baris terakhir itu inti perbaikannya: dulu ia diam-diam jatuh ke folder instalasi.
+
+**Dua penjaga.** (1) wajib ada `.git` — tanpa riwayat, checkpoint & rollback kehilangan artinya;
+(2) folder di dalam direktori instalasi **ditolak**, karena uninstall menghapusnya beserta seluruh
+riwayat git di dalamnya dan update menimpanya. Pagar dasarnya **dipakai ulang** dari `akarFolderSah`
+(Item 85), bukan ditulis ulang — supaya tidak ada dua versi aturan yang bisa berbeda.
+
+**Penyimpanan.** Alamatnya saja, di `%APPDATA%\Mamet AI\repo-engineer.json`, dan **disahkan ulang tiap
+aplikasi dibuka** — folder yang sudah dihapus, dipindah, atau kehilangan `.git` tidak dipakai diam-diam.
+Pola yang sama dengan `folder-kerja.json` (Item 85).
+
+**Handler yang dijaga:** `eng:git-checkpoint`, `eng:git-rollback`, `engineer:uji-klaim`,
+`engineer:jalankan`, dan seluruh `fs:*`. Yang terakhir dulu memanggil `path.resolve(PROJECT_ROOT, …)`
+sehingga alamat relatif diam-diam menunjuk berkas aplikasi; kini `alamatRepoRelatif()` **melempar
+dengan alasan**, bukan menebak.
+
+**UI.** `AkarRepoTombol.jsx` — kembaran tombol 📁 Assistant, tampil hanya di workspace Engineer.
+Kuning "Pilih repo" bila belum dipilih, hijau bernama folder bila sudah. Di mode pengembangan tampil
+sebagai keterangan yang tidak bisa diklik: tidak ada yang perlu dipilih.
+
+**Uji.** `uji/uji-akar-repo.cjs` (modul murni, folder uji sungguhan di temp) dan
+`uji/uji-checkpoint-engineer.cjs` v2 — yang terakhir menjalankan **sumber handler yang asli** dan
+membuktikan checkpoint & rollback menolak saat akar belum dipilih. 48 berkas uji hijau; `vite build` lolos.
+
+**Belum terbukti.** Seluruhnya belum dijalankan di aplikasi terpasang. Pembuktiannya: `npm run dist`,
+pasang, buka workspace Engineer — tombolnya kuning dan alat repo menolak dengan alasan; pilih folder
+hasil clone → tombol hijau, `git status` Engineer menunjuk repo itu; coba pilih folder tanpa `.git` dan
+folder di dalam direktori instalasi → keduanya ditolak dengan alasan yang terbaca.
+
+**Yang TIDAK dikerjakan di sini:** penjaga baca `.env` (usul 2026-09-28, menempel pada T12) — perlu
+persetujuan Owner tersendiri karena mengubah perilaku alat baca yang sudah hidup.

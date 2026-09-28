@@ -456,10 +456,63 @@ ipcMain.handle('doc:open-result', async (event, { filePath, mode }) => {
 
 const { runAirdropTask } = require('./airdropEngine.cjs');
 
-// ✅ Tentukan root proyek secara absolut (folder induk dari 'frontend/electron/')
-// Karena main.cjs berada di frontend/electron/, maka __dirname = .../frontend/electron
-// PROJECT_ROOT = .../mamet os ecosystem/
-const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
+// AKAR REPO (ROADMAP-ENGINEER-MANDIRI Tahap 5, 2026-09-28)
+//
+// Dulu di sini: `const AKAR_DEV_X = path.resolve(__dirname, '..', '..')`. Itu BENAR di
+// `npm run desktop` — main.cjs memang di dalam repo. Di build `npm run dist` ia menunjuk folder
+// instalasi: `git` gagal "not a git repository" dan patch akan menulis ke folder aplikasi.
+//
+// Sekarang akarnya ditentukan `akarRepo.cjs`: di pengembangan pakai folder induk apa adanya; di
+// aplikasi terpasang HANYA pilihan Owner. Belum dipilih → `null`, dan alat repo mati dengan pesan
+// jelas. Yang penting: ia tidak pernah lagi diam-diam jatuh ke folder instalasi.
+const { akarRepoSah, akarRepoAktif } = require('./akarRepo.cjs');
+const AKAR_DEV = path.resolve(__dirname, '..', '..');
+let repoPilihanOwner = null;
+
+const infoAkarRepo = () => akarRepoAktif({ dev: isDev, akarDev: AKAR_DEV, tersimpan: repoPilihanOwner });
+/** Akar repo aktif, atau null bila Owner belum memilih di aplikasi terpasang. */
+const akarRepo = () => infoAkarRepo().akar;
+
+// Pilihan disimpan di %APPDATA% (bukan di repo — repo bisa dipindah/dihapus Owner) dan DISAHKAN
+// ULANG tiap aplikasi dibuka, pola yang sama dengan folder kerja Assistant (Item 85): folder yang
+// sudah dihapus, dipindah, atau kehilangan `.git` tidak dipakai diam-diam.
+const berkasAkarRepo = () => path.join(app.getPath('userData'), 'repo-engineer.json');
+const folderInstalasi = () => {
+  try { return path.dirname(app.getPath('exe')); } catch { return ''; }
+};
+function simpanAkarRepo() {
+  try { fs.writeFileSync(berkasAkarRepo(), JSON.stringify({ akar: repoPilihanOwner }), 'utf8'); }
+  catch (e) { console.warn('[REPO] Gagal menyimpan akar repo:', e.message); }
+}
+function pulihkanAkarRepo() {
+  try {
+    const { akar } = JSON.parse(fs.readFileSync(berkasAkarRepo(), 'utf8'));
+    if (!akar) return;
+    const sah = akarRepoSah(akar, { folderInstalasi: folderInstalasi() });
+    if (sah.ok) { repoPilihanOwner = sah.akar; console.log(`[REPO] Akar repo dipulihkan: "${sah.nama}"`); }
+    else console.warn(`[REPO] Akar repo tersimpan tidak dipakai: ${sah.alasan}`);
+  } catch { /* belum pernah dipilih */ }
+}
+app.whenReady().then(pulihkanAkarRepo);
+
+/**
+ * Alamat relatif → absolut terhadap akar repo. MELEMPAR bila akar belum dipilih, bukan menebak.
+ *
+ * Dulu baris ini `path.resolve(PROJECT_ROOT, filePath)`, dan di aplikasi terpasang `PROJECT_ROOT`
+ * menunjuk folder instalasi — sehingga alamat relatif diam-diam menunjuk berkas aplikasi. Itu
+ * kerugian tanpa suara: tidak ada galat, hanya berkas yang salah. Sekarang ia berhenti dengan alasan.
+ */
+function alamatRepoRelatif(relatif) {
+  const akar = akarRepo();
+  if (!akar) throw new Error(infoAkarRepo().alasan);
+  return path.resolve(akar, relatif);
+}
+
+/** Dipakai di awal tiap handler repo: hasil siap dikembalikan bila akar belum ada. */
+function butuhAkarRepo() {
+  const info = infoAkarRepo();
+  return info.akar ? null : { success: false, error: info.alasan, galat: info.alasan, akarBelumDipilih: true };
+}
 
 // 0. Airdrop Stealth Engine
 ipcMain.handle('run-airdrop-stealth', async (event, { taskName, params }) => {
@@ -504,6 +557,8 @@ const labelAman = (s) => String(s || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0,
 
 // 2a. Checkpoint — dipanggil SEBELUM patch apply (tanpa dialog). files = alamat relatif repo.
 ipcMain.handle('eng:git-checkpoint', async (_event, { taskId, files } = {}) => {
+  const belum = butuhAkarRepo();
+  if (belum) return belum;
   try {
     const label = labelAman(`ENG-CHECKPOINT-${taskId || Date.now()}`);
     const daftar = Array.isArray(files) ? files.filter((f) => typeof f === 'string' && f.trim()) : [];
@@ -511,7 +566,7 @@ ipcMain.handle('eng:git-checkpoint', async (_event, { taskId, files } = {}) => {
     if (daftar.length > BATAS_CHECKPOINT.berkas) return { success: false, error: `lebih dari ${BATAS_CHECKPOINT.berkas} berkas` };
     const berkas = [];
     for (const rel of daftar) {
-      const p = pagarRepo(PROJECT_ROOT, rel);
+      const p = pagarRepo(akarRepo(), rel);
       if (!p.ok) return { success: false, error: `"${rel}": ${p.alasan}` };
       let st = null;
       try { st = fs.statSync(p.alamat); } catch { /* belum ada */ }
@@ -531,6 +586,8 @@ ipcMain.handle('eng:git-checkpoint', async (_event, { taskId, files } = {}) => {
 
 // 2b. Rollback — Owner mengembalikan patch: menulis ulang isi asli tepat berkas yang di-checkpoint.
 ipcMain.handle('eng:git-rollback', async (_event, { checkpointLabel } = {}) => {
+  const belum = butuhAkarRepo();
+  if (belum) return belum;
   try {
     let label = labelAman(checkpointLabel);
     if (!label) {
@@ -558,7 +615,7 @@ ipcMain.handle('eng:git-rollback', async (_event, { checkpointLabel } = {}) => {
 
     const hasil = [];
     for (const b of cp.berkas || []) {
-      const p = pagarRepo(PROJECT_ROOT, b.alamat);
+      const p = pagarRepo(akarRepo(), b.alamat);
       if (!p.ok) { hasil.push(`❌ ${b.alamat}: ${p.alasan}`); continue; }
       if (b.ada) {
         const sementara = `${p.alamat}.mamet-rollback-${process.pid}.tmp`;
@@ -704,23 +761,61 @@ const depsEngineer = {
 // alamat berkas & nama fungsi disaring UjiKlaim.alamatSah, argumen ditanam lewat JSON.stringify.
 const { jalankanProses, cariExe, envBersih } = require('./alatFolderJalan.cjs');
 // Akar repo dibutuhkan penyusun skrip uji di layar (UjiKlaim.susunSkripUji) untuk menyusun alamat absolut modul.
-ipcMain.handle('engineer:akar-repo', () => PROJECT_ROOT);
+ipcMain.handle('engineer:akar-repo', () => akarRepo());
+
+// Tahap 5 — akar repo dipilih Owner. Polanya sama dengan `folder:pilih` (Item 85): dialog asli
+// proses utama, disahkan `akarRepoSah`, alamatnya saja yang disimpan.
+const statusAkarRepo = () => {
+  const info = infoAkarRepo();
+  return {
+    aktif: !!info.akar,
+    akar: info.akar,
+    nama: info.akar ? path.basename(info.akar) : null,
+    sumber: info.sumber,
+    alasan: info.alasan
+  };
+};
+
+ipcMain.handle('engineer:status-akar-repo', () => statusAkarRepo());
+
+ipcMain.handle('engineer:pilih-akar-repo', async () => {
+  const hasil = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory'],
+    title: 'Pilih folder repo untuk Engineer',
+    message: 'Pilih folder hasil "git clone" — bukan folder instalasi Mamet.'
+  });
+  if (hasil.canceled || !hasil.filePaths[0]) return { ...statusAkarRepo(), dibatalkan: true };
+  const sah = akarRepoSah(hasil.filePaths[0], { folderInstalasi: folderInstalasi() });
+  if (!sah.ok) return { ...statusAkarRepo(), ditolak: sah.alasan };
+  repoPilihanOwner = sah.akar;
+  simpanAkarRepo();
+  console.log(`[REPO] Akar repo dipilih Owner: "${sah.nama}"`);
+  return statusAkarRepo();
+});
+
+ipcMain.handle('engineer:lepas-akar-repo', () => {
+  repoPilihanOwner = null;
+  simpanAkarRepo();
+  return statusAkarRepo();
+});
 
 ipcMain.handle('engineer:uji-klaim', async (_event, permintaan) => {
+  const belum = butuhAkarRepo();
+  if (belum) return belum;
   const { berkas, fungsi, kasus, skrip } = permintaan || {};
   if (typeof skrip !== 'string' || !skrip.trim()) return { galat: 'skrip uji kosong' };
   if (!/^[A-Za-z_$][\w$]*$/.test(String(fungsi || ''))) return { galat: 'nama fungsi tidak sah' };
-  const p = pagarRepo(PROJECT_ROOT, String(berkas || ''));
+  const p = pagarRepo(akarRepo(), String(berkas || ''));
   if (!p.ok) return { galat: `alamat di luar repo: ${p.alasan || berkas}` };
   if (!fs.existsSync(p.alamat)) return { galat: `berkas tidak ada: ${berkas}` };
   if (!Array.isArray(kasus) || !kasus.length) return { galat: 'tidak ada kasus uji' };
 
-  const node = cariExe('node', PROJECT_ROOT);
+  const node = cariExe('node', akarRepo());
   if (!node) return { galat: 'node tidak terpasang (uji klaim butuh node)' };
   const alamatSkrip = path.join(app.getPath('temp'), `mamet-uji-klaim-${Date.now()}.mjs`);
   try {
     fs.writeFileSync(alamatSkrip, skrip, 'utf8');
-    const h = await jalankanProses(node, [alamatSkrip], { cwd: PROJECT_ROOT, env: envBersih(process.env), waktuS: 20 });
+    const h = await jalankanProses(node, [alamatSkrip], { cwd: akarRepo(), env: envBersih(process.env), waktuS: 20 });
     if (h.galat) return { galat: h.galat };
     if (h.habisWaktu) return { galat: 'uji klaim melewati batas waktu 20 detik' };
     const baris = String(h.keluaran || '').trim().split('\n').filter(Boolean).pop() || '';
@@ -734,6 +829,8 @@ ipcMain.handle('engineer:uji-klaim', async (_event, permintaan) => {
 });
 
 ipcMain.handle('engineer:jalankan', async (_event, perintah) => {
+  const belum = butuhAkarRepo();
+  if (belum) return { ok: false, alat: 'folder_run', perintah: String(perintah || ''), alasan: belum.error };
   const teks = typeof perintah === 'string' ? perintah : '';
   const p = pecahPerintah(teks);
   let hasil;
@@ -741,7 +838,7 @@ ipcMain.handle('engineer:jalankan', async (_event, perintah) => {
     hasil = { ok: false, alat: 'folder_run', perintah: teks, alasan: p.galat };
   } else {
     // Batas waktu dari profil Engineer (180 s — build/test butuh lebih dari bawaan Assistant 60 s).
-    try { hasil = await jalankanAlatJalan(PROJECT_ROOT, { alat: 'folder_run', program: p.program, argumen: p.argumen }, depsEngineer); }
+    try { hasil = await jalankanAlatJalan(akarRepo(), { alat: 'folder_run', program: p.program, argumen: p.argumen }, depsEngineer); }
     catch (e) { hasil = { ok: false, alat: 'folder_run', perintah: teks, alasan: `galat: ${e.code || e.message}` }; }
   }
   const status = hasil.ok
@@ -774,14 +871,14 @@ ipcMain.handle('get-app-version', () => {
 // =============================================
 // 8. FILE SYSTEM HANDLERS (StorageManager Backend)
 // =============================================
-// ✅ Semua handler menggunakan PROJECT_ROOT untuk resolusi path relatif
+// ✅ Semua handler menggunakan akarRepo() untuk resolusi path relatif
 
 ipcMain.handle('fs:readFile', async (event, filePath) => {
   try {
     const isAbsolute = path.isAbsolute(filePath);
     const normalizedPath = isAbsolute 
       ? path.resolve(filePath) 
-      : path.resolve(PROJECT_ROOT, filePath);
+      : alamatRepoRelatif(filePath);
     
     console.log(`[FS] readFile: "${filePath}" → normalized: "${normalizedPath}"`);
     
@@ -801,7 +898,7 @@ ipcMain.handle('fs:writeFile', async (event, { filePath, content }) => {
     const isAbsolute = path.isAbsolute(filePath);
     const normalizedPath = isAbsolute 
       ? path.resolve(filePath) 
-      : path.resolve(PROJECT_ROOT, filePath);
+      : alamatRepoRelatif(filePath);
     
     console.log(`[FS] writeFile: "${filePath}" → normalized: "${normalizedPath}"`);
     
@@ -822,7 +919,7 @@ ipcMain.handle('fs:deleteFile', async (event, filePath) => {
     const isAbsolute = path.isAbsolute(filePath);
     const normalizedPath = isAbsolute 
       ? path.resolve(filePath) 
-      : path.resolve(PROJECT_ROOT, filePath);
+      : alamatRepoRelatif(filePath);
     
     if (!fs.existsSync(normalizedPath)) {
       return false;
@@ -840,7 +937,7 @@ ipcMain.handle('fs:listFiles', async (event, dirPath) => {
     const isAbsolute = path.isAbsolute(dirPath);
     const normalizedPath = isAbsolute 
       ? path.resolve(dirPath) 
-      : path.resolve(PROJECT_ROOT, dirPath);
+      : alamatRepoRelatif(dirPath);
     
     if (!fs.existsSync(normalizedPath) || !fs.statSync(normalizedPath).isDirectory()) {
       return [];
@@ -872,7 +969,7 @@ ipcMain.handle('fs:getFileInfo', async (event, filePath) => {
     const isAbsolute = path.isAbsolute(filePath);
     const normalizedPath = isAbsolute 
       ? path.resolve(filePath) 
-      : path.resolve(PROJECT_ROOT, filePath);
+      : alamatRepoRelatif(filePath);
     
     if (!fs.existsSync(normalizedPath)) {
       return null;
@@ -908,7 +1005,7 @@ ipcMain.handle('fs:fileExists', async (event, filePath) => {
     const isAbsolute = path.isAbsolute(filePath);
     const normalizedPath = isAbsolute 
       ? path.resolve(filePath) 
-      : path.resolve(PROJECT_ROOT, filePath);
+      : alamatRepoRelatif(filePath);
     
     return fs.existsSync(normalizedPath);
   } catch (error) {
@@ -925,7 +1022,7 @@ ipcMain.handle('fs:listFilesRecursive', async (event, dirPath) => {
     const isAbsolute = path.isAbsolute(dirPath);
     const normalizedPath = isAbsolute 
       ? path.resolve(dirPath) 
-      : path.resolve(PROJECT_ROOT, dirPath);
+      : alamatRepoRelatif(dirPath);
     
     console.log(`[FS] listFilesRecursive: "${dirPath}" → normalized: "${normalizedPath}"`);
     

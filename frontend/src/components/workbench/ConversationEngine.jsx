@@ -6,6 +6,7 @@ import { tautanUnduh } from '../../core/runtime/services/remoteConversionClient'
 import RiwayatKonversi from './RiwayatKonversi';
 import { kernel } from '../../core/runtime/Kernel';
 import FolderKerjaTombol from './FolderKerjaTombol';
+import AkarRepoTombol from './AkarRepoTombol';
 import ChatHistory from './ChatHistory';
 import MemoryContextPanel from './MemoryContextPanel';
 import { tugasDariUsulan } from '../../core/runtime/services/engineer/UsulanPatch.js';
@@ -2093,10 +2094,17 @@ export default function ConversationEngine({ sessionId }) {
               )}
 
               <form onSubmit={handleSend} className="w-full max-w-3xl relative flex items-center gap-1.5 bg-surface-container-low border border-outline-variant rounded-2xl p-1.5 focus-within:border-primary transition-all shadow-lg pulse-focus">
-                {/* 📁 Folder kerja — hanya Assistant (Item 85; Engineer tetap bekerja di repo Mamet) */}
+                {/* 📁 Folder kerja — hanya Assistant (Item 85) */}
                 {workspaceManager?.activeWorkspaceId === 'ws-assistant' && (
                   <div className="shrink-0 ml-1">
                     <FolderKerjaTombol />
+                  </div>
+                )}
+
+                {/* Akar repo — hanya Engineer (Tahap 5). Di aplikasi terpasang, tanpa ini alat repo mati. */}
+                {workspaceManager?.activeWorkspaceId === 'ws-engineer' && (
+                  <div className="shrink-0 ml-1">
+                    <AkarRepoTombol />
                   </div>
                 )}
 
