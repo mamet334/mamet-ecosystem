@@ -118,7 +118,19 @@ export function akarTeks(teks: string): Set<string> {
 const POLA_THINK = /<think>[\s\S]*?<\/think>/gi;
 const PENANDA_BUTIR = /^\s*(?:[-*+•]|\d+[.)])\s+/;
 
-export function pecahKlaim(jawaban: string): string[] {
+/** Baris pemisah tabel Markdown: `| --- | :---: |` — tidak pernah jadi klaim. */
+const barisPemisahTabel = (baris: string) => /^\|?(\s*:?-{2,}:?\s*\|)+\s*:?-*:?\s*\|?$/.test(baris);
+
+/**
+ * @param opsi.sertakanTabel Baris tabel ikut dinilai.
+ *   `false` (bawaan) untuk lapisan leksikal: angka & pasangan kolom sudah ditangani
+ *   `periksaAngkaSumber` dan `periksaTabelCentang` yang jauh lebih teliti.
+ *   `true` untuk hakim bayangan. Terbukti perlu 2026-09-28: satu jawaban campuran menulis bagian
+ *   yang bersandar dokumen sebagai TABEL, sehingga hakim hanya menerima paragraf rekomendasinya
+ *   dan menyimpulkan HYPOTHESIS. Vonisnya benar atas apa yang ia lihat; yang salah adalah apa yang
+ *   dikirimkan kepadanya. Model menjawab dengan tabel hampir setiap saat.
+ */
+export function pecahKlaim(jawaban: string, opsi: { sertakanTabel?: boolean } = {}): string[] {
   const teks = String(jawaban || '').replace(POLA_THINK, '');
   const klaim: string[] = [];
   let dalamPagar = false;
@@ -129,7 +141,13 @@ export function pecahKlaim(jawaban: string): string[] {
     if (dalamPagar) continue;
     if (!baris) continue;
     if (baris.startsWith('#') || baris.startsWith('>')) continue;
-    if (baris.includes('|')) continue;
+    if (baris.includes('|')) {
+      // Baris pemisah tidak pernah bermakna; baris tabel lain hanya ikut bila diminta, dan masuk
+      // APA ADANYA (bukan dipecah per titik) supaya satu baris tabel tetap satu satuan penilaian.
+      if (!opsi.sertakanTabel || barisPemisahTabel(baris)) continue;
+      klaim.push(baris);
+      continue;
+    }
     if (/\[\s*status\s*:/i.test(baris) || baris.includes('[Pengetahuan umum AI')) continue;
     if (/^\s*(?:\*\*)?sumber\s*:?/i.test(baris)) continue;
 

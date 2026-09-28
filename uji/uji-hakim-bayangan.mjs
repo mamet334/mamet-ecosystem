@@ -111,7 +111,20 @@ const JAWABAN = [
   '[STATUS: VERIFIED]'
 ].join('\n');
 const kalimat = H.kalimatUntukHakim(JAWABAN);
-cek(kalimat.length === 2, 'judul, tabel, Sumber, label dibuang; kalimat terlalu pendek dibuang', kalimat);
+cek(kalimat.length === 3, 'judul, Sumber, label, kalimat terlalu pendek dibuang — baris tabel IKUT', kalimat);
+
+// Baris tabel WAJIB ikut. Terukur 2026-09-28 05:46: jawaban campuran menulis bagian yang bersandar
+// dokumen sebagai tabel; `pecahKlaim` membuangnya, jadi hakim hanya menerima paragraf rekomendasi
+// dan menyimpulkan HYPOTHESIS. Vonisnya benar atas apa yang ia lihat — kirimannya yang salah.
+cek(kalimat.some((k) => k.includes('| Tahun | Nilai |')), 'baris tabel dikirim ke hakim', kalimat);
+cek(!kalimat.some((k) => /^\|?\s*-{2,}/.test(k.replace(/\s/g, ''))), 'baris PEMISAH tabel tidak ikut (tidak bermakna)', kalimat);
+const tabelPenuh = ['| Tahun | Nilai |', '| --- | --- |', '| 1 | 12,0% |', '| 2 | 20,0% |'].join('\n');
+cek(H.kalimatUntukHakim(tabelPenuh).length === 3, 'tabel 4 baris → 3 kalimat (pemisah dibuang)', H.kalimatUntukHakim(tabelPenuh));
+
+// Jawaban satu kalimat HARUS tetap dinilai. Terukur 2026-09-28 06:10: "berapa jumlah pegawai yang
+// diintervensi?" dijawab ringkas, dilewati diam-diam, tidak ada barisnya di tabel.
+cek(H.kalimatUntukHakim('Jumlahnya 591 pegawai menurut dokumen HCDP.').length === 1,
+  'jawaban satu kalimat tetap menghasilkan kalimat untuk dinilai');
 cek(kalimat.some((k) => k.includes('Semoga membantu')),
   'kalimat percakapan TETAP dikirim — justru itu yang ingin diuji apakah hakim mengenalinya', kalimat);
 cek(H.kalimatUntukHakim(Array.from({ length: 80 }, (_, i) => `Ini kalimat nomor ${i} yang cukup panjang untuk dinilai.`).join('\n')).length === H.MAKS_KALIMAT,
@@ -163,11 +176,29 @@ const r = H.ringkasPutusan(H.bacaPutusanHakim(baik, 3), 5);
 cek(r.bersandar === 1 && r.tidak === 1 && r.percakapan === 1, 'hitungan per vonis benar', r);
 cek(r.takTerbaca === 2, 'kalimat tanpa putusan dihitung takTerbaca, tidak hilang diam-diam', r);
 
-const usul = (b, t, p) => H.labelUsulan({ bersandar: b, tidak: t, percakapan: p, takTerbaca: 0 });
+const usul = (b, t, p, label) => H.labelUsulan({ bersandar: b, tidak: t, percakapan: p, takTerbaca: 0 }, label);
 cek(usul(3, 0, 2) === 'VERIFIED', 'semua yang diputus bersandar → usulan VERIFIED');
 cek(usul(2, 1, 1) === 'PARTIAL', 'sebagian bersandar sebagian tidak → usulan PARTIAL');
 cek(usul(0, 3, 1) === 'HYPOTHESIS', 'tak satu pun bersandar → usulan HYPOTHESIS');
 cek(usul(0, 0, 4) === 'TAK_PASTI', 'hanya kalimat percakapan → TAK_PASTI, bukan VERIFIED');
+
+// Kasus nyata 2026-09-28 06:12 — pertanyaan tunjangan kinerja (tak ada di dokumen mana pun). Model
+// menjawab INSUFFICIENT; hakim memvonis 1 BERSANDAR + 3 PERCAKAPAN karena kalimat "dokumen hanya
+// memuat X dan Y" memang bersandar. Penggulungan LAMA mengubahnya jadi VERIFIED — vonis per
+// kalimatnya benar, rumusnya yang salah.
+cek(usul(1, 0, 3, 'INSUFFICIENT') === 'TIDAK_BERLAKU',
+  'jawaban INSUFFICIENT dikeluarkan dari tangga label, bukan dipaksa jadi VERIFIED', usul(1, 0, 3, 'INSUFFICIENT'));
+cek(usul(1, 0, 3, 'VERIFIED') === 'VERIFIED', 'label lain tetap dinilai seperti biasa');
+
+// ── 5b. Label yang BENAR-BENAR terlihat ──────────────────────────────────────────────────────
+console.log('\n-- membaca label dari jawaban akhir --');
+cek(H.labelTerlihat('isi jawaban\n\n[STATUS: VERIFIED]') === 'VERIFIED', 'VERIFIED terbaca');
+cek(H.labelTerlihat('isi\n[STATUS: PARTIAL - Sebagian Bersandar Dokumen]') === 'PARTIAL', 'PARTIAL terbaca');
+cek(H.labelTerlihat('isi\n[STATUS: HYPOTHESIS - Rekomendasi AI]') === 'HYPOTHESIS', 'HYPOTHESIS terbaca');
+cek(H.labelTerlihat('isi\n[STATUS: INSUFFICIENT]') === 'INSUFFICIENT', 'INSUFFICIENT terbaca');
+cek(H.labelTerlihat('isi\n[Pengetahuan umum AI — tidak diverifikasi dari dokumen Anda]') === 'PENGETAHUAN_UMUM', 'penanda pengetahuan umum terbaca');
+cek(H.labelTerlihat('jawaban tanpa label apa pun') === 'TANPA_LABEL', 'tanpa label → TANPA_LABEL');
+cek(H.labelTerlihat('') === 'TANPA_LABEL' && H.labelTerlihat(null) === 'TANPA_LABEL', 'kosong/null aman');
 
 // ── 6. Kalimat percakapan nyata: BAHAN uji, bukan harapan ────────────────────────────────────
 // Inilah kalimat yang menjatuhkan pendekatan leksikal (11 dari 12 dituduh). Di sini ia hanya

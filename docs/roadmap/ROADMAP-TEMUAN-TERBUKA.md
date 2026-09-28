@@ -490,8 +490,27 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
 - **`pecahKlaim` dipakai ulang** dari `klaim_sumber.ts`: lapisannya mati, kerjanya tidak terbuang.
 - **Belum dinyalakan.** Tiga langkah Owner: terapkan migrasi `20260928061500_hakim_bayangan.sql` →
   setel `HAKIM_BAYANGAN=1` → deploy. Mematikannya cukup menghapus variabel, tanpa deploy ulang kode.
-- **Status:** ⏳ 46 berkas uji hijau + bundel lolos esbuild. **Mutu vonis hakim belum diketahui sama
-  sekali** — itu justru pertanyaan yang dibangun untuk dijawab.
+- **Hasil live pertama (2026-09-28):** hakimnya **bekerja**, dan bekerja tepat di dua tempat yang
+  menjatuhkan pendekatan leksikal.
+  - **Biaya & waktu wajar sesudah nalar dimatikan:** rata-rata **$0,0001 dan 3,7 detik** per pesan
+    (8 panggilan) — ±15% dari biaya jawaban chat itu sendiri. Panggilan pertama sempat 108 detik dan
+    $0,0022 karena mewarisi `thinking` dari model Owner; itu juga yang memutus sambungan Owner di
+    tengah jawaban (lihat Item 94).
+  - **Tes penggugur lulus dua kali:** jawaban yang seluruhnya bersandar dokumen diusulkan VERIFIED —
+    hakim tidak menuduh jawaban benar. Itu satu-satunya hasil yang bisa menggugurkan pendekatan ini.
+  - **Ketidaksepakatan yang benar:** jawaban campuran dilabeli model HYPOTHESIS, hakim mengusulkan
+    **PARTIAL** — dan dari 8 kalimat ia memvonis `TIDAK` pada dua kalimat rekomendasi, **bentuk yang
+    persis lolos dari pendekatan leksikal di porsi 0,18**, serta `PERCAKAPAN` pada empat kalimat
+    pengantar/judul/catatan tanpa satu pun tuduhan palsu. 6 dari 8 jelas benar, 1 abu-abu, 0 salah tuduh.
+  - **Empat cacat — semuanya di alat ukur, bukan di hakimnya**, dan semuanya ketahuan dari data nyata:
+    baris tabel disembunyikan dari hakim (jawaban bersandar berbentuk tabel → hakim salah simpul);
+    jawaban pendek tak pernah dinilai; penggulungan tak kenal INSUFFICIENT (jawaban "tidak ketemu"
+    jadi VERIFIED); `label_sistem` menyimpan "apakah berubah", bukan labelnya. **Keempatnya sudah
+    diperbaiki** — `sertakanTabel`, batas 1 kalimat, `TIDAK_BERLAKU`, dan kolom `diturunkan`/`sepakat`
+    (migrasi `20260928063000`).
+- **Status:** ⏳ 47 berkas uji hijau + bundel lolos esbuild. Menunggu deploy Owner, lalu pemakaian
+  normal supaya angka ketidaksepakatan punya arti. Keputusan menaikkan hakim jadi penentu label
+  belum diambil.
 
 - **Status T13:** ⏳ CHIMERA **tidak disalin** (tetap begitu). Gagasan per-klaim diserap, diuji live,
   lalu **dimatikan** — batas alat leksikal kini terukur, bukan diperdebatkan. Arah berikutnya yang

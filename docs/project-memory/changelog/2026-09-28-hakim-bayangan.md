@@ -112,3 +112,60 @@ Sesudah beberapa puluh pesan, tiga pertanyaan ini bisa dijawab angka: benarkah s
 HYPOTHESIS sebenarnya campuran yang layak PARTIAL; seberapa sering hakim tidak sepakat dengan
 `label_sumber.ts` dan siapa yang benar saat tidak sepakat; berapa biayanya sungguhan per hari.
 Mematikannya cukup menghapus variabel lingkungan — tanpa deploy ulang kode.
+
+---
+
+# Lanjutan — empat cacat alat ukur diperbaiki (2026-09-28)
+
+Delapan panggilan pertama sesudah nalar dimatikan berjalan wajar: **rata-rata $0,0001 dan 3,7 detik**
+(kisaran $0,000033–0,000121; 1,8–7,2 detik) — sekitar **15%** dari biaya jawaban chat itu sendiri.
+
+Hakimnya bekerja. Yang belum benar seluruhnya ada di sisi alat ukur, dan keempatnya ketahuan dari
+data nyata, bukan dari tebakan:
+
+| # | Cacat | Bukti |
+|---|---|---|
+| 1 | Baris tabel disembunyikan dari hakim | 05:46 — bagian bersandar ditulis model sebagai tabel; hakim hanya menerima paragraf rekomendasi lalu menyimpulkan HYPOTHESIS |
+| 2 | Jawaban pendek tidak pernah dinilai | 06:10 — "berapa jumlah pegawai?" dijawab ringkas, dilewati diam-diam, tak ada barisnya |
+| 3 | Penggulungan tak kenal INSUFFICIENT | 06:12 — jawaban "tidak ketemu" digulung jadi **VERIFIED** |
+| 4 | `label_sistem` menyimpan hal yang keliru | lima baris pertama berbunyi `(diam)`; perbandingan harus digabung manual ke `chats` |
+
+Pola ketiganya sama: **vonis per kalimat hakim benar; yang salah apa yang dikirimkan kepadanya dan
+bagaimana hasilnya dibaca.**
+
+## Perbaikan
+
+1. `pecahKlaim(jawaban, { sertakanTabel })` — baris tabel ikut dinilai untuk hakim (baris pemisah
+   `| --- |` tetap dibuang, dan baris tabel masuk apa adanya, bukan dipecah per titik). Lapisan
+   leksikal tetap memakai bawaan `false`: angka & pasangan kolom sudah ditangani `periksaAngkaSumber`
+   dan `periksaTabelCentang` yang jauh lebih teliti.
+2. Batas minimal **satu** kalimat, bukan dua. Justru jawaban pendek yang paling mudah diperiksa.
+3. `labelUsulan(ringkas, labelModel)` → `TIDAK_BERLAKU` untuk jawaban INSUFFICIENT. Jawaban "tidak
+   menemukan" tidak berada di tangga VERIFIED–PARTIAL–HYPOTHESIS sama sekali; kasusnya dikeluarkan
+   dari perbandingan, bukan dipaksa masuk.
+4. `labelTerlihat(jawabanAkhir)` membaca label yang **benar-benar dilihat Owner**; kolom baru
+   `diturunkan` dan `sepakat` (migrasi `20260928063000`). Baris lama sengaja **tidak** diisi ulang —
+   menebak label yang dulu terlihat berarti mengarang data pengukuran.
+
+## Hasil live sebelum perbaikan ini (4 percakapan terpisah, 06:10–06:12)
+
+| Chat | Terlihat | Usulan hakim | |
+|---|---|---|---|
+| jumlah pegawai | VERIFIED | — | tidak dinilai (cacat 2) |
+| kelompok jabatan | VERIFIED | VERIFIED | ✅ tes penggugur lulus lagi |
+| **fokus + rekomendasi** | **HYPOTHESIS** | **PARTIAL** | ⭐ ketidaksepakatan yang benar |
+| tunjangan | INSUFFICIENT | VERIFIED | ❌ cacat 3 |
+
+Chat ketiga adalah hasil yang dikejar sejak lapisan leksikal dimatikan: dari 8 kalimat, hakim
+memvonis `TIDAK` pada dua kalimat rekomendasi — **bentuk kalimat yang persis lolos dari pendekatan
+leksikal di porsi 0,18** — dan `PERCAKAPAN` pada empat kalimat pengantar/judul/catatan, tanpa satu pun
+tuduhan palsu. Enam dari delapan jelas benar, satu abu-abu (menyebut "Corporate University" yang
+memang ada di dokumen), nol salah tuduh.
+
+Ketidaksepakatannya bermanfaat: model melabeli seluruh jawaban HYPOTHESIS padahal separuhnya
+bersandar dokumen. PARTIAL lebih jujur.
+
+## Terbukti
+
+47 berkas uji hijau; bundel `agent-process` lolos esbuild. Perlu deploy Owner; `HAKIM_BAYANGAN`
+tidak perlu disentuh.

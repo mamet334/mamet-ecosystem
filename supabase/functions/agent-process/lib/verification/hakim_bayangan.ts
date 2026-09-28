@@ -70,11 +70,34 @@ Aturan penting:
 - Kalau ragu antara "BERSANDAR" dan "TIDAK", pilih "BERSANDAR". Salah menuduh lebih merugikan daripada melewatkan.
 - Kalau ragu antara "TIDAK" dan "PERCAKAPAN", pilih "PERCAKAPAN".`;
 
-/** Kalimat yang layak dikirim ke hakim: hasil `pecahKlaim` yang tidak terlalu pendek, dibatasi jumlahnya. */
+/**
+ * Kalimat yang layak dikirim ke hakim.
+ *
+ * `sertakanTabel: true` — terbukti perlu 2026-09-28. Satu jawaban campuran menulis bagian yang
+ * bersandar dokumen sebagai TABEL; `pecahKlaim` membuangnya, jadi hakim hanya menerima paragraf
+ * rekomendasinya dan menyimpulkan HYPOTHESIS. Vonisnya benar atas apa yang ia lihat — yang salah
+ * adalah apa yang dikirimkan kepadanya.
+ */
 export function kalimatUntukHakim(jawaban: string): string[] {
-  return pecahKlaim(jawaban)
+  return pecahKlaim(jawaban, { sertakanTabel: true })
     .filter((k) => k.length >= MIN_HURUF_KALIMAT)
     .slice(0, MAKS_KALIMAT);
+}
+
+/**
+ * Label yang BENAR-BENAR terlihat di jawaban akhir. Versi pertama tabel ini menyimpan apakah sistem
+ * *mengubah* sesuatu (`(diam)` / `diturunkan`) — bukan labelnya. Akibatnya tabelnya sendiri tidak bisa
+ * menjawab "seberapa sering hakim tidak sepakat"; perbandingannya harus digabung manual dengan
+ * `chats`. Untuk sebuah alat ukur, itu cacat pokok.
+ */
+export function labelTerlihat(teks: string): string {
+  const t = String(teks || '');
+  if (t.includes('[STATUS: VERIFIED]')) return 'VERIFIED';
+  if (t.includes('[STATUS: PARTIAL')) return 'PARTIAL';
+  if (t.includes('[STATUS: HYPOTHESIS')) return 'HYPOTHESIS';
+  if (t.includes('[STATUS: INSUFFICIENT')) return 'INSUFFICIENT';
+  if (t.includes('[Pengetahuan umum AI')) return 'PENGETAHUAN_UMUM';
+  return 'TANPA_LABEL';
 }
 
 /**
@@ -167,8 +190,23 @@ export function ringkasPutusan(putusan: PutusanHakim[], jumlahKalimat: number): 
   return r;
 }
 
-/** Label yang AKAN diusulkan hakim seandainya ia berwenang — dicatat untuk dibandingkan, tidak dipakai. */
-export function labelUsulan(r: RingkasanHakim): 'VERIFIED' | 'PARTIAL' | 'HYPOTHESIS' | 'TAK_PASTI' {
+/**
+ * Label yang AKAN diusulkan hakim seandainya ia berwenang — dicatat untuk dibandingkan, tidak dipakai.
+ *
+ * `labelModel` = label yang terlihat di jawaban. INSUFFICIENT berarti model menyatakan **tidak
+ * menemukan jawabannya**, dan jawaban semacam itu TIDAK berada di tangga VERIFIED–PARTIAL–HYPOTHESIS
+ * sama sekali: kalimat-kalimatnya bercerita tentang isi dokumen, bukan menjawab pertanyaannya.
+ *
+ * Terukur 2026-09-28: pertanyaan tunjangan kinerja (tidak ada di dokumen mana pun) dijawab
+ * INSUFFICIENT oleh model, tetapi penggulungan lama mengubahnya jadi **VERIFIED** — karena ketiga
+ * kalimat "dokumen hanya memuat X dan Y" memang bersandar. Vonis per kalimatnya benar; rumusnya yang
+ * salah. Karena itu kasus ini dikeluarkan dari perbandingan, bukan dipaksa masuk.
+ */
+export function labelUsulan(
+  r: RingkasanHakim,
+  labelModel?: string
+): 'VERIFIED' | 'PARTIAL' | 'HYPOTHESIS' | 'TAK_PASTI' | 'TIDAK_BERLAKU' {
+  if (labelModel === 'INSUFFICIENT') return 'TIDAK_BERLAKU';
   const diputus = r.bersandar + r.tidak;
   if (diputus === 0) return 'TAK_PASTI';
   if (r.tidak === 0) return 'VERIFIED';
@@ -209,10 +247,13 @@ export function kunciPengguna(rctx: any): string {
 }
 
 type BahanHakim = {
+  /** teks yang dinilai hakim (jawaban model, sebelum label dikoreksi sistem) */
   jawaban: string;
+  /** teks akhir yang BENAR-BENAR dilihat Owner — dari sinilah label pembanding dibaca */
+  jawabanAkhir: string;
   isiDokumen: string[];
-  /** label yang sudah diputuskan `periksaLabelSumber` — bahan pembanding, bukan masukan hakim */
-  labelSistem: string;
+  /** true bila `periksaLabelSumber` menurunkan label model */
+  diturunkan: boolean;
   chatId?: string;
 };
 
@@ -233,7 +274,10 @@ export async function jalankanHakimBayangan(rctx: any, bahan: BahanHakim): Promi
 
     const isi = (bahan.isiDokumen || []).filter((t) => typeof t === 'string' && t.trim());
     const kalimat = kalimatUntukHakim(bahan.jawaban);
-    if (!isi.length || kalimat.length < 2) {
+    // Batas SATU kalimat, bukan dua. Batas lama membuat jawaban pendek tak pernah dinilai sama sekali
+    // — terukur 2026-09-28: "berapa jumlah pegawai yang diintervensi?" dijawab ringkas, dilewati diam-diam,
+    // dan tidak ada barisnya di tabel. Justru jawaban pendek yang paling mudah diperiksa.
+    if (!isi.length || kalimat.length < 1) {
       console.log(`[HakimBayangan] dilewati — potongan=${isi.length} kalimat=${kalimat.length}`);
       return;
     }
@@ -280,16 +324,17 @@ export async function jalankanHakimBayangan(rctx: any, bahan: BahanHakim): Promi
 
     const putusan = bacaPutusanHakim(mentah, kalimat.length);
     const ringkas = ringkasPutusan(putusan, kalimat.length);
-    const usulan = labelUsulan(ringkas);
+    const labelSistem = labelTerlihat(bahan.jawabanAkhir);
+    const usulan = labelUsulan(ringkas, labelSistem);
     const ms = Date.now() - mulai;
 
     console.log(
-      `[HakimBayangan] sistem=${bahan.labelSistem || '(diam)'} usulan=${usulan} ` +
+      `[HakimBayangan] sistem=${labelSistem}${bahan.diturunkan ? '(diturunkan)' : ''} usulan=${usulan} ` +
       `bersandar=${ringkas.bersandar} tidak=${ringkas.tidak} percakapan=${ringkas.percakapan} ` +
       `takTerbaca=${ringkas.takTerbaca} kalimat=${kalimat.length} ${ms}ms`
     );
 
-    await simpanPutusan(rctx, bahan, kalimat, putusan, ringkas, usulan, modelTercatat, biayaAsliUsd, ms);
+    await simpanPutusan(rctx, bahan, kalimat, putusan, ringkas, labelSistem, usulan, modelTercatat, biayaAsliUsd, ms);
   } catch (e: any) {
     // Pagar 3: jalur bayangan tidak boleh merembet ke jawaban Owner, apa pun yang terjadi.
     console.error('[HakimBayangan] gagal (diabaikan):', e?.message);
@@ -306,6 +351,7 @@ async function simpanPutusan(
   kalimat: string[],
   putusan: PutusanHakim[],
   ringkas: RingkasanHakim,
+  labelSistem: string,
   usulan: string,
   model: string,
   biayaUsd: number | undefined,
@@ -330,8 +376,10 @@ async function simpanPutusan(
     trace_id: rctx?.traceId || null,
     chat_id: bahan.chatId || null,
     model,
-    label_sistem: bahan.labelSistem || '',
+    label_sistem: labelSistem,
+    diturunkan: !!bahan.diturunkan,
     label_usulan: usulan,
+    sepakat: labelSistem === usulan,
     jumlah_kalimat: kalimat.length,
     jumlah_potongan: Math.min((bahan.isiDokumen || []).length, MAKS_POTONGAN),
     bersandar: ringkas.bersandar,

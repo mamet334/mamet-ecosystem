@@ -377,9 +377,12 @@ export const SynthesisHandler = {
     // label sistem bisa dicatat sebagai pembanding. MATI kecuali env `HAKIM_BAYANGAN=1`.
     // Ditunggu `tasks.awaitAll()` di index.ts, jadi ia menambah waktu tunggu — itu harga uji coba.
     await jalankanHakimBayangan(rctx, {
+      // Yang DINILAI: jawaban model apa adanya — catatan sistem bukan kalimat model.
       jawaban: sebelumLabel,
+      // Yang DIBANDINGKAN: teks akhir yang benar-benar dilihat Owner, termasuk label hasil koreksi.
+      jawabanAkhir: replyMessage,
       isiDokumen,
-      labelSistem: replyMessage === sebelumLabel ? '(diam)' : 'diturunkan',
+      diturunkan: replyMessage !== sebelumLabel,
       chatId: (ctx.request as any)?.chatId || ''
     });
     // Tabel data (Item 92 Tahap 3) disusun kode dari database — ditempel SESUDAH label diperiksa, di luar jawaban model.
