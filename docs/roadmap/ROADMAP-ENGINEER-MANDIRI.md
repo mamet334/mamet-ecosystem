@@ -495,3 +495,29 @@ Engineer ke sana.
 **Sisa yang belum diputuskan:** `Engineer:AnalyzeTask` dan `Engineer:ReviewChanges` berada dalam kondisi
 yang sama — tidak ada pemancarnya. Begitu pula seluruh `detectIntent()` beserta cabang ANALYSIS dan
 CLARIFICATION-nya. Membongkarnya keputusan tersendiri; dicatat supaya tidak perlu ditelusuri ulang.
+
+### Model diberi tahu akar repo-nya (2026-09-28) — sisa Tahap 5 ditutup
+
+`catatanAkarRepo()` disisipkan ke **tiap kiriman** Engineer, sejajar ringkasan temuan Tahap 3b:
+
+```
+[AKAR REPO ENGINEER]
+Seluruh perintah [MAMET_CMD: …] dijalankan dengan direktori kerja: <akar>
+Anda SUDAH berada di akar repo. Pakai alamat RELATIF …
+JANGAN menelusuri filesystem — pakai git ls-files atau git grep -n.
+```
+
+Alasannya kejadian live 28 Sep: model menulis *"dijalankan dari direktori kerja yang berbeda"* lalu
+mengarang perintah `python` untuk mencari berkas yang alamatnya sudah ia ketahui. Perintah memang
+dijalankan dengan `cwd = akarRepo()`, hanya tidak pernah diberitahukan kepadanya.
+
+Larangannya disertai **ganti cara** (`git ls-files` / `git grep -n`), sesuai prosedur langkah 0.4 —
+melarang tanpa memberi jalan lain hanya memindahkan kemacetan.
+
+Dibaca dari proses utama pada **tiap kiriman**, bukan sekali di awal: Owner bisa berganti repo lewat
+tombol "Pilih repo", dan catatan sekali-di-awal hilang begitu "Bersihkan konteks" menggeser jendela.
+Diam bila akar kosong (web/Mametlite, atau terpasang tapi belum dipilih) — catatan yang menyebut akar
+kosong lebih buruk daripada tidak ada catatan.
+
+Uji: `uji/uji-catatan-akar-repo.mjs` — isi catatan, kapan diam, dan **terpasang** (diimpor, dipanggil
+di `handleSend`, ikut ke `historyKirim` yang benar-benar dikirim, hanya di workspace Engineer).

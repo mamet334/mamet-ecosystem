@@ -13,7 +13,7 @@ import { tugasDariUsulan } from '../../core/runtime/services/engineer/UsulanPatc
 import { laporanSetelahMuatUlang, hapusCatatanPatch } from '../../core/runtime/services/engineer/CatatanPatch.js';
 import { putusanPemulihan, bolehSimpanChat, kunciSimpan } from './pemulihanChat.js';
 import { buatPenandaKiriman, tujuanTulis, pesanTerlantar, layakSimpanTerlantar } from './pengirimanChat.js';
-import { riwayatPerintahDariPesan } from '../../core/runtime/services/engineer/ProsedurEngineer.js';
+import { riwayatPerintahDariPesan, catatanAkarRepo } from '../../core/runtime/services/engineer/ProsedurEngineer.js';
 import { ambilBlokKlaim, susunSkripUji, susunLaporanKlaim } from '../../core/runtime/services/engineer/UjiKlaim.js';
 import { ambilBlokTemuan, bacaBerkasTemuan, susunBerkasTemuan, gabungTemuan, laporanTemuan, ringkasanUntukKonteks, ALAMAT_BERKAS as ALAMAT_TEMUAN } from '../../core/runtime/services/engineer/IngatanTemuan.js';
 import { anggaranKonteks, pilihPesanKonteks, meteranKonteks, bacaMulaiDari, simpanMulaiDari, pesanUntukDipadatkan, bolehPadatkan, bentukPesanRingkasan, tokenPesan, MIN_PESAN_PADATKAN } from '../../core/runtime/services/KonteksChat.js';
@@ -1098,9 +1098,19 @@ export default function ConversationEngine({ sessionId }) {
     const ringkasanTemuan = isEngineerWorkspace
       ? ringkasanUntukKonteks([...temuanTersimpan, ...temuanBelumSimpan])
       : '';
-    const historyKirim = ringkasanTemuan
-      ? [{ role: 'user', content: ringkasanTemuan }, ...newMessages]
-      : newMessages;
+
+    // AKAR REPO (Tahap 5, 2026-09-28): model tidak pernah diberi tahu di folder mana perintahnya
+    // dijalankan. Live 28 Sep ia menulis "dijalankan dari direktori kerja yang berbeda" lalu mengarang
+    // perintah python untuk mencari berkas yang alamatnya sudah ia ketahui. Dibaca dari proses utama
+    // pada SETIAP kiriman, bukan sekali di awal: Owner bisa berganti repo lewat tombol "Pilih repo",
+    // dan catatan sekali-di-awal akan hilang begitu "Bersihkan konteks" menggeser batas jendela.
+    const akarRepoSekarang = isEngineerWorkspace
+      ? await (window.electronAPI?.engineer?.akarRepo?.() ?? Promise.resolve('')).catch(() => '')
+      : '';
+    const catatanAkar = catatanAkarRepo(akarRepoSekarang);
+
+    const sisipan = [catatanAkar, ringkasanTemuan].filter(Boolean).map((content) => ({ role: 'user', content }));
+    const historyKirim = sisipan.length ? [...sisipan, ...newMessages] : newMessages;
 
     try {
       await assistantService.processMessage({

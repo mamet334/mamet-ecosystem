@@ -44,6 +44,33 @@ export function petunjukHasilKosong(perintah, keluaran) {
   return `PETUNJUK SISTEM: "git show ${alamat}" tanpa revisi TIDAK menampilkan isi berkas — git membacanya sebagai penyaring commit, jadi kosong itu normal dan BUKAN tanda berkas hilang. Untuk melihat isinya: git show HEAD:${alamat}`;
 }
 
+/**
+ * Catatan akar repo untuk model — disisipkan ke tiap kiriman Engineer.
+ *
+ * Kejadian live 2026-09-28: model menulis *"Keduanya dijalankan dari direktori kerja yang berbeda"*
+ * lalu mengarang perintah `python` untuk menelusuri filesystem mencari berkas yang **alamatnya sudah
+ * ia ketahui**. Perintahnya memang dijalankan dengan `cwd = akarRepo()`, tetapi tidak ada satu pun
+ * tempat yang memberitahukan itu kepadanya — jadi ia menebak, dan menebak ke arah yang salah.
+ *
+ * Sebelum Tahap 5 catatan ini mustahil ditulis: akarnya sendiri tidak pasti. Sesudah Owner memilih
+ * folder repo, akarnya eksplisit dan tinggal disebutkan.
+ *
+ * @param {string} akar alamat absolut akar repo, atau kosong bila belum dipilih / bukan desktop
+ * @returns {string} blok catatan, atau string kosong bila tidak ada yang bisa disebutkan
+ */
+export function catatanAkarRepo(akar) {
+  const alamat = String(akar || '').trim();
+  if (!alamat) return '';
+  return [
+    '[AKAR REPO ENGINEER]',
+    `Seluruh perintah [MAMET_CMD: …] dijalankan dengan direktori kerja: ${alamat}`,
+    'Anda SUDAH berada di akar repo. Pakai alamat RELATIF terhadap folder itu',
+    '(mis. frontend/src/core/runtime/Kernel.js), bukan alamat absolut.',
+    'JANGAN menelusuri filesystem untuk mencari letak berkas — untuk menemukannya pakai',
+    'git ls-files (daftar berkas) atau git grep -n (cari isi), keduanya sudah diizinkan.',
+  ].join('\n');
+}
+
 /** `git show HEAD:<alamat>` / `git show <sha>:<alamat>` — pembacaan berkas utuh, satu-satunya yang bisa terpotong diam-diam. */
 const POLA_BACA_UTUH = /^git\s+show\s+[^\s:]*:(\S+)\s*$/i;
 
