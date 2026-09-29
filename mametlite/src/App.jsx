@@ -4,6 +4,7 @@ import { supabase } from './lib/supabase';
 import { callAgentSimple, parseSSEStream } from './lib/callAgentSimple';
 import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from './lib/documentTextExtractor';
 import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN, OCR_SERENTAK } from './lib/pdfOcrService';
+import { pisahLabel, warnaLabel } from './lib/labelRamah';
 
 // Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
 const POTONGAN_PERLU_KONFIRMASI = 150; // ±105 ribu huruf ≈ $0,006 (potongan 800 huruf, Item 70)
@@ -75,6 +76,37 @@ const CopyButton = ({ text }) => {
     <button onClick={handleCopy} className="text-slate-400 hover:text-emerald-400 transition-colors p-1.5 rounded hover:bg-slate-700/80 cursor-pointer flex items-center justify-center" title="Salin Jawaban AI">
       {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
     </button>
+  );
+};
+
+/**
+ * Jawaban AI beserta labelnya dalam bahasa yang dimengerti pengguna awam (2026-09-29).
+ *
+ * Labelnya diletakkan DI ATAS jawaban, bukan di bawah seperti tulisan server: pembaca perlu tahu
+ * cara membaca jawaban sebelum membacanya, bukan sesudah terlanjur mempercayainya.
+ *
+ * Penjelasannya selalu terlihat, tidak disembunyikan di balik hover — pengguna Mametlite membuka
+ * dari HP, dan di layar sentuh tooltip tidak pernah muncul.
+ *
+ * Saat jawaban masih mengalir, labelnya belum ada (server menulisnya di akhir) → tidak ada yang
+ * ditampilkan. Itu benar: lebih baik belum ada label daripada label yang berubah di tengah jalan.
+ */
+const JawabanBerlabel = ({ teks }) => {
+  const { label, jawaban, catatan } = pisahLabel(teks);
+  const warna = label ? warnaLabel(label.nada) : null;
+  return (
+    <div className="mt-4">
+      {label && (
+        <div className={`mb-3 rounded-lg border px-3 py-2 ${warna.bingkai}`}>
+          <div className={`text-xs font-semibold ${warna.teks}`}>{label.judul}</div>
+          <div className="text-xs text-slate-400 mt-0.5 leading-snug">{label.penjelasan}</div>
+        </div>
+      )}
+      <div className="text-sm leading-relaxed" dangerouslySetInnerHTML={parseMarkdown(jawaban)} />
+      {catatan.map((c, i) => (
+        <div key={i} className="mt-3 text-xs text-slate-500 italic border-l-2 border-slate-700 pl-3">{c}</div>
+      ))}
+    </div>
   );
 };
 
@@ -655,7 +687,9 @@ function App() {
                     <CopyButton text={msg.content} />
                   </div>
                 )}
-                <div className={`text-sm leading-relaxed ${msg.role === 'assistant' ? 'mt-4' : ''}`} dangerouslySetInnerHTML={parseMarkdown(msg.content)} />
+                {msg.role === 'assistant'
+                  ? <JawabanBerlabel teks={msg.content} />
+                  : <div className="text-sm leading-relaxed" dangerouslySetInnerHTML={parseMarkdown(msg.content)} />}
               </div>
             </div>
           ))}
