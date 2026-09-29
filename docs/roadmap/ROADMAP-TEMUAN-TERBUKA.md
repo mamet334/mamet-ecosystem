@@ -243,7 +243,14 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
 - **Bagian T11 yang TIDAK ikut diputuskan:** 40 tabel dengan hak bawaan berlebih bagi anon/authenticated.
   Itu perkara terpisah dan tetap ⏳ — mencabut hak pada tabel yang dibaca aplikasi bisa mematikan fitur,
   jadi perlu daftar pemakai per tabel lebih dulu.
-- **Status:** 🟢 diputuskan (hapus fungsi) · ⏳ hak tabel masih terbuka.
+- **DIKERJAKAN 2026-09-29:** `supabase/functions/check-keys/` dihapus dari repo (`git rm`). Pemeriksaan
+  terakhir sebelum menghapus: tidak ada satu pun pemanggil di berkas `.js/.jsx/.ts/.tsx/.json/.toml/.sh/
+  .ps1/.cjs/.mjs/.yml` mana pun — yang tersisa hanya berkas `graphify-out/` (hasil pindaian, bukan kode)
+  dan satu komentar di `ai_adapter.ts:91` yang ikut diperbarui. Isinya tetap tertelusuri lewat `git show`.
+  **Sisa untuk Owner:** hapus juga fungsi yang sudah terpasang di Supabase — menghapus berkasnya di repo
+  tidak mencabut penerapan yang sudah jalan, dan selama masih terpasang ia tetap bisa dipanggil.
+- **Status:** ✅ fungsi dihapus dari repo (menunggu Owner menghapus penerapannya di Supabase) ·
+  ⏳ hak 40 tabel masih terbuka, perkara terpisah.
 
 ## T12 — Membaca berkas = mengirimnya keluar, dan tak ada satu pun pemberitahuan (diskusi Owner, 2026-09-24)
 

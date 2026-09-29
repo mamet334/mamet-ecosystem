@@ -87,9 +87,10 @@ async function* processOpenAIStream(res: Response, info?: { provider?: string },
  * Perbaikan pertama Item 38 sudah menghentikan model provider LAIN masuk ke
  * GeminiAdapter, tapi model cadangannya sendiri ternyata sudah mati.
  *
- * Dipilih 'gemini-2.5-flash' karena masih aktif dan SUDAH dipakai lima tempat lain
- * di repo ini (deep_research, cron-agent, check-keys, context_compressor,
- * tool_subscriber) — konsisten, bukan menambah variasi baru. Keluarga 3.x
+ * Dipilih 'gemini-2.5-flash' karena masih aktif dan SUDAH dipakai beberapa tempat lain
+ * di repo ini (deep_research, cron-agent, context_compressor, tool_subscriber) —
+ * konsisten, bukan menambah variasi baru. (`check-keys` dulu ikut di daftar ini;
+ * fungsinya dihapus 2026-09-29, T11.) Keluarga 3.x
  * (gemini-3.5-flash-lite dan seterusnya) tersedia kalau nanti ingin lebih murah.
  *
  * SATU tempat saja yang perlu diubah saat migrasi berikutnya. Itulah gunanya.
