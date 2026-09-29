@@ -70,6 +70,36 @@ kemudian tinggal membaca `metadata.penyedia`, tanpa perubahan server.
 
 53 berkas uji hijau · `agent-process` lolos esbuild · `vite build` lolos.
 
-**Uji live yang masih perlu:** deploy `agent-process`, lalu satu chat. Yang dibuktikan: log
-`[PR#6 TOKEN METRICS] … penyedia=X` dan `chats.messages[].metadata.penyedia` menyebut **nama yang sama**,
-dan nama itu tidak muncul di teks jawaban.
+## Uji live 29 September — satu jalur terbukti, satu belum
+
+Owner deploy lalu chat sekali di Mametlite dan sekali di Mamet Ecosystem.
+
+| Waktu | `appSource` | Jalur | Penyedia (log) | Tersimpan di pesan |
+|---|---|---|---|---|
+| 01:49 | `mametlite` | stream | `Google` | — Mametlite menyimpan chat di **localStorage**, bukan tabel `chats` |
+| 01:50 | `assistant` | non-stream | `Azure` | ✅ `metadata.penyedia = "Azure"` (01:50:53) |
+
+**Jalur non-stream: TERBUKTI ujung ke ujung.** Log `[PR#6 TOKEN METRICS] … penyedia=Azure` pukul 01:50:51
+dan pesan tersimpan pukul 01:50:53 menyebut nama yang sama. Nama itu tidak muncul di teks jawaban.
+
+**Jalur stream: baru terbukti setengah.** Sisi server benar (`penyedia=Google` tercatat dan dikirim),
+tetapi chat yang memakainya kebetulan Mametlite — yang memang tidak pernah menyimpan metadata. Bagian
+"tersimpan" untuk jalur stream **belum dibuktikan** dan tidak diklaim.
+
+**Yang masih perlu:** satu chat di **Mamet Ecosystem** yang jawabannya mengalir (streaming), lalu periksa
+`metadata.penyedia` pada pesan itu.
+
+## Batas yang jujur: "penyedia terakhir sebelum jawaban dirakit"
+
+`rctx.penyediaHulu` ditimpa setiap panggilan OpenRouter dalam satu permintaan. Yang tersimpan karena itu
+bukan "penyedia yang pasti menulis kalimat ini", melainkan **penyedia panggilan OpenRouter terakhir
+sebelum jawaban dirakit**:
+
+- jalur stream — bingkai penyedia dikirim tepat sesudah aliran selesai, jadi panggilan latar sesudahnya
+  tidak bisa lagi mengubah yang sudah terkirim;
+- jalur non-stream — objek jawaban dirakit di `synthesis_handler` tepat sesudah sintesis.
+
+Di kedua jalur itu panggilan terakhir memang sintesis, karena seluruh jalur model lewat OpenRouter sejak
+kunci server Gemini & Groq dihapus (15 September). Bila suatu saat ada adapter non-OpenRouter yang dipakai
+untuk sintesis, nilai ini bisa salah menunjuk — dan itu harus diperiksa ulang saat itu terjadi, bukan
+diasumsikan tetap benar.

@@ -618,9 +618,18 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
   kosong selamanya tanpa gejala — dijaga uji yang membandingkan nama field dari ketiga berkas sekaligus.
   Ikut ketahuan: `onDone` jalur streaming dulu **selalu** dipanggil dengan `metadata = null`, jadi tak ada
   keterangan jawaban apa pun yang tersimpan di jalur itu. [log](../project-memory/changelog/2026-09-29-t14-penyedia-per-pesan.md)
-- **Status:** ✅ kode selesai, 53 berkas uji hijau. **Menunggu deploy Owner lalu satu chat** — yang
-  dibuktikan: log `penyedia=X` dan `metadata.penyedia` menyebut nama yang sama, dan nama itu tidak muncul
-  di teks jawaban. Penyedianya belum ditampilkan di layar (Owner memutuskan "simpan", bukan "tampilkan").
+- **UJI LIVE 2026-09-29 — jalur non-stream TERBUKTI, jalur stream belum.** Log `penyedia=Azure` (01:50:51)
+  dan pesan tersimpan (01:50:53) menyebut nama yang sama; nama itu tidak muncul di teks jawaban. Chat yang
+  memakai jalur **stream** kebetulan Mametlite (`appSource: mametlite`), yang menyimpan percakapan di
+  localStorage — jadi separuh "tersimpan" untuk jalur stream belum dibuktikan. **Perlu satu chat di Mamet
+  Ecosystem yang jawabannya mengalir.**
+- **Batas yang jujur:** `rctx.penyediaHulu` ditimpa tiap panggilan OpenRouter, jadi yang tersimpan adalah
+  **penyedia panggilan terakhir sebelum jawaban dirakit** — di kedua jalur itu sintesis, karena semua jalur
+  model lewat OpenRouter sejak kunci server Gemini & Groq dihapus. Bila kelak ada adapter non-OpenRouter
+  untuk sintesis, nilai ini bisa salah menunjuk dan wajib diperiksa ulang.
+- **Status:** 🟡 kode selesai (53 berkas uji hijau), jalur non-stream terbukti live, **jalur stream menunggu
+  satu chat Ecosystem**. Penyedianya belum ditampilkan di layar (Owner memutuskan "simpan", bukan
+  "tampilkan") — menampilkannya kemudian tinggal membaca `metadata.penyedia`, tanpa perubahan server.
 
 ## T9 — Sub-agent `knowledge_manager` rusak & ikut dipanggil Coordinator (asal Item 92 Tahap 3, 2026-09-21)
 
