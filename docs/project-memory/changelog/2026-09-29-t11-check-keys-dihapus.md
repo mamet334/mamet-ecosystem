@@ -37,10 +37,11 @@ Bagian lain T11 — **40 tabel dengan hak bawaan berlebih** bagi `anon`/`authent
 perkara terpisah: mencabut hak pada tabel yang memang dibaca aplikasi bisa mematikan fitur, jadi perlu
 daftar pemakai per tabel lebih dulu. Jangan dicabut buta.
 
-## Sisa untuk Owner
+## Langkah kedua — ✅ selesai hari yang sama
 
-**Hapus juga fungsinya di Supabase.** Menghapus berkas di repo tidak mencabut penerapan yang sudah jalan —
-selama masih terpasang, ia tetap bisa dipanggil siapa pun dan tetap membakar panggilan berbayar.
+**Fungsinya juga dihapus dari Supabase oleh Owner.** Menghapus berkas di repo tidak mencabut penerapan yang
+sudah jalan — selama masih terpasang, ia tetap bisa dipanggil siapa pun dan tetap membakar panggilan
+berbayar. Dengan langkah kedua ini, jalan masuk tanpa pemeriksaan pengguna itu benar-benar sudah tidak ada.
 
 ## Bukti
 

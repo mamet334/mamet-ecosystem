@@ -247,10 +247,11 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
   terakhir sebelum menghapus: tidak ada satu pun pemanggil di berkas `.js/.jsx/.ts/.tsx/.json/.toml/.sh/
   .ps1/.cjs/.mjs/.yml` mana pun — yang tersisa hanya berkas `graphify-out/` (hasil pindaian, bukan kode)
   dan satu komentar di `ai_adapter.ts:91` yang ikut diperbarui. Isinya tetap tertelusuri lewat `git show`.
-  **Sisa untuk Owner:** hapus juga fungsi yang sudah terpasang di Supabase — menghapus berkasnya di repo
-  tidak mencabut penerapan yang sudah jalan, dan selama masih terpasang ia tetap bisa dipanggil.
-- **Status:** ✅ fungsi dihapus dari repo (menunggu Owner menghapus penerapannya di Supabase) ·
-  ⏳ hak 40 tabel masih terbuka, perkara terpisah.
+  **Owner menghapus penerapannya di Supabase pada hari yang sama** — menghapus berkas di repo saja tidak
+  mencabut fungsi yang sudah terpasang, dan selama masih terpasang ia tetap bisa dipanggil siapa pun.
+- **Status:** ✅ **DITUTUP 2026-09-29** — berkas dihapus dari repo dan fungsinya dihapus dari Supabase.
+  Jalan masuk tanpa pemeriksaan pengguna itu sudah tidak ada. · ⏳ hak 40 tabel bagi anon/authenticated
+  masih terbuka — perkara terpisah, butuh daftar pemakai per tabel lebih dulu.
 
 ## T12 — Membaca berkas = mengirimnya keluar, dan tak ada satu pun pemberitahuan (diskusi Owner, 2026-09-24)
 
