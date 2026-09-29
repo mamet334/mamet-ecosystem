@@ -301,9 +301,33 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
 - **Batas yang TIDAK ditutup:** perintah Engineer (`[MAMET_CMD: …]`, mis. `node -e`) tidak dijaga penjaga
   ini — yang menjaganya tetap daftar program terbatas, peringatan skrip sebaris, dan dialog izin Owner.
   Explorer berkas (`fs:readFile`) juga tidak: itu Owner membaca berkasnya sendiri, tidak dikirim ke mana pun.
-- **Status:** ✅ penjaga terpasang & teruji (54 berkas uji hijau). Sisanya — bahwa membaca kode berarti
-  mengirimnya ke penyedia model — tetap **batas yang diketahui**, bukan pekerjaan: tak bisa dihilangkan
-  selama modelnya di awan.
+- **KEPUTUSAN OWNER 2026-09-29 — penyamaran CUKUP SEGINI, dan risikonya diterima Owner.**
+  Ditanyakan: adakah titik buta penyamaran, dan apa kekurangannya bila diperluas. Sesudah ditimbang,
+  Owner memutuskan **tidak memperluasnya**.
+
+  Titik buta yang sudah diketahui dan **diterima**: nama tetap dikirim (hanya NIP yang tidak —
+  `context_builder.ts:318`); penyamaran hanya di jalur Data Tabel, **potongan RAG tidak disaring sama
+  sekali**; jalur streaming melewatkannya (`context_builder.ts:323`); pola 18 digit tidak menangkap NIK,
+  telepon, atau alamat; riwayat percakapan mengirim ulang apa yang pernah lolos. Dan yang tak bisa
+  ditutup teknik apa pun: **menyamarkan pengenal ≠ menyamarkan keteridentifikasian** — "Camat Kecamatan
+  Lengkiti, Pembina Tk. I" adalah satu orang di satu kabupaten.
+
+  Alasan tidak diperluas, diukur dari akibatnya:
+  1. **bertabrakan dengan label VERIFIED** — pemeriksa mencocokkan jawaban dengan isi potongan; bila
+     potongan disamarkan, VERIFIED turun padahal jawabannya benar (bentuk kegagalan yang sama dengan
+     lapisan per-klaim leksikal yang dimatikan 28 Sep);
+  2. **jawaban jadi tak berguna** — Data Tabel berhasil karena jawabannya agregat; RAG justru ditanyai
+     "siapa/jabatan apa", jadi menyamarkan isinya = menyamarkan jawabannya;
+  3. **pemulihan lebih berbahaya daripada kebocoran** — salah pulih = NIP menempel pada nama yang salah;
+  4. **pagar sebagian yang terasa penuh** — rasa aman palsu lebih mahal daripada tidak ada pagar.
+
+  **Cara meninjau kembali:** ukur dulu **berapa banyak potongan RAG yang benar-benar memuat NIP** (satu
+  kueri). Bila jumlahnya nyata dan besar, keputusan ini layak dibuka lagi. Selama belum diukur,
+  perdebatan ini teoretis. **Jangan mengusulkan perluasan penyamaran tanpa angka itu.**
+- **Status:** ✅ penjaga berkas rahasia terpasang & teruji. Penyamaran **cukup seperti sekarang**
+  (keputusan Owner 29 Sep, risiko diterima). Sisanya — bahwa membaca berarti mengirimnya ke penyedia
+  model — tetap **batas yang diketahui**, bukan pekerjaan: tak bisa dihilangkan selama modelnya di awan,
+  dan **enkripsi tidak menutupnya** karena model harus membaca teks aslinya.
 
 ## T13 — CHIMERA WASM ditawarkan sebagai pengganti `label_sumber.ts` — ditolak, dengan bukti (2026-09-28)
 
