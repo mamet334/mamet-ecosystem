@@ -177,7 +177,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 94. ✅ Jawaban Mendarat di Percakapan yang Salah — Identitas Kiriman (2026-09-28) — [log](../project-memory/changelog/2026-09-28-jawaban-masuk-percakapan-salah.md) · dilaporkan Owner; **terbukti live 28 Sep** — jawaban tidak lagi tertukar. Batas yang diterima Owner: jawaban yang belum selesai belum muncul di riwayat
 
 98. ✅ Unduh Aplikasi Desktop dari Web (2026-09-29) — [log](../project-memory/changelog/2026-09-29-unduh-desktop-dari-web.md) · tautan di layar masuk (tanpa perlu login) & Pengaturan; repo rilis publik, alamat unduh diperiksa 200 tanpa autentikasi; `latest.yml`/`.blockmap` tak pernah diberikan ke manusia; API gagal → jatuh ke halaman releases/latest. **Belum diuji live**
-97. ✅ Panel Pembaruan di Pengaturan (2026-09-29) — [log](../project-memory/changelog/2026-09-29-panel-pembaruan-pengaturan.md) · jembatan preload (checkForUpdates/getAppVersion/onUpdateStatus) ada sejak lama tetapi **nol pemakai** di frontend/src; ikut ketahuan: `update-downloaded` & `error` tak pernah dikirim ke layar, jadi panel akan berhenti di "Mengunduh 100%" selamanya dan kegagalan tak terlihat. **Belum diuji live** (perlu build baru)
+97. ✅ Panel Pembaruan di Pengaturan (2026-09-29) — [log](../project-memory/changelog/2026-09-29-panel-pembaruan-pengaturan.md) · jembatan preload (checkForUpdates/getAppVersion/onUpdateStatus) ada sejak lama tetapi **nol pemakai** di frontend/src; ikut ketahuan: `update-downloaded` & `error` tak pernah dikirim ke layar, jadi panel akan berhenti di "Mengunduh 100%" selamanya dan kegagalan tak terlihat. **Terbukti live di 4.2.1** — isinya benar; ikut ketahuan ikon `system_update` tampil sebagai tulisan "TEM_UPDATE" (kelas cacat ke-3) → diganti `refresh` + penjaga menyeluruh `uji-ikon-subset.mjs`. **Perbaikan ikon MENUNGGU rilis berikutnya** (keputusan Owner 29 Sep: digabung saja dengan perbaikan lain, jangan naikkan versi khusus untuk ini)
 96. ✅ Versi 4.2.0 & Alur Rilis Manual (2026-09-29) — [log](../project-memory/changelog/2026-09-29-versi-4-2-0.md) · pembaruan otomatis tak pernah menyala bukan karena versi, melainkan karena electron-builder membuat rilis sebagai **draf** secara bawaan dan updater tak bisa melihat draf. **Keputusan Owner: tetap manual** — Owner sendiri yang menekan Publish; jangan usulkan `releaseType: "release"` sebagai "perbaikan"
 95. ✅ Label Verifikasi Mametlite dalam Bahasa Penggunanya (2026-09-29) — [log](../project-memory/changelog/2026-09-29-label-ramah-mametlite.md) · `mametlite/src` sebelumnya tak punya kode label sama sekali. **Kotak label terbukti live 29 Sep** ("Dari dokumen"); uji live sekaligus menemukan tombol Salin masih menyalin `[STATUS: …]` mentah — ditutup dengan `teksSalinan()`, peringatan ikut pindah ke dokumen. **Salinannya belum diuji live**
 
@@ -206,6 +206,23 @@ U4, U6, U7, U8b dan mode LITE yang belum aktif.
 setiap sesi berikutnya. Baris yang salah status membuat pekerjaan yang sudah selesai dikerjakan ulang, atau
 yang belum selesai dilewati. Itu sudah pernah terjadi: sebuah dokumen audit dikutip dalam bentuk waktu
 sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
+
+---
+
+## 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-09-29)
+
+Versi terpasang & terbit: **4.2.1**. Perbaikan berikut **sudah di `main` tetapi belum sampai ke aplikasi
+mana pun** — keputusan Owner: jangan naikkan versi khusus untuk ini, gabungkan dengan perbaikan lain.
+
+| Sudah di main | Kenapa belum sampai |
+|---|---|
+| Ikon panel Pembaruan (`system_update` → `refresh`) + `uji-ikon-subset.mjs` | perubahan renderer; butuh build baru |
+
+**Yang harus dilakukan saat rilis berikutnya:** naikkan `frontend/package.json` ke **4.2.2**, push, lalu
+Owner menerbitkan drafnya (alur manual — lihat item 96).
+
+**Uji live yang masih menunggu build yang sama:** Tahap 6 (tanam patch perusak → berkas harus kembali
+sendiri), penjaga berkas rahasia T12, catatan akar repo + `git grep`.
 
 ---
 
