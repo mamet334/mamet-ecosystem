@@ -215,7 +215,7 @@ terukur, bukan perasaan.
 | | Keputusan | Sumber |
 |---|---|---|
 | **T11** `check-keys` | **hapus fungsinya** — tanpa pemeriksaan pengguna, tanpa pemanggil, pertanyaannya sudah terjawab, tiap panggilan berbayar. (Hak 40 tabel **tidak** ikut diputuskan, tetap ⏳) · **✅ DITUTUP 29 Sep** — [log](../project-memory/changelog/2026-09-29-t11-check-keys-dihapus.md); berkas dihapus dari repo DAN fungsinya dihapus dari Supabase | `ROADMAP-TEMUAN-TERBUKA.md` T11 |
-| **T12** baca berkas = kirim keluar | **pasang penjaga** `.env`/`*.key`/`*.pem` dengan pesan beralasan; sisanya batas yang diketahui | T12 |
+| **T12** baca berkas = kirim keluar | **pasang penjaga** `.env`/`*.key`/`*.pem` dengan pesan beralasan; sisanya batas yang diketahui · **✅ DIKERJAKAN 29 Sep** — [log](../project-memory/changelog/2026-09-29-t12-penjaga-berkas-rahasia.md); `.env.example` sengaja tetap terbaca, nama berkas tetap terlihat | T12 |
 | **T13** hakim bayangan | **tetap membayangi** — naik jadi penentu label hanya setelah angka ketidaksepakatan cukup untuk dihitung | T13 |
 | **T14** 8 penyedia | **simpan nama penyedia per pesan; JANGAN kunci penyedianya** · **🟡 29 Sep** — [log](../project-memory/changelog/2026-09-29-t14-penyedia-per-pesan.md); jalur non-stream TERBUKTI live (log Azure = metadata.penyedia), jalur stream menunggu satu chat Ecosystem yang mengalir | T14 |
 | **AnalyzeTask & ReviewChanges** | **periksa dulu, jangan langsung hapus** — Owner mengoreksi usul asisten; hapus hanya bila terbukti ada yang mengerjakannya lebih baik | `ROADMAP-ENGINEER-MANDIRI.md` |

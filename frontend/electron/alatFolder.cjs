@@ -8,6 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 const { alamatDalamPagar } = require('./pagarFolder.cjs');
+const { adalahBerkasRahasia, alasanRahasia } = require('./berkasRahasia.cjs');
 
 const BATAS = {
   daftarEntri: 500,
@@ -74,6 +75,9 @@ function folderList(akar, relatif = '.', { kedalaman = BATAS.daftarKedalaman } =
 function folderRead(akar, relatif, { dari, sampai } = {}) {
   const p = alamatDalamPagar(akar, relatif);
   if (!p.ok) return gagal('folder_read', relatif, p.alasan);
+  // T12: ditolak SEBELUM berkasnya dibuka — isi yang sudah dibaca sudah berada di memori proses,
+  // dan dari sana ia tinggal selangkah dari prompt. Penolakannya menyebut sebab dan jalan lain.
+  if (adalahBerkasRahasia(p.relatif)) return gagal('folder_read', relUnix(p.relatif), alasanRahasia(p.relatif));
   let stat;
   try { stat = fs.statSync(p.alamat); } catch (e) { return gagal('folder_read', relatif, `tidak ditemukan (${e.code})`); }
   if (stat.isDirectory()) return gagal('folder_read', relatif, 'ini folder — pakai folder_list');
@@ -118,6 +122,7 @@ function folderSearch(akar, kueri, { relatif = '.' } = {}) {
   const temuan = [];
   let diperiksa = 0;
   let terpotong = false;
+  let dilewatiRahasia = 0;   // T12 — dihitung supaya pengecualiannya TERLIHAT, bukan diam-diam
   const jalan = (dir, relDir) => {
     let isi;
     try { isi = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
@@ -129,6 +134,9 @@ function folderSearch(akar, kueri, { relatif = '.' } = {}) {
       if (!cek.ok) continue;
       if (d.isDirectory()) { if (!FOLDER_DILEWATI.has(d.name.toLowerCase())) jalan(cek.alamat, rel); continue; }
       if (!d.isFile() || EKSTENSI_DOKUMEN.has(path.extname(d.name).toLowerCase())) continue;
+      // T12: pencarian isi membaca SELURUH berkas di folder, jadi tanpa penjaga di sini satu kata
+      // yang kebetulan ada di .env akan mengirim baris rahasianya ke prompt sebagai "temuan".
+      if (adalahBerkasRahasia(d.name)) { dilewatiRahasia++; continue; }
       let buf;
       try {
         if (fs.statSync(cek.alamat).size > BATAS.cariBerkasByte) continue;
@@ -149,7 +157,12 @@ function folderSearch(akar, kueri, { relatif = '.' } = {}) {
   if (!stat) return gagal('folder_search', relatif, 'tidak ditemukan');
   if (stat.isDirectory()) jalan(p.alamat, relUnix(p.relatif));
   else return gagal('folder_search', relatif, 'folder_search mencari di dalam folder — beri alamat folder atau "."');
-  return { ok: true, alat: 'folder_search', alamat: relUnix(p.relatif), kueri: cari, temuan, berkasDiperiksa: diperiksa, terpotong };
+  return {
+    ok: true, alat: 'folder_search', alamat: relUnix(p.relatif), kueri: cari, temuan,
+    berkasDiperiksa: diperiksa, terpotong,
+    // Disebut hanya bila memang ada — supaya hasil pencarian biasa tidak berisik.
+    ...(dilewatiRahasia ? { dilewatiRahasia } : {}),
+  };
 }
 
 /** Satu pintu untuk IPC: {alat, alamat, dari, sampai, kueri}. Alat tak dikenal ditolak. */

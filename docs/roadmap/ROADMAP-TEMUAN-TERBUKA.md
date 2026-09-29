@@ -291,7 +291,19 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
   memang perlu dibaca (mis. `.env.example` yang tak berisi rahasia), daftarnya dipersempit — jangan
   penjaganya dimatikan. Bila sebaliknya ada jalur lain yang mengirim rahasia tanpa lewat penjaga ini,
   itu temuan baru, bukan kegagalan keputusan ini.
-- **Status:** 🟢 diputuskan (pasang penjaga baca berkas rahasia). Belum dikerjakan.
+- **DIKERJAKAN 2026-09-29:** `frontend/electron/berkasRahasia.cjs` — `folder_read` menolak `.env`/`*.key`/
+  `*.pem` **sebelum berkasnya dibuka**, `folder_search` melewatinya dan **melaporkan jumlahnya**, sedangkan
+  `folder_list` tetap menampilkan namanya (yang dijaga isinya, bukan keberadaannya). `.env.example` dan
+  kerabatnya sengaja TIDAK ikut — berisi nama variabel tanpa nilai, dan justru itu yang dibutuhkan model.
+  Penolakannya menyebut sebab **dan** jalan lain (langkah 0.4). Diuji terhadap folder sungguhan lewat
+  `jalankanAlat()`, dengan uji kendali `.env2` yang membuktikan absennya `.env` memang karena penjaganya.
+  [log](../project-memory/changelog/2026-09-29-t12-penjaga-berkas-rahasia.md)
+- **Batas yang TIDAK ditutup:** perintah Engineer (`[MAMET_CMD: …]`, mis. `node -e`) tidak dijaga penjaga
+  ini — yang menjaganya tetap daftar program terbatas, peringatan skrip sebaris, dan dialog izin Owner.
+  Explorer berkas (`fs:readFile`) juga tidak: itu Owner membaca berkasnya sendiri, tidak dikirim ke mana pun.
+- **Status:** ✅ penjaga terpasang & teruji (54 berkas uji hijau). Sisanya — bahwa membaca kode berarti
+  mengirimnya ke penyedia model — tetap **batas yang diketahui**, bukan pekerjaan: tak bisa dihilangkan
+  selama modelnya di awan.
 
 ## T13 — CHIMERA WASM ditawarkan sebagai pengganti `label_sumber.ts` — ditolak, dengan bukti (2026-09-28)
 
