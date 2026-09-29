@@ -3,6 +3,7 @@ import { supabase } from '../supabase';
 import { kernel } from '../core/runtime/Kernel';
 import { User, Mail, Shield, LogOut, Palette, Activity, Monitor, Bell, Cpu, Clock, Brain, Key } from 'lucide-react';
 import { ringkasPembaruan, bentukVersi, warnaStatus } from '../core/runtime/services/statusPembaruan';
+import TombolUnduhDesktop from './TombolUnduhDesktop';
 
 // Workspace yang bisa punya override preferensi tool sendiri (lihat WorkspaceManager.js)
 const TOGGLEABLE_WORKSPACES = [
@@ -584,6 +585,29 @@ export default function Settings() {
               Pembaruan diunduh sendiri di latar belakang dan dipasang saat aplikasi ditutup.
               Tombol di atas hanya mempercepat pemeriksaannya.
             </p>
+          </section>
+          )}
+
+          {/* Unduh Aplikasi Desktop — pasangan panel di atas: yang itu untuk yang SUDAH memakai
+              desktop, yang ini untuk yang membuka lewat web. Komponennya sendiri yang memutuskan
+              menampilkan diri atau tidak, jadi hanya satu dari keduanya yang pernah muncul. */}
+          {!adaPembaruan && (
+          <section className="col-span-12 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center">
+                <span className="material-symbols-outlined text-primary">download</span>
+              </div>
+              <div>
+                <h2 className="font-headline-md text-headline-md">Aplikasi Desktop</h2>
+                <p className="text-body-sm text-on-surface-variant">Versi Windows dengan Engineer, folder kerja, dan konversi dokumen</p>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-on-surface-variant leading-relaxed mb-4">
+              Sesudah terpasang, pembaruan berikutnya datang sendiri — tidak perlu kembali ke halaman ini.
+            </p>
+
+            <TombolUnduhDesktop />
           </section>
           )}
 

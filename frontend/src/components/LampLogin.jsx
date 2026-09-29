@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabase';
 import { AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
+import TombolUnduhDesktop from './TombolUnduhDesktop';
 
 export default function LampLogin({ onLoginSuccess }) {
   // State lampu dan login
@@ -381,6 +382,13 @@ export default function LampLogin({ onLoginSuccess }) {
                     {isSignUp ? 'Masuk' : 'Daftar'}
                   </button>
                 </p>
+              </div>
+
+              {/* Unduh aplikasi desktop — SEBELUM login, karena inilah yang dicari orang yang baru
+                  diberi alamat webnya. Tidak muncul bila Mamet dibuka dari aplikasi desktop. */}
+              <div className="text-center mt-4 pt-4 border-t border-[rgba(255,236,207,.12)]">
+                <TombolUnduhDesktop ringkas />
+                <p className="text-[11px] text-[rgba(255,236,207,.45)] mt-1.5">Untuk Windows · tidak perlu masuk dulu</p>
               </div>
             </form>
           </div>
