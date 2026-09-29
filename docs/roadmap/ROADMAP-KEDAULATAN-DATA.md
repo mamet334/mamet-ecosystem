@@ -78,6 +78,45 @@ skema lewat migrasi di repo, tidak mengunci fitur ke layanan khusus Supabase tan
 ### Tahap 3 — (jangka panjang) Embedding lokal
 - [ ] Uji model 768-D lokal dengan set uji Kepbup 14 pertanyaan, di luar aplikasi, $0. Lolos 14/14 baru dirancang.
 
+**Alat ukurnya SUDAH ADA — di `D:\SLAMET\other\gabut\engine-vector`, bukan di repo ini** (diperiksa 29 September).
+Baris "Fakta" di atas menilai folder itu sebagai prototipe basis data Go yang cacat; penilaian itu **sudah usang** —
+bagian Go pensiun, dan repo itu kini layanan **embedding + chunking lokal**, persis yang dibutuhkan tahap ini.
+
+`gerbang_tahap3.py` mengukur lewat `match_documents_hybrid` di Postgres lokal — jalur pengambilan yang sungguhan,
+bukan kosinus murni. Klaimnya "aturan disalin persis dari `uji-pengambilan-v4.js`" **dibuktikan**, bukan dipercaya:
+
+| Diperiksa | Hasil |
+|---|---|
+| `rapat()` | identik, **termasuk sama-sama tanpa `.trim()`** |
+| `cariBukti`, ambil 8, ambang 0,55 | sama persis |
+| stopword & `kataKunciPencarian` | **69 lawan 69, identik** dengan `KnowledgeService.js` (dibandingkan program) |
+| migrasi `…000300` | menyalin `match_documents_hybrid` apa adanya + satu parameter `p_embedding_model` — gerbang tidak tercemar perubahan fungsi |
+
+**Keutuhan bukti pada pemotongan yang berjalan sekarang — diukur 29 September, 14/14 UTUH.**
+Gerbang menyatakan lolos bila SATU potongan memuat SELURUH teks salah satu alternatif bukti. Bila pemotongan baru
+membelah bukti ke dua potongan, pertanyaan itu gagal **karena chunker, bukan karena model** — dan angkanya tidak bisa
+dibedakan. Karena itu patokannya diukur lebih dulu:
+
+```
+BUKU-01..04 1 potongan · BUKU-05 2 · BUKU-06 2 · BUKU-07..11 1 · BUKU-12 3 · BUKU-13 2 · BUKU-14 1
+```
+
+Ikut terjawab: **bukti BUKU-10 ADA** di satu potongan, jadi kegagalannya yang dikenal (13/14) memang kegagalan
+pengambilan — bukan bukti yang terbelah.
+
+**PERINGATAN sebelum menjalankan gerbang.** Model yang terunduh di laptop (1,1 GB, lengkap) adalah
+`paraphrase-multilingual-mpnet-base-v2` — **128 token**. Bawaan `embed_service.py` adalah
+`intfloat/multilingual-e5-base` — 512 token, **belum terunduh**. `chunker.py` ditulis untuk 512 token E5; dijalankan
+dengan mpnet, potongannya melewati 128 token dan **dipotong diam-diam oleh tokenizer** — tanpa galat. Hasil gerbang
+akan buruk karena alasan yang salah. Bila tetap memakai mpnet, `chunker.py` wajib disetel ke 128 token **dan**
+keutuhan bukti di atas WAJIB diukur ulang pada pemotongan barunya.
+
+**Bernilai tanpa syarat, terlepas dari gerbang** (temuan engine-vector, belum diverifikasi di sini): 206 dari 221
+dokumen Kepbup tidak memuat nomornya sendiri di teks terindeks, dan kata "kepbup" muncul di 0 dari 3.629 potongan —
+**93% Kepbup tidak bisa dicari lewat nomornya**. Judul memuat semuanya tetapi tidak pernah ikut dicari.
+Migrasi `20260924000400_cari_lewat_judul.sql` di sana menambah kolom `fts_judul`; itu layak dipindahkan ke repo ini
+tanpa menunggu Tahap 3.
+
 ### Tahap 4 — (sangat jauh) Mamet desktop berjalan dengan database lokal
 - [ ] Hanya bila Tahap 1–3 lolos dan perangkat keras memadai. Login & fungsi server dirancang saat itu.
 
