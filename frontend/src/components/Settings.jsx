@@ -549,7 +549,10 @@ export default function Settings() {
           <section className="col-span-12 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center">
-                <span className="material-symbols-outlined text-primary">system_update</span>
+                {/* `refresh`, bukan `system_update`: font ikon hanya memuat SUBSET dari daftar-ikon.txt,
+                    dan nama di luar subset dirender sebagai TULISAN besar yang menimpa judul —
+                    terlihat live 29 Sep ("TEM_UPDATE"), sama seperti "DATA_USAGE" 23 Sep. */}
+                <span className="material-symbols-outlined text-primary">refresh</span>
               </div>
               <div>
                 <h2 className="font-headline-md text-headline-md">Pembaruan Aplikasi</h2>

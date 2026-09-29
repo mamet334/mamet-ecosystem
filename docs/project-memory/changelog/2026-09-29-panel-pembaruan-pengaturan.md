@@ -69,3 +69,43 @@ Uji menjaga tiga hal yang paling mudah lepas: persentase yang dijepit dan tidak 
 (tanpa itu tiap kali Pengaturan dibuka akan menumpuk pendengar baru pada peristiwa yang sama).
 
 **Belum diuji live.** Perlu build baru — panel ini tidak akan muncul di 4.2.0 yang sudah terpasang.
+
+---
+
+## Uji live 29 September: panelnya bekerja, ikonnya tidak
+
+Owner memasang 4.2.1 dan mengirim tangkapan layar. **Isinya benar semua** — "Versi terpasang v4.2.1",
+tombol Periksa Pembaruan, dan status "Aplikasi Anda sudah di versi terbaru."
+
+Tetapi ikonnya tampil sebagai **TULISAN raksasa "TEM_UPDATE" yang menimpa judul panel.**
+
+**Sebabnya, dan ini kali KETIGA:** font ikon yang dibundel bukan font penuh, melainkan **subset** 70
+ikon yang dibuat `scripts/perbarui-ikon.mjs` dari `daftar-ikon.txt`. Nama di luar subset tidak menjadi
+gambar — ia dirender sebagai **ligatur gagal**, yaitu teksnya sendiri, berukuran ikon.
+
+| Kapan | Ikon | Terlihat sebagai |
+|---|---|---|
+| 14 Sep | `expand_more` | — diganti `chevron_right` diputar 90° |
+| 23 Sep | `data_usage`, `history_toggle_off` | "DATA_USAGE" |
+| **29 Sep** | `system_update` | **"TEM_UPDATE"** |
+
+Diganti `refresh`, yang sudah ada di subset. (`download` di tombol unduh aman — ia memang ada.)
+
+## Kenapa ini lolos tiga kali, dan apa yang menghentikannya
+
+Tidak ada yang merah. Build sukses, uji hijau, `vite build` lolos — cacatnya **hanya terlihat oleh mata
+manusia yang kebetulan membuka layar itu.** Dua uji yang ada (`uji-konteks-chat`, `uji-padatkan-konteks`)
+memeriksa ikon TERTENTU di layar tertentu, jadi ikon baru di layar baru tidak terjaga.
+
+`uji/uji-ikon-subset.mjs` **memindai seluruh `frontend/src`** dan menolak setiap nama ikon literal yang
+tidak ada di subset. Ikon baru di layar mana pun kini ikut terjaga.
+
+Dua hal yang membuatnya tidak mengganggu:
+
+- **Ekspresi dinamis dilewati.** `<span …>{icon}</span>` di `MobileBottomNav.jsx` nilainya datang dari
+  data, tidak diketahui saat memindai. Tanpa pengecualian ini ujinya merah palsu — dan uji yang merah
+  palsu akan diabaikan orang.
+- **Uji kendali membuktikan pemindainya bisa merah**: `system_update` tertangkap sebagai nama literal,
+  dan memang terbukti tidak ada di subset.
+
+58 berkas uji hijau.
