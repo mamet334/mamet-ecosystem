@@ -49,7 +49,7 @@ pengguna login. Migrasi `20260922003711_rls_tutup_baca_semua` —
 |---|---|---|
 | Penyimpanan (Postgres + pgvector) | **Ya** — data 52 MB, Postgres ±200–300 MB RAM | SQL, migrasi, `match_documents_hybrid`, RLS sudah ada di repo → dipakai apa adanya. **Tidak** menulis mesin database sendiri |
 | Embedding (model ±1 GB, CPU) | **Ya, bersyarat** | Wajib lolos set uji Kepbup 14/14 (Item 90) sebelum dipakai; mpnet hanya 128 token (potongan 800 huruf terpotong); e5 wajib awalan `query:`/`passage:`; ganti model = embed ulang semua |
-| Login, RLS `auth.uid()`, fungsi server (Deno) | Mungkin, berat | Ketergantungan Supabase lebih luas dari database; Supabase self-host Docker ±4 GB+ RAM — terlalu berat untuk laptop ini |
+| Login, RLS `auth.uid()`, fungsi server (Deno) | **Ya** — diperbaiki 2026-09-29 | Angka "Docker ±4 GB+" membandingkan hal yang salah: itu ongkos **seluruh tumpukan** Supabase (GoTrue, Realtime, Storage, Kong, Studio), padahal jalur ini butuh dua-tiga potong saja. **Keputusan Owner:** yang diambil dari Supabase hanya **Postgres/penyimpanannya**; dukungan pengguna global memang tidak dipakai lokal, dan **RLS tidak dipermasalahkan** karena yang dibaca hanya data lokal milik sendiri. `skema-pulih.sql` sudah berjalan tanpa skema `auth`. Fungsi Deno → `deno.exe` **sudah terbundel** di installer (`deno-bin`, dipakai perintah Engineer) |
 | Model penjawab (LLM) | **Belum layak** | 7–8B di CPU ±3–6 token/detik, mutu jauh di bawah model sekarang |
 | Mametlite (pengguna eksternal) | Tidak | Tetap awan |
 
@@ -117,12 +117,32 @@ dokumen Kepbup tidak memuat nomornya sendiri di teks terindeks, dan kata "kepbup
 Migrasi `20260924000400_cari_lewat_judul.sql` di sana menambah kolom `fts_judul`; itu layak dipindahkan ke repo ini
 tanpa menunggu Tahap 3.
 
-### Tahap 4 — (sangat jauh) Mamet desktop berjalan dengan database lokal
-- [ ] Hanya bila Tahap 1–3 lolos dan perangkat keras memadai. Login & fungsi server dirancang saat itu.
+### Tahap 4 — Mamet desktop berjalan dengan database lokal
+- [ ] Hanya bila Tahap 1–3 lolos. Login & fungsi server dirancang saat itu.
+
+**"Sangat jauh" dicoret 2026-09-29 — label itu keliru dan membuat pekerjaan ini terlihat mustahil padahal tidak.**
+Potongannya sudah ada: Postgres+pgvector ✅ terbukti (Tahap 2), `deno.exe` ✅ sudah terbundel di installer, login ✅
+tidak diperlukan untuk satu pengguna lokal. Perkiraan RAM saat semuanya berjalan — Postgres 200–300 MB (terukur),
+PostgREST 50–100 MB, Deno 100–200 MB, Electron 400–800 MB, model embedding int8 300–500 MB → **±1,5–2 GB dari 11,7 GB.**
+**RAM bukan temboknya.**
+
+Dua hal yang benar-benar menahan, dan keduanya BUKAN perangkat keras:
+
+1. **Model penjawab.** 7–8B di CPU tanpa GPU: 3–6 token/detik, mutu jauh di bawah yang dipakai sekarang. Ini soal
+   komputasi, dan tidak ada database lokal yang memperbaikinya. Tetapi ini **pilihan sadar**: BYOK berarti LLM di awan
+   dengan sengaja, dan itu tidak mengurangi kedaulatan **data**.
+2. **Dua jalur untuk satu logika.** Desktop lokal + Mametlite awan. Ongkos pemeliharaan, bukan perangkat keras — dan
+   yang paling mudah diremehkan. Syaratnya tegas: **satu logika, dua tempat menjalankan, bukan dua salinan.**
 
 ## 5. Risiko & Pertanyaan Terbuka
 
 - Cadangan berisi data pribadi ASN (nama, NIP) → berkas cadangan di laptop wajib diperlakukan rahasia (lokasi, enkripsi
   disk?) — keputusan Owner di Tahap 1.
+- **Enkripsi TIDAK menutup pengiriman ke model awan** (dibahas 2026-09-29). Model harus MEMBACA teks aslinya untuk
+  menjawab; yang terenkripsi hanya derau baginya. Enkripsi melindungi data **saat disimpan** (cadangan di laptop) dan
+  **saat dikirim** (TLS) — bukan **saat disimpulkan**. Yang benar-benar mengurangi paparan ada empat, dan tiga sudah
+  berjalan: kirim lebih sedikit (RAG hanya 8 potongan teratas, bukan dokumen utuh) · **penyamaran NIP** (Item 92,
+  terbukti live: NIP tidak sampai ke model) · penjaga berkas rahasia (T12) · dan yang menghapusnya sepenuhnya, **LLM
+  lokal** — yang justru satu-satunya lapisan yang "belum layak".
 - Berkas cadangan chat bisa besar; `agent_logs` sebaiknya tidak ikut (log, bukan data).
 - Uji pulih memakai disk D; Docker/Postgres memakai RAM saat berjalan — dimatikan setelah uji.
