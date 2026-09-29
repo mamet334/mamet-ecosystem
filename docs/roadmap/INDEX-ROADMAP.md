@@ -176,7 +176,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 93. 📝 Kedaulatan Data — Salinan Sendiri yang Terbukti Bisa Dipulihkan, lalu Postgres Lokal (2026-09-22) — [rancangan](./ROADMAP-KEDAULATAN-DATA.md) · [log RLS](../project-memory/changelog/2026-09-22-rls-tutup-baca-semua.md) · [log Tahap 1](../project-memory/changelog/2026-09-22-cadangan-data-lengkap.md) · [log Tahap 2](../project-memory/changelog/2026-09-22-uji-pulih-postgres-lokal.md)
 94. ✅ Jawaban Mendarat di Percakapan yang Salah — Identitas Kiriman (2026-09-28) — [log](../project-memory/changelog/2026-09-28-jawaban-masuk-percakapan-salah.md) · dilaporkan Owner; **terbukti live 28 Sep** — jawaban tidak lagi tertukar. Batas yang diterima Owner: jawaban yang belum selesai belum muncul di riwayat
 
-95. ✅ Label Verifikasi Mametlite dalam Bahasa Penggunanya (2026-09-29) — [log](../project-memory/changelog/2026-09-29-label-ramah-mametlite.md) · `mametlite/src` sebelumnya tak punya kode label sama sekali; `[STATUS: VERIFIED]` sampai ke pegawai ASN sebagai teks mentah. Uji + build lolos, **belum diuji live**
+95. ✅ Label Verifikasi Mametlite dalam Bahasa Penggunanya (2026-09-29) — [log](../project-memory/changelog/2026-09-29-label-ramah-mametlite.md) · `mametlite/src` sebelumnya tak punya kode label sama sekali. **Kotak label terbukti live 29 Sep** ("Dari dokumen"); uji live sekaligus menemukan tombol Salin masih menyalin `[STATUS: …]` mentah — ditutup dengan `teksSalinan()`, peringatan ikut pindah ke dokumen. **Salinannya belum diuji live**
 
 ---
 

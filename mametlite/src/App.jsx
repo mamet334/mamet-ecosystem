@@ -4,7 +4,7 @@ import { supabase } from './lib/supabase';
 import { callAgentSimple, parseSSEStream } from './lib/callAgentSimple';
 import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from './lib/documentTextExtractor';
 import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN, OCR_SERENTAK } from './lib/pdfOcrService';
-import { pisahLabel, warnaLabel } from './lib/labelRamah';
+import { pisahLabel, warnaLabel, teksSalinan } from './lib/labelRamah';
 
 // Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
 const POTONGAN_PERLU_KONFIRMASI = 150; // ±105 ribu huruf ≈ $0,006 (potongan 800 huruf, Item 70)
@@ -67,8 +67,8 @@ const parseMarkdown = (text) => {
 const CopyButton = ({ text }) => {
   const [copied, setCopied] = useState(false);
   const handleCopy = () => {
-    const cleanText = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-    navigator.clipboard.writeText(cleanText);
+    // Yang disalin harus sama dengan yang dibaca di layar — termasuk peringatannya. Lihat teksSalinan().
+    navigator.clipboard.writeText(teksSalinan(text));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

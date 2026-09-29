@@ -73,6 +73,29 @@ cek(h.catatan.length === 1 && h.catatan[0].startsWith('Catatan sistem:'), 'catat
 cek(!h.catatan[0].includes('_'), 'garis bawah _miring_ dibuang — parseMarkdown Mametlite hanya kenal *miring*', h.catatan[0]);
 cek(!h.jawaban.includes('Catatan sistem'), 'catatan tidak ikut di badan jawaban', h.jawaban);
 
+// ── 1b. Tombol Salin ─────────────────────────────────────────────────────────────────────────
+// Cacat live 29 September: kotak label benar di layar, tetapi tombol Salin masih menyalin teks
+// MENTAH — `[STATUS: VERIFIED]` ikut menempel di dokumen kerja. Untuk "Perkiraan AI" itu berbahaya:
+// peringatannya hilang justru saat jawaban dipindahkan ke tempat orang lain membacanya.
+console.log('\n-- tombol salin --');
+
+let s = L.teksSalinan('<think>nalar panjang</think>Pangkatnya Pembina TK. I (IV/b).\n\nSumber: "KEPBUP.pdf"\n\n[STATUS: VERIFIED]');
+cek(!s.includes('[STATUS'), 'salinan TIDAK memuat [STATUS: …] mentah', s);
+cek(!s.includes('nalar panjang'), 'nalar <think> tetap dibuang dari salinan', s);
+cek(s.startsWith('[Dari dokumen]'), 'salinan diawali label dalam bahasa manusia', s);
+cek(s.includes('Pembina TK. I (IV/b)') && s.includes('KEPBUP.pdf'), 'isi jawaban & sumbernya ikut tersalin', s);
+
+s = L.teksSalinan('Kira-kira tiga bulan.\n\n[STATUS: HYPOTHESIS - Rekomendasi AI]');
+cek(/Perkiraan AI/.test(s) && /[Pp]eriksa dulu/.test(s),
+  'PERINGATANNYA ikut pindah ke dokumen — inilah alasan utama perbaikan ini', s);
+
+s = L.teksSalinan('isi\n\n[STATUS: HYPOTHESIS - Rekomendasi AI]\n\n_Catatan sistem: label VERIFIED diturunkan — jawaban ini tidak mengutip dokumen yang tersedia._');
+cek(s.includes('Catatan sistem:') && !s.includes('_Catatan'), 'catatan sistem ikut tersalin, tanpa garis bawah', s);
+
+cek(L.teksSalinan('Halo, ada yang bisa dibantu?') === 'Halo, ada yang bisa dibantu?',
+  'jawaban tanpa label disalin apa adanya — tidak ditambahi label karangan');
+cek(L.teksSalinan('') === '' && L.teksSalinan(null) === '', 'teks kosong → salinan kosong, bukan galat');
+
 // Warna
 cek(L.warnaLabel('aman').teks.includes('emerald'), 'nada aman → hijau');
 cek(L.warnaLabel('hati').teks.includes('amber'), 'nada hati-hati → kuning');
@@ -116,7 +139,10 @@ cek(PIPE.includes('[Pengetahuan umum AI'), 'prompt server memang masih memakai [
 console.log('\n-- terpasang di App.jsx --');
 
 const APP = readFileSync(`${AKAR}/mametlite/src/App.jsx`, 'utf8');
-cek(/import \{ pisahLabel, warnaLabel \} from '\.\/lib\/labelRamah'/.test(APP), 'labelRamah diimpor App.jsx');
+cek(/import \{ pisahLabel, warnaLabel, teksSalinan \} from '\.\/lib\/labelRamah'/.test(APP), 'labelRamah diimpor App.jsx');
+cek(/navigator\.clipboard\.writeText\(teksSalinan\(text\)\)/.test(APP),
+  'tombol Salin memakai teksSalinan — bukan teks mentah server', (APP.match(/clipboard\.writeText[^\n]*/g) || []));
+cek(!/const cleanText = text\.replace/.test(APP), 'jalur salin lama yang menyisakan [STATUS: …] sudah tidak ada');
 cek(/const JawabanBerlabel = /.test(APP), 'komponen JawabanBerlabel ada');
 cek(/<JawabanBerlabel teks=\{msg\.content\} \/>/.test(APP), 'komponen dipakai merender pesan asisten', APP.match(/JawabanBerlabel[^\n]*/g));
 

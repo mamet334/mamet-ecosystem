@@ -106,6 +106,27 @@ export function pisahLabel(teks) {
   return { label: kunci ? ARTI_LABEL[kunci] : null, jawaban, catatan };
 }
 
+/**
+ * Teks untuk tombol Salin.
+ *
+ * Live 29 September: kotak label tampil benar di layar, tetapi tombol Salin masih menyalin teks
+ * MENTAH dari server — `[STATUS: VERIFIED]` ikut menempel di dokumen. Untuk VERIFIED itu sekadar
+ * janggal. Untuk "Perkiraan AI" itu berbahaya: peringatannya hilang justru saat jawaban dipindahkan
+ * ke dokumen kerja, tempat ia paling mungkin dipercaya orang lain.
+ *
+ * Jadi yang disalin = label dalam bahasa manusia + jawaban. Peringatannya ikut pindah, kosakata
+ * tekniknya tidak. Nalar `<think>` tetap dibuang seperti sebelumnya.
+ */
+export function teksSalinan(teks) {
+  const tanpaNalar = String(teks ?? '').replace(/<think>[\s\S]*?<\/think>/g, '');
+  const { label, jawaban, catatan } = pisahLabel(tanpaNalar);
+  const bagian = [];
+  if (label) bagian.push(`[${label.judul}] ${label.penjelasan}`);
+  if (jawaban) bagian.push(jawaban);
+  for (const c of catatan) bagian.push(c);
+  return bagian.join('\n\n').trim();
+}
+
 /** Kelas warna per nada. Dipisah supaya bisa diuji tanpa merender React. */
 export function warnaLabel(nada) {
   if (nada === 'aman') return { bingkai: 'border-emerald-500/40 bg-emerald-500/10', teks: 'text-emerald-300' };

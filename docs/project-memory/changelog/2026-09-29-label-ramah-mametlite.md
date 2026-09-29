@@ -71,3 +71,36 @@ karena menambah aturan `_…_` berisiko merusak kata ber-garis-bawah lain.
 - Pratinjau dirender dari modul yang sungguhan: kelima keadaan benar di lebar desktop **dan 375 px**.
 
 **Uji live yang masih perlu:** satu chat di `mametlite.vercel.app` untuk tiap jenis label.
+
+---
+
+## Uji live 29 September: lulus sebagian, satu cacat ketahuan
+
+**Yang terbukti bekerja** (chat Owner di `mametlite.vercel.app`, pertanyaan pangkat Camat Kecamatan
+Lengkiti): kotak label muncul **di atas** jawaban, bertuliskan **"Dari dokumen"** beserta kalimat
+penjelasannya, dengan bingkai hijau. Jawabannya sendiri VERIFIED dan menyebut sumbernya.
+
+**Yang gagal, dan tidak terlihat di layar:** tombol **Salin** masih menyalin teks MENTAH dari server —
+`[STATUS: VERIFIED]` ikut menempel. `CopyButton` memakai `msg.content` apa adanya, jadi yang dibaca di
+layar sudah bersih sementara yang menempel di dokumen belum.
+
+Untuk VERIFIED itu sekadar janggal. Untuk **"Perkiraan AI" itu berbahaya**: peringatannya hilang justru
+pada saat jawaban dipindahkan ke dokumen kerja — tempat ia paling mungkin dibaca dan dipercaya orang
+lain. Kebalikan dari maksud pekerjaan ini.
+
+**Ditutup dengan `teksSalinan()`:** yang disalin kini = label dalam bahasa manusia + jawaban + catatan
+sistem. Peringatannya ikut pindah, kosakata tekniknya tidak.
+
+```
+[Perkiraan AI] Tidak diambil dari dokumen Anda. Periksa dulu sebelum dipakai untuk pekerjaan.
+
+Kira-kira tiga bulan sebelum periode berjalan.
+```
+
+Jawaban tanpa label tetap disalin apa adanya — tidak pernah ditambahi label karangan.
+
+**Pelajaran yang layak diingat:** uji "terpasang" saya memeriksa jalur **tampil**, dan berhenti di situ.
+Jawaban yang sama punya dua jalan keluar — layar dan papan klip — dan hanya satu yang dijaga. Kini
+keduanya diuji.
+
+52 berkas uji hijau; `mametlite` `vite build` lolos.
