@@ -586,6 +586,24 @@ berguna dan tak ada penggantinya), atau ditulis ulang untuk kebutuhan hari ini.
 menghapus — kode mati yang rapi **tampak hidup**, dan pada 28 September ia sempat menipu asistennya sendiri.
 Biaya membiarkannya nyata; biaya menulis ulang bila ternyata dibutuhkan, kecil.
 
+**✅ SELESAI 29 September 2026 — diperiksa dulu, lalu dihapus.** Ketiga pertanyaan di atas terjawab dengan
+kode:
+
+1. `_review()` **tidak menambah apa pun** di atas `_analyze()` — ia memetakan jumlah pelanggaran jadi
+   APPROVE/REJECT, vonis dari **mencocokkan pola teks**.
+2. Penggantinya ada dan lebih baik: **Tahap 6** menjalankan 54 berkas uji sesudah patch lalu memulihkan
+   sendiri bila gagal. Untuk ANALYSIS, kemampuannya tidak hilang sama sekali — `_analyze()` tetap
+   dipanggil jalur MODIFY_CODE dan hasilnya tetap sampai ke Owner lewat Reasoning Lock.
+3. Karena itu yang dihapus **pembungkus tugasnya**, bukan kemampuannya.
+
+Dihapus: kedua pendengar, kedua pembungkus, kedua fungsi di `TaskHandlers.js`, `_review()`, cabang
+ANALYSIS & CLARIFICATION, impor `detectIntent`. **Bersih −46 baris.**
+
+Cabang yang tak pernah tercapai diganti **penjaga yang bersuara**: tugas tanpa `dariTombolApply` kini
+DITOLAK dengan sebab yang jelas, bukan jatuh diam-diam ke MODIFY_CODE. `IntentClassifier.js` sengaja
+disimpan — dipakai lima berkas uji sebagai bahan uji nyata; peringatannya ditulis di kepala berkasnya.
+[log](../project-memory/changelog/2026-09-29-analysis-review-dihapus.md)
+
 ### Model diberi tahu akar repo-nya (2026-09-28) — sisa Tahap 5 ditutup
 
 `catatanAkarRepo()` disisipkan ke **tiap kiriman** Engineer, sejajar ringkasan temuan Tahap 3b:

@@ -1,13 +1,12 @@
 import { FileIndexService } from './FileIndexService.js';
 import { SessionArtifact } from './engineer/SessionArtifact.js'; // [ADR-0017 Fase 1] Diekstrak dari file ini
 import { MAX_FILES_PER_PATCH, checkCapabilityAndDeclare } from './engineer/CapabilityGuard.js'; // [ADR-0017 Fase 2]
-import { detectIntent } from './engineer/IntentClassifier.js'; // [ADR-0017 Fase 2]
 import { extractExports, extractFunctionSignatures, findUsages, detectBreakingChanges, verifySemanticDiff } from './engineer/StaticCodeAnalyzer.js'; // [ADR-0017 Fase 3]
 import { savePendingPatch, clearPendingPatch, restorePersistedPatches, saveVerifiedApproach, saveRejectedApproach, loadVerifiedApproaches } from './engineer/EngineerMemoryStore.js'; // [ADR-0017 Fase 4]
 import { readFile, findFiles, extractFileNamesFromTask, findRelevantADR, tryReadFile } from './engineer/FileSystemGateway.js'; // [ADR-0017 Fase 4]
 import { emitReasoningReport, waitForUserConfirmation, handleUserConfirmation } from './engineer/ReasoningLock.js'; // [ADR-0017 Fase 5]
 import { handleApprovalResponse, requestApproval, emitRecommendation } from './engineer/ApprovalGateway.js'; // [ADR-0017 Fase 5]
-import { buildDynamicContext, handleAnalysisTask, handleReviewTask } from './engineer/TaskHandlers.js'; // [ADR-0017 Fase 6]
+import { buildDynamicContext } from './engineer/TaskHandlers.js'; // [ADR-0017 Fase 6]
 import { generatePatch } from './engineer/PatchGenerator.js'; // [ADR-0017 Fase 7 + SPESIFIKASI-TEKNIS §2.1]
 import { executePatchApplication } from './engineer/PatchApplier.js'; // [ADR-0017 Fase 8]
 
@@ -380,16 +379,7 @@ class Engineer {
   // =============================================
 
   _registerListeners() {
-    this.eventBus.on('Engineer:AnalyzeTask', (wrappedPayload) => {
-      const task = wrappedPayload?.data || wrappedPayload;
-      this._handleAnalysisTask(task);
-    });
-
-    this.eventBus.on('Engineer:ReviewChanges', (wrappedPayload) => {
-      const task = wrappedPayload?.data || wrappedPayload;
-      this._handleReviewTask(task);
-    });
-
+    // `Engineer:AnalyzeTask` & `Engineer:ReviewChanges` dihapus 2026-09-29 — lihat catatan di akhir berkas.
     this.eventBus.on('Engineer:GeneratePatch', (wrappedPayload) => {
       const task = wrappedPayload?.data || wrappedPayload;
       console.log('[Engineer] 📨 Received GeneratePatch event:', task);
@@ -435,8 +425,9 @@ class Engineer {
   // DYNAMIC CONTEXT (Brain 2) & TASK HANDLING
   // =============================================
 
-  // [ADR-0017 Fase 6] _buildDynamicContext, _handleAnalysisTask, dan _handleReviewTask diekstrak ke
-  // ./engineer/TaskHandlers.js. Keluarga READ_REPO yang dulu ikut di sana dihapus 2026-09-28.
+  // [ADR-0017 Fase 6] _buildDynamicContext diekstrak ke ./engineer/TaskHandlers.js. Dua tetangganya
+  // di sana sudah tidak ada: keluarga READ_REPO dihapus 2026-09-28, penangan ANALYSIS & REVIEW
+  // dihapus 2026-09-29 — alasan lengkap keduanya di akhir berkas ini.
 
   async _buildDynamicContext(task) {
     return buildDynamicContext(task, {
@@ -446,30 +437,7 @@ class Engineer {
     });
   }
 
-  async _handleAnalysisTask(task) {
-    return handleAnalysisTask(task, {
-      metrics: this.metrics,
-      brain: this.brain,
-      fileIndexService: this.fileIndexService,
-      sessionArtifact: this.sessionArtifact,
-      analyze: (t) => this._analyze(t),
-      updateArtifact: (type, data) => this._updateArtifact(type, data),
-      emitRecommendation: (r) => this._emitRecommendation(r),
-      calculateConfidence: (a) => this._calculateConfidence(a)
-    });
-  }
-
-  async _handleReviewTask(task) {
-    return handleReviewTask(task, {
-      metrics: this.metrics,
-      brain: this.brain,
-      fileIndexService: this.fileIndexService,
-      sessionArtifact: this.sessionArtifact,
-      review: (t) => this._review(t),
-      emitRecommendation: (r) => this._emitRecommendation(r),
-      calculateConfidence: (a) => this._calculateConfidence(a)
-    });
-  }
+  // `_buildDynamicContext` di atas TETAP HIDUP: dipakai jalur MODIFY_CODE (lihat _processTask).
 
   // =============================================
   // READ REPO — Membaca file dari repository
@@ -519,30 +487,24 @@ class Engineer {
     this.intentState = 'ANALYZING';
     // Klik "Apply Patch" = niat MENGUBAH yang eksplisit dari Owner (UsulanPatch.js). Tebakan kata kunci dulu
     // mengubahnya jadi CLARIFICATION untuk "kerjakan TUGAS-01…" (live T10, 2026-09-22).
-    const intent = task?.dariTombolApply ? 'MODIFY_CODE' : detectIntent(task);
-    console.log(`[Engineer] 🎯 Intent detected: ${intent} (task: ${task.title || task.id})`);
-
-    if (intent === 'ANALYSIS') {
-      this.intentState = 'READY';
-      console.log(`[Engineer] 📋 Redirecting to ANALYSIS handler (bukan patch)`);
-      await this._handleAnalysisTask(task);
-      return;
-    }
-
-    if (intent === 'CLARIFICATION') {
-      this.intentState = 'ASK_CLARIFICATION';
-      const clarificationMsg = `Permintaan Anda membutuhkan klarifikasi. Apakah Anda ingin:\n1. 🔍 **Menganalisis** kode yang ada?\n2. ✏️ **Memodifikasi/menambahkan** kode?\n3. 📖 **Meninjau** perubahan yang sudah ada?\n\n_Mohon diperjelas agar Engineer dapat memberikan hasil yang tepat._`;
-
-      console.log(`[Engineer] ❓ Asking clarification for task: ${task.title || task.id}`);
+    // Satu-satunya pembuat tugas adalah tombol "Apply Patch" (UsulanPatch.js), dan ia SELALU menyetel
+    // `dariTombolApply: true`. Dulu tugas tanpa penanda itu ditebak `detectIntent()` lalu dialihkan ke
+    // cabang ANALYSIS/CLARIFICATION — keduanya tak pernah tercapai, dan penangannya sudah dihapus
+    // 2026-09-29. Menebak diam-diam digantikan penolakan yang BERSUARA: bila suatu saat ada pemancar
+    // tugas baru yang lupa menyetel penandanya, ia berhenti di sini dengan sebab yang jelas, bukan
+    // diperlakukan sebagai permintaan mengubah kode.
+    if (!task?.dariTombolApply) {
+      console.warn(`[Engineer] 🚫 Tugas tanpa dariTombolApply ditolak (task: ${task?.title || task?.id})`);
       this._emitRecommendation({
-        type: 'ASK_CLARIFICATION',
-        taskId: task.id,
-        message: clarificationMsg,
-        intent: intent,
+        type: 'ERROR',
+        taskId: task?.id,
+        message: 'Tugas ini tidak datang dari tombol **Apply Patch**, jadi Engineer tidak memprosesnya. Hanya patch yang Anda setujui sendiri yang dikerjakan.',
         requiresApproval: false
       });
       return;
     }
+    const intent = 'MODIFY_CODE';
+    console.log(`[Engineer] 🎯 Intent: ${intent} (task: ${task.title || task.id})`);
 
     // Jika sampai sini, intent pasti MODIFY_CODE
     this.intentState = 'PROCEEDING';
@@ -997,15 +959,37 @@ class Engineer {
     };
   }
 
-  async _review(task) {
-    const analysis = await this._analyze(task);
-    return {
-      verdict: analysis.compliance.violations.length > 0 ? 'REJECT' : 'APPROVE',
-      issues: analysis.compliance.violations,
-      notes: `Review selesai: ${analysis.metrics.filesAnalyzed} file diperiksa.`,
-      analysis: analysis
-    };
-  }
+  // ─────────────────────────────────────────────────────────────────────────────────────────────
+  // JALUR ANALYSIS & REVIEW DIHAPUS (2026-09-29) — sesudah diperiksa, bukan sebelum
+  //
+  // Keputusan Owner 28 September: "cari lagi agar bermanfaat; jika sudah dikerjakan oleh kode lain
+  // yang lebih baik, tidak masalah dihapus." Yang dihapus, dan alasan masing-masing:
+  //
+  //   `_review()`            — TIDAK menambah apa pun di atas `_analyze()`: ia memanggilnya lalu
+  //                            memetakan `violations.length > 0` menjadi APPROVE/REJECT. Vonis itu
+  //                            lahir dari MENCOCOKKAN POLA TEKS — cara yang pada 24 September
+  //                            menghasilkan dua pelanggaran palsu dan memblokir patch yang benar.
+  //                            Penggantinya lebih baik dan sudah jalan: Tahap 6 menerapkan patch
+  //                            lalu MENJALANKAN 54 berkas uji, dan memulihkan sendiri bila gagal.
+  //                            Pertanyaannya berubah dari "apakah ini tampak patuh" menjadi "apakah
+  //                            sistem ini masih benar sesudah patch".
+  //
+  //   `Engineer:AnalyzeTask` — hanya punya pendengar, tak pernah ada pemancar. Kemampuannya TIDAK
+  //   `Engineer:ReviewChanges` hilang: `_analyze()` tetap dipanggil jalur MODIFY_CODE yang hidup, dan
+  //   `_handleAnalysisTask`     hasilnya tetap sampai ke Owner lewat Reasoning Lock (emitReasoningReport).
+  //   `_handleReviewTask`       Yang dihapus pembungkus tugasnya, bukan kemampuannya.
+  //
+  //   cabang ANALYSIS &      — tak pernah tercapai: satu-satunya pembuat tugas (UsulanPatch.js) selalu
+  //   CLARIFICATION            menyetel `dariTombolApply: true`. Diganti penjaga yang bersuara di
+  //                            `_processTask`, bukan dibiarkan menebak diam-diam.
+  //
+  // YANG SENGAJA DIPERTAHANKAN karena terbukti masih dipakai:
+  //   `_analyze()`, `_buildDynamicContext()`, `_calculateConfidence()`, `_checkCompliance()`.
+  //
+  // `IntentClassifier.js` tidak dihapus: ia tidak lagi tersambung ke jalur hidup, tetapi dipakai
+  // beberapa berkas uji sebagai BAHAN uji nyata (uji-klaim-engineer, uji-prosedur-engineer,
+  // uji-sumber-terminal, uji-trace-parser-kendali-tetap). Catatan itu ditulis di kepala berkasnya.
+  // ─────────────────────────────────────────────────────────────────────────────────────────────
 
   // [ADR-0017 Fase 7] _generatePatch, _buildPatchPrompt, _extractCodeFromResponse
   // diekstrak ke ./engineer/PatchGenerator.js; _generateFallbackPatch dihapus total (T10,

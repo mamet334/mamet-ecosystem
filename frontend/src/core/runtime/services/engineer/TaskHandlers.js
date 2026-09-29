@@ -1,16 +1,19 @@
 /**
- * TaskHandlers — Jalur read-only Engineer: membangun dynamic context dan menangani task ANALYSIS/REVIEW.
+ * TaskHandlers — membangun dynamic context untuk task Engineer.
  *
- * Alur READ_REPO (baca file, list direktori, cari file) beserta parser teks prompt-nya DIHAPUS
- * 2026-09-28 — lihat catatan di akhir berkas.
+ * Diekstrak dari engineer.js (Fase 6, ADR-0017). `brain` diteruskan by-reference, sama seperti pola
+ * Map di fase-fase sebelumnya — mutasi (`brain.dynamic = ...`) tetap terlihat di instance asli.
  *
- * Diekstrak dari engineer.js (Fase 6, ADR-0017). `_handleAnalysisTask` dan
- * `_handleReviewTask` masih bergantung pada `_analyze`/`_review`/
- * `_calculateConfidence` yang belum diekstrak (target Fase 7/8) — deps
- * membawa fungsi-fungsi itu dalam bentuk sudah di-bind dari engineer.js.
- * `brain` dan `metrics` diteruskan by-reference (objek), sama seperti pola
- * Map di fase-fase sebelumnya — mutasi (`brain.dynamic = ...`,
- * `metrics.tasksAnalyzed++`) tetap terlihat di instance Engineer asli.
+ * DUA PENGHAPUSAN, keduanya sesudah dibuktikan mati — bukan sebelum:
+ *   • 2026-09-28 — alur READ_REPO beserta parser teks prompt-nya (219 baris).
+ *   • 2026-09-29 — `handleAnalysisTask` & `handleReviewTask`. Keduanya hanya punya pendengar,
+ *     tak pernah ada pemancar; dan `_review` yang dipanggilnya tidak menambah apa pun di atas
+ *     `_analyze` selain memetakan jumlah pelanggaran jadi APPROVE/REJECT — vonis dari pencocokan
+ *     pola teks, cara yang 24 September memblokir patch yang benar. Penggantinya sudah jalan dan
+ *     lebih baik: Tahap 6 MENJALANKAN berkas uji sesudah patch, lalu memulihkan sendiri bila gagal.
+ *
+ * `buildDynamicContext` di bawah TETAP HIDUP: dipakai jalur MODIFY_CODE (engineer.js `_processTask`).
+ * Catatan lengkapnya ada di akhir `engineer.js`.
  */
 import { extractFileNamesFromTask } from './FileSystemGateway.js';
 
@@ -47,52 +50,6 @@ export async function buildDynamicContext(task, deps) {
     sessionContext: sessionArtifact ? sessionArtifact.getSummary() : null,
     timestamp: new Date().toISOString()
   };
-}
-
-/**
- * @param {Object} task
- * @param {Object} deps - { metrics, brain, fileIndexService, sessionArtifact, analyze, updateArtifact, emitRecommendation, calculateConfidence }
- */
-export async function handleAnalysisTask(task, deps) {
-  const { metrics, brain, fileIndexService, sessionArtifact, analyze, updateArtifact, emitRecommendation, calculateConfidence } = deps;
-  metrics.tasksAnalyzed++;
-  console.log(`[Engineer] Analyzing task: ${task.title || task.id}`);
-  brain.dynamic = await buildDynamicContext(task, { fileIndexService, brain, sessionArtifact });
-  const analysis = await analyze(task);
-
-  updateArtifact('ANALYSIS', {
-    taskId: task.id,
-    files: Object.keys(analysis.rawContext || {}),
-    violations: analysis.compliance?.violations || [],
-    summary: analysis.summary
-  });
-
-  emitRecommendation({
-    type: 'ANALYSIS',
-    taskId: task.id,
-    analysis,
-    confidence: calculateConfidence(analysis),
-    requiresApproval: false
-  });
-}
-
-/**
- * @param {Object} task
- * @param {Object} deps - { metrics, brain, fileIndexService, sessionArtifact, review, emitRecommendation, calculateConfidence }
- */
-export async function handleReviewTask(task, deps) {
-  const { metrics, brain, fileIndexService, sessionArtifact, review, emitRecommendation, calculateConfidence } = deps;
-  metrics.recommendationsMade++;
-  console.log(`[Engineer] Reviewing changes for: ${task.title || task.id}`);
-  brain.dynamic = await buildDynamicContext(task, { fileIndexService, brain, sessionArtifact });
-  const reviewResult = await review(task);
-  emitRecommendation({
-    type: 'REVIEW',
-    taskId: task.id,
-    review: reviewResult,
-    confidence: calculateConfidence(reviewResult),
-    requiresApproval: false
-  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────

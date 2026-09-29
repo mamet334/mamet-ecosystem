@@ -4,6 +4,19 @@
  * Diekstrak dari engineer.js (Fase 2, ADR-0017). Murni deterministik berbasis
  * pattern kata kunci, tanpa panggilan LLM — pola identik dengan
  * RequestClassifierService.js (PR#8) di codebase yang sama.
+ *
+ * ⚠️ TIDAK LAGI TERSAMBUNG KE JALUR HIDUP (2026-09-29). Satu-satunya pembuat tugas Engineer
+ * (`UsulanPatch.js`) selalu menyetel `dariTombolApply: true`, jadi `detectIntent()` tak pernah
+ * dipanggil dan cabang ANALYSIS/CLARIFICATION-nya tak pernah tercapai. Penangannya sudah dihapus;
+ * `engineer.js` kini menolak tugas tanpa penanda itu dengan pesan yang jelas, bukan menebak.
+ *
+ * Berkas ini SENGAJA tidak ikut dihapus: ia dipakai beberapa berkas uji sebagai BAHAN uji nyata —
+ * `uji-klaim-engineer`, `uji-prosedur-engineer`, `uji-sumber-terminal`, `uji-trace-parser-kendali-tetap`,
+ * `uji-pecah-perintah-kutip`. Semuanya memakai berkas & fungsi ini sebagai contoh yang benar-benar ada,
+ * karena uji klaim Engineer harus menunjuk kode sungguhan.
+ *
+ * Jangan menyambungkannya kembali tanpa memeriksa ulang: yang dulu dikerjakannya kini dikerjakan jalur
+ * lain yang lebih baik (Tahap 6 menjalankan berkas uji, bukan mencocokkan pola teks).
  */
 export function detectIntent(task) {
   const text = `${task.title || ''} ${task.description || ''}`.toLowerCase().trim();
