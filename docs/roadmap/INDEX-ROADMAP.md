@@ -217,7 +217,7 @@ terukur, bukan perasaan.
 | **T11** `check-keys` | **hapus fungsinya** — tanpa pemeriksaan pengguna, tanpa pemanggil, pertanyaannya sudah terjawab, tiap panggilan berbayar. (Hak 40 tabel **tidak** ikut diputuskan, tetap ⏳) · **✅ DITUTUP 29 Sep** — [log](../project-memory/changelog/2026-09-29-t11-check-keys-dihapus.md); berkas dihapus dari repo DAN fungsinya dihapus dari Supabase | `ROADMAP-TEMUAN-TERBUKA.md` T11 |
 | **T12** baca berkas = kirim keluar | **pasang penjaga** `.env`/`*.key`/`*.pem` dengan pesan beralasan; sisanya batas yang diketahui | T12 |
 | **T13** hakim bayangan | **tetap membayangi** — naik jadi penentu label hanya setelah angka ketidaksepakatan cukup untuk dihitung | T13 |
-| **T14** 8 penyedia | **simpan nama penyedia per pesan; JANGAN kunci penyedianya** | T14 |
+| **T14** 8 penyedia | **simpan nama penyedia per pesan; JANGAN kunci penyedianya** · **✅ kode selesai 29 Sep** — [log](../project-memory/changelog/2026-09-29-t14-penyedia-per-pesan.md); menunggu deploy + satu chat | T14 |
 | **AnalyzeTask & ReviewChanges** | **periksa dulu, jangan langsung hapus** — Owner mengoreksi usul asisten; hapus hanya bila terbukti ada yang mengerjakannya lebih baik | `ROADMAP-ENGINEER-MANDIRI.md` |
 | **Item 72** Adaptive Shell | **TIDAK ditutup** — Owner mengoreksi usul asisten; ini soal kerapian di berbagai perangkat bagi **pengguna**, bukan kenyamanan Owner | `roadmap-adaptive-shell.md` |
 

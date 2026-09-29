@@ -20,6 +20,12 @@ export const getStreamResponse = (promptText: string, systemPromptText = '', cha
          const data = JSON.stringify({ choices: [{ delta: { content: text } }] });
          controller.enqueue(encoder.encode(`data: ${data}\n\n`));
       };
+      // Bingkai TANPA teks: hanya data untuk metadata pesan, tidak pernah tampil di jawaban.
+      // Dipakai T14 mengirim nama penyedia hulu. Bentuknya sengaja sama dengan bingkai `step`
+      // yang sudah dikenal layar — satu objek JSON per bingkai, field yang tak dikenal diabaikan.
+      const enqueueData = (obj: Record<string, unknown>) => {
+         controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+      };
 
       // 1. SSE EARLY INIT
       console.log("[SSE EARLY INIT] Streaming started before LLM calls");
@@ -107,6 +113,17 @@ export const getStreamResponse = (promptText: string, systemPromptText = '', cha
           }
         } catch (labelErr) {
           console.error('[LABEL] gagal memeriksa label:', labelErr);
+        }
+
+        // === T14: NAMA PENYEDIA HULU IKUT KE METADATA PESAN ===
+        // Satu nama model di OpenRouter dilayani banyak penyedia (terukur: 8 penyedia untuk
+        // deepseek-v4-flash dalam 4 jam) — gaya, biaya, dan latensi berayun tanpa kode berubah.
+        // Selama ini namanya hanya masuk log, jadi pertanyaan "apakah penyedia X terasa lebih
+        // buruk" tak pernah bisa dijawab data: log berumur pendek, pesan tersimpan selamanya.
+        try {
+          if (rctx.penyediaHulu) enqueueData({ penyedia: rctx.penyediaHulu });
+        } catch (penyediaErr) {
+          console.error('[T14] gagal mengirim nama penyedia:', penyediaErr);
         }
 
       } catch(fatalErr: any) {

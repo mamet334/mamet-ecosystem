@@ -403,6 +403,9 @@ export const SynthesisHandler = {
       toolExecution,
       subagentRuns,
       processingSteps: ctx.state.processingSteps,
+      // T14 — penyedia hulu yang benar-benar melayani jawaban ini. Jalur non-stream; jalur stream
+      // mengirimnya sebagai bingkai SSE tersendiri (stream_handler.ts).
+      ...(rctx.penyediaHulu ? { penyedia: rctx.penyediaHulu } : {}),
       timestamp: new Date(),
       userId: ctx.auth.userId,
       // Terpotong batas waktu: bahan untuk "lanjutkan" ikut tersimpan di metadata pesan (chats.messages) dan dikirim

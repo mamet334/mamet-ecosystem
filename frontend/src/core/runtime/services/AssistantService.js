@@ -1425,6 +1425,10 @@ export class AssistantService {
     let aiResponseText = '';
     let processingSteps = [];
     let buffer = '';
+    // T14: nama penyedia hulu tiba sebagai bingkai tersendiri di akhir aliran (stream_handler.ts).
+    // Disimpan di metadata pesan supaya kaitan "gaya jawaban ↔ penyedia" bisa diperiksa surut —
+    // log berumur pendek, pesan tersimpan selamanya.
+    let penyedia = null;
 
     console.log('[LIFECYCLE] Stream started');
     onChunk?.('', '', []);
@@ -1444,6 +1448,7 @@ export class AssistantService {
             try {
               const parsed = JSON.parse(dataStr);
               if (parsed.step) processingSteps.push(parsed.step);
+              if (typeof parsed.penyedia === 'string' && parsed.penyedia) penyedia = parsed.penyedia;
 
               let chunkText = '';
               if (parsed.text) {
@@ -1470,7 +1475,10 @@ export class AssistantService {
     const hasPatch = isEngineerMode && adaPenandaPatch(aiResponseText);
     const finalText = hasPatch ? buangPenandaPatch(aiResponseText) : aiResponseText;
 
-    onDone?.(finalText, processingSteps, null, {
+    // Dulu metadata jalur stream SELALU null, jadi tidak ada satu pun keterangan jawaban yang ikut
+    // tersimpan di sini. Kini metadata dikirim hanya bila memang ada isinya — null dipertahankan saat
+    // kosong supaya perilaku lama (dan pemeriksaan `metadata?.`) tidak berubah tanpa alasan.
+    onDone?.(finalText, processingSteps, penyedia ? { penyedia } : null, {
       hasPatch,
       patchOriginalTask: hasPatch ? userMsg : undefined
     });

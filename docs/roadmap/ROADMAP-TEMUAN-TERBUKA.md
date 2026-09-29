@@ -611,7 +611,16 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
   ternyata satu penyedia tertentu berulang kali jauh lebih buruk (bukan kesan — dari data yang baru
   tersimpan ini), barulah mengunci dipertimbangkan, dan hanya untuk **mengecualikan** penyedia itu
   (`provider.ignore`), bukan memaku ke satu penyedia.
-- **Status:** 🟢 diputuskan (catat penyedia; jangan kunci). Belum dikerjakan.
+- **DIKERJAKAN 2026-09-29:** `rctx.penyediaHulu` dicatat di kedua jalur adapter, dikirim ke layar sebagai
+  bingkai SSE `{"penyedia":"…"}` (jalur stream, sesudah jawaban & koreksi label, sebelum `[DONE]`) atau
+  field `penyedia` di JSON (jalur non-stream), lalu disimpan di `chats.messages[].metadata`. Penyedianya
+  **tidak** dikunci. Cacat yang paling mungkin — dua sisi memakai nama field berbeda, lalu yang tersimpan
+  kosong selamanya tanpa gejala — dijaga uji yang membandingkan nama field dari ketiga berkas sekaligus.
+  Ikut ketahuan: `onDone` jalur streaming dulu **selalu** dipanggil dengan `metadata = null`, jadi tak ada
+  keterangan jawaban apa pun yang tersimpan di jalur itu. [log](../project-memory/changelog/2026-09-29-t14-penyedia-per-pesan.md)
+- **Status:** ✅ kode selesai, 53 berkas uji hijau. **Menunggu deploy Owner lalu satu chat** — yang
+  dibuktikan: log `penyedia=X` dan `metadata.penyedia` menyebut nama yang sama, dan nama itu tidak muncul
+  di teks jawaban. Penyedianya belum ditampilkan di layar (Owner memutuskan "simpan", bukan "tampilkan").
 
 ## T9 — Sub-agent `knowledge_manager` rusak & ikut dipanggil Coordinator (asal Item 92 Tahap 3, 2026-09-21)
 

@@ -421,6 +421,10 @@ export class OpenRouterAdapter implements CapabilityAdapter {
     // dengan selisih hanya di token/cache/biaya — dugaan penyedia berbeda tak bisa dibuktikan karena
     // field ini dulu dibuang.
     const penyediaHulu = typeof data.provider === 'string' && data.provider ? data.provider : '(tidak dilaporkan)';
+    // T14 (keputusan Owner 28 Sep): nama penyedia ikut DISIMPAN per pesan, bukan hanya dicatat di log.
+    // Tanpa ini, kaitan "gaya jawaban ↔ penyedia" tak bisa diuji surut — log hilang, pesan tetap ada.
+    // Penyedianya TIDAK dikunci: mengunci menaikkan biaya dan membuat jawaban gagal saat penyedia sibuk.
+    if (typeof data.provider === 'string' && data.provider) this.rctx.penyediaHulu = data.provider;
 
     console.log(
       `[PR#6 TOKEN METRICS] OpenRouter (${openRouterModel}): prompt=${promptTokens}t completion=${completionTokens}t ` +
@@ -522,6 +526,9 @@ export class OpenRouterAdapter implements CapabilityAdapter {
     const promptTokens = Math.ceil(JSON.stringify(messages || []).length / 4);
     const completionTokens = Math.ceil(accumulatedText.length / 4);
     console.log(`[PR#6 TOKEN METRICS] OpenRouter stream (${orModel}): prompt_est=${promptTokens}t completion_est=${completionTokens}t penyedia=${infoStream.provider || '(tidak dilaporkan)'}`);
+    // T14 — lihat catatan di jalur non-stream. Di jalur ini penyedianya baru diketahui SESUDAH aliran
+    // selesai (dibaca dari bingkai pertama yang menyebutkannya), jadi ia dikirim ke layar belakangan.
+    if (infoStream.provider) this.rctx.penyediaHulu = infoStream.provider;
 
     this.rctx.tasks.fire('RecordUsageStream', recordUsage({
       userId,
