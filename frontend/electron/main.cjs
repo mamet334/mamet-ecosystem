@@ -88,6 +88,13 @@ function setupAutoUpdater() {
     autoUpdater.on('update-downloaded', (info) => {
       console.log('[Auto-Updater] Pembaruan selesai diunduh:', info.version);
       if (mainWindow) {
+        // Dulu keadaan ini TIDAK pernah sampai ke layar — hanya dialog & konsol. Akibatnya panel
+        // Pengaturan berhenti di "Mengunduh… 100%" selamanya, padahal unduhannya sudah selesai.
+        mainWindow.webContents.send('update-status', {
+          status: 'downloaded',
+          version: info.version,
+          message: `Versi ${info.version} siap dipasang. Mulai ulang aplikasi untuk menerapkannya.`
+        });
         dialog.showMessageBox(mainWindow, {
           type: 'info',
           buttons: ['Restart Sekarang', 'Nanti Saja'],
@@ -104,6 +111,15 @@ function setupAutoUpdater() {
 
     autoUpdater.on('error', (err) => {
       console.error('[Auto-Updater] Error:', err.message);
+      // Kegagalan pembaruan dulu hanya masuk konsol — tak ada yang melihatnya. Justru kegagalan
+      // inilah yang harus terlihat: token rilis kedaluwarsa (29 Sep) membuat rilis tak pernah
+      // sampai, dan tak ada satu pun gejala di aplikasi.
+      if (mainWindow) {
+        mainWindow.webContents.send('update-status', {
+          status: 'error',
+          message: `Gagal memeriksa/mengunduh pembaruan: ${err.message}`
+        });
+      }
     });
 
     setTimeout(() => {

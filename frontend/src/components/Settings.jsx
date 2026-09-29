@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { kernel } from '../core/runtime/Kernel';
 import { User, Mail, Shield, LogOut, Palette, Activity, Monitor, Bell, Cpu, Clock, Brain, Key } from 'lucide-react';
+import { ringkasPembaruan, bentukVersi, warnaStatus } from '../core/runtime/services/statusPembaruan';
 
 // Workspace yang bisa punya override preferensi tool sendiri (lihat WorkspaceManager.js)
 const TOGGLEABLE_WORKSPACES = [
@@ -155,6 +156,41 @@ export default function Settings() {
 
     setSaveStatus('Saved!');
     setTimeout(() => setSaveStatus(''), 2000);
+  };
+
+  // ── PEMBARUAN APLIKASI ────────────────────────────────────────────────────────────────────
+  // Jembatannya sudah ada di preload sejak lama (checkForUpdates/getAppVersion/onUpdateStatus)
+  // tetapi TIDAK dipakai satu pun berkas di frontend/src, jadi Pengaturan tak punya apa-apa untuk
+  // ditampilkan. Bagian ini menyambungkannya. Di web (tanpa Electron) seluruh blok ini tidak dirender.
+  const [versiApl, setVersiApl] = useState(null);
+  const [kabarPembaruan, setKabarPembaruan] = useState(null);
+  const [sedangPeriksa, setSedangPeriksa] = useState(false);
+  const adaPembaruan = !!window.electronAPI?.checkForUpdates;
+
+  useEffect(() => {
+    if (!adaPembaruan) return;
+    window.electronAPI.getAppVersion?.().then(setVersiApl).catch(() => setVersiApl(null));
+    // Pendengar dipasang SEKALI dan dilepas saat komponen ditutup — tanpa itu tiap kali Pengaturan
+    // dibuka akan menumpuk pendengar baru pada peristiwa yang sama.
+    const lepas = window.electronAPI.onUpdateStatus?.((data) => {
+      setKabarPembaruan(data);
+      if (data?.status !== 'downloading') setSedangPeriksa(false);
+    });
+    return () => { try { lepas?.(); } catch { /* sudah dilepas */ } };
+  }, [adaPembaruan]);
+
+  const handlePeriksaPembaruan = async () => {
+    setSedangPeriksa(true);
+    setKabarPembaruan({ status: 'checking' });
+    try {
+      const hasil = await window.electronAPI.checkForUpdates();
+      // 'checked' berarti permintaannya terkirim; jawabannya datang lewat onUpdateStatus.
+      // dev-mode & error dijawab langsung, jadi keduanya ditampilkan apa adanya.
+      if (hasil?.status !== 'checked') { setKabarPembaruan(hasil); setSedangPeriksa(false); }
+    } catch (e) {
+      setKabarPembaruan({ status: 'error', message: e.message });
+      setSedangPeriksa(false);
+    }
   };
 
   const [testStatus, setTestStatus] = useState('');
@@ -504,6 +540,52 @@ export default function Settings() {
             )}
           </section>
 
+
+          {/* Pembaruan Aplikasi — hanya di aplikasi terpasang; di web tidak ada auto-updater.
+              Versi yang sedang berjalan ditampilkan lebih dulu: tanpa itu, tidak ada cara memastikan
+              dua orang memakai versi yang sama, dan laporan bug jadi membingungkan. */}
+          {adaPembaruan && (
+          <section className="col-span-12 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center">
+                <span className="material-symbols-outlined text-primary">system_update</span>
+              </div>
+              <div>
+                <h2 className="font-headline-md text-headline-md">Pembaruan Aplikasi</h2>
+                <p className="text-body-sm text-on-surface-variant">Versi yang sedang berjalan & pemeriksaan manual</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+              <div>
+                <p className="text-body-sm text-on-surface-variant">Versi terpasang</p>
+                <p className="font-mono text-headline-sm text-on-surface">{bentukVersi(versiApl)}</p>
+              </div>
+              <button
+                onClick={handlePeriksaPembaruan}
+                disabled={sedangPeriksa}
+                className="px-5 py-3 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 text-sm font-semibold transition-all active:scale-95 disabled:opacity-50"
+              >
+                {sedangPeriksa ? 'Memeriksa…' : 'Periksa Pembaruan'}
+              </button>
+            </div>
+
+            {(() => {
+              const r = ringkasPembaruan(kabarPembaruan);
+              if (!r) return null;
+              return (
+                <div className="mt-4 p-3 rounded-lg bg-surface-container-lowest border border-outline-variant">
+                  <p className={`text-[12px] leading-relaxed ${warnaStatus(r.nada)}`}>{r.teks}</p>
+                </div>
+              );
+            })()}
+
+            <p className="text-[11px] text-on-surface-variant leading-relaxed mt-4">
+              Pembaruan diunduh sendiri di latar belakang dan dipasang saat aplikasi ditutup.
+              Tombol di atas hanya mempercepat pemeriksaannya.
+            </p>
+          </section>
+          )}
 
           {/* Tools & Capabilities */}
           <section className="col-span-12 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant">
