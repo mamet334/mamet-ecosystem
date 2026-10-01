@@ -226,7 +226,7 @@ sendiri), penjaga berkas rahasia T12, catatan akar repo + `git grep`.
 
 ---
 
-## 6. Keputusan Owner 2026-09-28 — enam baris, semuanya BELUM dikerjakan
+## 6. Keputusan Owner 2026-09-28 — enam baris, SEMUANYA SUDAH DITUTUP (per 2026-09-29)
 
 Dicatat lebih dulu atas permintaan Owner: *"catat dulu keputusan saya agar nanti bisa dikoreksi kembali
 dengan kenyataan yang ada."* Tiap keputusan di dokumen sumbernya disertai **cara mengoreksinya** — syarat
@@ -236,10 +236,10 @@ terukur, bukan perasaan.
 |---|---|---|
 | **T11** `check-keys` | **hapus fungsinya** — tanpa pemeriksaan pengguna, tanpa pemanggil, pertanyaannya sudah terjawab, tiap panggilan berbayar. (Hak 40 tabel **tidak** ikut diputuskan, tetap ⏳) · **✅ DITUTUP 29 Sep** — [log](../project-memory/changelog/2026-09-29-t11-check-keys-dihapus.md); berkas dihapus dari repo DAN fungsinya dihapus dari Supabase | `ROADMAP-TEMUAN-TERBUKA.md` T11 |
 | **T12** baca berkas = kirim keluar | **pasang penjaga** `.env`/`*.key`/`*.pem` dengan pesan beralasan; sisanya batas yang diketahui · **✅ DIKERJAKAN 29 Sep** — [log](../project-memory/changelog/2026-09-29-t12-penjaga-berkas-rahasia.md); `.env.example` sengaja tetap terbaca, nama berkas tetap terlihat | T12 |
-| **T13** hakim bayangan | **tetap membayangi** — naik jadi penentu label hanya setelah angka ketidaksepakatan cukup untuk dihitung | T13 |
+| **T13** hakim bayangan | **tetap membayangi** — naik jadi penentu label hanya setelah angka ketidaksepakatan cukup untuk dihitung · **✅ tidak ada pekerjaan** — menunggu pemakaian, bukan koding | T13 |
 | **T14** 8 penyedia | **simpan nama penyedia per pesan; JANGAN kunci penyedianya** · **🟡 29 Sep** — [log](../project-memory/changelog/2026-09-29-t14-penyedia-per-pesan.md); jalur non-stream TERBUKTI live (log Azure = metadata.penyedia), jalur stream menunggu satu chat Ecosystem yang mengalir | T14 |
 | **AnalyzeTask & ReviewChanges** | **periksa dulu, jangan langsung hapus** — Owner mengoreksi usul asisten; hapus hanya bila terbukti ada yang mengerjakannya lebih baik · **✅ SELESAI 29 Sep** — [log](../project-memory/changelog/2026-09-29-analysis-review-dihapus.md); terbukti Tahap 6 mengerjakannya lebih baik, `_analyze` tetap hidup di jalur MODIFY_CODE, bersih −46 baris | `ROADMAP-ENGINEER-MANDIRI.md` |
-| **Item 72** Adaptive Shell | **TIDAK ditutup** — Owner mengoreksi usul asisten; ini soal kerapian di berbagai perangkat bagi **pengguna**, bukan kenyamanan Owner | `roadmap-adaptive-shell.md` |
+| **Item 72** Adaptive Shell | **TIDAK ditutup** — Owner mengoreksi usul asisten; ini soal kerapian di berbagai perangkat bagi **pengguna**, bukan kenyamanan Owner · ⏳ **tetap terbuka sebagai pekerjaan**, lihat §1 | `roadmap-adaptive-shell.md` |
 
 **Dua dari enam adalah koreksi atas usul asisten** (AnalyzeTask dan Item 72). Keduanya dicatat beserta
 alasan usulnya keliru, bukan sekadar hasil akhirnya — supaya kesalahan menimbangnya tidak terulang.
