@@ -98,3 +98,22 @@ Ketiganya lahir dari kegagalan nyata; rinciannya di `constitution/28`.
 - Skrip penyelidikan sekali pakai (`cek-*.mjs`, `baca-kepbup.mjs`, dan lainnya) **masih tertinggal** di
   `frontend/node_modules/.uji-rag/` dan tetap rentan terhapus `npm ci`. Belum dipindahkan karena sifatnya
   sekali pakai — pindahkan bila ternyata masih dipakai.
+
+---
+
+## Sebelum setiap commit: samakan akhir baris
+
+```bash
+node scripts/samakan-crlf.mjs
+```
+
+Repo ini `core.autocrlf=true` tanpa `.gitattributes`: git **menyimpan LF** tetapi **meng-checkout CRLF**,
+jadi setiap berkas teks di direktori kerja seharusnya ber-CRLF. Alat sunting AI menulis **LF**, dan
+`sed -i` maupun Python `newline=''` pernah diam-diam mengubah CRLF→LF di empat berkas sekaligus.
+
+Akibatnya bukan sekadar diff yang berisik: `PatchGenerator` mencocokkan teks pada salinan kerja ber-CRLF,
+sehingga berkas ber-LF membuat cari-ganti **gagal mencocokkan satu pun baris** (kegagalan live
+24 September, dijaga `uji-patch-crlf.mjs`).
+
+`--periksa` hanya melaporkan dan keluar dengan kode 1 bila ada yang belum CRLF — bisa dipakai sebagai
+penjaga. `--semua` memindai seluruh berkas terlacak, bukan hanya yang berubah.
