@@ -184,7 +184,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 105. ✅ Kacamata Kuda Engineer Dilepas — Kode Sumber Jadi Evidence yang Sah (2026-10-01) — [log](../project-memory/changelog/2026-10-01-kacamata-kuda-engineer.md) · Owner menamainya: *"itu lebih mirip memasang kacamata kuda, seperti menyembunyikan kebenaran."* **Terbukti:** peta repo ADA di prompt (16.945 huruf terukur) dan git sudah jalan sendiri, tetapi model menjawab "tidak ada evidence" tanpa satu pun pencarian — jawabannya `hakim_bayangan.ts:212`, dua perintah jauhnya. **Sebabnya ia PATUH, bukan bodoh:** BLOK 1 mengirim *"Tidak boleh menjalankan perintah OS"* dan BLOK 5 melarang *"menggunakan pengetahuan di luar evidence yang terdaftar"*, sementara evidence cuma 8 baris Brain 1 + RAG — kode sumber repo ada DI LUAR daftar itu. Berminggu-minggu matanya dibangun sementara prompt menyuruhnya jangan melihat; pengukuran 1 Okt (5.400 token aturan vs 1.200 token kode) melihat gejalanya tapi salah menyimpulkan — yang kurang bukan kodenya, melainkan izin melihatnya. Kini: membaca kode jadi kapabilitas bernama, "mengaku tahu tanpa menengok" yang dilarang, kode sumber diakui evidence **dengan syarat alamat + nomor baris**. **"WAJIB memiliki evidence" sengaja DIPERTAHANKAN** — yang salah daftar tempat mencarinya, bukan kewajibannya. Dikerjakan SENDIRIAN atas pilihan Owner supaya pengaruhnya terukur: kalau model lebih pintar pun tetap gagal, masalahnya tak pernah di modelnya. **Batas uji: teks sumber, bukan perilaku** — modulnya tak bisa diimpor Node. **✅ TERBUKTI LIVE 1 Okt 13.12** — pertanyaan yang SAMA PERSIS dengan yang gagal kemarin: model menjalankan `git grep` 9 detik sesudah pertanyaan (keluaran 6.025 huruf masuk ke prompt — kemarin angka itu nihil), menjawab `label_sumber.ts` baris 475 & 563–569, dan **setiap kutipan diperiksa persis** terhadap berkas aslinya (475, 459, 511–520 keempat sebabnya berurutan, 563–569). Dilabeli VERIFIED dengan baris Sumber berisi perintah yang ia jalankan sendiri — persis perilaku yang dirancang. **Kunci penguji yang meleset, bukan modelnya:** kunci disiapkan `hakim_bayangan.ts:212`, tetapi "akhirnya diputuskan" justru `label_sumber.ts` — pola yang sama dengan 93% Kepbup, penguji memilih kasus yang nyaman. **Artinya masalahnya tak pernah di modelnya** — berubah total hanya karena satu larangan dicabut dan satu kapabilitas disebut namanya
 104. ✅ Perintah Baca Tanpa Persetujuan — Gerbang Hanya untuk yang Krusial (2026-10-01) — [log](../project-memory/changelog/2026-10-01-perintah-baca-tanpa-persetujuan.md) · keputusan Owner: *"perintah yang krusial saja yang perlu persetujuan saya… ini seperti membuat ribet dengan hal yang sebenarnya aman."* Terbukti di uji peta repo: lima `git grep` untuk satu pertanyaan × dua gerbang (tombol Jalankan + dialog asli) = **sepuluh kali menyetujui** untuk membaca jumlah baris berkas sendiri. **Akarnya:** gerbang menjaga sesuatu yang sudah dijaga — `PROFIL.engineer.gitSub` memang hanya git-baca, `GIT_BRANCH_UBAH` & `OPSI_TERLARANG` sudah menyekat sisanya, jadi dialog tak menambah perlindungan apa pun. Garisnya: git baca → jalan sendiri; `node -e`/`python -c`/program lain → **tetap minta izin**, karena itu kode bebas tanpa pagar folder. Penegakan di PELAKSANA (proses utama), layar hanya bertanya lewat IPC; penentunya memakai pemecah perintah yang SAMA dengan pelaksana. Hasil beberapa perintah dikirim dalam SATU kiriman — pola manual akan jadi satu panggilan model berbayar per perintah. Pindah percakapan & pemuatan awal sengaja dilewati supaya riwayat lama tak menjalankan ulang perintah. **38 pemeriksaan, sebagian besar percobaan menembus** (`--ext-diff`, `--output=`, `--exec=`, `--git-dir=`, `--work-tree=`, `--upload-pack=`, `branch -D/-m/-f/-u`, `git -c core.pager=… log`); profil assistant tidak ikut dilonggarkan. Satu uji lama memerah dan memang seharusnya — diperbarui tanpa dilemahkan. **Belum diuji live**
 103. ✅ Sisipan Konteks Dipatok — Peta Repo Berhenti Dibuang Diam-diam (2026-10-01) — [log](../project-memory/changelog/2026-10-01-sisipan-dipatok.md) · **akar kegagalan uji peta repo.** Diukur: peta 15.493 huruf di proses utama (DevTools `15493`), riwayat yang sampai ke model 4.042 huruf — model tidak pernah melihatnya. Anggaran dicoret lewat hitungan (6.000 token muat untuk 4.883). **Dua cacat, satu akar — sisipan diperlakukan sebagai pesan paling tua:** (1) `simpanMulaiDari` menyimpan panjang daftar TAMPILAN tetapi dikenakan pada `sisipan + tampilan`, merusak dua arah (sisipan terbuang, pesan lama yang sudah dibersihkan malah ikut); (2) pemotong anggaran membuang dari yang paling tua, jadi konteks terpenting yang pertama dikorbankan. Kini sisipan dikenali dari penanda `_patok`, dihitung lebih dulu, `mulaiDari` hanya untuk percakapan. Patokan **dilepas** hanya bila ia menyingkirkan pertanyaan terbarunya sendiri, dan itu dilaporkan lewat `patokDilepas`. **Biaya yang disebut di muka:** ±3.873 token kini benar-benar ikut tiap kiriman Engineer. **Jebakan:** uji sempat merah dua kali karena aritmetika ujinya sendiri — anggaran terlalu longgar sehingga tak ada yang benar-benar dipotong; diperbaiki dengan mengukur `tokenPesan()` dulu. **Belum diuji live** — harus di percakapan BARU
-102. ✅ Tombol Berhenti — Kiriman Akhirnya Bisa Dibatalkan (2026-10-01) — [log](../project-memory/changelog/2026-10-01-tombol-berhenti.md) · dilaporkan Owner saat Engineer menggantung: *"tidak ada tombol berhenti atau menggagalkan"*. Diperiksa: **tidak ada `AbortController` di mana pun** — bukan tombolnya yang lupa dipasang, pembatalannya belum pernah dibuat; jalan keluar satu-satunya memuat ulang jendela. Satu `signal` menembus ketiga `fetch`, **kedua panggilan `processMessage` berulang** (tanpa itu Berhenti cuma memutus satu putaran alat), dan penjaga di pintu masuk SEBELUM klasifikasi/embedding/RAG yang berbayar. Pemutusan di tengah aliran ditangkap khusus supaya tak muncul sebagai "Aliran jawaban terputus". Tombol Kirim **berganti watak**, bukan tombol baru; ikon `cancel` karena `stop` tak ada di subset font. Pesannya menyebut batasnya sendiri: server tetap menyelesaikan & menagih, yang berhenti adalah menunggunya. **Jebakan:** asersi "tiap putaran membawa signal" sempat hijau **secara hampa** — regexnya cocok nol kali dan `every` pada daftar kosong bernilai true; dibongkar pemeriksaan jumlah. **Belum diuji live**
+102. ✅ Tombol Berhenti — Kiriman Akhirnya Bisa Dibatalkan (2026-10-01) — [log](../project-memory/changelog/2026-10-01-tombol-berhenti.md) · dilaporkan Owner saat Engineer menggantung: *"tidak ada tombol berhenti atau menggagalkan"*. Diperiksa: **tidak ada `AbortController` di mana pun** — bukan tombolnya yang lupa dipasang, pembatalannya belum pernah dibuat; jalan keluar satu-satunya memuat ulang jendela. Satu `signal` menembus ketiga `fetch`, **kedua panggilan `processMessage` berulang** (tanpa itu Berhenti cuma memutus satu putaran alat), dan penjaga di pintu masuk SEBELUM klasifikasi/embedding/RAG yang berbayar. Pemutusan di tengah aliran ditangkap khusus supaya tak muncul sebagai "Aliran jawaban terputus". Tombol Kirim **berganti watak**, bukan tombol baru; ikon `cancel` karena `stop` tak ada di subset font. Pesannya menyebut batasnya sendiri: server tetap menyelesaikan & menagih, yang berhenti adalah menunggunya. **Jebakan:** asersi "tiap putaran membawa signal" sempat hijau **secara hampa** — regexnya cocok nol kali dan `every` pada daftar kosong bernilai true; dibongkar pemeriksaan jumlah. **✅ TERBUKTI LIVE 1 Okt 15.11** — muncul "Dihentikan", kotak kirim terbuka lagi, dan **tidak ada "⚠️ Error" apa pun**; pengiriman berikutnya tetap berhasil dijawab, jadi kendalinya benar-benar dilepas dan tidak meracuni kiriman sesudahnya. Log server menunjukkan permintaan yang dibatalkan **tetap diproses sampai selesai** — kalimat jujur di pesan tombolnya terbukti harfiah, bukan sekadar hati-hati
 101. ✅ Tahap 6 Terbukti DUA ARAH + Spanduk Patch Tunggal (2026-10-01) — [log](../project-memory/changelog/2026-10-01-spanduk-patch-tunggal.md) · uji **kendali**: patch yang BENAR lolos 61/61 dalam 21,7 detik dan berkasnya **tetap berubah** — tanpa ini, penjaga yang menolak segalanya terlihat sama berhasilnya. Uji itu memunculkan cacat ketiga: **dua spanduk untuk satu patch**, yang kedua ("File telah dimodifikasi sesuai instruksi Anda") membantah laporan verifikasi di atasnya dan mengklaim pemeriksaan yang tak pernah ada — dan karena duduk paling bawah, dialah yang jadi kesimpulan. **Akarnya:** kalimat tunggu `'Engineer sedang menyiapkan patch'` tak pernah dibuat di mana pun, jadi tiga cabang penimpa anti-ganda itu kode mati. Pengumuman kini milik satu jalur (`Engineer:PatchApplied`, satu-satunya yang tahu pemulihan & bawa laporan); `PATCH_APPLIED` tetap dipancarkan sebagai catatan. **Uji mutasi** membongkar asersi lembek (`\b` cocok di tengah `else if`), dan uji sempat tertipu komentar penjelas sendiri — diukur pada kode tanpa komentar. **TERBUKTI LIVE di 4.2.3** — satu patch → satu spanduk, 62/62 lulus, berkas tetap berubah di disk; mencabut cabang `if` tidak merusak penjaga Tahap 6 (uji kendali kedua)
 99. ✅ Cari Dokumen Lewat Judulnya — 221 Kepbup Tak Terjangkau Nomornya (2026-10-01) — [log](../project-memory/changelog/2026-10-01-cari-lewat-judul.md) · diukur sendiri: kata "kepbup" muncul di **0 dari 3.629 potongan** dan **221 dari 221** dokumen tak memuat nomornya sendiri — menemukannya lewat nomor MUSTAHIL, bukan sulit. RRF tak bisa menolong karena ambang kemiripan VEKTOR membuangnya lebih dulu. Jalur judul TERPISAH; `match_documents_hybrid` tidak disentuh agar patokan 14/14 tetap sebanding. **TERBUKTI LIVE 1 Okt** — pertanyaan yang sama di dua chat: aturan lama tak menyala, aturan baru menyisipkan 3 potongan dari dokumen yang benar; jawaban VERIFIED. Syarat "semua kata" gagal pada pertanyaan nyata ("apa **isi** Kepbup 204") → diganti "minimal dua kata". **Batas yang ikut ketahuan:** `document_chunks` tak punya kolom urutan (id = uuid), jadi 3 potongan yang disisipkan acak, bukan tiga pertama — jawaban untuk "apa isi dokumen X" selalu sebagian, dan model menyebutnya sendiri
 98. ✅ Unduh Aplikasi Desktop dari Web (2026-09-29) — [log](../project-memory/changelog/2026-09-29-unduh-desktop-dari-web.md) · tautan di layar masuk (tanpa perlu login) & Pengaturan; repo rilis publik, alamat unduh diperiksa 200 tanpa autentikasi; `latest.yml`/`.blockmap` tak pernah diberikan ke manusia; API gagal → jatuh ke halaman releases/latest. **Belum diuji live**
@@ -222,7 +222,7 @@ sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
 
 ## 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-10-01)
 
-Versi di `main`: **4.2.7**. Terpasang di mesin Owner saat baris ini ditulis: **4.2.6**.
+Versi di `main`: **4.2.8**. Terpasang di mesin Owner saat baris ini ditulis: **4.2.7**.
 Alur rilis manual — Actions membuat draf, Owner yang menekan Publish (item 96).
 
 ### Sudah TERBUKTI LIVE
@@ -341,6 +341,24 @@ lihat log `[Riwayat]`. Dua hal yang harus berubah:
 Angka `0` itulah yang membedakan "perbaikannya gagal" dari "separuhnya belum terpasang" — sebabnya
 hitungan sisipan sengaja ditambahkan ke baris log itu.
 
+**✅ TERBUKTI LIVE di 4.2.7** — `3 pesan 16999→16999`, `5 pesan 19202→19202`, `7 pesan 22449→21108`,
+semuanya dengan `3 sisipan dipatok tidak dipangkas`. Tetap bertahan di percakapan panjang: 1 Okt
+15.11 tercatat `9 pesan 44694→25841` dan `11 pesan 50398→26829`, sisipan utuh sementara pesan biasa
+tetap dipangkas sebagaimana mestinya.
+
+### Yang dibawa 4.2.8
+
+| Dibawa 4.2.8 | Apa |
+|---|---|
+| **Engineer berhenti menulis memori pribadi Owner** | nomor sesi & patch tak lagi ditulis otomatis — tak ada pembacanya, isinya nomor mesin, dan melanggar kontrak Engineer sendiri (item 109) |
+
+Renderer saja — **tidak perlu deploy**.
+
+Tiga hal yang sudah terbukti live sebelum rilis ini, dicatat supaya tidak diuji ulang: **tombol
+Berhenti** (item 102), **patokan sisipan dua sisi** (item 108), dan **rantai temuan tersambung** —
+TMN-0002 & TMN-0003 lahir dari Engineer yang akhirnya boleh menengok, keduanya diperiksa ulang
+terhadap kode nyata dan benar.
+
 Empat uji tertunda lain bisa ikut dalam sesi pasang yang sama: tombol Berhenti, Engineer tak jatuh
 (tanya hal pendek-faktual di Engineer), cacat Tahap 6 ke-1 & ke-2 (patch yang sengaja merusak), dan
 unduh desktop dari web.
@@ -354,21 +372,19 @@ Kunci jawaban berubah tiap kali berkasnya disunting — **hitung ulang sebelum m
 memakai angka yang tertulis di dokumen ini:
 `git grep -c '' -- frontend/src frontend/electron supabase/functions mametlite/src`
 
-1. **Tombol Berhenti** — tekan saat Engineer sedang menunggu: kotak kirim terbuka lagi, muncul
-   "Dihentikan", dan **tidak** muncul "⚠️ Error" apa pun.
-2. **Engineer tak bisa jatuh** — tanya hal pendek-faktual di Engineer (mis. *"apa itu RLS?"*):
+1. **Engineer tak bisa jatuh** — tanya hal pendek-faktual di Engineer (mis. *"apa itu RLS?"*):
    harus tetap jawaban Engineer penuh, bukan jawaban ringkas tanpa kontrak.
-3. **T14 jalur stream** — satu chat Ecosystem yang jawabannya mengalir.
-4. **Unduh desktop dari web** — tautan di layar masuk Mametlite/web.
-5. **Cacat Tahap 6 ke-1 & ke-2** — perlu patch yang MERUSAK lagi (bukan yang benar), lalu pastikan
+2. **T14 jalur stream** — satu chat Ecosystem yang jawabannya mengalir.
+3. **Unduh desktop dari web** — tautan di layar masuk Mametlite/web.
+4. **Cacat Tahap 6 ke-1 & ke-2** — perlu patch yang MERUSAK lagi (bukan yang benar), lalu pastikan
    tak ada spanduk "Berhasil Diterapkan" yang membayangi "Patch dibatalkan sendiri".
-6. **Peta terbaca merata?** — ulangi pertanyaan lima berkas terbesar. Di 4.2.4 model melewati
+5. **Peta terbaca merata?** — ulangi pertanyaan lima berkas terbesar. Di 4.2.4 model melewati
    `verification_engine.ts` dan menyebut berkas `frontend/` di posisi kelima. Kalau berulang,
    artinya bagian `supabase/functions` di peta kurang terbaca — temuan tersendiri.
-7. **Perintah baca tanpa persetujuan** — suruh Engineer memeriksa sesuatu di repo: perintah `git`
-   harus jalan **sendiri** tanpa tombol dan tanpa dialog, dan hasil beberapa perintah kembali ke
-   model dalam **satu** kiriman. Lalu suruh ia menjalankan `node -e` — itu **harus** tetap
-   menampilkan tombol Jalankan dan dialog izin.
+6. **`node -e` tetap minta izin** — pembanding untuk perintah baca yang sudah jalan sendiri. Suruh
+   Engineer menjalankan `node -e`: **harus** tetap menampilkan tombol Jalankan dan dialog izin.
+   Kalau ia ikut jalan sendiri, garis "membaca repo aman, menjalankan kode karangan model tidak"
+   bocor — dan itu mendesak.
 
 Cara memastikan peta benar-benar terkirim, tanpa menebak dari jawaban model: lihat
 `[PROMPT_KOMPOSISI]` di log edge function — **riwayat harus melonjak di atas 15.000 huruf**.

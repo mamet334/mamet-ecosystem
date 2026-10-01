@@ -79,9 +79,24 @@ tebakan (`[\s\S]{0,400}?`), bloknya lebih panjang, jadi ia cocok **nol** kali �
 daftar kosong bernilai `true`. Yang membongkarnya adalah pemeriksaan **jumlah** di sebelahnya. Tanpa
 itu, uji ini akan menjaga udara kosong.
 
-## Belum sampai ke aplikasi
+## ✅ TERBUKTI LIVE — 1 Oktober 2026, 15.11
 
-Ada di `main`, menunggu rilis berikutnya.
+Owner mengirim pertanyaan lalu menekan tombol merah:
+
+| | Hasil |
+|---|---|
+| Pesan | **"Dihentikan"** muncul |
+| Kotak kirim | terbuka kembali |
+| **"⚠️ Error"** | **tidak ada** — tidak satu pun |
+| Kiriman berikutnya | **berhasil dijawab** |
+
+Yang terakhir itu membuktikan hal yang mudah terlewat: kendalinya benar-benar **dilepas**, bukan
+tertinggal menggantung. Kalau `kendaliKirimRef` tidak dibersihkan dengan benar, pembatalan akan
+meracuni kiriman sesudahnya — dan itu baru ketahuan berhari-hari kemudian.
+
+Log server menunjukkan permintaan yang dibatalkan **tetap diproses sampai selesai**. Jadi kalimat
+jujur di pesan tombolnya — *"Permintaan yang sudah sampai ke server tetap diselesaikan di sana dan
+tetap terhitung biayanya"* — terbukti **harfiah**, bukan sekadar kehati-hatian.
 
 ## Catatan: dua temuan lain dari sesi yang sama
 
