@@ -134,3 +134,43 @@ Diurutkan dari yang paling banyak cocok, supaya dokumen paling tepat berada di d
 
 **Tidak perlu deploy ulang** — yang berubah hanya fungsi SQL; `agent-process` yang sudah terpasang
 memanggilnya dengan nama yang sama.
+
+## TERBUKTI LIVE 1 Oktober — dan satu batas yang ikut ketahuan
+
+Chat kedua Owner, pertanyaan yang sama persis:
+
+```
+00:52:16  [RAG] Pencarian gabungan … 3 kata kunci [isi, kepbup, 204]     ← aturan lama, tidak menyala
+00:59:49  [RAG] Pencarian gabungan … 3 kata kunci [isi, kepbup, 204]
+00:59:49  [RAG] Judul cocok: 3 potongan disisipkan dari
+          "Kepbup OKU 2025 - 204 - Camat (Kecamatan Lengkiti).pdf"       ← aturan baru
+```
+
+Kata kuncinya **identik** di kedua chat, jadi yang berubah memang aturannya — bukan pertanyaannya.
+Sebab-akibat yang bersih, dan Owner memberikannya tanpa diminta dengan bertanya dua kali.
+
+Jawabannya benar dan **berlabel VERIFIED**: Camat · Administrator · Kecamatan Lengkiti, beserta
+Ikhtisar Jabatan yang tepat, dengan baris `Sumber:` yang sah.
+
+### Batas yang ikut ketahuan dari jawabannya sendiri
+
+Model menutup jawabannya dengan jujur: *"Dokumen yang tersimpan di database hanya memuat sebagian isi
+(Halaman 1 dan 3)… kompetensi nomor 1–6, 8–9, dan 12 ke atas tidak tersedia."*
+
+Diperiksa: **`document_chunks` tidak punya kolom urutan** — hanya `id` bertipe **uuid**. Jadi
+`order by dc.id` di `match_documents_judul` **bukan urutan dokumen, melainkan acak**. Tiga potongan
+yang disisipkan adalah tiga **sembarang** dari 14, bukan tiga yang pertama.
+
+Akibatnya untuk pertanyaan "apa isi dokumen X", jawabannya **selalu sebagian**, dan bagian mana yang
+terbawa tidak bisa diduga.
+
+**Tidak diperbaiki hari ini, dan alasannya:** menambah kolom urutan mudah untuk unggahan baru, tetapi
+**mengisi ulang urutan 3.629 potongan lama tidak bisa diandalkan** — uuid tidak menyimpan jejak urutan,
+dan urutan fisik baris bukan jaminan. Memalsukan urutan lebih buruk daripada mengakui tidak punya.
+
+Yang menyelamatkan keadaan ini: **model mengatakannya sendiri.** Ia tidak mengarang bagian yang tidak
+ia terima — justru menyebut nomor kompetensi mana yang hilang. Label VERIFIED tetap sah karena yang
+ia tuliskan memang bersumber.
+
+**Bila nanti ingin diperbaiki:** kolom urutan diisi saat unggah untuk dokumen BARU, dan potongan lama
+dibiarkan apa adanya sampai dokumennya diunggah ulang. Jangan menebak urutan yang sudah hilang.
