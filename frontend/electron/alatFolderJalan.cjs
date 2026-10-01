@@ -326,7 +326,48 @@ async function jalankanAlatJalan(akar, permintaan = {}, deps) {
   }
 }
 
+/**
+ * Perintah yang TIDAK perlu persetujuan Owner (keputusan Owner, 2026-10-01).
+ *
+ * Owner: *"perintah yang krusial saja yang perlu persetujuan saya… ini seperti membuat ribet dengan
+ * hal yang sebenarnya aman."* Dan ia benar: sampai hari ini satu `git grep` menuntut DUA persetujuan
+ * (tombol Jalankan di chat, lalu dialog asli), jadi lima perintah baca = sepuluh kali menyetujui.
+ *
+ * Yang membuat ini aman bukan aturan baru, melainkan yang SUDAH ada:
+ *   · `PROFIL.engineer.gitSub` = GIT_BACA — Engineer memang hanya boleh git yang membaca
+ *   · `GIT_BRANCH_UBAH` — `git branch` yang membuat/menghapus/memindah ditolak
+ *   · `OPSI_TERLARANG` — opsi yang menulis berkas atau memanggil alat luar ditolak
+ *
+ * Jadi untuk git, dialog itu tidak menambah perlindungan apa pun — hanya gesekan.
+ *
+ * Yang TETAP meminta izin: `node -e`, `python -c`, dan program lain. Profil Engineer memang
+ * mengizinkannya, dan itu KODE BEBAS yang tidak dibatasi pagar folder. Di situlah garisnya:
+ * membaca repo itu aman, menjalankan kode karangan model tidak.
+ *
+ * Fungsi ini hanya MENYEMPITKAN. Seluruh pemeriksaan lain tetap berjalan sesudahnya — ia memutuskan
+ * siapa yang perlu ditanya, bukan apa yang boleh jalan.
+ */
+function tanpaPersetujuan({ program, argumen, profil }) {
+  if (program !== 'git') return false;
+  if (!profil || profil.nama !== 'engineer') return false;   // hanya peran yang memang dibatasi git-baca
+
+  const bagian = (argumen || []).map(String);
+  const sub = bagian.find((a) => !a.startsWith('-'));
+  if (!sub || !GIT_BACA.includes(sub)) return false;
+
+  // `git -c core.pager=… log` menyisipkan konfigurasi: argumen pertama tidak boleh berupa opsi.
+  if (bagian.length && bagian[0] !== sub) return false;
+  if (bagian.some((a) => OPSI_TERLARANG.test(a))) return false;
+  if (sub === 'branch' && bagian.some((a) => GIT_BRANCH_UBAH.has(a))) return false;
+
+  return true;
+}
+
 async function izinLaluJalankan(akar, { program, argumen, teks, s, r, env, waktuS, profil }, deps) {
+  // Perintah baca tidak ditanyakan — lihat tanpaPersetujuan().
+  if (tanpaPersetujuan({ program, argumen, profil })) {
+    return jalankanSesudahIzin(akar, { program, argumen, teks, s, r, env, waktuS, profil });
+  }
   const setuju = await (async () => {
     try {
       return (await deps.mintaIzin({
@@ -345,6 +386,11 @@ async function izinLaluJalankan(akar, { program, argumen, teks, s, r, env, waktu
   })();
   if (!setuju) return { ok: false, alat: 'folder_run', alamat: teks, perintah: teks, ditolakOwner: true, alasan: 'ditolak Owner di dialog izin — tidak ada yang dijalankan' };
 
+  return jalankanSesudahIzin(akar, { program, argumen, teks, s, r, env, waktuS, profil });
+}
+
+/** Pelaksanaan sesudah gerbang izin — satu badan untuk kedua jalur (ditanyakan & tanpa persetujuan). */
+async function jalankanSesudahIzin(akar, { argumen, teks, r, env, waktuS }) {
   const h = await jalankanProses(r.exe, [...r.awal, ...argumen], { cwd: akar, env, waktuS });
   if (h.galat) return gagal(teks, h.galat);
   return { ok: true, alat: 'folder_run', alamat: teks, perintah: teks, waktuBatasS: waktuS, ...h };
@@ -395,4 +441,4 @@ function pecahPerintah(teks) {
   return { program, argumen };
 }
 
-module.exports = { jalankanAlatJalan, pecahPerintah, PROFIL, DAFTAR_PROGRAM, BATAS_JALAN, cariExe, envBersih, periksaArgumen, jalankanProses };
+module.exports = { jalankanAlatJalan, pecahPerintah, PROFIL, DAFTAR_PROGRAM, BATAS_JALAN, cariExe, envBersih, periksaArgumen, jalankanProses, tanpaPersetujuan };

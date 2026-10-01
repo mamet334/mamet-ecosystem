@@ -776,7 +776,7 @@ ipcMain.handle('folder:alat', async (_event, permintaan) => {
 // (pecahPerintah) lalu dijalankan pelaksana yang sama dengan folder_run: daftar izin program, .exe dicari di luar
 // repo, lingkungan tanpa rahasia, batas waktu, dialog izin. Folder asal = repo Mamet (Engineer bekerja di repo).
 // Kuasa Engineer ditentukan PROFIL (alatFolderJalan.cjs): git baca saja, tanpa pemasang paket, batas 180 s.
-const { pecahPerintah, PROFIL } = require('./alatFolderJalan.cjs');
+const { pecahPerintah, PROFIL, tanpaPersetujuan } = require('./alatFolderJalan.cjs');
 const depsEngineer = {
   profil: PROFIL.engineer,
   mintaIzin: async ({ judul, rincian, pratinjau }) => {
@@ -826,6 +826,19 @@ ipcMain.handle('engineer:akar-repo', () => akarRepo());
 // =============================================
 const PETA_SASARAN = ['frontend/src', 'frontend/electron', 'supabase/functions', 'mametlite/src'];
 let petaRepoCache = null;
+
+// Perintah baca tidak perlu diklik "Jalankan" (keputusan Owner, 2026-10-01). Layar bertanya ke SINI,
+// tidak menebak sendiri: teks perintahnya berasal dari model, jadi penentuannya harus di tempat yang
+// sama dengan yang menegakkannya. Kalaupun jawaban ini dipalsukan di layar, `tanpaPersetujuan` di
+// proses utama tetap yang memutuskan dialognya muncul atau tidak — layar hanya memakainya untuk tahu
+// apakah perlu menunggu Owner.
+ipcMain.handle('engineer:perintah-aman', async (_e, teks) => {
+  try {
+    const p = pecahPerintah(String(teks || ''));
+    if (p.galat) return false;
+    return tanpaPersetujuan({ program: p.program, argumen: p.argumen, profil: PROFIL.engineer });
+  } catch { return false; }
+});
 
 ipcMain.handle('engineer:peta-repo', async () => {
   const belum = butuhAkarRepo();

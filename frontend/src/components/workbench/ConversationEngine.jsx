@@ -168,6 +168,9 @@ export default function ConversationEngine({ sessionId }) {
 
   // --- Engineer State ---
   const [engineerCmdStates, setEngineerCmdStates] = useState({});
+  // Perintah yang sudah pernah dijalankan OTOMATIS — bukan state, karena mengubahnya tidak boleh
+  // memicu render (render ulang akan memicu efeknya lagi, dan perintahnya jalan dua kali).
+  const cmdOtomatisRef = useRef(new Set());
   const [lastCheckpoint, setLastCheckpoint] = useState(null);
   const [rollbackState, setRollbackState] = useState('idle');
 
@@ -1338,6 +1341,75 @@ export default function ConversationEngine({ sessionId }) {
     // Auto-feed output ke LLM
     setTimeout(() => handleSend(null, `[TERMINAL OUTPUT for: ${cmd}]\n${output}`), 300);
   };
+
+  /**
+   * PERINTAH BACA DIJALANKAN SENDIRI (keputusan Owner, 2026-10-01).
+   *
+   * Owner: *"perintah yang krusial saja yang perlu persetujuan saya… ini seperti membuat ribet
+   * dengan hal yang sebenarnya aman."* Sebelum ini satu `git grep` menuntut DUA persetujuan —
+   * tombol Jalankan di sini, lalu dialog asli dari proses utama — jadi lima perintah baca = sepuluh
+   * kali menyetujui, dan Owner menjadi tangan model.
+   *
+   * Aman atau tidak TIDAK ditentukan di sini: layar bertanya ke proses utama (`perintahAman`), dan
+   * proses utama pula yang menegakkannya (`tanpaPersetujuan`). Teks perintahnya berasal dari model,
+   * jadi penilaiannya tidak boleh tinggal di tempat yang sama dengan yang menampilkannya.
+   *
+   * SATU kiriman untuk semua hasilnya. Jalur manual mengirim balik tiap perintah satu per satu;
+   * kalau pola itu dipakai di sini, lima perintah otomatis menjadi lima panggilan model BERBAYAR
+   * tanpa Owner pernah memintanya.
+   */
+  const chatOtomatisRef = useRef(null);
+  useEffect(() => {
+    if (!instansiEngineerRef.current || isLoading) return;
+
+    const pesanAkhir = messages[messages.length - 1];
+    const idx = messages.length - 1;
+
+    // Pindah percakapan & pemuatan awal: lewati SEKALI, dan tandai perintah yang sudah ada supaya
+    // tidak ikut jalan belakangan. Tanpa ini, membuka riwayat lama akan menjalankan ulang perintah
+    // yang dulu sudah dijawab — Owner tidak meminta apa pun, tiba-tiba terminal bekerja.
+    if (chatOtomatisRef.current !== currentChatId) {
+      chatOtomatisRef.current = currentChatId;
+      if (typeof pesanAkhir?.content === 'string') {
+        for (const m of pesanAkhir.content.matchAll(/\[MAMET_CMD:([^\]]+)\]/g)) {
+          cmdOtomatisRef.current.add(`${idx}_${m[1].trim()}`);
+        }
+      }
+      return;
+    }
+
+    if (!pesanAkhir || pesanAkhir.role !== 'model' || typeof pesanAkhir.content !== 'string') return;
+    const daftar = [...pesanAkhir.content.matchAll(/\[MAMET_CMD:([^\]]+)\]/g)].map((m) => m[1].trim());
+    if (!daftar.length) return;
+
+    let batal = false;
+    (async () => {
+      const layanan = getAssistantService();
+      if (!layanan) return;
+      const hasil = [];
+      for (const cmd of daftar) {
+        const cmdKey = `${idx}_${cmd}`;
+        if (cmdOtomatisRef.current.has(cmdKey)) continue;
+        const aman = await (window.electronAPI?.engineer?.perintahAman?.(cmd) ?? Promise.resolve(false)).catch(() => false);
+        if (batal) return;
+        if (!aman) continue;   // perintah krusial tetap menunggu tombol Jalankan milik Owner
+
+        cmdOtomatisRef.current.add(cmdKey);
+        setEngineerCmdStates((prev) => ({ ...prev, [cmdKey]: { status: 'running', output: '' } }));
+        const r = await layanan.runCommand(cmd, riwayatPerintahDariPesan(messages));
+        if (batal) return;
+        setEngineerCmdStates((prev) => ({
+          ...prev,
+          [cmdKey]: { status: (r.ditolakAturan || r.ditolakProsedur) ? 'blocked' : r.ditolakOwner ? 'skipped' : r.success ? 'done' : 'error', output: r.output },
+        }));
+        // Ditolak ATURAN tidak dikirim ke model — alasannya tetap sama tiap kali (lihat jalur manual).
+        if (!r.ditolakAturan) hasil.push(`[TERMINAL OUTPUT for: ${cmd}]\n${r.output}`);
+      }
+      if (!batal && hasil.length) handleSend(null, hasil.join('\n\n'));
+    })();
+    return () => { batal = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, currentChatId, isLoading]);
 
   // =============================================
   // HANDLE ROLLBACK (Engineer)

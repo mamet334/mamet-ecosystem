@@ -53,9 +53,21 @@ c = await lewatDialog(`node -e "require('child_process').execSync('whoami')"`);
 cek(/menjalankan program lain/.test(c.rincian || ''), 'child_process → ditandai "menjalankan program lain"', c.rincian);
 
 // 3. Perintah biasa (bukan skrip sebaris) tidak terpengaruh
+//
+// DIPERBARUI 2026-10-01. Dulu kasus ini memakai `git status` dan memeriksa isi dialognya. Sejak
+// keputusan Owner "perintah yang krusial saja yang perlu persetujuan saya", git yang MEMBACA tidak
+// lagi membuka dialog sama sekali — jadi `git status` tak punya rincian untuk diperiksa, dan uji ini
+// merah bukan karena ada yang rusak. Lihat uji-perintah-tanpa-persetujuan.mjs.
+//
+// Perilaku barunya dijaga di sini supaya tidak ada yang diam-diam mengembalikan dialognya:
 c = await lewatDialog('git status');
+cek(Object.keys(c).length === 0, 'git yang MEMBACA tidak membuka dialog sama sekali', c);
+
+// Maksud asli kasus ini tetap dijaga, lewat perintah yang MASIH lewat dialog dan bukan skrip
+// sebaris: `node <berkas>` menjalankan berkas, bukan kode yang diketik model di baris perintah.
+c = await lewatDialog('node skrip-contoh.js');
 cek(!/SKRIP SEBARIS/.test(c.rincian || ''), 'perintah biasa tidak diberi peringatan skrip', c.rincian);
-cek(/Folder asal/.test(c.rincian || ''), 'rincian dialog yang lama tetap ada');
+cek(/Folder asal/.test(c.rincian || ''), 'rincian dialog yang lama tetap ada', c.rincian);
 
 // 4. Menolak di dialog tetap berarti tidak ada yang dijalankan
 const p = pecahPerintah(`node -e "require('fs').writeFileSync('jangan-sampai-ada.txt','x')"`);
