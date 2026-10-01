@@ -89,33 +89,72 @@ export function anggaranKonteks({ batasHarianUsd, terpakaiHariIniUsd = 0, hargaI
   };
 }
 
+/** Penanda pesan SISIPAN yang dipatok — lihat `pilihPesanKonteks`. */
+export const PATOK = '_patok';
+
+/** Sisipan dikenali dari penandanya, bukan dari posisinya. */
+export const adalahPatok = (p) => !!(p && p[PATOK] === true);
+
+/** Penanda internal tidak boleh ikut ke payload server. */
+const tanpaPatok = (p) => { const { [PATOK]: _, ...sisa } = p; return sisa; };
+
 /**
  * Pilih pesan yang dikirim ke model: dari yang TERBARU mundur ke belakang sampai anggaran habis.
  * Pesan sebelum `mulaiDari` (hasil tombol "Bersihkan konteks") tidak pernah ikut — tetapi TIDAK dihapus.
  *
- * @param {Array<{role: string, content: string}>} pesan seluruh pesan percakapan (urut lama → baru)
+ * ── SISIPAN DIPATOK (2026-10-01) ─────────────────────────────────────────────────────────────
+ * Catatan akar repo dan peta repo disisipkan di DEPAN riwayat. Dulu keduanya diperlakukan seperti
+ * pesan biasa, dan itu salah dua kali:
+ *
+ *   1. `mulaiDari` menghitung panjang daftar TAMPILAN, tetapi dikenakan pada `sisipan + tampilan`
+ *      yang lebih panjang — jadi "Bersihkan konteks" dan "Padatkan" memotong sisipannya lebih dulu.
+ *   2. Bahkan dengan indeks yang benar, pemotong membuang dari yang PALING TUA, dan sisipan ada di
+ *      posisi paling tua. Artinya konteks yang paling tidak boleh hilang justru yang pertama
+ *      dikorbankan setiap kali percakapan memanjang.
+ *
+ * Terbukti live 1 Okt: peta repo 15.493 huruf, tetapi riwayat yang benar-benar sampai ke model hanya
+ * 4.042 huruf ([PROMPT_KOMPOSISI]). Model bukan mengabaikan peta — ia tidak pernah melihatnya.
+ *
+ * Sekarang sisipan dikenali dari penandanya, dihitung LEBIH DULU terhadap anggaran, dan `mulaiDari`
+ * hanya berlaku pada bagian percakapan.
+ *
+ * Patokan dilepas dalam satu keadaan saja: bila memakainya akan menyingkirkan pertanyaan terbaru
+ * itu sendiri. Konteks tambahan yang mengusir pertanyaannya sendiri lebih buruk daripada tidak ada.
+ *
+ * @param {Array<{role: string, content: string, _patok?: boolean}>} pesan urut lama → baru
  * @param {{anggaranToken: number, mulaiDari?: number, sisakanUntukJawaban?: number}} opsi
- * @returns {{dikirim: Array, tokenTerpakai: number, dilewati: number, penuh: boolean}}
+ * @returns {{dikirim: Array, tokenTerpakai: number, dilewati: number, penuh: boolean, patokDilepas: boolean}}
  */
 export function pilihPesanKonteks(pesan, { anggaranToken, mulaiDari = 0, sisakanUntukJawaban = 2000 } = {}) {
   const semua = Array.isArray(pesan) ? pesan : [];
-  const awal = Math.max(0, Math.min(mulaiDari, semua.length));
-  const layak = semua.slice(awal);
+  const patok = semua.filter(adalahPatok);
+  const percakapan = semua.filter((p) => !adalahPatok(p));
+
+  // Dikenakan pada PERCAKAPAN saja — inilah perbaikan indeksnya.
+  const awal = Math.max(0, Math.min(mulaiDari, percakapan.length));
+  const layak = percakapan.slice(awal);
   const batas = Math.max(0, (anggaranToken || 0) - sisakanUntukJawaban);
 
+  const tokenPatok = patok.reduce((n, p) => n + tokenPesan(p), 0);
+  const tokenTerbaru = layak.length ? tokenPesan(layak[layak.length - 1]) : 0;
+  const patokIkut = patok.length > 0 && tokenPatok + tokenTerbaru <= batas;
+
   const terpilih = [];
-  let token = 0;
+  let token = patokIkut ? tokenPatok : 0;
   for (let i = layak.length - 1; i >= 0; i--) {
     const t = tokenPesan(layak[i]);
     if (token + t > batas && terpilih.length > 0) break;
     terpilih.unshift(layak[i]);
     token += t;
   }
+
   return {
-    dikirim: terpilih,
+    dikirim: patokIkut ? [...patok.map(tanpaPatok), ...terpilih] : terpilih,
     tokenTerpakai: token,
-    dilewati: semua.length - terpilih.length,
+    // Sisipan yang ikut bukan "pesan lama yang dilewati" — yang dihitung hanya percakapannya.
+    dilewati: percakapan.length - terpilih.length,
     penuh: terpilih.length < layak.length,
+    patokDilepas: patok.length > 0 && !patokIkut,
   };
 }
 

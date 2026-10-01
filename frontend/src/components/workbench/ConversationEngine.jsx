@@ -16,7 +16,7 @@ import { buatPenandaKiriman, tujuanTulis, pesanTerlantar, layakSimpanTerlantar }
 import { riwayatPerintahDariPesan, catatanAkarRepo, catatanPetaRepo } from '../../core/runtime/services/engineer/ProsedurEngineer.js';
 import { ambilBlokKlaim, susunSkripUji, susunLaporanKlaim } from '../../core/runtime/services/engineer/UjiKlaim.js';
 import { ambilBlokTemuan, bacaBerkasTemuan, susunBerkasTemuan, gabungTemuan, laporanTemuan, ringkasanUntukKonteks, ALAMAT_BERKAS as ALAMAT_TEMUAN } from '../../core/runtime/services/engineer/IngatanTemuan.js';
-import { anggaranKonteks, pilihPesanKonteks, meteranKonteks, bacaMulaiDari, simpanMulaiDari, pesanUntukDipadatkan, bolehPadatkan, bentukPesanRingkasan, tokenPesan, MIN_PESAN_PADATKAN } from '../../core/runtime/services/KonteksChat.js';
+import { anggaranKonteks, pilihPesanKonteks, meteranKonteks, bacaMulaiDari, simpanMulaiDari, pesanUntukDipadatkan, bolehPadatkan, bentukPesanRingkasan, tokenPesan, MIN_PESAN_PADATKAN, PATOK } from '../../core/runtime/services/KonteksChat.js';
 
 // =============================================
 // HELPER: Parse thinking/answer dari respons AI
@@ -1155,7 +1155,11 @@ export default function ConversationEngine({ sessionId }) {
       : '';
     const catatanPeta = catatanPetaRepo(peta);
 
-    const sisipan = [catatanAkar, catatanPeta, ringkasanTemuan].filter(Boolean).map((content) => ({ role: 'user', content }));
+    // `_patok: true` — sisipan TIDAK boleh ikut dipotong seperti pesan lama. Tanpa penanda ini,
+    // "Bersihkan konteks"/"Padatkan" memotongnya lebih dulu (indeksnya dihitung pada daftar tampilan
+    // yang lebih pendek), dan pemotong anggaran membuangnya duluan karena posisinya paling depan.
+    // Terukur 1 Okt: peta 15.493 huruf, yang sampai ke model 4.042 huruf. Lihat pilihPesanKonteks.
+    const sisipan = [catatanAkar, catatanPeta, ringkasanTemuan].filter(Boolean).map((content) => ({ role: 'user', content, [PATOK]: true }));
     const historyKirim = sisipan.length ? [...sisipan, ...newMessages] : newMessages;
 
     try {
