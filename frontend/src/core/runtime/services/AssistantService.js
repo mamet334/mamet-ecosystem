@@ -30,6 +30,10 @@ import { anggaranKonteks, pilihPesanKonteks, bacaMulaiDari } from './KonteksChat
 // membawa hasil putaran sebelumnya, jadi tanpa batas ini 4 putaran × 5 berkas × 60 KB bisa ±1,2 MB ke model.
 const FOLDER_BATAS_BACA_BYTE = 150 * 1024;
 
+// Pembatalan oleh pemakai dibedakan dari kegagalan di `pembatalan.js` — modul tersendiri supaya
+// bisa diimpor berkas uji (AssistantService sendiri tidak bisa dimuat di baris perintah).
+import { dibatalkanPemakai } from './pembatalan.js';
+
 // PR#2: Import governor dari versi JS lokal (bukan cross-boundary ke lib/ TypeScript)
 import {
   runCognitiveMemoryGovernor,
@@ -350,6 +354,11 @@ export class AssistantService {
     workspaceId,
     userId,
     token,
+    // Pembatalan (2026-10-01). Sebelum ini tidak ada AbortController di mana pun: sekali pesan
+    // terkirim, pemakai terkunci sampai model selesai. Untuk Engineer itu paling berat — permintaannya
+    // panjang dan mahal, dan salah arah baru ketahuan setelah menunggu lama. Owner mengalaminya
+    // sendiri dan hanya bisa lepas dengan memuat ulang jendela.
+    signal = null,
     attachedFile = null,
     workspaceManager,
     onChunk,
@@ -372,6 +381,11 @@ export class AssistantService {
       onError?.('Pesan atau token tidak tersedia.');
       return;
     }
+
+    // Dicegat SEBELUM klasifikasi, embedding, dan RAG — ketiganya berbayar dan berjalan sebelum
+    // `fetch`. Penjaga ini juga yang menghentikan putaran alat folder kerja: tiap putaran masuk
+    // lewat pintu yang sama, jadi Berhenti menutup putaran berikutnya tanpa biaya.
+    if (signal?.aborted) return;
 
     console.log('[LIFECYCLE] Chat request sent');
 
@@ -432,7 +446,9 @@ export class AssistantService {
           return this.processMessage({
             userMsg: pesanHasil,
             history: [...(history || []), { role: 'model', content: finalText }, { role: 'user', content: pesanHasil }],
-            workspaceId, userId, token, attachedFile: null, workspaceManager,
+            // `signal` WAJIB ikut: tanpa ini Berhenti hanya memutus satu putaran, lalu putaran alat
+            // berikutnya berangkat lagi — persis kasus Engineer yang panjang dan mahal.
+            workspaceId, userId, token, signal, attachedFile: null, workspaceManager,
             onChunk, onDone: onDoneAsli, onError, onNalar,
             modelTierOverride: modelTierOverride || infoFolder.tingkat || null,
             _folderPutaran: putaran, _folderPertanyaan: pertanyaanAsli, _folderDibaca: dibaca, _folderDiubah: diubah, _folderByte: byte,
@@ -459,7 +475,7 @@ export class AssistantService {
           return this.processMessage({
             userMsg: pesanKoreksi,
             history: [...(history || []), { role: 'model', content: finalText }, { role: 'user', content: pesanKoreksi }],
-            workspaceId, userId, token, attachedFile: null, workspaceManager,
+            workspaceId, userId, token, signal, attachedFile: null, workspaceManager,
             onChunk, onDone: onDoneAsli, onError, onNalar,
             modelTierOverride: modelTierOverride || infoFolder.tingkat || null,
             _folderPutaran: putaran, _folderPertanyaan: pertanyaanAsli, _folderDibaca: dibaca, _folderDiubah: diubah, _folderByte,
@@ -515,7 +531,7 @@ export class AssistantService {
 
     // 3. Dispatch ke handler yang sesuai
     const handlerParams = {
-      userMsg, history, workspaceId, userId, token,
+      userMsg, history, workspaceId, userId, token, signal,
       attachedFile, workspaceManager, onChunk, onDone, onError, onNalar,
       resolvedMode, resolvedAppSource, modelTierOverride, chatId,
       _isPostHocWebRetry, _injectedKnowledgeContext,
@@ -762,7 +778,7 @@ export class AssistantService {
    * @private
    */
   async _handleLookup({
-    userMsg, history, workspaceId, userId, token, workspaceManager,
+    userMsg, history, workspaceId, userId, token, workspaceManager, signal = null,
     resolvedMode, resolvedAppSource, onChunk, onDone, onError, _folderKerja = null
   }) {
     console.log('[AssistantService] PR#8 → _handleLookup (skip memory/semantic; dokumen dicari server bila RAG nyala)');
@@ -830,8 +846,9 @@ export class AssistantService {
 
     let response;
     try {
-      response = await fetch(AGENT_ENDPOINT, { method: 'POST', headers, body: JSON.stringify(payload) });
+      response = await fetch(AGENT_ENDPOINT, { method: 'POST', headers, body: JSON.stringify(payload), signal });
     } catch (fetchErr) {
+      if (dibatalkanPemakai(fetchErr, signal)) return;
       onError?.(`Gagal menghubungi server: ${fetchErr.message}`);
       return;
     }
@@ -846,7 +863,7 @@ export class AssistantService {
     }
 
     // Reuse response handler yang sama dengan ConversationHandler
-    await this._handleResponseStream(response, { userMsg, isEngineerMode: false, workspaceManager, onChunk, onDone, onError });
+    await this._handleResponseStream(response, { userMsg, isEngineerMode: false, workspaceManager, onChunk, onDone, onError, signal });
   }
 
   // =============================================
@@ -869,7 +886,7 @@ export class AssistantService {
    * @private
    */
   async _handleSkill({
-    skill, userMsg, history, userId, token, workspaceManager,
+    skill, userMsg, history, userId, token, workspaceManager, signal = null,
     resolvedMode, resolvedAppSource, onChunk, onDone, onError
   }) {
     console.log(`[AssistantService] Skill → _handleSkill("${skill.id}")`);
@@ -971,8 +988,11 @@ export class AssistantService {
         const headers = this.buildHeaders(token, aiProvider, aiKey);
         let response;
         try {
-          response = await fetch(AGENT_ENDPOINT, { method: 'POST', headers, body: JSON.stringify(payload) });
+          response = await fetch(AGENT_ENDPOINT, { method: 'POST', headers, body: JSON.stringify(payload), signal });
         } catch (fetchErr) {
+          // Dibatalkan pemakai bukan kegagalan skill — jangan catat ke Skill:Error, nanti riwayat
+          // kegagalan skill terisi oleh tombol Berhenti yang bekerja sebagaimana mestinya.
+          if (dibatalkanPemakai(fetchErr, signal)) return;
           onError?.(`Gagal menghubungi server saat eksekusi skill: ${fetchErr.message}`);
           this.eventBus.emit('Skill:Error', { skillId: skill.id, step: i + 1, reason: fetchErr.message });
           return;
@@ -990,7 +1010,8 @@ export class AssistantService {
           workspaceManager,
           onChunk,
           onDone,
-          onError
+          onError,
+          signal
         });
 
         skillContext.outputs.push({ step: i + 1, done: true });
@@ -1073,7 +1094,7 @@ export class AssistantService {
    * @private
    */
   async _handleConversation({
-    userMsg, history, workspaceId, userId, token,
+    userMsg, history, workspaceId, userId, token, signal = null,
     attachedFile, workspaceManager, resolvedMode, resolvedAppSource,
     onChunk, onDone, onError, onNalar, modelTierOverride = null,
     chatId = null,            // jendela konteks berdiri sendiri per percakapan (Tahap 3a)
@@ -1302,8 +1323,9 @@ export class AssistantService {
     const headers = this.buildHeaders(token, aiProvider, aiKey);
     let response;
     try {
-      response = await fetch(AGENT_ENDPOINT, { method: 'POST', headers, body: JSON.stringify(payload) });
+      response = await fetch(AGENT_ENDPOINT, { method: 'POST', headers, body: JSON.stringify(payload), signal });
     } catch (fetchErr) {
+      if (dibatalkanPemakai(fetchErr, signal)) return;
       onError?.(`Gagal menghubungi server: ${fetchErr.message}`);
       return;
     }
@@ -1322,7 +1344,7 @@ export class AssistantService {
     await this._handleResponseStream(response, {
       userMsg, isEngineerMode, workspaceManager, onChunk, onDone, onError, userId,
       history, workspaceId, token, attachedFile, resolvedMode, resolvedAppSource,
-      _isPostHocWebRetry, onNalar, hybrid: payload.streamNalar === true
+      _isPostHocWebRetry, onNalar, hybrid: payload.streamNalar === true, signal
     });
   }
 
@@ -1332,7 +1354,7 @@ export class AssistantService {
    * Mengembalikan data JSON jawaban, atau null bila gagal (onError sudah dipanggil).
    * @private
    */
-  async _bacaAliranHybrid(response, { onNalar, onError }) {
+  async _bacaAliranHybrid(response, { onNalar, onError, signal = null }) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
@@ -1347,15 +1369,25 @@ export class AssistantService {
       else if (ev.tipe === 'hasil') hasil = ev;
       else if (ev.tipe === 'galat') hasil = { galat: ev.pesan || 'galat tidak diketahui' };
     };
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-      for (const l of lines) olah(l.trim());
+    // Pemutusan di TENGAH aliran melempar dari reader.read(), bukan dari fetch. Tanpa tangkapan ini
+    // tombol Berhenti akan memunculkan "Aliran jawaban terputus sebelum selesai" — kalimat yang
+    // benar secara harfiah tetapi menuduh sambungan atas sesuatu yang diperintahkan pemakai.
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const l of lines) olah(l.trim());
+      }
+    } catch (bacaErr) {
+      if (dibatalkanPemakai(bacaErr, signal)) return null;
+      throw bacaErr;
     }
     if (buffer.trim()) olah(buffer.trim());
+    // Dibatalkan sesudah aliran berhenti tetapi sebelum `hasil` datang: tetap diam.
+    if (!hasil && signal?.aborted) return null;
     if (!hasil) { onError?.('⚠️ Error: Aliran jawaban terputus sebelum selesai.'); return null; }
     if (hasil.galat) { onError?.(`⚠️ Error: ${hasil.galat}`); return null; }
     if (hasil.status >= 400) { onError?.(`⚠️ Error: ${hasil.data?.error || `HTTP ${hasil.status}`}`); return null; }
@@ -1374,14 +1406,14 @@ export class AssistantService {
   async _handleResponseStream(response, {
     userMsg, isEngineerMode, workspaceManager, onChunk, onDone, onError, userId,
     history, workspaceId, token, attachedFile, resolvedMode, resolvedAppSource,
-    _isPostHocWebRetry = false, onNalar, hybrid = false
+    _isPostHocWebRetry = false, onNalar, hybrid = false, signal = null
   }) {
     const contentType = response.headers.get('content-type') || '';
 
     // HYBRID: nalar dialirkan lebih dulu; jawaban (event `hasil`) diproses PERSIS seperti jalur JSON di bawah.
     let jsonHybrid = null;
     if (hybrid && contentType.includes('text/event-stream')) {
-      jsonHybrid = await this._bacaAliranHybrid(response, { onNalar, onError });
+      jsonHybrid = await this._bacaAliranHybrid(response, { onNalar, onError, signal });
       if (!jsonHybrid) return;
     }
 
@@ -1509,7 +1541,7 @@ export class AssistantService {
               const orchestrator = this.serviceManager?.get('RetrievalOrchestrator');
               const webContext = orchestrator ? orchestrator.formatAsContext(webRes.chunks) : '';
               await this._handleConversation({
-                userMsg, history, workspaceId, userId, token,
+                userMsg, history, workspaceId, userId, token, signal,
                 attachedFile, workspaceManager, resolvedMode, resolvedAppSource,
                 onChunk, onDone, onError, chatId,
                 _isPostHocWebRetry: true,

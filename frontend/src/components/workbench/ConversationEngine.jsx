@@ -148,6 +148,9 @@ export default function ConversationEngine({ sessionId }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  // Pembatalan kiriman (2026-10-01). Disimpan di ref, bukan state: menggantinya tidak boleh memicu
+  // render, dan `hentikanKirim` harus selalu memegang kendali kiriman yang SEDANG berjalan.
+  const kendaliKirimRef = useRef(null);
   const [copiedIndex, setCopiedIndex] = useState(null);
   // currentChatId diinisialisasi null — ID chat di-restore via useEffect setelah
   // chatStorageKey tersedia (workspace diketahui). Ini mencegah tiga instance
@@ -1028,6 +1031,29 @@ export default function ConversationEngine({ sessionId }) {
     }
   }, [lastMemoryQuery]);
 
+  /**
+   * BERHENTI — memutus kiriman yang sedang berjalan (2026-10-01).
+   *
+   * Sebelum ini tidak ada pembatalan sama sekali: sekali pesan terkirim, Owner terkunci sampai model
+   * selesai, dan satu-satunya jalan keluar adalah memuat ulang jendela. Paling berat di Engineer,
+   * yang permintaannya panjang dan mahal — salah arah baru ketahuan setelah menunggu lama.
+   *
+   * Yang DIHENTIKAN hanya sisi kita: permintaan yang sudah sampai ke server tetap dikerjakan sampai
+   * selesai dan tetap ditagih. Itu ditulis apa adanya di pesan yang muncul, supaya tombol ini tidak
+   * menjanjikan lebih daripada yang bisa diberikannya.
+   */
+  const hentikanKirim = () => {
+    if (!kendaliKirimRef.current) return;
+    kendaliKirimRef.current.abort();
+    kendaliKirimRef.current = null;
+    setIsLoading(false);
+    setMessages((prev) => [...prev, {
+      role: 'model',
+      isPatchResult: true,
+      content: '⏹️ **Dihentikan.** Jawaban yang sedang disusun tidak jadi ditampilkan.\n\n_Permintaan yang sudah sampai ke server tetap diselesaikan di sana dan tetap terhitung biayanya — yang berhenti adalah menunggunya._',
+    }]);
+  };
+
   // =============================================
   // HANDLE SEND — delegasi ke AssistantService
   // =============================================
@@ -1040,6 +1066,12 @@ export default function ConversationEngine({ sessionId }) {
     const newMessages = [...messages, { role: 'user', content: userMsg }];
     setMessages(newMessages);
     setIsLoading(true);
+
+    // Kiriman sebelumnya yang masih menggantung diputus dulu — kalau tidak, kendalinya tertimpa dan
+    // permintaan lama terus berjalan tanpa ada lagi yang bisa menghentikannya.
+    kendaliKirimRef.current?.abort();
+    const kendali = new AbortController();
+    kendaliKirimRef.current = kendali;
 
     // Identitas kiriman ini (bug 2026-09-28: jawaban mendarat di percakapan yang sedang dilihat).
     // Disalin SEKARANG — `messages` akan diganti isinya begitu Owner membuka riwayat lain.
@@ -1129,6 +1161,7 @@ export default function ConversationEngine({ sessionId }) {
     try {
       await assistantService.processMessage({
         userMsg,
+        signal: kendali.signal,
         history: historyKirim,
         workspaceId: workspaceManager?.activeWorkspaceId || 'ws-assistant',
         userId,
@@ -1245,11 +1278,22 @@ export default function ConversationEngine({ sessionId }) {
         }
       });
     } catch (err) {
-      console.error('[ConversationEngine] handleSend error:', err);
-      const pesanGalat = `⚠️ Error: ${err.message}`;
-      if (diLayar()) setMessages(prev => [...prev, { role: 'model', content: pesanGalat }]);
-      else simpanTerlantar({ content: pesanGalat });
-      setIsLoading(false);
+      // Dibatalkan Owner bukan galat: tanpa cabang ini tombol Berhenti memunculkan "⚠️ Error" dan
+      // terlihat seperti aplikasi yang rusak, padahal ia menuruti perintah.
+      if (kendali.signal.aborted) {
+        console.log('[ConversationEngine] kiriman dihentikan Owner');
+      } else {
+        console.error('[ConversationEngine] handleSend error:', err);
+        const pesanGalat = `⚠️ Error: ${err.message}`;
+        if (diLayar()) setMessages(prev => [...prev, { role: 'model', content: pesanGalat }]);
+        else simpanTerlantar({ content: pesanGalat });
+        setIsLoading(false);
+      }
+    } finally {
+      // Hanya kendali kiriman INI yang dilepas. Kalau Owner sudah mengirim pesan baru, ref sudah
+      // memegang kendali yang lebih baru — menghapusnya di sini akan melucuti tombol Berhenti
+      // untuk kiriman yang justru sedang berjalan.
+      if (kendaliKirimRef.current === kendali) kendaliKirimRef.current = null;
     }
 
     // Reset file attachment
@@ -2137,9 +2181,20 @@ export default function ConversationEngine({ sessionId }) {
                     </button>
                   </>
                 )}
-                <button type="submit" disabled={(!input.trim() && !attachedFile) || isLoading} className="p-2.5 mr-0.5 rounded-xl bg-primary hover:bg-primary-fixed text-on-primary disabled:opacity-50 disabled:hover:bg-primary transition-all shadow-md shrink-0 cursor-pointer">
-                  <span className="material-symbols-outlined text-[18px]">send</span>
-                </button>
+                {/* Satu tempat, dua watak: selama menunggu, tombol Kirim BERGANTI jadi Berhenti.
+                    Tombol berhenti terpisah akan menambah satu sasaran klik yang mati 99% waktu, dan
+                    pada saat dibutuhkan justru tertukar dengan Kirim yang sedang mati.
+                    Ikon `cancel` dipakai karena `stop` TIDAK ada di subset font — nama di luar subset
+                    tampil sebagai tulisan mentah (sudah tiga kali terjadi, dijaga uji-ikon-subset). */}
+                {isLoading ? (
+                  <button type="button" onClick={hentikanKirim} title="Berhenti menunggu jawaban" className="p-2.5 mr-0.5 rounded-xl bg-error hover:opacity-90 text-on-error transition-all shadow-md shrink-0 cursor-pointer">
+                    <span className="material-symbols-outlined text-[18px]">cancel</span>
+                  </button>
+                ) : (
+                  <button type="submit" disabled={!input.trim() && !attachedFile} className="p-2.5 mr-0.5 rounded-xl bg-primary hover:bg-primary-fixed text-on-primary disabled:opacity-50 disabled:hover:bg-primary transition-all shadow-md shrink-0 cursor-pointer">
+                    <span className="material-symbols-outlined text-[18px]">send</span>
+                  </button>
+                )}
               </form>
               <div className="text-center mt-1 text-[9px] text-on-surface-variant tracking-widest uppercase opacity-50">
                 CE v3.0 • {workspaceManager.activeWorkspaceId}

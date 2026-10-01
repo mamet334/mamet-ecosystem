@@ -177,6 +177,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 94. ✅ Jawaban Mendarat di Percakapan yang Salah — Identitas Kiriman (2026-09-28) — [log](../project-memory/changelog/2026-09-28-jawaban-masuk-percakapan-salah.md) · dilaporkan Owner; **terbukti live 28 Sep** — jawaban tidak lagi tertukar. Batas yang diterima Owner: jawaban yang belum selesai belum muncul di riwayat
 
 100. ✅ Peta Repo untuk Engineer (2026-10-01) — [log](../project-memory/changelog/2026-10-01-peta-repo-engineer.md) · lahir dari keberatan Owner "seperti memperbodoh model". **Diukur:** Engineer menerima ±5.400 token ATURAN dan hanya ±1.200 token kode; tak ada satu pun blok untuk kode sumber; anggaran 60.000 token terpakai seperenam. Peta 270 berkas + jumlah baris (±3.870 token, 0,13 detik, satu perintah git). **Belum diuji live.** Dua arahan Owner lain sengaja ditunda agar pengaruh peta terukur sendirian: batas keluaran ikut model (masih 20 KB mati), dan porsi konteks Engineer (batas harian itu plafon, bukan jatah yang dibagi)
+102. ✅ Tombol Berhenti — Kiriman Akhirnya Bisa Dibatalkan (2026-10-01) — [log](../project-memory/changelog/2026-10-01-tombol-berhenti.md) · dilaporkan Owner saat Engineer menggantung: *"tidak ada tombol berhenti atau menggagalkan"*. Diperiksa: **tidak ada `AbortController` di mana pun** — bukan tombolnya yang lupa dipasang, pembatalannya belum pernah dibuat; jalan keluar satu-satunya memuat ulang jendela. Satu `signal` menembus ketiga `fetch`, **kedua panggilan `processMessage` berulang** (tanpa itu Berhenti cuma memutus satu putaran alat), dan penjaga di pintu masuk SEBELUM klasifikasi/embedding/RAG yang berbayar. Pemutusan di tengah aliran ditangkap khusus supaya tak muncul sebagai "Aliran jawaban terputus". Tombol Kirim **berganti watak**, bukan tombol baru; ikon `cancel` karena `stop` tak ada di subset font. Pesannya menyebut batasnya sendiri: server tetap menyelesaikan & menagih, yang berhenti adalah menunggunya. **Jebakan:** asersi "tiap putaran membawa signal" sempat hijau **secara hampa** — regexnya cocok nol kali dan `every` pada daftar kosong bernilai true; dibongkar pemeriksaan jumlah. **Belum diuji live**
 101. ✅ Tahap 6 Terbukti DUA ARAH + Spanduk Patch Tunggal (2026-10-01) — [log](../project-memory/changelog/2026-10-01-spanduk-patch-tunggal.md) · uji **kendali**: patch yang BENAR lolos 61/61 dalam 21,7 detik dan berkasnya **tetap berubah** — tanpa ini, penjaga yang menolak segalanya terlihat sama berhasilnya. Uji itu memunculkan cacat ketiga: **dua spanduk untuk satu patch**, yang kedua ("File telah dimodifikasi sesuai instruksi Anda") membantah laporan verifikasi di atasnya dan mengklaim pemeriksaan yang tak pernah ada — dan karena duduk paling bawah, dialah yang jadi kesimpulan. **Akarnya:** kalimat tunggu `'Engineer sedang menyiapkan patch'` tak pernah dibuat di mana pun, jadi tiga cabang penimpa anti-ganda itu kode mati. Pengumuman kini milik satu jalur (`Engineer:PatchApplied`, satu-satunya yang tahu pemulihan & bawa laporan); `PATCH_APPLIED` tetap dipancarkan sebagai catatan. **Uji mutasi** membongkar asersi lembek (`\b` cocok di tengah `else if`), dan uji sempat tertipu komentar penjelas sendiri — diukur pada kode tanpa komentar. **TERBUKTI LIVE di 4.2.3** — satu patch → satu spanduk, 62/62 lulus, berkas tetap berubah di disk; mencabut cabang `if` tidak merusak penjaga Tahap 6 (uji kendali kedua)
 99. ✅ Cari Dokumen Lewat Judulnya — 221 Kepbup Tak Terjangkau Nomornya (2026-10-01) — [log](../project-memory/changelog/2026-10-01-cari-lewat-judul.md) · diukur sendiri: kata "kepbup" muncul di **0 dari 3.629 potongan** dan **221 dari 221** dokumen tak memuat nomornya sendiri — menemukannya lewat nomor MUSTAHIL, bukan sulit. RRF tak bisa menolong karena ambang kemiripan VEKTOR membuangnya lebih dulu. Jalur judul TERPISAH; `match_documents_hybrid` tidak disentuh agar patokan 14/14 tetap sebanding. **TERBUKTI LIVE 1 Okt** — pertanyaan yang sama di dua chat: aturan lama tak menyala, aturan baru menyisipkan 3 potongan dari dokumen yang benar; jawaban VERIFIED. Syarat "semua kata" gagal pada pertanyaan nyata ("apa **isi** Kepbup 204") → diganti "minimal dua kata". **Batas yang ikut ketahuan:** `document_chunks` tak punya kolom urutan (id = uuid), jadi 3 potongan yang disisipkan acak, bukan tiga pertama — jawaban untuk "apa isi dokumen X" selalu sebagian, dan model menyebutnya sendiri
 98. ✅ Unduh Aplikasi Desktop dari Web (2026-09-29) — [log](../project-memory/changelog/2026-09-29-unduh-desktop-dari-web.md) · tautan di layar masuk (tanpa perlu login) & Pengaturan; repo rilis publik, alamat unduh diperiksa 200 tanpa autentikasi; `latest.yml`/`.blockmap` tak pernah diberikan ke manusia; API gagal → jatuh ke halaman releases/latest. **Belum diuji live**
@@ -236,18 +237,42 @@ Alur rilis manual — Actions membuat draf, Owner yang menekan Publish (item 96)
 | **Peta repo Engineer** | 270 berkas + jumlah baris (±3.870 token) disisipkan tiap kiriman. **Belum terlihat live** |
 | Catatan akar repo + `git grep` | ikut sejak 4.2.2, hasilnya belum pernah dilaporkan |
 
+### ⛔ Uji peta repo GAGAL — petanya tidak pernah sampai (1 Okt, 4.2.3)
+
+Diuji dengan pertanyaan yang hanya bisa dijawab dari peta ("lima berkas terbesar, tanpa menjalankan
+perintah"). Model **mengabaikan larangan itu**, langsung menyusun perintah, dan perintahnya gagal
+karena kutipnya rusak — kelas kegagalan yang **sama persis** dengan 28 September.
+
+Diukur, bukan diduga, lewat `[PROMPT_KOMPOSISI]` di log edge function:
+
+| Waktu (WIB) | Riwayat yang benar-benar terkirim |
+|---|---|
+| 15.00 | 11 pesan / **4.042 huruf** |
+| 14.54 | 11 pesan / 3.844 huruf |
+| 14.24 | 8 pesan / 4.555 huruf |
+
+Peta repo **15.494 huruf** — tak satu pun bisa memuatnya. Model bukan mengabaikan peta; ia tidak
+pernah melihatnya.
+
+**Sebab yang sudah ditemukan di kode** (belum tentu satu-satunya): `simpanMulaiDari` menyimpan indeks
+daftar **tampilan**, tetapi `pilihPesanKonteks` memakainya pada `sisipan + tampilan` yang lebih
+panjang. Karena sisipan ada di depan, **catatan akar repo dan peta repo-lah yang pertama terpotong**
+setiap kali "Bersihkan konteks" atau "Padatkan" dipakai — tanpa tanda apa pun di layar.
+
+**Yang belum pasti:** Owner meneruskan di percakapan lama. Perlu dipastikan apakah jembatan
+`petaRepo` mengembalikan isi atau kosong (DevTools Console: `(await window.electronAPI.engineer.petaRepo()).length`).
+Jangan menambal dua-duanya sekaligus — kalau begitu, tak akan pernah ketahuan mana yang rusak.
+
 ### Uji live yang masih menunggu
 
-1. **Peta repo** — Engineer langsung memakai `git grep` pada berkas besar, dan berhenti bertanya di
-   mana letak sebuah berkas.
-2. **Catatan akar repo + `git grep`** — Owner sempat chat 1 Okt, hasilnya belum dilaporkan.
+1. **Peta repo** — diulang sesudah sebabnya ditemukan dan diperbaiki, di **percakapan baru**.
+2. **Catatan akar repo + `git grep`** — kemungkinan besar gagal karena sebab yang sama.
 3. **T14 jalur stream** — satu chat Ecosystem yang jawabannya mengalir.
 4. **Unduh desktop dari web** — tautan di layar masuk Mametlite/web.
 5. **Cacat Tahap 6 ke-1 & ke-2** — perlu patch yang MERUSAK lagi (bukan yang benar), lalu pastikan
    tak ada spanduk "Berhasil Diterapkan" yang membayangi "Patch dibatalkan sendiri".
-
-Nomor 1 & 2 bisa dikerjakan dalam **satu chat Engineer yang sama**: keduanya soal apakah model
-berhenti menebak letak berkas dan langsung mencari isinya.
+6. **Tombol Berhenti** — tekan saat Engineer sedang menunggu: kotak kirim terbuka lagi, muncul
+   "Dihentikan", dan **tidak** muncul "⚠️ Error" apa pun.
 
 ### Dua arahan Owner yang SENGAJA ditunda (1 Okt)
 
