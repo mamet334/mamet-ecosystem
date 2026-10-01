@@ -221,7 +221,7 @@ sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
 
 ## 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-10-01)
 
-Versi di `main`: **4.2.6**. Terpasang di mesin Owner saat baris ini ditulis: **4.2.5**.
+Versi di `main`: **4.2.7**. Terpasang di mesin Owner saat baris ini ditulis: **4.2.6**.
 Alur rilis manual — Actions membuat draf, Owner yang menekan Publish (item 96).
 
 ### Sudah TERBUKTI LIVE
@@ -317,8 +317,28 @@ terpisah dan sudah terbukti live.
 | **Engineer tak bisa jatuh** | satu sumber kebenaran untuk `workspaceId` + penjaga di keempat jalur ringan. Engineer tak lagi bisa diam-diam kehilangan sisipan, kontrak, dan kelas model |
 | **Jejak sisipan** (instrumen) | satu baris `[Sisipan]` per kiriman — **bukan perbaikan, mata**. Tiga teori tentang hilangnya sisipan sudah ditumbangkan angka; ini menutup kebutaannya |
 
-**Yang harus dikerjakan begitu terpasang** — DevTools Console, kirim **dua pesan berturut-turut** di
-satu percakapan Engineer, lalu baca **kedua** baris `[Sisipan]`. Baris kedua yang menjawab.
+**Jejak sisipan ✅ TERBUKTI LIVE di 4.2.6 — dan langsung memecahkan misterinya.** Klien membangun
+16.999 huruf di KEDUA kiriman (`3 sisipan`, `0 dilewati`), tetapi server hanya menerima 2.065 di
+kiriman kedua. Itu memisahkan "tidak pernah dibuat" dari "hilang di jalan" dalam satu kali jalan,
+sesudah empat teori meleset. Sebabnya lalu ditemukan di `rapikanRiwayat()` — lihat item 108.
+
+### Yang dibawa 4.2.7
+
+**Separuh dari satu perbaikan dua sisi.** Sisi servernya sudah ter-deploy dan terbukti hidup, tetapi
+log menunjukkan `0 sisipan dipatok` — karena klien 4.2.6 masih MEMBUANG penandanya sebelum mengirim.
+Server punya mata; belum ada yang memberinya tanda.
+
+| Dibawa 4.2.7 | Apa |
+|---|---|
+| **Penanda `_patok` ikut ke payload** | melengkapi item 108. Tanpa ini perbaikan servernya tidak pernah menyala |
+
+**Cara memastikannya live:** kirim **dua pesan berturut-turut** di satu percakapan Engineer, lalu
+lihat log `[Riwayat]`. Dua hal yang harus berubah:
+- angka sesudah panah **tidak lagi turun** (sebelumnya 18.756 → 3.510)
+- `0 sisipan dipatok` berubah jadi **`3 sisipan dipatok tidak dipangkas`**
+
+Angka `0` itulah yang membedakan "perbaikannya gagal" dari "separuhnya belum terpasang" — sebabnya
+hitungan sisipan sengaja ditambahkan ke baris log itu.
 
 Empat uji tertunda lain bisa ikut dalam sesi pasang yang sama: tombol Berhenti, Engineer tak jatuh
 (tanya hal pendek-faktual di Engineer), cacat Tahap 6 ke-1 & ke-2 (patch yang sengaja merusak), dan
