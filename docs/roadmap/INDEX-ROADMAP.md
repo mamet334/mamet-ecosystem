@@ -225,7 +225,7 @@ sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
 
 ## 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-10-01)
 
-Versi di `main`: **4.2.8**. Terpasang di mesin Owner saat baris ini ditulis: **4.2.7**.
+Versi di `main`: **4.2.9**. Terpasang di mesin Owner saat baris ini ditulis: **4.2.8**.
 Alur rilis manual — Actions membuat draf, Owner yang menekan Publish (item 96).
 
 ### Sudah TERBUKTI LIVE
@@ -365,6 +365,26 @@ terhadap kode nyata dan benar.
 Empat uji tertunda lain bisa ikut dalam sesi pasang yang sama: tombol Berhenti, Engineer tak jatuh
 (tanya hal pendek-faktual di Engineer), cacat Tahap 6 ke-1 & ke-2 (patch yang sengaja merusak), dan
 unduh desktop dari web.
+
+### Yang dibawa 4.2.9
+
+Ketiganya renderer/klien — **tidak perlu deploy**. Sisi server untuk Brain 1 dan lampiran sudah
+ter-deploy terpisah 2 Okt.
+
+| Dibawa 4.2.9 | Apa |
+|---|---|
+| **Brain 1 bisa ditulis** | tombol "Simpan N pengetahuan" — Engineer mengusulkan blok, Owner menyetujui. Brain 1 beku sejak 27 Juni; ini yang mencairkannya (item 110) |
+| **Lampiran untuk Engineer** | tombol lampiran di Engineer — mata terhadap tata letak, dan dokumen instruksi teknis (item 112) |
+| **Mutu bukti** | petunjuk grep-sebagian, dan gembok yang tak lagi menuduh pengulangan sebagai larangan (item 111) |
+
+**Uji yang paling membuktikan**, berurutan:
+1. Lampirkan tangkapan layar ke Engineer, minta ia **menyebut apa yang dilihatnya**. Menyebut
+   warna/posisi/tulisan → matanya terbuka. Hanya menyebut nama berkas → gambarnya tidak sampai.
+2. Minta ia mempelajari sesuatu tentang repo, simpan pengetahuannya, lalu **buka percakapan baru**
+   dan tanyakan hal yang sama — kalau ia sudah tahu, Brain 1 hidup.
+3. Jalankan `git grep` polos — harus muncul petunjuk "N BARIS YANG COCOK, bukan isi berkasnya".
+4. Ulangi perintah yang sama persis — harus muncul penanda riwayat yang netral, **bukan** gembok
+   "tidak diizinkan".
 
 ### Uji live yang masih menunggu
 
