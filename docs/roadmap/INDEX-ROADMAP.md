@@ -214,7 +214,8 @@ sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
 
 ## 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-10-01)
 
-Terpasang & terbit: **4.2.2**. Alur rilis manual — lihat item 96.
+Versi di `main`: **4.2.3**. Terpasang di mesin Owner saat baris ini ditulis: **4.2.2**.
+Alur rilis manual — Actions membuat draf, Owner yang menekan Publish (item 96).
 
 ### Sudah TERBUKTI LIVE di 4.2.2
 
@@ -225,29 +226,38 @@ Terpasang & terbit: **4.2.2**. Alur rilis manual — lihat item 96.
 | **T12** penjaga berkas rahasia | `.env` ditolak dengan alasan + tawaran `.env.example`; labelnya turun ke HYPOTHESIS |
 | **Panel Pembaruan** | v4.2.2, ikon berupa gambar (bukan tulisan "TEM_UPDATE") |
 
-### Sudah di `main`, BELUM sampai ke aplikasi mana pun
+### Yang DIBAWA 4.2.3
 
-Butuh **4.2.3**. Jangan naikkan versi khusus untuk satu perbaikan — gabungkan.
+Empat hal, kodenya selesai dan hijau, tetapi **belum satu pun pernah terlihat bekerja di aplikasi**.
+Digabung dalam satu build dengan sengaja: menaikkan versi untuk satu perbaikan berarti membayar
+ongkos build & pasang berkali-kali untuk bukti yang bisa dikumpulkan sekaligus.
 
-| Sudah di main | Apa |
+| Dibawa 4.2.3 | Apa |
 |---|---|
-| Dua cacat Tahap 6 | patch yang DIKEMBALIKAN tak lagi diumumkan "Berhasil Diterapkan"; Semantic Diff dilewati; kata "Ketiganya" tak lagi dipaku |
+| Cacat Tahap 6 **ke-1 & ke-2** | patch yang DIKEMBALIKAN tak lagi diumumkan "Berhasil Diterapkan"; Semantic Diff dilewati; kata "Ketiganya" tak lagi dipaku |
+| Cacat Tahap 6 **ke-3** | satu patch = satu spanduk. "Patch Berhasil Diterapkan!" + "sesuai instruksi Anda" tak lagi digambar — ia membantah laporan verifikasi di atasnya dan mengklaim pemeriksaan yang tak pernah ada |
 | **Peta repo Engineer** | 270 berkas + jumlah baris (±3.870 token) disisipkan tiap kiriman |
-| Cacat Tahap 6 **ketiga** | satu patch = satu spanduk. "Patch Berhasil Diterapkan!" + "sesuai instruksi Anda" tak lagi digambar — ia membantah laporan verifikasi di atasnya dan mengklaim pemeriksaan yang tak pernah ada |
+| Catatan akar repo + `git grep` | sudah ikut 4.2.2, tetapi hasilnya belum pernah dilaporkan |
 
-### Uji live yang masih menunggu
+### Uji live yang menunggu sesudah 4.2.3 terpasang
 
-1. **Catatan akar repo + `git grep`** — Owner sempat chat 1 Okt, hasilnya belum dilaporkan.
+1. **Spanduk tunggal** — satu patch yang benar harus menghasilkan **satu** spanduk saja, dan yang
+   tersisa adalah yang membawa laporan verifikasi. Prompt sama seperti uji kendali: tambah satu baris
+   komentar di berkas yang tak ada uji membaca teks sumbernya.
 2. **Peta repo** — Engineer langsung memakai `git grep` pada berkas besar, dan berhenti bertanya di
    mana letak sebuah berkas.
-3. **T14 jalur stream** — satu chat Ecosystem yang jawabannya mengalir.
-4. **Unduh desktop dari web** — tautan di layar masuk Mametlite/web.
-5. **Spanduk tunggal** (sesudah 4.2.3) — satu patch benar harus menghasilkan **satu** spanduk saja.
+3. **Catatan akar repo + `git grep`** — Owner sempat chat 1 Okt, hasilnya belum dilaporkan.
+4. **T14 jalur stream** — satu chat Ecosystem yang jawabannya mengalir.
+5. **Unduh desktop dari web** — tautan di layar masuk Mametlite/web.
+
+Nomor 1 juga sekaligus **uji kendali Tahap 6 yang kedua**: patch yang benar harus tetap lolos.
+Membuang satu spanduk tak boleh diam-diam merusak penjaganya.
 
 ### Dua arahan Owner yang SENGAJA ditunda (1 Okt)
 
 Ditunda supaya pengaruh peta repo bisa diukur **sendirian** — tiga perubahan sekaligus = satu hasil
-yang tak bisa ditelusuri sebabnya.
+yang tak bisa ditelusuri sebabnya. **4.2.3 adalah build yang membuat pengukuran itu mungkin:** sampai
+peta repo benar-benar terpasang, kedua arahan ini belum punya patokan untuk dibandingkan.
 
 | | Keadaan sekarang | Arahan Owner |
 |---|---|---|
