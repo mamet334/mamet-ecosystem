@@ -211,20 +211,51 @@ sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
 
 ---
 
-## 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-10-01 — versi dinaikkan ke 4.2.2)
+## 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-10-01)
 
-Versi terpasang & terbit: **4.2.1**. Perbaikan berikut **sudah di `main` tetapi belum sampai ke aplikasi
-mana pun** — keputusan Owner: jangan naikkan versi khusus untuk ini, gabungkan dengan perbaikan lain.
+Terpasang & terbit: **4.2.2**. Alur rilis manual — lihat item 96.
 
-| Sudah di main | Kenapa belum sampai |
+### Sudah TERBUKTI LIVE di 4.2.2
+
+| | Bukti |
 |---|---|
-| Ikon panel Pembaruan (`system_update` → `refresh`) + `uji-ikon-subset.mjs` | perubahan renderer; butuh build baru |
+| **Tahap 6** verifikasi patch | patch perusak → "Patch dibatalkan sendiri", 18,3 detik, menyebut `uji-panel-pembaruan.mjs` + keluarannya; `git status` bersih & nilai kembali semula |
+| **T12** penjaga berkas rahasia | `.env` ditolak dengan alasan + tawaran `.env.example`; labelnya turun ke HYPOTHESIS |
+| **Panel Pembaruan** | v4.2.2, ikon berupa gambar (bukan tulisan "TEM_UPDATE") |
 
-**Yang harus dilakukan saat rilis berikutnya:** naikkan `frontend/package.json` ke **4.2.2**, push, lalu
-Owner menerbitkan drafnya (alur manual — lihat item 96).
+### Sudah di `main`, BELUM sampai ke aplikasi mana pun
 
-**Uji live yang masih menunggu build yang sama:** Tahap 6 (tanam patch perusak → berkas harus kembali
-sendiri), penjaga berkas rahasia T12, catatan akar repo + `git grep`.
+Butuh **4.2.3**. Jangan naikkan versi khusus untuk satu perbaikan — gabungkan.
+
+| Sudah di main | Apa |
+|---|---|
+| Dua cacat Tahap 6 | patch yang DIKEMBALIKAN tak lagi diumumkan "Berhasil Diterapkan"; Semantic Diff dilewati; kata "Ketiganya" tak lagi dipaku |
+| **Peta repo Engineer** | 270 berkas + jumlah baris (±3.870 token) disisipkan tiap kiriman |
+
+### Uji live yang masih menunggu
+
+1. **Kendali Tahap 6** — patch yang BENAR tidak boleh ikut dipulihkan. Prompt aman: tambah satu baris
+   komentar di `frontend/src/core/runtime/services/statusPembaruan.js` (tak ada uji yang membaca teks
+   sumbernya). Harapan: "60/60 lulus", berkas TETAP berubah, tombol Undo tersedia.
+2. **Catatan akar repo + `git grep`** — Owner sempat chat 1 Okt, hasilnya belum dilaporkan.
+3. **Peta repo** — Engineer langsung memakai `git grep` pada berkas besar, dan berhenti bertanya di
+   mana letak sebuah berkas.
+4. **T14 jalur stream** — satu chat Ecosystem yang jawabannya mengalir.
+5. **Unduh desktop dari web** — tautan di layar masuk Mametlite/web.
+
+### Dua arahan Owner yang SENGAJA ditunda (1 Okt)
+
+Ditunda supaya pengaruh peta repo bisa diukur **sendirian** — tiga perubahan sekaligus = satu hasil
+yang tak bisa ditelusuri sebabnya.
+
+| | Keadaan sekarang | Arahan Owner |
+|---|---|---|
+| Batas keluaran perintah | `BATAS_JALAN.keluaranByte = 20 * 1024` (angka mati) | ikut jendela model; `model_pricing.context_length` sudah tersimpan |
+| Porsi konteks Engineer | `PORSI_PER_PESAN = 0.05` | batas harian itu **plafon**, bukan jatah yang dibagi antara Assistant & Engineer |
+
+Dasar ukurannya ada di [log peta repo](../project-memory/changelog/2026-10-01-peta-repo-engineer.md):
+Engineer menerima ±5.400 token aturan lawan ±1.200 token kode, dan anggaran 60.000 token terpakai
+seperenam.
 
 ---
 
