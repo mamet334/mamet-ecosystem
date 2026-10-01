@@ -113,5 +113,19 @@ cek(/console\.warn\(`\[RAG\] pencarian judul dilewati/.test(DS), 'galatnya bersu
 cek(/rpc\('match_documents_hybrid', \{\s*\.\.\.argumenDasar,\s*query_words: kataKunci\s*\}\)/.test(DS),
   'panggilan match_documents_hybrid tetap apa adanya — patokan 14/14 tidak digeser');
 
+// ── 6. Aturan SQL-nya dipaku di migrasi ──────────────────────────────────────────────────────
+// Cacat yang hanya ketahuan dari uji live 1 Oktober: versi pertama mensyaratkan SEMUA kata ada di
+// judul. Pertanyaan Owner "apa isi Kepbup 204" membawa kata "isi" yang tidak ada di judul mana pun,
+// jadi jalur judul TIDAK MENYALA sama sekali. Pembuktian SQL sebelumnya memakai ['kepbup','204'] —
+// kasus bersih yang dipilih sendiri oleh yang menguji. Pertanyaan manusia selalu membawa kata lebih.
+console.log('\n-- aturan SQL dipaku di migrasi --');
+
+const MIG = readFileSync(`${AKAR}/supabase/migrations/20261001010000_cari_judul_minimal_dua_kata.sql`, 'utf8');
+cek(/where cocok >= 2/.test(MIG), 'syaratnya MINIMAL DUA kata cocok, bukan semua kata');
+cek(/array_length\(kata\.arr, 1\) >= 2/.test(MIG), 'kueri berkata tunggal ditolak — 221 judul semuanya memuat "kepbup"');
+cek(/order by t\.cocok desc/.test(MIG), 'yang paling banyak cocok berada di depan saat match_count memotong');
+cek(/"apa isi Kepbup 204"/.test(MIG) || /isi kepbup 204/.test(MIG),
+  'migrasi mencatat pertanyaan live yang membuktikan cacatnya — bukan hanya aturan barunya');
+
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));
 process.exit(gagal === 0 ? 0 : 1);

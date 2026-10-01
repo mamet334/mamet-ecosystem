@@ -91,3 +91,46 @@ biaya tidak berubah diam-diam. Kegagalan jalur judul dibungkus `try/catch`: penc
 mis. *"apa isi Kepbup 204?"*. Yang dibuktikan: log `[RAG] Judul cocok: N potongan disisipkan dari "…"`
 dan jawabannya menyebut jabatan yang benar. Kendali: pertanyaan biasa tanpa nomor **tidak** memunculkan
 baris log itu.
+
+---
+
+## Uji live 1 Oktober: jalur judul TIDAK menyala — dan sebabnya ada di pembuktian saya
+
+Owner deploy lalu bertanya **"apa isi Kepbup 204"**. Log:
+
+```
+[RAG] Pencarian gabungan vektor+kata: 8 potongan, 3 kata kunci [isi, kepbup, 204]
+```
+
+Tidak ada satu pun baris `[RAG] Judul cocok`. Jalur judulnya **tidak menyala sama sekali**.
+
+**Sebabnya:** syarat "SEMUA kata harus ada di judul". Judul
+"Kepbup OKU 2025 - 204 - Camat (Kecamatan Lengkiti).pdf" tidak memuat kata **"isi"**.
+
+**Kesalahan yang sebenarnya ada pada cara saya membuktikan.** Pembuktian SQL sebelumnya memakai
+`['kepbup','204']` — **kasus bersih yang saya pilih sendiri**. Pertanyaan manusia selalu membawa kata
+yang tidak ada di judul ("apa", "isi", "berapa"). Syarat semua-kata hanya bekerja untuk kueri yang
+sudah dibersihkan, yaitu kueri yang tidak pernah ada.
+
+Bukti yang disusun dari masukan pilihan sendiri bukan bukti — ia cermin, dalam bentuk lain.
+
+## Perbaikan: minimal DUA kata cocok
+
+Migrasi `20261001010000_cari_judul_minimal_dua_kata.sql`. Diukur terhadap data nyata **sebelum**
+ditulis, dan diperiksa lagi sesudah dipasang:
+
+| Kueri | Hasil |
+|---|---|
+| `isi kepbup 204` | **3 potongan dari 1 dokumen — yang benar** |
+| `kabar hari` | 0 |
+| `kepbup` (satu kata) | **0** — penting: seluruh 221 judul memuat kata itu |
+| kosong | 0 |
+
+Kenapa **dua**, bukan satu: semua 221 judul memuat "kepbup", jadi satu kata cocok akan menarik 221
+dokumen sekaligus. Dua kata membuat **nomornya** (atau jabatan + wilayah) yang menentukan.
+
+Diurutkan dari yang paling banyak cocok, supaya dokumen paling tepat berada di depan saat
+`match_count` memotong.
+
+**Tidak perlu deploy ulang** — yang berubah hanya fungsi SQL; `agent-process` yang sudah terpasang
+memanggilnya dengan nama yang sama.
