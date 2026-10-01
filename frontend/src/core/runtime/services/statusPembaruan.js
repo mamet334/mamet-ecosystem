@@ -13,6 +13,7 @@
  */
 
 /** Nada: 'aman' (tak perlu tindakan) · 'sibuk' (sedang berjalan) · 'perlu' (menunggu Owner) · 'galat'. */
+// Nada dipakai layar Pengaturan untuk memilih warna lencana.
 const BENTUK = {
   'not-available': { nada: 'aman', teks: 'Aplikasi Anda sudah di versi terbaru.' },
   checking: { nada: 'sibuk', teks: 'Memeriksa pembaruan…' },
