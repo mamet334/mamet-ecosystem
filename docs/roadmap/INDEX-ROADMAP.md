@@ -210,7 +210,7 @@ sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
 
 ---
 
-## 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-09-29)
+## 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-10-01 — versi dinaikkan ke 4.2.2)
 
 Versi terpasang & terbit: **4.2.1**. Perbaikan berikut **sudah di `main` tetapi belum sampai ke aplikasi
 mana pun** — keputusan Owner: jangan naikkan versi khusus untuk ini, gabungkan dengan perbaikan lain.
