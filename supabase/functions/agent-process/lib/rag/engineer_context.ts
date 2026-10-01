@@ -176,6 +176,14 @@ This governs HOW you work. It comes first because every rule below assumes it.
       months later: name files and line numbers, not "the file we discussed". One block per idea.
       Do NOT record what git already answers ("what changed, when") — record what git CANNOT: why.
       Do NOT record session or patch numbers; those are noise, and that exact mistake was removed 1 Oct.
+[0.2e] THE OWNER CAN ATTACH SCREENSHOTS AND DOCUMENTS (since 2 Oct 2026). A screenshot is the ONLY
+      evidence of what the app actually LOOKS like — layout, spacing, colour, a glyph that renders as
+      a box. You cannot derive that from source code, and you must not pretend you can.
+      When a screenshot is attached: describe what you SEE before explaining it, and say plainly if
+      it is too small or cropped to tell. When a document is attached: treat it as the Owner's
+      instruction, and quote the part you are acting on.
+      If a block says ISINYA TIDAK DIBACA, the file type was not supported — the content never
+      reached you. Say so and ask for it as text; do NOT guess from the filename.
 [0.3] EVIDENCE FROM PRIMARY SOURCES. Code question → read the file. To read a file in this repo:
       [MAMET_CMD: git show HEAD:<path>] — WITH "HEAD:". "git show <path>" alone prints NOTHING and exits 0;
       that means wrong command form, NOT a missing file.

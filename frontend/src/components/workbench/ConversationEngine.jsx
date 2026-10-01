@@ -2375,10 +2375,17 @@ export default function ConversationEngine({ sessionId }) {
                 {/* Tombol lampiran juga di Assistant: tool word_to_pdf ("ubah word ke pdf dokumen ini")
                     butuh berkas terlampir, dan tombol folder di kiri hanya memilih FOLDER, bukan berkas.
                     `e.target.value = ''` supaya berkas yang sama bisa dipilih lagi setelah dilepas. */}
-                {(workspaceManager?.activeWorkspaceId === 'ws-lite' || workspaceManager?.activeWorkspaceId === 'ws-assistant') && (
+                {/* ENGINEER IKUT PUNYA LAMPIRAN (keputusan Owner, 2026-10-02).
+                    Owner: *"menempelkan berkas maupun gambar ke engineer belum ada, karena itu sebagai
+                    MATA untuk engineer terhadap aplikasi yang dikerjakannya menyangkut tata letak, dan
+                    dokumen yang bisa ditempel agar engineer tahu instruksi secara teknis."*
+                    Engineer sudah bisa MEMBACA kode sejak 1 Okt; ini yang membuatnya bisa MELIHAT hasilnya.
+                    Jalur kliennya sudah generik (buildFileData → payload `file`), jadi yang kurang hanya
+                    tombol ini — dan satu nama medan di server yang tidak pernah cocok (lihat request_parser). */}
+                {(isEngineerWorkspace || workspaceManager?.activeWorkspaceId === 'ws-lite' || workspaceManager?.activeWorkspaceId === 'ws-assistant') && (
                   <>
                     <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => { if (e.target.files?.[0]) setAttachedFile(e.target.files[0]); e.target.value = ''; }} />
-                    <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 rounded-xl bg-surface-container-high hover:bg-surface-variant text-on-surface-variant transition-all shrink-0" title={workspaceManager?.activeWorkspaceId === 'ws-lite' ? 'Upload Dokumen RAG' : 'Lampirkan berkas (mis. Word untuk diubah ke PDF)'}>
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2.5 rounded-xl bg-surface-container-high hover:bg-surface-variant text-on-surface-variant transition-all shrink-0" title={isEngineerWorkspace ? 'Lampirkan tangkapan layar atau dokumen teknis — isinya ikut ke penyedia model' : workspaceManager?.activeWorkspaceId === 'ws-lite' ? 'Upload Dokumen RAG' : 'Lampirkan berkas (mis. Word untuk diubah ke PDF)'}>
                       <span className="material-symbols-outlined text-[18px]">attach_file</span>
                     </button>
                   </>
