@@ -71,6 +71,46 @@ export function catatanAkarRepo(akar) {
   ].join('\n');
 }
 
+/**
+ * Peta repo: daftar berkas kode beserta jumlah barisnya.
+ *
+ * ── Kenapa ada, diukur 1 Oktober 2026 ───────────────────────────────────────────────────────
+ * Komposisi satu permintaan Engineer nyata: aturan & identitas 21.756 huruf (62% prompt), RAG
+ * dokumen tugas 6.566, riwayat percakapan 4.807 — dan riwayat itulah SATU-SATUNYA tempat kode
+ * sumber bisa muncul. Artinya Engineer menerima ±5.400 token aturan dan ±1.200 token kode, tanpa
+ * satu pun blok khusus untuk kode.
+ *
+ * Owner: *"di mana Engineer yang seharusnya tahu kode sumber Mamet?"* Jawabannya saat itu: belum
+ * ada. Yang ada Engineer yang bisa **mencari** potongan, bukan yang **tahu apa yang ada**.
+ *
+ * ── Kenapa jumlah barisnya ikut ────────────────────────────────────────────────────────────
+ * Bukan hiasan. Keluaran perintah dipotong pada 20 KB, jadi `git show` pada berkas besar terpotong
+ * DIAM-DIAM. Dengan tahu `ConversationEngine.jsx` 2.195 baris, model bisa memilih `git grep` sejak
+ * awal — bukan mencoba membaca utuh lalu gagal tanpa tahu sebabnya (live 28 September).
+ *
+ * ── Harga ───────────────────────────────────────────────────────────────────────────────────
+ * 270 berkas, 15.494 huruf (±3.870 token) — lebih kecil daripada blok aturan yang sudah ada, dan
+ * anggaran konteks 60.000 token baru terpakai ±10.000.
+ *
+ * @param {string} peta keluaran `git grep -c ""`, bentuk "berkas:jumlah_baris" per baris
+ * @returns {string} blok catatan, atau kosong bila peta tidak ada
+ */
+export function catatanPetaRepo(peta) {
+  const isi = String(peta || '').trim();
+  if (!isi) return '';
+  const baris = isi.split('\n').filter(Boolean);
+  return [
+    '[PETA REPO — SELURUH BERKAS KODE, dengan jumlah barisnya]',
+    `${baris.length} berkas. Bentuk tiap baris: alamat:jumlah_baris`,
+    'Ini daftar LENGKAP kode aplikasi — bila sebuah berkas tidak ada di sini, ia memang tidak ada.',
+    'JANGAN mencari letak berkas; alamatnya sudah di bawah ini. Yang perlu dicari hanya ISInya.',
+    'Berkas besar (>400 baris) TIDAK muat lewat `git show` (keluaran dipotong 20 KB) — pakai',
+    '`git grep -n -B2 -A4 <kata>` atau `git blame -L <awal>,<akhir> -- <alamat>`.',
+    '',
+    isi,
+  ].join('\n');
+}
+
 /** `git show HEAD:<alamat>` / `git show <sha>:<alamat>` — pembacaan berkas utuh, satu-satunya yang bisa terpotong diam-diam. */
 const POLA_BACA_UTUH = /^git\s+show\s+[^\s:]*:(\S+)\s*$/i;
 

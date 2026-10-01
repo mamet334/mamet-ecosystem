@@ -51,8 +51,12 @@ cek(/const catatanAkar = catatanAkarRepo\(akarRepoSekarang\)/.test(CE), 'dipangg
 cek(/engineer\?\.akarRepo\?\.\(\)/.test(CE), 'akarnya dibaca dari proses utama, bukan ditebak layar');
 
 // Harus ikut ke history yang DIKIRIM.
-const iSisipan = CE.indexOf('const sisipan = [catatanAkar, ringkasanTemuan]');
-cek(iSisipan > 0, 'catatan digabung ke sisipan bersama ringkasan temuan');
+// Daftar sisipan bertambah seiring waktu (1 Okt: `catatanPeta` masuk di antaranya). Yang dijaga di
+// sini adalah catatan AKAR ikut di dalamnya — bukan urutan persis seluruh anggotanya, karena asersi
+// yang memaku daftar utuh akan merah tiap kali ada sisipan baru yang sah.
+const iSisipan = CE.indexOf('const sisipan = [catatanAkar,');
+cek(iSisipan > 0, 'catatan akar repo digabung ke sisipan', (CE.match(/const sisipan = [^\n]*/g) || []));
+cek(/const sisipan = \[catatanAkar,[^\]]*ringkasanTemuan\]/.test(CE), 'ringkasan temuan tetap ikut di sisipan yang sama');
 const iHistory = CE.indexOf('const historyKirim = sisipan.length');
 cek(iHistory > iSisipan, 'sisipan dipakai menyusun historyKirim');
 cek(/history: historyKirim/.test(CE), 'historyKirim itu yang benar-benar dikirim ke server');

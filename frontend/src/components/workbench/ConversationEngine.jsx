@@ -13,7 +13,7 @@ import { tugasDariUsulan } from '../../core/runtime/services/engineer/UsulanPatc
 import { laporanSetelahMuatUlang, hapusCatatanPatch } from '../../core/runtime/services/engineer/CatatanPatch.js';
 import { putusanPemulihan, bolehSimpanChat, kunciSimpan } from './pemulihanChat.js';
 import { buatPenandaKiriman, tujuanTulis, pesanTerlantar, layakSimpanTerlantar } from './pengirimanChat.js';
-import { riwayatPerintahDariPesan, catatanAkarRepo } from '../../core/runtime/services/engineer/ProsedurEngineer.js';
+import { riwayatPerintahDariPesan, catatanAkarRepo, catatanPetaRepo } from '../../core/runtime/services/engineer/ProsedurEngineer.js';
 import { ambilBlokKlaim, susunSkripUji, susunLaporanKlaim } from '../../core/runtime/services/engineer/UjiKlaim.js';
 import { ambilBlokTemuan, bacaBerkasTemuan, susunBerkasTemuan, gabungTemuan, laporanTemuan, ringkasanUntukKonteks, ALAMAT_BERKAS as ALAMAT_TEMUAN } from '../../core/runtime/services/engineer/IngatanTemuan.js';
 import { anggaranKonteks, pilihPesanKonteks, meteranKonteks, bacaMulaiDari, simpanMulaiDari, pesanUntukDipadatkan, bolehPadatkan, bentukPesanRingkasan, tokenPesan, MIN_PESAN_PADATKAN } from '../../core/runtime/services/KonteksChat.js';
@@ -1115,7 +1115,16 @@ export default function ConversationEngine({ sessionId }) {
       : '';
     const catatanAkar = catatanAkarRepo(akarRepoSekarang);
 
-    const sisipan = [catatanAkar, ringkasanTemuan].filter(Boolean).map((content) => ({ role: 'user', content }));
+    // PETA REPO (1 Oktober 2026). Diukur: Engineer menerima ±5.400 token aturan dan hanya ±1.200
+    // token kode, tanpa satu pun blok khusus untuk kode sumber. Peta ini (±3.870 token) membuatnya
+    // TAHU berkas apa saja yang ada beserta jumlah barisnya, bukan menebak lalu mencari.
+    // Dibaca dari proses utama tiap kiriman; di sana ia di-cache, jadi murah.
+    const peta = akarRepoSekarang
+      ? await (window.electronAPI?.engineer?.petaRepo?.() ?? Promise.resolve('')).catch(() => '')
+      : '';
+    const catatanPeta = catatanPetaRepo(peta);
+
+    const sisipan = [catatanAkar, catatanPeta, ringkasanTemuan].filter(Boolean).map((content) => ({ role: 'user', content }));
     const historyKirim = sisipan.length ? [...sisipan, ...newMessages] : newMessages;
 
     try {

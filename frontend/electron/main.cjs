@@ -801,6 +801,56 @@ const { jalankanProses, cariExe, envBersih } = require('./alatFolderJalan.cjs');
 // Akar repo dibutuhkan penyusun skrip uji di layar (UjiKlaim.susunSkripUji) untuk menyusun alamat absolut modul.
 ipcMain.handle('engineer:akar-repo', () => akarRepo());
 
+// =============================================
+// PETA REPO ENGINEER (1 Oktober 2026)
+//
+// DIUKUR dari chat Engineer Owner hari itu — komposisi satu permintaan nyata:
+//
+//   aturan & identitas  21.756 huruf  (62% prompt)
+//   RAG dokumen tugas    6.566
+//   riwayat percakapan   4.807        ← SATU-SATUNYA tempat kode bisa muncul
+//
+// Engineer menerima ±5.400 token aturan dan ±1.200 token kode. Tidak ada satu pun blok khusus untuk
+// kode sumber. Owner: "dimana engineer yang seharusnya tau code source system mamet ecosystem?" —
+// jawabannya: belum ada. Yang ada Engineer yang bisa MENCARI potongan, bukan yang TAHU apa yang ada.
+//
+// Peta ini menutup bagian termurahnya: daftar berkas kode + jumlah barisnya, 270 berkas,
+// 15.494 huruf (±3.870 token) — lebih kecil daripada blok aturan, dan anggaran konteks 60.000 token
+// baru terpakai ±10.000.
+//
+// Jumlah barisnya bukan hiasan: ia mengajari bahwa `ConversationEngine.jsx` 2.195 baris TIDAK akan
+// muat lewat `git show` (keluaran perintah dipotong 20 KB) — jadi pakai `git grep`.
+//
+// Satu perintah git, 0,13 detik. Di-cache per sesi aplikasi karena daftar berkas jarang berubah;
+// yang berubah isinya, bukan daftarnya.
+// =============================================
+const PETA_SASARAN = ['frontend/src', 'frontend/electron', 'supabase/functions', 'mametlite/src'];
+let petaRepoCache = null;
+
+ipcMain.handle('engineer:peta-repo', async () => {
+  const belum = butuhAkarRepo();
+  if (belum) return '';
+  if (petaRepoCache && petaRepoCache.akar === akarRepo()) return petaRepoCache.teks;
+
+  const git = cariExe('git', akarRepo());
+  if (!git) return '';
+  try {
+    // `git grep -c ""` mencetak "berkas:jumlah_baris" untuk tiap berkas terlacak — satu proses,
+    // bukan 270. Kode keluar 1 bila tak ada yang cocok; itu bukan galat di sini.
+    const h = await jalankanProses(git, ['grep', '-c', '', '--', ...PETA_SASARAN], {
+      cwd: akarRepo(), env: envBersih(process.env), waktuS: 30,
+    });
+    const keluaran = String(h.keluaran || '').trim();
+    if (h.galat || !keluaran) return '';
+    petaRepoCache = { akar: akarRepo(), teks: keluaran };
+    console.log(`[PETA REPO] ${keluaran.split('\n').length} berkas, ${keluaran.length} huruf`);
+    return keluaran;
+  } catch (e) {
+    console.log(`[PETA REPO] gagal: ${e.message}`);
+    return '';
+  }
+});
+
 // Tahap 5 — akar repo dipilih Owner. Polanya sama dengan `folder:pilih` (Item 85): dialog asli
 // proses utama, disahkan `akarRepoSah`, alamatnya saja yang disimpan.
 const statusAkarRepo = () => {
