@@ -176,7 +176,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 93. 📝 Kedaulatan Data — Salinan Sendiri yang Terbukti Bisa Dipulihkan, lalu Postgres Lokal (2026-09-22) — [rancangan](./ROADMAP-KEDAULATAN-DATA.md) · [log RLS](../project-memory/changelog/2026-09-22-rls-tutup-baca-semua.md) · [log Tahap 1](../project-memory/changelog/2026-09-22-cadangan-data-lengkap.md) · [log Tahap 2](../project-memory/changelog/2026-09-22-uji-pulih-postgres-lokal.md)
 94. ✅ Jawaban Mendarat di Percakapan yang Salah — Identitas Kiriman (2026-09-28) — [log](../project-memory/changelog/2026-09-28-jawaban-masuk-percakapan-salah.md) · dilaporkan Owner; **terbukti live 28 Sep** — jawaban tidak lagi tertukar. Batas yang diterima Owner: jawaban yang belum selesai belum muncul di riwayat
 
-100. ✅ Peta Repo untuk Engineer (2026-10-01) — [log](../project-memory/changelog/2026-10-01-peta-repo-engineer.md) · lahir dari keberatan Owner "seperti memperbodoh model". **Diukur:** Engineer menerima ±5.400 token ATURAN dan hanya ±1.200 token kode; tak ada satu pun blok untuk kode sumber; anggaran 60.000 token terpakai seperenam. Peta 270 berkas + jumlah baris (±3.870 token, 0,13 detik, satu perintah git). **Belum diuji live.** Dua arahan Owner lain sengaja ditunda agar pengaruh peta terukur sendirian: batas keluaran ikut model (masih 20 KB mati), dan porsi konteks Engineer (batas harian itu plafon, bukan jatah yang dibagi)
+100. ✅ Peta Repo untuk Engineer (2026-10-01) — [log](../project-memory/changelog/2026-10-01-peta-repo-engineer.md) · lahir dari keberatan Owner "seperti memperbodoh model". **Diukur:** Engineer menerima ±5.400 token ATURAN dan hanya ±1.200 token kode; tak ada satu pun blok untuk kode sumber; anggaran 60.000 token terpakai seperenam. Peta 270 berkas + jumlah baris (±3.870 token, 0,13 detik, satu perintah git). **TERBUKTI LIVE di 4.2.4** — tetapi baru sesudah akar kegagalannya ditutup (item 103): di 4.2.3 petanya tak pernah sampai. Bukti: `[PROMPT_KOMPOSISI]` 4.042 → 16.945 huruf; model menyebut 271 berkas dan empat angka teratas persis, angka hari itu yang hanya ada di peta baru. **Sisa yang belum terjawab:** urutan kelima salah — `verification_engine.ts` (1144) dilewati demi `engineer.js` (1120), satu-satunya berkas `supabase/functions` di jajaran atas; perlu diamati apakah peta terbaca merata. Dua arahan Owner lain sengaja ditunda agar pengaruh peta terukur sendirian: batas keluaran ikut model (masih 20 KB mati), dan porsi konteks Engineer (batas harian itu plafon, bukan jatah yang dibagi)
 104. ✅ Perintah Baca Tanpa Persetujuan — Gerbang Hanya untuk yang Krusial (2026-10-01) — [log](../project-memory/changelog/2026-10-01-perintah-baca-tanpa-persetujuan.md) · keputusan Owner: *"perintah yang krusial saja yang perlu persetujuan saya… ini seperti membuat ribet dengan hal yang sebenarnya aman."* Terbukti di uji peta repo: lima `git grep` untuk satu pertanyaan × dua gerbang (tombol Jalankan + dialog asli) = **sepuluh kali menyetujui** untuk membaca jumlah baris berkas sendiri. **Akarnya:** gerbang menjaga sesuatu yang sudah dijaga — `PROFIL.engineer.gitSub` memang hanya git-baca, `GIT_BRANCH_UBAH` & `OPSI_TERLARANG` sudah menyekat sisanya, jadi dialog tak menambah perlindungan apa pun. Garisnya: git baca → jalan sendiri; `node -e`/`python -c`/program lain → **tetap minta izin**, karena itu kode bebas tanpa pagar folder. Penegakan di PELAKSANA (proses utama), layar hanya bertanya lewat IPC; penentunya memakai pemecah perintah yang SAMA dengan pelaksana. Hasil beberapa perintah dikirim dalam SATU kiriman — pola manual akan jadi satu panggilan model berbayar per perintah. Pindah percakapan & pemuatan awal sengaja dilewati supaya riwayat lama tak menjalankan ulang perintah. **38 pemeriksaan, sebagian besar percobaan menembus** (`--ext-diff`, `--output=`, `--exec=`, `--git-dir=`, `--work-tree=`, `--upload-pack=`, `branch -D/-m/-f/-u`, `git -c core.pager=… log`); profil assistant tidak ikut dilonggarkan. Satu uji lama memerah dan memang seharusnya — diperbarui tanpa dilemahkan. **Belum diuji live**
 103. ✅ Sisipan Konteks Dipatok — Peta Repo Berhenti Dibuang Diam-diam (2026-10-01) — [log](../project-memory/changelog/2026-10-01-sisipan-dipatok.md) · **akar kegagalan uji peta repo.** Diukur: peta 15.493 huruf di proses utama (DevTools `15493`), riwayat yang sampai ke model 4.042 huruf — model tidak pernah melihatnya. Anggaran dicoret lewat hitungan (6.000 token muat untuk 4.883). **Dua cacat, satu akar — sisipan diperlakukan sebagai pesan paling tua:** (1) `simpanMulaiDari` menyimpan panjang daftar TAMPILAN tetapi dikenakan pada `sisipan + tampilan`, merusak dua arah (sisipan terbuang, pesan lama yang sudah dibersihkan malah ikut); (2) pemotong anggaran membuang dari yang paling tua, jadi konteks terpenting yang pertama dikorbankan. Kini sisipan dikenali dari penanda `_patok`, dihitung lebih dulu, `mulaiDari` hanya untuk percakapan. Patokan **dilepas** hanya bila ia menyingkirkan pertanyaan terbarunya sendiri, dan itu dilaporkan lewat `patokDilepas`. **Biaya yang disebut di muka:** ±3.873 token kini benar-benar ikut tiap kiriman Engineer. **Jebakan:** uji sempat merah dua kali karena aritmetika ujinya sendiri — anggaran terlalu longgar sehingga tak ada yang benar-benar dipotong; diperbaiki dengan mengukur `tokenPesan()` dulu. **Belum diuji live** — harus di percakapan BARU
 102. ✅ Tombol Berhenti — Kiriman Akhirnya Bisa Dibatalkan (2026-10-01) — [log](../project-memory/changelog/2026-10-01-tombol-berhenti.md) · dilaporkan Owner saat Engineer menggantung: *"tidak ada tombol berhenti atau menggagalkan"*. Diperiksa: **tidak ada `AbortController` di mana pun** — bukan tombolnya yang lupa dipasang, pembatalannya belum pernah dibuat; jalan keluar satu-satunya memuat ulang jendela. Satu `signal` menembus ketiga `fetch`, **kedua panggilan `processMessage` berulang** (tanpa itu Berhenti cuma memutus satu putaran alat), dan penjaga di pintu masuk SEBELUM klasifikasi/embedding/RAG yang berbayar. Pemutusan di tengah aliran ditangkap khusus supaya tak muncul sebagai "Aliran jawaban terputus". Tombol Kirim **berganti watak**, bukan tombol baru; ikon `cancel` karena `stop` tak ada di subset font. Pesannya menyebut batasnya sendiri: server tetap menyelesaikan & menagih, yang berhenti adalah menunggunya. **Jebakan:** asersi "tiap putaran membawa signal" sempat hijau **secara hampa** — regexnya cocok nol kali dan `every` pada daftar kosong bernilai true; dibongkar pemeriksaan jumlah. **Belum diuji live**
@@ -217,7 +217,7 @@ sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
 
 ## 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-10-01)
 
-Versi di `main`: **4.2.4**. Terpasang di mesin Owner saat baris ini ditulis: **4.2.3**.
+Versi di `main`: **4.2.5**. Terpasang di mesin Owner saat baris ini ditulis: **4.2.4**.
 Alur rilis manual — Actions membuat draf, Owner yang menekan Publish (item 96).
 
 ### Sudah TERBUKTI LIVE
@@ -227,6 +227,7 @@ Alur rilis manual — Actions membuat draf, Owner yang menekan Publish (item 96)
 | **Tahap 6** — menolak | 4.2.2 | patch perusak → "Patch dibatalkan sendiri", 18,3 detik, menyebut `uji-panel-pembaruan.mjs` + keluarannya; `git status` bersih & nilai kembali semula |
 | **Tahap 6** — meloloskan (uji kendali) | 4.2.2 | patch benar → 61/61 lulus, 21,7 detik, berkas **tetap berubah** di disk, Undo tersedia. **Tahap 6 terbukti dua arah**: penjaganya bukan penolak segalanya |
 | **Spanduk tunggal** + kendali ke-2 | **4.2.3** | satu patch → **satu** spanduk; 62/62 lulus; berkas tetap berubah di disk. Membuang cabang `if` tidak diam-diam merusak penjaga Tahap 6 — itulah sebabnya satu prompt menguji dua hal |
+| **Peta repo sampai ke model** | **4.2.4** | `[PROMPT_KOMPOSISI]` melonjak 4.042 → **16.945 huruf**. Model menyebut 271 berkas & empat angka teratas persis — angka HARI ITU yang hanya ada di peta baru, tak mungkin dikarang. Ia juga memakai jumlah baris untuk memilih `git grep` daripada `git show` yang terpotong 20 KB |
 | **T12** penjaga berkas rahasia | 4.2.2 | `.env` ditolak dengan alasan + tawaran `.env.example`; labelnya turun ke HYPOTHESIS |
 | **Panel Pembaruan** | 4.2.2 | v4.2.2, ikon berupa gambar (bukan tulisan "TEM_UPDATE") |
 
@@ -279,23 +280,47 @@ pada anggaran terkecil yang mungkin (6.000 token) peta + seluruh riwayat hanya 4
 Dua-duanya lahir dari sesi uji yang sama, dan keduanya menyentuh jalur kirim — digabung supaya
 diuji sekali jalan.
 
+**Sisipan dipatok ✅ TERBUKTI LIVE di 4.2.4** — `[PROMPT_KOMPOSISI]` melonjak dari 4.042 huruf
+(11 pesan) menjadi **16.945 huruf** (3 pesan: catatan akar + peta + pertanyaan). Model menyebut
+**271 berkas** dan empat angka teratas **persis** (2262 · 1854 · 1209 · 1187) — angka HARI ITU,
+sesudah suntingan, yang hanya ada di peta yang baru dikirim; tak mungkin dikarang. Ia juga memakai
+jumlah baris untuk bernalar tanpa diminta: *"berkas ini besar, `git show` dipotong 20 KB, jadi pakai
+`git grep -c`"* — pelajaran di catatan peta terpakai.
+
+**Satu kekeliruan yang belum terjawab:** urutan kelima salah — model melewati
+`verification_engine.ts` (1144) dan menyebut `engineer.js` (1120). Ia melompati satu-satunya berkas
+`supabase/functions` di jajaran atas. Perlu diamati lagi; kalau berulang, artinya peta yang panjang
+terbaca **tidak merata**, dan itu temuan tersendiri.
+
+### Yang dibawa 4.2.5
+
+| Dibawa 4.2.5 | Apa |
+|---|---|
+| **Perintah baca tanpa persetujuan** | git yang membaca jalan sendiri — tanpa tombol, tanpa dialog. `node -e`/`python -c`/program lain tetap minta izin. Hasil beberapa perintah kembali ke model dalam **satu** kiriman |
+
+`main.cjs` & `preload.cjs` ikut berubah — **wajib build baru**, hard refresh tidak cukup.
+
 ### Uji live yang masih menunggu
 
-Nomor 1 & 2 **harus di percakapan BARU**: percakapan lama masih membawa penanda "mulai dari" yang
-lama, dan itu justru yang dulu memotong sisipannya.
+Uji yang menyangkut sisipan **harus di percakapan BARU**: percakapan lama masih membawa penanda
+"mulai dari" yang lama, dan itu justru yang dulu memotong sisipannya.
 
-1. **Peta repo** — "sebutkan lima berkas terbesar **tanpa menjalankan perintah apa pun dulu**".
-   Kunci: `ConversationEngine.jsx` 2203 · `AssistantService.js` 1822 · `main.cjs` 1209 ·
-   `MemoryGovernorService.js` 1187 · `verification_engine.ts` 1144.
-2. **Catatan akar repo + `git grep`** — "di mana label VERIFIED akhirnya diputuskan, sebutkan berkas
+Kunci jawaban berubah tiap kali berkasnya disunting — **hitung ulang sebelum menilai**, jangan
+memakai angka yang tertulis di dokumen ini:
+`git grep -c '' -- frontend/src frontend/electron supabase/functions mametlite/src`
+
+1. **Catatan akar repo + `git grep`** — "di mana label VERIFIED akhirnya diputuskan, sebutkan berkas
    dan nomor barisnya" (tanpa menyebut foldernya). Kunci: `hakim_bayangan.ts:212`. Yang dinilai juga
    **caranya**: langsung `git grep -n`, tanpa bertanya di mana berkasnya.
-3. **Tombol Berhenti** — tekan saat Engineer sedang menunggu: kotak kirim terbuka lagi, muncul
+2. **Tombol Berhenti** — tekan saat Engineer sedang menunggu: kotak kirim terbuka lagi, muncul
    "Dihentikan", dan **tidak** muncul "⚠️ Error" apa pun.
-4. **T14 jalur stream** — satu chat Ecosystem yang jawabannya mengalir.
-5. **Unduh desktop dari web** — tautan di layar masuk Mametlite/web.
-6. **Cacat Tahap 6 ke-1 & ke-2** — perlu patch yang MERUSAK lagi (bukan yang benar), lalu pastikan
+3. **T14 jalur stream** — satu chat Ecosystem yang jawabannya mengalir.
+4. **Unduh desktop dari web** — tautan di layar masuk Mametlite/web.
+5. **Cacat Tahap 6 ke-1 & ke-2** — perlu patch yang MERUSAK lagi (bukan yang benar), lalu pastikan
    tak ada spanduk "Berhasil Diterapkan" yang membayangi "Patch dibatalkan sendiri".
+6. **Peta terbaca merata?** — ulangi pertanyaan lima berkas terbesar. Di 4.2.4 model melewati
+   `verification_engine.ts` dan menyebut berkas `frontend/` di posisi kelima. Kalau berulang,
+   artinya bagian `supabase/functions` di peta kurang terbaca — temuan tersendiri.
 7. **Perintah baca tanpa persetujuan** — suruh Engineer memeriksa sesuatu di repo: perintah `git`
    harus jalan **sendiri** tanpa tombol dan tanpa dialog, dan hasil beberapa perintah kembali ke
    model dalam **satu** kiriman. Lalu suruh ia menjalankan `node -e` — itu **harus** tetap
