@@ -16,6 +16,7 @@ import { buatPenandaKiriman, tujuanTulis, pesanTerlantar, layakSimpanTerlantar }
 import { riwayatPerintahDariPesan, catatanAkarRepo, catatanPetaRepo } from '../../core/runtime/services/engineer/ProsedurEngineer.js';
 import { ambilBlokKlaim, susunSkripUji, susunLaporanKlaim } from '../../core/runtime/services/engineer/UjiKlaim.js';
 import { ambilBlokTemuan, bacaBerkasTemuan, susunBerkasTemuan, gabungTemuan, laporanTemuan, ringkasanUntukKonteks, ALAMAT_BERKAS as ALAMAT_TEMUAN } from '../../core/runtime/services/engineer/IngatanTemuan.js';
+import { ambilBlokPengetahuan, pengetahuanBaru, barisBrain1 } from '../../core/runtime/services/engineer/PengetahuanBrain1.js';
 import { anggaranKonteks, pilihPesanKonteks, meteranKonteks, bacaMulaiDari, simpanMulaiDari, pesanUntukDipadatkan, bolehPadatkan, bentukPesanRingkasan, tokenPesan, MIN_PESAN_PADATKAN, PATOK } from '../../core/runtime/services/KonteksChat.js';
 import { jejakSisipan } from '../../core/runtime/services/jejakSisipan.js';
 
@@ -761,6 +762,79 @@ export default function ConversationEngine({ sessionId }) {
     console.log(`[Temuan] blok terbaca: ${semua.length} · sudah tersimpan: ${temuanTersimpan.length} · belum tersimpan: ${baru.length}`);
     return baru;
   }, [messages, temuanTersimpan, isEngineerWorkspace]);
+
+  /**
+   * PENGETAHUAN BRAIN 1 yang belum tersimpan (2 Oktober 2026).
+   *
+   * Diturunkan dari daftar pesan — bukan `useState` — dengan alasan yang sama persis seperti
+   * `temuanBelumSimpan`: state React tidak bertahan saat halaman dimuat ulang, dan blok yang sudah
+   * beberapa pesan di atas akan membuat tombolnya hilang padahal pengetahuannya sah.
+   *
+   * Yang kembar DI DALAM satu sesi disaring di sini; yang sudah ada di database disaring saat
+   * menyimpan, dengan judul yang dibaca ULANG dari sana.
+   */
+  const pengetahuanBelumSimpan = useMemo(() => {
+    if (!isEngineerWorkspace) return [];
+    const semua = [];
+    for (const p of messages) {
+      if (p?.role !== 'model' || p.isPengetahuan) continue;
+      const isi = String(p.content || '');
+      if (!isi.includes('<pengetahuan')) continue;
+      const { pengetahuan, dilewati } = ambilBlokPengetahuan(isi);
+      semua.push(...pengetahuan);
+      // Blok cacat disebut di Console, tidak ditelan: tanpa ini pengetahuan yang dimaksudkan model
+      // hilang tanpa seorang pun tahu — cacat yang sama bentuknya dengan yang dikejar seharian.
+      for (const d of dilewati) console.warn(`[Brain1] blok dilewati — ${d.alasan}: ${d.potongan}`);
+    }
+    if (!semua.length) return [];
+    const baru = pengetahuanBaru([], semua);
+    console.log(`[Brain1] blok terbaca: ${semua.length} · siap disimpan: ${baru.length}`);
+    return baru;
+  }, [messages, isEngineerWorkspace]);
+
+  /**
+   * Tulis ke `project_memory_entries`. Klik Owner INILAH persetujuannya.
+   *
+   * Judul dibaca ULANG dari database tepat sebelum menulis — Brain 1 bisa berubah dari perangkat
+   * lain, dan menulis dari salinan lama akan melahirkan duplikat. Duplikat itu bukan kerugian
+   * teoretis: 3 dari 8 slot Brain 1 terbukti terpakai duplikat sebelum dibersihkan 2 Okt.
+   */
+  const simpanPengetahuan = async () => {
+    if (!pengetahuanBelumSimpan.length) return;
+    try {
+      const { data: sesi } = await supabase.auth.getSession();
+      const uid = sesi?.session?.user?.id;
+      if (!uid) throw new Error('belum masuk akun — Brain 1 menyimpan per pengguna');
+
+      const { data: adaData, error: galatBaca } = await supabase
+        .from('project_memory_entries').select('title').eq('user_id', uid);
+      if (galatBaca) throw new Error(`gagal membaca Brain 1: ${galatBaca.message}`);
+
+      const baru = pengetahuanBaru((adaData || []).map((r) => r.title), pengetahuanBelumSimpan);
+      if (!baru.length) {
+        setMessages((prev) => [...prev, {
+          role: 'model', isPengetahuan: true,
+          content: 'ℹ️ **Tidak ada yang disimpan** — semua judulnya sudah ada di Brain 1.',
+        }]);
+        return;
+      }
+
+      const { error } = await supabase.from('project_memory_entries').insert(baru.map((p) => barisBrain1(p, uid)));
+      if (error) throw new Error(error.message);
+
+      setMessages((prev) => [...prev, {
+        role: 'model',
+        isPengetahuan: true,
+        content: `🧠 **${baru.length} pengetahuan disimpan** ke Brain 1 (\`project_memory_entries\`).\n\n${baru.map((p) => `- **[${p.jenis}]** ${p.judul}`).join('\n')}\n\n_Engineer membacanya pada percakapan berikutnya. Tercatat sebagai \`Hypothesis\` sampai terbukti — statusnya bisa Anda naikkan sendiri di database._`,
+      }]);
+    } catch (e) {
+      setMessages((prev) => [...prev, {
+        role: 'model',
+        isPengetahuan: true,
+        content: `⚠️ **Gagal menyimpan pengetahuan:** ${e.message}\n\nBloknya masih ada di layar ini dan bisa dicoba lagi — tidak ada yang hilang.`,
+      }]);
+    }
+  };
 
   const simpanTemuan = async () => {
     if (!temuanBelumSimpan.length) return;
@@ -1666,6 +1740,21 @@ export default function ConversationEngine({ sessionId }) {
             >
               <span className="material-symbols-outlined text-[18px]">save</span>
               Simpan {temuanBelumSimpan.length} temuan
+            </button>
+          )}
+
+          {/* SIMPAN PENGETAHUAN (Brain 1, 2 Oktober) — tombol terpisah dari temuan karena isinya
+              berbeda jenis: temuan = cacat yang ditemukan, pengetahuan = pelajaran/keputusan yang
+              harus diingat Engineer lintas sesi. Keduanya sama-sama menunggu klik Owner; tak ada
+              penulisan tanpa tindakan Owner. */}
+          {isEngineerWorkspace && pengetahuanBelumSimpan.length > 0 && (
+            <button
+              onClick={simpanPengetahuan}
+              title={`Tulis ${pengetahuanBelumSimpan.length} pengetahuan baru ke Brain 1 (project_memory_entries).\n\n${pengetahuanBelumSimpan.map((p) => `• [${p.jenis}] ${p.judul}`).join('\n')}`}
+              className="h-10 px-3 flex items-center gap-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm active:scale-95 bg-primary/15 border-primary/50 text-primary"
+            >
+              <span className="material-symbols-outlined text-[18px]">database</span>
+              Simpan {pengetahuanBelumSimpan.length} pengetahuan
             </button>
           )}
 

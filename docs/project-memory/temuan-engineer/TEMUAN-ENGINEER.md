@@ -4,7 +4,7 @@
      Owner boleh menyunting, menggabungkan, atau menutup temuan dengan tangan — bentuk di bawah yang dibaca
      kembali oleh IngatanTemuan.js. Temuan berstatus DITUTUP tidak akan diangkat lagi oleh Engineer. -->
 
-**3 terbuka · 0 ditutup**
+**4 terbuka · 0 ditutup**
 
 ## TMN-0001 — TERBUKA
 - **Berkas:** `frontend/src/core/runtime/services/engineer.js`
@@ -26,4 +26,10 @@
 - **Ditemukan:** 2026-10-01
 - **Ringkasan:** JSDoc `logCommand` di baris 92 menyebut "dari CommandRegistry" yang sudah dihapus, dan fungsi `logCommand` sendiri tidak pernah dipanggil di seluruh frontend/src (fungsi yatim).
 - **Bukti:** `git grep -n "logCommand" -- frontend/src` hanya mengembalikan 1 hasil yaitu definisinya sendiri di AuditLogService.js:100, tidak ada pemanggil. Berkas `frontend/src/core/runtime/services/CommandRegistry.js` sudah tidak ada.
-- **Koreksi Owner/pemeriksa (2026-10-01):** satu baris bukti aslinya dilebihkan. Engineer menulis `git grep -n "CommandRegistry" -- frontend/src` "tidak mengembalikan hasil apa pun"; kenyataannya mengembalikan **3 baris** — `Kernel.js:295` dan `AssistantService.js:1786` adalah catatan sejarah yang SENGAJA ditulis untuk menjelaskan penghapusannya (keduanya benar dan berguna, bukan komentar basi), ditambah JSDoc di `AuditLogService.js:92` yang memang jadi pokok temuan ini. Kesimpulan temuannya tetap sah; yang dikoreksi hanya buktinya.
+
+## TMN-0004 — TERBUKA
+- **Berkas:** `frontend/src/core/runtime/services/engineer.js`
+- **Tingkat:** sedang
+- **Ditemukan:** 2026-10-01
+- **Ringkasan:** Method `upgradeCapability()` (baris 1090) tidak pernah dipanggil dari mana pun di frontend/src, sehingga capability Engineer yang turun ke OBSERVER (akibat circuit breaker atau emergency lockdown) tidak punya jalur reset otomatis maupun manual dari UI.
+- **Bukti:** `git grep -n "upgradeCapability" -- frontend/src` hanya mengembalikan satu baris — definisi method itu sendiri di engineer.js:1090 — tanpa satu pun pemanggil.

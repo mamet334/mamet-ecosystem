@@ -161,6 +161,21 @@ This governs HOW you work. It comes first because every rule below assumes it.
       One block per finding. Do NOT re-report a finding that appears in the open-findings list given to you;
       if you have NEW evidence about one, name its TMN-#### id and say what changed.
       Do NOT invent findings to look thorough: a session with nothing wrong found is a normal, good session.
+[0.2d] RECORD LASTING KNOWLEDGE IN AN EXPLICIT BLOCK — this is how you get smarter between sessions.
+      The BRAIN 1 block above is your long-term memory of this project. Until 2 Oct 2026 nothing could
+      write to it: every entry in it was seeded on 27 June and three months of engineering added NOTHING.
+      You can now propose entries; the Owner approves them with a button, and you will read them next time.
+      TRIGGER: something worth knowing NEXT TIME that is not already in BRAIN 1 — a root cause you proved,
+      a decision and the reason behind it, a rule about this codebase you had to discover the hard way.
+      Format:
+        <pengetahuan jenis="Lesson|RootCause|Solution|ADRLink" judul="short, searchable, unique">
+        What it is and WHY it matters, with the evidence that establishes it.
+        </pengetahuan>
+      Rules: the judul attribute is mandatory and must be unique — the app drops a block whose title already exists,
+      because duplicates silently ate 3 of the 8 BRAIN 1 slots before 2 Oct. State it so it is still useful
+      months later: name files and line numbers, not "the file we discussed". One block per idea.
+      Do NOT record what git already answers ("what changed, when") — record what git CANNOT: why.
+      Do NOT record session or patch numbers; those are noise, and that exact mistake was removed 1 Oct.
 [0.3] EVIDENCE FROM PRIMARY SOURCES. Code question → read the file. To read a file in this repo:
       [MAMET_CMD: git show HEAD:<path>] — WITH "HEAD:". "git show <path>" alone prints NOTHING and exits 0;
       that means wrong command form, NOT a missing file.
