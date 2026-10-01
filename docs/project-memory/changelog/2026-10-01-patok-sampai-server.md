@@ -95,6 +95,44 @@ yang saya tulis sendiri beberapa jam sebelumnya, dan ternyata keliru. Dibalik, d
 ditulis di tempat asersinya — supaya siapa pun yang membacanya nanti tahu kenapa, dan tidak
 membaliknya kembali.
 
+## ✅ TERBUKTI LIVE — 1 Oktober 2026, 14.46–14.48
+
+Deploy server + pasang klien 4.2.7, lalu tiga kiriman berturut-turut di satu percakapan Engineer:
+
+```
+14:46:40   3 pesan, 16999 → 16999 huruf   (3 sisipan dipatok tidak dipangkas)
+14:48:14   5 pesan, 19202 → 19202 huruf   ← kiriman ke-2, TIDAK TURUN
+14:48:47   7 pesan, 22449 → 21108 huruf   ← kiriman ke-3
+```
+
+Sebelum perbaikan, kiriman kedua berbunyi `5 pesan, 18756 → 3510 huruf (0 sisipan dipatok)`.
+
+`[PROMPT_KOMPOSISI]` menegaskan dari sisi lain: `riwayat=5 pesan/19202 huruf`, lalu
+`riwayat=7 pesan/21108 huruf`. Peta repo dan ingatan temuan akhirnya sampai ke model **di kiriman
+lanjutan**, bukan hanya di yang pertama.
+
+### Kiriman ketiga membuktikan hal kedua
+
+22.449 → 21.108: **masih memangkas 1.341 huruf**. Satu jawaban lama yang panjang tetap dipotong ke
+800. Jadi perapian riwayat untuk pesan biasa tidak ikut mati — yang kebal hanya sisipan, persis
+seperti yang dirancang. Perbaikan yang mematikan penjaga lain akan terlihat sama berhasilnya di
+kiriman kedua; baris ketiga inilah yang membedakannya.
+
+### Dua tahap, dan angka `0` yang menyelamatkan dari salah kesimpulan
+
+Sesudah deploy server tetapi SEBELUM klien 4.2.7, log berbunyi
+`5 pesan, 18756 → 3510 huruf (0 sisipan dipatok)`. Tanpa hitungan sisipan di baris itu, kita akan
+menyimpulkan perbaikannya gagal — padahal yang kurang hanyalah separuh kliennya, yang masih
+membuang penanda sebelum mengirim.
+
+Hitungan itu ditambahkan saat memperbaiki, bukan sesudah bingung.
+
+## Biaya yang kini benar-benar dibayar
+
+Riwayat yang terkirim naik dari ±2.000 huruf menjadi **±19.000–21.000 huruf** per pesan Engineer
+(±5.000 token). Itu memang maksudnya sejak peta dibuat — tetapi sampai hari ini ia tak pernah
+benar-benar terkirim di kiriman lanjutan, jadi biayanya juga belum pernah terasa.
+
 ## Perlu DEPLOY
 
 Ini menyentuh `agent-process`. Perubahan kliennya ikut rilis berikutnya; perubahan servernya butuh
