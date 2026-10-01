@@ -1170,7 +1170,13 @@ export default function ConversationEngine({ sessionId }) {
         userMsg,
         signal: kendali.signal,
         history: historyKirim,
-        workspaceId: workspaceManager?.activeWorkspaceId || 'ws-assistant',
+        // SATU sumber kebenaran. Layar menentukan dirinya Engineer dari `osState?.workspaceId`
+        // (lihat `isEngineerWorkspace`), tetapi kiriman dulu memakai `workspaceManager` dengan
+        // fallback `'ws-assistant'` — dua sumber untuk pertanyaan yang sama, dan yang satu jatuh
+        // DIAM-DIAM ke assistant. Kalau itu terjadi, `resolveMode()` memberi ASSISTANT, pesannya
+        // bisa tergolong LOOKUP, lalu sisipan terbuang, kontrak Engineer hilang, dan tier model
+        // turun ke KECIL — tanpa satu pun tanda di layar.
+        workspaceId: isEngineerWorkspace ? 'ws-engineer' : (workspaceManager?.activeWorkspaceId || 'ws-assistant'),
         userId,
         token,
         attachedFile,

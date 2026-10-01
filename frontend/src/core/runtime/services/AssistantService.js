@@ -538,8 +538,27 @@ export class AssistantService {
       _folderKerja: infoFolder
     };
 
+    // ENGINEER TIDAK BOLEH PERNAH JATUH KE JALUR RINGAN (keputusan Owner, 2026-10-01).
+    //
+    // `RequestClassifierService` sudah menjaganya di hulu: begitu resolvedMode === 'ENGINEER' ia
+    // langsung mengembalikan type 'ENGINEER' dan tidak pernah sampai ke cabang LOOKUP. Penjaga di
+    // bawah ini BUKAN pengganti itu — ia menutup satu-satunya jalan yang tersisa: `resolvedMode`
+    // yang meleset.
+    //
+    // Jalan itu nyata. `resolveMode()` membaca `workspaceId`, dan ConversationEngine mengirim
+    // `workspaceManager?.activeWorkspaceId || 'ws-assistant'` — sementara layar menentukan dirinya
+    // Engineer dari `osState?.workspaceId`. DUA sumber kebenaran untuk pertanyaan yang sama, dan
+    // yang satu jatuh diam-diam ke assistant.
+    //
+    // Akibatnya kalau sampai terjadi, tidak terlihat sama sekali di layar: `_handleLookup` memakai
+    // `history.slice(-3)` (sisipan ada di DEPAN, jadi catatan akar repo & peta repo terbuang —
+    // patokan `_patok` pun tak menolong, jalur itu tidak memanggil `pilihPesanKonteks`), mengirim
+    // `mode: 'LOOKUP'` yang menimpa ENGINEER sehingga seluruh kontrak Engineer hilang, dan memaksa
+    // tier model KECIL. Tiga kehilangan sekaligus, tanpa satu pun tanda.
+    const jalurRinganTerlarang = resolvedMode === 'ENGINEER';
+
     // Dispatch MEMORY_STORE (PR#8 Intent Unification)
-    if (requestType === 'MEMORY_STORE') {
+    if (requestType === 'MEMORY_STORE' && !jalurRinganTerlarang) {
       // Tombol Memory mati (2026-09-15): perintah "ingat …" tidak disimpan, dan pengguna diberi tahu alasannya.
       const preferensiTool = this.serviceManager?.get('ToolPreferencesService');
       if (preferensiTool && !preferensiTool.getEffective(workspaceId, 'memory_manager')) {
@@ -554,16 +573,16 @@ export class AssistantService {
       });
     }
 
-    if (requestType === 'DOC_CONVERT') {
+    if (requestType === 'DOC_CONVERT' && !jalurRinganTerlarang) {
       return this._handleDocConvert({ ...handlerParams, direction: classifierMeta.direction });
     }
 
-    if (requestType === 'LOOKUP') {
+    if (requestType === 'LOOKUP' && !jalurRinganTerlarang) {
       return this._handleLookup(handlerParams);
     }
 
     // Dispatch SKILL → _handleSkill()
-    if (requestType === 'SKILL') {
+    if (requestType === 'SKILL' && !jalurRinganTerlarang) {
       const skillReg = this.serviceManager.has('SkillRegistry')
         ? this.serviceManager.get('SkillRegistry')
         : null;
