@@ -51,8 +51,37 @@ export function buildUniversalContract(params: ContractBuilderInput): UniversalE
   const restrictions: string[] = [];
 
   if (mode === 'ENGINEER') {
-    capabilities.push('Membaca Brain 1 (ADR, Solution, Lesson)', 'Membaca Brain 2 (Task, Gap, Verification)', 'Analisis teknikal mendalam');
-    restrictions.push('Tidak boleh menulis memory otomatis', 'Tidak boleh menggunakan web search', 'Tidak boleh menjalankan perintah OS', 'WAJIB memiliki evidence sebelum menjawab');
+    // KACAMATA KUDA DILEPAS (keputusan Owner, 2026-10-01).
+    //
+    // Sampai hari ini BLOK 1 mengirim "Tidak boleh menjalankan perintah OS" ke Engineer, dan BLOK 5
+    // melarang "menggunakan pengetahuan di luar evidence yang terdaftar" — sementara evidence hanya
+    // berarti 8 baris Brain 1 + dokumen RAG. Kode sumber repo, yaitu KEBENARANNYA SENDIRI, berada di
+    // luar daftar itu.
+    //
+    // Akibatnya terlihat live 1 Okt. Owner bertanya di mana label VERIFIED diputuskan. Peta repo ADA
+    // di prompt (16.945 huruf, terukur lewat [PROMPT_KOMPOSISI]) dan perintah git sudah jalan sendiri
+    // tanpa persetujuan — tetapi model menjawab "tidak ada evidence", SOURCE TRACE [NONE], tanpa
+    // menjalankan satu pun pencarian. Ia tidak bodoh; ia PATUH. Jawabannya ada di
+    // `hakim_bayangan.ts:212`, dua perintah jauhnya.
+    //
+    // Owner: *"itu lebih mirip memasang kacamata kuda, seperti menyembunyikan kebenaran."*
+    //
+    // Berminggu-minggu matanya dibangun — git grep, peta repo, catatan akar, lalu gerbang izinnya
+    // dilepas — sementara prompt terus menyuruhnya jangan melihat.
+    capabilities.push(
+      'Membaca Brain 1 (ADR, Solution, Lesson)',
+      'Membaca Brain 2 (Task, Gap, Verification)',
+      'MEMBACA KODE SUMBER REPO lewat [MAMET_CMD: …] — git grep, git show, git log, git blame, git ls-files. Perintah BACA dijalankan sendiri, tanpa menunggu persetujuan siapa pun',
+      'Analisis teknikal mendalam',
+    );
+    restrictions.push(
+      'Tidak boleh menulis memory otomatis',
+      'Tidak boleh menggunakan web search',
+      'Perintah yang MENJALANKAN KODE (node -e, python -c, npm) perlu persetujuan Owner — usulkan lewat [MAMET_CMD: …] dan tunggu hasilnya; jangan mengaku sudah menjalankannya',
+      // Kewajiban berbuktinya DIPERTAHANKAN — ia yang mencegah model mengarang, dan mahal diperoleh.
+      // Yang diperbaiki bukan kewajibannya, melainkan DAFTAR TEMPAT bukti boleh dicari.
+      'WAJIB memiliki evidence sebelum menjawab. Untuk pertanyaan tentang KODE, evidence diperoleh dengan MENENGOK repo lebih dulu — bukan dengan menyatakan tidak ada',
+    );
   } else if (mode === 'LITE') {
     capabilities.push('Menjawab pertanyaan umum', 'RAG retrieval dari Knowledge Base');
     restrictions.push('Tidak boleh membaca/menulis User Memory', 'Tidak boleh menggunakan tool otomasi');
@@ -117,9 +146,14 @@ export function buildUniversalContract(params: ContractBuilderInput): UniversalE
     canWriteKnowledge: false,
     activeConstraints: policyConstraints,
     forbidden: [
-      'Menggunakan pengetahuan di luar evidence yang terdaftar (untuk Engineer mode)',
+      // Larangan lama berbunyi "Menggunakan pengetahuan di luar evidence yang terdaftar (untuk
+      // Engineer mode)". Niatnya benar — mencegah karangan — tetapi kalimatnya menutup kode sumber
+      // repo, karena repo tidak pernah masuk "evidence yang terdaftar". Yang dilarang sekarang
+      // adalah MENGAKU TAHU TANPA MENENGOK; menengoknya justru diwajibkan.
+      'Mengaku tahu isi kode tanpa menengoknya lebih dulu lewat perintah git baca',
+      'Menyatakan "tidak ada evidence" atau "tidak ditemukan" untuk pertanyaan tentang KODE tanpa pernah menjalankan satu pun pencarian di repo',
       'Menyebut ADR, Task, atau knowledge yang tidak ada di bagian KNOWLEDGE di atas',
-      'Memberikan informasi yang tidak dapat ditelusuri ke evidence',
+      'Memberikan informasi yang tidak dapat ditelusuri ke evidence — kode sumber repo TERMASUK evidence yang sah, asalkan alamat berkas dan nomor barisnya disebut',
       ...policyForbidden,
     ],
   };
