@@ -216,7 +216,7 @@ sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
 
 ## 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-10-01)
 
-Versi di `main` **dan terpasang di mesin Owner**: **4.2.3**.
+Versi di `main`: **4.2.4**. Terpasang di mesin Owner saat baris ini ditulis: **4.2.3**.
 Alur rilis manual — Actions membuat draf, Owner yang menekan Publish (item 96).
 
 ### Sudah TERBUKTI LIVE
@@ -264,20 +264,40 @@ setiap kali "Bersihkan konteks" atau "Padatkan" dipakai — tanpa tanda apa pun 
 benar. Jadi ia hilang **di perjalanan**, dan sebab di atas terbukti. Anggaran dicoret lewat hitungan:
 pada anggaran terkecil yang mungkin (6.000 token) peta + seluruh riwayat hanya 4.883 token — muat.
 
-**Sudah diperbaiki** (menunggu rilis): sisipan kini dipatok — dihitung lebih dulu terhadap anggaran,
+**Sudah diperbaiki** di 4.2.4: sisipan kini dipatok — dihitung lebih dulu terhadap anggaran,
 `mulaiDari` hanya berlaku pada percakapan. Lihat
 [log sisipan dipatok](../project-memory/changelog/2026-10-01-sisipan-dipatok.md).
 
+### Yang dibawa 4.2.4
+
+| Dibawa 4.2.4 | Apa |
+|---|---|
+| **Sisipan dipatok** | akar kegagalan uji peta repo — sisipan tak lagi jadi korban pertama pemotongan. Peta ±3.873 token kini **benar-benar** ikut tiap kiriman Engineer, dan biayanya mulai terasa |
+| **Tombol Berhenti** | pembatalan kiriman; sebelumnya tak ada `AbortController` sama sekali dan satu-satunya jalan keluar adalah memuat ulang jendela |
+
+Dua-duanya lahir dari sesi uji yang sama, dan keduanya menyentuh jalur kirim — digabung supaya
+diuji sekali jalan.
+
 ### Uji live yang masih menunggu
 
-1. **Peta repo** — diulang sesudah sebabnya ditemukan dan diperbaiki, di **percakapan baru**.
-2. **Catatan akar repo + `git grep`** — kemungkinan besar gagal karena sebab yang sama.
-3. **T14 jalur stream** — satu chat Ecosystem yang jawabannya mengalir.
-4. **Unduh desktop dari web** — tautan di layar masuk Mametlite/web.
-5. **Cacat Tahap 6 ke-1 & ke-2** — perlu patch yang MERUSAK lagi (bukan yang benar), lalu pastikan
-   tak ada spanduk "Berhasil Diterapkan" yang membayangi "Patch dibatalkan sendiri".
-6. **Tombol Berhenti** — tekan saat Engineer sedang menunggu: kotak kirim terbuka lagi, muncul
+Nomor 1 & 2 **harus di percakapan BARU**: percakapan lama masih membawa penanda "mulai dari" yang
+lama, dan itu justru yang dulu memotong sisipannya.
+
+1. **Peta repo** — "sebutkan lima berkas terbesar **tanpa menjalankan perintah apa pun dulu**".
+   Kunci: `ConversationEngine.jsx` 2203 · `AssistantService.js` 1822 · `main.cjs` 1209 ·
+   `MemoryGovernorService.js` 1187 · `verification_engine.ts` 1144.
+2. **Catatan akar repo + `git grep`** — "di mana label VERIFIED akhirnya diputuskan, sebutkan berkas
+   dan nomor barisnya" (tanpa menyebut foldernya). Kunci: `hakim_bayangan.ts:212`. Yang dinilai juga
+   **caranya**: langsung `git grep -n`, tanpa bertanya di mana berkasnya.
+3. **Tombol Berhenti** — tekan saat Engineer sedang menunggu: kotak kirim terbuka lagi, muncul
    "Dihentikan", dan **tidak** muncul "⚠️ Error" apa pun.
+4. **T14 jalur stream** — satu chat Ecosystem yang jawabannya mengalir.
+5. **Unduh desktop dari web** — tautan di layar masuk Mametlite/web.
+6. **Cacat Tahap 6 ke-1 & ke-2** — perlu patch yang MERUSAK lagi (bukan yang benar), lalu pastikan
+   tak ada spanduk "Berhasil Diterapkan" yang membayangi "Patch dibatalkan sendiri".
+
+Cara memastikan peta benar-benar terkirim, tanpa menebak dari jawaban model: lihat
+`[PROMPT_KOMPOSISI]` di log edge function — **riwayat harus melonjak di atas 15.000 huruf**.
 
 ### Dua arahan Owner yang SENGAJA ditunda (1 Okt)
 
