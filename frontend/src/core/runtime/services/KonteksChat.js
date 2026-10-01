@@ -95,8 +95,14 @@ export const PATOK = '_patok';
 /** Sisipan dikenali dari penandanya, bukan dari posisinya. */
 export const adalahPatok = (p) => !!(p && p[PATOK] === true);
 
-/** Penanda internal tidak boleh ikut ke payload server. */
-const tanpaPatok = (p) => { const { [PATOK]: _, ...sisa } = p; return sisa; };
+// CATATAN 1 Okt: dulu ada `tanpaPatok()` di sini yang MEMBUANG penanda sebelum payload dikirim,
+// dengan alasan "penanda internal tidak boleh bocor ke server". Keputusan itu KELIRU, dan terbukti
+// mahal: server punya pemangkas riwayatnya sendiri (`rapikanRiwayat`) yang memangkas setiap pesan
+// kecuali dua terakhir menjadi 800 huruf. Sisipan ada di depan, jadi peta 16.059 huruf dipotong
+// jadi 800 begitu percakapan punya lebih dari dua pesan — terbukti di log server:
+//   [Riwayat] 3 pesan, 16999 → 16999 huruf   (kiriman ke-1: peta masih termasuk dua terakhir)
+//   [Riwayat] 5 pesan, 17311 →  2065 huruf   (kiriman ke-2: peta terpangkas)
+// Dengan membuang penandanya, server tidak punya cara tahu mana sisipan. Penandanya kini IKUT.
 
 /**
  * Pilih pesan yang dikirim ke model: dari yang TERBARU mundur ke belakang sampai anggaran habis.
@@ -149,7 +155,8 @@ export function pilihPesanKonteks(pesan, { anggaranToken, mulaiDari = 0, sisakan
   }
 
   return {
-    dikirim: patokIkut ? [...patok.map(tanpaPatok), ...terpilih] : terpilih,
+    // Penanda IKUT ke server — lihat catatan di atas: pemangkas riwayat di sana membutuhkannya.
+    dikirim: patokIkut ? [...patok, ...terpilih] : terpilih,
     tokenTerpakai: token,
     // Sisipan yang ikut bukan "pesan lama yang dilewati" — yang dihitung hanya percakapannya.
     dilewati: percakapan.length - terpilih.length,

@@ -87,11 +87,23 @@ console.log('\n-- patokan melepaskan diri bila perlu --');
     'pertanyaannya SELAMAT — itu yang tak boleh hilang', h.dikirim.map((p) => p.content.slice(0, 12)));
 }
 
-// ── 4. Penanda internal tidak bocor ke server ────────────────────────────────────────────────
-console.log('\n-- penanda tidak ikut terkirim --');
+// ── 4. Penanda IKUT ke server ────────────────────────────────────────────────────────────────
+//
+// DIBALIK 1 Okt. Versi pertama kasus ini menjaga kebalikannya: penanda dibuang sebelum dikirim,
+// dengan alasan "penanda internal tidak boleh bocor ke payload". Keputusan itu KELIRU dan mahal —
+// server punya pemangkas riwayatnya sendiri (`rapikanRiwayat`) yang memangkas setiap pesan kecuali
+// dua terakhir menjadi 800 huruf, dan tanpa penanda ia tidak punya cara tahu mana sisipan:
+//
+//   [Riwayat] 3 pesan, 16999 → 16999 huruf   kiriman ke-1: peta masih termasuk "dua terakhir"
+//   [Riwayat] 5 pesan, 17311 →  2065 huruf   kiriman ke-2: peta 16.059 huruf dipotong jadi 800
+//
+// Jadi membuang penandanya bukan kebersihan, melainkan menutup mata penjaga di seberang.
+// Sisi server dijaga uji-patok-sampai-server.mjs.
+console.log('\n-- penanda ikut terkirim --');
 {
   const h = pilihPesanKonteks([patok('PETA'), biasa('tanya')], { anggaranToken: 60000 });
-  cek(h.dikirim.every((p) => !(PATOK in p)), 'objek yang dikirim bersih dari penanda internal', h.dikirim);
+  cek(h.dikirim[0][PATOK] === true, 'sisipan MEMBAWA penandanya — server membutuhkannya', h.dikirim[0]);
+  cek(h.dikirim[1][PATOK] === undefined, 'pesan percakapan biasa tetap tak bertanda', h.dikirim[1]);
   cek(h.dikirim[0].role === 'user' && h.dikirim[0].content === 'PETA', 'isi & peran sisipan tetap utuh', h.dikirim[0]);
 }
 

@@ -18,6 +18,26 @@ const AMBANG_HURUF = 4000;
 const PESAN_UTUH = 2;
 const MAKS_HURUF_PESAN_LAMA = 800;
 
+/**
+ * SISIPAN DIPATOK — tidak pernah dipangkas (2026-10-01).
+ *
+ * Catatan akar repo, peta repo, dan ingatan temuan disisipkan di DEPAN riwayat oleh klien. Aturan
+ * "dua pesan terakhir utuh, sisanya dipangkas 800 huruf" memperlakukan mereka sebagai pesan paling
+ * lama — padahal justru merekalah konteks yang tidak boleh hilang.
+ *
+ * Terbukti di log, dua kiriman berurutan di percakapan yang sama:
+ *   [Riwayat] 3 pesan, 16999 → 16999 huruf   kiriman ke-1: peta masih termasuk "dua terakhir"
+ *   [Riwayat] 5 pesan, 17311 →  2065 huruf   kiriman ke-2: peta 16.059 huruf dipotong jadi 800
+ *
+ * Akibatnya Engineer kehilangan peta repo dan ingatan temuan mulai kiriman KEDUA, tanpa satu pun
+ * tanda di layar. Empat teori meleset sebelum instrumen `[Sisipan]` di klien mempersempitnya ke
+ * sini, dan baris `[Riwayat]` di atas yang memastikannya.
+ *
+ * Penandanya datang dari klien (`PATOK` di KonteksChat.js). Sebelum hari ini penanda itu sengaja
+ * DIBUANG sebelum dikirim — dan itulah yang membuat pemangkas ini buta.
+ */
+const adalahPatok = (m: any) => m?._patok === true;
+
 export function rapikanRiwayat(history: any[], pesanSaatIni: string): any[] {
   // Nalar `<think>…</think>` jawaban lama ditampilkan di chat tetapi TIDAK dikirim ulang ke model: memboroskan
   // token dan mengundang model meniru nalar lama sebagai fakta (2026-09-14, nalar OpenRouter diteruskan).
@@ -41,10 +61,12 @@ export function rapikanRiwayat(history: any[], pesanSaatIni: string): any[] {
 
   const batas = riwayat.length - PESAN_UTUH;
   const hasil = riwayat.map((m, i) => {
-    if (i >= batas || typeof m?.content !== 'string' || m.content.length <= MAKS_HURUF_PESAN_LAMA) return m;
+    // Sisipan dipatok dilewati berapa pun panjangnya — lihat catatan `adalahPatok` di atas.
+    if (adalahPatok(m) || i >= batas || typeof m?.content !== 'string' || m.content.length <= MAKS_HURUF_PESAN_LAMA) return m;
     return { ...m, content: `${m.content.slice(0, MAKS_HURUF_PESAN_LAMA)}… [dipangkas]` };
   });
   const totalBaru = hasil.reduce((n, m) => n + (typeof m?.content === 'string' ? m.content.length : 0), 0);
-  console.log(`[Riwayat] ${riwayat.length} pesan, ${total} → ${totalBaru} huruf (pesan lama dipangkas ke ${MAKS_HURUF_PESAN_LAMA} huruf, ${PESAN_UTUH} terakhir utuh).`);
+  const jumlahPatok = riwayat.filter(adalahPatok).length;
+  console.log(`[Riwayat] ${riwayat.length} pesan, ${total} → ${totalBaru} huruf (pesan lama dipangkas ke ${MAKS_HURUF_PESAN_LAMA} huruf, ${PESAN_UTUH} terakhir utuh, ${jumlahPatok} sisipan dipatok tidak dipangkas).`);
   return hasil;
 }
