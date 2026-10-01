@@ -110,6 +110,41 @@ bukan konstitusi.
 
 Dicatat di INDEX; dikerjakan sesudah pengaruh perubahan ini terukur.
 
-## Belum sampai ke aplikasi
+## ✅ TERBUKTI LIVE — 1 Oktober 2026, 13.12
 
-Ada di `main`. Ini `agent-process`, jadi perlu **deploy** oleh Owner — bukan build desktop.
+Pertanyaan yang **sama persis** dengan yang gagal kemarin, di percakapan baru, sesudah deploy.
+
+**Deploy terkonfirmasi dari log:** `kontrak_blok1_2` membesar 673 → **1099** huruf.
+
+**Model menengok.** 13.12.30 pertanyaan masuk (79 huruf); **9 detik kemudian** masuk pesan **6.025
+huruf** — keluaran terminal yang dikembalikan ke model. Kemarin angka itu tidak pernah ada.
+
+Jawabannya: `label_sumber.ts`, gerbang di **baris 475**, penurunan di **563–569**. Diperiksa
+baris demi baris terhadap berkas aslinya:
+
+| Klaim | Kenyataan |
+|---|---|
+| 475 — `if (!tampil.includes(LABEL_VERIFIED)) return diam;` | **persis** |
+| 459 — menyeragamkan varian penulisan label | **persis** (`replace(/\[\s*status\s*:\s*verified\s*\]/gi, …)`) |
+| 511–520 — penurunan karena halaman, rujukan, angka, centang | **persis, keempatnya, berurutan** |
+| 563–569 — `turunkan(...)` ke HYPOTHESIS/PARTIAL | **persis** |
+
+Dan ia melabeli jawabannya `[STATUS: VERIFIED]` dengan baris Sumber berisi **perintah yang ia
+jalankan sendiri** — persis perilaku yang dirancang: kode sumber jadi evidence sah, dengan syarat
+ketertelusuran.
+
+### Kunci jawaban penguji yang meleset, bukan modelnya
+
+Kunci yang disiapkan adalah `hakim_bayangan.ts:212`. Pertanyaannya berbunyi *"di mana label VERIFIED
+**akhirnya** diputuskan"* — dan `label_sumber.ts` justru tahap **terakhir** yang masih bisa
+menurunkan label itu. Jawaban model lebih tepat daripada kunci pengujinya.
+
+Dicatat karena pola ini berulang: penguji yang memilih kasusnya sendiri cenderung memilih yang
+nyaman (lihat juga 93% Kepbup, ketika contoh SQL yang dipilih sendiri menyembunyikan kegagalan
+"semua kata").
+
+### Artinya
+
+Masalahnya memang **tidak pernah di modelnya**. Model yang sama kelasnya, repo yang sama, peta yang
+sama — berubah total hanya karena satu kalimat larangan dicabut dan satu kapabilitas disebut
+namanya.
