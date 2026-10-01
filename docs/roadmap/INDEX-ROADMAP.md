@@ -177,7 +177,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 94. ✅ Jawaban Mendarat di Percakapan yang Salah — Identitas Kiriman (2026-09-28) — [log](../project-memory/changelog/2026-09-28-jawaban-masuk-percakapan-salah.md) · dilaporkan Owner; **terbukti live 28 Sep** — jawaban tidak lagi tertukar. Batas yang diterima Owner: jawaban yang belum selesai belum muncul di riwayat
 
 100. ✅ Peta Repo untuk Engineer (2026-10-01) — [log](../project-memory/changelog/2026-10-01-peta-repo-engineer.md) · lahir dari keberatan Owner "seperti memperbodoh model". **Diukur:** Engineer menerima ±5.400 token ATURAN dan hanya ±1.200 token kode; tak ada satu pun blok untuk kode sumber; anggaran 60.000 token terpakai seperenam. Peta 270 berkas + jumlah baris (±3.870 token, 0,13 detik, satu perintah git). **Belum diuji live.** Dua arahan Owner lain sengaja ditunda agar pengaruh peta terukur sendirian: batas keluaran ikut model (masih 20 KB mati), dan porsi konteks Engineer (batas harian itu plafon, bukan jatah yang dibagi)
-101. ✅ Tahap 6 Terbukti DUA ARAH + Spanduk Patch Tunggal (2026-10-01) — [log](../project-memory/changelog/2026-10-01-spanduk-patch-tunggal.md) · uji **kendali**: patch yang BENAR lolos 61/61 dalam 21,7 detik dan berkasnya **tetap berubah** — tanpa ini, penjaga yang menolak segalanya terlihat sama berhasilnya. Uji itu memunculkan cacat ketiga: **dua spanduk untuk satu patch**, yang kedua ("File telah dimodifikasi sesuai instruksi Anda") membantah laporan verifikasi di atasnya dan mengklaim pemeriksaan yang tak pernah ada — dan karena duduk paling bawah, dialah yang jadi kesimpulan. **Akarnya:** kalimat tunggu `'Engineer sedang menyiapkan patch'` tak pernah dibuat di mana pun, jadi tiga cabang penimpa anti-ganda itu kode mati. Pengumuman kini milik satu jalur (`Engineer:PatchApplied`, satu-satunya yang tahu pemulihan & bawa laporan); `PATCH_APPLIED` tetap dipancarkan sebagai catatan. **Uji mutasi** membongkar asersi lembek (`\b` cocok di tengah `else if`), dan uji sempat tertipu komentar penjelas sendiri — diukur pada kode tanpa komentar. **Menunggu 4.2.3**
+101. ✅ Tahap 6 Terbukti DUA ARAH + Spanduk Patch Tunggal (2026-10-01) — [log](../project-memory/changelog/2026-10-01-spanduk-patch-tunggal.md) · uji **kendali**: patch yang BENAR lolos 61/61 dalam 21,7 detik dan berkasnya **tetap berubah** — tanpa ini, penjaga yang menolak segalanya terlihat sama berhasilnya. Uji itu memunculkan cacat ketiga: **dua spanduk untuk satu patch**, yang kedua ("File telah dimodifikasi sesuai instruksi Anda") membantah laporan verifikasi di atasnya dan mengklaim pemeriksaan yang tak pernah ada — dan karena duduk paling bawah, dialah yang jadi kesimpulan. **Akarnya:** kalimat tunggu `'Engineer sedang menyiapkan patch'` tak pernah dibuat di mana pun, jadi tiga cabang penimpa anti-ganda itu kode mati. Pengumuman kini milik satu jalur (`Engineer:PatchApplied`, satu-satunya yang tahu pemulihan & bawa laporan); `PATCH_APPLIED` tetap dipancarkan sebagai catatan. **Uji mutasi** membongkar asersi lembek (`\b` cocok di tengah `else if`), dan uji sempat tertipu komentar penjelas sendiri — diukur pada kode tanpa komentar. **TERBUKTI LIVE di 4.2.3** — satu patch → satu spanduk, 62/62 lulus, berkas tetap berubah di disk; mencabut cabang `if` tidak merusak penjaga Tahap 6 (uji kendali kedua)
 99. ✅ Cari Dokumen Lewat Judulnya — 221 Kepbup Tak Terjangkau Nomornya (2026-10-01) — [log](../project-memory/changelog/2026-10-01-cari-lewat-judul.md) · diukur sendiri: kata "kepbup" muncul di **0 dari 3.629 potongan** dan **221 dari 221** dokumen tak memuat nomornya sendiri — menemukannya lewat nomor MUSTAHIL, bukan sulit. RRF tak bisa menolong karena ambang kemiripan VEKTOR membuangnya lebih dulu. Jalur judul TERPISAH; `match_documents_hybrid` tidak disentuh agar patokan 14/14 tetap sebanding. **TERBUKTI LIVE 1 Okt** — pertanyaan yang sama di dua chat: aturan lama tak menyala, aturan baru menyisipkan 3 potongan dari dokumen yang benar; jawaban VERIFIED. Syarat "semua kata" gagal pada pertanyaan nyata ("apa **isi** Kepbup 204") → diganti "minimal dua kata". **Batas yang ikut ketahuan:** `document_chunks` tak punya kolom urutan (id = uuid), jadi 3 potongan yang disisipkan acak, bukan tiga pertama — jawaban untuk "apa isi dokumen X" selalu sebagian, dan model menyebutnya sendiri
 98. ✅ Unduh Aplikasi Desktop dari Web (2026-09-29) — [log](../project-memory/changelog/2026-09-29-unduh-desktop-dari-web.md) · tautan di layar masuk (tanpa perlu login) & Pengaturan; repo rilis publik, alamat unduh diperiksa 200 tanpa autentikasi; `latest.yml`/`.blockmap` tak pernah diberikan ke manusia; API gagal → jatuh ke halaman releases/latest. **Belum diuji live**
 97. ✅ Panel Pembaruan di Pengaturan (2026-09-29) — [log](../project-memory/changelog/2026-09-29-panel-pembaruan-pengaturan.md) · jembatan preload (checkForUpdates/getAppVersion/onUpdateStatus) ada sejak lama tetapi **nol pemakai** di frontend/src; ikut ketahuan: `update-downloaded` & `error` tak pernah dikirim ke layar, jadi panel akan berhenti di "Mengunduh 100%" selamanya dan kegagalan tak terlihat. **Terbukti live di 4.2.1** — isinya benar; ikut ketahuan ikon `system_update` tampil sebagai tulisan "TEM_UPDATE" (kelas cacat ke-3) → diganti `refresh` + penjaga menyeluruh `uji-ikon-subset.mjs`. **Perbaikan ikon MENUNGGU rilis berikutnya** (keputusan Owner 29 Sep: digabung saja dengan perbaikan lain, jangan naikkan versi khusus untuk ini)
@@ -214,44 +214,40 @@ sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
 
 ## 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-10-01)
 
-Versi di `main`: **4.2.3**. Terpasang di mesin Owner saat baris ini ditulis: **4.2.2**.
+Versi di `main` **dan terpasang di mesin Owner**: **4.2.3**.
 Alur rilis manual — Actions membuat draf, Owner yang menekan Publish (item 96).
 
-### Sudah TERBUKTI LIVE di 4.2.2
+### Sudah TERBUKTI LIVE
 
-| | Bukti |
+| | Versi | Bukti |
+|---|---|---|
+| **Tahap 6** — menolak | 4.2.2 | patch perusak → "Patch dibatalkan sendiri", 18,3 detik, menyebut `uji-panel-pembaruan.mjs` + keluarannya; `git status` bersih & nilai kembali semula |
+| **Tahap 6** — meloloskan (uji kendali) | 4.2.2 | patch benar → 61/61 lulus, 21,7 detik, berkas **tetap berubah** di disk, Undo tersedia. **Tahap 6 terbukti dua arah**: penjaganya bukan penolak segalanya |
+| **Spanduk tunggal** + kendali ke-2 | **4.2.3** | satu patch → **satu** spanduk; 62/62 lulus; berkas tetap berubah di disk. Membuang cabang `if` tidak diam-diam merusak penjaga Tahap 6 — itulah sebabnya satu prompt menguji dua hal |
+| **T12** penjaga berkas rahasia | 4.2.2 | `.env` ditolak dengan alasan + tawaran `.env.example`; labelnya turun ke HYPOTHESIS |
+| **Panel Pembaruan** | 4.2.2 | v4.2.2, ikon berupa gambar (bukan tulisan "TEM_UPDATE") |
+
+### Yang dibawa 4.2.3 — sudah terpasang
+
+| Dibawa 4.2.3 | Keadaan |
 |---|---|
-| **Tahap 6** — menolak | patch perusak → "Patch dibatalkan sendiri", 18,3 detik, menyebut `uji-panel-pembaruan.mjs` + keluarannya; `git status` bersih & nilai kembali semula |
-| **Tahap 6** — meloloskan (uji kendali) | patch benar → 61/61 lulus, 21,7 detik, berkas **tetap berubah** di disk, Undo tersedia. **Tahap 6 kini terbukti dua arah**: penjaganya bukan penolak segalanya |
-| **T12** penjaga berkas rahasia | `.env` ditolak dengan alasan + tawaran `.env.example`; labelnya turun ke HYPOTHESIS |
-| **Panel Pembaruan** | v4.2.2, ikon berupa gambar (bukan tulisan "TEM_UPDATE") |
+| Cacat Tahap 6 **ke-1 & ke-2** | patch yang DIKEMBALIKAN tak lagi diumumkan "Berhasil Diterapkan"; Semantic Diff dilewati; kata "Ketiganya" tak lagi dipaku. **Belum terlihat live** — perlu patch perusak lagi |
+| Cacat Tahap 6 **ke-3** | ✅ **TERBUKTI LIVE di 4.2.3** — satu spanduk, 62/62, berkas tetap berubah |
+| **Peta repo Engineer** | 270 berkas + jumlah baris (±3.870 token) disisipkan tiap kiriman. **Belum terlihat live** |
+| Catatan akar repo + `git grep` | ikut sejak 4.2.2, hasilnya belum pernah dilaporkan |
 
-### Yang DIBAWA 4.2.3
+### Uji live yang masih menunggu
 
-Empat hal, kodenya selesai dan hijau, tetapi **belum satu pun pernah terlihat bekerja di aplikasi**.
-Digabung dalam satu build dengan sengaja: menaikkan versi untuk satu perbaikan berarti membayar
-ongkos build & pasang berkali-kali untuk bukti yang bisa dikumpulkan sekaligus.
-
-| Dibawa 4.2.3 | Apa |
-|---|---|
-| Cacat Tahap 6 **ke-1 & ke-2** | patch yang DIKEMBALIKAN tak lagi diumumkan "Berhasil Diterapkan"; Semantic Diff dilewati; kata "Ketiganya" tak lagi dipaku |
-| Cacat Tahap 6 **ke-3** | satu patch = satu spanduk. "Patch Berhasil Diterapkan!" + "sesuai instruksi Anda" tak lagi digambar — ia membantah laporan verifikasi di atasnya dan mengklaim pemeriksaan yang tak pernah ada |
-| **Peta repo Engineer** | 270 berkas + jumlah baris (±3.870 token) disisipkan tiap kiriman |
-| Catatan akar repo + `git grep` | sudah ikut 4.2.2, tetapi hasilnya belum pernah dilaporkan |
-
-### Uji live yang menunggu sesudah 4.2.3 terpasang
-
-1. **Spanduk tunggal** — satu patch yang benar harus menghasilkan **satu** spanduk saja, dan yang
-   tersisa adalah yang membawa laporan verifikasi. Prompt sama seperti uji kendali: tambah satu baris
-   komentar di berkas yang tak ada uji membaca teks sumbernya.
-2. **Peta repo** — Engineer langsung memakai `git grep` pada berkas besar, dan berhenti bertanya di
+1. **Peta repo** — Engineer langsung memakai `git grep` pada berkas besar, dan berhenti bertanya di
    mana letak sebuah berkas.
-3. **Catatan akar repo + `git grep`** — Owner sempat chat 1 Okt, hasilnya belum dilaporkan.
-4. **T14 jalur stream** — satu chat Ecosystem yang jawabannya mengalir.
-5. **Unduh desktop dari web** — tautan di layar masuk Mametlite/web.
+2. **Catatan akar repo + `git grep`** — Owner sempat chat 1 Okt, hasilnya belum dilaporkan.
+3. **T14 jalur stream** — satu chat Ecosystem yang jawabannya mengalir.
+4. **Unduh desktop dari web** — tautan di layar masuk Mametlite/web.
+5. **Cacat Tahap 6 ke-1 & ke-2** — perlu patch yang MERUSAK lagi (bukan yang benar), lalu pastikan
+   tak ada spanduk "Berhasil Diterapkan" yang membayangi "Patch dibatalkan sendiri".
 
-Nomor 1 juga sekaligus **uji kendali Tahap 6 yang kedua**: patch yang benar harus tetap lolos.
-Membuang satu spanduk tak boleh diam-diam merusak penjaganya.
+Nomor 1 & 2 bisa dikerjakan dalam **satu chat Engineer yang sama**: keduanya soal apakah model
+berhenti menebak letak berkas dan langsung mencari isinya.
 
 ### Dua arahan Owner yang SENGAJA ditunda (1 Okt)
 

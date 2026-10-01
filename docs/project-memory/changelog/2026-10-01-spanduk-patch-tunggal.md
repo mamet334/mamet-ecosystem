@@ -88,10 +88,21 @@ Tiga asersi memerah — tetapi asersi "PATCH_REJECTED memimpin rantai" **tetap h
 `\bif \(` cocok juga di tengah `else if`. Diperbaiki dengan lookbehind `(?<!else )`. Asersi yang tak bisa
 merah tidak menjaga apa pun.
 
-### Belum sampai ke aplikasi
+### TERBUKTI LIVE di 4.2.3 (1 Oktober 2026)
 
-Perbaikan ini ada di `main`, menunggu **4.2.3** bersama dua perbaikan Tahap 6 sebelumnya dan peta repo
-Engineer.
+Prompt yang sama bentuknya seperti uji kendali: satu baris komentar di atas `warnaStatus()` dalam
+`statusPembaruan.js`.
+
+| | Hasil |
+|---|---|
+| Jumlah spanduk | **satu** — dan yang tersisa adalah yang membawa laporan verifikasi |
+| Laporan uji | **62/62 lulus** |
+| Berkas | **tetap berubah** di disk (`git diff` menunjukkan sisipan di atas `warnaStatus`) |
+
+Satu prompt membuktikan dua hal. Yang kedua yang lebih penting: mencabut satu cabang dari rantai
+`if/else` **tidak diam-diam merusak penjaga Tahap 6**. Perbaikan tampilan yang melumpuhkan penjaga
+keselamatan akan terlihat persis seperti perbaikan yang berhasil — satu spanduk, tak ada keluhan —
+sampai patch perusak berikutnya lolos tanpa dicegat.
 
 ### Dicatat terpisah, tidak dikerjakan di sini
 

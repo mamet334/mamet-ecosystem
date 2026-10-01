@@ -60,6 +60,7 @@ export function bentukVersi(versi) {
 }
 
 /** Kelas warna per nada — dipisah supaya bisa diuji tanpa merender React. */
+// Dipakai Settings.jsx untuk mewarnai teks status pembaruan.
 export function warnaStatus(nada) {
   if (nada === 'aman') return 'text-primary';
   if (nada === 'perlu') return 'text-tertiary';

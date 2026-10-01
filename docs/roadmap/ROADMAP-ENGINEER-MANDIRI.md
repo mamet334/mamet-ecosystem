@@ -198,7 +198,8 @@ di mode yang memuat ulang tiap berkas tersentuh berarti menumpuk lapisan penyang
 > Arah kedua itu uji **kendali**: tanpa ia, penjaga yang menolak segalanya akan terlihat sama berhasilnya.
 >
 > Uji kendali itu sekaligus memunculkan cacat ketiga — dua spanduk untuk satu patch, yang kedua
-> membantah laporan verifikasi yang pertama. Sudah diperbaiki di `main`, menunggu **4.2.3**; lihat
+> membantah laporan verifikasi yang pertama. Diperbaiki dan **terbukti live di 4.2.3** — satu patch
+> kini menghasilkan satu spanduk, 62/62 lulus, berkas tetap berubah (uji kendali kedua); lihat
 > [changelog 1 Okt](../project-memory/changelog/2026-10-01-spanduk-patch-tunggal.md).
 >
 > Rancangan di bawah adalah rancangan yang disetujui 24 September; **tiga hal berubah saat dikerjakan**,
