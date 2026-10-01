@@ -259,29 +259,24 @@ class Engineer {
         return null;
       }
 
-      // Kotak metadata untuk memori yang disimpan selama sesi
-      const goldenMeta = {
-        source_type: 'engineer_session',
-        source_reference: patch?.files?.map(f => f.path).join(',') || null,
-        version_code: `ENG-${Date.now()}`,
-        chat_id: null
-      };
-
-      // Simpan ringkasan sesi sebagai golden memory (opsional, via MemoryService)
-      try {
-        const memoryService = this.serviceManager.get('MemoryService');
-        if (memoryService && this.sessionArtifact) {
-          const summary = this.sessionArtifact.getSummary();
-          const sessionSummary = `Engineering session ${summary.sessionId}: ${summary.taskCount} task, ${summary.modifiedFilesCount} file dimodifikasi, ${summary.violationsFound} pelanggaran MAEF.`;
-          await memoryService.storeMemory(
-            `Engineering session ${summary.sessionId}`,
-            sessionSummary,
-            goldenMeta
-          );
-        }
-      } catch (e) {
-        console.warn('[Engineer] Gagal menyimpan ringkasan sesi ke golden memory:', e);
-      }
+      // RINGKASAN SESI TIDAK LAGI DITULIS KE MEMORI PENGGUNA (keputusan Owner, 2026-10-01).
+      //
+      // Dulu di sini `memoryService.storeMemory("Engineering session ENG-SESSION-…")` dipanggil
+      // otomatis tiap sesi. Owner melihatnya muncul di panel Memory Context dan bertanya apakah itu
+      // wajar. Diukur: 6 dari 18 memori — sepertiga daftar pribadinya — lahir dari mesin dalam satu
+      // hari, sementara 12 memori Owner yang sungguhan terkumpul sejak 23 Juni.
+      //
+      // Tiga alasan ia dibuang, bukan dipindah:
+      //   1. TIDAK ADA YANG MEMBACANYA. `engineer_session` hanya muncul di tempat penulisannya dan
+      //      dua baris komentar — tak satu pun kode mencarinya kembali, di klien maupun server.
+      //   2. Isinya nomor mesin. Jenis memori yang dikenali server adalah IDENTITY/LOCATION/JOB/
+      //      PREFERENCE/PROJECT — fakta pribadi Owner. Nomor sesi benda asing di sana.
+      //   3. Kontrak Engineer sendiri berbunyi "Tidak boleh menulis memory otomatis".
+      //
+      // Rumah yang benar sudah ada dan sudah tersambung ke tiap kiriman: `TEMUAN-ENGINEER.md`
+      // (IngatanTemuan.js) untuk temuan, Brain 1 untuk Lesson/RootCause, dan `git log` untuk
+      // "apa yang berubah" — yang selalu benar dan kini bisa dijalankan Engineer tanpa izin.
+      // Memindahkan nomor sesi ke rak yang lebih rapi tetap memindahkan sampah.
 
       // Verifikasi file yang dimodifikasi terhadap raw content
       const result = await governor.verifyEngineeringSession(this.sessionArtifact);

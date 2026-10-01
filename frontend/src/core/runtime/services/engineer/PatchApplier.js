@@ -144,22 +144,18 @@ export async function executePatchApplication(patch, approvedFiles = [], deps) {
       }
     }
 
-    try {
-      const memoryService = serviceManager.get('MemoryService');
-      await memoryService.storeMemory(
-        `Patch ${patch.id} applied`,
-        `Patch ${patch.id}: ${successCount} applied, ${skippedCount} skipped, ${failCount} failed.`,
-        {
-          source_type: 'engineer_patch',
-          source_reference: `patch_${patch.id}`,
-          version_code: `PATCH-${Date.now()}`,
-          category: 'engineering',
-          useGovernor: true
-        }
-      );
-    } catch (e) {
-      console.warn('[Engineer] Gagal menyimpan ke Project Memory:', e);
-    }
+    // CATATAN PATCH TIDAK LAGI DITULIS KE MEMORI PENGGUNA (keputusan Owner, 2026-10-01).
+    //
+    // Dulu tiap patch menulis `"Patch PATCH-1790841319400 applied"` ke memori pribadi Owner. Tak ada
+    // yang pernah membacanya kembali — `engineer_patch` hanya muncul di tempat penulisannya — dan
+    // isinya nomor mesin tanpa keterangan apa pun. Ia tumbuh satu baris tiap patch, selamanya.
+    //
+    // Yang ditanyakan orang tentang patch ("apa yang berubah, kapan, kenapa") dijawab jauh lebih
+    // baik oleh `git log` dan checkpoint: selalu benar, tidak membeku jadi potret satu saat, dan
+    // sejak 4.2.5 bisa dijalankan Engineer sendiri tanpa persetujuan. Baris memori ini hanya
+    // menyalin sebagian kecilnya dalam bentuk yang lebih buruk.
+    //
+    // Alasan lengkap & ukurannya ada di catatan yang sama di `engineer.js` (_finalizeSession).
 
     // =============================================
     // TAHAP 6 — VERIFIKASI YANG DIJALANKAN (2026-09-28)
