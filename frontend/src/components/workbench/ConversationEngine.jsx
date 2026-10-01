@@ -485,17 +485,16 @@ export default function ConversationEngine({ sessionId }) {
     const handler = (wrappedPayload) => {
       if (!instansiEngineerRef.current) return;   // peristiwa Engineer hanya untuk chat Engineer
       const rec = wrappedPayload?.data || wrappedPayload;
-      if (rec.type === 'PATCH_APPLIED') {
-        setMessages(prev => {
-          const newMsgs = [...prev];
-          const lastIndex = newMsgs.length - 1;
-          if (lastIndex >= 0 && newMsgs[lastIndex].content.includes('Engineer sedang menyiapkan patch')) {
-            newMsgs[lastIndex] = { role: 'model', content: `✅ **Patch Berhasil Diterapkan!**\n\n${rec.message}\n\n_File telah dimodifikasi sesuai instruksi Anda._` };
-            return newMsgs;
-          }
-          return [...prev, { role: 'model', content: `✅ **Patch Berhasil Diterapkan!**\n\n${rec.message}\n\n_File telah dimodifikasi sesuai instruksi Anda._` }];
-        });
-      } else if (rec.type === 'PATCH_REJECTED') {
+      // PATCH_APPLIED TIDAK digambar di sini (2026-10-01). Ia tetap dipancarkan sebagai catatan, tetapi
+      // pengumuman ke layar milik SATU jalur saja: `Engineer:PatchApplied` di bawah — satu-satunya yang
+      // tahu soal pemulihan Tahap 6 dan membawa laporan verifikasinya.
+      //
+      // Live 1 Okt, patch yang BENAR: Owner menerima dua spanduk berturut-turut. Yang pertama berhati-hati
+      // menyebut batasnya ("yang dijanjikan hanya patch tidak merusak yang sudah terbukti, bukan patch ini
+      // benar"); yang kedua menimpanya dengan "File telah dimodifikasi sesuai instruksi Anda" — klaim yang
+      // tak pernah diperiksa siapa pun, dan ia duduk paling bawah sehingga berdiri sebagai kesimpulan.
+      // Perbaikan 1 Okt sebelumnya hanya menutup kasus DIPULIHKAN; kasus berhasil masih bersuara dua kali.
+      if (rec.type === 'PATCH_REJECTED') {
         setMessages(prev => {
           const newMsgs = [...prev];
           const lastIndex = newMsgs.length - 1;

@@ -177,6 +177,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 94. ✅ Jawaban Mendarat di Percakapan yang Salah — Identitas Kiriman (2026-09-28) — [log](../project-memory/changelog/2026-09-28-jawaban-masuk-percakapan-salah.md) · dilaporkan Owner; **terbukti live 28 Sep** — jawaban tidak lagi tertukar. Batas yang diterima Owner: jawaban yang belum selesai belum muncul di riwayat
 
 100. ✅ Peta Repo untuk Engineer (2026-10-01) — [log](../project-memory/changelog/2026-10-01-peta-repo-engineer.md) · lahir dari keberatan Owner "seperti memperbodoh model". **Diukur:** Engineer menerima ±5.400 token ATURAN dan hanya ±1.200 token kode; tak ada satu pun blok untuk kode sumber; anggaran 60.000 token terpakai seperenam. Peta 270 berkas + jumlah baris (±3.870 token, 0,13 detik, satu perintah git). **Belum diuji live.** Dua arahan Owner lain sengaja ditunda agar pengaruh peta terukur sendirian: batas keluaran ikut model (masih 20 KB mati), dan porsi konteks Engineer (batas harian itu plafon, bukan jatah yang dibagi)
+101. ✅ Tahap 6 Terbukti DUA ARAH + Spanduk Patch Tunggal (2026-10-01) — [log](../project-memory/changelog/2026-10-01-spanduk-patch-tunggal.md) · uji **kendali**: patch yang BENAR lolos 61/61 dalam 21,7 detik dan berkasnya **tetap berubah** — tanpa ini, penjaga yang menolak segalanya terlihat sama berhasilnya. Uji itu memunculkan cacat ketiga: **dua spanduk untuk satu patch**, yang kedua ("File telah dimodifikasi sesuai instruksi Anda") membantah laporan verifikasi di atasnya dan mengklaim pemeriksaan yang tak pernah ada — dan karena duduk paling bawah, dialah yang jadi kesimpulan. **Akarnya:** kalimat tunggu `'Engineer sedang menyiapkan patch'` tak pernah dibuat di mana pun, jadi tiga cabang penimpa anti-ganda itu kode mati. Pengumuman kini milik satu jalur (`Engineer:PatchApplied`, satu-satunya yang tahu pemulihan & bawa laporan); `PATCH_APPLIED` tetap dipancarkan sebagai catatan. **Uji mutasi** membongkar asersi lembek (`\b` cocok di tengah `else if`), dan uji sempat tertipu komentar penjelas sendiri — diukur pada kode tanpa komentar. **Menunggu 4.2.3**
 99. ✅ Cari Dokumen Lewat Judulnya — 221 Kepbup Tak Terjangkau Nomornya (2026-10-01) — [log](../project-memory/changelog/2026-10-01-cari-lewat-judul.md) · diukur sendiri: kata "kepbup" muncul di **0 dari 3.629 potongan** dan **221 dari 221** dokumen tak memuat nomornya sendiri — menemukannya lewat nomor MUSTAHIL, bukan sulit. RRF tak bisa menolong karena ambang kemiripan VEKTOR membuangnya lebih dulu. Jalur judul TERPISAH; `match_documents_hybrid` tidak disentuh agar patokan 14/14 tetap sebanding. **TERBUKTI LIVE 1 Okt** — pertanyaan yang sama di dua chat: aturan lama tak menyala, aturan baru menyisipkan 3 potongan dari dokumen yang benar; jawaban VERIFIED. Syarat "semua kata" gagal pada pertanyaan nyata ("apa **isi** Kepbup 204") → diganti "minimal dua kata". **Batas yang ikut ketahuan:** `document_chunks` tak punya kolom urutan (id = uuid), jadi 3 potongan yang disisipkan acak, bukan tiga pertama — jawaban untuk "apa isi dokumen X" selalu sebagian, dan model menyebutnya sendiri
 98. ✅ Unduh Aplikasi Desktop dari Web (2026-09-29) — [log](../project-memory/changelog/2026-09-29-unduh-desktop-dari-web.md) · tautan di layar masuk (tanpa perlu login) & Pengaturan; repo rilis publik, alamat unduh diperiksa 200 tanpa autentikasi; `latest.yml`/`.blockmap` tak pernah diberikan ke manusia; API gagal → jatuh ke halaman releases/latest. **Belum diuji live**
 97. ✅ Panel Pembaruan di Pengaturan (2026-09-29) — [log](../project-memory/changelog/2026-09-29-panel-pembaruan-pengaturan.md) · jembatan preload (checkForUpdates/getAppVersion/onUpdateStatus) ada sejak lama tetapi **nol pemakai** di frontend/src; ikut ketahuan: `update-downloaded` & `error` tak pernah dikirim ke layar, jadi panel akan berhenti di "Mengunduh 100%" selamanya dan kegagalan tak terlihat. **Terbukti live di 4.2.1** — isinya benar; ikut ketahuan ikon `system_update` tampil sebagai tulisan "TEM_UPDATE" (kelas cacat ke-3) → diganti `refresh` + penjaga menyeluruh `uji-ikon-subset.mjs`. **Perbaikan ikon MENUNGGU rilis berikutnya** (keputusan Owner 29 Sep: digabung saja dengan perbaikan lain, jangan naikkan versi khusus untuk ini)
@@ -219,7 +220,8 @@ Terpasang & terbit: **4.2.2**. Alur rilis manual — lihat item 96.
 
 | | Bukti |
 |---|---|
-| **Tahap 6** verifikasi patch | patch perusak → "Patch dibatalkan sendiri", 18,3 detik, menyebut `uji-panel-pembaruan.mjs` + keluarannya; `git status` bersih & nilai kembali semula |
+| **Tahap 6** — menolak | patch perusak → "Patch dibatalkan sendiri", 18,3 detik, menyebut `uji-panel-pembaruan.mjs` + keluarannya; `git status` bersih & nilai kembali semula |
+| **Tahap 6** — meloloskan (uji kendali) | patch benar → 61/61 lulus, 21,7 detik, berkas **tetap berubah** di disk, Undo tersedia. **Tahap 6 kini terbukti dua arah**: penjaganya bukan penolak segalanya |
 | **T12** penjaga berkas rahasia | `.env` ditolak dengan alasan + tawaran `.env.example`; labelnya turun ke HYPOTHESIS |
 | **Panel Pembaruan** | v4.2.2, ikon berupa gambar (bukan tulisan "TEM_UPDATE") |
 
@@ -231,17 +233,16 @@ Butuh **4.2.3**. Jangan naikkan versi khusus untuk satu perbaikan — gabungkan.
 |---|---|
 | Dua cacat Tahap 6 | patch yang DIKEMBALIKAN tak lagi diumumkan "Berhasil Diterapkan"; Semantic Diff dilewati; kata "Ketiganya" tak lagi dipaku |
 | **Peta repo Engineer** | 270 berkas + jumlah baris (±3.870 token) disisipkan tiap kiriman |
+| Cacat Tahap 6 **ketiga** | satu patch = satu spanduk. "Patch Berhasil Diterapkan!" + "sesuai instruksi Anda" tak lagi digambar — ia membantah laporan verifikasi di atasnya dan mengklaim pemeriksaan yang tak pernah ada |
 
 ### Uji live yang masih menunggu
 
-1. **Kendali Tahap 6** — patch yang BENAR tidak boleh ikut dipulihkan. Prompt aman: tambah satu baris
-   komentar di `frontend/src/core/runtime/services/statusPembaruan.js` (tak ada uji yang membaca teks
-   sumbernya). Harapan: "60/60 lulus", berkas TETAP berubah, tombol Undo tersedia.
-2. **Catatan akar repo + `git grep`** — Owner sempat chat 1 Okt, hasilnya belum dilaporkan.
-3. **Peta repo** — Engineer langsung memakai `git grep` pada berkas besar, dan berhenti bertanya di
+1. **Catatan akar repo + `git grep`** — Owner sempat chat 1 Okt, hasilnya belum dilaporkan.
+2. **Peta repo** — Engineer langsung memakai `git grep` pada berkas besar, dan berhenti bertanya di
    mana letak sebuah berkas.
-4. **T14 jalur stream** — satu chat Ecosystem yang jawabannya mengalir.
-5. **Unduh desktop dari web** — tautan di layar masuk Mametlite/web.
+3. **T14 jalur stream** — satu chat Ecosystem yang jawabannya mengalir.
+4. **Unduh desktop dari web** — tautan di layar masuk Mametlite/web.
+5. **Spanduk tunggal** (sesudah 4.2.3) — satu patch benar harus menghasilkan **satu** spanduk saja.
 
 ### Dua arahan Owner yang SENGAJA ditunda (1 Okt)
 

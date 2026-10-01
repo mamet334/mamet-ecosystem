@@ -1,8 +1,9 @@
 # ROADMAP — Engineer Mandiri (self-maintenance)
 
 **Dibuat:** 23 September 2026 · **Status:** 🟡 Tahap 2 ✅ · Tahap 3a ✅ · Tahap 3b ✅ (ingatan temuan, live
-24 September) · **Tahap 5 ✅ terbukti live 28 September** · **Tahap 6 ✅ kode selesai 28 September**
-(verifikasi patch yang dijalankan — belum diuji live). Sisa: Tahap 1 dan Tahap 4
+24 September) · **Tahap 5 ✅ terbukti live 28 September** · **Tahap 6 ✅ terbukti live 1 Oktober**
+(verifikasi patch yang dijalankan — terbukti dua arah: menolak yang merusak, meloloskan yang benar).
+Sisa: Tahap 1 dan Tahap 4
 
 Lanjutan dari T10 di [`ROADMAP-TEMUAN-TERBUKA.md`](./ROADMAP-TEMUAN-TERBUKA.md). Dasar rancangan ini adalah hasil uji
 Engineer 22–23 September 2026 (TUGAS-01..04), bukan perkiraan.
@@ -185,10 +186,21 @@ di mode yang memuat ulang tiap berkas tersentuh berarti menumpuk lapisan penyang
 
 ---
 
-## Tahap 6 — Verifikasi patch yang DIJALANKAN, bukan dicocokkan ✅ KODE SELESAI 28 September 2026
+## Tahap 6 — Verifikasi patch yang DIJALANKAN, bukan dicocokkan ✅ TERBUKTI LIVE 1 Oktober 2026
 
-> **Keadaan:** kode selesai, 51 berkas uji hijau, `vite build` lolos. **Belum diuji live** — perlu
-> `npm run dist` + pasang, lalu satu patch yang sengaja merusak berkas beruji.
+> **Keadaan:** terbukti live **dua arah** di aplikasi terpasang v4.2.2.
+>
+> | Arah | Bukti (1 Oktober 2026) |
+> |---|---|
+> | **Menolak** patch yang merusak | patch perusak dikembalikan sendiri dalam 18,3 detik; laporan menyebut `uji-panel-pembaruan.mjs` beserta keluarannya; `git status` bersih kembali |
+> | **Meloloskan** patch yang benar | 61/61 lulus dalam 21,7 detik; berkas **tetap berubah** di disk; checkpoint & tombol Undo tersedia |
+>
+> Arah kedua itu uji **kendali**: tanpa ia, penjaga yang menolak segalanya akan terlihat sama berhasilnya.
+>
+> Uji kendali itu sekaligus memunculkan cacat ketiga — dua spanduk untuk satu patch, yang kedua
+> membantah laporan verifikasi yang pertama. Sudah diperbaiki di `main`, menunggu **4.2.3**; lihat
+> [changelog 1 Okt](../project-memory/changelog/2026-10-01-spanduk-patch-tunggal.md).
+>
 > Rancangan di bawah adalah rancangan yang disetujui 24 September; **tiga hal berubah saat dikerjakan**,
 > ditulis di bagian "Yang berubah saat dikerjakan" di akhir bab ini.
 
