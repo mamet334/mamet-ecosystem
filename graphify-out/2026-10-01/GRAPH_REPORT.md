@@ -1,15 +1,15 @@
-# Graph Report - .  (2026-09-14)
+# Graph Report - .  (2026-10-01)
 
 ## Corpus Check
 - cluster-only mode — file stats not available
 
 ## Summary
-- 1950 nodes · 2794 edges · 237 communities (166 shown, 71 thin omitted)
+- 1950 nodes · 2794 edges · 238 communities (166 shown, 72 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 11 edges (avg confidence: 0.58)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `5c02a450`
+- Built from commit: `bc81a0b2`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -207,6 +207,7 @@
 - health-check/index.ts
 - knowledge-health/index.ts
 - test-audit/index.ts
+- OpenAIAdapter
 
 ## God Nodes (most connected - your core abstractions)
 1. `Engineer` - 46 edges
@@ -235,7 +236,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (237 total, 71 thin omitted)
+## Communities (238 total, 72 thin omitted)
 
 ### Community 0 - "AIAgent.jsx"
 Cohesion: 0.05
@@ -246,8 +247,8 @@ Cohesion: 0.08
 Nodes (36): handler(), handler(), handler(), app, axios, cheerio, cors, express (+28 more)
 
 ### Community 2 - "adapter_registry.ts"
-Cohesion: 0.08
-Nodes (9): GeminiAdapter, GroqAdapter, OpenAIAdapter, OpenRouterAdapter, processOpenAIStream(), AdapterContext, AdapterResult, CapabilityAdapter (+1 more)
+Cohesion: 0.10
+Nodes (8): GeminiAdapter, GroqAdapter, OpenRouterAdapter, processOpenAIStream(), AdapterContext, AdapterResult, CapabilityAdapter, GeminiEmbeddingAdapter
 
 ### Community 4 - "TokenSaverAgent"
 Cohesion: 0.07
@@ -728,7 +729,7 @@ Nodes (3): autoprefixer, autoprefixer, autoprefixer
 ## Knowledge Gaps
 - **537 isolated node(s):** `anonClient`, `name`, `version`, `description`, `main` (+532 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **71 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **72 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -746,4 +747,4 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `memoryEngine.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.08325624421831637 - nodes in this community are weakly interconnected._
 - **Should `adapter_registry.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.08405797101449275 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.1036036036036036 - nodes in this community are weakly interconnected._

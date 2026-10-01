@@ -17,6 +17,7 @@ import { riwayatPerintahDariPesan, catatanAkarRepo, catatanPetaRepo } from '../.
 import { ambilBlokKlaim, susunSkripUji, susunLaporanKlaim } from '../../core/runtime/services/engineer/UjiKlaim.js';
 import { ambilBlokTemuan, bacaBerkasTemuan, susunBerkasTemuan, gabungTemuan, laporanTemuan, ringkasanUntukKonteks, ALAMAT_BERKAS as ALAMAT_TEMUAN } from '../../core/runtime/services/engineer/IngatanTemuan.js';
 import { anggaranKonteks, pilihPesanKonteks, meteranKonteks, bacaMulaiDari, simpanMulaiDari, pesanUntukDipadatkan, bolehPadatkan, bentukPesanRingkasan, tokenPesan, MIN_PESAN_PADATKAN, PATOK } from '../../core/runtime/services/KonteksChat.js';
+import { jejakSisipan } from '../../core/runtime/services/jejakSisipan.js';
 
 // =============================================
 // HELPER: Parse thinking/answer dari respons AI
@@ -1164,6 +1165,22 @@ export default function ConversationEngine({ sessionId }) {
     // Terukur 1 Okt: peta 15.493 huruf, yang sampai ke model 4.042 huruf. Lihat pilihPesanKonteks.
     const sisipan = [catatanAkar, catatanPeta, ringkasanTemuan].filter(Boolean).map((content) => ({ role: 'user', content, [PATOK]: true }));
     const historyKirim = sisipan.length ? [...sisipan, ...newMessages] : newMessages;
+
+    // MATA, bukan perbaikan. Sisipan disusun di sini dan tidak meninggalkan jejak apa pun di log
+    // server — itu sebabnya hilangnya peta di kiriman lanjutan belum terpecahkan sesudah tiga teori
+    // ditumbangkan angka. Dicatat SEBELUM apa pun memotongnya, jadi baris ini menjawab satu
+    // pertanyaan dengan pasti: sisipannya memang tidak dibuat, atau dibuat lalu hilang di jalan.
+    {
+      const jejak = jejakSisipan({
+        engineer: isEngineerWorkspace,
+        akarRepo: akarRepoSekarang,
+        petaMentah: peta,
+        catatanAkar, catatanPeta, ringkasanTemuan,
+        mulaiDari: bacaMulaiDari(currentChatId),
+        jumlahPesan: newMessages.length,
+      });
+      if (jejak) console.log(jejak);
+    }
 
     try {
       await assistantService.processMessage({
