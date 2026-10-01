@@ -1425,7 +1425,14 @@ export default function ConversationEngine({ sessionId }) {
 
     setEngineerCmdStates(prev => ({
       ...prev,
-      [cmdKey]: { status: (ditolakAturan || ditolakProsedur) ? 'blocked' : ditolakOwner ? 'skipped' : success ? 'done' : 'error', output }
+      // DUA ARTI YANG DULU DISATUKAN (Owner, 2026-10-02). `ditolakAturan` dan `ditolakProsedur`
+      // sama-sama dipetakan ke 'blocked', dan layar menuliskan kalimat yang sama untuk keduanya:
+      // "Tidak diizinkan untuk Engineer — … Jalankan sendiri di terminal bila perlu."
+      //
+      // Untuk pengulangan itu BOHONG. `git grep` yang diulang tetap BOLEH; ia hanya sudah dijalankan
+      // tadi. Owner melihat gemboknya dan bertanya "perintah grep itu wajar kan, kenapa dibatasi?" —
+      // pertanyaan yang lahir karena layarnya salah menuduh, bukan karena aturannya salah.
+      [cmdKey]: { status: ditolakProsedur ? 'diulang' : ditolakAturan ? 'blocked' : ditolakOwner ? 'skipped' : success ? 'done' : 'error', output }
     }));
 
     // Ditolak ATURAN (bukan Owner, bukan hasil program): tidak dikirim ke model — alasannya tetap sama tiap kali, dan
@@ -1987,6 +1994,13 @@ export default function ConversationEngine({ sessionId }) {
                                     <span className="flex items-start gap-1.5 text-xs text-amber-300" title={state.output}>
                                       <span className="material-symbols-outlined text-[14px]">lock</span>
                                       <span>Tidak diizinkan untuk Engineer — {String(state.output || '').replace(/^TIDAK DIJALANKAN:\s*/, '')}. Jalankan sendiri di terminal bila perlu.</span>
+                                    </span>
+                                  ) : state.status === 'diulang' ? (
+                                    /* BUKAN larangan — perintahnya boleh, cuma sudah dijalankan tadi. Nadanya netral
+                                       dan tidak menyuruh Owner ke terminal: hasilnya sudah ada di layar ini. */
+                                    <span className="flex items-start gap-1.5 text-xs text-on-surface-variant" title={state.output}>
+                                      <span className="material-symbols-outlined text-[14px]">history</span>
+                                      <span>Sudah dijalankan di percakapan ini — hasilnya ada di atas. Perintahnya boleh; mengulanginya tidak akan memberi hasil berbeda.</span>
                                     </span>
                                   ) : (
                                     <details className="inline">

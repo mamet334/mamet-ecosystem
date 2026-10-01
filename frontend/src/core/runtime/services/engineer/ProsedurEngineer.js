@@ -146,6 +146,52 @@ export function petunjukKeluaranTerpotong(perintah, hasil) {
 }
 
 /**
+ * `git grep` mengembalikan BARIS YANG COCOK, bukan isi berkas — dan hasilnya terlihat lengkap.
+ *
+ * Owner, 2 Oktober 2026: *"kenapa engineer terlalu cepat mengambil kesimpulan? padahal grep yang
+ * dijalankan hanya menghasilkan separuh isinya."*
+ *
+ * Ini BUKAN pemotongan. Tidak ada yang hilang, tidak ada catatan kaki "dipotong", dan karena itu
+ * `petunjukKeluaranTerpotong` diam — keluarannya memang utuh menurut ukurannya sendiri. Yang keliru
+ * adalah cara membacanya: pandangan TERSARING disangka KESELURUHAN. Hasil yang rapi tanpa tanda
+ * apa pun justru paling meyakinkan, dan itulah yang membuat kesimpulan diambil terlalu cepat.
+ *
+ * Penjaga ketiga, sejajar dengan dua yang sudah ada: `petunjukHasilKosong` (keluaran kosong yang
+ * menyesatkan) dan `petunjukKeluaranTerpotong` (20 KB). Pola yang sama: sebut batasnya, lalu beri
+ * CARA keluarnya — jangan hanya melarang menyimpulkan.
+ *
+ * Diam bila model sudah meminta konteks (`-A/-B/-C`) atau memang hanya ingin menghitung/mendaftar
+ * (`-c`, `-l`, `-L`): di situ ia sudah tahu yang dilihatnya sebagian, dan catatan ini akan jadi
+ * gangguan yang lama-lama diabaikan.
+ *
+ * @param {string} perintah perintah yang dijalankan
+ * @param {{ok?: boolean, keluaran?: string}} hasil hasil dari penjalan perintah
+ * @returns {string|null} petunjuk untuk model, atau null bila tidak berlaku
+ */
+export function petunjukGrepSebagian(perintah, hasil) {
+  const teks = String(perintah || '').trim();
+  if (!/^git\s+grep\b/i.test(teks)) return null;
+  if (!hasil?.ok) return null;
+
+  // Sudah meminta konteks sekitarnya → model tahu ia sedang melihat cuplikan.
+  if (/(^|\s)-(A|B|C)\b|(^|\s)-(A|B|C)\d|--(after|before)-context\b|--context\b/.test(teks)) return null;
+  // Hanya menghitung atau mendaftar nama berkas → tidak ada isi yang bisa disalahpahami.
+  if (/(^|\s)-(c|l|L)\b|--count\b|--files-with-matches\b|--files-without-match\b/.test(teks)) return null;
+
+  const baris = String(hasil.keluaran || '').split('\n').filter((b) => b.trim()).length;
+  if (!baris) return null;   // keluaran kosong sudah ditangani petunjukHasilKosong
+
+  return [
+    `PETUNJUK SISTEM: perintah di atas mengembalikan ${baris} BARIS YANG COCOK, bukan isi berkasnya.`,
+    'Baris di antaranya TIDAK Anda lihat. Jangan menyimpulkan apa yang ada atau tidak ada di sekitarnya dari hasil ini.',
+    'Bila kesimpulan Anda bergantung pada konteks sekitar baris itu, ambil dulu salah satu:',
+    '1. git grep -n -B2 -A4 "<pola>" -- <alamat>   (baris yang cocok beserta sekitarnya)',
+    '2. git blame -L <awal>,<akhir> -- <alamat>    (rentang baris tertentu, bernomor)',
+    'Bila kesimpulan Anda memang hanya tentang ADA/TIDAKNYA pola itu, hasil ini sudah cukup — katakan begitu.',
+  ].join('\n');
+}
+
+/**
  * Penjaga langkah [0.4]: perintah yang sama persis sudah pernah dijalankan pada percakapan ini.
  * Mengulangnya tidak akan memberi hasil berbeda, jadi perintahnya tidak dijalankan lagi.
  *

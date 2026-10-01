@@ -22,7 +22,7 @@ const AGENT_ENDPOINT = 'https://uuyzdjifhdfyyvpxsofu.supabase.co/functions/v1/ag
 import { supabase } from '../../../supabase.js';
 import { statusLaptop, kirimKeLaptop, sidikJari, cariDiCache, KUOTA_CACHE_MB } from './remoteConversionClient.js';
 import { ambilPermintaanAlat, susunPesanHasil, susunPesanKoreksi, namaFolderAman, buangKakiTiruan, peringatanKlaimTanpaAlat, peringatanKlaimEngineer, blokKodeKeMametCmd, MAKS_PUTARAN } from './folderKerjaAlat.js';
-import { cekPerintahBerulang, petunjukHasilKosong, petunjukKeluaranTerpotong, peringatanTugasTakDiumumkan, adaPenandaPatch, buangPenandaPatch } from './engineer/ProsedurEngineer.js';
+import { cekPerintahBerulang, petunjukHasilKosong, petunjukKeluaranTerpotong, petunjukGrepSebagian, peringatanTugasTakDiumumkan, adaPenandaPatch, buangPenandaPatch } from './engineer/ProsedurEngineer.js';
 import { peringatanKlaimTakTeruji } from './engineer/UjiKlaim.js';
 import { anggaranKonteks, pilihPesanKonteks, bacaMulaiDari } from './KonteksChat.js';
 
@@ -1820,6 +1820,11 @@ export class AssistantService {
       // tahu ada perintah lain — lalu mengarang jalan memutar lewat python.
       const petunjukPotong = petunjukKeluaranTerpotong(perintah, h);
       if (petunjukPotong) output += `\n\n${petunjukPotong}`;
+      // `git grep` mengembalikan baris yang COCOK, bukan isi berkas — dan hasilnya terlihat lengkap,
+      // jadi tidak ada penjaga lain yang menyala. Owner 2 Okt: "kenapa engineer terlalu cepat
+      // mengambil kesimpulan, padahal grep hanya menghasilkan separuh isinya."
+      const petunjukGrep = petunjukGrepSebagian(perintah, h);
+      if (petunjukGrep) output += `\n\n${petunjukGrep}`;
     } else if (h?.ditolakOwner) {
       output = 'DITOLAK OWNER di dialog izin — perintah TIDAK dijalankan.';
     } else {
