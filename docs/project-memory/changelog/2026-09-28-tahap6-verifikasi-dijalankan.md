@@ -80,3 +80,54 @@ merah.
 **Uji live yang masih perlu:** `npm run dist` + pasang, lalu satu patch yang sengaja merusak berkas beruji —
 berkasnya harus kembali sendiri dan laporannya menyebut berkas uji yang gagal. Kendalinya: patch yang benar
 tidak dipulihkan.
+
+---
+
+## TERBUKTI LIVE 1 Oktober 2026 — di aplikasi terpasang 4.2.2
+
+Owner menyuruh Engineer mengubah `bentukVersi` di `statusPembaruan.js` dari `'tidak diketahui'`
+menjadi `'???'` — nilai yang dipaku `uji-panel-pembaruan.mjs`, jadi ujinya **pasti merah**. Lalu
+menekan Apply Patch. Yang tersimpan di chat:
+
+```
+↩️ Patch dibatalkan sendiri — 1 berkas sempat diubah lalu dikembalikan karena berkas uji gagal.
+📁 frontend/src/core/runtime/services/statusPembaruan.js
+
+↩️ Uji gagal — berkas sudah DIKEMBALIKAN sendiri ke isi sebelum patch. (18,3 detik)
+
+### Rusak oleh patch ini — 1 berkas uji
+**uji-panel-pembaruan.mjs** — 1 GAGAL
+[keluaran ujinya, apa adanya]
+```
+
+**Dua ujung cocok.** Di repo: `git status` bersih dan `bentukVersi` kembali ke `'tidak diketahui'`.
+Berkasnya benar-benar kembali sendiri. 18,3 detik sesuai ukuran kita (±19 detik untuk 60 berkas).
+
+Digolongkan **"Rusak oleh patch ini"**, bukan "sudah rusak sebelumnya" — artinya jalan-ulang sesudah
+pemulihan memang lulus. Lapisan pemisah sebab itu bekerja.
+
+Inilah satu-satunya lapisan yang dibangun, diuji, didokumentasikan, dan dipercaya **tanpa pernah
+sekali pun terlihat bekerja**. Sekarang sudah.
+
+## Dua cacat yang HANYA terlihat dari uji live ini
+
+**1. Dua pesan yang bertentangan dalam satu percakapan.** Di chat yang sama juga muncul:
+
+```
+✅ Patch Berhasil Diterapkan! — Patch diterapkan: 1 file dari 1.
+_File telah dimodifikasi sesuai instruksi Anda._
+```
+
+Sebabnya: `engineer.js` **membuang** hasil `_executePatchApplication()`, jadi jalur itu tidak tahu
+berkasnya sudah dipulihkan. Kini hasilnya dipakai: patch yang dikembalikan **tidak** diumumkan
+berhasil, dan **Semantic Diff ikut dilewati** — isi di disk sudah isi SEBELUM patch, jadi
+memeriksanya hanya akan melaporkan "perbedaan" terhadap patch yang sengaja dibatalkan.
+
+**2. "Ketiganya lulus lagi…" untuk SATU berkas uji.** Kata yang dipaku di `laporanVerifikasi`.
+Laporan yang isinya benar jadi terbaca seperti salah — dan laporan yang terbaca salah akan diabaikan,
+persis seperti uji yang merah palsu. Kalimatnya kini mengikuti jumlahnya.
+
+Keduanya tidak akan pernah ketahuan dari berkas uji: yang pertama butuh dua jalur berjalan bersamaan,
+yang kedua butuh mata manusia membaca kalimatnya.
+
+**Yang masih perlu dibuktikan:** kendalinya — patch yang BENAR tidak ikut dipulihkan.

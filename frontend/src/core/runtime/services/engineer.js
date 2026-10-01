@@ -727,7 +727,11 @@ class Engineer {
       });
 
       if (approvalResult.approved) {
-        await this._executePatchApplication(patch, approvalResult.approvedFiles);
+        // Hasilnya DIPAKAI, tidak dibuang. Live 1 Oktober: Tahap 6 memulihkan berkas karena uji gagal,
+        // tetapi jalur ini tidak tahu dan tetap mengumumkan "Patch Berhasil Diterapkan!" — Owner melihat
+        // DUA pesan yang bertentangan dalam satu percakapan.
+        const hasilTerap = await this._executePatchApplication(patch, approvalResult.approvedFiles);
+        const dipulihkan = !!hasilTerap?.verifikasi?.dipulihkan;
         this.metrics.patchesApproved++;
 
         // FASE 4: Update Session Artifact — Approved
@@ -741,6 +745,9 @@ class Engineer {
         // Baca ulang file yang baru ditulis, verifikasi strukturnya.
         // ===================================================
         try {
+          // Dilewati bila Tahap 6 sudah mengembalikan berkasnya: yang ada di disk kini isi SEBELUM
+          // patch, jadi memeriksanya akan melaporkan "perbedaan" terhadap patch yang sengaja dibatalkan.
+          if (dipulihkan) throw { dilewati: true };
           console.log('[Engineer] 🔬 Menjalankan Semantic Diff Verification...');
           const semanticIssues = await verifySemanticDiff(patch, { storageManager: this.storageManager });
           const criticalIssues = semanticIssues.filter(i => i.severity === 'CRITICAL');
@@ -763,17 +770,23 @@ class Engineer {
             console.log('[Engineer] ✅ Semantic diff OK - semua file terverifikasi');
           }
         } catch (sdErr) {
-          console.warn('[Engineer] Semantic diff verification error (non-blocking):', sdErr.message);
+          if (sdErr?.dilewati) console.log('[Engineer] 🔬 Semantic Diff dilewati — berkas sudah dikembalikan Tahap 6.');
+          else console.warn('[Engineer] Semantic diff verification error (non-blocking):', sdErr.message);
         }
 
-        this._emitRecommendation({
-          type: 'PATCH_APPLIED',
-          taskId: task.id,
-          patch,
-          message: `Patch diterapkan: ${approvalResult.approvedFiles.length} file dari ${patch.files.length}.`,
-          confidence: this._calculateConfidence(analysis),
-          requiresApproval: false
-        });
+        // Berkas yang sudah DIKEMBALIKAN Tahap 6 tidak diumumkan sebagai berhasil. Laporan yang benar
+        // sudah dikirim lewat `Engineer:PatchApplied` ("Patch dibatalkan sendiri" + daftar uji yang
+        // gagal). Dua pesan yang bertentangan lebih buruk daripada satu pesan yang kurang.
+        if (!dipulihkan) {
+          this._emitRecommendation({
+            type: 'PATCH_APPLIED',
+            taskId: task.id,
+            patch,
+            message: `Patch diterapkan: ${approvalResult.approvedFiles.length} file dari ${patch.files.length}.`,
+            confidence: this._calculateConfidence(analysis),
+            requiresApproval: false
+          });
+        }
 
         // 🧠 VERIFIED APPROACH MEMORY: simpan pendekatan yang berhasil
         saveVerifiedApproach(task, patch, { storageManager: this.storageManager }); // fire-and-forget

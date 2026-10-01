@@ -111,6 +111,24 @@ cek(/uji-konteks-chat\.mjs/.test(lapMerah) && /jalur kirim memakai pilihan beran
 cek(/BUKAN karena patch ini/.test(lapMerah) && /uji-folder-label\.mjs/.test(lapMerah),
   'kegagalan yang sudah ada sebelumnya dipisahkan, tidak ditimpakan ke patch', lapMerah);
 
+// CACAT LIVE 1 Oktober: laporannya berbunyi "Ketiganya lulus lagi…" untuk SATU berkas uji. Kata yang
+// dipaku membuat laporan yang isinya BENAR terbaca seperti salah — dan laporan yang terbaca salah
+// akan diabaikan, persis seperti uji yang merah palsu.
+cek(/^Ia lulus lagi/m.test(lapMerah) || /Ia lulus lagi sesudah/.test(lapMerah),
+  'satu berkas uji → "Ia lulus lagi", bukan "Ketiganya"', (lapMerah.match(/### Rusak oleh patch ini[\s\S]{0,120}/) || [])[0]);
+cek(!/Ketiganya/.test(lapMerah), 'kata "Ketiganya" tidak lagi dipaku di laporan');
+
+const lapTiga = V.laporanVerifikasi({
+  sesudahPatch: { total: 50, lulus: 47, detik: 17, dilewati: [], cermin: [], gagal: [
+    { nama: 'a.mjs', barisTerakhir: '1 GAGAL', keluaran: 'x' },
+    { nama: 'b.mjs', barisTerakhir: '1 GAGAL', keluaran: 'y' },
+    { nama: 'c.mjs', barisTerakhir: '1 GAGAL', keluaran: 'z' },
+  ] },
+  dipulihkan: true,
+  sesudahPulih: { gagal: [] },
+});
+cek(/Ke-3-nya lulus lagi/.test(lapTiga), 'tiga berkas uji → kalimatnya mengikuti jumlahnya', (lapTiga.match(/### Rusak[\s\S]{0,100}/) || [])[0]);
+
 const lapPulihGagal = V.laporanVerifikasi({ sesudahPatch: merah, galatPulih: 'checkpoint tidak ditemukan' });
 cek(/pemulihan gagal/i.test(lapPulihGagal) && /git diff/.test(lapPulihGagal),
   'pemulihan yang gagal dikatakan terus terang, dengan cara memeriksanya sendiri', lapPulihGagal);
@@ -181,6 +199,18 @@ const PRELOAD = readFileSync(`${AKAR}/frontend/electron/preload.cjs`, 'utf8');
 const CE = readFileSync(`${AKAR}/frontend/src/components/workbench/ConversationEngine.jsx`, 'utf8');
 
 cek(/ipcMain\.handle\('eng:verifikasi-patch'/.test(MAIN), 'jalur verifikasi ada di proses utama');
+
+// CACAT LIVE 1 Oktober: `_executePatchApplication` hasilnya DIBUANG, jadi jalur engineer.js tidak tahu
+// berkasnya sudah dipulihkan dan tetap mengumumkan "Patch Berhasil Diterapkan!" — Owner melihat DUA
+// pesan yang bertentangan dalam satu percakapan.
+const ENGINEER_JS = readFileSync(`${AKAR}/frontend/src/core/runtime/services/engineer.js`, 'utf8');
+cek(/const hasilTerap = await this\._executePatchApplication\(/.test(ENGINEER_JS), 'hasil penerapan patch DIPAKAI, tidak dibuang');
+cek(/const dipulihkan = !!hasilTerap\?\.verifikasi\?\.dipulihkan;/.test(ENGINEER_JS), 'keadaan "sudah dipulihkan" dibaca dari hasilnya');
+cek(/if \(!dipulihkan\) \{\s*this\._emitRecommendation\(\{\s*type: 'PATCH_APPLIED'/.test(ENGINEER_JS),
+  'patch yang DIKEMBALIKAN tidak diumumkan sebagai berhasil', (ENGINEER_JS.match(/if \(!dipulihkan\)[^\n]*/g) || []));
+cek(/if \(dipulihkan\) throw \{ dilewati: true \};/.test(ENGINEER_JS),
+  'Semantic Diff dilewati saat berkas sudah dikembalikan — isi di disk kini isi SEBELUM patch');
+cek(/sdErr\?\.dilewati/.test(ENGINEER_JS), 'dilewatinya tercatat sebagai keterangan, bukan sebagai galat');
 cek(/verifikasiPatch: \(checkpointRef\) => ipcRenderer\.invoke\('eng:verifikasi-patch'/.test(PRELOAD), 'dijembatani preload');
 
 const blok = MAIN.slice(MAIN.indexOf("ipcMain.handle('eng:verifikasi-patch'"), MAIN.indexOf("ipcMain.handle('engineer:jalankan'"));

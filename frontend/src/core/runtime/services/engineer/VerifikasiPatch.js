@@ -114,7 +114,10 @@ export function laporanVerifikasi({ sesudahPatch, sesudahPulih, dipulihkan, gala
   }
 
   if (karenaPatch.length) {
-    bagian.push(`### Rusak oleh patch ini — ${karenaPatch.length} berkas uji\n\nKetiganya lulus lagi sesudah berkas dikembalikan, jadi sebabnya memang patch tadi.${karenaPatch.map((n) => blokKeluaran(sesudahPatch, n)).join('\n')}`);
+    // Kalimatnya mengikuti jumlah. Live 1 Oktober laporannya berbunyi "Ketiganya lulus lagi…" untuk
+    // SATU berkas uji — kata yang dipaku membuat laporan yang isinya benar terbaca seperti salah.
+    const sebut = karenaPatch.length === 1 ? 'Ia lulus lagi' : `Ke-${karenaPatch.length}-nya lulus lagi`;
+    bagian.push(`### Rusak oleh patch ini — ${karenaPatch.length} berkas uji\n\n${sebut} sesudah berkas dikembalikan, jadi sebabnya memang patch tadi.${karenaPatch.map((n) => blokKeluaran(sesudahPatch, n)).join('\n')}`);
   }
 
   if (sudahRusak.length) {
