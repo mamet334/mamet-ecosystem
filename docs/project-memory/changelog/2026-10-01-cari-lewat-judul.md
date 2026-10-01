@@ -1,0 +1,93 @@
+# Dokumen bisa ditemukan lewat judulnya — 221 Kepbup yang selama ini tak terjangkau nomornya
+
+**1 Oktober 2026** · migrasi `20261001000100_cari_lewat_judul.sql` · belum diuji live
+
+## Masalahnya, diukur sendiri — bukan dikutip
+
+Temuan asalnya dari catatan `engine-vector` (93%). Diukur ulang langsung ke database produksi, dan
+hasilnya **lebih buruk**:
+
+```
+221 dokumen Kepbup · 3.629 potongan
+kata "kepbup" muncul di          0 potongan
+nomornya sendiri ada di isi       0 dari 221 dokumen   ← bukan 206, melainkan SEMUA
+```
+
+Contoh nyata yang diperiksa satu per satu:
+
+```
+Judul : "Kepbup OKU 2025 - 204 - Camat (Kecamatan Lengkiti).pdf"
+14 potongan · yang memuat "204": 0
+Baris konteks: [Konteks: Nama Jabatan: Camat · Urusan Pemerintah: Kecamatan Lengkiti › …]
+```
+
+Baris konteks (Item 89) memuat jabatan dan urusan, **bukan** nomor dokumen. Judul memuat keduanya,
+tetapi `document_chunks.fts` hanya dihitung dari `content` — **judul tidak pernah ikut dicari.**
+
+Jadi menemukan dokumen lewat nomornya bukan "sulit": ia **mustahil**.
+
+## Kenapa RRF tidak bisa menolong, berapa pun bobotnya
+
+`match_documents_hybrid` menyaring dengan:
+
+```sql
+where p.similarity > match_threshold
+```
+
+Itu kemiripan **vektor**. Untuk "Kepbup 204", potongan tabel kompetensi berkemiripan rendah → **dibuang
+sebelum RRF sempat bekerja**. Menaikkan bobot kata kunci tidak menyelamatkan yang sudah tersaring.
+Ini sebab struktural, bukan soal penyetelan.
+
+## Yang dikerjakan
+
+**Jalur terpisah, fungsi lama tidak disentuh.** `match_documents_hybrid` memegang patokan terukur
+**recall@8 14/14** (Item 90 Tahap B); mengubahnya menggeser patokan itu dan membuat setiap pengukuran
+sesudahnya tidak sebanding.
+
+| | |
+|---|---|
+| `documents.fts_judul` | kolom tsvector dihitung Postgres dari `title` + indeks GIN |
+| `match_documents_judul()` | RPC baru; **semua kata wajib ada di judul** (`&`), tanpa ambang kemiripan |
+| `lib/rag/cari_judul.ts` | penggabung hasil, murni & bisa diuji |
+| `document_search.ts` | memanggil jalur judul, menggabungkan; `match_documents_hybrid` tetap apa adanya |
+
+## Terbukti di database, bukan diperkirakan
+
+| Kueri | Hasil |
+|---|---|
+| `kepbup 204` | **1 dokumen — yang benar**, 14 potongan |
+| `pangkat camat lengkiti` | **0** — tidak merebut pertanyaan biasa |
+| `camat lengkiti` | 2 dokumen |
+| kata kosong | 0 |
+
+Syarat **semua-kata** itulah yang membuatnya sempit dengan sendirinya: "pangkat" tidak ada di judul
+mana pun, jadi pertanyaan biasa tetap dijawab jalur hibrida. Tidak perlu pendeteksi "kueri identitas"
+yang bisa salah menebak.
+
+## Tiga aturan penggabungan, masing-masing ada alasannya
+
+1. **Dokumen yang sudah ketemu tidak disisipkan lagi** — hanya akan menggeser potongan lain keluar.
+2. **Disisipkan di DEPAN** — pertanyaan yang menyebut nomor dokumen adalah pertanyaan tentang dokumen
+   itu; di belakang, ia yang pertama terpotong saat konteks dipangkas.
+3. **Dibatasi 3 potongan** — satu Kepbup punya ±14. Memasukkan semuanya mengusir seluruh hasil
+   pencarian isi: menukar satu kegagalan dengan kegagalan lain.
+
+Panjang hasil **tidak bertambah** — total tetap dipotong ke batas yang sama, jadi anggaran konteks dan
+biaya tidak berubah diam-diam. Kegagalan jalur judul dibungkus `try/catch`: pencarian biasa tetap jalan.
+
+## Dua cacat pada uji saya sendiri
+
+1. Asersi ditulis `!x.length > 1`, yang dibaca `(!x.length) > 1` — **selalu false**, jadi merah walau
+   kodenya benar.
+2. Regex pembuang antarmuka TypeScript mencari `\n}\n`, sementara berkas di direktori kerja ber-CRLF
+   → modulnya gagal dimuat **sesudah normalisasi CRLF**. Jebakan CRLF yang dijaga
+   `scripts/samakan-crlf.mjs`, kali ini menggigit berkas ujinya sendiri.
+
+## Bukti
+
+60 berkas uji hijau · `agent-process` lolos esbuild · migrasi terpasang di produksi.
+
+**Uji live yang masih perlu:** deploy `agent-process`, lalu satu chat yang menyebut nomor Kepbup —
+mis. *"apa isi Kepbup 204?"*. Yang dibuktikan: log `[RAG] Judul cocok: N potongan disisipkan dari "…"`
+dan jawabannya menyebut jabatan yang benar. Kendali: pertanyaan biasa tanpa nomor **tidak** memunculkan
+baris log itu.

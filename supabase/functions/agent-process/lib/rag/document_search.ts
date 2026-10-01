@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { RuntimeContext } from '../runtime_context.ts';
 import { RagDocument, FormattedRagContext, RoutingDecision } from './types.ts';
 import { kataKunciPencarian } from '../../../../../frontend/src/core/runtime/services/KnowledgeService.js';
+import { gabungkan, MAKS_POTONGAN_JUDUL } from './cari_judul.ts';
 
 export const searchDocuments = async (
   queryEmbedding: number[],
@@ -51,6 +52,33 @@ export const searchDocuments = async (
 
   if (matchError) {
     throw new Error(`RAG_DB_FAIL: ${matchError.message}`);
+  }
+
+  // PENCARIAN LEWAT JUDUL (2026-10-01). Diukur: 221 dokumen Kepbup, kata "kepbup" muncul di 0 dari
+  // 3.629 potongan, dan 221 dari 221 tidak memuat nomornya sendiri di teks terindeks. Judul memuat
+  // keduanya tetapi tidak pernah ikut dicari. RRF tak bisa menolong — ambang kemiripan VEKTOR
+  // membuang potongannya sebelum RRF bekerja. Jalur ini berdiri sendiri; `match_documents_hybrid`
+  // TIDAK disentuh supaya patokan 14/14 (Item 90) tetap sebanding.
+  //
+  // Kegagalannya tidak boleh menggagalkan pencarian biasa: dibungkus, dan bila gagal hasilnya apa adanya.
+  try {
+    const { data: lewatJudul, error: galatJudul } = await supabaseClient.rpc('match_documents_judul', {
+      query_words: kataKunci,
+      match_count: MAKS_POTONGAN_JUDUL,
+      p_user_id: userId,
+      p_space_id: spaceId
+    });
+    if (galatJudul) {
+      console.warn(`[RAG] pencarian judul dilewati (${galatJudul.message})`);
+    } else if (lewatJudul?.length) {
+      const g = gabungkan(matchedDocs || [], lewatJudul, effectiveRagMatchCount);
+      if (g.disisipkan) {
+        matchedDocs = g.hasil;
+        console.log(`[RAG] Judul cocok: ${g.disisipkan} potongan disisipkan dari "${lewatJudul[0]?.title ?? '?'}"`);
+      }
+    }
+  } catch (e) {
+    console.warn(`[RAG] pencarian judul galat: ${(e as Error).message}`);
   }
 
   if (!matchedDocs || matchedDocs.length === 0) {
