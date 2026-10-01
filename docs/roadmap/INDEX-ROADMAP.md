@@ -220,7 +220,7 @@ sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
 
 ## 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-10-01)
 
-Versi di `main`: **4.2.5**. Terpasang di mesin Owner saat baris ini ditulis: **4.2.4**.
+Versi di `main`: **4.2.6**. Terpasang di mesin Owner saat baris ini ditulis: **4.2.5**.
 Alur rilis manual — Actions membuat draf, Owner yang menekan Publish (item 96).
 
 ### Sudah TERBUKTI LIVE
@@ -302,6 +302,26 @@ terbaca **tidak merata**, dan itu temuan tersendiri.
 | **Perintah baca tanpa persetujuan** | git yang membaca jalan sendiri — tanpa tombol, tanpa dialog. `node -e`/`python -c`/program lain tetap minta izin. Hasil beberapa perintah kembali ke model dalam **satu** kiriman |
 
 `main.cjs` & `preload.cjs` ikut berubah — **wajib build baru**, hard refresh tidak cukup.
+
+**Perintah baca tanpa persetujuan ✅ TERBUKTI LIVE di 4.2.5** — Owner: *"dan langsung menjalankan"*.
+Perintah `git grep` berjalan tanpa tombol dan tanpa dialog.
+
+### Yang dibawa 4.2.6
+
+Keduanya renderer saja — **tidak perlu deploy**. Kontrak Engineer (kacamata kuda) sudah ter-deploy
+terpisah dan sudah terbukti live.
+
+| Dibawa 4.2.6 | Apa |
+|---|---|
+| **Engineer tak bisa jatuh** | satu sumber kebenaran untuk `workspaceId` + penjaga di keempat jalur ringan. Engineer tak lagi bisa diam-diam kehilangan sisipan, kontrak, dan kelas model |
+| **Jejak sisipan** (instrumen) | satu baris `[Sisipan]` per kiriman — **bukan perbaikan, mata**. Tiga teori tentang hilangnya sisipan sudah ditumbangkan angka; ini menutup kebutaannya |
+
+**Yang harus dikerjakan begitu terpasang** — DevTools Console, kirim **dua pesan berturut-turut** di
+satu percakapan Engineer, lalu baca **kedua** baris `[Sisipan]`. Baris kedua yang menjawab.
+
+Empat uji tertunda lain bisa ikut dalam sesi pasang yang sama: tombol Berhenti, Engineer tak jatuh
+(tanya hal pendek-faktual di Engineer), cacat Tahap 6 ke-1 & ke-2 (patch yang sengaja merusak), dan
+unduh desktop dari web.
 
 ### Uji live yang masih menunggu
 
