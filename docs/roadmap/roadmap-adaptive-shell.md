@@ -18,6 +18,45 @@
 > dibuka dari layar kecil (bisa dilihat dari pemakaian nyata, bukan dugaan), bobotnya turun dan item ini
 > boleh mengantre di belakang. Yang TIDAK sah sebagai alasan menutup: bahwa Owner sendiri memakai laptop.
 
+> **KEPUTUSAN OWNER 2026-10-02 — DITUNDA, dan SASARAN RENCANA INI SALAH.**
+>
+> Owner: *"item ini tentang tata letak layar ya? kalau iya tunda dulu, beralih ke yang bisa ditutup
+> pekerjaannya."* Ditunda — **bukan** ditutup; alasan 28 September tetap berlaku.
+>
+> Tetapi pemeriksaan kode 2 Oktober menemukan sesuatu yang harus diperbaiki **sebelum** rencana ini
+> dikerjakan: **FASE 1–4 semuanya menunjuk `frontend/src/`, padahal yang berantakan di HP adalah
+> Mametlite.** Koreksi Owner 28 September menyebut pengguna `mametlite.vercel.app`; rencananya
+> menggarap aplikasi Electron yang hanya Owner pakai.
+>
+> | | Komponen | Pemakaian breakpoint |
+> |---|---|---|
+> | `frontend/src` (Electron, hanya Owner) | 46 berkas | **67** |
+> | `mametlite/src` (web, pengguna luar) | 1 berkas nyata (`App.jsx`) | **0** dari 97 `className` |
+>
+> `frontend/index.html` bahkan sudah punya `viewport-fit=cover` dengan komentar tentang notch
+> iPhone. Aplikasi yang **tidak** dibuka dari HP sudah dirapikan; yang dibuka dari HP belum
+> disentuh.
+>
+> **Akarnya satu baris, bukan empat fase.** `mametlite/src/App.jsx:525` membuka baris flex dua
+> kolom; `:528` bilah sisi `w-80` (320px, **tanpa prefiks responsif apa pun**); `:654` kolom utama.
+> Di HP 375px: bilah sisi memakan 320px, kolom chat sisa ±55px. Dan **tidak ada drawer sama
+> sekali** — nol kemunculan `drawer`/`hamburger`/`sidebarOpen`.
+>
+> **Cacat sampingan:** `mametlite/src/App.css` (184 baris, 6 `@media (max-width: 1024px)`) **tidak
+> diimpor di mana pun** — sisa perancah Vite (`#next-steps`, `#docs`, `.ticks`). Enam media query
+> yang tidak pernah berpengaruh. Siapa pun yang membacanya akan menyangka Mametlite sudah
+> responsif. Penghapusannya menunggu izin Owner.
+>
+> **Saat item ini dilanjutkan:** kerjakan Mametlite lebih dulu (bilah sisi jadi drawer di bawah
+> ambang, satu berkas, tanpa dependency baru, tanpa `DiscoveryManager`, tanpa empat shell). FASE 1
+> tetap berguna dan berdiri sendiri, tetapi ia melayani `frontend/` — mendahulukannya berarti
+> mengerjakan keluhan yang tidak ada. Ini memperkuat poin 3 telaah 12 September, dengan angka.
+>
+> **Yang masih benar dari telaah lama (diperiksa ulang 2 Okt):** `DiscoveryManager.detectDevice()`
+> tetap murni regex User-Agent; `innerWidth` dicatat di `getScreenInfo()` tetapi tidak dipakai
+> untuk klasifikasi; tak ada override manual maupun reaktivitas. `vite-plugin-pwa` tetap belum ada
+> di `frontend/package.json`, jadi FASE 4 masih melanggar aturan rencana ini sendiri.
+
 ## Konteks & Masalah
 
 Mamet Ecosystem saat ini adalah aplikasi Electron (desktop) dengan frontend React + Vite, backend Express di Vercel, dan Supabase untuk persistensi. Saat diakses dari HP (browser/companion), UI berantakan karena layout tidak beradaptasi terhadap device.

@@ -10,6 +10,10 @@ import { buildDynamicContext } from './engineer/TaskHandlers.js'; // [ADR-0017 F
 import { generatePatch } from './engineer/PatchGenerator.js'; // [ADR-0017 Fase 7 + SPESIFIKASI-TEKNIS §2.1]
 import { executePatchApplication } from './engineer/PatchApplier.js'; // [ADR-0017 Fase 8]
 
+// Pemutus arus (TMN-0004). Angkanya dulu mati di tengah `_handlePatchTask`.
+export const BATAS_PATCH_PER_MENIT = 5;
+export const JENDELA_PEMUTUS_MS = 60_000;
+
 /**
  * Engineer.js — Engineering Brain Mamet AI (Real Analysis Engine + Core Protection)
  *
@@ -69,8 +73,17 @@ class Engineer {
 
     this.capability = 'IMPLEMENTER';
     this.pendingPatches = new Map();
-    this.suspiciousAttempts = 0; // Circuit breaker counter
+    this.suspiciousAttempts = 0; // penjaga KEAMANAN (berkas inti), bukan pemutus arus
+    this._apiCallCount = 0;
     this._lastApiReset = 0;
+
+    // Kenapa kapabilitas pernah diturunkan. Dua demosi berbeda memakai 'OBSERVER' yang sama,
+    // tetapi hanya SATU yang boleh pulih sendiri:
+    //   'laju'     — pemutus arus (>5 patch/menit). Pembatas LAJU: hukumannya harus ikut habis
+    //                saat jendela satu menitnya habis, kalau tidak ia jadi hukuman permanen.
+    //   'keamanan' — 3 percobaan menyentuh berkas inti. SENGAJA lengket; tak pulih otomatis.
+    this._sebabDemosi = null;
+    this._kapabilitasSebelumDemosi = null;
     this.intentState = 'READY'; // READY | ANALYZING | ASK_CLARIFICATION | PROCEEDING
     this.pendingConfirmations = new Map(); // Untuk Reasoning Lock
     this.sessionArtifact = null; // FASE 4: Session Artifact — diinisialisasi di initialize()
@@ -451,20 +464,28 @@ class Engineer {
 
   async _handlePatchTask(task) {
     // =============================================
-    // CIRCUIT BREAKER: Mencegah saldo OpenRouter habis akibat loop AI
+    // PEMUTUS ARUS: Mencegah saldo OpenRouter habis akibat loop AI
+    //
+    // TMN-0004: pencacahnya adalah pembatas LAJU — jendelanya mereset tiap menit. Hukumannya
+    // dulu TIDAK: sekali turun ke OBSERVER, satu-satunya jalan pulih adalah `upgradeCapability()`
+    // yang tak punya satu pun pemanggil, jadi Engineer berhenti menambal sampai aplikasi
+    // ditutup. Dan senyap — hanya console.warn, tanpa satu pun emit, sehingga pesan yang Owner
+    // lihat sesudahnya ("belum memiliki kapabilitas IMPLEMENTER") benar tetapi tak menjelaskan
+    // sebabnya. Sekarang hukumannya ikut habis bersama jendelanya, dan keduanya bersuara.
     // =============================================
-    if (!this._apiCallCount) this._apiCallCount = 0;
     this._apiCallCount++;
 
     const now = Date.now();
-    if (now - this._lastApiReset > 60000) {
+    if (now - this._lastApiReset > JENDELA_PEMUTUS_MS) {
       this._apiCallCount = 1;
       this._lastApiReset = now;
+      // Jendelanya habis, jadi hukumannya juga habis — tetapi HANYA bila yang menurunkan
+      // kapabilitas memang pemutus arus ini. Demosi keamanan tidak disentuh (lihat _sebabDemosi).
+      this._pulihkanDariPemutusArus();
     }
 
-    if (this._apiCallCount > 5) {
-      this.capability = 'OBSERVER';
-      console.warn('[Engineer] 🚨 CIRCUIT BREAKER TRIPPED! API calls exceeded 5/min. Downgrading to OBSERVER.');
+    if (this._apiCallCount > BATAS_PATCH_PER_MENIT) {
+      this._turunkanKarenaPemutusArus(task);
       return;
     }
 
@@ -472,7 +493,7 @@ class Engineer {
       this.eventBus.emit('Engineer:Recommendation', {
         type: 'ERROR',
         taskId: task.id,
-        message: 'Engineer belum memiliki kapabilitas IMPLEMENTER.',
+        message: this._alasanKapabilitasKurang(),
         requiresApproval: false
       });
       return;
@@ -1031,6 +1052,10 @@ class Engineer {
       onImmutableFileBlocked: () => {
         this.suspiciousAttempts++;
         if (this.suspiciousAttempts >= 3) {
+          // Demosi KEAMANAN — sengaja lengket. Penandanya wajib: tanpa ini, pemulihan otomatis
+          // pemutus arus akan mengangkatnya kembali satu menit kemudian (TMN-0004).
+          this._kapabilitasSebelumDemosi = this.capability;
+          this._sebabDemosi = 'keamanan';
           this.capability = 'OBSERVER';
           this.eventBus.emit('Engineer:EmergencyLockdown', {
             reason: 'Suspicious core modification attempts detected',
@@ -1087,19 +1112,90 @@ class Engineer {
     emitRecommendation(recommendation, { eventBus: this.eventBus, capability: this.capability });
   }
 
-  upgradeCapability(newCapability) {
+  /**
+   * TMN-0004 — `opsi.otomatis` membedakan dua pemanggil yang hak-haknya TIDAK sama:
+   *
+   * - **Owner/kode (bawaan)**: boleh mengangkat apa pun dan menihilkan `suspiciousAttempts`.
+   * - **Pemulihan otomatis pemutus arus** (`{ otomatis: true }`): hanya boleh membatalkan
+   *   demosi yang ia sendiri sebabkan, dan TIDAK menyentuh `suspiciousAttempts`. Tanpa batas
+   *   ini, pulihnya pembatas laju akan ikut menghapus hitungan percobaan menyentuh berkas
+   *   inti — penjaga keamanan jadi bisa dinolkan oleh kejadian yang tak ada hubungannya.
+   */
+  upgradeCapability(newCapability, opsi = {}) {
     const validCapabilities = [
       'OBSERVER', 'REVIEWER', 'ARCHITECT', 'PLANNER',
       'IMPLEMENTER', 'VERIFIER', 'SELF_MAINTENANCE'
     ];
-    if (validCapabilities.includes(newCapability)) {
-      this.capability = newCapability;
-      this.suspiciousAttempts = 0;
-      console.log(`[Engineer] Capability upgraded to ${newCapability}`);
-      this.eventBus.emit('Engineer:CapabilityUpdated', { capability: this.capability });
-    } else {
+    if (!validCapabilities.includes(newCapability)) {
       console.warn(`[Engineer] Invalid capability: ${newCapability}`);
+      return false;
     }
+    if (opsi.otomatis && this._sebabDemosi === 'keamanan') {
+      console.warn('[Engineer] Pemulihan otomatis DITOLAK — demosi karena keamanan, bukan laju.');
+      return false;
+    }
+    this.capability = newCapability;
+    if (!opsi.otomatis) this.suspiciousAttempts = 0;
+    this._sebabDemosi = null;
+    this._kapabilitasSebelumDemosi = null;
+    console.log(`[Engineer] Capability upgraded to ${newCapability}`);
+    this.eventBus.emit('Engineer:CapabilityUpdated', {
+      capability: this.capability,
+      otomatis: opsi.otomatis === true
+    });
+    return true;
+  }
+
+  // =============================================
+  // PEMUTUS ARUS — turun & pulih (TMN-0004)
+  // =============================================
+
+  _turunkanKarenaPemutusArus(task = null) {
+    // Sudah turun karena keamanan? Jangan ditimpa: sebabnya yang lebih berat harus bertahan,
+    // kalau tidak demosi keamanan bisa "pulih" lewat jalur pemutus arus satu menit kemudian.
+    if (this._sebabDemosi !== 'keamanan') {
+      this._kapabilitasSebelumDemosi = this.capability;
+      this._sebabDemosi = 'laju';
+      this.capability = 'OBSERVER';
+    }
+    const detikLagi = Math.max(
+      1,
+      Math.ceil((JENDELA_PEMUTUS_MS - (Date.now() - this._lastApiReset)) / 1000)
+    );
+    console.warn(`[Engineer] PEMUTUS ARUS aktif: lebih dari ${BATAS_PATCH_PER_MENIT} patch dalam satu menit. Menambal dihentikan ~${detikLagi}s.`);
+    // Dulu bagian ini hanya console.warn, jadi Owner tidak pernah diberi tahu.
+    this.eventBus.emit('Engineer:Recommendation', {
+      type: 'ERROR',
+      taskId: task?.id,
+      message: `Pemutus arus aktif — lebih dari ${BATAS_PATCH_PER_MENIT} penerapan patch dalam satu menit. Ini penjaga saldo, bukan penolakan. Engineer menambal lagi sekitar ${detikLagi} detik lagi; coba kirim ulang setelah itu.`,
+      requiresApproval: false
+    });
+    this.eventBus.emit('Engineer:CircuitBreaker', {
+      aktif: true,
+      sebab: 'laju',
+      batas: BATAS_PATCH_PER_MENIT,
+      pulihDalamDetik: detikLagi
+    });
+  }
+
+  _pulihkanDariPemutusArus() {
+    if (this._sebabDemosi !== 'laju') return;
+    const kembaliKe = this._kapabilitasSebelumDemosi || 'IMPLEMENTER';
+    if (this.upgradeCapability(kembaliKe, { otomatis: true })) {
+      console.log(`[Engineer] Pemutus arus pulih — kapabilitas kembali ke ${kembaliKe}.`);
+      this.eventBus.emit('Engineer:CircuitBreaker', { aktif: false, sebab: 'laju', capability: kembaliKe });
+    }
+  }
+
+  /** Pesan "kapabilitas kurang" dulu tak menyebut sebabnya, jadi tak bisa ditindaklanjuti. */
+  _alasanKapabilitasKurang() {
+    if (this._sebabDemosi === 'keamanan') {
+      return `Engineer diturunkan ke ${this.capability} oleh penjaga keamanan — ada percobaan mengubah berkas inti. Ini tidak pulih sendiri; mulai ulang aplikasi setelah memastikan tugasnya benar.`;
+    }
+    if (this._sebabDemosi === 'laju') {
+      return `Engineer sedang ditahan pemutus arus (lebih dari ${BATAS_PATCH_PER_MENIT} patch/menit). Coba lagi sebentar.`;
+    }
+    return `Engineer belum memiliki kapabilitas IMPLEMENTER (sekarang ${this.capability}).`;
   }
 
   getMetrics() {
