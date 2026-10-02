@@ -8,7 +8,7 @@ import { UnifiedExecutionContext, RequestPipelineParams, RequestPipelineResult }
 import { RuntimeContext, createBackgroundTaskTracker, createRuntimeLogger } from '../runtime_context.ts';
 import { getPluginPromptList } from '../../plugins/registry.ts';
 import { CapabilityRegistry } from '../adapters/adapter_registry.ts';
-import { generateEmbedding, EMBEDDING_DIMENSIONS } from '../rag/embedding.ts';
+import { generateEmbedding, EMBEDDING_DIMENSIONS, kalimatSebabEmbedding, type JejakEmbedding } from '../rag/embedding.ts';
 import { rapikanRiwayat } from './history_compressor.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { konteksWaktuPengguna, zonaWaktuSah } from './waktu_pengguna.ts';
@@ -25,8 +25,12 @@ import { blokPromptFolder } from '../../../../../frontend/src/core/runtime/servi
  * memakai kunci pengguna itu untuk vektor OpenAI 768 dimensi, yang lalu ditolak
  * match_memories (kolom 3072).
  */
-async function generateEmbeddingThroughAdapter(text: string, rctx: RuntimeContext): Promise<number[]> {
-  const embedding = await generateEmbedding(text, rctx);
+async function generateEmbeddingThroughAdapter(
+  text: string,
+  rctx: RuntimeContext,
+  jejak?: JejakEmbedding,
+): Promise<number[]> {
+  const embedding = await generateEmbedding(text, rctx, jejak);
   if (embedding.length !== EMBEDDING_DIMENSIONS) {
     throw new Error(`Embedding gagal (didapat ${embedding.length} dimensi, perlu ${EMBEDDING_DIMENSIONS}) — pencarian memori dilewati.`);
   }
@@ -224,6 +228,9 @@ export async function executeRequestPipeline(
   // "Tidak ada memori yang relevan." sehingga model diberi tahu pengetahuannya berhenti di 2024
   // walau dokumen/web sudah disuntikkan. Memori hasil pencarian vektor disimpan terpisah.
   let memoriVektor = '';
+  // Diisi di tempat oleh pintu embedding; dibaca di `catch` di bawah supaya kegagalan vektor
+  // bisa dibedakan dari galat RAG lain, dan supaya SEBABNYA sampai ke pengguna.
+  const jejakVektorMemori: JejakEmbedding = {};
   try {
     // Only run RAG if the message is non-empty and RAG is enabled
     if (parsed.finalMessage && parsed.finalMessage.trim().length > 0 && parsed.ragEnabled !== false) {
@@ -232,7 +239,7 @@ export async function executeRequestPipeline(
       // 1. Vektor kueri lewat pintu embedding tunggal (OpenRouter, kunci pengguna, 768 dimensi — Item 70).
       //    Disimpan di ctx.request supaya pencarian DOKUMEN di context_builder memakai vektor yang
       //    sama — satu embedding per pesan, bukan dua.
-      const userEmbedding = await generateEmbeddingThroughAdapter(parsed.finalMessage, rctx);
+      const userEmbedding = await generateEmbeddingThroughAdapter(parsed.finalMessage, rctx, jejakVektorMemori);
       (ctx.request as any).queryEmbedding = userEmbedding;
 
       // 2. Query vector database via Supabase RPC
@@ -310,6 +317,18 @@ export async function executeRequestPipeline(
   } catch (ragError: any) {
     // Don't crash the pipeline if RAG fails — just log and continue
     console.error('[RAG] Error during vector search:', ragError.message || ragError);
+    // Pencarian memori TIDAK punya cadangan pencocokan kata seperti pencarian dokumen: memori
+    // hanya bisa ditemukan lewat vektor. Jadi kegagalan di sini berarti memori DILEWATI SELURUHNYA,
+    // dan sebelum ini satu-satunya jejaknya adalah console.error di sisi server.
+    if (jejakVektorMemori.sebab) {
+      ctx.state.processingSteps.push(
+        `⚠️ [MEMORI DILEWATI] Pencarian memori butuh vektor dan vektornya gagal: ` +
+        `${kalimatSebabEmbedding(jejakVektorMemori)}. Memori tidak punya cadangan pencocokan kata, ` +
+        `jadi tak satu pun memori ikut ke model pada pesan ini.`
+      );
+    } else {
+      ctx.state.processingSteps.push(`⚠️ [MEMORI DILEWATI] Galat saat pencarian vektor: ${String(ragError?.message || ragError).slice(0, 160)}`);
+    }
   }
   // =============================================
   // [SELESAI] LOGIKA RAG

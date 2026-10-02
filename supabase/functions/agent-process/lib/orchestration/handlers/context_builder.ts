@@ -1,4 +1,4 @@
-import { generateEmbedding, EMBEDDING_DIMENSIONS } from '../../rag/embedding.ts';
+import { generateEmbedding, EMBEDDING_DIMENSIONS, kalimatSebabEmbedding, type JejakEmbedding } from '../../rag/embedding.ts';
 import { searchDocuments } from '../../rag/document_search.ts';
 import { jalankanDataTabel } from '../../data_tabel/data_tabel.ts';
 import { tulisUlangPertanyaan, riwayatSebelumPesan, samaDenganAsli } from '../../rag/query_rewrite.ts';
@@ -114,7 +114,10 @@ export const ContextBuilderHandler = {
             // (membuang jawaban yang sama-sama dari satu dokumen), dan pengurutan ulangnya tak perlu.
             const pesan = ctx.request.finalMessage || '';
             const vektorSiap = Array.isArray(ctx.request.queryEmbedding) && ctx.request.queryEmbedding.length === EMBEDDING_DIMENSIONS;
-            const queryEmbedding = vektorSiap ? ctx.request.queryEmbedding : await generateEmbedding(pesan, rctx);
+            // Sebab kegagalan ikut dicatat: tanpa ini, penurunan ke pencocokan kata di bawah
+            // hanya terbaca sebagai "✅ RAG TIER 1 OK" dengan nama strategi internal.
+            const jejakVektor: JejakEmbedding = {};
+            const queryEmbedding = vektorSiap ? ctx.request.queryEmbedding : await generateEmbedding(pesan, rctx, jejakVektor);
 
             if (queryEmbedding.length === EMBEDDING_DIMENSIONS) {
                 const cari = (vektor: number[], teks: string) => searchDocuments(
@@ -160,7 +163,22 @@ export const ContextBuilderHandler = {
             // CADANGAN tanpa vektor (pengguna tanpa kunci OpenRouter, atau OpenRouter gagal):
             // pencocokan kata. Kasus A di RetrievalStrategyService tidak lagi menyeret seluruh
             // dokumen, jadi hasilnya dibatasi `effectiveRagMatchCount`.
-            console.log(`[RAG] Mode: ${ctx.policy.mode} — vektor tidak tersedia, cadangan pencocokan kata (KnowledgeService).`);
+            //
+            // PENURUNAN INI HARUS TERLIHAT. Pencocokan kata adalah justru perilaku yang Item 64/65
+            // buktikan jauh lebih buruk: dokumen yang pertanyaannya tak memuat kata dari judulnya
+            // TIDAK DITEMUKAN SAMA SEKALI. Sebelum ini, satu-satunya jejaknya adalah console.log
+            // di sisi server, sementara `processingSteps` — yang sampai ke pengguna — tetap
+            // melaporkan "✅ [RAG TIER 1 OK]" dengan nama strategi internal. Jawabannya tampak
+            // normal, mutunya tidak, dan tak ada yang memberi tahu.
+            const sebabTurun = vektorSiap
+                ? 'vektor yang dipakai ulang tak sesuai dimensi'
+                : kalimatSebabEmbedding(jejakVektor);
+            console.log(`[RAG] Mode: ${ctx.policy.mode} — vektor tidak tersedia (${sebabTurun}), cadangan pencocokan kata (KnowledgeService).`);
+            ctx.state.processingSteps.push(
+                `⚠️ [RAG TURUN KE PENCOCOKAN KATA] Pencarian makna tidak jalan: ${sebabTurun}. ` +
+                `Dokumen yang pertanyaannya tak memuat kata dari judulnya bisa TIDAK ditemukan — ` +
+                `jawaban di bawah mungkin melewatkan sumber yang sebenarnya ada.`
+            );
             const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.39.3');
             const supabase = createClient(rctx.env.supabaseUrl, rctx.env.supabaseServiceKey);
 

@@ -29,17 +29,63 @@ export const EMBEDDING_DIMENSIONS = EMBED_DIMENSI;
  * Tanpa kunci atau bila OpenRouter gagal → array KOSONG, dan pemanggil yang memutuskan:
  * pencarian dilewati / jatuh ke pencocokan kata, pengindeksan menolak.
  */
-export const generateEmbedding = async (text: string, rctx: RuntimeContext): Promise<number[]> => {
+export type SebabEmbedding = 'tanpa-kunci' | 'galat' | 'dimensi';
+
+/**
+ * Wadah SEBAB kegagalan, diisi di tempat (opsional).
+ *
+ * Kenapa bukan nilai kembalian: array kosong adalah kontrak yang sudah dipakai lima pemanggil.
+ * Mengubahnya menjadi objek akan menyentuh semuanya sekaligus. Yang hilang dari array kosong
+ * hanyalah SEBABNYA — dan sebab itulah yang menentukan tindakan: 'tanpa-kunci' tak akan pernah
+ * berhasil kalau dicoba lagi, 'galat' mungkin sesaat saja.
+ *
+ * Pemanggil yang tidak peduli cukup tidak mengirimnya. Perilaku fungsinya TIDAK berubah.
+ */
+export interface JejakEmbedding {
+  sebab?: SebabEmbedding;
+  pesan?: string;
+}
+
+export const generateEmbedding = async (
+  text: string,
+  rctx: RuntimeContext,
+  jejak?: JejakEmbedding,
+): Promise<number[]> => {
   const kunci = (rctx?.keys?.openRouterByok || '').trim();
   if (!kunci) {
     console.warn('[Embedding] Dilewati — tidak ada kunci OpenRouter pengguna (x-byok-openrouter).');
+    if (jejak) {
+      jejak.sebab = 'tanpa-kunci';
+      jejak.pesan = 'tidak ada kunci OpenRouter pengguna (BYOK)';
+    }
     return [];
   }
   try {
     const [vektor] = await embedLewatOpenRouter([text], kunci, { batasWaktuMs: 15_000 });
-    return vektor;
+    // `?? []` menepati janji tipenya: embedLewatOpenRouter yang mengembalikan daftar kosong
+    // membuat `vektor` menjadi undefined, dan pemanggil yang menulis `.length` akan melempar
+    // TypeError yang lalu terbaca sebagai "galat RAG" — menyamarkan sebab yang sebenarnya.
+    const hasil = vektor ?? [];
+    if (jejak && hasil.length !== EMBEDDING_DIMENSIONS) {
+      // Ketidakcocokan dimensi pernah berjalan diam-diam selama berminggu-minggu (Item 39).
+      jejak.sebab = 'dimensi';
+      jejak.pesan = `didapat ${hasil.length} dimensi, perlu ${EMBEDDING_DIMENSIONS}`;
+    }
+    return hasil;
   } catch (e: any) {
     console.warn(`[Embedding] Gagal (${e?.kode || 'ERROR'}): ${e?.message || String(e)}`);
+    if (jejak) {
+      jejak.sebab = 'galat';
+      jejak.pesan = `${e?.kode || 'ERROR'}: ${String(e?.message || e).slice(0, 160)}`;
+    }
     return [];
   }
+};
+
+/** Satu kalimat yang bisa ditindaklanjuti Owner, bukan nama keadaan internal. */
+export const kalimatSebabEmbedding = (jejak: JejakEmbedding): string => {
+  if (jejak.sebab === 'tanpa-kunci') return 'tidak ada kunci OpenRouter (BYOK) pada permintaan ini';
+  if (jejak.sebab === 'dimensi') return `vektornya tak sesuai skema database (${jejak.pesan})`;
+  if (jejak.sebab === 'galat') return `OpenRouter menolak atau gagal — ${jejak.pesan}`;
+  return 'sebabnya tidak tercatat';
 };
