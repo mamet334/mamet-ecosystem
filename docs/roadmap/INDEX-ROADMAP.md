@@ -368,13 +368,18 @@ Empat uji tertunda lain bisa ikut dalam sesi pasang yang sama: tombol Berhenti, 
 (tanya hal pendek-faktual di Engineer), cacat Tahap 6 ke-1 & ke-2 (patch yang sengaja merusak), dan
 unduh desktop dari web.
 
-### Yang dibawa 4.2.9
+### Yang dibawa 4.2.10 (termasuk muatan 4.2.9 — 4.2.9 TIDAK PERNAH DITERBITKAN)
 
-Ketiganya renderer/klien — **tidak perlu deploy**. Sisi server untuk Brain 1 dan lampiran sudah
-ter-deploy terpisah 2 Okt.
+> **4.2.9 hanya pernah jadi commit, bukan rilis.** Versinya dinaikkan 2 Okt (`b31b37f`) tetapi
+> build & Publish-nya belum sempat dijalankan sebelum pekerjaan berikutnya masuk, lalu versinya
+> dinaikkan lagi ke 4.2.10. Diperiksa: tak ada artefak 4.2.9 di `frontend/release/`.
+>
+> **Akibatnya untuk pengujian:** keempat uji di bawah dan uji pemutus arus **semuanya berlaku untuk
+> 4.2.10**. Jangan mencari 4.2.9 — ia tak ada di daftar rilis.
 
-| Dibawa 4.2.9 | Apa |
+| Dibawa 4.2.10 | Apa |
 |---|---|
+| **Pemutus arus tak lagi permanen** | hukuman ikut habis bersama jendela satu menitnya, dan keduanya bersuara; demosi keamanan tetap lengket (item 113, TMN-0004) |
 | **Brain 1 bisa ditulis** | tombol "Simpan N pengetahuan" — Engineer mengusulkan blok, Owner menyetujui. Brain 1 beku sejak 27 Juni; ini yang mencairkannya (item 110) |
 | **Lampiran untuk Engineer** | tombol lampiran di Engineer — mata terhadap tata letak, dan dokumen instruksi teknis (item 112) |
 | **Mutu bukti** | petunjuk grep-sebagian, dan gembok yang tak lagi menuduh pengulangan sebagai larangan (item 111) |
@@ -387,6 +392,14 @@ ter-deploy terpisah 2 Okt.
 3. Jalankan `git grep` polos — harus muncul petunjuk "N BARIS YANG COCOK, bukan isi berkasnya".
 4. Ulangi perintah yang sama persis — harus muncul penanda riwayat yang netral, **bukan** gembok
    "tidak diizinkan".
+5. **Pemutus arus** (butuh 4.2.10) — terapkan patch **enam kali dalam satu menit**. Harus muncul
+   pesan pemutus arus yang menyebut perkiraan detik, bukan diam. Lalu **tunggu satu menit** dan
+   terapkan sekali lagi: harus jalan kembali **tanpa menutup aplikasi**. Kalau tetap menolak,
+   hukumannya masih permanen.
+6. **RAG turun bersuara** (butuh DEPLOY, bukan rilis klien) — kirim satu pertanyaan saat embedding
+   gagal (mis. tanpa kunci OpenRouter). Harus muncul **⚠️ [RAG TURUN KE PENCOCOKAN KATA]** beserta
+   sebabnya, dan bila memori juga dilewati, **⚠️ [MEMORI DILEWATI]**. Kalau yang muncul hanya
+   "✅ RAG TIER 1 OK", perubahannya belum sampai.
 
 ### Uji live yang masih menunggu
 
