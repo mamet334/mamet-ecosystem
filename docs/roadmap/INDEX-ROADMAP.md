@@ -372,6 +372,36 @@ Empat uji tertunda lain bisa ikut dalam sesi pasang yang sama: tombol Berhenti, 
 (tanya hal pendek-faktual di Engineer), cacat Tahap 6 ke-1 & ke-2 (patch yang sengaja merusak), dan
 unduh desktop dari web.
 
+### Yang dibawa 4.2.11
+
+> **BEDA DENGAN KEADAAN 4.2.9:** 4.2.10 **benar-benar diterbitkan dan dipakai** Owner
+> (*"sudah push dan berhasil memakai versi 4.2.10"*). Jadi keempat uji 4.2.10 di bawah **tidak
+> hangus** — fiturnya ada di 4.2.10 maupun 4.2.11, dan menjalankannya di 4.2.11 sama sahnya.
+>
+> Owner memilih menaikkan versi sekarang meski keempat uji itu belum dijalankan. Dicatat supaya
+> jelas ini **keputusan**, bukan kelupaan: asisten mengusulkan menguji dulu agar "terbukti live"
+> tidak kehilangan arti karena versi menumpuk; Owner memutuskan naik sekarang.
+
+| Dibawa 4.2.11 | Apa |
+|---|---|
+| **Perintah tanpa izin punya saksi** | jejak audit yang BERTAHAN untuk tiap perintah Engineer, dengan pembedaan "jalan tanpa dialog"; keluarannya tidak disimpan, hanya panjangnya (item 118) |
+
+**Wajib build baru**, bukan muat ulang renderer: `alatFolderJalan.cjs` ada di `frontend/electron/`.
+Migrasi basis datanya **sudah diterapkan** 4 Okt — tidak ada yang perlu dijalankan lagi.
+
+**Uji 4.2.11:** jalankan `git status` lewat Engineer (ia jalan sendiri tanpa dialog), lalu periksa
+tabelnya:
+
+```sql
+select command, tanpa_persetujuan, result_reason, logged_at
+from assistant_audit_log order by logged_at desc limit 5;
+```
+
+Harus muncul barisnya dengan `tanpa_persetujuan = true` dan `result_reason` memuat *"keluaran N
+huruf (tidak disimpan)"*. **Tabel yang tetap 0 baris berarti insert-nya ditolak** — kemungkinan
+besarnya sesi tidak terautentikasi saat itu, karena kebijakan RLS barunya menuntut
+`auth.uid() = user_id`.
+
 ### Yang dibawa 4.2.10 (termasuk muatan 4.2.9 — 4.2.9 TIDAK PERNAH DITERBITKAN)
 
 > **4.2.9 hanya pernah jadi commit, bukan rilis.** Versinya dinaikkan 2 Okt (`b31b37f`) tetapi
