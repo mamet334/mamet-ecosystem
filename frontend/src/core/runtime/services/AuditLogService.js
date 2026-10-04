@@ -87,9 +87,22 @@ export class AuditLogService {
   /**
    * Shortcut untuk mencatat eksekusi command dari AssistantService.
    *
+   * TMN-0003 (dikoreksi 2026-10-04) — dua hal salah di keterangan lama:
+   *
+   * 1. `commandName` disebut berasal "dari CommandRegistry". Berkas
+   *    `core/runtime/services/CommandRegistry.js` sudah TIDAK ADA; namanya kini datang dari
+   *    pemanggil apa adanya.
+   * 2. Method ini **YATIM**: nol pemanggil di seluruh `frontend/src` — satu-satunya kemunculan
+   *    `logCommand` adalah definisi ini sendiri. Jadi tak ada satu pun eksekusi command yang
+   *    benar-benar tercatat lewat jalan ini.
+   *
+   * SENGAJA DIBIARKAN HIDUP, bukan terlewat: `this.log()` di bawahnya tetap dipakai, dan
+   * penghapusan permanen menunggu keputusan Owner. Yang diperbaiki hari ini hanyalah
+   * keterangannya — supaya pembaca berikutnya tidak menyangka jalur ini aktif.
+   *
    * @param {Object} params
    * @param {string} params.userMsg      - pesan user yang memicu command
-   * @param {string} params.commandName  - nama command (dari CommandRegistry)
+   * @param {string} params.commandName  - nama command (dari pemanggil; CommandRegistry sudah tiada)
    * @param {string} params.targetPath   - path target
    * @param {boolean} params.inWorkspace - apakah path di dalam workspace
    * @param {boolean} params.isDestructive - apakah command destruktif

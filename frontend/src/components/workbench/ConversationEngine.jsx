@@ -61,8 +61,23 @@ const parseThinkingContent = (text) => {
 //   - Delegasi semua logika bisnis ke AssistantService
 //   - Rendering JSX
 //
-// Tidak ada lagi: fetch(), supabase.from(), kernel.serviceManager.get()
-// untuk logika bisnis — semua ada di AssistantService.
+// Tidak ada lagi: fetch() maupun kernel.serviceManager.get() untuk logika bisnis —
+// semuanya lewat AssistantService.
+//
+// TMN-0002 (dikoreksi 2026-10-04): kalimat ini dulu menyebut `supabase.from()` juga sudah tak ada.
+// Itu TIDAK benar, dan makin tidak benar: ada TIGA pemanggilan langsung di berkas ini —
+//   supabase.from('chats')                  2x — memuat ulang riwayat satu chat
+//   supabase.from('project_memory_entries') 1x — simpan pengetahuan Brain 1
+// Yang ketiga DITAMBAHKAN 2 Okt (bbfce3a), ditulis tepat di bawah komentar yang menyangkal
+// keberadaannya — komentar yang salah tidak menghalangi apa pun, jadi ia malah bertambah salah.
+//
+// Tabel & jumlah, SENGAJA tanpa nomor baris: nomor baris di komentar pasti membusuk pada suntingan
+// berikutnya — percobaan pertama perbaikan ini mencantumkannya, dan komentar ini sendiri langsung
+// menggeser ketiganya. `uji-komentar-tak-berbohong.mjs` yang menjaga daftar ini tetap cocok.
+//
+// Dibiarkan sebagai pernyataan keadaan, bukan aturan: ketiganya pembacaan/penulisan baris
+// langsung tanpa logika keputusan, dan memindahkannya ke AssistantService adalah pekerjaan
+// tersendiri — bukan sesuatu yang diselundupkan lewat perbaikan komentar.
 // =============================================
 export default function ConversationEngine({ sessionId }) {
   const { manager: workspaceManager, osState } = useWorkspace();
