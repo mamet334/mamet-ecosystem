@@ -99,8 +99,35 @@ export function plafonUlang(teks: string): number | null {
   return n === null ? null : Math.floor(n * MARGIN_SALDO);
 }
 
+/**
+ * Varian 402 KEDUA, teramati di produksi 2026-10-04: "Prompt tokens limit exceeded: 14250 > 3621".
+ *
+ * Kendalanya PINDAH — bukan `max_tokens` (keluaran) melainkan PROMPT-nya sendiri. Menurunkan
+ * plafon keluaran tidak menolong sedikit pun di sini, dan menyuruh "isi ulang saldo" menyesatkan:
+ * saldo sebesar 3.621 token itu CUKUP, prompt-nyalah yang 14.250.
+ *
+ * Tidak ada pengulangan otomatis untuk varian ini. Memangkas prompt diam-diam berarti membuang
+ * aturan atau konteks yang justru menentukan mutu jawaban — keputusan itu milik Owner, dan yang
+ * bisa dilakukan di sini adalah memberinya ANGKANYA.
+ */
+export function batasPrompt(teks: string): { dipakai: number; batas: number } | null {
+  const m = String(teks || '').match(/Prompt tokens limit exceeded:\s*([\d,.]+)\s*>\s*([\d,.]+)/i);
+  if (!m) return null;
+  const dipakai = Math.floor(Number(m[1].replace(/,/g, '')));
+  const batas = Math.floor(Number(m[2].replace(/,/g, '')));
+  return Number.isFinite(dipakai) && Number.isFinite(batas) ? { dipakai, batas } : null;
+}
+
 /** Kalimat yang bisa ditindaklanjuti untuk 402 — menggantikan badan JSON mentah. */
 export function pesanSaldoTakCukup(teks: string, diminta: number): string {
+  // Varian PROMPT lebih dulu: di sini "isi ulang saldo" saja menyesatkan, karena memperkecil
+  // prompt sama-sama menyelesaikannya — dan sering itu yang lebih tepat.
+  const p = batasPrompt(teks);
+  if (p) {
+    const lebih = p.dipakai - p.batas;
+    return `Prompt terlalu besar untuk saldo OpenRouter saat ini: ${p.dipakai} token dikirim, sedangkan saldo hanya menanggung ${p.batas} — kelebihan ${lebih} token. Menurunkan panjang jawaban TIDAK menolong di sini; yang kebesaran adalah prompt-nya. Mulai percakapan BARU (riwayat ikut terkirim di setiap pesan) atau isi ulang saldo. Rincian ukuran tiap bagian ada di log [PROMPT_KOMPOSISI].`;
+  }
+
   const n = tokenTerjangkau(teks);
   const plafon = plafonUlang(teks);
   if (n === null || plafon === null) {

@@ -108,6 +108,38 @@ try {
   cek(plafonUlang(PESAN_402_NYATA) >= MIN_TOKEN_LAYAK,
     'dan masih di atas lantai, jadi pengulangannya tetap layak dicoba', plafonUlang(PESAN_402_NYATA));
 
+  // ── 1c. VARIAN 402 KEDUA — kendalanya PINDAH ke prompt ───────────────────────────────────
+  // Teramati di produksi 4 Okt sesudah perbaikan pertama ter-deploy:
+  //   "Prompt tokens limit exceeded: 14250 > 3621"
+  // Tidak ada "can only afford" sama sekali, jadi jalur lama jatuh ke cabang "tak terbaca" dan
+  // menyuruh "isi ulang saldo" — menyesatkan, karena saldo 3.621 token itu CUKUP; prompt-nyalah
+  // yang 14.250. Menurunkan max_tokens tidak menolong sedikit pun di sini.
+  console.log('\n-- varian 402 kedua: prompt kebesaran --');
+  {
+    const PROMPT_402 = JSON.stringify({
+      error: {
+        message: 'Prompt tokens limit exceeded: 14250 > 3621. To increase, visit https://openrouter.ai/settings/credits and add more credits',
+        code: 402,
+        metadata: { limit_source: 'openrouter_credits' },
+      },
+    });
+    const b = M.batasPrompt(PROMPT_402);
+    cek(b?.dipakai === 14250 && b?.batas === 3621, 'kedua angka terbaca', b);
+    cek(tokenTerjangkau(PROMPT_402) === null, 'varian ini TIDAK punya "can only afford" — jadi jangan dipaksakan');
+
+    const pesan = pesanSaldoTakCukup(PROMPT_402, MAKS_TOKEN_JAWABAN);
+    cek(/14250/.test(pesan) && /3621/.test(pesan), 'pesannya menyebut kedua angka', pesan);
+    cek(/10629/.test(pesan), 'dan kelebihannya dihitungkan, bukan disuruh menghitung sendiri', pesan);
+    cek(/TIDAK menolong/.test(pesan), 'dikatakan tegas bahwa menurunkan panjang jawaban tak menolong', pesan);
+    cek(/percakapan BARU/i.test(pesan), 'memberi jalan yang bisa ditempuh Owner sekarang juga', pesan);
+    cek(!/\{"error"/.test(pesan), 'badan JSON mentah tidak lagi diteruskan untuk varian ini', pesan);
+
+    // Tidak boleh ada pengulangan: plafon keluaran bukan yang bermasalah.
+    const d = [];
+    await kirimOpenRouterDenganReasoning({ model: 'm', max_tokens: MAKS_TOKEN_JAWABAN }, undefined, async (x) => { d.push(x); return resp(402, PROMPT_402); });
+    cek(d.length === 1, 'tidak diulang — mengecilkan max_tokens tak mengubah ukuran prompt', d.length);
+  }
+
   // ── 2. Ulang-coba DIJALANKAN dan DIHITUNG ─────────────────────────────────────────────────
   console.log('\n-- ulang-coba dijalankan --');
   {

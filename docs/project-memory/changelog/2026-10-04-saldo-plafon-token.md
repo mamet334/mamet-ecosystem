@@ -166,6 +166,75 @@ memang tidak cukup untuk jawaban yang berguna, dan pesannya kini mengatakan itu 
 Membedakan dua hal itu — kode yang salah memilih plafon versus saldo yang benar-benar habis —
 adalah yang sebelumnya tidak mungkin dilakukan dari dumping JSON.
 
+## ✅ UJI LIVE KEDUA — kendalanya PINDAH, dan membuka temuan yang lebih besar
+
+Deploy kedua, pertanyaan yang sama. Galatnya berubah bentuk sama sekali:
+
+```
+Prompt tokens limit exceeded: 14250 > 3621
+```
+
+Tak ada *"can only afford"* sama sekali, jadi jalur baru jatuh ke cabang "tak terbaca" dan
+menyuruh **"isi ulang saldo"** — **menyesatkan**, karena saldo sebesar 3.621 token itu **cukup**;
+prompt-nyalah yang 14.250. Menurunkan `max_tokens` tidak menolong **sedikit pun** di sini.
+
+Varian ini kini dikenali (`batasPrompt`), tidak diulang (mengecilkan plafon keluaran tak mengubah
+ukuran prompt), dan pesannya menghitungkan kelebihannya.
+
+### Dari mana 14.250 token itu — diukur, bukan ditebak
+
+Log `[PROMPT_KOMPOSISI]` untuk pertanyaan **empat kata** *"apa itu rls?"*:
+
+| Bagian | Huruf |
+|---|---|
+| **`memori_personal_klien`** | **18.195** |
+| `blok4_rag` | 7.025 |
+| `dasar_identitas_panduan` | 6.030 |
+| `blok5_constraint` | 2.706 |
+| `blok4_brain` | 2.013 |
+| `kontrak_blok1_2` | 1.099 |
+| `blok6_format` | 1.248 |
+| `blok3_memori` | 196 |
+| **riwayat** (2 pesan) | **16.557** |
+| pesan Owner | 12 |
+| **total** | **55.081 huruf ≈ 14.250 token** ✓ |
+
+Angkanya cocok dengan galatnya, jadi ukuran ini bukan perkiraan.
+
+**Dugaan pertama saya salah dan sempat masuk ke pesan galat.** Saya menulis bahwa *"mode ENGINEER
+menyuntikkan aturan + peta repo"* yang membengkak. Datanya membantah: seluruh kontrak Engineer
+(`kontrak_blok1_2` + `blok5_constraint`) hanya **±3.800 huruf**. Kalimat itu dicabut sebelum
+di-commit — diperiksa dulu, bukan dikirim sebagai tebakan.
+
+### Dua temuan yang sebenarnya, dan keduanya besar
+
+**1. `memori_personal_klien` bukan memori personal.** Diukur langsung ke basis data:
+`user_memories` berisi **10 baris, 316 huruf SELURUHNYA**, terpanjang 45 huruf. Tetapi bagian
+prompt berlabel itu **18.195 huruf** — **57× lipat**.
+
+Sebabnya: label itu diukur sebagai **jarak antar penanda** (`llm_orchestrator.ts:222`), dari
+penanda memori sampai awal kontrak. Yang mengisi ruang itu adalah `globalMemory` kiriman klien —
+dan di `AssistantService.js:1313`, `globalMemory` berisi **`trimmedRagContext`**. Jadi bagian
+terbesar setiap prompt adalah **konteks RAG sisi klien yang diberi nama memori personal**.
+
+Perlu diperiksa lebih lanjut: `blok4_rag` (7.025 huruf) adalah RAG sisi **server**. Apakah
+konteks RAG masuk **dua kali** lewat dua jalur? Kalau ya, itu penghematan terbesar yang tersedia.
+Belum dibuktikan — dicatat sebagai pertanyaan, bukan kesimpulan.
+
+**2. Riwayat 16.557 huruf untuk DUA pesan.** Pertanyaannya 12 huruf, jadi pesan satunya ±16.545
+huruf — hampir pasti **dumping JSON 402 yang lama**, tersimpan sebagai pesan lalu ikut terkirim di
+setiap pesan berikutnya. Galat yang besar **meracuni prompt seterusnya**.
+
+Perbaikan hari ini menutup sumbernya: galat 402 kini pesan pendek, bukan dumping JSON. Tetapi
+yang **sudah** tersimpan tetap di riwayat — karena itu pesan barunya menyarankan **mulai
+percakapan baru**, yang seketika memotong 16.557 huruf.
+
+### Apa artinya untuk saldo setipis ini
+
+Percakapan baru: 55.081 → ±38.500 huruf ≈ **9.950 token**. Masih di atas 3.621. Jadi pada saldo
+sekarang, mode Engineer memang **tidak bisa jalan** — dan itu kesimpulan yang jujur, bukan
+kegagalan kode. Yang berubah: Owner kini **tahu angkanya** dan tahu mana yang bisa ditekan.
+
 ## Perlu DEPLOY, tanpa rilis klien
 
 `reasoning_openrouter.ts` dan `ai_adapter.ts` keduanya di `agent-process`.

@@ -487,6 +487,43 @@ Tidak menyala pada uji 1 Okt 13.12 (mode terbukti tetap ENGINEER), jadi ini **ra
 kegagalan kemarin**. Tapi satu pertanyaan Engineer yang kebetulan terlihat seperti pertanyaan
 faktual singkat akan jatuh ke sini tanpa tanda apa pun.
 
+### ⚠️ Temuan terbuka — 55.081 huruf prompt untuk pertanyaan EMPAT KATA (4 Okt)
+
+Diukur dari log `[PROMPT_KOMPOSISI]` saat *"apa itu rls?"* ditolak OpenRouter dengan
+`Prompt tokens limit exceeded: 14250 > 3621`. Totalnya **55.081 huruf ≈ 14.250 token** — cocok
+dengan galatnya, jadi ini ukuran, bukan perkiraan.
+
+| Bagian | Huruf |
+|---|---|
+| **`memori_personal_klien`** | **18.195** |
+| **riwayat** (2 pesan) | **16.557** |
+| `blok4_rag` | 7.025 |
+| `dasar_identitas_panduan` | 6.030 |
+| `blok5_constraint` + `kontrak_blok1_2` | 3.805 |
+| sisanya | 3.457 |
+
+**Dugaan pertama saya SALAH:** saya menyangka aturan Engineer + peta repo yang membengkak, dan
+sempat menuliskannya di pesan galat. Seluruh kontrak Engineer hanya **±3.800 huruf**. Kalimat itu
+dicabut sebelum di-commit.
+
+**1. `memori_personal_klien` BUKAN memori personal.** `user_memories` nyata: **10 baris, 316 huruf
+seluruhnya**, terpanjang 45 — sementara bagian berlabel itu **18.195 huruf, 57× lipat**. Label itu
+diukur sebagai **jarak antar penanda** (`llm_orchestrator.ts:222`); yang mengisinya `globalMemory`
+kiriman klien, dan `AssistantService.js:1313` mengisinya dengan **`trimmedRagContext`**. Jadi
+bagian TERBESAR tiap prompt adalah konteks RAG sisi klien yang diberi nama memori personal.
+**Belum dibuktikan:** apakah konteks RAG masuk DUA KALI (klien 18K + server `blok4_rag` 7K)?
+Kalau ya, itu penghematan terbesar yang tersedia — dicatat sebagai pertanyaan, bukan kesimpulan.
+
+**2. Riwayat 16.557 huruf untuk DUA pesan.** Pertanyaannya 12 huruf, jadi satunya ±16.545 —
+hampir pasti **dumping JSON 402 lama yang tersimpan sebagai pesan**, lalu ikut terkirim seterusnya.
+Galat besar **meracuni prompt berikutnya**. Sumbernya sudah ditutup (item 119: galat 402 kini
+pesan pendek), tetapi yang sudah tersimpan tetap ada — karena itu pesan galat barunya menyarankan
+**mulai percakapan baru**, yang seketika memotong 16.557 huruf.
+
+**Artinya untuk saldo setipis ini:** percakapan baru → ±38.500 huruf ≈ 9.950 token, masih di atas
+3.621. Jadi pada saldo sekarang mode Engineer memang **tidak bisa jalan** — kesimpulan jujur, bukan
+kegagalan kode. Yang berubah: angkanya kini diketahui, dan jelas mana yang bisa ditekan.
+
 ### ⚠️ Temuan terbuka — konstitusi dibaca tiap boot lalu DIBUANG
 
 `engineer.js:316` memuat **32 berkas**: `INIT.md`, `AGENTS.md`, `constitution/00`–`27`, termasuk
