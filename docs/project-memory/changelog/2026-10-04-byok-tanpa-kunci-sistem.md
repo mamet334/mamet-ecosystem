@@ -83,8 +83,13 @@ jawabannya memuat **8 huruf pertama** tiap kunci Gemini, tanpa pemeriksaan pengg
 dalam 24 jam terakhir — tetapi log Supabase hanya menyimpan 24 jam, jadi riwayat lamanya **tak
 bisa diketahui**, dan itu dikatakan apa adanya alih-alih disimpulkan sebagai "tak pernah dipakai".
 
-Catatan INDEX dikoreksi dari ✅ menjadi ⚠️ SEPARUH. **Penghapusan di dashboard menunggu Owner** —
-tidak dilakukan sendiri.
+**SELESAI hari yang sama:** Owner menghapusnya dari dashboard, dan diperiksa ulang lewat API —
+tinggal **6 fungsi**, `check-keys` tidak lagi terdaftar. T11 kini ✅ sungguhan.
+
+**Pelajaran yang disimpan:** *"dihapus dari repo"* dan *"dihapus dari platform"* adalah dua klaim
+berbeda, dan hanya yang pertama bisa dibuktikan dari kode. Catatan 29 Sep menggabungkan keduanya
+dalam satu ✅, lalu bertahan lima hari tanpa diperiksa — karena memeriksanya menuntut keluar dari
+repo. Bila sebuah klaim menyebut platform, periksa platformnya.
 
 ## Yang diperiksa dan TIDAK jadi temuan
 
