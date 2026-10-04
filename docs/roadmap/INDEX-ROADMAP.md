@@ -506,13 +506,24 @@ dengan galatnya, jadi ini ukuran, bukan perkiraan.
 sempat menuliskannya di pesan galat. Seluruh kontrak Engineer hanya **±3.800 huruf**. Kalimat itu
 dicabut sebelum di-commit.
 
-**1. `memori_personal_klien` BUKAN memori personal.** `user_memories` nyata: **10 baris, 316 huruf
-seluruhnya**, terpanjang 45 — sementara bagian berlabel itu **18.195 huruf, 57× lipat**. Label itu
-diukur sebagai **jarak antar penanda** (`llm_orchestrator.ts:222`); yang mengisinya `globalMemory`
-kiriman klien, dan `AssistantService.js:1313` mengisinya dengan **`trimmedRagContext`**. Jadi
-bagian TERBESAR tiap prompt adalah konteks RAG sisi klien yang diberi nama memori personal.
-**Belum dibuktikan:** apakah konteks RAG masuk DUA KALI (klien 18K + server `blok4_rag` 7K)?
-Kalau ya, itu penghematan terbesar yang tersedia — dicatat sebagai pertanyaan, bukan kesimpulan.
+**1. ✅ TERPECAHKAN — `memori_personal_klien` menyembunyikan KONTEKS ENGINEER.** `user_memories`
+nyata: **10 baris, 316 huruf seluruhnya** — sementara bagian berlabel itu **18.195 huruf**, dan
+**identik di empat kali jalan** tak peduli pertanyaan maupun hasil RAG. Konstannya itulah
+petunjuknya: memori & RAG berubah tiap pertanyaan, konteks Engineer tidak. **Saya salah DUA KALI
+dulu:** (a) menuduh aturan Engineer + peta repo — dicabut, karena kontraknya hanya ±3.800 huruf;
+(b) menuduh `globalMemory`/`trimmedRagContext` — **sempat ter-commit**, lalu terbantah
+`MAX_RAG_CONTEXT_CHARS = 4000`. Yang sebenarnya, dengan bukti: `context_pipeline.ts:24` menyusun
+`identitas + userContext + memoryPrompt + engineerContextPrompt`, jadi blok Engineer duduk PERSIS
+di antara memori dan kontrak — dan karena tiap segmen diukur sebagai **jarak ke segmen berikutnya**
+sedangkan blok Engineer **tak punya penanda sendiri**, ia ikut terhitung ke sana. Jadi tebakan
+PERTAMA saya benar dan "koreksi" kedua yang keliru. **Diperbaiki:** `konteks_engineer` kini segmen
+tersendiri; diuji dengan menjalankan fungsi aslinya — `konteks_engineer: 14.044` berdiri sendiri,
+`memori_personal_klien` turun ke 333. Satu cacat ikut terjadi saat menulisnya: penanda sempat
+dicari dengan `cari()` yang **sengaja mulai dari awal kontrak**, padahal blok Engineer ada
+sebelumnya → selalu −1 dan segmennya diam-diam hilang, persis kebisuan yang hendak dihentikan
+(mutasi M2 menjatuhkan 6 asersi). **Artinya:** biaya terbesar mode Engineer — ±14.000 huruf ≈
+**3.600 token di SETIAP pesan** — tak pernah punya namanya sendiri di log. Ini memberi angka untuk
+usul Owner yang tertunda: peta repo dibaca saat perlu lewat `git show`, bukan disuntikkan tiap pesan.
 
 **2. Riwayat 16.557 huruf untuk DUA pesan.** Pertanyaannya 12 huruf, jadi satunya ±16.545 —
 hampir pasti **dumping JSON 402 lama yang tersimpan sebagai pesan**, lalu ikut terkirim seterusnya.

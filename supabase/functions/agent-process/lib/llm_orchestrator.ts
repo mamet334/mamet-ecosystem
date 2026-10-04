@@ -220,6 +220,21 @@ export function catatKomposisiPrompt(promptText: string, systemPromptText: strin
   const segmen = ([
     ['dasar_identitas_panduan', 0],
     ['memori_personal_klien', s.search(/\[MEMORI & (PREFERENSI PERSONAL|KONTEKS SISTEM)\]/)],
+    // DITAMBAHKAN 2026-10-04. Tanpa penanda ini, `engineerContextPrompt` TIDAK punya segmennya
+    // sendiri — dan karena ukuran tiap segmen dihitung sebagai jarak ke segmen berikutnya, ia
+    // ikut terhitung ke dalam `memori_personal_klien`.
+    //
+    // Akibatnya terukur: segmen itu tercatat 18.195 huruf dan IDENTIK di empat kali jalan, tak
+    // peduli pertanyaannya maupun berapa potongan RAG yang ditemukan — padahal `user_memories`
+    // yang sebenarnya hanya 10 baris / 316 huruf, dan `globalMemory` dari klien dibatasi 4.000
+    // huruf (`MAX_RAG_CONTEXT_CHARS`). Sisanya, belasan ribu huruf, adalah konteks Engineer.
+    //
+    // Jadi biaya terbesar mode Engineer selama ini TERSEMBUNYI di bawah label "memori personal".
+    // Urutannya di `context_pipeline.ts:24`: identitas + userContext + memori + ENGINEER + kontrak.
+    // `s.indexOf` dari awal, BUKAN `cari()`: `cari` sengaja mulai dari awal kontrak (lihat JSDoc),
+    // sedangkan blok Engineer berada SEBELUM kontrak — memakai `cari` akan selalu -1 dan segmennya
+    // diam-diam tak pernah muncul, persis kebisuan yang ingin dihentikan di sini.
+    ['konteks_engineer', s.indexOf('[MAMET ENGINEER CONTEXT')],
     ['kontrak_blok1_2', awalKontrak],
     ['blok3_memori', cari('[BLOK 3:')],
     ['blok4_brain', blok4],

@@ -208,18 +208,48 @@ di-commit — diperiksa dulu, bukan dikirim sebagai tebakan.
 
 ### Dua temuan yang sebenarnya, dan keduanya besar
 
-**1. `memori_personal_klien` bukan memori personal.** Diukur langsung ke basis data:
-`user_memories` berisi **10 baris, 316 huruf SELURUHNYA**, terpanjang 45 huruf. Tetapi bagian
-prompt berlabel itu **18.195 huruf** — **57× lipat**.
+**1. `memori_personal_klien` menyembunyikan konteks Engineer — dan saya salah DUA KALI sebelum
+menemukannya.**
 
-Sebabnya: label itu diukur sebagai **jarak antar penanda** (`llm_orchestrator.ts:222`), dari
-penanda memori sampai awal kontrak. Yang mengisi ruang itu adalah `globalMemory` kiriman klien —
-dan di `AssistantService.js:1313`, `globalMemory` berisi **`trimmedRagContext`**. Jadi bagian
-terbesar setiap prompt adalah **konteks RAG sisi klien yang diberi nama memori personal**.
+Diukur langsung ke basis data: `user_memories` berisi **10 baris, 316 huruf SELURUHNYA**,
+terpanjang 45. Tetapi bagian prompt berlabel itu **18.195 huruf** — 57× lipat, dan **identik di
+empat kali jalan**, tak peduli pertanyaannya maupun apakah RAG menemukan 8 potongan atau 0.
 
-Perlu diperiksa lebih lanjut: `blok4_rag` (7.025 huruf) adalah RAG sisi **server**. Apakah
-konteks RAG masuk **dua kali** lewat dua jalur? Kalau ya, itu penghematan terbesar yang tersedia.
-Belum dibuktikan — dicatat sebagai pertanyaan, bukan kesimpulan.
+**Tebakan saya yang pertama:** aturan Engineer + peta repo yang membengkak. Saya tulis di pesan
+galat, lalu **dicabut** karena kontrak Engineer (`kontrak_blok1_2` + `blok5_constraint`) hanya
+±3.800 huruf.
+
+**Tebakan saya yang kedua:** `globalMemory` kiriman klien, yang di `AssistantService.js:1313`
+berisi `trimmedRagContext`. Ini pun **salah** — dan sempat ter-commit: `MAX_RAG_CONTEXT_CHARS = 4000`
+membatasi `globalMemory` di **4.000 huruf**, tak mungkin 18.195.
+
+**Yang sebenarnya, dengan bukti:** `context_pipeline.ts:24` menyusun prompt dengan urutan
+
+```ts
+agentIdentityPrompt + userContextPrompt + memoryPrompt + engineerContextPrompt
+```
+
+`engineerContextPrompt` duduk **persis di antara** blok memori dan kontrak. Dan karena tiap segmen
+diukur sebagai **jarak ke segmen berikutnya**, sementara blok Engineer **tidak punya penandanya
+sendiri**, ia ikut terhitung ke dalam `memori_personal_klien`.
+
+Jadi tebakan pertama saya **benar**, "koreksi" keduanya yang keliru — dan baru yang ketiga punya
+bukti. Konstannya angka 18.195 itulah petunjuknya: memori personal dan RAG berubah tiap
+pertanyaan; konteks Engineer tidak.
+
+**Diperbaiki:** `konteks_engineer` kini segmen tersendiri (`llm_orchestrator.ts`). Diuji dengan
+menjalankan fungsi aslinya pada prompt tiruan — `konteks_engineer: 14.044` berdiri sendiri, dan
+`memori_personal_klien` turun ke 333, ukuran sebenarnya.
+
+Satu cacat ikut terjadi saat menulis perbaikannya: penanda Engineer sempat dicari dengan `cari()`,
+yang **sengaja mulai dari awal kontrak** — padahal blok Engineer ada **sebelumnya**, sehingga
+hasilnya selalu −1 dan segmennya diam-diam tak pernah muncul. Persis kebisuan yang hendak
+dihentikan. Ada asersi khusus untuk itu, dan mutasi M2 menjatuhkan 6 asersi.
+
+**Artinya:** biaya terbesar mode Engineer — ±14.000 huruf ≈ 3.600 token **di setiap pesan** —
+selama ini tak pernah punya namanya sendiri di log. Owner melihat "memori personal" sebagai biaya
+terbesarnya dan tak punya cara tahu yang sebenarnya. Ini juga memberi angka untuk usul Owner yang
+masih tertunda: peta repo dibaca **saat perlu** lewat `git show`, bukan disuntikkan tiap pesan.
 
 **2. Riwayat 16.557 huruf untuk DUA pesan.** Pertanyaannya 12 huruf, jadi pesan satunya ±16.545
 huruf — hampir pasti **dumping JSON 402 yang lama**, tersimpan sebagai pesan lalu ikut terkirim di
