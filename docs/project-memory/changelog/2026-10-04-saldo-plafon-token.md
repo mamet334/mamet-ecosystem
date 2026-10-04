@@ -109,6 +109,63 @@ jaminannya.
 
 **80/80 berkas uji hijau.** Bundel `agent-process` bersih (507,4 kb).
 
+## ✅ DIUJI LIVE — separuh berhasil, separuh gagal, dan gagalnya mengajari
+
+Owner men-deploy lalu mengirim *"apa itu RLS?"* dengan saldo masih habis, dan mengirim dua
+tangkapan layar: sebelum dan sesudah.
+
+**Sebelum** — dumping JSON mentah berisi `{"error":{"message":"…can only afford 779…"}}` beserta
+`previous_errors` dan URL.
+
+**Sesudah** — persis seperti yang dirancang:
+
+> *"Saldo OpenRouter hanya cukup untuk 733 token jawaban (diminta 8192), dan pengulangan dengan
+> plafon itu juga gagal. Isi ulang saldo."*
+
+Jadi **pesannya terbukti**. Tetapi kalimat itu sendiri melaporkan bahwa **pengulangannya gagal** —
+dan tangkapan layar pertama menjelaskan kenapa.
+
+### Dua cacat di implementasi pertama, keduanya terbaca dari badan 402 yang nyata
+
+Satu badan 402 memuat **beberapa** kutipan: `779` di tingkat atas, lalu `734`, `1558`, `1558` di
+`previous_errors` — karena OpenRouter sudah mencoba beberapa **penyedia** untuk nama model yang
+sama, dan harga tiap penyedia berbeda.
+
+| | Cacat | Akibat |
+|---|---|---|
+| 1 | `.match()` **tanpa `/g`** mengambil kutipan **pertama** (779) | diminta lebih besar daripada batas penyedia termurahnya (734) → ditolak lagi |
+| 2 | Diminta **tepat** sebesar angka yang dikutip | angka itu **batas**, bukan nilai aman; dan ia **bergeser** antar panggilan (779 → 733) |
+
+Keduanya diperbaiki: kutipan **terkecil** diambil dari seluruh badan, lalu dikali
+`MARGIN_SALDO = 0.9`. Untuk badan nyata di atas: `min(779, 734, 1558) = 734` → diminta **660**.
+
+**Nilai margin itu dipelajari dari produksi, bukan dipilih di muka.** Catatan itu ditulis di
+konstantanya supaya tidak terbaca sebagai angka sembarang nanti.
+
+### Badan 402 yang nyata itu kini jadi data uji
+
+Tangkapan layar Owner masuk ke berkas uji apa adanya — empat kutipan dalam satu badan, dengan
+`previous_errors`-nya. Dua mutasi baru meniru **persis** cara ia gagal di produksi:
+
+| Mutasi | Asersi jatuh |
+|---|---|
+| M7 **cara gagal #1**: ambil kutipan pertama, bukan terkecil | 2 |
+| M8 **cara gagal #2**: minta tepat batasnya, tanpa kelonggaran | 2 |
+| M9 kelonggaran berlebihan (margin 0,3) menembus lantai | 2 |
+
+Satu asersi lama ikut usang dan diperbarui: ia menuntut plafon ulang **tepat** sama dengan angka
+OpenRouter — padahal kelonggaran itulah perbaikannya.
+
+### Yang masih mungkin: saldonya memang terlalu tipis
+
+Perbaikan ini belum tentu membuat chat jalan. Di tangkapan layar kedua prompt-nya hanya **56
+token** dan tetap tidak terjangkau. Kalau 660 pun ditolak, batasnya bukan di kode — saldonya
+memang tidak cukup untuk jawaban yang berguna, dan pesannya kini mengatakan itu apa adanya:
+*"sudah diulang dengan N dan tetap ditolak. Saldonya memang terlalu tipis…"*.
+
+Membedakan dua hal itu — kode yang salah memilih plafon versus saldo yang benar-benar habis —
+adalah yang sebelumnya tidak mungkin dilakukan dari dumping JSON.
+
 ## Perlu DEPLOY, tanpa rilis klien
 
 `reasoning_openrouter.ts` dan `ai_adapter.ts` keduanya di `agent-process`.

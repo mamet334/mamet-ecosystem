@@ -41,6 +41,29 @@ const PESAN_402 = JSON.stringify({
   },
 });
 
+// BADAN NYATA dari produksi 4 Okt 2026 (ditangkap Owner sebelum deploy). Bukan karangan: ia
+// memuat BEBERAPA kutipan sekaligus karena OpenRouter sudah mencoba beberapa PENYEDIA untuk nama
+// model yang sama, dan harga tiap penyedia berbeda — 779, 734, 1558, 1558 dalam satu badan.
+//
+// Inilah yang menjatuhkan percobaan pertama di produksi: `.match()` tanpa /g mengambil 779, lalu
+// permintaan diulang dengan angka yang masih lebih besar daripada batas penyedia termurahnya.
+const PESAN_402_NYATA = JSON.stringify({
+  error: {
+    message: 'This request requires more credits, or fewer max_tokens. You requested up to 8192 tokens, but can only afford 779. To increase, visit https://openrouter.ai/settings/credits and add more credits',
+    code: 402,
+    metadata: {
+      limit_source: 'openrouter_credits',
+      remedy_hint: 'Add credits at https://openrouter.ai/settings/credits, or lower max_tokens / prompt size to fit your remaining balance.',
+      provider_name: null,
+      previous_errors: [
+        { code: 402, message: 'This request requires more credits, or fewer max_tokens. You requested up to 8192 tokens, but can only afford 734. To increase, visit https://openrouter.ai/settings/credits and add more credits' },
+        { code: 402, message: 'This request requires more credits, or fewer max_tokens. You requested up to 8192 tokens, but can only afford 1558. To increase, visit https://openrouter.ai/settings/credits and add more credits' },
+        { code: 402, message: 'This request requires more credits, or fewer max_tokens. You requested up to 8192 tokens, but can only afford 1558. To increase, visit https://openrouter.ai/settings/credits and add more credits' },
+      ],
+    },
+  },
+});
+
 const esbuild = await import(pathToFileURL(join(AKAR, 'frontend/node_modules/esbuild/lib/main.js')).href);
 const dir = mkdtempSync(join(tmpdir(), 'uji-saldo-'));
 try {
@@ -49,7 +72,7 @@ try {
   });
   writeFileSync(join(dir, 'ro.mjs'), code);
   const M = await import(pathToFileURL(join(dir, 'ro.mjs')).href);
-  const { kirimOpenRouterDenganReasoning, tokenTerjangkau, pesanSaldoTakCukup, MAKS_TOKEN_JAWABAN, MIN_TOKEN_LAYAK } = M;
+  const { kirimOpenRouterDenganReasoning, tokenTerjangkau, plafonUlang, pesanSaldoTakCukup, MAKS_TOKEN_JAWABAN, MIN_TOKEN_LAYAK, MARGIN_SALDO } = M;
 
   // Respons palsu secukupnya: `ok`, `status`, `text()`, `clone()`.
   const resp = (status, teks = '') => ({
@@ -70,6 +93,21 @@ try {
   cek(tokenTerjangkau('') === null, 'kosong -> null');
   cek(tokenTerjangkau('can only afford 0') === null, 'nol bukan angka yang berguna -> null');
 
+  // ── 1b. KEGAGALAN PRODUKSI 4 Okt — badan nyata dengan banyak kutipan ─────────────────────
+  // Percobaan pertama memakai `.match()` tanpa /g, jadi ia mengambil 779 (yang pertama) dan
+  // mengulang dengan angka yang masih di atas batas penyedia termurahnya (734). Tetap 402.
+  console.log('\n-- badan 402 NYATA dari produksi --');
+  cek(tokenTerjangkau(PESAN_402_NYATA) === 734,
+    'mengambil yang TERKECIL (734), bukan yang pertama (779) — inilah yang gagal di produksi',
+    tokenTerjangkau(PESAN_402_NYATA));
+  cek(plafonUlang(PESAN_402_NYATA) === Math.floor(734 * MARGIN_SALDO),
+    `plafon ulang = terkecil × margin ${MARGIN_SALDO} = ${Math.floor(734 * MARGIN_SALDO)}`,
+    plafonUlang(PESAN_402_NYATA));
+  cek(plafonUlang(PESAN_402_NYATA) < 734,
+    'ada KELONGGARAN — meminta tepat sebesar batas sudah terbukti ditolak di produksi');
+  cek(plafonUlang(PESAN_402_NYATA) >= MIN_TOKEN_LAYAK,
+    'dan masih di atas lantai, jadi pengulangannya tetap layak dicoba', plafonUlang(PESAN_402_NYATA));
+
   // ── 2. Ulang-coba DIJALANKAN dan DIHITUNG ─────────────────────────────────────────────────
   console.log('\n-- ulang-coba dijalankan --');
   {
@@ -81,7 +119,11 @@ try {
     const res = await kirimOpenRouterDenganReasoning({ model: 'm', max_tokens: MAKS_TOKEN_JAWABAN }, undefined, kirim);
     cek(dikirim.length === 2, 'dikirim DUA kali: yang pertama 402, yang kedua dengan plafon turun', dikirim.length);
     cek(dikirim[0].max_tokens === MAKS_TOKEN_JAWABAN, `percobaan pertama memakai plafon penuh (${MAKS_TOKEN_JAWABAN})`, dikirim[0]);
-    cek(dikirim[1].max_tokens === 1234, 'percobaan kedua memakai ANGKA DARI OPENROUTER, bukan angka tebakan', dikirim[1]);
+    // Diturunkan DARI angka OpenRouter, bukan ditebak — dan dengan kelonggaran, karena meminta
+    // tepat sebesar batas sudah terbukti ditolak di produksi 4 Okt.
+    cek(dikirim[1].max_tokens === Math.floor(1234 * MARGIN_SALDO),
+      `percobaan kedua = angka OpenRouter × margin (${Math.floor(1234 * MARGIN_SALDO)}), bukan tebakan`, dikirim[1]);
+    cek(dikirim[1].max_tokens < 1234, 'dan tegas di bawah batas yang dikutip, bukan tepat di batasnya', dikirim[1]);
     cek(dikirim[1].model === 'm', 'badan lainnya tidak berubah — hanya plafonnya', dikirim[1]);
     cek(res.ok === true, 'hasil akhirnya respons yang berhasil');
   }

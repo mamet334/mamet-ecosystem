@@ -58,32 +58,61 @@ export const MAKS_TOKEN_JAWABAN = 8192;
 export const MIN_TOKEN_LAYAK = 512;
 
 /**
- * Membaca jumlah token yang masih terjangkau dari badan 402 OpenRouter.
+ * Kelonggaran plafon pengulangan.
+ *
+ * DIPELAJARI DARI PRODUKSI 2026-10-04, bukan dipilih di muka. Percobaan pertama meminta TEPAT
+ * angka yang dikutip OpenRouter — dan tetap ditolak 402. Dua sebab terbaca dari badan jawabannya:
+ *
+ *   1. Angka itu BATAS, bukan nilai aman. Meminta tepat sebesar batas tidak menyisakan apa pun
+ *      bila pemeriksaannya "lebih besar atau sama dengan".
+ *   2. Angkanya BERGESER antar panggilan: 779 lalu 733 untuk pertanyaan yang sama.
+ */
+export const MARGIN_SALDO = 0.9;
+
+/**
+ * Membaca jumlah token yang masih terjangkau dari badan 402 OpenRouter, mengambil yang TERKECIL.
  *
  * Kalimatnya berbentuk "…you requested up to 8192 tokens, but can only afford 1234".
  * Polanya dari pesan yang BENAR-BENAR teramati di proyek ini, bukan dari dokumentasi.
+ *
+ * KENAPA TERKECIL, bukan yang pertama (diperbaiki 2026-10-04 setelah gagal di produksi):
+ * satu badan 402 memuat BEBERAPA kutipan — satu di tingkat atas dan sisanya di `previous_errors`,
+ * karena OpenRouter sudah mencoba beberapa PENYEDIA untuk nama model yang sama. Harga tiap
+ * penyedia berbeda, jadi angkanya berbeda jauh: satu badan nyata memuat 779, 734, 1558, 1558.
+ * Mengambil yang pertama (779) berarti meminta lebih besar daripada yang sanggup dibayar pada
+ * penyedia termurah-batasnya (734), dan pengulangannya ditolak lagi.
  *
  * Bila polanya tidak cocok — misalnya OpenRouter mengubah kalimatnya — fungsi ini mengembalikan
  * `null` dan perilakunya kembali seperti sebelum perubahan ini: galatnya dilempar apa adanya.
  * Tebakan yang salah karena itu tidak merugikan apa pun; ia hanya tidak menolong.
  */
 export function tokenTerjangkau(teks: string): number | null {
-  const m = String(teks || '').match(/can only afford\s+([\d,.]+)/i);
-  if (!m) return null;
-  const n = Math.floor(Number(m[1].replace(/,/g, '')));
-  return Number.isFinite(n) && n > 0 ? n : null;
+  const semua = [...String(teks || '').matchAll(/can only afford\s+([\d,.]+)/gi)]
+    .map((m) => Math.floor(Number(m[1].replace(/,/g, ''))))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  return semua.length ? Math.min(...semua) : null;
+}
+
+/** Plafon yang benar-benar diminta saat mengulang: yang terkecil, dikurangi kelonggaran. */
+export function plafonUlang(teks: string): number | null {
+  const n = tokenTerjangkau(teks);
+  return n === null ? null : Math.floor(n * MARGIN_SALDO);
 }
 
 /** Kalimat yang bisa ditindaklanjuti untuk 402 — menggantikan badan JSON mentah. */
 export function pesanSaldoTakCukup(teks: string, diminta: number): string {
   const n = tokenTerjangkau(teks);
-  if (n === null) {
+  const plafon = plafonUlang(teks);
+  if (n === null || plafon === null) {
     return `Saldo OpenRouter tidak cukup untuk permintaan ini (402). Isi ulang saldo. Pesan asli: ${String(teks || '').slice(0, 200)}`;
   }
-  if (n < MIN_TOKEN_LAYAK) {
-    return `Saldo OpenRouter hanya cukup untuk ${n} token jawaban, sedangkan jawaban yang layak butuh minimal ${MIN_TOKEN_LAYAK}. Permintaan TIDAK diulang dengan plafon sekecil itu — jawaban terpotong akan terlihat seperti model gagal. Isi ulang saldo.`;
+  if (plafon < MIN_TOKEN_LAYAK) {
+    return `Saldo OpenRouter hanya cukup untuk ${n} token jawaban, sedangkan jawaban yang layak butuh minimal ${MIN_TOKEN_LAYAK}. Permintaan TIDAK diulang dengan plafon sekecil itu — jawaban terpotong akan terlihat seperti model gagal, bukan seperti saldo habis. Isi ulang saldo.`;
   }
-  return `Saldo OpenRouter hanya cukup untuk ${n} token jawaban (diminta ${diminta}), dan pengulangan dengan plafon itu juga gagal. Isi ulang saldo.`;
+  // Sudah diulang dengan plafon berkelonggaran dan tetap gagal. Ini batas yang jujur: saldonya
+  // memang terlalu tipis, bukan plafonnya yang salah pilih. Menurunkannya lagi hanya akan
+  // menghasilkan jawaban yang terlalu pendek untuk berguna.
+  return `Saldo OpenRouter hanya cukup untuk ${n} token jawaban (diminta ${diminta}); sudah diulang dengan ${plafon} dan tetap ditolak. Saldonya memang terlalu tipis untuk jawaban yang berguna — isi ulang saldo.`;
 }
 
 /** Teks nalar dari `message` (non-stream) atau `delta` (stream); '' bila tidak ada. */
@@ -221,14 +250,15 @@ export async function kirimOpenRouterDenganReasoning(
   if (res.status === 402) {
     const teks = await res.clone().text().catch(() => '');
     const n = tokenTerjangkau(teks);
+    const plafon = plafonUlang(teks);
     const diminta = Number(badan.max_tokens) || 0;
-    if (n !== null && n >= MIN_TOKEN_LAYAK && diminta > n) {
-      console.warn(`[Saldo] 402: plafon ${diminta} token tidak terjangkau, hanya ${n} — diulang SEKALI dengan max_tokens: ${n}`);
-      return kirim({ ...badan, max_tokens: n });
+    if (plafon !== null && plafon >= MIN_TOKEN_LAYAK && diminta > plafon) {
+      console.warn(`[Saldo] 402: plafon ${diminta} token tidak terjangkau. Terkecil yang dikutip ${n}, diulang SEKALI dengan max_tokens: ${plafon} (margin ${MARGIN_SALDO})`);
+      return kirim({ ...badan, max_tokens: plafon });
     }
-    // Tidak terbaca, di bawah lantai, atau plafonnya memang sudah ≤ n: dipulangkan apa adanya.
-    // Pemanggil yang membangun pesannya (lihat `pesanSaldoTakCukup`).
-    console.warn(`[Saldo] 402 tidak diulang — terjangkau: ${n === null ? 'tak terbaca' : n}, diminta: ${diminta}, lantai: ${MIN_TOKEN_LAYAK}`);
+    // Tidak terbaca, di bawah lantai, atau plafonnya memang sudah ≤ yang terjangkau: dipulangkan
+    // apa adanya. Pemanggil yang membangun pesannya (lihat `pesanSaldoTakCukup`).
+    console.warn(`[Saldo] 402 tidak diulang — terkecil terjangkau: ${n === null ? 'tak terbaca' : n}, plafon ulang: ${plafon}, diminta: ${diminta}, lantai: ${MIN_TOKEN_LAYAK}`);
     return res;
   }
 
