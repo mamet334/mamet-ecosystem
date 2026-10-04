@@ -1,7 +1,7 @@
 import { CapabilityAdapter, AdapterContext, AdapterResult } from './capability_adapter.ts';
 import { RuntimeContext } from '../runtime_context.ts';
 import { checkGuardrails, recordUsage } from '../cost/costTracker.ts';
-import { kirimOpenRouterDenganReasoning, teksNalar, pembungkusNalarStream, bacaSseOpenRouter } from './reasoning_openrouter.ts';
+import { kirimOpenRouterDenganReasoning, teksNalar, pembungkusNalarStream, bacaSseOpenRouter, MAKS_TOKEN_JAWABAN, pesanSaldoTakCukup } from './reasoning_openrouter.ts';
 
 // `info` opsional: OpenRouter menyertakan `provider` (penyedia hulu yang benar-benar melayani,
 // mis. "DeepInfra") di setiap chunk. Groq/OpenAI tidak mengirimnya dan tidak perlu mengoper info.
@@ -205,7 +205,7 @@ export class GroqAdapter implements CapabilityAdapter {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${this.rctx.keys.groq}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(applyThinking({ model: groqModel, messages, temperature: 0.1, max_tokens: 8192 }, 'groq', this.rctx.model.thinking))
+      body: JSON.stringify(applyThinking({ model: groqModel, messages, temperature: 0.1, max_tokens: MAKS_TOKEN_JAWABAN }, 'groq', this.rctx.model.thinking))
     });
     if (!res.ok) throw new Error(`Groq API Error: ${res.status} ${await res.text()}`);
     const data = await res.json();
@@ -265,7 +265,7 @@ export class GroqAdapter implements CapabilityAdapter {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${this.rctx.keys.groq}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(applyThinking({ model: groqModel, messages, temperature: 0.1, max_tokens: 8192, stream: true }, 'groq', this.rctx.model.thinking)),
+      body: JSON.stringify(applyThinking({ model: groqModel, messages, temperature: 0.1, max_tokens: MAKS_TOKEN_JAWABAN, stream: true }, 'groq', this.rctx.model.thinking)),
       signal: aborter.signal
     });
     clearTimeout(id);
@@ -372,7 +372,7 @@ export class OpenRouterAdapter implements CapabilityAdapter {
     // Supabase — respons non-stream tidak bisa dibaca sebagian, sehingga semua token yang sudah dibayar ikut hilang.
     const pakaiStream = typeof input.onNalar === 'function' || typeof input.tenggat === 'number';
     const res = await kirimOpenRouterDenganReasoning(
-      { model: openRouterModel, messages, temperature: 0.1, max_tokens: 8192, ...(pakaiStream ? { stream: true } : {}) },
+      { model: openRouterModel, messages, temperature: 0.1, max_tokens: MAKS_TOKEN_JAWABAN, ...(pakaiStream ? { stream: true } : {}) },
       // Pemanggil boleh menimpa pilihan nalar untuk satu panggilan (Intent Router/Coordinator/peringkas: false).
       typeof input.thinking === 'boolean' ? input.thinking : this.rctx.model.thinking,
       (body) => fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -386,7 +386,14 @@ export class OpenRouterAdapter implements CapabilityAdapter {
         body: JSON.stringify(body)
       })
     );
-    if (!res.ok) throw new Error(`OpenRouter API Error: ${res.status} ${await res.text()}`);
+    if (!res.ok) {
+      const teks = await res.text();
+      // 402 sudah dicoba diulang dengan plafon terjangkau di `kirimOpenRouterDenganReasoning`;
+      // sampai di sini berarti pengulangannya tidak mungkin atau ikut gagal. Badan JSON mentah
+      // tidak bisa ditindaklanjuti Owner, jadi diganti kalimat yang menyebut angkanya.
+      if (res.status === 402) throw new Error(pesanSaldoTakCukup(teks, MAKS_TOKEN_JAWABAN));
+      throw new Error(`OpenRouter API Error: ${res.status} ${teks}`);
+    }
     const data = pakaiStream
       ? await bacaSseOpenRouter(res, { onNalar: input.onNalar, onIsiMulai: input.onIsiMulai, tenggat: input.tenggat })
       : await res.json();
@@ -504,7 +511,7 @@ export class OpenRouterAdapter implements CapabilityAdapter {
     );
 
     const res = await kirimOpenRouterDenganReasoning(
-      { model: orModel, messages, temperature: 0.1, max_tokens: 8192, stream: true },
+      { model: orModel, messages, temperature: 0.1, max_tokens: MAKS_TOKEN_JAWABAN, stream: true },
       this.rctx.model.thinking,
       (body) => fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -514,7 +521,11 @@ export class OpenRouterAdapter implements CapabilityAdapter {
       })
     );
     clearTimeout(id);
-    if (!res.ok) throw new Error(`OpenRouter HTTP ${res.status}: ${await res.text()}`);
+    if (!res.ok) {
+      const teks = await res.text();
+      if (res.status === 402) throw new Error(pesanSaldoTakCukup(teks, MAKS_TOKEN_JAWABAN));
+      throw new Error(`OpenRouter HTTP ${res.status}: ${teks}`);
+    }
 
     let accumulatedText = '';
     const infoStream: { provider?: string } = {};
@@ -859,7 +870,7 @@ export class OpenAIAdapter implements CapabilityAdapter {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${this.rctx.keys.openAI}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(applyThinking({ model: selectedModel, messages, temperature: 0.1, max_tokens: 8192 }, 'openai', this.rctx.model.thinking))
+      body: JSON.stringify(applyThinking({ model: selectedModel, messages, temperature: 0.1, max_tokens: MAKS_TOKEN_JAWABAN }, 'openai', this.rctx.model.thinking))
     });
     if (!res.ok) throw new Error(`OpenAI API Error: ${res.status} ${await res.text()}`);
     const data = await res.json();
@@ -916,7 +927,7 @@ export class OpenAIAdapter implements CapabilityAdapter {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${this.rctx.keys.openAI}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(applyThinking({ model: selectedModel, messages, temperature: 0.1, max_tokens: 8192, stream: true }, 'openai', this.rctx.model.thinking)),
+      body: JSON.stringify(applyThinking({ model: selectedModel, messages, temperature: 0.1, max_tokens: MAKS_TOKEN_JAWABAN, stream: true }, 'openai', this.rctx.model.thinking)),
       signal: aborter.signal
     });
     clearTimeout(id);

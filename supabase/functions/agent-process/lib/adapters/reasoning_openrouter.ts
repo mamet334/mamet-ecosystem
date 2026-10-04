@@ -30,6 +30,62 @@
 // `reasoning.summary` → `summary`; `reasoning.encrypted` tak terbaca). Hanya diteruskan bila Thinking
 // dinyalakan eksplisit — klien tanpa `thinking` (mametlite) tidak tiba-tiba menerima nalar.
 
+// ── SALDO TIDAK CUKUP UNTUK max_tokens (2026-10-04) ────────────────────────────────────────────
+//
+// `max_tokens: 8192` dulu dipaku di ENAM tempat `ai_adapter.ts`. Angka itu bukan kebutuhan jawaban,
+// melainkan plafon — tetapi OpenRouter menagih berdasarkan plafon yang DIMINTA saat memutuskan
+// apakah permintaan terjangkau. Jadi saldo yang masih cukup untuk jawaban pendek pun ditolak,
+// hanya karena yang diminta 8192.
+//
+// Keadaan yang menjadikannya mendesak: saldo Owner boleh minus dan OpenRouter TETAP melayani
+// sebagian. Jalur embedding sudah menangani 402 sejak lama (`vector_utils.ts`), jalur CHAT belum
+// sama sekali — badan jawabannya yang menyebut berapa yang terjangkau langsung dilempar sebagai
+// galat mentah dan dibuang.
+//
+// POLA ULANG-COBANYA MENGIKUTI YANG SUDAH ADA di fungsi ini untuk HTTP 400 (model menolak nalar
+// dimatikan): periksa respons gagal, putuskan, ulangi SEKALI. Bukan mekanisme baru.
+
+/** Plafon token jawaban. Satu sumber untuk keenam titik panggil di `ai_adapter.ts`. */
+export const MAKS_TOKEN_JAWABAN = 8192;
+
+/**
+ * Lantai kelayakan. Di bawah ini permintaan TIDAK diulang.
+ *
+ * Mengulang dengan plafon sangat kecil menghasilkan jawaban terpotong yang tampak seperti model
+ * gagal atau membodohkan diri — lebih buruk daripada galat yang terang, karena ia menyesatkan.
+ * Di bawah lantai ini Owner diberi kalimat yang bisa ditindaklanjuti: isi ulang saldo.
+ */
+export const MIN_TOKEN_LAYAK = 512;
+
+/**
+ * Membaca jumlah token yang masih terjangkau dari badan 402 OpenRouter.
+ *
+ * Kalimatnya berbentuk "…you requested up to 8192 tokens, but can only afford 1234".
+ * Polanya dari pesan yang BENAR-BENAR teramati di proyek ini, bukan dari dokumentasi.
+ *
+ * Bila polanya tidak cocok — misalnya OpenRouter mengubah kalimatnya — fungsi ini mengembalikan
+ * `null` dan perilakunya kembali seperti sebelum perubahan ini: galatnya dilempar apa adanya.
+ * Tebakan yang salah karena itu tidak merugikan apa pun; ia hanya tidak menolong.
+ */
+export function tokenTerjangkau(teks: string): number | null {
+  const m = String(teks || '').match(/can only afford\s+([\d,.]+)/i);
+  if (!m) return null;
+  const n = Math.floor(Number(m[1].replace(/,/g, '')));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** Kalimat yang bisa ditindaklanjuti untuk 402 — menggantikan badan JSON mentah. */
+export function pesanSaldoTakCukup(teks: string, diminta: number): string {
+  const n = tokenTerjangkau(teks);
+  if (n === null) {
+    return `Saldo OpenRouter tidak cukup untuk permintaan ini (402). Isi ulang saldo. Pesan asli: ${String(teks || '').slice(0, 200)}`;
+  }
+  if (n < MIN_TOKEN_LAYAK) {
+    return `Saldo OpenRouter hanya cukup untuk ${n} token jawaban, sedangkan jawaban yang layak butuh minimal ${MIN_TOKEN_LAYAK}. Permintaan TIDAK diulang dengan plafon sekecil itu — jawaban terpotong akan terlihat seperti model gagal. Isi ulang saldo.`;
+  }
+  return `Saldo OpenRouter hanya cukup untuk ${n} token jawaban (diminta ${diminta}), dan pengulangan dengan plafon itu juga gagal. Isi ulang saldo.`;
+}
+
 /** Teks nalar dari `message` (non-stream) atau `delta` (stream); '' bila tidak ada. */
 export function teksNalar(obj: any): string {
   if (!obj) return '';
@@ -155,7 +211,28 @@ export async function kirimOpenRouterDenganReasoning(
 ): Promise<Response> {
   const badan = badanReasoningOpenRouter(body, thinking);
   const res = await kirim(badan);
-  if (res.ok || !badan.reasoning || badan.reasoning.enabled !== false || res.status !== 400) return res;
+  if (res.ok) return res;
+
+  // 402 — saldo tidak cukup untuk PLAFON yang diminta, bukan untuk jawabannya.
+  //
+  // Diperiksa SEBELUM cabang 400 di bawah: baris lama memulangkan setiap kegagalan non-400 lebih
+  // dulu, sehingga 402 tak pernah sampai ke mana pun. Permintaan yang ditolak 402 TIDAK ditagih,
+  // jadi pengulangan ini tidak menambah biaya.
+  if (res.status === 402) {
+    const teks = await res.clone().text().catch(() => '');
+    const n = tokenTerjangkau(teks);
+    const diminta = Number(badan.max_tokens) || 0;
+    if (n !== null && n >= MIN_TOKEN_LAYAK && diminta > n) {
+      console.warn(`[Saldo] 402: plafon ${diminta} token tidak terjangkau, hanya ${n} — diulang SEKALI dengan max_tokens: ${n}`);
+      return kirim({ ...badan, max_tokens: n });
+    }
+    // Tidak terbaca, di bawah lantai, atau plafonnya memang sudah ≤ n: dipulangkan apa adanya.
+    // Pemanggil yang membangun pesannya (lihat `pesanSaldoTakCukup`).
+    console.warn(`[Saldo] 402 tidak diulang — terjangkau: ${n === null ? 'tak terbaca' : n}, diminta: ${diminta}, lantai: ${MIN_TOKEN_LAYAK}`);
+    return res;
+  }
+
+  if (!badan.reasoning || badan.reasoning.enabled !== false || res.status !== 400) return res;
 
   const teks = await res.clone().text().catch(() => '');
   if (!ditolakKarenaReasoning(res.status, teks)) return res;
