@@ -1838,6 +1838,40 @@ export class AssistantService {
         command: perintah, status: success ? 'success' : 'error', output
       });
     } catch (_) {}
+
+    // JEJAK AUDIT YANG BERTAHAN (2026-10-04). Yang di atas hanya event dalam memori: ia mengisi
+    // SessionArtifact dan state UI, dan keduanya hilang saat jendela dimuat ulang.
+    //
+    // Dicatat DI SINI, bukan di pemanggil, karena `runCommand` satu-satunya pintu semua perintah
+    // Engineer — kedua pemanggil di UI (tombol manual & jalan-sendiri) ikut tercakup, begitu pula
+    // pemanggil baru nanti, tanpa masing-masing perlu ingat mencatat.
+    //
+    // `tanpaIzin` datang dari PROSES UTAMA (`alatFolderJalan.cjs`), satu-satunya pihak yang tahu
+    // dialognya ditampilkan atau dilewati. Tidak disimpulkan ulang di sini: menyimpulkannya dari
+    // teks perintah berarti menebak aturan yang justru ingin diaudit.
+    try {
+      const auditLog = this.serviceManager.has('AuditLogService')
+        ? this.serviceManager.get('AuditLogService')
+        : null;
+      if (auditLog) {
+        const { data: sesi } = await supabase.auth.getSession();
+        await auditLog.logCommand({
+          userMsg: '',                       // pesan pemicu tidak dibawa ke jalur ini
+          commandName: String(perintah || ''),
+          targetPath: h?.alamat || '(akar repo Engineer)',
+          inWorkspace: true,                 // folder asalnya akar repo pilihan Owner
+          isDestructive: false,              // tidak diklasifikasikan — lihat catatan di logCommand
+          success,
+          output,                            // hanya PANJANGNYA yang disimpan
+          tanpaPersetujuan: h?.tanpaIzin === true,
+          alasan: h?.ditolakOwner ? 'Ditolak Owner di dialog izin.' : (h?.alasan || ''),
+          userId: sesi?.session?.user?.id || null,
+        });
+      }
+    } catch (err) {
+      // Audit yang gagal tidak boleh menggagalkan perintahnya — tetapi juga tidak boleh senyap.
+      console.warn('[AssistantService] Jejak audit perintah gagal disimpan:', err?.message || err);
+    }
     // ditolakAturan: pecahPerintah/daftar izin/profil menolak SEBELUM dialog — hasilnya pasti sama tiap kali, jadi UI
     // tidak mengirimnya balik ke model (live: "npm install lodash" diusulkan ulang 3× setelah tiap penolakan).
     return { output, success, ditolakOwner: !!h?.ditolakOwner, ditolakAturan: !h?.ok && !h?.ditolakOwner };

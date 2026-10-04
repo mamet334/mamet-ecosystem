@@ -58,6 +58,8 @@ export class AuditLogService {
       result_reason:  entry.result?.reason     || '',
       in_workspace:   entry.securityStatus?.inWorkspace  ?? true,
       is_destructive: entry.securityStatus?.destructive  ?? false,
+      // Perintah yang jalan TANPA dialog izin (sejak 4.2.5, git-baca bagi profil engineer).
+      tanpa_persetujuan: entry.securityStatus?.tanpaPersetujuan ?? false,
       user_id:        entry.userId || null,
       logged_at:      new Date().toISOString()
     };
@@ -65,8 +67,16 @@ export class AuditLogService {
     // Log ke konsol selalu (observasi awal)
     console.log('[AuditLog]', logEntry);
 
-    // Simpan ke Supabase hanya untuk aksi wajib-log
-    const mustLog = logEntry.is_destructive || !logEntry.in_workspace;
+    // Simpan ke Supabase hanya untuk aksi wajib-log.
+    //
+    // `wajibSimpan` eksplisit ditambahkan 2026-10-04. Tanpa itu aturan di bawah membuat
+    // `logCommand` mencatat NOL: perintah Engineer justru read-only DI DALAM workspace, jadi
+    // `is_destructive === false && in_workspace === true` dan fungsinya pulang sebelum insert.
+    // Menyambungkan `logCommand` begitu saja akan menghasilkan fitur yang TERLIHAT TERSAMBUNG
+    // TETAPI BUTA — pola yang sama dengan cacat `mimeType` pada lampiran gambar.
+    //
+    // Pemanggil lain (SKILL_EXECUTED) tidak mengirim medan ini, jadi perilakunya tidak berubah.
+    const mustLog = entry.wajibSimpan ?? (logEntry.is_destructive || !logEntry.in_workspace);
     if (!mustLog) return; // Read-only ringan tidak wajib disimpan
 
     try {
@@ -87,18 +97,19 @@ export class AuditLogService {
   /**
    * Shortcut untuk mencatat eksekusi command dari AssistantService.
    *
-   * TMN-0003 (dikoreksi 2026-10-04) — dua hal salah di keterangan lama:
+   * TMN-0003 (dikoreksi 2026-10-04) — `commandName` dulu disebut berasal "dari CommandRegistry";
+   * berkas `core/runtime/services/CommandRegistry.js` sudah TIDAK ADA, namanya kini datang dari
+   * pemanggil apa adanya.
    *
-   * 1. `commandName` disebut berasal "dari CommandRegistry". Berkas
-   *    `core/runtime/services/CommandRegistry.js` sudah TIDAK ADA; namanya kini datang dari
-   *    pemanggil apa adanya.
-   * 2. Method ini **YATIM**: nol pemanggil di seluruh `frontend/src` — satu-satunya kemunculan
-   *    `logCommand` adalah definisi ini sendiri. Jadi tak ada satu pun eksekusi command yang
-   *    benar-benar tercatat lewat jalan ini.
+   * DIPAKAI sejak 2026-10-04 — sebelumnya YATIM (nol pemanggil), jadi tak satu pun eksekusi
+   * perintah tercatat. Pemanggilnya kini `AssistantService.runCommand()`, satu-satunya pintu
+   * semua perintah Engineer, sehingga kedua pemanggil di UI (tombol manual & jalan-sendiri)
+   * tercakup tanpa masing-masing perlu ingat mencatat.
    *
-   * SENGAJA DIBIARKAN HIDUP, bukan terlewat: `this.log()` di bawahnya tetap dipakai, dan
-   * penghapusan permanen menunggu keputusan Owner. Yang diperbaiki hari ini hanyalah
-   * keterangannya — supaya pembaca berikutnya tidak menyangka jalur ini aktif.
+   * Yang membuatnya pantas dihidupkan: sejak 4.2.5 perintah `git`-baca jalan TANPA dialog izin.
+   * Sebelum itu tiap eksekusi punya gerbang manusia dan dialognya sendiri adalah catatannya;
+   * kini sebagian jalan tanpa saksi, dan satu-satunya jejak tersisa adalah `useState` yang
+   * hilang saat muat ulang.
    *
    * @param {Object} params
    * @param {string} params.userMsg      - pesan user yang memicu command
@@ -110,10 +121,23 @@ export class AuditLogService {
    * @param {string}  params.output      - output/error
    * @param {string}  [params.userId]
    */
-  async logCommand({ userMsg, commandName, targetPath, inWorkspace, isDestructive, success, output, userId }) {
+  async logCommand({ userMsg, commandName, targetPath, inWorkspace, isDestructive, success, output, userId, tanpaPersetujuan = false, alasan = '' }) {
+    // KELUARANNYA TIDAK DISIMPAN — hanya panjangnya.
+    //
+    // Nilai audit di sini adalah "apa yang dijalankan atas nama saya, dan apakah saya sempat
+    // melihatnya". Isi keluaran tidak menjawab itu, sudah ada di chat, dan menyalinnya ke basis
+    // data hanya menambah tempat kebocoran: ia isi berkas repo mentah, jalur ini ada di sisi
+    // KLIEN yang tak punya penyaring rahasia sama sekali (`saring_rahasia.ts` hanya di server),
+    // dan `agent_logs` pernah benar-benar menyimpan kunci API karena kelalaian yang sama.
+    // `.env`/`*.key` memang ditolak dibaca, tetapi keluaran `git grep` masih bisa memuat token
+    // dari berkas lain.
+    const panjang = String(output ?? '').length;
+
     await this.log({
       requestedBy: userMsg,
-      aiDecision: `AI menjalankan command "${commandName}" pada path "${targetPath}"`,
+      aiDecision: tanpaPersetujuan
+        ? `Engineer menjalankan "${commandName}" TANPA dialog izin (perintah baca, 4.2.5) di "${targetPath}"`
+        : `Engineer menjalankan "${commandName}" setelah Owner menyetujui di dialog, di "${targetPath}"`,
       action: {
         command: commandName,
         targetPath,
@@ -121,13 +145,21 @@ export class AuditLogService {
       },
       result: {
         success,
-        output,
-        reason: success ? 'Command berhasil dieksekusi.' : 'Command gagal atau ditolak.'
+        output: '',
+        reason: [
+          success ? 'Perintah selesai.' : (alasan || 'Perintah gagal atau ditolak.'),
+          `keluaran ${panjang} huruf (tidak disimpan — lihat chat)`,
+        ].join(' · ')
       },
       securityStatus: {
         inWorkspace,
-        destructive: isDestructive
+        destructive: isDestructive,
+        tanpaPersetujuan
       },
+      // Setiap eksekusi perintah disimpan, tanpa menebak-nebak keberbahayaannya. `is_destructive`
+      // dibiarkan apa adanya (tidak diklasifikasikan) justru supaya ia tidak dipakai sebagai
+      // klaim yang tak punya dasar; pembedaan yang nyata ada di `tanpa_persetujuan`.
+      wajibSimpan: true,
       userId
     });
   }

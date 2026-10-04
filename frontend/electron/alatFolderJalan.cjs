@@ -366,7 +366,12 @@ function tanpaPersetujuan({ program, argumen, profil }) {
 async function izinLaluJalankan(akar, { program, argumen, teks, s, r, env, waktuS, profil }, deps) {
   // Perintah baca tidak ditanyakan — lihat tanpaPersetujuan().
   if (tanpaPersetujuan({ program, argumen, profil })) {
-    return jalankanSesudahIzin(akar, { program, argumen, teks, s, r, env, waktuS, profil });
+    // `tanpaIzin: true` diteruskan ke hasil supaya jejak audit bisa membedakan perintah yang
+    // Owner lihat di dialog dari yang jalan sendiri. Sebelum 4.2.5 pembedaan ini tak diperlukan:
+    // setiap eksekusi punya gerbang manusia, dan DIALOGNYA SENDIRI adalah catatannya. Sejak
+    // gerbang itu dilonggarkan untuk git-baca, sebagian jalan tanpa saksi — dan hanya proses
+    // utama ini yang tahu yang mana.
+    return jalankanSesudahIzin(akar, { program, argumen, teks, s, r, env, waktuS, profil, tanpaIzin: true });
   }
   const setuju = await (async () => {
     try {
@@ -386,14 +391,16 @@ async function izinLaluJalankan(akar, { program, argumen, teks, s, r, env, waktu
   })();
   if (!setuju) return { ok: false, alat: 'folder_run', alamat: teks, perintah: teks, ditolakOwner: true, alasan: 'ditolak Owner di dialog izin — tidak ada yang dijalankan' };
 
-  return jalankanSesudahIzin(akar, { program, argumen, teks, s, r, env, waktuS, profil });
+  return jalankanSesudahIzin(akar, { program, argumen, teks, s, r, env, waktuS, profil, tanpaIzin: false });
 }
 
 /** Pelaksanaan sesudah gerbang izin — satu badan untuk kedua jalur (ditanyakan & tanpa persetujuan). */
-async function jalankanSesudahIzin(akar, { argumen, teks, r, env, waktuS }) {
+async function jalankanSesudahIzin(akar, { argumen, teks, r, env, waktuS, tanpaIzin = false }) {
   const h = await jalankanProses(r.exe, [...r.awal, ...argumen], { cwd: akar, env, waktuS });
   if (h.galat) return gagal(teks, h.galat);
-  return { ok: true, alat: 'folder_run', alamat: teks, perintah: teks, waktuBatasS: waktuS, ...h };
+  // `tanpaIzin` ditaruh SESUDAH `...h` supaya tidak bisa tertimpa diam-diam oleh hasil proses:
+  // ia pernyataan tentang GERBANGNYA, bukan tentang hasil eksekusinya.
+  return { ok: true, alat: 'folder_run', alamat: teks, perintah: teks, waktuBatasS: waktuS, ...h, tanpaIzin };
 }
 
 /**

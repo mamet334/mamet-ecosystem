@@ -78,10 +78,16 @@ console.log('\n-- TMN-0003: JSDoc logCommand --');
     'rujukan "dari CommandRegistry" dibuang dari JSDoc');
   cek(!existsSync(join(AKAR, 'frontend/src/core/runtime/services/CommandRegistry.js')),
     'CommandRegistry.js memang tidak ada — dasar klaim di atas masih sah');
-  cek(/YATIM/.test(isi), 'keyatiman method ini dinyatakan terang-terangan, bukan hanya rujukannya yang dibetulkan');
-
-  // Penjaga anti-busuk: begitu ada yang menyambungkan logCommand, komentar "YATIM" jadi bohong.
-  // Uji ini jatuh lebih dulu dan menuntut komentarnya diperbarui.
+  // DIPERBARUI 2026-10-04 (hari yang sama): `logCommand` DISAMBUNGKAN ke runCommand, dan uji ini
+  // menyala tepat sebagaimana dirancang — komentar "YATIM" seketika jadi bohong. Jadi arah
+  // asersinya dibalik: sekarang yang dijaga adalah klaim "DIPAKAI", dan klaim itu pun diperiksa
+  // terhadap kodenya, bukan dipercaya.
+  //
+  // Asersi lama `/YATIM/.test(isi)` sempat tetap hijau SECARA KELIRU setelah penyambungan, karena
+  // JSDoc barunya memuat kata itu di kalimat sejarahnya ("sebelumnya YATIM"). Pencocokan kata
+  // telanjang tidak cukup untuk klaim yang berubah arah.
+  cek(/DIPAKAI sejak/.test(isi), 'JSDoc menyatakan method ini DIPAKAI, bukan lagi yatim');
+  cek(/AssistantService\.runCommand\(\)/.test(isi), 'dan menyebut pemanggilnya dengan tepat');
   const semua = [];
   const jelajah = (d) => {
     for (const nama of readdirSync(join(AKAR, d))) {
@@ -98,12 +104,14 @@ console.log('\n-- TMN-0003: JSDoc logCommand --');
   const tanpaKomentar = (s) => s.split('\n').filter((b) => !/^\s*(\/\/|\*|\/\*)/.test(b)).join('\n');
   const pemakai = semua.filter((p) => /\blogCommand\b/.test(tanpaKomentar(baca(p))));
   cek(semua.length > 100, `berkas frontend/src terbaca (${semua.length})`);
-  cek(pemakai.length === 1 && pemakai[0].endsWith('AuditLogService.js'),
-    'logCommand MASIH yatim — satu-satunya berkas yang menyebutnya adalah rumahnya sendiri', pemakai);
-
-  const kemunculan = (tanpaKomentar(baca('frontend/src/core/runtime/services/AuditLogService.js')).match(/\blogCommand\b/g) || []).length;
-  cek(kemunculan === 1,
-    `satu kemunculan dalam kode (${kemunculan}) yaitu definisinya — bila jadi 2, ia sudah dipanggil dan komentar "YATIM" wajib diperbarui`);
+  // Klaim JSDoc-nya: dipakai, dan pemanggilnya AssistantService. Keduanya diperiksa.
+  cek(pemakai.length === 2, `dua berkas menyebutnya dalam kode: rumahnya + pemanggilnya (${pemakai.length})`, pemakai);
+  cek(pemakai.some((p) => p.endsWith('AuditLogService.js')), 'rumahnya ada di daftar', pemakai);
+  cek(pemakai.some((p) => p.endsWith('AssistantService.js')),
+    'pemanggilnya benar AssistantService, seperti yang diklaim JSDoc', pemakai);
+  // Pemanggil KETIGA akan menjatuhkan uji ini — bukan karena itu terlarang, tetapi karena klaim
+  // "pemanggilnya runCommand" lalu jadi tidak lengkap dan komentarnya wajib ikut diperbarui.
+  cek(pemakai.length <= 2, 'tak ada pemanggil lain yang belum disebut di JSDoc', pemakai);
 
   // Fungsinya sengaja dibiarkan; penghapusan permanen menunggu Owner.
   cek(/async logCommand\(/.test(isi), 'fungsinya memang masih ada — tidak dihapus tanpa izin Owner');
