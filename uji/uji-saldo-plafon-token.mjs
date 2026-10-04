@@ -131,7 +131,8 @@ try {
     cek(/14250/.test(pesan) && /3621/.test(pesan), 'pesannya menyebut kedua angka', pesan);
     cek(/10629/.test(pesan), 'dan kelebihannya dihitungkan, bukan disuruh menghitung sendiri', pesan);
     cek(/TIDAK menolong/.test(pesan), 'dikatakan tegas bahwa menurunkan panjang jawaban tak menolong', pesan);
-    cek(/percakapan BARU/i.test(pesan), 'memberi jalan yang bisa ditempuh Owner sekarang juga', pesan);
+    cek(/PROMPT_KOMPOSISI/.test(pesan), 'menunjuk ke tempat angkanya bisa dilihat', pesan);
+    cek(!/percakapan BARU/i.test(pesan), 'TIDAK menyuruh mulai percakapan baru — sisipan peta repo dikirim ulang tiap pesan, jadi itu tak berpengaruh', pesan);
     cek(!/\{"error"/.test(pesan), 'badan JSON mentah tidak lagi diteruskan untuk varian ini', pesan);
 
     // Tidak boleh ada pengulangan: plafon keluaran bukan yang bermasalah.

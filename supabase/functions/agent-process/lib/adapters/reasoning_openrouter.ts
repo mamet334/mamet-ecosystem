@@ -125,7 +125,12 @@ export function pesanSaldoTakCukup(teks: string, diminta: number): string {
   const p = batasPrompt(teks);
   if (p) {
     const lebih = p.dipakai - p.batas;
-    return `Prompt terlalu besar untuk saldo OpenRouter saat ini: ${p.dipakai} token dikirim, sedangkan saldo hanya menanggung ${p.batas} — kelebihan ${lebih} token. Menurunkan panjang jawaban TIDAK menolong di sini; yang kebesaran adalah prompt-nya. Mulai percakapan BARU (riwayat ikut terkirim di setiap pesan) atau isi ulang saldo. Rincian ukuran tiap bagian ada di log [PROMPT_KOMPOSISI].`;
+    // DIKOREKSI 2026-10-04: kalimat ini sempat menyarankan "mulai percakapan baru". Itu keliru
+    // untuk mode Engineer — `riwayat` di sana bukan riwayat chat melainkan SISIPAN yang disematkan
+    // ulang tiap pesan (peta repo + akar repo, lihat ConversationEngine `sisipan`/PATOK). Terukur
+    // 16.557 huruf dan IDENTIK walau percakapannya berganti, jadi percakapan baru tidak memangkas
+    // apa pun. Menyuruh Owner melakukan hal yang tak berpengaruh lebih buruk daripada diam.
+    return `Prompt terlalu besar untuk saldo OpenRouter saat ini: ${p.dipakai} token dikirim, sedangkan saldo hanya menanggung ${p.batas} — kelebihan ${lebih} token. Menurunkan panjang jawaban TIDAK menolong di sini; yang kebesaran adalah prompt-nya. Lihat log [PROMPT_KOMPOSISI] untuk ukuran tiap bagian — di mode Engineer yang terbesar biasanya konteks Engineer dan sisipan peta repo, keduanya dikirim ulang di SETIAP pesan. Atau isi ulang saldo.`;
   }
 
   const n = tokenTerjangkau(teks);

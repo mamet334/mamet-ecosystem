@@ -525,15 +525,35 @@ sebelumnya → selalu −1 dan segmennya diam-diam hilang, persis kebisuan yang 
 **3.600 token di SETIAP pesan** — tak pernah punya namanya sendiri di log. Ini memberi angka untuk
 usul Owner yang tertunda: peta repo dibaca saat perlu lewat `git show`, bukan disuntikkan tiap pesan.
 
-**2. Riwayat 16.557 huruf untuk DUA pesan.** Pertanyaannya 12 huruf, jadi satunya ±16.545 —
-hampir pasti **dumping JSON 402 lama yang tersimpan sebagai pesan**, lalu ikut terkirim seterusnya.
-Galat besar **meracuni prompt berikutnya**. Sumbernya sudah ditutup (item 119: galat 402 kini
-pesan pendek), tetapi yang sudah tersimpan tetap ada — karena itu pesan galat barunya menyarankan
-**mulai percakapan baru**, yang seketika memotong 16.557 huruf.
+**2. ✅ TERPECAHKAN — "riwayat 16.557 huruf" BUKAN riwayat chat.** Saya sempat menduga itu dumping
+JSON 402 lama yang tersimpan sebagai pesan, dan **menyarankan Owner mulai percakapan baru**.
+**Salah, dan sarannya tak berpengaruh sama sekali.** Angkanya **identik di lima kali jalan**,
+termasuk di percakapan yang berbeda — petunjuk yang sama dengan kasus 18.195.
 
-**Artinya untuk saldo setipis ini:** percakapan baru → ±38.500 huruf ≈ 9.950 token, masih di atas
-3.621. Jadi pada saldo sekarang mode Engineer memang **tidak bisa jalan** — kesimpulan jujur, bukan
-kegagalan kode. Yang berubah: angkanya kini diketahui, dan jelas mana yang bisa ditekan.
+Sebabnya: `ConversationEngine.jsx:1255` menyematkan `[catatanAkar, catatanPeta, ringkasanTemuan]`
+sebagai **pesan riwayat ber-PATOK di setiap kiriman**. Jadi "2 pesan" itu **peta repo + akar
+repo**, dikirim ulang tiap pesan. Percakapan baru tidak memangkas apa pun. Kalimat saran itu sudah
+dicabut dari pesan galat — menyuruh Owner melakukan hal yang tak berpengaruh lebih buruk daripada
+diam.
+
+### Gambaran akhir: 62% prompt adalah pengetahuan repo yang dikirim ulang tiap pesan
+
+Terukur 14:45 (sesudah `konteks_engineer` punya namanya sendiri), total **55.125 huruf**:
+
+| Bagian | Huruf | Apa |
+|---|---|---|
+| **`konteks_engineer`** | **17.687** | prompt Engineer sisi SERVER |
+| **sisipan (`riwayat`)** | **16.557** | peta repo + akar repo, disematkan KLIEN |
+| `blok4_rag` | 7.011 | RAG |
+| `dasar_identitas_panduan` | 6.030 | |
+| sisanya | 7.840 | kontrak, brain, format, memori (508) |
+
+Dua teratas = **34.244 huruf, 62%** — keduanya pengetahuan repo, lewat **dua jalur terpisah**
+(satu server, satu klien), dan **keduanya dikirim ulang di setiap pesan**.
+
+**Inilah angka untuk usul Owner yang tertunda:** peta repo dibaca **saat perlu** lewat `git show`
+alih-alih disuntikkan tiap pesan. Sasaran yang terukur: ±16.557 huruf ≈ 4.300 token per pesan,
+**30% prompt**, tanpa menyentuh konteks Engineer sisi server.
 
 ### ⚠️ Temuan terbuka — konstitusi dibaca tiap boot lalu DIBUANG
 
