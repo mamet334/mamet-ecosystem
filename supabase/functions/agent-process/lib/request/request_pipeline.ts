@@ -247,7 +247,7 @@ export async function executeRequestPipeline(
       //    Disimpan di ctx.request supaya pencarian DOKUMEN di context_builder memakai vektor yang
       //    sama — satu embedding per pesan, bukan dua.
       const userEmbedding = await generateEmbeddingThroughAdapter(parsed.finalMessage, rctx, jejakVektorMemori);
-      (ctx.request as any).queryEmbedding = userEmbedding;
+      ctx.request.queryEmbedding = userEmbedding;
 
       // 2. Query vector database via Supabase RPC
       //
@@ -328,6 +328,12 @@ export async function executeRequestPipeline(
     // hanya bisa ditemukan lewat vektor. Jadi kegagalan di sini berarti memori DILEWATI SELURUHNYA,
     // dan sebelum ini satu-satunya jejaknya adalah console.error di sisi server.
     if (jejakVektorMemori.sebab) {
+      // Diteruskan ke context_builder supaya pencarian DOKUMEN tidak memanggil pintu embedding
+      // sekali lagi untuk gagal dengan alasan yang sama. Syaratnya `jejakVektorMemori.sebab`,
+      // bukan sekadar "ada galat": galat non-embedding (mis. RPC match_memories) tiba di `catch`
+      // yang sama padahal vektornya SUDAH jadi, dan menandainya gagal akan membuang vektor yang
+      // baik serta menurunkan pencarian dokumen tanpa sebab.
+      ctx.request.embeddingGagal = { sebab: jejakVektorMemori.sebab, pesan: jejakVektorMemori.pesan };
       ctx.state.processingSteps.push(
         `⚠️ [MEMORI DILEWATI] Pencarian memori butuh vektor dan vektornya gagal: ` +
         `${kalimatSebabEmbedding(jejakVektorMemori)}. Memori tidak punya cadangan pencocokan kata, ` +

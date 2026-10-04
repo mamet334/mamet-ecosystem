@@ -116,8 +116,24 @@ export const ContextBuilderHandler = {
             const vektorSiap = Array.isArray(ctx.request.queryEmbedding) && ctx.request.queryEmbedding.length === EMBEDDING_DIMENSIONS;
             // Sebab kegagalan ikut dicatat: tanpa ini, penurunan ke pencocokan kata di bawah
             // hanya terbaca sebagai "✅ RAG TIER 1 OK" dengan nama strategi internal.
-            const jejakVektor: JejakEmbedding = {};
-            const queryEmbedding = vektorSiap ? ctx.request.queryEmbedding : await generateEmbedding(pesan, rctx, jejakVektor);
+            //
+            // `gagalDiHulu` menutup PANGGILAN GANDA. `request_pipeline` sudah mencoba membuat
+            // vektor untuk pesan yang sama; bila gagal ia melempar, sehingga `queryEmbedding` tak
+            // pernah disetel dan baris di bawah ini dulu memanggil pintu embedding SEKALI LAGI —
+            // gagal untuk alasan yang sama, milidetik kemudian. Terekam di log 1 Okt: dua
+            // `[Embedding] Gagal (SALDO_HABIS)` berjarak 183 ms untuk satu pesan.
+            //
+            // Ini bukan kebijakan ulang-coba yang dihapus. Jarak 183 ms bukan ulang-coba: kedua
+            // panggilan berada dalam SATU permintaan, dan tak ada kegagalan yang sembuh dalam
+            // waktu itu — 402 saldo habis maupun ketiadaan kunci jelas tidak. Yang diperbaiki
+            // adalah dua titik panggil yang tidak saling tahu.
+            const gagalDiHulu = ctx.request.embeddingGagal;
+            const jejakVektor = { ...(gagalDiHulu || {}) } as JejakEmbedding;
+            const queryEmbedding: number[] = vektorSiap
+                ? (ctx.request.queryEmbedding || [])
+                : gagalDiHulu
+                    ? []
+                    : await generateEmbedding(pesan, rctx, jejakVektor);
 
             if (queryEmbedding.length === EMBEDDING_DIMENSIONS) {
                 const cari = (vektor: number[], teks: string) => searchDocuments(
@@ -173,7 +189,7 @@ export const ContextBuilderHandler = {
             const sebabTurun = vektorSiap
                 ? 'vektor yang dipakai ulang tak sesuai dimensi'
                 : kalimatSebabEmbedding(jejakVektor);
-            console.log(`[RAG] Mode: ${ctx.policy.mode} — vektor tidak tersedia (${sebabTurun}), cadangan pencocokan kata (KnowledgeService).`);
+            console.log(`[RAG] Mode: ${ctx.policy.mode} — vektor tidak tersedia (${sebabTurun}${gagalDiHulu ? ', sudah gagal di hulu — TIDAK diulang' : ''}), cadangan pencocokan kata (KnowledgeService).`);
             ctx.state.processingSteps.push(
                 `⚠️ [RAG TURUN KE PENCOCOKAN KATA] Pencarian makna tidak jalan: ${sebabTurun}. ` +
                 `Dokumen yang pertanyaannya tak memuat kata dari judulnya bisa TIDAK ditemukan — ` +

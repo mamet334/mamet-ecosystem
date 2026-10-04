@@ -24,6 +24,23 @@ export interface UnifiedExecutionContext {
     memoryEnabled?: boolean;
     dataTabel?: boolean; // tombol Data Tabel (Item 92 Tahap 3)
     isRagEnabled?: boolean;
+    /**
+     * Vektor pertanyaan, dibuat SEKALI di `request_pipeline` lalu dipakai ulang oleh pencarian
+     * dokumen di `context_builder`. Dulu diselipkan lewat `as any`.
+     */
+    queryEmbedding?: number[];
+    /**
+     * Terisi bila pembuatan vektor di hulu GAGAL, beserta sebabnya.
+     *
+     * Dua titik panggil dulu tidak saling tahu: `request_pipeline` gagal dan melempar sehingga
+     * `queryEmbedding` tak pernah disetel, lalu `context_builder` memanggil pintu embedding
+     * sekali lagi — gagal untuk alasan yang sama, milidetik kemudian. Terekam di log 1 Okt:
+     * dua `[Embedding] Gagal (SALDO_HABIS)` berjarak 183 ms untuk SATU pesan.
+     *
+     * Medan ini bukan kebijakan ulang-coba; ia hanya membuat percobaan kedua tahu bahwa yang
+     * pertama sudah terjadi.
+     */
+    embeddingGagal?: { sebab?: string; pesan?: string };
     effectiveRagThreshold?: number;
     effectiveRagMatchCount?: number;
     contractValidation?: any;
