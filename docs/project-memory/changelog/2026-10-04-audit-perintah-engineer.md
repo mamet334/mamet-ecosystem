@@ -129,6 +129,44 @@ dan salah satunya harus benar `AssistantService`.
 
 **79/79 berkas uji hijau.** Ketiga berkas kode lolos parser esbuild.
 
+## ✅ RLS TERBUKTI DI BASIS DATA NYATA (4 Okt, sesudah 4.2.11 terpasang)
+
+Owner tak bisa menguji chat karena saldo OpenRouter habis, jadi bagian yang **tidak** butuh model
+diuji langsung ke Supabase: tiap peran disamarkan dengan `set local role` + `request.jwt.claims`,
+semuanya **di dalam transaksi yang dibatalkan**.
+
+| | Hasil |
+|---|---|
+| **A** `authenticated`, `user_id` = dirinya | ✅ **BOLEH** — dan barisnya langsung terlihat olehnya (kebijakan BACA ikut terbukti) |
+| **B** `authenticated`, `user_id` = **orang lain** | ❌ **DITOLAK** — *"new row violates row-level security policy"* |
+| **C** `anon`, `user_id` = Owner | ❌ **DITOLAK** |
+
+### Uji kendali — membuktikan ujinya BISA gagal
+
+Tiga penolakan belum membuktikan apa pun sampai terbukti ia bisa lolos. Kebijakan **lama** dipasang
+kembali di dalam transaksi, lalu percobaan `anon` diulang:
+
+> *"KENDALI: dengan kebijakan LAMA, anon BERHASIL memalsukan baris atas nama Owner"*
+
+Jadi lubangnya **nyata, bukan teoretis**. Sesudah `rollback`, diperiksa ulang: kebijakannya kembali
+ke `{authenticated}` + `auth.uid() = user_id`, dan tabelnya **0 baris** — tak ada yang tertinggal.
+
+### Satu lapis perlindungan yang ikut ketahuan
+
+`user_id` punya **kunci asing ke `auth.users`**. Jadi baris palsu tak bisa memakai UUID karangan —
+ia harus memakai id pengguna yang benar-benar ada. Itu tidak menutup pemalsuan (id Owner nyata),
+tetapi mempersempitnya, dan sebelumnya tidak tercatat di mana pun.
+
+## Yang masih belum bisa diuji dari sisi mana pun
+
+Insert yang **sungguhan dari aplikasi** belum terjadi: menjalankan perintah Engineer menuntut model
+memancarkan penanda `[MAMET_CMD]`, dan itu butuh panggilan model. Dengan saldo habis, jalur itu
+tertutup — bukan karena fiturnya, melainkan karena pemicunya.
+
+Yang sudah terbukti: kebijakannya benar, kolomnya ada, tiap medan `logEntry` punya kolomnya
+(sehingga insert tidak akan ditolak Postgres), dan gerbangnya memberi nilai yang benar. Yang
+tersisa: satu baris nyata masuk ke tabel.
+
 ## Perlu RILIS KLIEN, tanpa deploy
 
 `alatFolderJalan.cjs` ada di `frontend/electron/`, jadi **wajib build baru** — muat ulang renderer

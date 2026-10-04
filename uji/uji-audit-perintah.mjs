@@ -122,6 +122,45 @@ console.log('\n-- dicatat di satu pintu --');
     'kegagalan audit dilaporkan ke konsol, bukan ditelan diam-diam');
 }
 
+// ── 4b. Medan baris log harus ADA di tabelnya ───────────────────────────────────────────────
+// Kelas kesalahan paling berbahaya di sini: satu medan yang tidak ada di tabel membuat SETIAP
+// insert ditolak Postgres, dan penolakan itu hanya jadi `console.warn` di `log()`. Hasilnya fitur
+// yang terlihat tersambung, lulus semua uji lain, dan mencatat NOL — persis pola `mimeType`.
+//
+// Daftar di bawah diverifikasi langsung ke Supabase 2026-10-04 lewat information_schema. Bila
+// skemanya berubah, uji ini harus diperbarui bersamaan — itu memang maunya: menambah medan di
+// kode TANPA menambah kolomnya akan jatuh di sini, bukan diam-diam di produksi.
+console.log('\n-- medan baris log vs kolom tabel --');
+{
+  const KOLOM_NYATA = [
+    'id', 'requested_by', 'ai_decision', 'command', 'target_path', 'executed_at',
+    'result_success', 'result_output', 'result_reason', 'in_workspace', 'is_destructive',
+    'user_id', 'logged_at', 'tanpa_persetujuan',
+  ];
+  const m = ALS.match(/const logEntry = \{([\s\S]*?)\n    \};/);
+  cek(!!m, 'objek logEntry ditemukan');
+  const medan = [...(m ? m[1] : '').matchAll(/^\s{6}([a-z_]+):/gm)].map((x) => x[1]);
+  cek(medan.length >= 13, `medan logEntry terbaca (${medan.length})`, medan);
+  const asing = medan.filter((k) => !KOLOM_NYATA.includes(k));
+  cek(asing.length === 0, 'tiap medan logEntry punya kolomnya di tabel — insert tidak akan ditolak', asing);
+  cek(medan.includes('tanpa_persetujuan'), 'kolom baru benar-benar diisi, bukan hanya ditambahkan ke tabel');
+}
+
+// ── 4c. Gerbang menentukan medannya — dijalankan, bukan dibaca ──────────────────────────────
+// Gerbangnya sendiri sudah diuji tuntas di `uji-perintah-tanpa-persetujuan.mjs` (item 104); yang
+// diuji di sini hanya PEMETAANNYA ke jejak audit: perintah mana yang akan muncul bertanda
+// `tanpa_persetujuan = true`, supaya Owner tahu apa yang seharusnya ia lihat di tabel.
+console.log('\n-- pemetaan gerbang -> medan audit --');
+{
+  const { tanpaPersetujuan, PROFIL } = await import('../frontend/electron/alatFolderJalan.cjs');
+  const g = (program, argumen) => tanpaPersetujuan({ program, argumen, profil: PROFIL.engineer });
+
+  cek(g('git', ['status']) === true, 'git status → tanpa_persetujuan = true (muncul di tabel sebagai jalan-sendiri)');
+  cek(g('git', ['grep', '-n', 'foo']) === true, 'git grep → tanpa_persetujuan = true');
+  cek(g('npm', ['test']) === false, 'npm test → tanpa_persetujuan = false (lewat dialog Owner)');
+  cek(g('node', ['-e', 'x']) === false, 'node -e → tanpa_persetujuan = false — garis yang tidak boleh bocor');
+}
+
 // ── 5. Lubang RLS ditutup di migrasi ────────────────────────────────────────────────────────
 // Kebijakan lama bernama "Service role can insert" tetapi TANPA `TO`, jadi berlaku PUBLIC, dengan
 // WITH CHECK (TRUE). Komentar migrasi lama menyangka AuditLogService memakai service role —
