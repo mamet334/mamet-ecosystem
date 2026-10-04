@@ -88,27 +88,100 @@ export function catatanAkarRepo(akar) {
  * DIAM-DIAM. Dengan tahu `ConversationEngine.jsx` 2.195 baris, model bisa memilih `git grep` sejak
  * awal — bukan mencoba membaca utuh lalu gagal tanpa tahu sebabnya (live 28 September).
  *
- * ── Harga ───────────────────────────────────────────────────────────────────────────────────
- * 270 berkas, 15.494 huruf (±3.870 token) — lebih kecil daripada blok aturan yang sudah ada, dan
- * anggaran konteks 60.000 token baru terpakai ±10.000.
+ * ── Harga: diubah jadi INDEKS 2026-10-04 (permintaan Owner) ─────────────────────────────────
+ * Daftar LENGKAP dulu dikirim ulang di SETIAP pesan — 273 berkas, 15.670 huruf. Terukur di
+ * produksi lewat `[PROMPT_KOMPOSISI]`: bersama catatan akar repo ia jadi `riwayat=2 pesan/16.557
+ * huruf`, IDENTIK di lima kali jalan termasuk di percakapan berbeda, karena sisipan ini memang
+ * disematkan ulang tiap kiriman. Itu 30% dari seluruh prompt, untuk pertanyaan apa pun.
+ *
+ * Owner: *"pemangkasan peta repo dengan metode sama seperti skill, yaitu memuat judul atau kata
+ * kunci saja, bukan keseluruhan peta maupun penjelasan."*
+ *
+ * Jadi yang dikirim kini INDEKS: folder + jumlah berkas, ditambah daftar berkas besar yang
+ * `git show`-nya pasti terpotong. Daftar berkasnya diambil SAAT PERLU — dan itu murah karena
+ * `git grep` sudah jalan tanpa dialog izin sejak 4.2.5.
+ *
+ *   sebelum : 15.670 huruf, tiap pesan
+ *   sesudah : ±2.200 huruf, tiap pesan   (−86%, ≈3.500 token per pesan)
+ *
+ * Yang HILANG dan disadari: model tak lagi tahu alamat tiap berkas tanpa bertanya. Karena itu
+ * perintah pengambilnya ditulis di indeksnya sendiri, bukan diserahkan pada ingatan model.
  *
  * @param {string} peta keluaran `git grep -c ""`, bentuk "berkas:jumlah_baris" per baris
- * @returns {string} blok catatan, atau kosong bila peta tidak ada
+ * @returns {string} blok indeks, atau kosong bila peta tidak ada
  */
+
+/** Berkas di atas ini pasti terpotong `git show` (keluaran dibatasi 20 KB). */
+export const BARIS_BERKAS_BESAR = 600;
+
+/** Kedalaman folder yang diindeks. Lebih dalam = lebih tepat, tetapi lebih panjang. */
+export const DALAM_INDEKS = 3;
+
 export function catatanPetaRepo(peta) {
   const isi = String(peta || '').trim();
   if (!isi) return '';
+
   const baris = isi.split('\n').filter(Boolean);
-  return [
+  const berkas = baris.map((b) => {
+    const p = b.lastIndexOf(':');
+    return { alamat: b.slice(0, p), jumlah: Number(b.slice(p + 1)) || 0 };
+  }).filter((f) => f.alamat);
+  if (!berkas.length) return '';
+
+  // Folder → jumlah berkas. Yang lebih dalam dilebur ke induknya pada DALAM_INDEKS.
+  const perFolder = new Map();
+  for (const f of berkas) {
+    const bagian = f.alamat.split('/');
+    bagian.pop();                                   // buang nama berkasnya
+    const folder = bagian.slice(0, DALAM_INDEKS).join('/') || '(akar)';
+    perFolder.set(folder, (perFolder.get(folder) || 0) + 1);
+  }
+  const daftarFolder = [...perFolder.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([folder, n]) => `${folder.padEnd(38)} ${n}`);
+
+  const besar = berkas
+    .filter((f) => f.jumlah > BARIS_BERKAS_BESAR)
+    .sort((a, b) => b.jumlah - a.jumlah)
+    .map((f) => `  ${f.alamat} ${f.jumlah}`);
+
+  // Peta UTUH, bentuk lama. Tetap disusun supaya bisa DIBANDINGKAN, bukan diandaikan.
+  const petaUtuh = [
     '[PETA REPO — SELURUH BERKAS KODE, dengan jumlah barisnya]',
-    `${baris.length} berkas. Bentuk tiap baris: alamat:jumlah_baris`,
-    'Ini daftar LENGKAP kode aplikasi — bila sebuah berkas tidak ada di sini, ia memang tidak ada.',
-    'JANGAN mencari letak berkas; alamatnya sudah di bawah ini. Yang perlu dicari hanya ISInya.',
-    'Berkas besar (>400 baris) TIDAK muat lewat `git show` (keluaran dipotong 20 KB) — pakai',
-    '`git grep -n -B2 -A4 <kata>` atau `git blame -L <awal>,<akhir> -- <alamat>`.',
+    `${berkas.length} berkas. Bentuk tiap baris: alamat:jumlah_baris`,
+    'Daftar LENGKAP: bila sebuah berkas tidak ada di sini, ia memang tidak ada.',
+    `Berkas >${BARIS_BERKAS_BESAR} baris TIDAK muat lewat \`git show\` (keluaran dipotong 20 KB) —`,
+    'pakai `git grep -n -B2 -A4 <kata>` atau `git blame -L <awal>,<akhir> -- <alamat>`.',
     '',
     isi,
   ].join('\n');
+
+  const indeks = [
+    '[PETA REPO — INDEKS, bukan daftar berkas]',
+    `${berkas.length} berkas kode di ${perFolder.size} folder. Daftar berkasnya TIDAK disertakan di sini.`,
+    '',
+    'Cara mengambil yang Anda perlukan (keduanya jalan TANPA dialog izin, jadi murah):',
+    '  daftar berkas satu folder : git grep -c "" -- <folder>',
+    '  mencari isi               : git grep -n -B2 -A4 <kata> -- <folder>',
+    'JANGAN menebak alamat berkas dan JANGAN menyimpulkan sebuah berkas tidak ada — indeks ini',
+    'hanya menyebut folder. Ambil daftarnya dulu dengan perintah di atas.',
+    '',
+    'FOLDER (jumlah berkas):',
+    ...daftarFolder,
+    ...(besar.length ? [
+      '',
+      `BERKAS >${BARIS_BERKAS_BESAR} BARIS — \`git show\` pasti terpotong (20 KB). Pakai \`git grep -n\` atau \`git blame -L\`:`,
+      ...besar,
+    ] : []),
+  ].join('\n');
+
+  // PENJAGA, dan sengaja TEPAT alih-alih nisbah tebakan: indeks hanya berguna bila ia benar-benar
+  // lebih kecil. Pada repo yang tiap berkasnya punya folder sendiri, pengelompokan tak memampatkan
+  // apa pun dan indeksnya justru LEBIH BESAR — ditemukan oleh ujinya sendiri (12.808 huruf untuk
+  // peta 8.729 huruf). Rancangan pertama memakai ambang `folder * 3 > berkas`, dan angka 3 itu
+  // sewenang-wenang: ia langsung salah menilai peta kecil. Membandingkan panjang keduanya tidak
+  // perlu ditebak sama sekali, dan membuat janji "lebih kecil" berlaku tanpa syarat.
+  return indeks.length < petaUtuh.length ? indeks : petaUtuh;
 }
 
 /** `git show HEAD:<alamat>` / `git show <sha>:<alamat>` — pembacaan berkas utuh, satu-satunya yang bisa terpotong diam-diam. */

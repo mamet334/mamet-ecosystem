@@ -36,19 +36,81 @@ const PETA = [
 // ── 1. Isi catatannya ────────────────────────────────────────────────────────────────────────
 console.log('\n-- isi catatan --');
 
-const c = P.catatanPetaRepo(PETA);
-cek(c.includes('ConversationEngine.jsx:2195'), 'peta ikut apa adanya, beserta jumlah barisnya');
-cek(/3 berkas/.test(c), 'jumlah berkas disebut', c.slice(0, 120));
-cek(/daftar LENGKAP/i.test(c),
-  'dinyatakan LENGKAP — tanpa itu model tetap menduga ada berkas lain yang belum terlihat', c);
-cek(/JANGAN mencari letak berkas/i.test(c), 'melarang mencari LETAK berkas (alamatnya sudah ada)');
-cek(/Yang perlu dicari hanya ISInya/i.test(c),
-  'tetapi menegaskan isinya MASIH perlu dicari — tanpa ini larangan jadi terlalu luas', c);
+// ── KONTRAKNYA BERUBAH 2026-10-04 (permintaan Owner) ────────────────────────────────────────
+// Uji ini dulu menegakkan keputusan LAMA: peta dikirim UTUH dan dinyatakan "daftar LENGKAP".
+// Keputusan itu diubah Owner setelah biayanya terukur di produksi — sisipan peta + akar repo
+// tercatat `riwayat=2 pesan/16.557 huruf`, IDENTIK di lima kali jalan termasuk di percakapan
+// berbeda, yaitu 30% dari seluruh prompt untuk pertanyaan apa pun.
+//
+// Owner: *"metode sama seperti skill — memuat judul atau kata kunci saja, bukan keseluruhan peta."*
+//
+// Jadi asersinya DIBALIK arah, bukan dilonggarkan: yang dulu wajib ada (daftar berkas, kata
+// "LENGKAP") kini wajib TIDAK ada, dan yang menggantikannya harus benar-benar bisa dipakai.
+// Fixture yang MENCERMINKAN repo nyata: banyak berkas, sedikit folder (273 berkas / 18 folder).
+// Fixture 3-berkas di atas tidak cocok untuk menguji indeks — pada peta sekecil itu peta utuh
+// memang lebih kecil, dan fungsi ini sengaja mengirim yang lebih kecil.
+const PETA_NYATA = [
+  'frontend/src/components/workbench/ConversationEngine.jsx:2195',
+  'frontend/electron/main.cjs:1158',
+  'frontend/electron/akarRepo.cjs:102',
+  ...Array.from({ length: 60 }, (_, i) => `frontend/src/components/k${i}.jsx:${90 + i}`),
+  ...Array.from({ length: 60 }, (_, i) => `frontend/src/core/runtime/services/s${i}.js:${80 + i}`),
+].join('\n');
+
+const c = P.catatanPetaRepo(PETA_NYATA);
+cek(!c.includes('k30.jsx:120'),
+  'daftar berkas TIDAK ikut lagi — inilah pemangkasannya', c.slice(0, 160));
+cek(/123 berkas/.test(c), 'jumlah berkas tetap disebut', c.slice(0, 120));
+cek(/INDEKS, bukan daftar berkas/i.test(c),
+  'dinyatakan INDEKS — model harus tahu daftar berkasnya memang tidak disertakan', c);
+cek(!/daftar LENGKAP/i.test(c), 'klaim "LENGKAP" dicabut — ia sudah tidak benar');
+
+// Yang menggantikan kelengkapan: cara mengambilnya. Tanpa ini, pemangkasan hanya membutakan.
+cek(/git grep -c ""? -- <folder>/.test(c),
+  'memberi perintah pengambil daftar berkas per folder', c);
+cek(/TANPA dialog izin/i.test(c),
+  'menyebut perintahnya murah (jalan sendiri sejak 4.2.5) — tanpa itu model ragu memakainya', c);
+cek(/JANGAN menebak alamat berkas/i.test(c), 'melarang menebak alamat');
+cek(/JANGAN menyimpulkan sebuah berkas tidak ada/i.test(c),
+  'DAN melarang menyimpulkan ketiadaan dari indeks — bahaya baru yang dibawa pemangkasan ini', c);
+
+cek(/FOLDER \(jumlah berkas\)/.test(c), 'daftar folder beserta jumlahnya ada');
+cek(/frontend\/src\/components\s+1/.test(c) || /frontend\/src\/components/.test(c),
+  'folder dari peta benar-benar terindeks', c);
 
 // Jumlah baris bukan hiasan: ia yang mengajari kapan `git show` akan terpotong diam-diam.
+// Nilai ini DIPERTAHANKAN dari rancangan lama — hanya berkas besar yang didaftar, bukan semuanya.
 cek(/git show/.test(c) && /20 KB/.test(c), 'menyebut sebab berkas besar tak muat: keluaran dipotong 20 KB');
 cek(/git grep -n/.test(c) && /git blame -L/.test(c),
   'memberi GANTI cara, bukan sekadar melarang (prosedur langkah 0.4)', c);
+cek(c.includes('ConversationEngine.jsx 2195'),
+  'berkas >600 baris TETAP didaftar beserta jumlahnya — peringatannya tidak ikut terpangkas', c);
+
+// Pemangkasannya diukur, bukan diklaim.
+console.log('\n-- pemangkasan diukur --');
+{
+  // Bentuk NYATA: banyak berkas, sedikit folder.
+  const nyata = Array.from({ length: 300 }, (_, i) =>
+    `frontend/src/core/runtime/services/a${i}.js:${50 + i}`).join('\n');
+  const idx = P.catatanPetaRepo(nyata);
+  cek(idx.length < nyata.length / 2,
+    `indeks jauh lebih kecil daripada peta mentah (${idx.length} vs ${nyata.length} huruf)`,
+    { indeks: idx.length, mentah: nyata.length });
+  cek(!/a150\.js/.test(idx), 'berkas satuan tidak bocor ke indeks', idx.slice(0, 200));
+}
+{
+  // Bentuk PATOLOGIS: tiap berkas punya foldernya sendiri, jadi pengelompokan tak memampatkan
+  // apa pun. Kasus ini ditemukan oleh uji ini sendiri — rancangan pertama menghasilkan indeks
+  // 12.808 huruf untuk peta 8.729 huruf, yakni LEBIH BESAR daripada yang dipangkasnya.
+  const patologis = Array.from({ length: 300 }, (_, i) => `frontend/src/f${i}/a${i}.js:${50 + i}`).join('\n');
+  const hasil = P.catatanPetaRepo(patologis);
+  cek(hasil.length < patologis.length * 1.3,
+    `tidak membengkak: ${hasil.length} huruf untuk peta ${patologis.length} huruf`,
+    { hasil: hasil.length, peta: patologis.length });
+  cek(/SELURUH BERKAS KODE/.test(hasil),
+    'jatuh kembali ke peta utuh — di bentuk itu peta lebih murah DAN lebih berguna', hasil.slice(0, 140));
+  cek(hasil.includes('a150.js:200'), 'dan daftar berkasnya benar-benar ikut pada jalur itu');
+}
 
 // ── 2. Kapan diam ────────────────────────────────────────────────────────────────────────────
 // Di web/Mametlite tidak ada Electron; di desktop akar repo bisa belum dipilih. Peta kosong yang
