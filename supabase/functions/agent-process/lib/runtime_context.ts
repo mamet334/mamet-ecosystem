@@ -39,10 +39,16 @@ export interface ProviderKeys {
   openRouter?: string;
   /**
    * Kunci OpenRouter MILIK PENGGUNA (header x-byok-openrouter) — khusus embedding (Item 63–65).
-   * Sengaja terpisah dari `openRouter`, yang jatuh ke OPENROUTER_API_KEY sistem bila provider
-   * chat pengguna bukan openrouter. Embedding dibayar pengguna; tidak pernah kunci sistem.
+   * Tetap terpisah dari `openRouter` karena pemakaiannya berbeda: embedding dibayar pengguna.
+   *
+   * KOREKSI 2026-10-04: kalimat lama di sini berbunyi `openRouter` "jatuh ke OPENROUTER_API_KEY
+   * sistem bila provider chat pengguna bukan openrouter". Itu BASI — perilaku itu dihapus
+   * 2026-09-15; `request_pipeline.ts` kini jatuh ke header `x-byok-openrouter`, bukan kunci
+   * sistem. Komentar basi ini nyaris membuat saya melaporkan cadangan kunci sistem yang sudah
+   * tidak ada; kode yang menentukan, bukan komentar.
    */
   openRouterByok?: string;
+  /** Kunci OpenAI MILIK PENGGUNA saja. Tak ada cadangan kunci sistem (BYOK, ditutup 2026-10-04). */
   openAI: string;
 }
 

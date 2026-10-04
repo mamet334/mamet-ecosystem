@@ -59,7 +59,14 @@ export async function executeRequestPipeline(
   // Kunci SERVER Gemini & Groq tidak lagi dibaca (keputusan Owner 2026-09-15, fokus OpenRouter): ketiga kunci
   // Gemini gratis mati (403/429) sehingga Intent Router & Coordinator gagal di setiap pesan, dan kunci gratis pihak
   // lain berisiko berubah kebijakan/biaya. Secret-nya sudah dihapus dari Supabase. Gemini/Groq hanya dengan BYOK.
-  const openAIKey = Deno.env.get('OPENAI_API_KEY') || '';
+  //
+  // OPENAI_API_KEY ikut berhenti dibaca di sini (2026-10-04). Ia satu-satunya penyedia yang TERLEWAT saat
+  // keputusan BYOK 2026-09-10 menutup cadangan kunci sistem: `openAI` masih diisi kunci server bagi setiap
+  // pengguna yang penyedianya BUKAN openai. Ditelusuri sampai habis — tak ada yang memakainya hari ini
+  // (`getAdapter()` nol pemanggil, satu-satunya kaskade memakai ['openrouter','gemini','groq'], dan
+  // `env.OPENAI_API_KEY` yang dititipkan ke sub-agent tidak pernah dibaca), jadi ini pistol terisi tanpa
+  // pelatuk: menambahkan 'openai' ke satu daftar preferredOrder sudah cukup membuat kunci Owner membayari
+  // pengguna luar — akibat nomor 1 yang justru dilarang keputusan itu. Ditutup sebelum pelatuknya terpasang.
 
   const bypassCooldown = request.headers.get('x-bypass-cooldown') === 'true';
   if (bypassCooldown) {
@@ -200,7 +207,7 @@ export async function executeRequestPipeline(
       gemini: finalProvider === 'gemini' ? finalApiKey : '',
       allGemini: finalProvider === 'gemini' && finalApiKey ? [finalApiKey] : [],
       groq: finalProvider === 'groq' ? finalApiKey : '',
-      openAI: finalProvider === 'openai' ? finalApiKey : openAIKey,
+      openAI: finalProvider === 'openai' ? finalApiKey : '',
     },
 
     // thinking TIGA keadaan (2026-09-13): true/false dari tier Owner diteruskan apa adanya — false kini
