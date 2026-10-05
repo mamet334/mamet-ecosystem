@@ -54,6 +54,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Peta repo: daftar berkas kode + jumlah barisnya, supaya Engineer TAHU apa yang ada
     // alih-alih menebak letak berkas lalu mencarinya sepotong-sepotong.
     petaRepo: () => ipcRenderer.invoke('engineer:peta-repo'),
+    indeksKonstitusi: () => ipcRenderer.invoke('engineer:indeks-konstitusi'),
     perintahAman: (teks) => ipcRenderer.invoke('engineer:perintah-aman', teks),
     // Tahap 5 — akar repo dipilih Owner sekali; di aplikasi terpasang tanpa ini alat repo mati.
     statusAkarRepo: () => ipcRenderer.invoke('engineer:status-akar-repo'),

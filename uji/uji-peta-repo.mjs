@@ -132,8 +132,12 @@ cek(/import \{[^}]*\bcatatanPetaRepo\b[^}]*\} from '[^']*ProsedurEngineer\.js'/.
   'catatanPetaRepo diimpor dari ProsedurEngineer');
 cek(/const catatanPeta = catatanPetaRepo\(peta\);/.test(CE), 'dipanggil di handleSend');
 cek(/engineer\?\.petaRepo\?\.\(\)/.test(CE), 'petanya dibaca dari proses utama, bukan disusun di layar');
-cek(/const sisipan = \[catatanAkar, catatanPeta, ringkasanTemuan\]/.test(CE),
-  'ikut ke sisipan bersama catatan akar repo & ingatan temuan', (CE.match(/const sisipan = [^\n]*/g) || []));
+// Yang dijaga: `catatanPeta` ADA di dalam larik sisipan — bukan ejaan seluruh lariknya.
+// Bentuk lama memaku ketiga unsurnya beserta urutannya, jadi menambah sisipan yang sah
+// (`catatanKons`, 5 Okt) menjatuhkannya tanpa ada yang rusak. Ini kelas kerapuhan yang sama
+// dengan daftar impor di uji ini sendiri, dan sudah berulang empat kali dalam satu hari.
+cek(/const sisipan = \[[^\]]*\bcatatanPeta\b[^\]]*\]/.test(CE),
+  'ikut ke dalam larik sisipan', (CE.match(/const sisipan = [^\n]*/g) || []));
 
 // Hanya diminta bila akar repo SUDAH dipilih — tanpa akar, perintah git tak bisa jalan sama sekali.
 const iPeta = CE.indexOf('const peta = akarRepoSekarang');

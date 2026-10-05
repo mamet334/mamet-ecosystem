@@ -291,6 +291,65 @@ export function cekPerintahBerulang(perintah, riwayat = []) {
 }
 
 /**
+ * Catatan INDEKS KONSTITUSI untuk sisipan Engineer.
+ *
+ * ── Kenapa ini ada ──────────────────────────────────────────────────────────────────────────
+ *
+ * `AGENTS.md` memerintahkan: *"DO NOT start analyzing or modifying the source code immediately.
+ * The Source Code is NOT the Source of Truth. Before doing any engineering task, you MUST read
+ * constitution/README.md."* Selama ini Engineer tidak bisa mematuhinya — bukan karena membangkang,
+ * melainkan karena **ia tidak pernah diberi tahu berkas-berkas itu ada**.
+ *
+ * Terukur 5 Okt 2026: 33 berkas (168.299 huruf ≈ 43.942 token) dibaca tiap boot ke
+ * `brain.static.raw`, dan `raw` punya NOL pemakai. Yang mengalir cuma jumlahnya. Engineer
+ * melaporkan "Coverage BRAIN 1 ✓" tanpa pernah membaca satu pun aturan yang Owner tulis — dan
+ * "BRAIN 1" yang dilaporkannya sebenarnya 7 baris dari `project_memory_entries`, bukan konstitusi.
+ *
+ * ── ARAH BIAYANYA BERLAWANAN dengan item 120, dan itu disengaja ─────────────────────────────
+ *
+ * Peta repo bisa DIPANGKAS karena ia sudah dikirim. Konstitusi **tidak dikirim sama sekali**,
+ * jadi indeks di sini **MENAMBAH** ±384 token per pesan. Itu bukan penghematan, dan tidak boleh
+ * disamakan dengan item 120. Owner memutuskannya dengan sadar sesudah angka ini disodorkan dua
+ * kali.
+ *
+ * Yang ditukar: 384 token per pesan, melawan 43.942 token yang dibaca lalu dibuang tiap boot —
+ * dan melawan Engineer yang mengaku punya cakupan yang tak pernah ia punya.
+ *
+ * ── Kenapa INDEKS, bukan isinya ─────────────────────────────────────────────────────────────
+ *
+ * Mengirim isinya mustahil (43.942 token), dan tidak perlu: `git show HEAD:<alamat>` sudah jalan
+ * tanpa dialog izin sejak 4.2.5. Yang hilang selama ini bukan kemampuan membaca, melainkan
+ * **pengetahuan bahwa ada yang bisa dibaca** — persis pola item 120.
+ *
+ * @param {Array<{alamat: string, judul?: string}>} daftar dari `engineer:indeks-konstitusi`
+ * @returns {string} catatan untuk sisipan, atau '' bila tak ada apa pun
+ */
+export function catatanKonstitusi(daftar) {
+  const isi = Array.isArray(daftar) ? daftar.filter((d) => d && typeof d.alamat === 'string' && d.alamat) : [];
+  if (!isi.length) return '';
+
+  const baris = isi.map((d) => `- ${d.alamat}${d.judul ? ` — ${d.judul}` : ''}`);
+  return [
+    '[KONSTITUSI MAMET — INDEKS]',
+    `${isi.length} berkas. Ini DAFTAR, bukan isinya: isi tidak dikirim karena ±44.000 token.`,
+    '',
+    ...baris,
+    '',
+    'CARA MEMBACA (jalan tanpa dialog izin):',
+    '  [MAMET_CMD: git show HEAD:constitution/24_ANTI_HALLUCINATION_PROTOCOL.md]',
+    '',
+    'ATURAN PEMAKAIAN:',
+    '- AGENTS.md menempatkan Konstitusi DI ATAS kode sumber sebagai sumber kebenaran. Bila',
+    '  jawaban Anda menyangkut aturan, prinsip, atau keputusan arsitektur, BACA berkasnya lebih',
+    '  dulu — jangan menjawab dari ingatan atau dari kode saja.',
+    '- JANGAN mengaku sudah membaca berkas yang belum Anda buka. Daftar ini memberi tahu apa yang',
+    '  ADA, bukan apa yang sudah Anda baca.',
+    '- JANGAN menyimpulkan sebuah aturan TIDAK ADA hanya karena judulnya tak menyebutnya; judul',
+    '  di sini sebagian hanya nama berkas.',
+  ].join('\n');
+}
+
+/**
  * Anggaran keluaran perintah yang dikirim ke model.
  *
  * KEJADIAN NYATA 5 Oktober 2026, 01:33. Satu `git grep -n -B2 -A4 "402"` di TIGA folder sekaligus

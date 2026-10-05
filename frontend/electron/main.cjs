@@ -840,6 +840,67 @@ ipcMain.handle('engineer:perintah-aman', async (_e, teks) => {
   } catch { return false; }
 });
 
+// ── INDEKS KONSTITUSI (2026-10-05) ────────────────────────────────────────────────────────────
+//
+// DUA CACAT YANG SALING MENYEMBUNYIKAN, diukur 5 Okt 2026:
+//
+//   1. `_loadStaticKnowledge()` di `engineer.js` membaca 33 berkas konstitusi tiap boot
+//      (168.299 huruf ≈ 43.942 token) ke `brain.static.raw` — dan `raw` punya NOL pemakai di
+//      seluruh repo. Yang mengalir hanya `loadedFiles.length`, dan angka itu pun berhenti di
+//      `brain.dynamic` yang hanya ditugaskan, tak pernah dibaca. Jadi Engineer melaporkan
+//      "Coverage BRAIN 1 ✓" tanpa pernah membaca satu pun aturan yang Owner tulis.
+//
+//   2. Daftar 32 jalurnya DIPAKU di `engineer.js`, dan sudah melenceng:
+//      `constitution/28_PROSEDUR_KERJA_ENGINEER.md` ADA di folder tetapi TIDAK di daftar —
+//      justru berkas yang mengatur cara Engineer bekerja. Tak ada yang menyadarinya karena
+//      isinya toh dibuang; cacat kedua bersembunyi di balik cacat pertama.
+//
+// Handler ini menutup keduanya sekaligus: folder DIPINDAI (tidak ada daftar yang bisa melenceng),
+// dan yang menyeberangi IPC hanya alamat + judul — ±1,5 KB, bukan 168 KB.
+//
+// Judul diambil dari tajuk `# ` pertama, dan HANYA disertakan bila ia menambah sesuatu di luar
+// nama berkasnya: terukur, cuma 7 dari 33 yang begitu ("01_VISION.md — 01_VISION.md" tidak
+// menambah apa pun). Itu menurunkan indeks dari 565 token menjadi 384.
+//
+// Membaca ISI tetap bisa dan murah: `git show HEAD:constitution/NN_....md` sudah jalan tanpa
+// dialog sejak 4.2.5. Pola yang sama dengan peta repo jadi indeks (item 120).
+ipcMain.handle('engineer:indeks-konstitusi', async () => {
+  const belum = butuhAkarRepo();
+  if (belum) return [];
+  try {
+    const rapat = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const hasil = [];
+    const tambah = (relatif) => {
+      const alamat = alamatRepoRelatif(relatif);
+      if (!fs.existsSync(alamat)) return;
+      let judul = '';
+      try {
+        // Cukup bagian awal: tajuk pertama selalu di dekat kepala berkas, dan membaca utuh
+        // berarti mengulangi pemborosan yang justru sedang ditutup.
+        const kepala = fs.readFileSync(alamat, 'utf-8').slice(0, 2000);
+        const m = kepala.match(/^#\s+(.+)$/m);
+        judul = m ? m[1].replace(/\s+/g, ' ').trim() : '';
+      } catch { /* berkas tak terbaca: alamatnya tetap berguna */ }
+      const nama = relatif.split('/').pop().replace(/\.md$/i, '');
+      const menambah = judul && !rapat(nama).includes(rapat(judul)) && !rapat(judul).includes(rapat(nama));
+      hasil.push({ alamat: relatif, judul: menambah ? judul.slice(0, 70) : '' });
+    };
+
+    tambah('INIT.md');
+    tambah('AGENTS.md');
+    const dirKonstitusi = alamatRepoRelatif('constitution');
+    if (fs.existsSync(dirKonstitusi)) {
+      for (const f of fs.readdirSync(dirKonstitusi).filter((x) => x.toLowerCase().endsWith('.md')).sort()) {
+        tambah(`constitution/${f}`);
+      }
+    }
+    return hasil;
+  } catch (e) {
+    console.warn('[Engineer] indeks konstitusi gagal:', e?.message);
+    return [];
+  }
+});
+
 ipcMain.handle('engineer:peta-repo', async () => {
   const belum = butuhAkarRepo();
   if (belum) return '';

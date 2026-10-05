@@ -356,29 +356,45 @@ class Engineer {
         'constitution/README.md'
       ];
 
-      const staticData = {};
-      for (const path of constitutionPaths) {
-        try {
-          const content = await this.storageManager.read(path);
-          if (content) {
-            staticData[path] = content;
-          }
-        } catch (e) {
-          // File mungkin belum ada
-        }
-      }
+      // ── DIUBAH 5 Oktober 2026 — dua cacat yang saling menyembunyikan ────────────────────
+      //
+      // 1. PEMBOROSAN. Baris lama membaca ke-33 berkas di atas (168.299 huruf ≈ 43.942 token)
+      //    ke `brain.static.raw` TIAP BOOT. Diperiksa di seluruh repo: `raw` punya NOL pemakai.
+      //    Yang mengalir hanya `loadedFiles.length`, dan angka itu pun berhenti di
+      //    `brain.dynamic` yang cuma ditugaskan dan tak pernah dibaca.
+      //
+      // 2. DAFTAR YANG MELENCENG. `constitutionPaths` di atas dipaku, dan sudah tidak cocok
+      //    dengan foldernya: `constitution/28_PROSEDUR_KERJA_ENGINEER.md` ADA di disk tetapi
+      //    TIDAK di daftar — justru berkas yang mengatur cara Engineer bekerja. Tak ada yang
+      //    menyadarinya berbulan-bulan karena isinya toh dibuang: cacat kedua bersembunyi di
+      //    balik yang pertama.
+      //
+      // Keduanya ditutup sekaligus dengan MEMINDAI folder di proses utama. `constitutionPaths`
+      // di atas SENGAJA dibiarkan sebagai pembanding — ia dipakai hanya bila pemindaian gagal
+      // (mis. versi Electron lama tanpa kanal ini), supaya perubahan ini tidak bisa membuat
+      // Engineer kehilangan apa yang sudah ia punya.
+      //
+      // Isinya TIDAK hilang, justru sebaliknya: kini ia benar-benar sampai ke model sebagai
+      // INDEKS di sisipan (`catatanKonstitusi`), dan dibaca saat perlu dengan
+      // `git show HEAD:<alamat>` yang sudah jalan tanpa dialog izin sejak 4.2.5.
+      const terpindai = await (window?.electronAPI?.engineer?.indeksKonstitusi?.() ?? Promise.resolve([]))
+        .catch(() => []);
+      const daftar = Array.isArray(terpindai) && terpindai.length
+        ? terpindai.filter((d) => d && d.alamat)
+        : constitutionPaths.map((alamat) => ({ alamat, judul: '' }));
 
       this.brain.static = {
-        loadedFiles: Object.keys(staticData),
-        raw: staticData,
-        summary: 'Static knowledge loaded from constitution & ADRs',
+        loadedFiles: daftar.map((d) => d.alamat),
+        indeks: daftar,
+        terpindai: Array.isArray(terpindai) && terpindai.length > 0,
+        summary: 'Indeks konstitusi (alamat + judul); isi dibaca saat perlu lewat git show',
         loadedAt: new Date().toISOString()
       };
 
-      console.log(`[Engineer] Static knowledge loaded: ${this.brain.static.loadedFiles.length} files`);
+      console.log(`[Engineer] Indeks konstitusi: ${daftar.length} berkas (${this.brain.static.terpindai ? 'dipindai' : 'daftar cadangan'}); isi TIDAK dimuat`);
     } catch (error) {
-      console.error('[Engineer] Failed to load static knowledge', error);
-      this.brain.static = { loadedFiles: [], error: error.message };
+      console.error('[Engineer] Gagal memuat indeks konstitusi', error);
+      this.brain.static = { loadedFiles: [], indeks: [], error: error.message };
     }
   }
 

@@ -130,9 +130,20 @@ console.log('\n-- terpasang --');
   cek(/MIN_PESAN_PADATKAN, PATOK \}/.test(CE_KODE), 'PATOK diimpor komponen', (CE_KODE.match(/.*KonteksChat\.js.*/g) || []));
   cek(/\{ role: 'user', content, \[PATOK\]: true \}/.test(CE_KODE),
     'sisipan ditandai saat dibuat', (CE_KODE.match(/const sisipan = [^\n]*/g) || []));
-  // Ketiganya harus ikut tertandai: catatan akar repo, peta repo, dan ingatan temuan.
-  cek(/const sisipan = \[catatanAkar, catatanPeta, ringkasanTemuan\]/.test(CE_KODE),
-    'ketiga sisipan lewat jalur penandaan yang sama', (CE_KODE.match(/const sisipan = [^\n]*/g) || []));
+  // SEMUA sisipan harus lewat jalur penandaan yang sama — bukan "ketiganya".
+  //
+  // Bentuk lama memaku isi lariknya persis (`[catatanAkar, catatanPeta, ringkasanTemuan]`), jadi
+  // menambah sisipan keempat yang sah (`catatanKons`, 5 Okt) menjatuhkannya padahal tak ada yang
+  // rusak — dan kata "ketiga" ikut jadi bohong begitu jumlahnya berubah. Yang dijaga sebenarnya:
+  // tak ada unsur yang menyelinap lewat jalur lain tanpa PATOK.
+  const larik = (CE_KODE.match(/const sisipan = \[([^\]]*)\]/) || [])[1] || '';
+  const unsur = larik.split(',').map((s) => s.trim()).filter(Boolean);
+  cek(unsur.length >= 3, `larik sisipan terbaca (${unsur.length} unsur)`, unsur);
+  cek(unsur.includes('catatanAkar') && unsur.includes('catatanPeta') && unsur.includes('ringkasanTemuan'),
+    'akar repo, peta repo, dan ingatan temuan semuanya di dalamnya', unsur);
+  cek((CE_KODE.match(/\[PATOK\]: true/g) || []).length === 1,
+    'dan hanya ADA SATU tempat penandaan — jadi seluruh isi larik lewat jalur yang sama',
+    (CE_KODE.match(/\[PATOK\]: true/g) || []).length);
 }
 
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));

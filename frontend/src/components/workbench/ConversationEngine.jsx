@@ -13,7 +13,7 @@ import { tugasDariUsulan } from '../../core/runtime/services/engineer/UsulanPatc
 import { laporanSetelahMuatUlang, hapusCatatanPatch } from '../../core/runtime/services/engineer/CatatanPatch.js';
 import { putusanPemulihan, bolehSimpanChat, kunciSimpan } from './pemulihanChat.js';
 import { buatPenandaKiriman, tujuanTulis, pesanTerlantar, layakSimpanTerlantar } from './pengirimanChat.js';
-import { riwayatPerintahDariPesan, catatanAkarRepo, catatanPetaRepo, pesanKeluaranPerintah } from '../../core/runtime/services/engineer/ProsedurEngineer.js';
+import { riwayatPerintahDariPesan, catatanAkarRepo, catatanPetaRepo, pesanKeluaranPerintah, catatanKonstitusi } from '../../core/runtime/services/engineer/ProsedurEngineer.js';
 import { ambilBlokKlaim, susunSkripUji, susunLaporanKlaim } from '../../core/runtime/services/engineer/UjiKlaim.js';
 import { ambilBlokTemuan, bacaBerkasTemuan, susunBerkasTemuan, gabungTemuan, laporanTemuan, ringkasanUntukKonteks, ALAMAT_BERKAS as ALAMAT_TEMUAN } from '../../core/runtime/services/engineer/IngatanTemuan.js';
 import { ambilBlokPengetahuan, pengetahuanBaru, barisBrain1 } from '../../core/runtime/services/engineer/PengetahuanBrain1.js';
@@ -1248,11 +1248,21 @@ export default function ConversationEngine({ sessionId }) {
       : '';
     const catatanPeta = catatanPetaRepo(peta);
 
+    // INDEKS KONSTITUSI (5 Oktober 2026). AGENTS.md menempatkan Konstitusi DI ATAS kode sumber,
+    // tetapi Engineer tak pernah diberi tahu berkasnya ada: 33 berkas dibaca tiap boot ke
+    // `brain.static.raw` yang punya NOL pemakai. Indeks ini MENAMBAH ±384 token per pesan —
+    // arah biayanya berlawanan dengan peta repo (item 120), dan itu keputusan sadar Owner.
+    // Isinya tetap diambil saat perlu lewat `git show`, yang sudah jalan tanpa dialog sejak 4.2.5.
+    const daftarKonstitusi = akarRepoSekarang
+      ? await (window.electronAPI?.engineer?.indeksKonstitusi?.() ?? Promise.resolve([])).catch(() => [])
+      : [];
+    const catatanKons = catatanKonstitusi(daftarKonstitusi);
+
     // `_patok: true` — sisipan TIDAK boleh ikut dipotong seperti pesan lama. Tanpa penanda ini,
     // "Bersihkan konteks"/"Padatkan" memotongnya lebih dulu (indeksnya dihitung pada daftar tampilan
     // yang lebih pendek), dan pemotong anggaran membuangnya duluan karena posisinya paling depan.
     // Terukur 1 Okt: peta 15.493 huruf, yang sampai ke model 4.042 huruf. Lihat pilihPesanKonteks.
-    const sisipan = [catatanAkar, catatanPeta, ringkasanTemuan].filter(Boolean).map((content) => ({ role: 'user', content, [PATOK]: true }));
+    const sisipan = [catatanAkar, catatanKons, catatanPeta, ringkasanTemuan].filter(Boolean).map((content) => ({ role: 'user', content, [PATOK]: true }));
     const historyKirim = sisipan.length ? [...sisipan, ...newMessages] : newMessages;
 
     // MATA, bukan perbaikan. Sisipan disusun di sini dan tidak meninggalkan jejak apa pun di log
