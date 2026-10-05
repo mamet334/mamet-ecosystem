@@ -4,7 +4,7 @@
      Owner boleh menyunting, menggabungkan, atau menutup temuan dengan tangan — bentuk di bawah yang dibaca
      kembali oleh IngatanTemuan.js. Temuan berstatus DITUTUP tidak akan diangkat lagi oleh Engineer. -->
 
-**4 terbuka · 4 ditutup**
+**5 terbuka · 4 ditutup**
 
 ## TMN-0001 — DITUTUP
 - **Ditutup:** 2026-10-04 — (ternyata sudah benar sejak lahir)
@@ -85,3 +85,15 @@
 - **Ringkasan:** Satu baris palsu tertinggal di tabel produksi akibat pembuktian TMN-0005. Blok DO dikira dibatalkan, padahal execute_sql meng-commit otomatis. Barisnya tidak merusak apa pun selain mengotori log audit, tetapi membiarkannya berarti meninggalkan bukti palsu di dalam log audit.
 - **Bukti:** id = 240bc19f-8a65-438e-8861-8216761b0609, decision = PALSU-OLEH-ANON, status = VERIFIED, model = bukan-model-sungguhan, timestamp = 2026-10-05 06:12:35 UTC. Terbaca dengan SELECT pada tabel produksi.
 - **Dibuat oleh asisten, bukan oleh sistem.** Penghapusannya menunggu izin Owner (penghapusan permanen di produksi adalah hak Owner).
+
+## TMN-0009 — TERBUKA
+- **Berkas:** `frontend/electron/main.cjs`
+- **Tingkat:** sedang
+- **Ditemukan:** 2026-10-05
+- **Ringkasan:** Tiga kelonggaran pada cangkang Electron, yang satu berupa konfigurasi yang membantah dirinya sendiri. (1) `app.commandLine.appendSwitch('no-sandbox')` di baris 6 mematikan sandbox renderer secara global, sementara `sandbox: true` di webPreferences baris 148 menyatakan sebaliknya — sakelar baris perintah yang menang, jadi pembaca yang mengaudit webPreferences akan menyimpulkan renderer ber-sandbox padahal tidak. (2) `webSecurity: false` mematikan same-origin policy. (3) Tidak ada `will-navigate` maupun `setWindowOpenHandler`; tanpa yang kedua, jendela dari `window.open()` MEWARISI preload, berarti mewarisi `window.electronAPI.engineer.jalankan`.
+- **Bukti:** `grep -n "contextIsolation\|nodeIntegration\|sandbox\|webSecurity" frontend/electron/main.cjs` menunjukkan baris 6 `no-sandbox`, baris 148 `sandbox: true`, baris 149 `webSecurity: false`. `grep -n "will-navigate\|setWindowOpenHandler"` pada berkas yang sama: nol hasil. `shell` diimpor di baris 1 tetapi `openExternal` tidak dipakai di mana pun.
+- **BELUM jadi lubang hidup, dan sebabnya diperiksa bukan diasumsikan:** tidak ditemukan jalan masuk ke konten jauh dari dalam aplikasi. `react-markdown` ada di package.json tetapi TIDAK dipakai sama sekali di frontend Ecosystem (hanya di `mametlite`, aplikasi web terpisah tanpa preload), sehingga jawaban model dirender sebagai simpul teks React yang di-escape otomatis — tanpa `<a href>`, tanpa HTML. `dangerouslySetInnerHTML` di `FileExplorer.jsx:424` juga diperiksa dan AMAN: penyorotnya meng-escape tiap segmen dan hanya menerbitkan `<span>` untuk kata kunci dari himpunan tetap.
+- **Kenapa tetap dicatat:** ketiganya pertahanan berlapis yang hilang, dan jaraknya ke "hidup" hanya satu fitur. Begitu jawaban model dirender sebagai markdown di Ecosystem, atau ada tautan yang bisa diklik, rantainya tersambung — dan saat itu ketiganya bekerja bersama.
+- **Perbaikan yang TIDAK merugikan apa pun:** `disable-gpu-sandbox` di baris 7 sudah cukup untuk masalah GPU yang jadi alasan baris 6; `no-sandbox` adalah kelebihan tangkap. Menambah `setWindowOpenHandler` yang menolak semua, dan mengarahkan tautan luar ke `shell.openExternal`, keduanya murah.
+- **Yang SEHAT dan jangan ikut diubah:** lapisan perintahnya sendiri kokoh — tanpa shell (dipecah per spasi, jadi `;`/`&&`/pipa tak bisa menyisip), daftar izin 21 program dengan `cmd`/`powershell`/`bash`/`sh`/`rm`/`curl`/`wget`/`ssh` ditolak mentah di `alatFolderJalan.cjs:306`, jalan-sendiri hanya untuk git baca-saja, batas keluaran 20 KB dan waktu 300 s, serta `tanpaInternet: true` pada profil engineer.
+- **Catatan rancangan, bukan cacat:** `node`, `python`, dan `npm` SENGAJA ada di daftar izin, jadi sesudah Owner menekan izin, kode karangan model berjalan penuh. Dialog izin adalah SATU-SATUNYA yang berdiri antara kode karangan model dan eksekusi — bukan daftar program, bukan pagar folder. Itulah sebab uji `node -e` (lihat 4.2.13 butir 4) bukan formalitas, dan sebab daftar jalan-sendiri harus tetap sesempit sekarang.

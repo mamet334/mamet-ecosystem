@@ -691,7 +691,7 @@ Tidak menyala pada uji 1 Okt 13.12 (mode terbukti tetap ENGINEER), jadi ini **ra
 kegagalan kemarin**. Tapi satu pertanyaan Engineer yang kebetulan terlihat seperti pertanyaan
 faktual singkat akan jatuh ke sini tanpa tanda apa pun.
 
-### ⛔ EMPAT TEMUAN TERBUKA dari audit 5 Okt — menunggu keputusan Owner
+### ⛔ LIMA TEMUAN TERBUKA dari audit 5 Okt — menunggu keputusan Owner
 
 Rinciannya di [`TEMUAN-ENGINEER.md`](../project-memory/temuan-engineer/TEMUAN-ENGINEER.md).
 **Tidak ada yang dikerjakan** — Owner meminta dibahas dulu.
@@ -702,11 +702,19 @@ Rinciannya di [`TEMUAN-ENGINEER.md`](../project-memory/temuan-engineer/TEMUAN-EN
 | **TMN-0006** | tinggi | Berkas temuan itu sendiri **tak terbaca kodenya sendiri** — 4 judul ada, **0** terurai. Janji "yang DITUTUP tidak diangkat lagi" berlaku hampa, dan temuan TERBUKA pun tak akan sampai ke Engineer. Judul sudah dinormalkan (kini 8/8 terbaca), tetapi **tak ada uji yang menjaganya** — itu sebab aslinya, masih terbuka |
 | **TMN-0007** | sedang | 4 berkas (**368 baris**) nol pengimpor, ikut dibundel tiap deploy. `verification_pipeline.ts` (270 baris) mengimpor 7 modul nyata **tanpa penanda usang** — ia tampak hidup |
 | **TMN-0008** | sedang | Satu baris palsu **tertinggal di produksi** akibat pembuktian TMN-0005 (`execute_sql` meng-commit otomatis). Dibuat asisten, bukan sistem |
+| **TMN-0009** | sedang | Cangkang Electron: `no-sandbox` global **membantah** `sandbox: true` di webPreferences (sakelar menang — konfigurasinya berbohong), `webSecurity: false`, dan **nol penjaga navigasi** (tanpa `setWindowOpenHandler`, jendela `window.open()` mewarisi preload → mewarisi `engineer.jalankan`). **Belum jadi lubang hidup** — jalan masuknya dicari dan tidak ada: `react-markdown` tak dipakai di Ecosystem, jadi jawaban model dirender sebagai teks React yang di-escape |
 
 > **Pola yang pantas dibaca bersama, bukan satu per satu:** TMN-0005 adalah kembaran lubang yang
 > baru ditutup kemarin, dan tiga fungsi "diuji tetapi tak pernah dipanggil" adalah saudara
 > `logCommand`. Keduanya ditemukan **satu-satu**, bukan sebagai kelas — dan TMN-0006 menjelaskan
 > sebagian sebabnya: ingatan temuan memang sedang buta.
+>
+> **Dan satu hal tentang terminal Engineer yang perlu disadari sebagai RANCANGAN, bukan cacat**
+> (rinciannya di TMN-0009): `node`, `python`, `npm` **sengaja** ada di daftar izin, jadi sesudah
+> Owner menekan izin, kode karangan model berjalan penuh. **Dialog izin adalah satu-satunya yang
+> berdiri antara kode karangan model dan eksekusi** — bukan daftar program, bukan pagar folder.
+> Itulah sebab uji `node -e` bukan formalitas, dan sebab daftar jalan-sendiri harus tetap
+> sesempit sekarang (git baca-saja).
 
 ### ◐ SEPARUH DITUTUP — 55.081 huruf prompt untuk pertanyaan EMPAT KATA (4 Okt)
 
