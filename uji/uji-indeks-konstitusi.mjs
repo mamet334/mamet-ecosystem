@@ -106,6 +106,48 @@ try {
   rmSync(dir, { recursive: true, force: true });
 }
 
+// ── 4b. PEMINDAI SUNGGUHAN DIJALANKAN pada folder NYATA ─────────────────────────────────────
+//
+// Ini bagian terpenting berkas ini. Cacat yang ditutup adalah daftar yang MELENCENG diam-diam;
+// menggantinya dengan pemindai yang hanya diperiksa lewat TEKS berarti ia bisa melenceng lagi
+// dengan cara yang sama tanpa ada yang tahu. Jadi fungsinya dijalankan, bukan dibaca.
+console.log('\n-- pemindai dijalankan pada folder nyata --');
+{
+  const { indeksKonstitusi, HURUF_KEPALA } = await import(pathToFileURL(join(AKAR, 'frontend/electron/indeksKonstitusi.cjs')).href)
+    .then((m) => m.default || m);
+
+  const hasil = indeksKonstitusi(AKAR);
+  const alamat = hasil.map((d) => d.alamat);
+
+  cek(hasil.length >= 30, `memindai folder nyata: ${hasil.length} berkas`, hasil.length);
+  cek(alamat.includes('INIT.md') && alamat.includes('AGENTS.md'), 'berkas akar ikut');
+
+  // INILAH cacat yang luput berbulan-bulan. Bila asersi ini jatuh, pemindainya melenceng lagi.
+  cek(alamat.includes('constitution/28_PROSEDUR_KERJA_ENGINEER.md'),
+    'berkas 28_PROSEDUR_KERJA_ENGINEER.md IKUT — inilah yang hilang dari daftar paku', alamat.slice(-3));
+
+  // Tak ada yang tertinggal: hasil pindai harus memuat SEMUA .md di folder itu.
+  const kons = join(AKAR, 'constitution');
+  const disk = existsSync(kons) ? readdirSync(kons).filter((f) => f.toLowerCase().endsWith('.md')).map((f) => `constitution/${f}`) : [];
+  const luput = disk.filter((f) => !alamat.includes(f));
+  cek(luput.length === 0, 'tidak satu pun .md di folder yang luput', luput);
+
+  cek(hasil.every((d) => typeof d.judul === 'string'), 'tiap butir punya judul bertipe string (boleh kosong)');
+  const berjudul = hasil.filter((d) => d.judul);
+  cek(berjudul.length > 0 && berjudul.length < hasil.length,
+    `judul hanya untuk yang menambah informasi (${berjudul.length}/${hasil.length})`, berjudul.length);
+  cek(!hasil.some((d) => d.judul && d.judul.toLowerCase().replace(/[^a-z0-9]/g, '')
+      === d.alamat.split('/').pop().replace(/\.md$/i, '').toLowerCase().replace(/[^a-z0-9]/g, '')),
+    'dan tak ada judul yang cuma mengulang nama berkasnya');
+
+  cek(HURUF_KEPALA <= 4000, `hanya kepala berkas yang dibaca (${HURUF_KEPALA} huruf)`, HURUF_KEPALA);
+
+  // Akar yang tidak sah tidak boleh melempar — Engineer tanpa akar repo harus tetap hidup.
+  cek(indeksKonstitusi('').length === 0, 'akar kosong -> daftar kosong, bukan lempar');
+  cek(indeksKonstitusi(null).length === 0, 'akar null -> kosong');
+  cek(indeksKonstitusi(join(AKAR, 'folder-yang-tidak-ada')).length === 0, 'akar tak ada -> kosong');
+}
+
 // ── 5. PEMBOROSANNYA BENAR-BENAR DICABUT ────────────────────────────────────────────────────
 console.log('\n-- isi tidak lagi dibaca lalu dibuang --');
 {
@@ -140,9 +182,13 @@ console.log('\n-- terpasang & dipatok --');
 
   const M = tanpaKomentar(baca('frontend/electron/main.cjs'));
   cek(/ipcMain\.handle\('engineer:indeks-konstitusi'/.test(M), 'dan ditangani di proses utama');
-  cek(/readdirSync\(dirKonstitusi\)/.test(M), 'foldernya DIPINDAI — daftar yang dipaku tak bisa melenceng lagi');
-  cek(/\.slice\(0, 2000\)/.test(M),
-    'hanya kepala berkas yang dibaca untuk judul — membaca utuh mengulangi pemborosan yang ditutup');
+  // Logikanya TIDAK boleh tinggal di main.cjs: berkas itu menyalakan Electron saat diimpor,
+  // jadi apa pun di dalamnya hanya bisa diuji lewat teks. Untuk perbaikan yang menutup
+  // kelencengan diam-diam, itu tidak cukup — lihat bagian 4b yang MENJALANKANNYA.
+  cek(/require\('\.\/indeksKonstitusi\.cjs'\)/.test(M), 'pemindainya diimpor dari modul yang bisa diuji');
+  cek(/return indeksKonstitusi\(akarRepo\(\)\)/.test(M), 'dan main.cjs hanya meneruskan akar repo ke sana');
+  cek(!/readdirSync|slice\(0, 2000\)/.test(M.slice(M.indexOf("'engineer:indeks-konstitusi'"), M.indexOf("'engineer:peta-repo'"))),
+    'tak ada lagi logika pemindaian yang terkubur di main.cjs');
   cek(!/raw|staticData/.test(M.slice(M.indexOf("'engineer:indeks-konstitusi'"), M.indexOf("'engineer:peta-repo'"))),
     'dan isinya tidak ikut menyeberangi IPC');
 }

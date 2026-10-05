@@ -405,6 +405,19 @@ menjalankan `git grep` lebar akan mengulang kegagalan yang sama.
    `konteks_engineer` **tetap 17.687** — tidak bergerak satu huruf pun. Baris kedua itu yang
    menentukan: yang menyusut salinan keduanya, aslinya utuh. Bila `konteks_engineer` ikut turun,
    berarti yang diringkas aslinya dan Engineer kehilangan isi BRAIN 1. Total 41.235 → **39.989**.
+5. **Indeks konstitusi (item 124)** — tiga langkah, dan yang ketiga yang paling mudah terlupakan:
+
+   | | Yang dilihat | Gagal bila |
+   |---|---|---|
+   | a. **sampai** | `riwayat` naik **2.687 → ±4.900 huruf** | tetap 2.687 → Electron belum dijalankan ULANG (kanal `engineer:indeks-konstitusi` hanya ada di proses utama yang baru) |
+   | b. **dipakai** | tanya aturan: *"apa kata konstitusi tentang CORE IMMUTABLE?"* → Engineer **menjalankan `git show`** lebih dulu | ia menjawab dari ingatan, atau mengaku sudah membaca tanpa menjalankan apa pun |
+   | c. **TIDAK kelebihan menyala** | tanya hal sepele *("berapa berkas di `uji/`?")* → **TIDAK** membaca konstitusi | ia membuka berkas konstitusi untuk pertanyaan yang tak menyangkut aturan |
+
+   > **c itu kendalinya, dan tanpa itu b tidak berarti.** Aturan *"BACA berkasnya lebih dulu"*
+   > bisa membuat Engineer membuka konstitusi untuk **setiap** pertanyaan — menukar satu
+   > kegagalan (tak pernah membaca) dengan kegagalan lain (selalu membaca, tiap jawaban jadi
+   > mahal dalam perintah maupun token). Uji yang hanya memeriksa b akan menyebut itu sukses.
+
 4. ✅ **TERJAWAB 5 Okt — di tingkat LOGIKA, tanpa saldo.** Uji ini menggantung berhari-hari karena
    dikira menuntut model menjawab lebih dulu. Tidak: `perintahAman` (preload) memanggil
    `tanpaPersetujuan()` — **predikat yang sama persis** yang dipakai jalur otomatis

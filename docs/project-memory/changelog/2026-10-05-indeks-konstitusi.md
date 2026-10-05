@@ -139,3 +139,60 @@ mis. *"apa kata konstitusi tentang mengubah file CORE IMMUTABLE?"* — Engineer 
 
 > ⚠️ Bila `riwayat` tetap 2.687, indeksnya tidak sampai. Periksa apakah Electron benar-benar
 > dijalankan ulang: kanal `engineer:indeks-konstitusi` baru ada di proses utama yang baru.
+
+---
+
+## Tambahan sesudah Owner bertanya *"hanya menanyakan saja? tidak ada yang lain?"*
+
+Pertanyaan itu tepat, dan jawabannya: **tidak cukup.** Dua kekurangan nyata.
+
+### 1. Perbaikan yang tidak bisa dijalankan uji
+
+Pemindainya semula ditulis **di dalam `main.cjs`**. Berkas itu menyalakan Electron saat diimpor,
+jadi apa pun di dalamnya hanya bisa diperiksa lewat **teksnya**.
+
+Itu lemah justru di sini: cacat yang ditutup adalah **daftar yang melenceng diam-diam selama
+berbulan-bulan**. Penggantinya yang hanya diperiksa lewat teks bisa melenceng lagi dengan cara
+yang persis sama, dan tak ada yang akan tahu — pola kegagalan yang sama, cuma pindah tempat.
+
+Dipindahkan ke `frontend/electron/indeksKonstitusi.cjs`, mengikuti `alatFolderJalan.cjs`
+(`pecahPerintah`, `tanpaPersetujuan`) yang memang sudah memakai pola itu. Kini ujinya
+**MENJALANKAN** pemindai terhadap folder sungguhan:
+
+```
+33 berkas terpindai
+constitution/28_PROSEDUR_KERJA_ENGINEER.md IKUT   ← yang hilang dari daftar paku
+tidak satu pun .md di folder yang luput
+judul hanya untuk yang menambah informasi (7/33)
+akar kosong / null / tak ada -> daftar kosong, bukan lempar
+```
+
+Asersi berkas 28 itu yang paling berharga: bila ia jatuh suatu hari, pemindainya melenceng lagi.
+
+| Mutasi modul | Asersi jatuh |
+|---|---|
+| P1 folder salah | 4 |
+| P2 berkas akar dicabut | 1 |
+| P3 judul mubazir ikut dikirim | 1 |
+| P4 berkas dibaca utuh lagi | 1 |
+| P5 penjaga akar tak sah dicabut | 1 |
+
+**P3 sempat terbaca "tidak menggigit" — lagi-lagi sed-nya yang tak menempel, bukan asersinya.**
+Diulang dengan Edit: jatuh 1 (`judul hanya untuk yang menambah informasi (33/33)`). Ini kedua
+kalinya dalam satu item, dan ketiga kalinya hari ini: **mutasi lewat `sed` yang menyentuh kutip
+atau backslash tidak boleh dipercaya tanpa dipastikan menempel.**
+
+### 2. Uji live-nya cuma satu pertanyaan — tanpa kendali
+
+Rancangan semula: tanya soal aturan, lihat apakah Engineer menjalankan `git show`. Itu menguji
+satu arah saja.
+
+Aturan *"BACA berkasnya lebih dulu"* membawa bahaya kebalikannya: Engineer bisa membuka berkas
+konstitusi untuk **setiap** pertanyaan, termasuk yang sepele. Itu menukar satu kegagalan (tak
+pernah membaca) dengan kegagalan lain (selalu membaca — tiap jawaban jadi mahal dalam perintah
+maupun token). **Uji satu-arah akan menyebut itu sukses.**
+
+§5b kini memuat tiga langkah, dan yang ketiga adalah kendalinya: pertanyaan sepele
+(*"berapa berkas di `uji/`?"*) **TIDAK** boleh memicu pembacaan konstitusi.
+
+**84/84 berkas uji hijau.**

@@ -736,6 +736,7 @@ ipcMain.handle('folder:lepas', () => {
 const { jalankanAlatTulis, ALAT_TULIS } = require('./alatFolderTulis.cjs');
 // Tahap 3: folder_run — program dari daftar izin, tanpa shell, folder asal = folder kerja, dialog izin yang sama.
 const { jalankanAlatJalan } = require('./alatFolderJalan.cjs');
+const { indeksKonstitusi } = require('./indeksKonstitusi.cjs');
 const depsTulis = {
   mintaIzin: async ({ judul, rincian, pratinjau, berbahaya }) => {
     const { response } = await dialog.showMessageBox(mainWindow, {
@@ -864,37 +865,15 @@ ipcMain.handle('engineer:perintah-aman', async (_e, teks) => {
 //
 // Membaca ISI tetap bisa dan murah: `git show HEAD:constitution/NN_....md` sudah jalan tanpa
 // dialog sejak 4.2.5. Pola yang sama dengan peta repo jadi indeks (item 120).
+// Logikanya ada di `indeksKonstitusi.cjs` — modul tersendiri supaya BISA DIJALANKAN uji.
+// `main.cjs` menyalakan Electron saat diimpor, jadi apa pun yang tinggal di sini hanya bisa
+// diuji lewat teksnya. Untuk perbaikan yang menutup kelencengan diam-diam selama berbulan-bulan,
+// itu tidak cukup: ia bisa melenceng lagi dengan cara yang sama tanpa ada yang tahu.
 ipcMain.handle('engineer:indeks-konstitusi', async () => {
   const belum = butuhAkarRepo();
   if (belum) return [];
   try {
-    const rapat = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    const hasil = [];
-    const tambah = (relatif) => {
-      const alamat = alamatRepoRelatif(relatif);
-      if (!fs.existsSync(alamat)) return;
-      let judul = '';
-      try {
-        // Cukup bagian awal: tajuk pertama selalu di dekat kepala berkas, dan membaca utuh
-        // berarti mengulangi pemborosan yang justru sedang ditutup.
-        const kepala = fs.readFileSync(alamat, 'utf-8').slice(0, 2000);
-        const m = kepala.match(/^#\s+(.+)$/m);
-        judul = m ? m[1].replace(/\s+/g, ' ').trim() : '';
-      } catch { /* berkas tak terbaca: alamatnya tetap berguna */ }
-      const nama = relatif.split('/').pop().replace(/\.md$/i, '');
-      const menambah = judul && !rapat(nama).includes(rapat(judul)) && !rapat(judul).includes(rapat(nama));
-      hasil.push({ alamat: relatif, judul: menambah ? judul.slice(0, 70) : '' });
-    };
-
-    tambah('INIT.md');
-    tambah('AGENTS.md');
-    const dirKonstitusi = alamatRepoRelatif('constitution');
-    if (fs.existsSync(dirKonstitusi)) {
-      for (const f of fs.readdirSync(dirKonstitusi).filter((x) => x.toLowerCase().endsWith('.md')).sort()) {
-        tambah(`constitution/${f}`);
-      }
-    }
-    return hasil;
+    return indeksKonstitusi(akarRepo());
   } catch (e) {
     console.warn('[Engineer] indeks konstitusi gagal:', e?.message);
     return [];
