@@ -580,8 +580,17 @@ besarnya sesi tidak terautentikasi saat itu, karena kebijakan RLS barunya menunt
 
 ### Uji live yang masih menunggu
 
-Uji yang menyangkut sisipan **harus di percakapan BARU**: percakapan lama masih membawa penanda
-"mulai dari" yang lama, dan itu justru yang dulu memotong sisipannya.
+> ⚠️ **CATATAN INI SUDAH USANG (diperiksa 5 Okt).** Dulu tertulis: *"uji yang menyangkut sisipan
+> harus di percakapan BARU, karena percakapan lama membawa penanda 'mulai dari' yang memotong
+> sisipannya."* Sebabnya **sudah ditutup di 4.2.4** — sisipan kini DIPATOK, dihitung lebih dulu
+> terhadap anggaran, dan `mulaiDari` hanya berlaku pada percakapan.
+>
+> Terukur pula: `riwayat` tercatat **identik di lima kali jalan, termasuk di percakapan yang
+> berbeda**. Itu pengukuran yang sama yang mencabut saran *"mulai percakapan BARU"* dari pesan
+> galat 402 pada 4 Okt. Percakapan baru tidak memangkas maupun memulihkan apa pun.
+>
+> Dibiarkan tertulis karena memulai percakapan baru tetap tidak merugikan — tetapi ia bukan lagi
+> syarat, dan jangan dipakai menjelaskan kegagalan uji.
 
 Kunci jawaban berubah tiap kali berkasnya disunting — **hitung ulang sebelum menilai**, jangan
 memakai angka yang tertulis di dokumen ini:
@@ -596,13 +605,31 @@ memakai angka yang tertulis di dokumen ini:
 5. **Peta terbaca merata?** — ulangi pertanyaan lima berkas terbesar. Di 4.2.4 model melewati
    `verification_engine.ts` dan menyebut berkas `frontend/` di posisi kelima. Kalau berulang,
    artinya bagian `supabase/functions` di peta kurang terbaca — temuan tersendiri.
-6. **`node -e` tetap minta izin** — pembanding untuk perintah baca yang sudah jalan sendiri. Suruh
-   Engineer menjalankan `node -e`: **harus** tetap menampilkan tombol Jalankan dan dialog izin.
-   Kalau ia ikut jalan sendiri, garis "membaca repo aman, menjalankan kode karangan model tidak"
-   bocor — dan itu mendesak.
+6. ✅ **`node -e` — KEPUTUSANNYA sudah terbukti 5 Okt, tanpa saldo.** Lihat uji 4 di
+   **Yang dibawa 4.2.13**: `tanpaPersetujuan()` dijalankan langsung di Node, `node -e` dan
+   `node --eval` keduanya **MINTA IZIN**, sementara `git status`/`git grep` **JALAN SENDIRI** —
+   jadi penjaganya memilah, bukan menolak segalanya. Sudah ada uji tetapnya pula
+   (`uji-perintah-tanpa-persetujuan.mjs:63`).
+
+   Yang **masih** menunggu sesi Engineer hanyalah klaim yang lebih kecil: bahwa dialognya
+   benar-benar **tergambar** di layar. Garis "membaca repo aman, menjalankan kode karangan model
+   tidak" sendiri sudah terbukti tidak bocor.
 
 Cara memastikan peta benar-benar terkirim, tanpa menebak dari jawaban model: lihat
-`[PROMPT_KOMPOSISI]` di log edge function — **riwayat harus melonjak di atas 15.000 huruf**.
+`[PROMPT_KOMPOSISI]` di log edge function.
+
+> ⚠️ **ANGKA DI BARIS INI DULU SALAH SEJAK 4 Okt, DIPERBAIKI 5 Okt.** Tertulis *"riwayat harus
+> melonjak di atas 15.000 huruf"* — itu patokan **sebelum item 120**. Sesudah peta jadi INDEKS,
+> `riwayat` justru **turun ke ±2.687 huruf**. Mengikuti angka lama berarti menyimpulkan petanya
+> GAGAL terkirim padahal ia berhasil: uji yang lulus dibaca sebagai gagal.
+>
+> | | `riwayat` |
+> |---|---|
+> | ≤ 4.2.11 (peta utuh) | **16.557** huruf |
+> | ≥ 4.2.12 (peta indeks) | **2.687** huruf |
+>
+> Patokan yang benar sekarang: `riwayat ≈ 2.687`. Bila ia **16.557**, justru rilis lamanya yang
+> sedang berjalan.
 
 ### ✅ DITUTUP — Engineer tidak boleh pernah jatuh ke jalur ringan
 
