@@ -691,6 +691,23 @@ Tidak menyala pada uji 1 Okt 13.12 (mode terbukti tetap ENGINEER), jadi ini **ra
 kegagalan kemarin**. Tapi satu pertanyaan Engineer yang kebetulan terlihat seperti pertanyaan
 faktual singkat akan jatuh ke sini tanpa tanda apa pun.
 
+### ⛔ EMPAT TEMUAN TERBUKA dari audit 5 Okt — menunggu keputusan Owner
+
+Rinciannya di [`TEMUAN-ENGINEER.md`](../project-memory/temuan-engineer/TEMUAN-ENGINEER.md).
+**Tidak ada yang dikerjakan** — Owner meminta dibahas dulu.
+
+| | Tingkat | Inti |
+|---|---|---|
+| **TMN-0005** | tinggi | `verification_audit_logs` punya policy INSERT **TO PUBLIC dengan `WITH CHECK true`**. Dibuktikan: `anon` berhasil menyisipkan baris palsu berlabel `VERIFIED`. **Kembaran lubang `assistant_audit_log`** yang ditutup 4 Okt |
+| **TMN-0006** | tinggi | Berkas temuan itu sendiri **tak terbaca kodenya sendiri** — 4 judul ada, **0** terurai. Janji "yang DITUTUP tidak diangkat lagi" berlaku hampa, dan temuan TERBUKA pun tak akan sampai ke Engineer. Judul sudah dinormalkan (kini 8/8 terbaca), tetapi **tak ada uji yang menjaganya** — itu sebab aslinya, masih terbuka |
+| **TMN-0007** | sedang | 4 berkas (**368 baris**) nol pengimpor, ikut dibundel tiap deploy. `verification_pipeline.ts` (270 baris) mengimpor 7 modul nyata **tanpa penanda usang** — ia tampak hidup |
+| **TMN-0008** | sedang | Satu baris palsu **tertinggal di produksi** akibat pembuktian TMN-0005 (`execute_sql` meng-commit otomatis). Dibuat asisten, bukan sistem |
+
+> **Pola yang pantas dibaca bersama, bukan satu per satu:** TMN-0005 adalah kembaran lubang yang
+> baru ditutup kemarin, dan tiga fungsi "diuji tetapi tak pernah dipanggil" adalah saudara
+> `logCommand`. Keduanya ditemukan **satu-satu**, bukan sebagai kelas — dan TMN-0006 menjelaskan
+> sebagian sebabnya: ingatan temuan memang sedang buta.
+
 ### ◐ SEPARUH DITUTUP — 55.081 huruf prompt untuk pertanyaan EMPAT KATA (4 Okt)
 
 > **Jangan dibaca sebagai masih terbuka seluruhnya, dan jangan pula sebagai sudah selesai.**

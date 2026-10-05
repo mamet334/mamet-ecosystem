@@ -121,11 +121,49 @@ console.log('\n-- TMN-0003: JSDoc logCommand --');
 console.log('\n-- catatan temuan --');
 {
   const T = baca('docs/project-memory/temuan-engineer/TEMUAN-ENGINEER.md');
+
+  // ── DIUBAH 5 Okt 2026 — uji ini DULU MENEGAKKAN BENTUK YANG RUSAK ────────────────────────
+  //
+  // Bentuk lama menuntut `/✅ DITUTUP/` di judul. Itu persis bentuk yang TIDAK BISA DIURAI
+  // `IngatanTemuan.js`, yang menuntut `^## TMN-0001 — DITUTUP$` tanpa apa pun sesudahnya.
+  // Jadi uji hijau menyatakan berkasnya benar, sementara kodenya membaca NOL temuan. Uji dan
+  // pengurai berselisih selama berhari-hari, dan ujinya yang menang — itulah sebab TMN-0006
+  // tidak pernah ketahuan.
+  //
+  // Asersi kedua lebih buruk: `!/TERBUKA/` memaku "nol temuan terbuka" sebagai kebenaran abadi,
+  // sehingga MENCATAT temuan nyata akan selalu membuat uji merah. Uji yang menghukum pencatatan
+  // temuan adalah uji yang bekerja melawan tujuannya sendiri.
+  //
+  // Penggantinya menguji sifat yang sebenarnya penting: berkas ini HARUS bisa dibaca kodenya
+  // sendiri. Dijalankan, bukan dicocokkan teksnya.
+  const JUDUL_SAH = /^## (TMN-\d{4}) — (TERBUKA|DITUTUP)[ \t]*$/gm;   // sama persis dengan IngatanTemuan.js
+  const semuaJudul = (T.match(/^## TMN-\d{4}.*$/gm) || []);
+  const judulSah = [...T.matchAll(JUDUL_SAH)];
+
+  cek(semuaJudul.length > 0, `berkas temuan memuat entri (${semuaJudul.length})`, semuaJudul.length);
+  cek(judulSah.length === semuaJudul.length,
+    `SEMUA judul bisa diurai IngatanTemuan.js (${judulSah.length}/${semuaJudul.length})`,
+    semuaJudul.filter((j) => !/^## TMN-\d{4} — (TERBUKA|DITUTUP)[ \t]*$/.test(j)));
+
+  // Keempat temuan lama tetap tercatat TERTUTUP — itu riwayat yang tidak boleh hilang.
   for (const id of ['TMN-0001', 'TMN-0002', 'TMN-0003', 'TMN-0004']) {
-    const judul = (T.match(new RegExp(`^## ${id}.*$`, 'm')) || [''])[0];
-    cek(/✅ DITUTUP/.test(judul), `${id} tercatat DITUTUP`, judul);
+    const judul = (T.match(new RegExp(`^## ${id} — (TERBUKA|DITUTUP)`, 'm')) || [])[1] || '(tidak ada)';
+    cek(judul === 'DITUTUP', `${id} tetap tercatat DITUTUP`, judul);
   }
-  cek(!/^## TMN-\d+ — TERBUKA/m.test(T), 'tak ada lagi temuan bertanda TERBUKA');
+
+  // Yang DITUTUP wajib menyebut sebabnya; tanpa itu penutupan jadi klaim kosong.
+  for (const m of [...T.matchAll(/^## (TMN-\d{4}) — DITUTUP[ \t]*$/gm)]) {
+    const badan = T.slice(m.index, T.indexOf('\n## ', m.index + 1) + 1 || T.length);
+    cek(/^- \*\*Ditutup:\*\*/m.test(badan) || /^- \*\*Penutupan:\*\*/m.test(badan),
+      `${m[1]} menyebut sebab penutupannya`);
+  }
+
+  // Penghitung di kepala berkas harus cocok dengan isinya — kalau tidak, ia berbohong.
+  const nT = (T.match(/^## TMN-\d{4} — TERBUKA[ \t]*$/gm) || []).length;
+  const nD = (T.match(/^## TMN-\d{4} — DITUTUP[ \t]*$/gm) || []).length;
+  cek(new RegExp(`\\*\\*${nT} terbuka · ${nD} ditutup\\*\\*`).test(T),
+    `penghitung kepala cocok dengan isinya (${nT} terbuka, ${nD} ditutup)`,
+    (T.match(/\*\*\d+ terbuka · \d+ ditutup\*\*/) || [])[0]);
   // Sebab penutupan TMN-0001 adalah pelajarannya, bukan sekadar statusnya.
   cek(/lahir sudah tertutup/.test(T), 'pelajaran TMN-0001 (lahir sudah tertutup) ikut dicatat');
   cek(/BERTAMBAH salah|bertambah salah/.test(T), 'pelajaran TMN-0002 (sempat bertambah salah) ikut dicatat');

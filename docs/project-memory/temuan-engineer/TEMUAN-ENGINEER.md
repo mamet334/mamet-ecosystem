@@ -4,9 +4,10 @@
      Owner boleh menyunting, menggabungkan, atau menutup temuan dengan tangan — bentuk di bawah yang dibaca
      kembali oleh IngatanTemuan.js. Temuan berstatus DITUTUP tidak akan diangkat lagi oleh Engineer. -->
 
-**4 terbuka · 0 ditutup**
+**4 terbuka · 4 ditutup**
 
-## TMN-0001 — ✅ DITUTUP 2026-10-04 (ternyata sudah benar sejak lahir)
+## TMN-0001 — DITUTUP
+- **Ditutup:** 2026-10-04 — (ternyata sudah benar sejak lahir)
 - **Berkas:** `frontend/src/core/runtime/services/engineer.js`
 - **Tingkat:** rendah
 - **Ditemukan:** 2026-09-24
@@ -15,7 +16,8 @@
 - **Penutupan:** tidak ada yang perlu dikerjakan — komentarnya **sudah benar**. `engineer.js:1024` kini berbunyi *"`_generateFallbackPatch` dihapus total (T10, …)"*, tepat seperti yang temuan ini minta.
 - **Yang menarik:** diperbaiki di `d677e83` — **commit yang sama yang membuat berkas temuan ini**. Jadi TMN-0001 lahir sudah tertutup, lalu tercatat TERBUKA selama sepuluh hari karena tak ada yang memeriksanya ulang. Temuan yang berumur perlu diverifikasi sebelum dikerjakan, bukan sesudah.
 
-## TMN-0002 — ✅ DITUTUP 2026-10-04 (sempat BERTAMBAH salah lebih dulu)
+## TMN-0002 — DITUTUP
+- **Ditutup:** 2026-10-04 — (sempat BERTAMBAH salah lebih dulu)
 - **Berkas:** `frontend/src/components/workbench/ConversationEngine.jsx`
 - **Tingkat:** rendah
 - **Ditemukan:** 2026-10-01
@@ -25,7 +27,8 @@
 - **Penutupan:** `supabase.from()` dicabut dari daftar "tidak ada lagi", dan ketiga pemanggilannya **didaftar beserta nomor barisnya** supaya penambahan berikutnya terlihat sebagai penambahan, bukan sebagai kejutan.
 - **Yang TIDAK dikerjakan, dan sengaja:** memindahkan ketiganya ke `AssistantService`. Ketiganya pembacaan/penulisan baris langsung tanpa logika keputusan; memindahkannya adalah pekerjaan tersendiri, bukan sesuatu yang diselundupkan lewat perbaikan komentar. Komentarnya kini pernyataan **keadaan**, bukan aturan yang dilanggar.
 
-## TMN-0003 — ✅ DITUTUP 2026-10-04 (keterangannya; fungsinya sengaja dibiarkan)
+## TMN-0003 — DITUTUP
+- **Ditutup:** 2026-10-04 — (keterangannya; fungsinya sengaja dibiarkan)
 - **Berkas:** `frontend/src/core/runtime/services/AuditLogService.js`
 - **Tingkat:** rendah
 - **Ditemukan:** 2026-10-01
@@ -35,7 +38,8 @@
 - **Penutupan:** JSDoc-nya diperbaiki pada **dua** hal, bukan satu. Rujukan CommandRegistry dibuang, **dan** keyatiman method ini dinyatakan terang-terangan — tanpa itu pembaca berikutnya akan menyangka eksekusi command sudah tercatat lewat jalur ini, padahal tak satu pun tercatat.
 - **Fungsinya SENGAJA dibiarkan hidup**, bukan terlewat: penghapusan permanen menunggu keputusan Owner, dan `this.log()` yang dipakainya tetap terpakai pemanggil lain. Keputusan hapus-atau-sambungkan masih terbuka.
 
-## TMN-0004 — ✅ DITUTUP 2026-10-02
+## TMN-0004 — DITUTUP
+- **Ditutup:** 2026-10-02 — ditutup dengan tangan
 - **Berkas:** `frontend/src/core/runtime/services/engineer.js`
 - **Tingkat:** sedang
 - **Ditemukan:** 2026-10-01
@@ -44,3 +48,40 @@
 - **Ternyata lebih buruk daripada bunyi temuan ini.** "Nol pemanggil" adalah akibat, bukan cacatnya. Pencacah di `_handlePatchTask` adalah **pembatas laju** — jendelanya mereset tiap 60 detik, hukumannya tidak. Enam penerapan patch dalam semenit membuat Engineer berhenti menambal **sampai aplikasi ditutup**, tanpa satu pun `emit` yang memberi tahu.
 - **Penutupan:** jendela habis → hukuman habis, pulih ke kapabilitas sebelumnya; keduanya bersuara. Tiap demosi mencatat `_sebabDemosi`, karena demosi keamanan (3 percobaan berkas inti) memakai `'OBSERVER'` yang sama dan **sengaja lengket** — pemulihan otomatis tanpa pembeda itu akan mengangkatnya semenit kemudian. Lihat [log](../changelog/2026-10-02-pemutus-arus-engineer.md) dan INDEX item 113.
 - **Bukti penutupan:** `uji/uji-pemutus-arus-engineer.mjs` menjalankan kelas `Engineer` yang asli (27 asersi); uji mutasi M1–M4 semuanya menggigit; 74/74 hijau.
+
+## TMN-0005 — TERBUKA
+- **Berkas:** `supabase/migrations/ (kebijakan RLS verification_audit_logs)`
+- **Tingkat:** tinggi
+- **Ditemukan:** 2026-10-05
+- **Ringkasan:** Kebijakan INSERT bernama "Service Role can insert verification logs" pada tabel verification_audit_logs menyasar PUBLIC dengan WITH CHECK true, sehingga peran anon (belum login) bisa menyisipkan baris audit palsu. Namanya menyebut service_role, perilakunya tidak. Ini kelas yang sama persis dengan lubang assistant_audit_log yang ditutup 2026-10-04 — kembarannya luput.
+- **Bukti:** Simulasi peran di produksi: SET LOCAL ROLE anon lalu INSERT INTO verification_audit_logs (id, timestamp, decision, status, model, score, checks, failures) BERHASIL menyisipkan 1 baris berlabel status=VERIFIED. Penolakan awal hanya datang dari NOT NULL (timestamp, score), bukan dari RLS. pg_policies menunjukkan roles memuat public dan with_check = true.
+- **Belum diperiksa:** apakah ada lapisan di depan PostgREST (kunci anon tidak dibagikan, gateway, atau tidak ada jalur publik). Bila ada, bobotnya turun — tetapi kebijakannya tetap tidak sesuai namanya.
+- **Izin Owner belum diberikan** untuk memperbaikinya; Owner meminta dibahas dulu (5 Okt).
+
+## TMN-0006 — TERBUKA
+- **Berkas:** `docs/project-memory/temuan-engineer/TEMUAN-ENGINEER.md`
+- **Tingkat:** tinggi
+- **Ditemukan:** 2026-10-05
+- **Ringkasan:** Berkas temuan ini TIDAK TERBACA oleh kodenya sendiri. IngatanTemuan.js mengurai judul dengan /^## (TMN-\d{4}) — (TERBUKA|DITUTUP)[ \t]*$/gm yang menuntut bentuk persis, sedangkan judul yang tersimpan berbunyi "## TMN-0001 — ✅ DITUTUP 2026-10-04 (…)". Akibatnya nol temuan terbaca: janji "temuan berstatus DITUTUP tidak akan diangkat lagi" berlaku hampa, dan temuan yang benar-benar TERBUKA pun tak akan pernah sampai ke Engineer.
+- **Bukti:** bacaBerkasTemuan() dari IngatanTemuan.js dijalankan terhadap berkas sungguhan: mengembalikan 0 temuan, sementara berkasnya memuat 4 judul TMN-. Kepala berkas sendiri menyatakan "bentuk di bawah yang dibaca kembali oleh IngatanTemuan.js".
+- **Diperbaiki sebagian 5 Okt:** keempat judul dinormalkan kembali ke bentuk yang diurai, keterangannya dipindah ke ruas **Ditutup** yang memang dibaca.
+- **SEBAB ASLINYA KETAHUAN, dan lebih buruk dari dugaan:** `uji/uji-komentar-tak-berbohong.mjs` ternyata MENEGAKKAN bentuk yang rusak — ia menuntut `/✅ DITUTUP/` di judul, persis bentuk yang tak bisa diurai. Jadi uji hijau menyatakan berkasnya benar sementara kodenya membaca nol. Uji dan pengurai berselisih berhari-hari, dan ujinya yang menang. Asersi keduanya lebih buruk lagi: `!/TERBUKA/` memaku "nol temuan terbuka" sebagai kebenaran abadi, sehingga MENCATAT temuan nyata selalu membuat uji merah — uji yang menghukum pencatatan temuan.
+- **Diperbaiki 5 Okt:** asersi diganti menjadi *"semua judul bisa diurai IngatanTemuan.js"* (regex yang sama persis dengan penguraiannya), ditambah penjaga bahwa yang DITUTUP menyebut sebabnya dan penghitung kepala cocok dengan isinya. Tiga mutasi menggigit — Q1 (satu judul kembali ke bentuk lama) menjatuhkan 2 asersi, yakni cacat yang tadi ada.
+- **Yang TERSISA:** `IngatanTemuan.js` sendiri masih **diam** ketika penguraian menghasilkan nol dari berkas yang jelas berisi. Uji kini menjaga berkasnya, tetapi kodenya tetap tidak bersuara bila bentuknya rusak lagi lewat jalan lain.
+
+## TMN-0007 — TERBUKA
+- **Berkas:** `supabase/functions/agent-process/lib/verification/verification_pipeline.ts`
+- **Tingkat:** sedang
+- **Ditemukan:** 2026-10-05
+- **Ringkasan:** Empat berkas (368 baris) tidak diimpor di mana pun — verification_pipeline.ts (270 baris), post_processing.ts (88), citation_parser.ts (5), grounding_parser.ts (5). Semuanya ikut dibundel ke edge function tiap deploy. Yang 270 baris paling berbahaya: ia mengimpor tujuh modul nyata dan tidak punya penanda usang, sehingga TAMPAK sebagai jalur verifikasi yang aktif.
+- **Bukti:** Pemindaian 245 berkas sumber + 90 berkas uji: nama berkasnya tidak disebut di satu pun berkas lain (0 pengimpor untuk keempatnya). citation_parser.ts menyebut dirinya "Stub for future extraction" dan mengembalikan [].
+- **Preseden di repo ini:** TaskHandlers.js menghapus 219 baris kode mati SESUDAH dibuktikan mati, dan mencatat alasannya: "kode mati yang lengkap dan rapi TAMPAK hidup; 28 September ia menipu asisten sendiri."
+- **Izin Owner belum diberikan.** Pilihan yang diajukan: hapus, atau beri penanda usang lebih dulu.
+
+## TMN-0008 — TERBUKA
+- **Berkas:** `public.verification_audit_logs (baris data, bukan kode)`
+- **Tingkat:** sedang
+- **Ditemukan:** 2026-10-05
+- **Ringkasan:** Satu baris palsu tertinggal di tabel produksi akibat pembuktian TMN-0005. Blok DO dikira dibatalkan, padahal execute_sql meng-commit otomatis. Barisnya tidak merusak apa pun selain mengotori log audit, tetapi membiarkannya berarti meninggalkan bukti palsu di dalam log audit.
+- **Bukti:** id = 240bc19f-8a65-438e-8861-8216761b0609, decision = PALSU-OLEH-ANON, status = VERIFIED, model = bukan-model-sungguhan, timestamp = 2026-10-05 06:12:35 UTC. Terbaca dengan SELECT pada tabel produksi.
+- **Dibuat oleh asisten, bukan oleh sistem.** Penghapusannya menunggu izin Owner (penghapusan permanen di produksi adalah hak Owner).
