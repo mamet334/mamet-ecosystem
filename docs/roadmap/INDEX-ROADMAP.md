@@ -235,7 +235,7 @@ sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
 
 ## 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-10-01)
 
-Versi di `main`: **4.2.9**. Terpasang di mesin Owner saat baris ini ditulis: **4.2.8**.
+Versi di `main`: **4.2.13**. Terpasang di mesin Owner saat baris ini ditulis: **4.2.12**.
 Alur rilis manual — Actions membuat draf, Owner yang menekan Publish (item 96).
 
 ### Sudah TERBUKTI LIVE
@@ -375,6 +375,33 @@ terhadap kode nyata dan benar.
 Empat uji tertunda lain bisa ikut dalam sesi pasang yang sama: tombol Berhenti, Engineer tak jatuh
 (tanya hal pendek-faktual di Engineer), cacat Tahap 6 ke-1 & ke-2 (patch yang sengaja merusak), dan
 unduh desktop dari web.
+
+### Yang dibawa 4.2.13
+
+> ⚠️ **Perlu DEPLOY *DAN* RILIS KLIEN** — pertama kali sejak beberapa hari keduanya diperlukan
+> sekaligus. Anggaran keluaran perintah ada di sisi klien: **deploy saja tidak mengaktifkannya**,
+> rilis saja tidak mengaktifkan dua perbaikan edge function-nya.
+
+| Dibawa 4.2.13 | Apa | Sisi |
+|---|---|---|
+| **Anggaran keluaran perintah** | keluaran >8.000 huruf dipotong kepala+ekor dengan catatan bernomor; dua jalur pengirim disatukan (item 122) | klien |
+| **402 varian ke-3 `in-flight`** | tabrakan permintaan paralel dikenali, tidak lagi disamakan dengan saldo habis (item 122) | deploy |
+| **BRAIN 1 tak lagi kembar** | isi tidak diulang di BLOK 4 saat mode Engineer, ≈1.300 huruf/pesan (item 122) | deploy |
+
+**Kenapa dinaikkan sekarang:** sesi 01:33 membuktikan uji 2 & 3 lulus, lalu **patah di giliran
+kedua** persis karena cacat yang dibawa 4.2.13. Tanpa rilis ini, setiap sesi Engineer yang
+menjalankan `git grep` lebar akan mengulang kegagalan yang sama.
+
+**Uji 4.2.13 — urutannya penting:**
+
+1. **Anggaran berlaku** — ulangi `git grep -n -B2 -A4 "402"` di tiga folder. Keluarannya harus
+   memuat `[KELUARAN DIPOTONG SISTEM]` dengan angka aslinya, dan `[PROMPT_KOMPOSISI]` giliran
+   berikutnya `pesan=` harus **jauh di bawah 15.769**.
+2. **Ekornya utuh** — baris terakhir keluaran asli harus masih terlihat; gagal bila keluaran
+   berhenti di tengah tanpa catatan.
+3. **BRAIN 1 tak kembar** — `[PROMPT_KOMPOSISI]`: `blok4_brain` harus turun dari ±1.980,
+   `konteks_engineer` **tetap** 17.687 (yang diringkas salinan keduanya, bukan aslinya).
+4. **`node -e` tetap minta izin** — carry-over 4.2.12, **mendesak**; harus tetap memunculkan dialog.
 
 ### Yang dibawa 4.2.12
 
