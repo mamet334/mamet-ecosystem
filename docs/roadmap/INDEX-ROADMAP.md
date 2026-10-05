@@ -237,7 +237,12 @@ sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
 
 ## 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-10-01)
 
-Versi di `main`: **4.2.13**. Terpasang di mesin Owner saat baris ini ditulis: **4.2.12**.
+Versi di `package.json`: **4.2.13**, dan **4.2.13 sudah terpasang di mesin Owner** (5 Okt).
+
+> ⚠️ **`main` MENDAHULUI versi yang terpasang.** Item **124** (indeks konstitusi) masuk SESUDAH
+> commit rilis `ab0fe38`, jadi ia **belum ada di 4.2.13 mana pun** — lihat **Yang dibawa 4.2.14**.
+> Item **123** juga sesudahnya, tetapi ia murni edge function dan **sudah ter-deploy**, jadi tidak
+> menunggu rilis klien. Jangan menilai keduanya dari aplikasi 4.2.13 yang sedang berjalan.
 Alur rilis manual — Actions membuat draf, Owner yang menekan Publish (item 96).
 
 ### Sudah TERBUKTI LIVE
@@ -378,6 +383,35 @@ Empat uji tertunda lain bisa ikut dalam sesi pasang yang sama: tombol Berhenti, 
 (tanya hal pendek-faktual di Engineer), cacat Tahap 6 ke-1 & ke-2 (patch yang sengaja merusak), dan
 unduh desktop dari web.
 
+### Yang dibawa 4.2.14 — BELUM DIRILIS
+
+> ⚠️ **JANGAN dicampur dengan 4.2.13.** Commit rilis 4.2.13 (`ab0fe38`) berada DI BAWAH commit
+> item 124 di riwayat git, jadi **4.2.13 yang terpasang di mesin Owner TIDAK memuat indeks
+> konstitusi**. Blok uji di bawah sempat salah ditaruh di bagian 4.2.13 — dipindah 5 Okt.
+
+| Dibawa 4.2.14 | Apa | Sisi |
+|---|---|---|
+| **Indeks konstitusi** | 33 berkas berhenti dibaca-lalu-dibuang tiap boot; indeksnya benar-benar sampai ke model (+577 token/pesan, item 124) | klien |
+
+**PERLU RILIS KLIEN, dan `npm run desktop` harus DIJALANKAN ULANG** — `main.cjs` dan
+`preload.cjs` berubah, kanal `engineer:indeks-konstitusi` hanya ada di proses utama yang baru.
+Muat ulang jendela tidak cukup.
+
+**Uji 4.2.14:**
+
+**Tiga langkah, dan yang ketiga yang paling mudah terlupakan.** tiga langkah, dan yang ketiga yang paling mudah terlupakan:
+
+| | Yang dilihat | Gagal bila |
+|---|---|---|
+| a. **sampai** | `riwayat` naik **2.687 → ±4.900 huruf** | tetap 2.687 → Electron belum dijalankan ULANG (kanal `engineer:indeks-konstitusi` hanya ada di proses utama yang baru) |
+| b. **dipakai** | tanya aturan: *"apa kata konstitusi tentang CORE IMMUTABLE?"* → Engineer **menjalankan `git show`** lebih dulu | ia menjawab dari ingatan, atau mengaku sudah membaca tanpa menjalankan apa pun |
+| c. **TIDAK kelebihan menyala** | tanya hal sepele *("berapa berkas di `uji/`?")* → **TIDAK** membaca konstitusi | ia membuka berkas konstitusi untuk pertanyaan yang tak menyangkut aturan |
+
+> **c itu kendalinya, dan tanpa itu b tidak berarti.** Aturan *"BACA berkasnya lebih dulu"*
+> bisa membuat Engineer membuka konstitusi untuk **setiap** pertanyaan — menukar satu
+> kegagalan (tak pernah membaca) dengan kegagalan lain (selalu membaca, tiap jawaban jadi
+> mahal dalam perintah maupun token). Uji yang hanya memeriksa b akan menyebut itu sukses.
+
 ### Yang dibawa 4.2.13
 
 > ⚠️ **Perlu DEPLOY *DAN* RILIS KLIEN** — pertama kali sejak beberapa hari keduanya diperlukan
@@ -405,19 +439,6 @@ menjalankan `git grep` lebar akan mengulang kegagalan yang sama.
    `konteks_engineer` **tetap 17.687** — tidak bergerak satu huruf pun. Baris kedua itu yang
    menentukan: yang menyusut salinan keduanya, aslinya utuh. Bila `konteks_engineer` ikut turun,
    berarti yang diringkas aslinya dan Engineer kehilangan isi BRAIN 1. Total 41.235 → **39.989**.
-5. **Indeks konstitusi (item 124)** — tiga langkah, dan yang ketiga yang paling mudah terlupakan:
-
-   | | Yang dilihat | Gagal bila |
-   |---|---|---|
-   | a. **sampai** | `riwayat` naik **2.687 → ±4.900 huruf** | tetap 2.687 → Electron belum dijalankan ULANG (kanal `engineer:indeks-konstitusi` hanya ada di proses utama yang baru) |
-   | b. **dipakai** | tanya aturan: *"apa kata konstitusi tentang CORE IMMUTABLE?"* → Engineer **menjalankan `git show`** lebih dulu | ia menjawab dari ingatan, atau mengaku sudah membaca tanpa menjalankan apa pun |
-   | c. **TIDAK kelebihan menyala** | tanya hal sepele *("berapa berkas di `uji/`?")* → **TIDAK** membaca konstitusi | ia membuka berkas konstitusi untuk pertanyaan yang tak menyangkut aturan |
-
-   > **c itu kendalinya, dan tanpa itu b tidak berarti.** Aturan *"BACA berkasnya lebih dulu"*
-   > bisa membuat Engineer membuka konstitusi untuk **setiap** pertanyaan — menukar satu
-   > kegagalan (tak pernah membaca) dengan kegagalan lain (selalu membaca, tiap jawaban jadi
-   > mahal dalam perintah maupun token). Uji yang hanya memeriksa b akan menyebut itu sukses.
-
 4. ✅ **TERJAWAB 5 Okt — di tingkat LOGIKA, tanpa saldo.** Uji ini menggantung berhari-hari karena
    dikira menuntut model menjawab lebih dulu. Tidak: `perintahAman` (preload) memanggil
    `tanpaPersetujuan()` — **predikat yang sama persis** yang dipakai jalur otomatis
@@ -670,7 +691,19 @@ Tidak menyala pada uji 1 Okt 13.12 (mode terbukti tetap ENGINEER), jadi ini **ra
 kegagalan kemarin**. Tapi satu pertanyaan Engineer yang kebetulan terlihat seperti pertanyaan
 faktual singkat akan jatuh ke sini tanpa tanda apa pun.
 
-### ⚠️ Temuan terbuka — 55.081 huruf prompt untuk pertanyaan EMPAT KATA (4 Okt)
+### ◐ SEPARUH DITUTUP — 55.081 huruf prompt untuk pertanyaan EMPAT KATA (4 Okt)
+
+> **Jangan dibaca sebagai masih terbuka seluruhnya, dan jangan pula sebagai sudah selesai.**
+>
+> | | |
+> |---|---|
+> | ✅ **ditutup** | sisipan peta repo (item 120), BRAIN 1 kembar (item 122), keluaran perintah tanpa anggaran (item 122) |
+> | ⛔ **tidak akan ditutup oleh pemangkasan** | `konteks_engineer` 17.687 huruf — **14.695 di antaranya ATURAN, bukan data**; narasi sejarah cuma 634 huruf (3,6%), duplikasi dengan kontrak universal **nol** |
+> | ⚠️ **justru BERTAMBAH** | item 124 menambah **+577 token/pesan** (indeks konstitusi) — keputusan sadar Owner |
+>
+> Dan sejak 5 Okt 02:23 pemangkasan bukan lagi jalan keluarnya sama sekali: saldo menanggung
+> 1.048 token sedangkan blok yang tak bisa dibuang saja sudah ≈3.100. Lihat
+> **⛔ BERHENTI MENUNGGU SALDO** di §5b.
 
 Diukur dari log `[PROMPT_KOMPOSISI]` saat *"apa itu rls?"* ditolak OpenRouter dengan
 `Prompt tokens limit exceeded: 14250 > 3621`. Totalnya **55.081 huruf ≈ 14.250 token** — cocok
@@ -759,7 +792,20 @@ Memangkasnya mengubah perilaku Engineer, jadi itu keputusan Owner.
 sedangkan blok yang tak bisa dibuang sama sekali sudah ≈3.100 token. Lihat
 **⛔ BERHENTI MENUNGGU SALDO** di §5b.
 
-### ⚠️ Temuan terbuka — konstitusi dibaca tiap boot lalu DIBUANG
+### ✅ DITUTUP 5 Okt oleh item 124 — konstitusi dibaca tiap boot lalu DIBUANG
+
+> **Catatan temuan ini DIPERTAHANKAN apa adanya di bawah**, karena ia memuat jejak bagaimana
+> cacatnya ditemukan — dan satu cacat KEDUA yang hanya terlihat saat menutupnya: daftar 32 jalur
+> itu ternyata sudah **melenceng** (`constitution/28_PROSEDUR_KERJA_ENGINEER.md` ada di disk,
+> tidak di daftar), dan luput berbulan-bulan **justru karena isinya toh dibuang**.
+>
+> Yang berubah: foldernya kini **dipindai**, isinya tidak lagi dibaca-lalu-dibuang, dan indeksnya
+> benar-benar sampai ke model. Biayanya **+577 token per pesan** — lihat item 124; itu
+> **menambah**, bukan memangkas, dan Owner memutuskannya dengan sadar.
+>
+> **Belum terbukti live** — menunggu rilis 4.2.14.
+
+#### (riwayat temuan, sebagaimana ditulis sebelum ditutup)
 
 `_loadStaticKnowledge()` di `engineer.js` memuat **32 berkas**: `INIT.md`, `AGENTS.md`,
 `constitution/00`–`27`, termasuk `24_ANTI_HALLUCINATION_PROTOCOL.md` (nomor barisnya sengaja tidak
