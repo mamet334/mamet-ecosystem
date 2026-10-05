@@ -399,9 +399,44 @@ menjalankan `git grep` lebar akan mengulang kegagalan yang sama.
    berikutnya `pesan=` harus **jauh di bawah 15.769**.
 2. **Ekornya utuh** — baris terakhir keluaran asli harus masih terlihat; gagal bila keluaran
    berhenti di tengah tanpa catatan.
-3. **BRAIN 1 tak kembar** — `[PROMPT_KOMPOSISI]`: `blok4_brain` harus turun dari ±1.980,
-   `konteks_engineer` **tetap** 17.687 (yang diringkas salinan keduanya, bukan aslinya).
+3. ✅ **LULUS — terbukti live 5 Okt 02:23.** `blok4_brain` **1.980 → 767** (−1.213), dan
+   `konteks_engineer` **tetap 17.687** — tidak bergerak satu huruf pun. Baris kedua itu yang
+   menentukan: yang menyusut salinan keduanya, aslinya utuh. Bila `konteks_engineer` ikut turun,
+   berarti yang diringkas aslinya dan Engineer kehilangan isi BRAIN 1. Total 41.235 → **39.989**.
 4. **`node -e` tetap minta izin** — carry-over 4.2.12, **mendesak**; harus tetap memunculkan dialog.
+
+### ⛔ BERHENTI MENUNGGU SALDO (5 Okt 02:23) — bukan masalah ukuran prompt lagi
+
+```
+10.430 token dikirim · saldo menanggung 1.048
+```
+
+Uji 1, 2 dan 4 **semuanya menuntut model menjawab** — termasuk `node -e`, karena dialognya baru
+muncul sesudah Engineer memancarkan penanda perintah. Tak satu pun bisa dijalankan tanpa saldo.
+
+**Dihitung, bukan dikira-kira — memangkas prompt TIDAK bisa mengejar selisih ini.** Pada ±3,83
+huruf/token, jatah 1.048 token ≈ **4.000 huruf**. Blok yang tak bisa dibuang sama sekali:
+
+```
+dasar_identitas 6.029 + kontrak 1.099 + constraint 2.774 + format 1.248
+              + memori 508 + blok3 196  =  11.854 huruf ≈ 3.100 token
+```
+
+Jadi: buang **seluruh** konteks Engineer, **seluruh** RAG, dan **seluruh** peta repo — Engineer
+tanpa aturan, tanpa dokumen, tanpa peta — prompt-nya masih **±3.300 token**, tiga kali lipat jatah
+yang ada. Usul pemangkasan berikutnya karena itu akan memangkas ATURAN demi selisih yang tetap
+tidak tercapai.
+
+**Arah dua angka ini berlawanan, dan itu intinya:**
+
+| | Total prompt | Kutipan penyedia | Batas prompt saldo |
+|---|---|---|---|
+| 4 Okt (sebelum item 120) | 55.125 (≈14.250 token) | 615 | 3.621 |
+| 4.2.12 | 41.235 | 444 | 1.682 |
+| **4.2.13** | **39.989 (≈10.430 token)** | **345** | **1.048** |
+
+Prompt turun **27%**; saldo turun lebih cepat. Pekerjaan item 120–122 tetap sah dan terukur — ia
+hanya tak bisa menggantikan isi ulang saldo.
 
 ### Yang dibawa 4.2.12
 
