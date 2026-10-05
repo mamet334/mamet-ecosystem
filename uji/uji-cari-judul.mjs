@@ -13,26 +13,32 @@
 // di changelog): "kepbup 204" → tepat 1 dokumen yang benar; "pangkat camat lengkiti" → 0, jadi ia
 // tidak merebut pertanyaan biasa.
 
-import { readFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
+// AKAR diturunkan dari letak berkas ini. Bentuk lama memakunya sebagai jalur absolut
+// ('D:/SLAMET/...'), jadi ujinya hanya bisa jalan di satu mesin dengan satu nama folder.
+const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
-// Modul server ditulis TypeScript untuk Deno. Tipe dibuang supaya bisa diimpor node biasa — yang
-// diuji logikanya, dan logika itu tidak berubah oleh anotasi tipe.
-// Akhir baris diseragamkan ke LF lebih dulu. Tanpa ini, regex di bawah mencari "\n}\n" sementara
-// berkas di direktori kerja ber-CRLF ("\r\n}\r\n") — antarmuka TypeScript-nya tidak terbuang dan
-// modulnya gagal dimuat. Persis jebakan CRLF yang dijaga `scripts/samakan-crlf.mjs`, kali ini
-// menggigit berkas ujinya sendiri. Yang diubah hanya salinan di memori.
-const TS = readFileSync(`${AKAR}/supabase/functions/agent-process/lib/rag/cari_judul.ts`, 'utf8').replace(/\r\n/g, '\n');
-const js = TS
-  .replace(/export interface [\s\S]*?\n\}\n/g, '')
-  .replace(/:\s*\{ hasil: PotonganRag\[\]; disisipkan: number \}/g, '')
-  .replace(/dariIsi: PotonganRag\[\],/g, 'dariIsi,')
-  .replace(/dariJudul: PotonganRag\[\],/g, 'dariJudul,')
-  .replace(/batas: number,/g, 'batas,')
-  .replace(/const sisipan: PotonganRag\[\] = \[\];/g, 'const sisipan = [];');
-const C = await import('data:text/javascript;base64,' + Buffer.from(js, 'utf8').toString('base64'));
+// Modul server ditulis TypeScript untuk Deno; tipenya dibuang supaya bisa diimpor Node biasa.
+//
+// DIGANTI 2026-10-05 — dulu tipe dikupas dengan RANTAI REGEX, satu pola per tanda tangan fungsi
+// (`dariIsi: PotonganRag[],` → `dariIsi,` dan seterusnya). Cara itu memaksa setiap ekspor bertipe
+// BARU ikut didaftarkan di sini, dan bila lupa, modulnya gagal dimuat dengan `SyntaxError:
+// Unexpected token ':'` — kegagalan yang terlihat seperti kode rusak padahal pemuatnyalah yang
+// usang. Itu benar-benar terjadi saat `kataKunciJudul` ditambahkan.
+//
+// esbuild sudah dipakai seluruh uji lain di repo ini untuk hal yang sama. Pemakaiannya di sini
+// juga menghapus jebakan CRLF yang dulu harus ditangani sendiri.
+const esbuild = await import(pathToFileURL(join(AKAR, 'frontend/node_modules/esbuild/lib/main.js')).href);
+const dirUji = mkdtempSync(join(tmpdir(), 'uji-cari-judul-'));
+const sumber = readFileSync(join(AKAR, 'supabase/functions/agent-process/lib/rag/cari_judul.ts'), 'utf8');
+const { code } = await esbuild.transform(sumber, { loader: 'ts', format: 'esm' });
+writeFileSync(join(dirUji, 'cj.mjs'), code);
+const C = await import(pathToFileURL(join(dirUji, 'cj.mjs')).href);
+process.on('exit', () => { try { rmSync(dirUji, { recursive: true, force: true }); } catch { /* sudah bersih */ } });
 
 console.log('uji-cari-judul v1');
 let gagal = 0;
@@ -98,15 +104,34 @@ for (const b of [0, -3, NaN, undefined]) {
 console.log('\n-- terpasang di document_search --');
 
 const DS = readFileSync(`${AKAR}/supabase/functions/agent-process/lib/rag/document_search.ts`, 'utf8');
-cek(/import \{ gabungkan, MAKS_POTONGAN_JUDUL \} from '\.\/cari_judul\.ts'/.test(DS), 'modul diimpor');
+// Yang dijaga: keduanya datang DARI cari_judul.ts — bukan ejaan seluruh daftar impornya.
+// Bentuk lama memaku kedua nama beserta urutannya, jadi menambah satu ekspor yang sah
+// (`kataKunciJudul`, 5 Okt) menjatuhkannya tanpa ada yang rusak.
+cek(/import \{[^}]*\bgabungkan\b[^}]*\} from '\.\/cari_judul\.ts'/.test(DS)
+  && /import \{[^}]*\bMAKS_POTONGAN_JUDUL\b[^}]*\} from '\.\/cari_judul\.ts'/.test(DS),
+  'gabungkan & MAKS_POTONGAN_JUDUL diimpor dari cari_judul');
 cek(/rpc\('match_documents_judul'/.test(DS), 'RPC judul dipanggil');
 cek(/gabungkan\(matchedDocs \|\| \[\], lewatJudul, effectiveRagMatchCount\)/.test(DS),
   'hasilnya digabung dengan batas jumlah potongan yang SAMA seperti sebelumnya');
 
 // Kegagalan jalur baru tidak boleh menggagalkan pencarian biasa.
+//
+// Dicari dengan MENELUSURI, bukan dengan memotong 400 huruf sebelum panggilan RPC. Bentuk lama
+// mengandaikan `try {` selalu berada dalam jarak byte itu — satu komentar penjelas yang
+// ditambahkan di atasnya sudah cukup menggesernya keluar jendela, dan asersinya jatuh pada kode
+// yang justru masih benar. Yang dijaga adalah panggilan RPC itu berada DI DALAM try/catch.
 const iJudul = DS.indexOf("rpc('match_documents_judul'");
-const blok = DS.slice(iJudul - 400, iJudul + 900);
-cek(/try \{/.test(blok) && /\} catch \(e\)/.test(blok), 'dibungkus try/catch — pencarian biasa tetap jalan bila jalur judul galat', blok.slice(-200));
+const sebelum = DS.slice(0, iJudul);
+const sesudah = DS.slice(iJudul);
+const iTry = sebelum.lastIndexOf('try {');
+const iCatch = sesudah.indexOf('} catch');
+cek(iJudul > 0, 'panggilan RPC judul ditemukan di berkas');
+cek(iTry > 0 && iCatch > 0,
+  'dibungkus try/catch — pencarian biasa tetap jalan bila jalur judul galat',
+  { adaTry: iTry > 0, adaCatch: iCatch > 0 });
+// Dan `try`-nya milik blok ini, bukan blok lain jauh di atas yang kebetulan terbuka.
+cek(iTry > 0 && !sebelum.slice(iTry).includes('} catch'),
+  'try yang ditemukan memang membungkus panggilan ini, bukan blok lain yang sudah ditutup');
 cek(/console\.warn\(`\[RAG\] pencarian judul dilewati/.test(DS), 'galatnya bersuara di log, tidak diam');
 
 // Fungsi hibrida TIDAK boleh ikut berubah — ia memegang patokan 14/14.

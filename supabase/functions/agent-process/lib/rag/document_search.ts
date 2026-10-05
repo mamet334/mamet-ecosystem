@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { RuntimeContext } from '../runtime_context.ts';
 import { RagDocument, FormattedRagContext, RoutingDecision } from './types.ts';
 import { kataKunciPencarian } from '../../../../../frontend/src/core/runtime/services/KnowledgeService.js';
-import { gabungkan, MAKS_POTONGAN_JUDUL } from './cari_judul.ts';
+import { gabungkan, MAKS_POTONGAN_JUDUL, kataKunciJudul } from './cari_judul.ts';
 
 export const searchDocuments = async (
   queryEmbedding: number[],
@@ -62,8 +62,14 @@ export const searchDocuments = async (
   //
   // Kegagalannya tidak boleh menggagalkan pencarian biasa: dibungkus, dan bila gagal hasilnya apa adanya.
   try {
+    // Kata kunci TERPISAH untuk jalur judul (2026-10-05): `kataKunci` membuang token ≤2 huruf,
+    // sehingga "kepbup 17" tiba sebagai satu kata saja dan penjaga `array_length >= 2` memulangkan
+    // kosong — 99 dari 221 dokumen (45%) tak bisa ditemukan lewat nomor alaminya. Daftar ini
+    // menambah varian angka berpadding; `kataKunci` sengaja TIDAK diubah supaya patokan 14/14
+    // milik `match_documents_hybrid` tetap sebanding. Lihat `kataKunciJudul`.
+    const kataJudul = kataKunciJudul(finalMessage, kataKunci);
     const { data: lewatJudul, error: galatJudul } = await supabaseClient.rpc('match_documents_judul', {
-      query_words: kataKunci,
+      query_words: kataJudul,
       match_count: MAKS_POTONGAN_JUDUL,
       p_user_id: userId,
       p_space_id: spaceId

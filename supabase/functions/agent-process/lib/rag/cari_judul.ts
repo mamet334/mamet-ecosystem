@@ -35,6 +35,70 @@ export interface PotonganRag {
 export const MAKS_POTONGAN_JUDUL = 3;
 
 /**
+ * Lebar padding nol yang ikut dicoba untuk token angka.
+ *
+ * Korpus ini memakai TIGA ("001".."221", diukur 5 Okt 2026: 221 nomor unik, min 001, maks 221).
+ * Dua ikut disertakan karena konvensi dua digit sama lazimnya, dan biayanya diukur bukan dikira —
+ * lihat catatan ketepatan di `kataKunciJudul`.
+ */
+export const LEBAR_PADDING = [2, 3];
+
+/**
+ * Kata kunci khusus jalur JUDUL — menambal dua lubang yang membuat 45% korpus tak bisa dicari.
+ *
+ * ── Cacatnya, diukur 5 Oktober 2026 ─────────────────────────────────────────────────────────
+ *
+ * Rantainya putus DUA KALI untuk pertanyaan sewajarnya seperti "kepbup 17":
+ *
+ *   1. `kataKunciPencarian` membuang token sepanjang ≤2 huruf (`w.length > 2`). Saringan itu
+ *      ditulis untuk kata sambung dalam prosa, dan tak pernah ditinjau ulang untuk PENANDA.
+ *      Nomor satu-dua digit justru penanda yang paling sering dipakai orang.
+ *        "kepbup 17"  → ["kepbup"]        ← "17" hilang di sini
+ *   2. Seandainya lolos pun ia tetap tak cocok: judulnya menyimpan "017", dan "17" ≠ "017"
+ *      sebagai leksem `to_tsquery('simple', …)`.
+ *
+ * Akibatnya `match_documents_judul` menerima satu kata saja, lalu penjaga `array_length >= 2`
+ * memulangkan kosong. Terukur: nomor 001–221, jadi **99 dari 221 dokumen (45%) tak bisa ditemukan
+ * lewat nomor alaminya**. "204" selama ini berhasil semata karena ia kebetulan sudah tiga digit.
+ *
+ * ── Kenapa daftar kata TERPISAH, bukan `kataKunciPencarian` yang diperbaiki ──────────────────
+ *
+ * `kataKunciPencarian` juga memasok `match_documents_hybrid`, yang memegang patokan terukur
+ * recall@8 14/14 (Item 90 Tahap B). Menambah token di sana menggeser patokan itu dan membuatnya
+ * tak lagi sebanding. Jalur judul sudah sengaja berdiri sendiri (lihat kepala berkas); perbaikan
+ * ini mengikuti pemisahan yang sama.
+ *
+ * ── Ketepatan tidak dikorbankan ─────────────────────────────────────────────────────────────
+ *
+ * Varian hanya ditambahkan untuk token ANGKA, dan `match_documents_judul` tetap menuntut DUA kata
+ * cocok (`cocok >= 2`). Jadi "kepbup" + satu varian angka yang benar = 2 — lulus; sedangkan angka
+ * yang tak ada di judul mana pun tidak menambah kecocokan apa pun.
+ *
+ * Arahnya dibuat DUA arah: "17" juga mencoba "017", dan "017" juga mencoba "17". Korpus lain boleh
+ * jadi menyimpan tanpa padding, dan menebak satu arah saja akan mengulang cacat yang sama dari sisi
+ * sebaliknya.
+ *
+ * @param teks pertanyaan apa adanya
+ * @param dasar hasil `kataKunciPencarian(teks)` — dipakai ulang supaya aturan stopword tetap satu sumber
+ */
+export function kataKunciJudul(teks: string, dasar: string[] = []): string[] {
+  const keluar = new Set((dasar || []).filter((w) => typeof w === 'string' && w));
+  for (const m of String(teks || '').toLowerCase().matchAll(/\d+/g)) {
+    // Bentuk APA ADANYA sengaja TIDAK ditambahkan di sini — uji mutasi membuktikannya mati.
+    // Ia selalu sudah tercakup: bila tanpa nol di depan ia sama dengan `telanjang`; bila
+    // ber-nol dan ≥3 huruf ia sudah lolos saringan `kataKunciPencarian` ke `dasar`; bila
+    // ber-nol dan pendek ("07") ia justru hasil padding di bawah. Stopword tidak memuat angka,
+    // jadi tak ada jalan ketiga. Menambahkannya hanya membuat baris yang tak pernah bisa salah.
+    const telanjang = m[0].replace(/^0+/, '') || '0';
+    keluar.add(telanjang);
+    for (const lebar of LEBAR_PADDING) {
+      if (telanjang.length < lebar) keluar.add(telanjang.padStart(lebar, '0'));
+    }
+  }
+  return [...keluar];
+}
+
+/**
  * Gabungkan potongan hasil pencarian judul ke hasil pencarian isi.
  *
  * Tiga aturan, masing-masing ada alasannya:
