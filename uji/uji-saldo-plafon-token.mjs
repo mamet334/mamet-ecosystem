@@ -26,7 +26,20 @@ const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (s) => s.split('\n').filter((b) => !/^\s*(\/\/|\*|\/\*)/.test(b)).join('\n');
 
-console.log('uji-saldo-plafon-token v1');
+// ── TAMBAHAN 2026-10-05 — AKAR dari lantai 512 ──────────────────────────────────────────────
+// Lantai 512 ternyata menolak permintaan yang akan berhasil. Terukur di produksi 5 Okt: kutipan
+// penyedia turun 615 -> 444, plafon ulang 399 jatuh di bawah 512, permintaan ditolak di gerbang.
+// Padahal 399 lapang: langkah pertama Engineer bukan prosa melainkan satu penanda [MAMET_CMD: …].
+//
+// Akarnya bukan angka lantainya, melainkan apa yang TIDAK diukur. "Terpotong menyesatkan" hanya
+// benar selama sistem tidak tahu ia terpotong — dan memang tidak tahu: `finish_reason` tak dibaca
+// di mana pun, `terpotong` yang sudah ada hanya menandai batas waktu dinding. Jadi lantai itu
+// tebakan di muka yang menggantikan pengukuran yang tak pernah diambil.
+//
+// Perbaikannya membalik urutan: BACA finish_reason, BERI LABEL bila terpotong, baru lantainya
+// boleh turun. Bagian 3 di bawah karena itu diubah arahnya, bukan dilonggarkan.
+
+console.log('uji-saldo-plafon-token v2');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 300)}` : ''}`);
@@ -161,21 +174,97 @@ try {
     cek(res.ok === true, 'hasil akhirnya respons yang berhasil');
   }
 
-  // ── 3. Lantai kelayakan: jawaban terpotong lebih buruk daripada galat terang ──────────────
-  console.log('\n-- lantai kelayakan --');
+  // ── 3. Lantai kelayakan — ARAHNYA DIBALIK 2026-10-05 ──────────────────────────────────────
+  // Yang dulu wajib DITOLAK (399 token) kini wajib DICOBA. Ini bukan pelonggaran: syaratnya
+  // adalah jawaban terpotong kini diberi label (bagian 7), jadi bahayanya dihadapi, bukan
+  // dihindari dengan menolak mencoba.
+  console.log('\n-- lantai kelayakan (arah dibalik) --');
   {
-    const kecil = JSON.stringify({ error: { message: 'can only afford 180.' } });
+    // KASUS PRODUKSI 5 Okt 2026, 01:05 — inilah yang membuat chat mati padahal semalam hidup.
+    const NYATA_444 = JSON.stringify({ error: { message: 'can only afford 444.' } });
+    cek(plafonUlang(NYATA_444) === 399, 'kutipan nyata 444 -> plafon ulang 399', plafonUlang(NYATA_444));
+    cek(399 >= MIN_TOKEN_LAYAK, `399 kini DI ATAS lantai (${MIN_TOKEN_LAYAK}) — dulu 512 menolaknya`, MIN_TOKEN_LAYAK);
+
+    const d444 = [];
+    await kirimOpenRouterDenganReasoning({ model: 'm', max_tokens: MAKS_TOKEN_JAWABAN }, undefined, async (b) => {
+      d444.push(b);
+      return d444.length === 1 ? resp(402, NYATA_444) : resp(200);
+    });
+    cek(d444.length === 2, 'permintaan 5 Okt yang dulu ditolak di gerbang kini DIULANG', d444.length);
+    cek(d444[1].max_tokens === 399, 'dan diulang dengan 399, angka dari OpenRouter bukan tebakan', d444[1]);
+
+    // Lantainya tetap ADA — ia hanya turun. Di bawah ini satu penanda [MAMET_CMD: …] pun
+    // berisiko terpotong, dan penanda terpotong tak pernah jadi perintah (regex wajib ']').
+    const kecil = JSON.stringify({ error: { message: 'can only afford 100.' } });
+    cek(plafonUlang(kecil) < MIN_TOKEN_LAYAK, '100 -> 90, masih di bawah lantai', plafonUlang(kecil));
     const dikirim = [];
-    const kirim = async (b) => { dikirim.push(b); return resp(402, kecil); };
-    const res = await kirimOpenRouterDenganReasoning({ model: 'm', max_tokens: MAKS_TOKEN_JAWABAN }, undefined, kirim);
-    cek(dikirim.length === 1, `180 token (< ${MIN_TOKEN_LAYAK}) TIDAK diulang — jawaban terpotong menyesatkan`, dikirim.length);
+    const res = await kirimOpenRouterDenganReasoning({ model: 'm', max_tokens: MAKS_TOKEN_JAWABAN }, undefined, async (b) => { dikirim.push(b); return resp(402, kecil); });
+    cek(dikirim.length === 1, `100 token (< ${MIN_TOKEN_LAYAK}) tetap TIDAK diulang — lantainya turun, tidak hilang`, dikirim.length);
     cek(res.status === 402, 'respons 402-nya dipulangkan apa adanya untuk dijadikan pesan');
 
     const pesan = pesanSaldoTakCukup(kecil, MAKS_TOKEN_JAWABAN);
-    cek(/180 token/.test(pesan), 'pesannya menyebut angka yang sebenarnya terjangkau', pesan);
+    cek(/100 token/.test(pesan), 'pesannya menyebut angka yang sebenarnya terjangkau', pesan);
     cek(new RegExp(String(MIN_TOKEN_LAYAK)).test(pesan), 'dan menyebut lantainya, jadi angkanya bisa dinilai Owner', pesan);
     cek(/[Ii]si ulang saldo/.test(pesan), 'dan mengatakan apa yang harus dilakukan', pesan);
     cek(!/\{"error"/.test(pesan), 'badan JSON mentah tidak diteruskan ke Owner', pesan);
+  }
+
+  // ── 7. finish_reason DIBACA — inilah syarat yang membuat lantai boleh turun ───────────────
+  console.log('\n-- terpotong karena plafon: dibaca & diberi label --');
+  {
+    const { terpotongKarenaPlafon, pesanTerpotongPlafon, bacaSseOpenRouter } = M;
+
+    // Aliran SSE OpenRouter yang sebenarnya: finish_reason tiba di bingkai TERAKHIR, null
+    // sebelumnya. Bila hanya bingkai pertama yang dibaca, 'length' tak akan pernah terlihat.
+    const sse = (sebab) => {
+      const b = [
+        `data: ${JSON.stringify({ provider: 'uji', choices: [{ delta: { content: 'Saya cari dulu' }, finish_reason: null }] })}`,
+        `data: ${JSON.stringify({ choices: [{ delta: { content: ' lokasinya di' }, finish_reason: null }] })}`,
+        `data: ${JSON.stringify({ choices: [{ delta: { content: ' repo' }, finish_reason: sebab }], usage: { completion_tokens: 399 } })}`,
+        'data: [DONE]', '',
+      ].join('\n\n');
+      const bita = new TextEncoder().encode(b);
+      let habis = false;
+      return { body: { getReader: () => ({
+        read: async () => (habis ? { done: true } : (habis = true, { done: false, value: bita })),
+        cancel: async () => {},
+      }) } };
+    };
+
+    const putus = await bacaSseOpenRouter(sse('length'));
+    cek(putus.sebabSelesai === 'length', 'finish_reason bingkai terakhir terbaca dari aliran', putus.sebabSelesai);
+    cek(terpotongKarenaPlafon(putus) === true, 'dan dikenali sebagai terpotong karena plafon');
+    cek(putus.terpotong !== true, 'TAPI bukan `terpotong` lama — itu batas waktu dinding, sebab yang berbeda', putus.terpotong);
+    cek(putus.choices[0].message.content === 'Saya cari dulu lokasinya di repo', 'isi yang sudah terkirim tetap utuh, tidak dibuang', putus.choices[0].message.content);
+
+    const selesai = await bacaSseOpenRouter(sse('stop'));
+    cek(terpotongKarenaPlafon(selesai) === false, 'finish_reason "stop" TIDAK dianggap terpotong — labelnya tak boleh muncul sembarangan');
+
+    // Bentuk non-stream juga, karena jalur `call` memakai keduanya.
+    cek(terpotongKarenaPlafon({ choices: [{ finish_reason: 'length' }] }) === true, 'bentuk non-stream choices[0].finish_reason ikut terbaca');
+    cek(terpotongKarenaPlafon({ choices: [{ finish_reason: 'stop' }] }) === false, 'dan "stop" non-stream juga tidak');
+    cek(terpotongKarenaPlafon({}) === false, 'tanpa sebab -> bukan terpotong, bukan tebakan');
+
+    const label = pesanTerpotongPlafon(399);
+    cek(/TERPOTONG/.test(label), 'labelnya menyebut terpotong dengan terang', label);
+    cek(/399/.test(label), 'dan menyebut plafon yang sebenarnya dipakai, bukan 8192', label);
+    cek(/BUKAN model gagal/.test(label), 'dan menyangkal tafsir yang salah — inilah yang dulu ditakutkan lantai 512', label);
+  }
+
+  // ── 8. Plafon yang BENAR-BENAR dipakai bisa diketahui pemanggil ───────────────────────────
+  // Tanpa ini labelnya akan menyebut 8192 padahal yang dipakai 399 — angka salah lebih buruk
+  // daripada tanpa angka, karena ia terdengar pasti.
+  console.log('\n-- plafon yang dipakai terlacak --');
+  {
+    const jejak = {};
+    await kirimOpenRouterDenganReasoning({ model: 'm', max_tokens: MAKS_TOKEN_JAWABAN }, undefined, async () => resp(200), jejak);
+    cek(jejak.plafonDipakai === MAKS_TOKEN_JAWABAN, 'tanpa 402: plafon penuh yang tercatat', jejak.plafonDipakai);
+
+    const jejak2 = {};
+    const NYATA_444 = JSON.stringify({ error: { message: 'can only afford 444.' } });
+    let n = 0;
+    await kirimOpenRouterDenganReasoning({ model: 'm', max_tokens: MAKS_TOKEN_JAWABAN }, undefined, async () => (++n === 1 ? resp(402, NYATA_444) : resp(200)), jejak2);
+    cek(jejak2.plafonDipakai === 399, 'sesudah 402 diulang: yang tercatat plafon BARU (399), bukan 8192', jejak2.plafonDipakai);
   }
 
   // ── 4. Tidak mengulang bila tak ada gunanya ───────────────────────────────────────────────
@@ -237,6 +326,20 @@ console.log('\n-- satu sumber plafon --');
   cek(/pesanSaldoTakCukup\(teks, MAKS_TOKEN_JAWABAN\)/.test(AD), 'pesan 402 yang bisa ditindaklanjuti dipakai');
   const jumlah402 = (AD.match(/if \(res\.status === 402\) throw new Error\(pesanSaldoTakCukup/g) || []).length;
   cek(jumlah402 === 2, `kedua jalur OpenRouter (stream & non-stream) memakainya (${jumlah402})`);
+
+  // ── Label terpotong benar-benar DIPASANG, bukan sekadar tersedia ──────────────────────────
+  // Fungsi yang benar tapi tak pernah dipanggil adalah persis cacat yang pernah terjadi di
+  // proyek ini (logCommand yatim). Yang dijaga di sini: ia dipakai di KEDUA jalur.
+  const pasang = (AD.match(/answer \+= pesanTerpotongPlafon|accumulatedText \+= label/g) || []).length;
+  cek(pasang === 2, `label terpotong dipasang di kedua jalur OpenRouter (${pasang})`);
+  cek(/terpotongKarenaPlafon\(data\)/.test(AD), 'jalur non-stream memeriksa finish_reason dari respons');
+  cek(/terpotongKarenaPlafon\(infoStream\)/.test(AD), 'jalur stream memeriksanya dari bingkai terakhir aliran');
+  cek(/yield label/.test(AD), 'dan di jalur stream labelnya IKUT DIALIRKAN ke layar, bukan hanya ditambahkan ke variabel');
+  cek(/info\.sebabSelesai = fr/.test(AD), 'processOpenAIStream merekam finish_reason — tanpa ini jalur stream buta');
+  // Angka plafon harus datang dari jejak, bukan dari konstanta: menyebut 8192 saat yang dipakai
+  // 399 adalah angka SALAH yang terdengar pasti.
+  const jejakDipakai = (AD.match(/jejakPlafon(Stream)?\.plafonDipakai \|\| MAKS_TOKEN_JAWABAN/g) || []).length;
+  cek(jejakDipakai === 2, `kedua label memakai plafon yang sebenarnya dipakai (${jejakDipakai})`);
 }
 
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));

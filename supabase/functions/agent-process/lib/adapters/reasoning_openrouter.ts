@@ -51,11 +51,47 @@ export const MAKS_TOKEN_JAWABAN = 8192;
 /**
  * Lantai kelayakan. Di bawah ini permintaan TIDAK diulang.
  *
- * Mengulang dengan plafon sangat kecil menghasilkan jawaban terpotong yang tampak seperti model
- * gagal atau membodohkan diri — lebih buruk daripada galat yang terang, karena ia menyesatkan.
- * Di bawah lantai ini Owner diberi kalimat yang bisa ditindaklanjuti: isi ulang saldo.
+ * SEBABNYA DULU (512, 2026-10-04): mengulang dengan plafon kecil menghasilkan jawaban terpotong
+ * yang tampak seperti model gagal — menyesatkan, jadi lebih baik ditolak terang-terangan.
+ *
+ * KENAPA TURUN KE 128 (2026-10-05): premis itu runtuh begitu `finish_reason` benar-benar dibaca.
+ * "Terpotong tampak seperti model gagal" hanya benar selama sistem TIDAK TAHU ia terpotong. Dan
+ * memang tidak tahu: `terpotong` di `bacaSseOpenRouter` cuma menandai batas waktu dinding,
+ * sedangkan `finish_reason: 'length'` tidak dibaca di mana pun. Lantai 512 adalah tebakan di muka
+ * yang menggantikan pengukuran yang tak pernah diambil. Sekarang pengukurannya ada (lihat
+ * `terpotongKarenaPlafon`) dan jawaban terpotong DIBERI LABEL, jadi lantainya tak perlu menebak.
+ *
+ * Terukur di produksi 2026-10-05: kutipan penyedia turun 615 → 444, sehingga plafon ulang 399
+ * jatuh di bawah 512 dan permintaan ditolak di gerbang — padahal 399 lapang. Langkah pertama
+ * Engineer bukan prosa melainkan SATU penanda `[MAMET_CMD: …]`: satu kalimat rencana + penanda
+ * ≈ 30–40 token. 128 kira-kira tiga sampai empat kali lipatnya; di bawah itu bahkan satu penanda
+ * pun berisiko terpotong, dan penanda terpotong tidak pernah jadi perintah karena regex
+ * `/\[MAMET_CMD:([^\]]+)\]/g` mewajibkan `]` penutup.
  */
-export const MIN_TOKEN_LAYAK = 512;
+export const MIN_TOKEN_LAYAK = 128;
+
+/**
+ * Kalimat yang DITEMPELKAN ke jawaban yang terpotong karena plafon token habis.
+ *
+ * Ditulis sebagai penanda yang jelas bukan suara model, supaya Owner tidak menilai kalimat
+ * terakhir yang terputus sebagai model yang bingung. Inilah yang menggantikan lantai 512: dulu
+ * bahayanya dihindari dengan menolak mencoba, sekarang dihadapi dengan mengatakannya.
+ */
+export function pesanTerpotongPlafon(plafon: number): string {
+  return `\n\n⚠️ [JAWABAN TERPOTONG] Plafon token jawaban habis (max_tokens=${plafon}) sebelum model selesai menulis. Kalimat terakhir terputus di tengah — ini BUKAN model gagal atau kehabisan bahan. Saldo OpenRouter sedang tipis; isi ulang untuk jawaban utuh.`;
+}
+
+/**
+ * Terpotong karena PLAFON (bukan karena tenggat waktu dinding).
+ *
+ * OpenRouter mengikuti konvensi OpenAI: `finish_reason: 'length'` berarti keluaran dihentikan
+ * karena menyentuh `max_tokens`. Dibaca dari bentuk non-stream (`choices[0].finish_reason`)
+ * maupun dari hasil rakitan `bacaSseOpenRouter` (`sebabSelesai`).
+ */
+export function terpotongKarenaPlafon(data: any): boolean {
+  const sebab = data?.sebabSelesai ?? data?.choices?.[0]?.finish_reason;
+  return sebab === 'length';
+}
 
 /**
  * Kelonggaran plafon pengulangan.
@@ -199,6 +235,10 @@ export async function bacaSseOpenRouter(
   const dekoder = new TextDecoder();
   let sisa = ''; let isi = ''; let nalar = ''; let usage: any; let provider: string | undefined; let isiMulai = false;
   let terpotong = false;
+  // `finish_reason` datang di bingkai TERAKHIR yang membawa pilihan; sebelum itu null. Ditimpa
+  // terus supaya yang tersimpan adalah nilai terakhir yang bukan kosong. Dipisah dari `terpotong`
+  // (batas waktu dinding) karena sebab dan penanganannya berbeda: yang ini soal saldo.
+  let sebabSelesai = '';
   const HABIS = Symbol('tenggat');
   const olah = (baris: string) => {
     if (!baris.startsWith('data: ') || baris.includes('[DONE]')) return;
@@ -207,6 +247,8 @@ export async function bacaSseOpenRouter(
     if (data.error) throw new Error(`OpenRouter stream error: ${JSON.stringify(data.error).slice(0, 300)}`);
     if (!provider && typeof data.provider === 'string' && data.provider) provider = data.provider;
     if (data.usage) usage = data.usage;
+    const fr = data.choices?.[0]?.finish_reason;
+    if (typeof fr === 'string' && fr) sebabSelesai = fr;
     const delta = data.choices?.[0]?.delta;
     const n = teksNalar(delta);
     if (n) { nalar += n; opsi.onNalar?.(n); }
@@ -239,7 +281,7 @@ export async function bacaSseOpenRouter(
     for (const b of baris) olah(b.trim());
   }
   if (sisa.trim()) olah(sisa.trim());
-  return { choices: [{ message: { content: isi, reasoning: nalar } }], usage, provider, terpotong };
+  return { choices: [{ message: { content: isi, reasoning: nalar } }], usage, provider, terpotong, sebabSelesai };
 }
 
 /** Model yang terbukti menolak reasoning dimatikan — diisi saat berjalan, hidup selama instans. */
@@ -268,9 +310,14 @@ export function ditolakKarenaReasoning(status: number, teks: string): boolean {
 export async function kirimOpenRouterDenganReasoning(
   body: Record<string, any>,
   thinking: boolean | undefined,
-  kirim: (b: Record<string, any>) => Promise<Response>
+  kirim: (b: Record<string, any>) => Promise<Response>,
+  // Plafon yang BENAR-BENAR dipakai. Diperlukan karena setelah 402 plafonnya diturunkan di dalam
+  // fungsi ini, sehingga pemanggil tidak bisa menyebut angka yang benar saat jawabannya terpotong.
+  // Pola keluaran-lewat-parameter mengikuti `info` pada `processOpenAIStream` di ai_adapter.ts.
+  jejak?: { plafonDipakai?: number }
 ): Promise<Response> {
   const badan = badanReasoningOpenRouter(body, thinking);
+  if (jejak) jejak.plafonDipakai = Number(badan.max_tokens) || 0;
   const res = await kirim(badan);
   if (res.ok) return res;
 
@@ -286,6 +333,7 @@ export async function kirimOpenRouterDenganReasoning(
     const diminta = Number(badan.max_tokens) || 0;
     if (plafon !== null && plafon >= MIN_TOKEN_LAYAK && diminta > plafon) {
       console.warn(`[Saldo] 402: plafon ${diminta} token tidak terjangkau. Terkecil yang dikutip ${n}, diulang SEKALI dengan max_tokens: ${plafon} (margin ${MARGIN_SALDO})`);
+      if (jejak) jejak.plafonDipakai = plafon;
       return kirim({ ...badan, max_tokens: plafon });
     }
     // Tidak terbaca, di bawah lantai, atau plafonnya memang sudah ≤ yang terjangkau: dipulangkan

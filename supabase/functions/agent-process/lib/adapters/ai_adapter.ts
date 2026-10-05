@@ -1,11 +1,11 @@
 import { CapabilityAdapter, AdapterContext, AdapterResult } from './capability_adapter.ts';
 import { RuntimeContext } from '../runtime_context.ts';
 import { checkGuardrails, recordUsage } from '../cost/costTracker.ts';
-import { kirimOpenRouterDenganReasoning, teksNalar, pembungkusNalarStream, bacaSseOpenRouter, MAKS_TOKEN_JAWABAN, pesanSaldoTakCukup } from './reasoning_openrouter.ts';
+import { kirimOpenRouterDenganReasoning, teksNalar, pembungkusNalarStream, bacaSseOpenRouter, MAKS_TOKEN_JAWABAN, pesanSaldoTakCukup, terpotongKarenaPlafon, pesanTerpotongPlafon } from './reasoning_openrouter.ts';
 
 // `info` opsional: OpenRouter menyertakan `provider` (penyedia hulu yang benar-benar melayani,
 // mis. "DeepInfra") di setiap chunk. Groq/OpenAI tidak mengirimnya dan tidak perlu mengoper info.
-async function* processOpenAIStream(res: Response, info?: { provider?: string }, tampilkanNalar = false): AsyncGenerator<string, void, unknown> {
+async function* processOpenAIStream(res: Response, info?: { provider?: string; sebabSelesai?: string }, tampilkanNalar = false): AsyncGenerator<string, void, unknown> {
   const reader = res.body?.getReader();
   if (!reader) throw new Error("No body");
   let buffer = '';
@@ -22,6 +22,9 @@ async function* processOpenAIStream(res: Response, info?: { provider?: string },
         try {
           const data = JSON.parse(line.substring(6));
           if (info && !info.provider && typeof data.provider === 'string' && data.provider) info.provider = data.provider;
+          // `finish_reason` tiba di bingkai terakhir; 'length' berarti plafon token habis.
+          const fr = data.choices?.[0]?.finish_reason;
+          if (info && typeof fr === 'string' && fr) info.sebabSelesai = fr;
           const delta = data.choices?.[0]?.delta;
           const content = delta?.content || '';
           const keluar = bungkus.potong(tampilkanNalar ? teksNalar(delta) : '', content);
@@ -371,6 +374,7 @@ export class OpenRouterAdapter implements CapabilityAdapter {
     // Tenggat (2026-09-15): jawaban akhir juga dikirim sebagai stream agar bisa dipotong sebelum batas waktu dinding
     // Supabase — respons non-stream tidak bisa dibaca sebagian, sehingga semua token yang sudah dibayar ikut hilang.
     const pakaiStream = typeof input.onNalar === 'function' || typeof input.tenggat === 'number';
+    const jejakPlafon: { plafonDipakai?: number } = {};
     const res = await kirimOpenRouterDenganReasoning(
       { model: openRouterModel, messages, temperature: 0.1, max_tokens: MAKS_TOKEN_JAWABAN, ...(pakaiStream ? { stream: true } : {}) },
       // Pemanggil boleh menimpa pilihan nalar untuk satu panggilan (Intent Router/Coordinator/peringkas: false).
@@ -384,7 +388,8 @@ export class OpenRouterAdapter implements CapabilityAdapter {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(body)
-      })
+      }),
+      jejakPlafon
     );
     if (!res.ok) {
       const teks = await res.text();
@@ -401,7 +406,17 @@ export class OpenRouterAdapter implements CapabilityAdapter {
       const m = data.choices?.[0]?.message || {};
       console.warn(`[BATAS_WAKTU] jawaban OpenRouter dipotong pada tenggat: isi ${String(m.content || '').length} huruf, nalar ${String(m.reasoning || '').length} huruf (token sudah ditagih, tidak dibuang)`);
     }
-    const answer = data.choices?.[0]?.message?.content || '';
+    // TERPOTONG KARENA PLAFON (2026-10-05) — sebab yang BERBEDA dari `terpotong` di atas (batas
+    // waktu dinding). Ini yang menggantikan lantai 512: dulu permintaan berplafon kecil ditolak
+    // supaya jawaban terpotong tak menyamar jadi model gagal; sekarang boleh dikirim, karena bila
+    // benar terpotong hal itu DIKATAKAN. Labelnya ditempel di luar suara model.
+    const terpotongPlafon = terpotongKarenaPlafon(data);
+    let answer = data.choices?.[0]?.message?.content || '';
+    if (terpotongPlafon) {
+      const plafon = jejakPlafon.plafonDipakai || MAKS_TOKEN_JAWABAN;
+      console.warn(`[Saldo] jawaban TERPOTONG pada plafon ${plafon} token (finish_reason=length): isi ${answer.length} huruf. Label terpotong ditempelkan.`);
+      answer += pesanTerpotongPlafon(plafon);
+    }
 
     const usage = data.usage || {};
     const promptTokens = usage.prompt_tokens || Math.ceil(JSON.stringify(messages || []).length / 4);
@@ -510,6 +525,7 @@ export class OpenRouterAdapter implements CapabilityAdapter {
       context.trace_id
     );
 
+    const jejakPlafonStream: { plafonDipakai?: number } = {};
     const res = await kirimOpenRouterDenganReasoning(
       { model: orModel, messages, temperature: 0.1, max_tokens: MAKS_TOKEN_JAWABAN, stream: true },
       this.rctx.model.thinking,
@@ -518,7 +534,8 @@ export class OpenRouterAdapter implements CapabilityAdapter {
         headers: { 'Authorization': `Bearer ${this.rctx.keys.openRouter}`, 'HTTP-Referer': 'https://ai-agent-project.vercel.app', 'X-Title': 'Mamet AI Agent', 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
         signal: aborter.signal
-      })
+      }),
+      jejakPlafonStream
     );
     clearTimeout(id);
     if (!res.ok) {
@@ -528,12 +545,22 @@ export class OpenRouterAdapter implements CapabilityAdapter {
     }
 
     let accumulatedText = '';
-    const infoStream: { provider?: string } = {};
+    const infoStream: { provider?: string; sebabSelesai?: string } = {};
     for await (const chunk of processOpenAIStream(res, infoStream, this.rctx.model.thinking === true)) {
       accumulatedText += chunk;
       yield chunk;
     }
-    
+    // Jalur ini mengalirkan potongan langsung ke layar, jadi labelnya hanya bisa menyusul di akhir
+    // — tetapi tetap harus ada: tanpa ia, jawaban yang terputus di tengah kalimat tampak seperti
+    // model berhenti sendiri. Sebab berhentinya baru diketahui dari bingkai terakhir.
+    if (terpotongKarenaPlafon(infoStream)) {
+      const plafon = jejakPlafonStream.plafonDipakai || MAKS_TOKEN_JAWABAN;
+      console.warn(`[Saldo] aliran TERPOTONG pada plafon ${plafon} token (finish_reason=length): ${accumulatedText.length} huruf terkirim.`);
+      const label = pesanTerpotongPlafon(plafon);
+      accumulatedText += label;
+      yield label;
+    }
+
     const promptTokens = Math.ceil(JSON.stringify(messages || []).length / 4);
     const completionTokens = Math.ceil(accumulatedText.length / 4);
     console.log(`[PR#6 TOKEN METRICS] OpenRouter stream (${orModel}): prompt_est=${promptTokens}t completion_est=${completionTokens}t penyedia=${infoStream.provider || '(tidak dilaporkan)'}`);
