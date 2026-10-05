@@ -675,16 +675,44 @@ Dua teratas = **34.244 huruf, 62%** — keduanya pengetahuan repo, lewat **dua j
 alih-alih disuntikkan tiap pesan. Sasaran yang terukur: ±16.557 huruf ≈ 4.300 token per pesan,
 **30% prompt**, tanpa menyentuh konteks Engineer sisi server.
 
+#### ✅ SUDAH DIKERJAKAN — angka di atas adalah keadaan 4 Okt, bukan keadaan sekarang
+
+Sasaran itu dikerjakan dan dilampaui oleh item **120–122**. Tabel di atas sengaja **tidak diubah**:
+ia catatan pengukuran pada tanggalnya, dan mengubahnya akan menghapus pembandingnya.
+
+| | 4 Okt | **5 Okt (4.2.13)** | |
+|---|---|---|---|
+| sisipan (`riwayat`) | 16.557 | **2.687** | item 120, peta jadi indeks |
+| `blok4_brain` | 1.980 | **767** | item 122, BRAIN 1 tak lagi kembar |
+| `konteks_engineer` | 17.687 | 17.687 | **sengaja tak disentuh** — ini aturan, bukan data |
+| **total** | **55.125** | **39.989** | **−27%** |
+
+**Yang TIDAK tercapai, dan kenapa:** `konteks_engineer` tetap jadi bagian terbesar. Sesudah
+diukur (item 122), **14.695 dari 17.687 huruf adalah ATURAN**, bukan data yang bisa diambil saat
+perlu — narasi sejarah hanya 634 huruf (3,6%) dan duplikasi dengan kontrak universal **nol**.
+Memangkasnya mengubah perilaku Engineer, jadi itu keputusan Owner.
+
+**Dan sejak 5 Okt 02:23 ini bukan lagi jalan keluar:** saldo hanya menanggung 1.048 token
+sedangkan blok yang tak bisa dibuang sama sekali sudah ≈3.100 token. Lihat
+**⛔ BERHENTI MENUNGGU SALDO** di §5b.
+
 ### ⚠️ Temuan terbuka — konstitusi dibaca tiap boot lalu DIBUANG
 
-`engineer.js:316` memuat **32 berkas**: `INIT.md`, `AGENTS.md`, `constitution/00`–`27`, termasuk
-`24_ANTI_HALLUCINATION_PROTOCOL.md`. Satu-satunya pemakaian isinya di seluruh kode:
+`_loadStaticKnowledge()` di `engineer.js` memuat **32 berkas**: `INIT.md`, `AGENTS.md`,
+`constitution/00`–`27`, termasuk `24_ANTI_HALLUCINATION_PROTOCOL.md` (nomor barisnya sengaja tidak
+ditulis — ia sudah bergeser sekali dan nomor baris di dokumen membusuk diam-diam; cari namanya).
+
+**Diperiksa ulang 5 Okt 2026, masih berlaku.** Isinya disimpan di `brain.static.raw`, dan `raw`
+punya **nol pemakai di seluruh repo**. Yang mengalir hanya jumlahnya:
 
 ```js
-staticKnowledgeLoaded: brain.static?.loadedFiles?.length || 0
+staticKnowledgeLoaded: brain.static?.loadedFiles?.length || 0   // TaskHandlers.js
 ```
 
-**Hanya jumlahnya.** Isinya tidak pernah sampai ke model. Blok "BRAIN 1 — STATIC" yang model
+Angka itu pun berhenti di `projectContext` → `brain.dynamic`, yang **hanya ditugaskan, tak pernah
+dibaca** (`generatePatch` menerima `brain` tetapi tidak menyentuh `static` maupun `dynamic`).
+
+**Hanya jumlahnya, dan jumlahnya pun tak sampai ke mana-mana.** Isinya tidak pernah sampai ke model. Blok "BRAIN 1 — STATIC" yang model
 laporkan sebagai `[✓] ADR`/`[✓] Coding Rules` sebenarnya **8 baris** dari `project_memory_entries`
 (ADRLink/Solution/Lesson/RootCause) — konstitusi tidak ada di dalamnya.
 
@@ -695,6 +723,19 @@ Owner tulis.
 yang dirujuk dari sana — dibaca **saat perlu** dengan `git show`, bukan disuntikkan tiap pesan.
 Biayanya turun dari ±3.873 token/pesan jadi penunjuk ±50 token, dan sejak 4.2.5 membacanya nol klik.
 **Ditunda** sampai pengaruh pelepasan kacamata kuda terukur sendirian.
+
+**Separuh usul itu SUDAH dikerjakan** (item 120): peta repo kini indeks 2.687 huruf, dan Engineer
+mengambil sisanya sendiri lewat `git grep`. Yang tersisa adalah bagian konstitusinya.
+
+> ⚠️ **ARAH BIAYANYA BERLAWANAN, dan ini perlu disadari sebelum dikerjakan.** Peta repo bisa
+> dipangkas karena ia **sudah dikirim**. Konstitusi **tidak dikirim sama sekali** — jadi "metode
+> indeks" di sini **MENAMBAH** token, bukan memangkas. Nilainya besar (Engineer akhirnya membaca
+> aturan yang Owner tulis, bukan melaporkan "Coverage BRAIN 1 ✓" tanpa dasar), tetapi ia bukan
+> penghematan dan tidak boleh disamakan begitu saja dengan item 120.
+>
+> **Dan sejak 5 Okt 02:23 waktunya salah:** prompt sudah 10.430 token terhadap jatah saldo 1.048.
+> Menambah muatan sekarang hanya memperbesar selisih yang sudah tak tercapai. **Kerjakan sesudah
+> saldo terisi**, supaya pengaruhnya bisa diukur dan bukan sekadar menambah beban.
 
 ### Dua arahan Owner yang SENGAJA ditunda (1 Okt)
 
