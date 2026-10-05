@@ -374,6 +374,35 @@ Empat uji tertunda lain bisa ikut dalam sesi pasang yang sama: tombol Berhenti, 
 (tanya hal pendek-faktual di Engineer), cacat Tahap 6 ke-1 & ke-2 (patch yang sengaja merusak), dan
 unduh desktop dari web.
 
+### Yang dibawa 4.2.12
+
+> **4.2.11 SUDAH terpasang Owner** (5 Okt), jadi jejak audit perintah sudah hidup — hanya belum
+> diuji (`assistant_audit_log` masih 0 baris, karena memicu perintah Engineer menuntut model
+> memancarkan `[MAMET_CMD]`).
+>
+> 4.2.12 dinaikkan **bukan** untuk kerapian: pemangkasan peta repo menyerang penghalang yang sama
+> dengan saldo tipis — **−3.584 token per pesan**, selisih antara prompt ±14.250 dan ±10.700 token.
+> Dan uji audit 4.2.11 sendiri **butuh chat jalan**, jadi 4.2.12 MEMBUKA pengujian 4.2.11, bukan
+> menundanya. Keduanya menguji hal berbeda dan tidak saling menutupi.
+
+| Dibawa 4.2.12 | Apa |
+|---|---|
+| **Peta repo jadi indeks** | sisipan 16.557 → 2.687 huruf (−83,8%) di tiap pesan; daftar berkas diambil saat perlu lewat `git grep` yang sudah jalan tanpa dialog (item 120) |
+
+**Tanpa deploy** — `ProsedurEngineer.js` ada di `frontend/src`.
+
+**Satu sesi Engineer menutup banyak sekaligus**, dan uji 1–3 saling membuktikan lewat perintah
+yang sama:
+
+1. **Peta-indeks sampai** — `[PROMPT_KOMPOSISI]`: `riwayat` turun **16.557 → ±2.700 huruf**.
+2. **Peta-indeks tidak membutakan** — tanya sesuatu yang menuntut alamat berkas (mis. *"di mana
+   penanganan 402?"*). Engineer harus **menjalankan `git grep` lebih dulu**. Gagal bila ia menebak
+   alamat, atau menyimpulkan berkasnya tidak ada dari indeks yang hanya menyebut folder.
+3. **Audit perintah (4.2.11)** — `git grep` dari uji 2 itu sendiri harus mengisi
+   `assistant_audit_log` dengan `tanpa_persetujuan = true` dan `result_reason` memuat
+   *"keluaran N huruf (tidak disimpan)"*.
+4. **`node -e` tetap minta izin** — yang mendesak; harus tetap memunculkan dialog.
+
 ### Yang dibawa 4.2.11
 
 > **BEDA DENGAN KEADAAN 4.2.9:** 4.2.10 **benar-benar diterbitkan dan dipakai** Owner
