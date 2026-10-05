@@ -154,8 +154,30 @@ export function batasPrompt(teks: string): { dipakai: number; batas: number } | 
   return Number.isFinite(dipakai) && Number.isFinite(batas) ? { dipakai, batas } : null;
 }
 
+/**
+ * Varian 402 KETIGA, teramati di produksi 2026-10-05 01:33:
+ *   "This request would exceed your available credits given your current in-flight requests.
+ *    Retry after in-flight requests settle, or add credits."
+ *
+ * Ini BUKAN saldo habis — ini TABRAKAN permintaan yang berjalan bersamaan. Di sesi itu
+ * HakimBayangan berjalan berbarengan dengan panggilan utama dan keduanya memperebutkan saldo tipis
+ * yang sama. Dua sebelumnya jatuh ke cabang "tak terbaca" dan menyuruh "isi ulang saldo": tidak
+ * salah, tetapi menyembunyikan jalan keluar yang jauh lebih murah — tunggu yang satunya selesai.
+ *
+ * Tidak ada pengulangan otomatis. Mengulang SEKARANG persis mengulangi tabrakannya, dan menunggu
+ * di dalam fungsi ini akan menahan worker Supabase sampai batas waktu dindingnya.
+ */
+export function tabrakanPermintaanSerentak(teks: string): boolean {
+  return /in-flight requests/i.test(String(teks || ''));
+}
+
 /** Kalimat yang bisa ditindaklanjuti untuk 402 — menggantikan badan JSON mentah. */
 export function pesanSaldoTakCukup(teks: string, diminta: number): string {
+  // Varian SERENTAK lebih dulu: ia juga tidak memuat "can only afford", jadi tanpa cabang ini ia
+  // jatuh ke kalimat "tak terbaca" yang menyuruh hal yang belum tentu perlu.
+  if (tabrakanPermintaanSerentak(teks)) {
+    return 'Dua permintaan ke OpenRouter berjalan BERSAMAAN dan saldo tidak cukup menanggung keduanya sekaligus (402, in-flight). Ini bukan saldo habis — permintaan yang satunya masih berjalan dan belum diperhitungkan. Tunggu beberapa detik lalu kirim ulang. Bila sering terjadi saat saldo tipis: Hakim Bayangan menambah satu panggilan per jawaban dan bisa dimatikan lewat secret HAKIM_BAYANGAN di Supabase; atau isi ulang saldo.';
+  }
   // Varian PROMPT lebih dulu: di sini "isi ulang saldo" saja menyesatkan, karena memperkecil
   // prompt sama-sama menyelesaikannya — dan sering itu yang lebih tepat.
   const p = batasPrompt(teks);

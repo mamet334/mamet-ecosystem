@@ -124,7 +124,12 @@ for (const kosong of ['', '   ', '\n', null, undefined, 0, false]) {
 console.log('\n-- terpasang --');
 
 const CE = readFileSync(`${AKAR}/frontend/src/components/workbench/ConversationEngine.jsx`, 'utf8');
-cek(/import \{ riwayatPerintahDariPesan, catatanAkarRepo, catatanPetaRepo \}/.test(CE), 'catatanPetaRepo diimpor');
+// Yang dijaga adalah catatanPetaRepo datang dari ProsedurEngineer — BUKAN ejaan seluruh daftar
+// impornya. Bentuk lama memaku ketiga nama beserta urutannya, sehingga menambah satu nama yang
+// sah (pesanKeluaranPerintah, 5 Okt) menjatuhkannya tanpa ada yang rusak. Asersi yang menguji
+// ejaan baris, bukan sifatnya, akan terus jatuh pada perubahan yang benar.
+cek(/import \{[^}]*\bcatatanPetaRepo\b[^}]*\} from '[^']*ProsedurEngineer\.js'/.test(CE),
+  'catatanPetaRepo diimpor dari ProsedurEngineer');
 cek(/const catatanPeta = catatanPetaRepo\(peta\);/.test(CE), 'dipanggil di handleSend');
 cek(/engineer\?\.petaRepo\?\.\(\)/.test(CE), 'petanya dibaca dari proses utama, bukan disusun di layar');
 cek(/const sisipan = \[catatanAkar, catatanPeta, ringkasanTemuan\]/.test(CE),

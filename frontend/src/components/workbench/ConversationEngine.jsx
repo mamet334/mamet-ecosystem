@@ -13,7 +13,7 @@ import { tugasDariUsulan } from '../../core/runtime/services/engineer/UsulanPatc
 import { laporanSetelahMuatUlang, hapusCatatanPatch } from '../../core/runtime/services/engineer/CatatanPatch.js';
 import { putusanPemulihan, bolehSimpanChat, kunciSimpan } from './pemulihanChat.js';
 import { buatPenandaKiriman, tujuanTulis, pesanTerlantar, layakSimpanTerlantar } from './pengirimanChat.js';
-import { riwayatPerintahDariPesan, catatanAkarRepo, catatanPetaRepo } from '../../core/runtime/services/engineer/ProsedurEngineer.js';
+import { riwayatPerintahDariPesan, catatanAkarRepo, catatanPetaRepo, pesanKeluaranPerintah } from '../../core/runtime/services/engineer/ProsedurEngineer.js';
 import { ambilBlokKlaim, susunSkripUji, susunLaporanKlaim } from '../../core/runtime/services/engineer/UjiKlaim.js';
 import { ambilBlokTemuan, bacaBerkasTemuan, susunBerkasTemuan, gabungTemuan, laporanTemuan, ringkasanUntukKonteks, ALAMAT_BERKAS as ALAMAT_TEMUAN } from '../../core/runtime/services/engineer/IngatanTemuan.js';
 import { ambilBlokPengetahuan, pengetahuanBaru, barisBrain1 } from '../../core/runtime/services/engineer/PengetahuanBrain1.js';
@@ -1458,7 +1458,7 @@ export default function ConversationEngine({ sessionId }) {
     // pendekatan, bukan sekadar penolakan. Tanpa itu model akan mengulang lagi (live TUGAS-02 2026-09-23).
 
     // Auto-feed output ke LLM
-    setTimeout(() => handleSend(null, `[TERMINAL OUTPUT for: ${cmd}]\n${output}`), 300);
+    setTimeout(() => handleSend(null, pesanKeluaranPerintah(cmd, output)), 300);
   };
 
   /**
@@ -1522,7 +1522,7 @@ export default function ConversationEngine({ sessionId }) {
           [cmdKey]: { status: (r.ditolakAturan || r.ditolakProsedur) ? 'blocked' : r.ditolakOwner ? 'skipped' : r.success ? 'done' : 'error', output: r.output },
         }));
         // Ditolak ATURAN tidak dikirim ke model — alasannya tetap sama tiap kali (lihat jalur manual).
-        if (!r.ditolakAturan) hasil.push(`[TERMINAL OUTPUT for: ${cmd}]\n${r.output}`);
+        if (!r.ditolakAturan) hasil.push(pesanKeluaranPerintah(cmd, r.output));
       }
       if (!batal && hasil.length) handleSend(null, hasil.join('\n\n'));
     })();

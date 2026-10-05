@@ -290,6 +290,94 @@ export function cekPerintahBerulang(perintah, riwayat = []) {
   };
 }
 
+/**
+ * Anggaran keluaran perintah yang dikirim ke model.
+ *
+ * KEJADIAN NYATA 5 Oktober 2026, 01:33. Satu `git grep -n -B2 -A4 "402"` di TIGA folder sekaligus
+ * mengembalikan 15.671 huruf, dan seluruhnya dikirim balik utuh. `[PROMPT_KOMPOSISI]` giliran
+ * berikutnya: `pesan=15.769` dari total 49.993 huruf — permintaannya ditolak 402 varian prompt
+ * kebesaran (12.910 token dikirim, saldo menanggung 1.682).
+ *
+ * Perlu dikatakan terus terang: sehari sebelumnya peta repo dipangkas 13.870 huruf dari TIAP
+ * pesan (item 120), lalu satu perintah tanpa anggaran mengembalikan 15.671. Pemangkasan itu tetap
+ * benar — ia permanen dan berlaku di setiap pesan — tetapi ia tidak menyentuh kelas biaya ini.
+ *
+ * Batas 20 KB yang sudah ada (`alatFolderJalan.cjs`) adalah batas TERMINAL, bukan batas prompt:
+ * ia menjaga proses, bukan anggaran token. 15.671 lolos darinya dengan mudah.
+ *
+ * KENAPA 8.000: ini pilihan anggaran, bukan hasil pengukuran, dan dasarnya disebutkan supaya bisa
+ * dinilai. Ia ditambatkan ke blok terbesar yang tersisa di prompt — `konteks_engineer` 17.687
+ * huruf: keluaran satu perintah tidak boleh jadi bagian terbesar, dan 8.000 menaruhnya tegas di
+ * bawah itu sambil tetap memuat ratusan baris grep.
+ */
+export const BATAS_KELUARAN_MODEL = 8000;
+
+/** Bagian yang disisakan dari AWAL keluaran; sisanya dari ekornya. */
+const PORSI_KEPALA = 0.7;
+
+/**
+ * Memotong keluaran perintah untuk model — KEPALA dan EKOR disimpan, tengahnya dibuang.
+ *
+ * Bukan potong-di-ujung. Pada keluaran `git grep` tiap baris adalah satu kecocokan, dan kecocokan
+ * TERAKHIR sering ada di berkas yang berbeda dari yang pertama. Membuang ekornya berarti model
+ * menyimpulkan dari satu sudut repo saja — persis kelas kesalahan yang dijaga `petunjukGrepSebagian`.
+ *
+ * Dipotong pada batas BARIS, karena baris grep yang terpenggal di tengah ("supabase/func") terbaca
+ * seperti alamat berkas yang sebenarnya tidak ada.
+ *
+ * Mengikuti pola keluarga `petunjuk*`: sebut batasnya dengan angka, lalu beri CARA keluarnya.
+ *
+ * @param {string} keluaran keluaran mentah dari perintah
+ * @param {number} [batas] anggaran huruf
+ * @returns {{teks: string, dipotong: boolean, asli: number}}
+ */
+export function potongKeluaranUntukModel(keluaran, batas = BATAS_KELUARAN_MODEL) {
+  const teks = String(keluaran ?? '');
+  if (teks.length <= batas) return { teks, dipotong: false, asli: teks.length };
+
+  const baris = teks.split('\n');
+  const ambil = (dari, maks, mundur) => {
+    const keluar = [];
+    let n = 0;
+    const urut = mundur ? [...dari].reverse() : dari;
+    for (const b of urut) {
+      if (n + b.length + 1 > maks) break;
+      n += b.length + 1;
+      keluar.push(b);
+    }
+    return mundur ? keluar.reverse() : keluar;
+  };
+  const kepala = ambil(baris, Math.floor(batas * PORSI_KEPALA), false);
+  const ekor = ambil(baris.slice(kepala.length), batas - kepala.join('\n').length, true);
+  const dibuang = baris.length - kepala.length - ekor.length;
+
+  const catatan = [
+    '',
+    `… [KELUARAN DIPOTONG SISTEM] keluaran aslinya ${teks.length.toLocaleString('id-ID')} huruf (${baris.length.toLocaleString('id-ID')} baris); ${dibuang.toLocaleString('id-ID')} baris di TENGAH dibuang agar prompt tidak kebesaran.`,
+    'Awal dan AKHIR keluaran tetap utuh, jadi jangan simpulkan bahwa kecocokan berhenti di sini.',
+    'Bila yang Anda cari ada di bagian yang dibuang, PERSEMPIT pencariannya — jangan ulangi perintah yang sama:',
+    '  • batasi foldernya: tambahkan `-- <folder>` yang lebih sempit',
+    '  • daftar berkasnya dulu: `git grep -l "<pola>" -- <folder>`, baru baca satu berkas',
+    '  • hitung dulu sebarannya: `git grep -c "<pola>" -- <folder>`',
+    '',
+  ].join('\n');
+
+  return { teks: kepala.join('\n') + '\n' + catatan + ekor.join('\n'), dipotong: true, asli: teks.length };
+}
+
+/**
+ * Pesan hasil perintah untuk model — SATU titik rakit, dipakai jalur otomatis maupun tombol manual.
+ *
+ * Disatukan 2026-10-05: sebelumnya kedua jalur merakit teksnya sendiri-sendiri di
+ * `ConversationEngine.jsx`, jadi anggaran yang dipasang di satu jalur akan dilewati jalur lain
+ * tanpa suara. Bentuk teksnya TIDAK berubah — `riwayatPerintahDariPesan` mengurainya kembali
+ * dengan pola yang sama.
+ */
+export function pesanKeluaranPerintah(perintah, keluaran) {
+  const { teks } = potongKeluaranUntukModel(keluaran);
+  return `[TERMINAL OUTPUT for: ${perintah}]\n${teks}`;
+}
+
 /** Riwayat perintah dari pesan chat: pesan hasil berbentuk "[TERMINAL OUTPUT for: <perintah>]\n<keluaran>". */
 export function riwayatPerintahDariPesan(pesan = []) {
   const hasil = [];

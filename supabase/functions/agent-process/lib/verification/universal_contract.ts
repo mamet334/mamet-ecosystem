@@ -111,10 +111,32 @@ export function buildUniversalContract(params: ContractBuilderInput): UniversalE
   };
 
   // ── KNOWLEDGE BLOCK ──
+  //
+  // BRAIN 1 DIKIRIM DUA KALI di mode ENGINEER (ditemukan 2026-10-05, diukur dari
+  // `[PROMPT_KOMPOSISI]`). `engineer_context.ts:91` merender entri yang SAMA dengan string format
+  // yang SAMA HURUF DEMI HURUF — `[${entry_type}] ${title}: ${content}` — dan hasilnya masuk ke
+  // segmen `konteks_engineer`; `context_builder.ts:528` merendernya lagi jadi `brain1ContextText`
+  // untuk BLOK 4. Keduanya bersumber dari satu tempat: `ctx.brain1Entries = engineerCtx.brain1Entries`.
+  //
+  // Model karena itu membaca isi yang sama dua kali dalam satu prompt. Itu pemborosan murni —
+  // tidak ada aturan yang hilang bila salinan keduanya diringkas.
+  //
+  // YANG DIPERTAHANKAN: judulnya. BLOK 6 menjadikan BLOK 4 rujukan label VERIFIED ("Sumber: judul
+  // dokumen persis seperti tertulis di BLOK 4"), jadi judul harus tetap ada di sini — yang dibuang
+  // hanya ISI yang sudah terbaca beberapa ribu huruf di atas.
+  //
+  // HANYA mode ENGINEER: di mode lain (mametlite, assistant) `konteks_engineer` tidak ada sama
+  // sekali, jadi BLOK 4 adalah satu-satunya salinan dan tidak boleh disentuh.
+  const brain1Kembar = mode === 'ENGINEER' && brain1Entries.length > 0;
+  const brain1Ringkas = brain1Kembar
+    ? brain1Entries.map((e: any) => `[${e.entry_type}] ${e.title}`).join('\n')
+      + `\n(Isi lengkap ${brain1Entries.length} entri ini ada di blok [MAMET ENGINEER CONTEXT] di atas — tidak diulang di sini.)`
+    : brain1ContextText;
+
   const knowledge: KnowledgeBlock = {
     hasBrain1: brain1Entries.length > 0,
     brain1Count: brain1Entries.length,
-    brain1Summary: brain1ContextText,
+    brain1Summary: brain1Ringkas,
     hasBrain2: (brain2Tasks.length + brain2Gaps.length + brain2Verifications.length) > 0,
     brain2Count: brain2Tasks.length + brain2Gaps.length + brain2Verifications.length,
     brain2Summary: brain2ContextText,
