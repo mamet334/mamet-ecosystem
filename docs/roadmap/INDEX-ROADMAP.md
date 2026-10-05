@@ -404,7 +404,28 @@ menjalankan `git grep` lebar akan mengulang kegagalan yang sama.
    `konteks_engineer` **tetap 17.687** — tidak bergerak satu huruf pun. Baris kedua itu yang
    menentukan: yang menyusut salinan keduanya, aslinya utuh. Bila `konteks_engineer` ikut turun,
    berarti yang diringkas aslinya dan Engineer kehilangan isi BRAIN 1. Total 41.235 → **39.989**.
-4. **`node -e` tetap minta izin** — carry-over 4.2.12, **mendesak**; harus tetap memunculkan dialog.
+4. ✅ **TERJAWAB 5 Okt — di tingkat LOGIKA, tanpa saldo.** Uji ini menggantung berhari-hari karena
+   dikira menuntut model menjawab lebih dulu. Tidak: `perintahAman` (preload) memanggil
+   `tanpaPersetujuan()` — **predikat yang sama persis** yang dipakai jalur otomatis
+   `ConversationEngine` — dan ia bisa dijalankan langsung di Node.
+
+   | Perintah | Hasil |
+   |---|---|
+   | `node -e "console.log(1)"` | **MINTA IZIN** ✓ |
+   | `node --eval console.log(1)` | **MINTA IZIN** ✓ (bentuk lain, tetap tertutup) |
+   | `git push` · `git commit` · `npm install` | **MINTA IZIN** ✓ |
+   | `git status` · `git grep -n` | **JALAN SENDIRI** ✓ |
+
+   **Dua baris terakhir yang membuatnya berarti**: fungsi yang selalu menolak akan lulus tanpa
+   menjaga apa pun. Penjaganya benar-benar memilah.
+
+   Sudah dijaga **uji tetap** pula: `uji/uji-perintah-tanpa-persetujuan.mjs:63` memuat
+   `node -e "console.log(1)"` sebagai kasus, dan hijau.
+
+   > **Yang BELUM dibuktikan, dan jangan diklaim:** bahwa dialognya benar-benar **tergambar** di
+   > layar. Yang terbukti adalah keputusannya — perintah itu tidak jalan sendiri. Rantai
+   > `perintahAman → tanpaPersetujuan → ConversationEngine melewati auto-run` lengkap di kode;
+   > render dialognya klaim terpisah yang lebih kecil, dan masih menunggu satu sesi Engineer.
 
 ### ⛔ BERHENTI MENUNGGU SALDO (5 Okt 02:23) — bukan masalah ukuran prompt lagi
 
