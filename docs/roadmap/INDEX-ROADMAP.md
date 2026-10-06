@@ -237,12 +237,17 @@ sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
 
 ## 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-10-01)
 
-Versi di `package.json`: **4.2.13**, dan **4.2.13 sudah terpasang di mesin Owner** (5 Okt).
+Versi di `package.json`: **4.2.14** (dinaikkan 6 Okt). Terpasang di mesin Owner: **4.2.13**.
 
-> ⚠️ **`main` MENDAHULUI versi yang terpasang.** Item **124** (indeks konstitusi) masuk SESUDAH
-> commit rilis `ab0fe38`, jadi ia **belum ada di 4.2.13 mana pun** — lihat **Yang dibawa 4.2.14**.
-> Item **123** juga sesudahnya, tetapi ia murni edge function dan **sudah ter-deploy**, jadi tidak
-> menunggu rilis klien. Jangan menilai keduanya dari aplikasi 4.2.13 yang sedang berjalan.
+> ⚠️ **Tiga muatan menunggu build.** 4.2.14 membawa indeks konstitusi (item 124), ingatan temuan
+> yang berhenti diam (TMN-0006), dan pengerasan cangkang Electron (TMN-0009) — **tak satu pun ada
+> di 4.2.13 yang sedang berjalan**. Jangan menilai ketiganya dari aplikasi yang terpasang sekarang.
+>
+> Item **123** juga masuk sesudah rilis 4.2.13, tetapi ia murni edge function dan **sudah
+> ter-deploy** — ia tidak menunggu rilis klien.
+>
+> **`main.cjs` berubah**, jadi `npm run desktop` harus **dijalankan ulang**; muat ulang jendela
+> tidak cukup.
 Alur rilis manual — Actions membuat draf, Owner yang menekan Publish (item 96).
 
 ### Sudah TERBUKTI LIVE
@@ -383,11 +388,13 @@ Empat uji tertunda lain bisa ikut dalam sesi pasang yang sama: tombol Berhenti, 
 (tanya hal pendek-faktual di Engineer), cacat Tahap 6 ke-1 & ke-2 (patch yang sengaja merusak), dan
 unduh desktop dari web.
 
-### Yang dibawa 4.2.14 — BELUM DIRILIS
+### Yang dibawa 4.2.14 — versi dinaikkan 6 Okt, menunggu build & Publish Owner
 
 > ⚠️ **JANGAN dicampur dengan 4.2.13.** Commit rilis 4.2.13 (`ab0fe38`) berada DI BAWAH commit
-> item 124 di riwayat git, jadi **4.2.13 yang terpasang di mesin Owner TIDAK memuat indeks
-> konstitusi**. Blok uji di bawah sempat salah ditaruh di bagian 4.2.13 — dipindah 5 Okt.
+> item 124 di riwayat git, jadi **4.2.13 yang terpasang di mesin Owner TIDAK memuat** satu pun
+> dari ketiga muatan di bawah. Blok uji ini sempat salah ditaruh di bagian 4.2.13 — dipindah 5 Okt.
+>
+> **Alur rilis tetap MANUAL** (item 96): electron-builder membuat draf, Owner yang menekan Publish.
 
 | Dibawa 4.2.14 | Apa | Sisi |
 |---|---|---|
