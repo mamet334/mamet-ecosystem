@@ -4,7 +4,7 @@
      Owner boleh menyunting, menggabungkan, atau menutup temuan dengan tangan — bentuk di bawah yang dibaca
      kembali oleh IngatanTemuan.js. Temuan berstatus DITUTUP tidak akan diangkat lagi oleh Engineer. -->
 
-**2 terbuka · 7 ditutup**
+**1 terbuka · 8 ditutup**
 
 ## TMN-0001 — DITUTUP
 - **Ditutup:** 2026-10-04 — (ternyata sudah benar sejak lahir)
@@ -79,14 +79,19 @@
 - **Berkas kosong/belum ada SENGAJA tidak dianggap melenceng:** kalau ikut memicu peringatan, ia akan muncul terus-menerus pada pemasangan baru dan lama-lama diabaikan.
 - **Bukti:** `uji/uji-ingatan-temuan-bersuara.mjs` menjalankan modul aslinya. 4 mutasi menggigit — R1 keutuhan selalu melapor utuh (7), R2 peringatan dilumpuhkan (5), R3 kembali diam saat daftar kosong (4), R4 isyarat tidak diteruskan ke konteks model (1). R3 sempat terbaca "tidak menggigit": sed-nya yang tak menempel, bukan asersinya — diulang dengan Edit.
 
-## TMN-0007 — TERBUKA
+## TMN-0007 — DITUTUP
+- **Ditutup:** 2026-10-06 — keempat berkas dihapus sesudah dibuktikan tak pernah diimpor SEPANJANG riwayat; satu klaim di temuan ini sendiri ternyata salah dan ikut dikoreksi
 - **Berkas:** `supabase/functions/agent-process/lib/verification/verification_pipeline.ts`
 - **Tingkat:** sedang
 - **Ditemukan:** 2026-10-05
 - **Ringkasan:** Empat berkas (368 baris) tidak diimpor di mana pun — verification_pipeline.ts (270 baris), post_processing.ts (88), citation_parser.ts (5), grounding_parser.ts (5). Semuanya ikut dibundel ke edge function tiap deploy. Yang 270 baris paling berbahaya: ia mengimpor tujuh modul nyata dan tidak punya penanda usang, sehingga TAMPAK sebagai jalur verifikasi yang aktif.
 - **Bukti:** Pemindaian 245 berkas sumber + 90 berkas uji: nama berkasnya tidak disebut di satu pun berkas lain (0 pengimpor untuk keempatnya). citation_parser.ts menyebut dirinya "Stub for future extraction" dan mengembalikan [].
 - **Preseden di repo ini:** TaskHandlers.js menghapus 219 baris kode mati SESUDAH dibuktikan mati, dan mencatat alasannya: "kode mati yang lengkap dan rapi TAMPAK hidup; 28 September ia menipu asisten sendiri."
-- **Izin Owner belum diberikan.** Pilihan yang diajukan: hapus, atau beri penanda usang lebih dulu.
+- **Pembuktian ulang 6 Okt, lebih keras daripada 5 Okt:** nol rujukan di seluruh berkas KODE (`*.ts/js/jsx/cjs/mjs`) untuk keempat nama berkas maupun keempat nama fungsi yang diekspor. Angka bukan-nol yang sempat muncul ternyata seluruhnya PROSA di dokumen, bukan kode.
+- **Dan riwayatnya lebih buruk dari "yatim":** `git log -S"from './verification_pipeline"` di SELURUH riwayat mengembalikan **kosong** — pernyataan `import`-nya tidak pernah ada, sekali pun. Berkas itu lahir 30 Juni 2026 dalam keadaan mati, lalu **disunting 21 Agustus** (satu baris, `mode: params.mode` ditambahkan ke `vContext`). Seseorang memperbaiki pipeline yang tak pernah berjalan. **Kode mati yang menerima perawatan adalah bukti ia sudah menipu orang**, bukan sekadar berpotensi menipu.
+- **KOREKSI atas temuan ini sendiri:** bunyi aslinya menyebut keempatnya "ikut dibundel ke edge function tiap deploy". **Itu salah.** Bundel esbuild sesudah penghapusan berukuran **525.355 bita — sama persis** seperti sebelumnya, karena esbuild hanya memuat yang terjangkau dari titik masuk. Keluaran `supabase functions deploy` 5 Okt juga hanya mengunggah `parser_pipeline`, `types`, `trace_parser`, `response_parser` dari `lib/coordinator/` — ketiga berkas mati itu tidak ikut terunggah sama sekali. Jadi biayanya BUKAN berat deploy, melainkan penipuannya. Temuan yang melebih-lebihkan biaya akan membuat perbaikan berikutnya diprioritaskan dengan alasan yang salah.
+- **Bukti penutupan:** keempat berkas dihapus (`git rm`), bundel esbuild tetap terbangun dengan ukuran identik, 85/85 berkas uji hijau. Tidak ada pengganti dan tidak ada penanda usang — menandai usang berkas yang tak pernah diimpor hanya menunda penghapusannya sambil membiarkannya tetap tampak hidup.
+- **Izin Owner diberikan 6 Okt.** Dari dua pilihan yang diajukan, dipilih HAPUS — sesuai preseden repo dan karena buktinya tuntas.
 
 ## TMN-0008 — DITUTUP
 - **Ditutup:** 2026-10-06 — baris dihapus atas izin Owner; sasaran dikunci ke satu id persis, dan keadaan sesudahnya diperiksa dengan angka
