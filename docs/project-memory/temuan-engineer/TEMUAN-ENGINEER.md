@@ -4,7 +4,7 @@
      Owner boleh menyunting, menggabungkan, atau menutup temuan dengan tangan — bentuk di bawah yang dibaca
      kembali oleh IngatanTemuan.js. Temuan berstatus DITUTUP tidak akan diangkat lagi oleh Engineer. -->
 
-**4 terbuka · 5 ditutup**
+**3 terbuka · 6 ditutup**
 
 ## TMN-0001 — DITUTUP
 - **Ditutup:** 2026-10-04 — (ternyata sudah benar sejak lahir)
@@ -83,13 +83,17 @@
 - **Preseden di repo ini:** TaskHandlers.js menghapus 219 baris kode mati SESUDAH dibuktikan mati, dan mencatat alasannya: "kode mati yang lengkap dan rapi TAMPAK hidup; 28 September ia menipu asisten sendiri."
 - **Izin Owner belum diberikan.** Pilihan yang diajukan: hapus, atau beri penanda usang lebih dulu.
 
-## TMN-0008 — TERBUKA
+## TMN-0008 — DITUTUP
+- **Ditutup:** 2026-10-06 — baris dihapus atas izin Owner; sasaran dikunci ke satu id persis, dan keadaan sesudahnya diperiksa dengan angka
 - **Berkas:** `public.verification_audit_logs (baris data, bukan kode)`
 - **Tingkat:** sedang
 - **Ditemukan:** 2026-10-05
 - **Ringkasan:** Satu baris palsu tertinggal di tabel produksi akibat pembuktian TMN-0005. Blok DO dikira dibatalkan, padahal execute_sql meng-commit otomatis. Barisnya tidak merusak apa pun selain mengotori log audit, tetapi membiarkannya berarti meninggalkan bukti palsu di dalam log audit.
 - **Bukti:** id = 240bc19f-8a65-438e-8861-8216761b0609, decision = PALSU-OLEH-ANON, status = VERIFIED, model = bukan-model-sungguhan, timestamp = 2026-10-05 06:12:35 UTC. Terbaca dengan SELECT pada tabel produksi.
-- **Dibuat oleh asisten, bukan oleh sistem.** Penghapusannya menunggu izin Owner (penghapusan permanen di produksi adalah hak Owner).
+- **Dibuat oleh asisten, bukan oleh sistem.** Penghapusannya menunggu izin Owner (penghapusan permanen di produksi adalah hak Owner) — diberikan 6 Okt.
+- **Cara menghapusnya:** `DELETE` dikunci ke **satu id persis** (`id = '240bc19f-…'`) ditambah dua syarat penanda (`decision`, `model`), bukan ke polanya. Menghapus berdasarkan pola di tabel audit berisiko membawa baris lain yang kebetulan cocok.
+- **Bukti penutupan, dengan angka sebelum/sesudah:** `713 → 712` baris (tepat **1** dihapus), `tanpa user_id 1 → 0`, sisa baris palsu **0**. Dan satu penegas yang tak diminta: **`model_unik` kembali dari 2 ke 1** — tabel itu punya dua model unik semata karena baris ini, jadi angka itu memastikan tak ada baris asing lain yang tertinggal.
+- **Pelajaran yang dibawa pulang:** `execute_sql` meng-commit otomatis; blok `DO` tidak dibatalkan sendiri. Sejak 6 Okt, uji peran yang menyisipkan baris ditutup `rollback;` eksplisit **dan** diperiksa sesudahnya — dipakai saat menutup TMN-0005, hasilnya nol baris uji tertinggal.
 
 ## TMN-0009 — TERBUKA
 - **Berkas:** `frontend/electron/main.cjs`
