@@ -392,6 +392,8 @@ unduh desktop dari web.
 | Dibawa 4.2.14 | Apa | Sisi |
 |---|---|---|
 | **Indeks konstitusi** | 33 berkas berhenti dibaca-lalu-dibuang tiap boot; indeksnya benar-benar sampai ke model (+577 token/pesan, item 124) | klien |
+| **Ingatan temuan berhenti diam** (TMN-0006) | "tidak bisa dibaca" tidak lagi disamakan dengan "tidak ada temuan"; peringatan masuk ke konteks model, di DEPAN daftar | renderer |
+| **Cangkang Electron** (TMN-0009) | `no-sandbox` dicabut (konfigurasi berhenti membantah `sandbox: true`), penjaga navigasi ditambahkan; `webSecurity: false` **sengaja dipertahankan** karena load-bearing | `main.cjs` |
 
 **PERLU RILIS KLIEN, dan `npm run desktop` harus DIJALANKAN ULANG** — `main.cjs` dan
 `preload.cjs` berubah, kanal `engineer:indeks-konstitusi` hanya ada di proses utama yang baru.
@@ -399,7 +401,7 @@ Muat ulang jendela tidak cukup.
 
 **Uji 4.2.14:**
 
-**Tiga langkah, dan yang ketiga yang paling mudah terlupakan.** tiga langkah, dan yang ketiga yang paling mudah terlupakan:
+**A. Indeks konstitusi — tiga langkah, dan yang ketiga yang paling mudah terlupakan:**
 
 | | Yang dilihat | Gagal bila |
 |---|---|---|
@@ -411,6 +413,27 @@ Muat ulang jendela tidak cukup.
 > bisa membuat Engineer membuka konstitusi untuk **setiap** pertanyaan — menukar satu
 > kegagalan (tak pernah membaca) dengan kegagalan lain (selalu membaca, tiap jawaban jadi
 > mahal dalam perintah maupun token). Uji yang hanya memeriksa b akan menyebut itu sukses.
+
+**B. Aplikasi tetap START — ini yang pertama dilihat, sebelum uji apa pun.**
+
+`no-sandbox` dicabut (TMN-0009), dan itu satu-satunya perubahan sesi 5–6 Okt yang bisa
+menggagalkan start. **Gagal bila** jendela tidak muncul atau proses keluar sendiri. Pemulihannya
+satu baris, dan cara mundurnya ditulis di `main.cjs` tepat di atas `disable-gpu-sandbox`.
+
+**C. Tautan luar tidak lagi membajak jendela utama** (TMN-0009). Bila ada tautan `https://` yang
+bisa diklik di mana pun aplikasi, ia harus membuka **peramban sistem** — bukan memuat halaman itu
+di dalam jendela Mamet. **Gagal bila** halaman luar termuat di dalam aplikasi.
+
+**D. Pencarian web MASIH jalan** (kendali untuk `webSecurity: false` yang sengaja dipertahankan).
+Jalankan satu pertanyaan yang memicu pembanding web. **Gagal bila** hasilnya kosong disertai galat
+CORS di DevTools — itu berarti `webSecurity` tak sengaja ikut dinyalakan, dan pencarian mati
+diam-diam.
+
+**E. Ingatan temuan bersuara saat rusak** (TMN-0006, opsional). Sunting satu judul di
+`TEMUAN-ENGINEER.md` jadi bentuk lama (mis. `## TMN-0001 — ✅ DITUTUP`), buka workspace Engineer,
+lalu lihat DevTools: harus muncul `[IngatanTemuan] BENTUK BERKAS MELENCENG`. **Kembalikan
+judulnya sesudah menguji** — atau jalankan `node uji/uji-komentar-tak-berbohong.mjs` untuk
+memastikan berkasnya kembali utuh.
 
 ### Yang dibawa 4.2.13
 
@@ -870,6 +893,14 @@ mengambil sisanya sendiri lewat `git grep`. Yang tersisa adalah bagian konstitus
 > **Dan sejak 5 Okt 02:23 waktunya salah:** prompt sudah 10.430 token terhadap jatah saldo 1.048.
 > Menambah muatan sekarang hanya memperbesar selisih yang sudah tak tercapai. **Kerjakan sesudah
 > saldo terisi**, supaya pengaruhnya bisa diukur dan bukan sekadar menambah beban.
+>
+> ✅ **SUDAH DIKERJAKAN 5 Okt (item 124) — kalimat di atas jangan dibaca sebagai tugas yang
+> menunggu.** Owner memutuskan lanjut setelah keberatan biaya disampaikan dua kali, dan itu
+> keputusannya. Yang terjadi persis seperti diperingatkan: **+577 token per pesan**, menambah
+> bukan memangkas. Yang ditukar: 43.942 token yang dibaca lalu dibuang tiap boot, dan Engineer
+> yang mengaku punya cakupan yang tak pernah ia punya.
+>
+> **Pengaruhnya BELUM terukur live** — ia menunggu rilis 4.2.14, bukan menunggu keputusan.
 
 ### Dua arahan Owner yang SENGAJA ditunda (1 Okt)
 
