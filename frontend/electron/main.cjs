@@ -3,7 +3,21 @@ const { app, BrowserWindow, ipcMain, dialog, protocol, session, shell } = requir
 app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('disable-gpu');
 app.commandLine.appendSwitch('disable-software-rasterizer');
-app.commandLine.appendSwitch('no-sandbox');
+// `no-sandbox` DICABUT 2026-10-06 (TMN-0009). Ia mematikan sandbox RENDERER secara global,
+// sementara `sandbox: true` di webPreferences menyatakan sebaliknya — dan sakelar baris perintah
+// yang menang. Jadi konfigurasinya membantah dirinya sendiri: siapa pun yang mengaudit
+// webPreferences akan menyimpulkan renderer ber-sandbox, padahal tidak.
+//
+// Alasan aslinya adalah crash GPU, dan untuk itu tiga baris di atas sudah menanganinya:
+// `disableHardwareAcceleration()`, `disable-gpu`, dan `disable-gpu-sandbox` di bawah. `no-sandbox`
+// jauh lebih luas daripada yang dibutuhkan — ia kelebihan tangkap.
+//
+// Aman bagi preload: `preload.cjs` hanya `require('electron')` ({contextBridge, ipcRenderer,
+// webUtils}), ketiganya tersedia di preload ber-sandbox.
+//
+// BILA APLIKASI GAGAL START sesudah perubahan ini, kembalikan SATU baris ini saja —
+//     app.commandLine.appendSwitch('no-sandbox');
+// — lalu laporkan, karena berarti ada sebab lain yang belum diketahui.
 app.commandLine.appendSwitch('disable-gpu-sandbox');
 
 const path = require('path');
@@ -146,6 +160,24 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
+      // ── webSecurity: false DIPERTAHANKAN DENGAN SENGAJA (TMN-0009, diperiksa 2026-10-06) ──
+      //
+      // Ia TAMPAK seperti kelalaian, dan sudah hampir dinyalakan. Jangan: ia LOAD-BEARING.
+      //
+      // `WebComparisonService.js:405` memanggil `fetch()` langsung DARI RENDERER ke RSS pihak
+      // ketiga — `news.google.com`, `www.bing.com/news`, `www.antaranews.com`. Tak satu pun
+      // mengirim `Access-Control-Allow-Origin`, jadi menyalakan webSecurity akan membuat
+      // pencarian/pembanding web gagal diam-diam karena CORS.
+      //
+      // Protokol `mamet://` SENDIRI sudah benar (`standard: true, secure: true, corsEnabled: true`
+      // di `registerSchemesAsPrivileged`), jadi bukan protokolnya yang menghalangi.
+      //
+      // Yang menguranginya bukan menyalakan ini, melainkan PENJAGA NAVIGASI di `createWindow()`:
+      // tanpa same-origin policy, bahaya baru muncul kalau konten jauh sampai TERMUAT di dalam
+      // cangkang ini — dan itulah pintu yang sudah ditutup.
+      //
+      // Bila suatu hari pengambilan RSS dipindah ke proses utama atau ke edge function, baris ini
+      // boleh dinyalakan — periksa dulu `WebComparisonService` dan origin lain di renderer.
       webSecurity: false,
       allowRunningInsecureContent: false,
       preload: path.join(__dirname, 'preload.cjs')
@@ -161,6 +193,48 @@ function createWindow() {
       fs.appendFileSync(path.join(os.tmpdir(), 'mamet-renderer.log'), logMsg);
     });
   }
+
+  // ── PENJAGA NAVIGASI (TMN-0009, 2026-10-06) ─────────────────────────────────────────────
+  //
+  // Sebelum ini TIDAK ADA satu pun penjaga: tanpa `setWindowOpenHandler`, jendela yang dibuka
+  // `window.open()` MEWARISI webPreferences induknya — termasuk `preload.cjs`. Artinya halaman
+  // mana pun yang sempat terbuka di jendela baru akan memegang `window.electronAPI`, dan di
+  // dalamnya ada `engineer.jalankan`.
+  //
+  // Penjaga ini penting justru KARENA `webSecurity: false` sengaja dipertahankan (lihat catatan
+  // di webPreferences): kalau konten jauh sampai termuat di dalam cangkang ini, ia termuat tanpa
+  // same-origin policy DAN tanpa sandbox-renderer. Di sinilah ketiganya akan bekerja bersama —
+  // jadi yang ditutup adalah PINTUNYA.
+  //
+  // Belum ada jalan masuk yang diketahui hari ini (jawaban model dirender sebagai simpul teks
+  // React, bukan markdown ber-tautan), tetapi jaraknya ke "ada" hanya satu fitur. Penjaga yang
+  // dipasang sebelum pintunya terbuka jauh lebih murah daripada sesudahnya.
+  const asalSendiri = (u) => {
+    try {
+      const { protocol: p, host } = new URL(u);
+      // `host === …` BUKAN `startsWith`: `localhost:51730` berawalan sama tetapi port berbeda,
+      // dan dengan `startsWith` ia akan ikut diizinkan. Ditemukan lewat uji mutasi 6 Okt.
+      return p === 'mamet:' || (p === 'http:' && host === 'localhost:5173') || p === 'devtools:';
+    } catch { return false; }
+  };
+
+  // Tak ada jendela baru yang boleh lahir dari dalam renderer. Tautan luar dibuka di peramban
+  // SISTEM — di luar cangkang ini, jadi ia tidak membawa preload apa pun.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:$/.test((() => { try { return new URL(url).protocol; } catch { return ''; } })())) {
+      shell.openExternal(url).catch(() => { /* peramban tak tersedia: diamkan, jangan jatuhkan app */ });
+    }
+    return { action: 'deny' };
+  });
+
+  // Navigasi KELUAR dari asal sendiri dibatalkan. Ini yang menjaga agar jendela utama — yang
+  // memang membawa preload — tidak pernah berisi halaman orang lain.
+  mainWindow.webContents.on('will-navigate', (e, url) => {
+    if (asalSendiri(url)) return;
+    e.preventDefault();
+    console.warn(`[Keamanan] navigasi ke luar dicegah: ${String(url).slice(0, 120)}`);
+    if (/^https?:/.test(url)) shell.openExternal(url).catch(() => {});
+  });
 
   mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
     const levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR'];
