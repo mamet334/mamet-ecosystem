@@ -691,7 +691,7 @@ Tidak menyala pada uji 1 Okt 13.12 (mode terbukti tetap ENGINEER), jadi ini **ra
 kegagalan kemarin**. Tapi satu pertanyaan Engineer yang kebetulan terlihat seperti pertanyaan
 faktual singkat akan jatuh ke sini tanpa tanda apa pun.
 
-### ⛔ TIGA TEMUAN TERBUKA dari audit 5 Okt — dua sudah DITUTUP 6 Okt
+### ⛔ DUA TEMUAN TERBUKA dari audit 5 Okt — tiga sudah DITUTUP 6 Okt
 
 Rinciannya di [`TEMUAN-ENGINEER.md`](../project-memory/temuan-engineer/TEMUAN-ENGINEER.md).
 **Tidak ada yang dikerjakan** — Owner meminta dibahas dulu.
@@ -699,7 +699,7 @@ Rinciannya di [`TEMUAN-ENGINEER.md`](../project-memory/temuan-engineer/TEMUAN-EN
 | | Tingkat | Inti |
 |---|---|---|
 | **TMN-0005** | ✅ **DITUTUP 6 Okt** | `verification_audit_logs` punya policy INSERT **TO PUBLIC dengan `WITH CHECK true`** — kembaran lubang `assistant_audit_log`. **Bobotnya naik saat `cek github`:** repo ternyata **PUBLIC** dan kunci anon tertulis apa adanya di `build.yml:37`, jadi RLS satu-satunya perlindungan dan lubangnya **bisa dipakai siapa pun** — bukan teoretis. Policy **dicabut tanpa pengganti** (service_role melewati RLS, jadi tak ada policy INSERT yang dibutuhkan); anon & authenticated ditolak, **kendali** service_role tetap bisa menulis. Tak ada bukti pernah dipakai orang lain: 713 baris, hanya 1 tanpa `user_id` — baris buatan asisten |
-| **TMN-0006** | tinggi | Berkas temuan itu sendiri **tak terbaca kodenya sendiri** — 4 judul ada, **0** terurai. Janji "yang DITUTUP tidak diangkat lagi" berlaku hampa, dan temuan TERBUKA pun tak akan sampai ke Engineer. Judul sudah dinormalkan (kini 8/8 terbaca), tetapi **tak ada uji yang menjaganya** — itu sebab aslinya, masih terbuka |
+| **TMN-0006** | ✅ **DITUTUP 6 Okt** | Berkas temuan **tak terbaca kodenya sendiri** — 4 judul ada, **0** terurai. **Letak cacatnya ternyata lebih dalam dari "diam":** daftar kosong punya DUA sebab yang berbeda — *memang tak ada temuan* dan *berkasnya tak terbaca* — dan `ringkasanUntukKonteks` menyamakan keduanya jadi string kosong, sehingga Engineer menyimpulkan "tidak ada temuan" dari berkas yang jelas berisi. Kini `keutuhanTemuan()` membandingkan judul vs yang terurai, dan peringatannya masuk **ke konteks model** (bukan cuma konsol) di **depan** daftar. 4 mutasi menggigit |
 | **TMN-0007** | sedang | 4 berkas (**368 baris**) nol pengimpor, ikut dibundel tiap deploy. `verification_pipeline.ts` (270 baris) mengimpor 7 modul nyata **tanpa penanda usang** — ia tampak hidup |
 | **TMN-0008** | ✅ **DITUTUP 6 Okt** | Satu baris palsu tertinggal di produksi akibat pembuktian TMN-0005 (`execute_sql` meng-commit otomatis). Dihapus atas izin Owner, **dikunci ke satu id persis** (bukan ke polanya — menghapus berdasarkan pola di tabel audit berisiko membawa baris lain). Terbukti: `713 → 712`, `tanpa user_id 1 → 0`, dan `model_unik` kembali **2 → 1** |
 | **TMN-0009** | sedang | Cangkang Electron: `no-sandbox` global **membantah** `sandbox: true` di webPreferences (sakelar menang — konfigurasinya berbohong), `webSecurity: false`, dan **nol penjaga navigasi** (tanpa `setWindowOpenHandler`, jendela `window.open()` mewarisi preload → mewarisi `engineer.jalankan`). **Belum jadi lubang hidup** — jalan masuknya dicari dan tidak ada: `react-markdown` tak dipakai di Ecosystem, jadi jawaban model dirender sebagai teks React yang di-escape |

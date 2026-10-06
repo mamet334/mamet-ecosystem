@@ -15,7 +15,7 @@ import { putusanPemulihan, bolehSimpanChat, kunciSimpan } from './pemulihanChat.
 import { buatPenandaKiriman, tujuanTulis, pesanTerlantar, layakSimpanTerlantar } from './pengirimanChat.js';
 import { riwayatPerintahDariPesan, catatanAkarRepo, catatanPetaRepo, pesanKeluaranPerintah, catatanKonstitusi } from '../../core/runtime/services/engineer/ProsedurEngineer.js';
 import { ambilBlokKlaim, susunSkripUji, susunLaporanKlaim } from '../../core/runtime/services/engineer/UjiKlaim.js';
-import { ambilBlokTemuan, bacaBerkasTemuan, susunBerkasTemuan, gabungTemuan, laporanTemuan, ringkasanUntukKonteks, ALAMAT_BERKAS as ALAMAT_TEMUAN } from '../../core/runtime/services/engineer/IngatanTemuan.js';
+import { ambilBlokTemuan, bacaBerkasTemuan, susunBerkasTemuan, gabungTemuan, laporanTemuan, ringkasanUntukKonteks, keutuhanTemuan, ALAMAT_BERKAS as ALAMAT_TEMUAN } from '../../core/runtime/services/engineer/IngatanTemuan.js';
 import { ambilBlokPengetahuan, pengetahuanBaru, barisBrain1 } from '../../core/runtime/services/engineer/PengetahuanBrain1.js';
 import { anggaranKonteks, pilihPesanKonteks, meteranKonteks, bacaMulaiDari, simpanMulaiDari, pesanUntukDipadatkan, bolehPadatkan, bentukPesanRingkasan, tokenPesan, MIN_PESAN_PADATKAN, PATOK } from '../../core/runtime/services/KonteksChat.js';
 import { jejakSisipan } from '../../core/runtime/services/jejakSisipan.js';
@@ -718,8 +718,16 @@ export default function ConversationEngine({ sessionId }) {
   const [temuanTersimpan, setTemuanTersimpan] = useState([]);
   const temuanDiprosesRef = useRef(new Set());
 
+  // Keutuhan ingatan temuan (TMN-0006). Dicatat terpisah dari daftarnya karena DAFTAR KOSONG
+  // punya dua sebab yang sama sekali berbeda — "memang tidak ada temuan" dan "berkasnya tidak
+  // terbaca" — dan sebelum ini keduanya mengalir jadi hal yang sama: Engineer menyimpulkan tidak
+  // ada temuan terbuka, padahal berkasnya jelas berisi.
+  const [keutuhanTemuanRef, setKeutuhanTemuan] = useState(null);
+
   const bacaCatatanTemuan = async () => {
     const isi = await (window.electronAPI?.readFile?.(ALAMAT_TEMUAN) ?? Promise.resolve(null));
+    // Hanya dinilai bila berkasnya memang ada; berkas yang belum pernah dibuat bukan kelencengan.
+    setKeutuhanTemuan(isi ? keutuhanTemuan(isi) : null);
     return bacaBerkasTemuan(isi);
   };
 
@@ -1226,7 +1234,7 @@ export default function ConversationEngine({ sessionId }) {
     // Setiap kiriman, bukan sekali di awal: ringkasannya pendek (±20 baris), dan sekali-di-awal akan hilang
     // begitu "Bersihkan konteks" atau "Padatkan" menggeser batas jendela.
     const ringkasanTemuan = isEngineerWorkspace
-      ? ringkasanUntukKonteks([...temuanTersimpan, ...temuanBelumSimpan])
+      ? ringkasanUntukKonteks([...temuanTersimpan, ...temuanBelumSimpan], 20, keutuhanTemuanRef)
       : '';
 
     // AKAR REPO (Tahap 5, 2026-09-28): model tidak pernah diberi tahu di folder mana perintahnya

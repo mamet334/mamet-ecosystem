@@ -4,7 +4,7 @@
      Owner boleh menyunting, menggabungkan, atau menutup temuan dengan tangan — bentuk di bawah yang dibaca
      kembali oleh IngatanTemuan.js. Temuan berstatus DITUTUP tidak akan diangkat lagi oleh Engineer. -->
 
-**3 terbuka · 6 ditutup**
+**2 terbuka · 7 ditutup**
 
 ## TMN-0001 — DITUTUP
 - **Ditutup:** 2026-10-04 — (ternyata sudah benar sejak lahir)
@@ -63,7 +63,8 @@
 - **Tidak ada bukti lubang ini pernah dipakai orang lain:** dari 713 baris, hanya **1** tanpa `user_id` — baris buatan asisten (TMN-0008) — dan cuma 2 model unik. Disebut "tidak ada bukti", bukan "pasti tidak": penyerang yang cermat akan mengisi `user_id`.
 - **Kebijakan SELECT sengaja tidak disentuh** (`USING auth.uid() = user_id`): syaratnya benar, dan dasbor membacanya lewat jalur itu (`useDashboardData.js:116`).
 
-## TMN-0006 — TERBUKA
+## TMN-0006 — DITUTUP
+- **Ditutup:** 2026-10-06 — kebisuannya dicabut: "tidak terbaca" tidak lagi disamakan dengan "tidak ada temuan", dan peringatannya sampai ke konteks model, bukan cuma ke konsol
 - **Berkas:** `docs/project-memory/temuan-engineer/TEMUAN-ENGINEER.md`
 - **Tingkat:** tinggi
 - **Ditemukan:** 2026-10-05
@@ -72,7 +73,11 @@
 - **Diperbaiki sebagian 5 Okt:** keempat judul dinormalkan kembali ke bentuk yang diurai, keterangannya dipindah ke ruas **Ditutup** yang memang dibaca.
 - **SEBAB ASLINYA KETAHUAN, dan lebih buruk dari dugaan:** `uji/uji-komentar-tak-berbohong.mjs` ternyata MENEGAKKAN bentuk yang rusak — ia menuntut `/✅ DITUTUP/` di judul, persis bentuk yang tak bisa diurai. Jadi uji hijau menyatakan berkasnya benar sementara kodenya membaca nol. Uji dan pengurai berselisih berhari-hari, dan ujinya yang menang. Asersi keduanya lebih buruk lagi: `!/TERBUKA/` memaku "nol temuan terbuka" sebagai kebenaran abadi, sehingga MENCATAT temuan nyata selalu membuat uji merah — uji yang menghukum pencatatan temuan.
 - **Diperbaiki 5 Okt:** asersi diganti menjadi *"semua judul bisa diurai IngatanTemuan.js"* (regex yang sama persis dengan penguraiannya), ditambah penjaga bahwa yang DITUTUP menyebut sebabnya dan penghitung kepala cocok dengan isinya. Tiga mutasi menggigit — Q1 (satu judul kembali ke bentuk lama) menjatuhkan 2 asersi, yakni cacat yang tadi ada.
-- **Yang TERSISA:** `IngatanTemuan.js` sendiri masih **diam** ketika penguraian menghasilkan nol dari berkas yang jelas berisi. Uji kini menjaga berkasnya, tetapi kodenya tetap tidak bersuara bila bentuknya rusak lagi lewat jalan lain.
+- **Sisa itu DIKERJAKAN 6 Okt, dan letak cacatnya ternyata lebih dalam dari "diam".** `ringkasanUntukKonteks` memulangkan string kosong untuk daftar kosong — dan daftar kosong punya DUA sebab yang sama sekali berbeda: *memang tidak ada temuan* dan *berkasnya tidak terbaca*. Keduanya mengalir jadi hal yang sama, sehingga Engineer menyimpulkan "tidak ada temuan terbuka" dari berkas yang jelas berisi.
+- **Perbaikannya:** `keutuhanTemuan(isi)` membandingkan jumlah judul `## TMN-` dengan jumlah yang benar-benar terurai. Bila tidak sama, `bacaBerkasTemuan` mencatat `console.error` untuk Owner, DAN `ringkasanUntukKonteks` menyisipkan blok peringatan **ke konteks model** — dengan angkanya (`0 dari 2`) dan larangan menyimpulkan sebuah temuan belum pernah dilaporkan. Konsol saja tidak cukup: yang selama ini salah menyimpulkan adalah modelnya.
+- **Peringatan ditaruh di DEPAN daftar**, bukan di belakang — di belakang ia yang pertama terpotong saat konteks dipangkas, dan justru kasus terburuknya (sebagian terbaca) adalah yang paling mudah menipu karena daftarnya tidak kosong dan semuanya tampak normal.
+- **Berkas kosong/belum ada SENGAJA tidak dianggap melenceng:** kalau ikut memicu peringatan, ia akan muncul terus-menerus pada pemasangan baru dan lama-lama diabaikan.
+- **Bukti:** `uji/uji-ingatan-temuan-bersuara.mjs` menjalankan modul aslinya. 4 mutasi menggigit — R1 keutuhan selalu melapor utuh (7), R2 peringatan dilumpuhkan (5), R3 kembali diam saat daftar kosong (4), R4 isyarat tidak diteruskan ke konteks model (1). R3 sempat terbaca "tidak menggigit": sed-nya yang tak menempel, bukan asersinya — diulang dengan Edit.
 
 ## TMN-0007 — TERBUKA
 - **Berkas:** `supabase/functions/agent-process/lib/verification/verification_pipeline.ts`

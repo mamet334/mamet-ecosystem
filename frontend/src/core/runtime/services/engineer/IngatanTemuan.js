@@ -130,9 +130,49 @@ export function susunBerkasTemuan(daftar) {
   return bagian.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
 }
 
-/** Isi berkas markdown → daftar temuan. Berkas kosong/tak ada → daftar kosong, bukan galat. */
+/**
+ * Apakah berkas temuan terbaca UTUH — yakni setiap judul `## TMN-####` berhasil diurai.
+ *
+ * ── Kenapa fungsi ini ada (TMN-0006) ────────────────────────────────────────────────────────
+ *
+ * Penguraian di bawah menuntut judul berbentuk PERSIS `## TMN-0001 — DITUTUP`. Pada 5 Okt 2026
+ * ditemukan bahwa berkasnya sudah berisi `## TMN-0001 — ✅ DITUTUP 2026-10-04 (…)` — hasil
+ * suntingan tangan — sehingga **4 judul ada, NOL terbaca**.
+ *
+ * Yang membuatnya berbahaya bukan kelencengannya, melainkan **kebisuannya**: daftar kosong
+ * mengalir ke `ringkasanUntukKonteks`, yang memulangkan string kosong, sehingga Engineer tidak
+ * menerima blok temuan sama sekali — dan membacanya sebagai *"tidak ada temuan terbuka"*.
+ *
+ * **"Tidak bisa dibaca" dan "tidak ada temuan" adalah dua hal yang berbeda.** Menyamakan keduanya
+ * membuat janji "temuan yang sudah dilaporkan tidak diangkat ulang" berlaku hampa, dan membuat
+ * temuan yang benar-benar terbuka tak pernah sampai ke model.
+ *
+ * @param {string} isi isi berkas apa adanya
+ * @returns {{judul: number, terbaca: number, utuh: boolean}}
+ */
+export function keutuhanTemuan(isi) {
+  const teks = String(isi || '');
+  const judul = (teks.match(/^## TMN-\d{4}.*$/gm) || []).length;
+  const terbaca = (teks.match(/^## TMN-\d{4} — (TERBUKA|DITUTUP)[ \t]*$/gm) || []).length;
+  return { judul, terbaca, utuh: judul === terbaca };
+}
+
+/**
+ * Isi berkas markdown → daftar temuan. Berkas kosong/tak ada → daftar kosong, bukan galat.
+ *
+ * BERSUARA bila ada judul yang tidak terurai (lihat `keutuhanTemuan`). Diam di sini berarti
+ * kelencengan bentuk berubah menjadi "tidak ada temuan" tanpa jejak apa pun.
+ */
 export function bacaBerkasTemuan(isi) {
   const teks = String(isi || '');
+  const k = keutuhanTemuan(teks);
+  if (!k.utuh) {
+    console.error(
+      `[IngatanTemuan] BENTUK BERKAS MELENCENG: ${k.judul} judul TMN- ada di berkas, hanya ${k.terbaca} yang bisa diurai. ` +
+      'Judul wajib berbentuk persis "## TMN-0001 — TERBUKA" atau "## TMN-0001 — DITUTUP", tanpa apa pun sesudahnya. ' +
+      'Selama ini belum diperbaiki, temuan yang TIDAK terurai tidak akan pernah sampai ke Engineer.'
+    );
+  }
   const daftar = [];
   const pola = /^## (TMN-\d{4}) — (TERBUKA|DITUTUP)[ \t]*$/gm;
   const kepala = [];
@@ -242,13 +282,34 @@ export function laporanTemuan({ baru, kembar, pernahDitutup, galat = [] }) {
  * Ringkasan temuan terbuka untuk dibawa ke chat Engineer berikutnya.
  * Dipotong supaya tidak memakan jendela konteks: temuan lama yang masih terbuka tetap disebut ID-nya.
  */
-export function ringkasanUntukKonteks(daftar, batas = 20) {
+export function ringkasanUntukKonteks(daftar, batas = 20, keutuhan = null) {
   const terbuka = (daftar || []).filter((t) => t.status !== 'DITUTUP');
-  if (!terbuka.length) return '';
+
+  // ── TMN-0006: "tidak bisa dibaca" ≠ "tidak ada temuan" ──────────────────────────────────
+  //
+  // Sebelum ini, berkas yang gagal diurai menghasilkan daftar kosong → string kosong → Engineer
+  // tidak menerima blok temuan sama sekali, lalu membacanya sebagai "tidak ada temuan terbuka".
+  // Kebisuan itulah cacatnya, bukan kelencengan bentuknya.
+  //
+  // Peringatan ini disusun SEBELUM pemeriksaan `!terbuka.length`, justru karena kasus paling
+  // berbahaya adalah ketika keduanya bertemu: nol temuan terbaca DARI berkas yang jelas berisi.
+  const peringatan = keutuhan && !keutuhan.utuh
+    ? [
+        `[INGATAN TEMUAN TIDAK TERBACA UTUH — ${keutuhan.terbaca} dari ${keutuhan.judul} entri]`,
+        'Berkas catatan temuan ada, tetapi sebagian judulnya tidak bisa diurai, jadi daftar di bawah',
+        'TIDAK LENGKAP. JANGAN menyimpulkan sebuah temuan belum pernah dilaporkan hanya karena ia',
+        'tidak muncul di sini. Bila kamu menemukan sesuatu, laporkan apa adanya dan sebutkan bahwa',
+        'ingatan temuan sedang tidak utuh.',
+      ]
+    : [];
+
+  if (!terbuka.length) return peringatan.length ? peringatan.join('\n') : '';
   const urut = [...terbuka].sort((a, b) => TINGKAT.indexOf(b.tingkat) - TINGKAT.indexOf(a.tingkat));
   const baris = urut.slice(0, batas).map((t) => `- ${t.id} (${t.tingkat}) ${t.berkas}: ${t.ringkasan}`);
   const sisa = urut.length - baris.length;
   return [
+    ...peringatan,
+    ...(peringatan.length ? [''] : []),
     `[TEMUAN ENGINEER YANG MASIH TERBUKA — ${terbuka.length}]`,
     'Ini sudah pernah dilaporkan dan disimpan. JANGAN laporkan ulang sebagai temuan baru.',
     'Kalau kamu menemukan bukti BARU tentang salah satunya, sebut ID-nya dan jelaskan apa yang berubah.',
