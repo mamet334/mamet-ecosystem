@@ -1,0 +1,55 @@
+-- TMN-0005 — siapa pun bisa memalsukan baris di verification_audit_logs.
+--
+-- ── Cacatnya ────────────────────────────────────────────────────────────────────────────────
+--
+-- Kebijakan bernama "Service Role can insert verification logs" ternyata:
+--
+--     cmd        : INSERT
+--     roles      : {public}      <- BUKAN service_role, meski namanya menyebut begitu
+--     with_check : true          <- tanpa syarat apa pun
+--
+-- Kebijakan tanpa klausa TO berlaku untuk PUBLIC, dan PUBLIC mencakup `anon`. Jadi namanya
+-- menjanjikan satu hal sementara perilakunya melakukan hal lain, selama berbulan-bulan.
+--
+-- ── Kenapa ini BUKAN risiko teoretis ────────────────────────────────────────────────────────
+--
+-- Kunci `anon` Supabase memang dirancang publik — ia ikut di setiap bundel klien, dan di repo ini
+-- ia bahkan tertulis apa adanya di `.github/workflows/build.yml:37` pada repositori yang PUBLIC.
+-- Itu normal untuk Supabase, dan justru karena itu **RLS adalah satu-satunya perlindungan**.
+--
+-- Dengan kebijakan di atas, siapa pun yang memegang kunci anon — yakni siapa pun — bisa
+-- menyisipkan baris `status = 'VERIFIED'` palsu ke dalam log audit verifikasi.
+--
+-- Dibuktikan 2026-10-05 lewat simulasi peran di basis data produksi:
+--     SET LOCAL ROLE anon;
+--     INSERT INTO verification_audit_logs (id, timestamp, decision, status, model, score, checks, failures) …
+--     -> BERHASIL. Penolakan awal hanya datang dari NOT NULL, bukan dari RLS.
+--
+-- Log audit yang bisa dipalsukan lebih buruk daripada tidak ada log: ia memberi keyakinan palsu.
+--
+-- ── Kenapa DICABUT, bukan diganti `TO service_role` ─────────────────────────────────────────
+--
+-- Satu-satunya penulis sah adalah `verification_service.ts:86`, yang memakai
+-- `rctx.env.supabaseServiceKey` — dan **service_role MELEWATI RLS sepenuhnya**. Jadi kebijakan
+-- INSERT apa pun tidak dibutuhkan untuk pencatatan yang benar.
+--
+-- Membuat kebijakan `TO service_role` akan menyesatkan: ia menyiratkan RLS berlaku bagi peran itu,
+-- padahal tidak. Kebijakan yang tidak pernah dievaluasi adalah kebijakan yang akan dipercaya orang
+-- berikutnya — persis cara nama "Service Role can insert" menipu selama ini.
+--
+-- ── Yang SENGAJA tidak disentuh ─────────────────────────────────────────────────────────────
+--
+-- Kebijakan SELECT "Users can view their own verification logs" (USING auth.uid() = user_id)
+-- dibiarkan apa adanya: ia memang ditujukan ke pengguna yang login, dan syaratnya benar.
+-- Dasbor (`useDashboardData.js:116`) membaca lewat jalur itu.
+--
+-- ── Preseden ────────────────────────────────────────────────────────────────────────────────
+--
+-- Bentuk cacat yang SAMA PERSIS ditutup pada `assistant_audit_log` 2026-10-04
+-- (`20261004000000_audit_perintah_tanpa_persetujuan.sql`). Kembarannya luput karena temuan dicari
+-- satu per satu, bukan sebagai kelas.
+
+drop policy if exists "Service Role can insert verification logs" on public.verification_audit_logs;
+
+-- Tidak ada penggantinya. Sesudah ini tabel menerima INSERT hanya dari peran yang melewati RLS
+-- (service_role), dan menolak anon maupun authenticated.

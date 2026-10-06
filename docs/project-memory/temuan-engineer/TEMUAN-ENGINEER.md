@@ -4,7 +4,7 @@
      Owner boleh menyunting, menggabungkan, atau menutup temuan dengan tangan — bentuk di bawah yang dibaca
      kembali oleh IngatanTemuan.js. Temuan berstatus DITUTUP tidak akan diangkat lagi oleh Engineer. -->
 
-**5 terbuka · 4 ditutup**
+**4 terbuka · 5 ditutup**
 
 ## TMN-0001 — DITUTUP
 - **Ditutup:** 2026-10-04 — (ternyata sudah benar sejak lahir)
@@ -49,14 +49,19 @@
 - **Penutupan:** jendela habis → hukuman habis, pulih ke kapabilitas sebelumnya; keduanya bersuara. Tiap demosi mencatat `_sebabDemosi`, karena demosi keamanan (3 percobaan berkas inti) memakai `'OBSERVER'` yang sama dan **sengaja lengket** — pemulihan otomatis tanpa pembeda itu akan mengangkatnya semenit kemudian. Lihat [log](../changelog/2026-10-02-pemutus-arus-engineer.md) dan INDEX item 113.
 - **Bukti penutupan:** `uji/uji-pemutus-arus-engineer.mjs` menjalankan kelas `Engineer` yang asli (27 asersi); uji mutasi M1–M4 semuanya menggigit; 74/74 hijau.
 
-## TMN-0005 — TERBUKA
+## TMN-0005 — DITUTUP
+- **Ditutup:** 2026-10-06 — kebijakan DICABUT (bukan diganti), dan ditolaknya anon maupun authenticated dibuktikan bersama uji kendali bahwa service_role tetap bisa menulis
 - **Berkas:** `supabase/migrations/ (kebijakan RLS verification_audit_logs)`
 - **Tingkat:** tinggi
 - **Ditemukan:** 2026-10-05
 - **Ringkasan:** Kebijakan INSERT bernama "Service Role can insert verification logs" pada tabel verification_audit_logs menyasar PUBLIC dengan WITH CHECK true, sehingga peran anon (belum login) bisa menyisipkan baris audit palsu. Namanya menyebut service_role, perilakunya tidak. Ini kelas yang sama persis dengan lubang assistant_audit_log yang ditutup 2026-10-04 — kembarannya luput.
 - **Bukti:** Simulasi peran di produksi: SET LOCAL ROLE anon lalu INSERT INTO verification_audit_logs (id, timestamp, decision, status, model, score, checks, failures) BERHASIL menyisipkan 1 baris berlabel status=VERIFIED. Penolakan awal hanya datang dari NOT NULL (timestamp, score), bukan dari RLS. pg_policies menunjukkan roles memuat public dan with_check = true.
-- **Belum diperiksa:** apakah ada lapisan di depan PostgREST (kunci anon tidak dibagikan, gateway, atau tidak ada jalur publik). Bila ada, bobotnya turun — tetapi kebijakannya tetap tidak sesuai namanya.
-- **Izin Owner belum diberikan** untuk memperbaikinya; Owner meminta dibahas dulu (5 Okt).
+- **"Belum diperiksa" itu terjawab 6 Okt, dan jawabannya MEMPERBERAT:** tidak ada lapisan di depannya. Repositori `mamet334/mamet-ecosystem` ternyata **PUBLIC**, dan kunci `anon` tertulis apa adanya di `.github/workflows/build.yml:37` bersama alamat proyek di baris 36. Itu normal untuk Supabase — kunci anon memang dirancang publik dan ikut di setiap bundel klien — tetapi justru karena itu **RLS adalah satu-satunya perlindungan**. Jadi lubang ini bukan risiko teoretis: siapa pun yang membuka repo bisa memakainya.
+- **Dan separuh rantainya dipasang asisten.** TMN-0005 ditulis lengkap dengan cara memperagakannya lalu di-commit ke repo yang sama, tanpa memeriksa visibilitas repo lebih dulu. Pelajaran: sebelum menuliskan rincian lubang yang MASIH TERBUKA, periksa ke mana tulisan itu terbit.
+- **Penutupan (6 Okt):** kebijakan **DICABUT tanpa pengganti**, lewat `supabase/migrations/20261006000000_tutup_insert_publik_verification_audit_logs.sql`. Penulis sahnya hanya `verification_service.ts:86` yang memakai `supabaseServiceKey`, dan service_role **melewati RLS sepenuhnya** — jadi tidak ada kebijakan INSERT yang dibutuhkan. Membuat kebijakan `TO service_role` justru menyesatkan: ia menyiratkan RLS berlaku bagi peran itu, padahal tidak, dan kebijakan yang tak pernah dievaluasi adalah yang akan dipercaya orang berikutnya — persis cara nama "Service Role can insert" menipu selama ini.
+- **Bukti penutupan, tiga arah:** `anon` → *"new row violates row-level security policy"*; `authenticated` → ditolak sama; **kendali** `service_role` → BERHASIL 1 baris, jadi pencatatan yang sah tidak ikut mati. Seluruh uji di dalam transaksi yang dibatalkan; diperiksa sesudahnya, nol baris uji tertinggal.
+- **Tidak ada bukti lubang ini pernah dipakai orang lain:** dari 713 baris, hanya **1** tanpa `user_id` — baris buatan asisten (TMN-0008) — dan cuma 2 model unik. Disebut "tidak ada bukti", bukan "pasti tidak": penyerang yang cermat akan mengisi `user_id`.
+- **Kebijakan SELECT sengaja tidak disentuh** (`USING auth.uid() = user_id`): syaratnya benar, dan dasbor membacanya lewat jalur itu (`useDashboardData.js:116`).
 
 ## TMN-0006 — TERBUKA
 - **Berkas:** `docs/project-memory/temuan-engineer/TEMUAN-ENGINEER.md`
