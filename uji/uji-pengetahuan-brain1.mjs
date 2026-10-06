@@ -127,7 +127,9 @@ console.log('\n-- terpasang di layar --');
   const CE = readFileSync(`${AKAR}/frontend/src/components/workbench/ConversationEngine.jsx`, 'utf8').replace(/\r\n/g, '\n');
   const KODE = CE.split('\n').filter((b) => !/^\s*(\/\/|\*|\/\*)/.test(b)).join('\n');
 
-  cek(/import \{ ambilBlokPengetahuan, pengetahuanBaru, barisBrain1 \}/.test(KODE), 'modul diimpor');
+  // Per nama, bukan daftar utuh beserta urutannya.
+  cek(['ambilBlokPengetahuan', 'pengetahuanBaru', 'barisBrain1'].every((n) => new RegExp(`import \\{[^}]*\\b${n}\\b[^}]*\\}`).test(KODE)),
+    'ketiga fungsi modul pengetahuan diimpor', (KODE.match(/import \{[^}]*ambilBlokPengetahuan[^}]*\}/) || []));
   cek(/const pengetahuanBelumSimpan = useMemo\(/.test(KODE), 'diturunkan dari daftar pesan, bukan useState');
   cek(/onClick=\{simpanPengetahuan\}/.test(KODE), 'tombol memanggil penyimpan');
   cek(/from\('project_memory_entries'\)\.insert\(/.test(KODE), 'benar-benar menulis ke project_memory_entries');

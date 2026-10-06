@@ -84,7 +84,9 @@ cek(/webContents\.send\('update-status'/.test(MAIN.slice(iGalat, iGalat + 600)),
 console.log('\n-- terpasang di Settings.jsx --');
 
 const SET = readFileSync(`${AKAR}/frontend/src/components/Settings.jsx`, 'utf8');
-cek(/import \{ ringkasPembaruan, bentukVersi, warnaStatus \}/.test(SET), 'modul status diimpor');
+// Per nama, bukan daftar utuh beserta urutannya.
+cek(['ringkasPembaruan', 'bentukVersi', 'warnaStatus'].every((n) => new RegExp(`import \\{[^}]*\\b${n}\\b[^}]*\\}`).test(SET)),
+  'ketiga fungsi modul status diimpor', (SET.match(/import \{[^}]*ringkasPembaruan[^}]*\}/) || []));
 cek(/electronAPI\.getAppVersion\?\.\(\)/.test(SET), 'versi dibaca dari proses utama, bukan ditulis tangan di layar');
 cek(/electronAPI\.onUpdateStatus\?\.\(/.test(SET), 'berlangganan kabar pembaruan');
 cek(/electronAPI\.checkForUpdates\(\)/.test(SET), 'tombol periksa memanggil jembatan yang sudah ada');

@@ -139,7 +139,10 @@ cek(PIPE.includes('[Pengetahuan umum AI'), 'prompt server memang masih memakai [
 console.log('\n-- terpasang di App.jsx --');
 
 const APP = readFileSync(`${AKAR}/mametlite/src/App.jsx`, 'utf8');
-cek(/import \{ pisahLabel, warnaLabel, teksSalinan \} from '\.\/lib\/labelRamah'/.test(APP), 'labelRamah diimpor App.jsx');
+// Diperiksa PER NAMA, bukan sebagai daftar utuh beserta urutannya: menambah satu ekspor yang sah
+// ke daftar impor tidak merusak apa pun, dan asersi yang memaku ejaannya akan menuduhnya.
+cek(['pisahLabel', 'warnaLabel', 'teksSalinan'].every((n) => new RegExp(`import \\{[^}]*\\b${n}\\b[^}]*\\} from '\\./lib/labelRamah'`).test(APP)),
+  'ketiga fungsi labelRamah diimpor App.jsx', (APP.match(/import \{[^}]*\} from '\.\/lib\/labelRamah'/) || []));
 cek(/navigator\.clipboard\.writeText\(teksSalinan\(text\)\)/.test(APP),
   'tombol Salin memakai teksSalinan — bukan teks mentah server', (APP.match(/clipboard\.writeText[^\n]*/g) || []));
 cek(!/const cleanText = text\.replace/.test(APP), 'jalur salin lama yang menyisakan [STATUS: …] sudah tidak ada');

@@ -99,7 +99,9 @@ cek(/laporanSetelahMuatUlang\(\(p\) => storageManager\.read\(p\), undefined, und
   'catatan TIDAK dihapus saat dibaca (argumen keempat false)');
 cek(/hapusCatatanPatch\(\);/.test(blokJaga),
   'catatan baru dibuang SESUDAH laporannya terbukti ada di layar', blokJaga.slice(0, 300));
-cek(/import \{ laporanSetelahMuatUlang, hapusCatatanPatch \}/.test(CE), 'hapusCatatanPatch diimpor');
+// Per nama, bukan daftar utuh — lihat catatan kerapuhan yang sama di uji-peta-repo.
+cek(['laporanSetelahMuatUlang', 'hapusCatatanPatch'].every((n) => new RegExp(`import \\{[^}]*\\b${n}\\b[^}]*\\}`).test(CE)),
+  'laporanSetelahMuatUlang & hapusCatatanPatch diimpor', (CE.match(/import \{[^}]*hapusCatatanPatch[^}]*\}/) || []));
 
 const CP = readFileSync(AKAR + 'frontend/src/core/runtime/services/engineer/CatatanPatch.js', 'utf8');
 cek(/hapusSekarang = true/.test(CP), 'opsi hapusSekarang ada, bawaannya tetap true (pemanggil lain tak berubah)');

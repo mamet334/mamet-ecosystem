@@ -174,8 +174,14 @@ console.log('\n-- terpasang & dipatok --');
   cek(/import \{[^}]*\bcatatanKonstitusi\b[^}]*\} from '[^']*ProsedurEngineer\.js'/.test(C), 'diimpor dari ProsedurEngineer');
   cek(/indeksKonstitusi\?\.\(\)/.test(C), 'daftarnya diambil dari proses utama');
   cek(/const catatanKons = catatanKonstitusi\(daftarKonstitusi\)/.test(C), 'catatannya disusun');
-  cek(/sisipan = \[catatanAkar, catatanKons, catatanPeta, ringkasanTemuan\]/.test(C),
-    'dan MASUK sisipan bersama akar repo & peta — yang dipatok, jadi tak jadi korban pemotongan');
+  // Yang dijaga: `catatanKons` ADA di dalam larik sisipan — bukan ejaan seluruh lariknya beserta
+  // urutannya. Bentuk lama memaku keempat unsur, jadi menambah sisipan kelima yang sah akan
+  // menjatuhkannya tanpa ada yang rusak. Kelas kerapuhan ini sudah menjatuhkan uji yang BENAR
+  // lima kali pada 5–6 Okt — dan ironisnya asersi ini ditulis beberapa jam sesudah dua di
+  // antaranya diperbaiki.
+  cek(/const sisipan = \[[^\]]*\bcatatanKons\b[^\]]*\]/.test(C),
+    'dan MASUK ke dalam larik sisipan — yang dipatok, jadi tak jadi korban pemotongan',
+    (C.match(/const sisipan = [^\n]*/g) || []));
 
   const PR = tanpaKomentar(baca('frontend/electron/preload.cjs'));
   cek(/indeksKonstitusi: \(\) => ipcRenderer\.invoke\('engineer:indeks-konstitusi'\)/.test(PR), 'kanal IPC terbuka di preload');
