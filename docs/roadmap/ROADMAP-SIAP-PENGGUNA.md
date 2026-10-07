@@ -257,7 +257,25 @@ pesan di layar login perlu mengatakannya, supaya pengunjung tidak menebak.
 
 **Menunggu izin Owner** (Constitution: *hapus lunak sebelum hapus permanen*).
 
-### M9 — Utang arsitektur: tiga salinan tangan tanpa penegak
+### M9 — ✅ SELESAI 8 Okt (penjaganya) — utang arsitektur: tiga salinan tangan tanpa penegak
+
+> **✅ PENJAGANYA DITUTUP 2026-10-08** — [log](../project-memory/changelog/2026-10-08-salinan-mametlite-bersuara.md)
+> · **penyatuannya tetap ⏳ usul ADR**, bukan pekerjaan tertunda.
+>
+> Aturannya **bukan** "harus identik" — itu diputuskan dari pengukuran: ketiganya sudah berbeda hari
+> ini, dan `pdfOcrService` menyimpang sungguhan (`hitungHalamanPdf` hanya di frontend). Diperiksa:
+> fungsi itu hanya dipakai `bacaPdfAsn.js`, jalur ASN **khusus Ecosystem** — jadi perbedaannya sah.
+> "Harus identik" akan merah sejak lahir, lalu dicabut dalam sepekan (perangkap yang sama dengan
+> J3b/J3c). Aturannya: **GAGAL** bila nama yang ada di kedua sisi isinya beda; **LAPOR** bila
+> sepihak.
+>
+> **Satu bug di uji ini sendiri ikut tercatat:** bentuk pertamanya melaporkan 8 ekspor menyimpang
+> pada berkas yang `diff` nyatakan hanya beda 4 baris header. Sebabnya salinan Mametlite CRLF dan
+> frontend LF, dan di JavaScript `.` tidak cocok dengan `\r`. Yang salah ujinya, bukan kodenya.
+>
+> 26 ekspor bersama diperiksa; dibuktikan menggigit lewat 2 mutasi. Suite 92/92.
+
+#### (uraian temuan, sebagaimana ditulis sebelum ditutup)
 
 `mametlite/src/lib/` memuat tiga berkas yang **menyatakan dirinya salinan**:
 
@@ -798,7 +816,7 @@ Gerbang izin Owner di antara fase. Tiap langkah satu commit sendiri.
 | ~~**M2**~~ | ✅ **SELESAI 8 Okt** — satu pintu riwayat + error boundary + simpan ditunda | ✅ 6 bagian uji; di peramban: nilai rusak → merender; tombol galat sisakan kunci pengguna; suite 89/89 | — |
 | ~~**M3**~~ | ✅ **SELESAI 8 Okt** — laci, `h-dvh`, label mode, 3 kendali sentuh | ✅ 375px: chat lebar penuh, laci buka-tutup · 1280px: tak berubah · 2 mutasi menggigit · suite 90/90 | — |
 | ~~**M4**~~ | ✅ **SELESAI 8 Okt** — penerjemah galat + gelembung kosong + konfirmasi hapus | ✅ 10+4 tanda diuji; di peramban dengan `fetch` disumbat (nol permintaan keluar); suite 91/91 | — |
-| **M9** | Uji penjaga tiga salinan | **sengaja dibuat gagal sekali** untuk membuktikan ia menggigit | — |
+| ~~**M9**~~ | ✅ **SELESAI 8 Okt** — penjaga tiga salinan (bukan "harus identik": GAGAL bila ekspor bersama beda, LAPOR bila sepihak) | ✅ 26 ekspor bersama diperiksa; 2 mutasi menggigit; suite 92/92 | — |
 | **J1** | 69 berkas uji pakai pola `uji-cari-judul.mjs:21-23` | **salin repo ke path lain → hasil sama** (mustahil lulus hari ini) | — |
 | **J2** | 5 uji ASN diberi penjaga `existsSync` → DILEWATI | jalankan di mesin tanpa `D:/REKONSIALISASI 2026` | — |
 | **J3b** | Patok flake `uji-alat-folder-jalan.cjs:100` — **prasyarat J3** | asersi dipisah tiga; suite penuh hijau berulang kali | — |
