@@ -5,6 +5,7 @@ import { callAgentSimple, parseSSEStream } from './lib/callAgentSimple';
 import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from './lib/documentTextExtractor';
 import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN, OCR_SERENTAK } from './lib/pdfOcrService';
 import { pisahLabel, warnaLabel, teksSalinan } from './lib/labelRamah';
+import TeksKaya from './lib/TeksKaya';
 
 // Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
 const POTONGAN_PERLU_KONFIRMASI = 150; // ±105 ribu huruf ≈ $0,006 (potongan 800 huruf, Item 70)
@@ -15,54 +16,11 @@ const POTONGAN_PERLU_KONFIRMASI = 150; // ±105 ribu huruf ≈ $0,006 (potongan 
 const KUNCI_OPENROUTER = 'x-byok-openrouter';
 const bacaKunci = () => (localStorage.getItem(KUNCI_OPENROUTER) || '').trim();
 
-// Custom lightweight Markdown parser to avoid React 19 crashes with react-markdown
-const parseMarkdown = (text) => {
-  if (!text) return { __html: '' };
-  
-  // Normalize HTML-escaped tags
-  let normalizedText = text
-    .replace(/(?:&lt;|<)think(?:&gt;|>)/gi, '<think>')
-    .replace(/(?:&lt;|<)\/think(?:&gt;|>)/gi, '</think>');
-  
-  // Handle case where text starts with "think " or "think\n" without angle brackets
-  if (normalizedText.trim().toLowerCase().startsWith('think ') || normalizedText.trim().toLowerCase().startsWith('think\n')) {
-    const idx = normalizedText.toLowerCase().indexOf('think');
-    normalizedText = normalizedText.slice(0, idx) + '<think>' + normalizedText.slice(idx + 5);
-  }
-  
-  // If think tag is opened but never closed, try to find a natural split point
-  if (normalizedText.includes('<think>') && !normalizedText.includes('</think>')) {
-    let splitIdx = normalizedText.indexOf('\n\n');
-    if (splitIdx === -1) {
-      const greetingMatch = normalizedText.match(/(?:\bhalo\b|\bhai\b|\bhi\b|selamat pagi|selamat siang|selamat sore|selamat malam|assalamualaikum)/i);
-      if (greetingMatch && greetingMatch.index > 10) {
-        splitIdx = greetingMatch.index;
-      }
-    }
-    
-    if (splitIdx !== -1) {
-      normalizedText = normalizedText.slice(0, splitIdx) + '</think>\n\n' + normalizedText.slice(splitIdx);
-    }
-  }
-  
-  let html = normalizedText
-    // Parse <think> tags first (even if unclosed during streaming)
-    .replace(/<think>([\s\S]*?)(?:<\/think>|$)/g, '<div class="text-xs text-slate-500 italic border-l-2 border-slate-700 pl-3 my-2 py-1">$1</div>')
-    // Escape remaining HTML to prevent XSS (but don't escape our injected divs)
-    .replace(/<(?!div|\/div|img|a|\/a|strong|\/strong|em|\/em|br\/?)([^>]+)>/g, '&lt;$1&gt;')
-    // Parse Images: ![alt](url)
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-xs rounded-lg mt-2 mb-2 shadow-sm" />')
-    // Parse Links: [text](url)
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-emerald-400 hover:underline">$1</a>')
-    // Parse Bold: **text**
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    // Parse Italic: *text*
-    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-    // Parse Newlines
-    .replace(/\n/g, '<br/>');
-    
-  return { __html: html };
-};
+// Teks model dirender oleh `lib/TeksKaya.jsx` sebagai elemen React — BUKAN string HTML yang
+// disuntikkan. Sampai 7 Okt 2026 berkas ini membangun HTML lalu memakai `dangerouslySetInnerHTML`,
+// dan pelolosannya memakai daftar putih tag yang alternatif `a`-nya hanya SATU HURUF, sehingga
+// `<audio src=x onerror=…>` lolos beserta atributnya. Alasan lengkap & penjaganya ada di berkas itu
+// dan di `uji/uji-uraian-markdown.mjs`.
 
 const CopyButton = ({ text }) => {
   const [copied, setCopied] = useState(false);
@@ -102,7 +60,7 @@ const JawabanBerlabel = ({ teks }) => {
           <div className="text-xs text-slate-400 mt-0.5 leading-snug">{label.penjelasan}</div>
         </div>
       )}
-      <div className="text-sm leading-relaxed" dangerouslySetInnerHTML={parseMarkdown(jawaban)} />
+      <TeksKaya teks={jawaban} className="text-sm leading-relaxed" />
       {catatan.map((c, i) => (
         <div key={i} className="mt-3 text-xs text-slate-500 italic border-l-2 border-slate-700 pl-3">{c}</div>
       ))}
@@ -689,7 +647,7 @@ function App() {
                 )}
                 {msg.role === 'assistant'
                   ? <JawabanBerlabel teks={msg.content} />
-                  : <div className="text-sm leading-relaxed" dangerouslySetInnerHTML={parseMarkdown(msg.content)} />}
+                  : <TeksKaya teks={msg.content} className="text-sm leading-relaxed" />}
               </div>
             </div>
           ))}

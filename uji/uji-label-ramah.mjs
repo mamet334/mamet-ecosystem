@@ -152,7 +152,17 @@ cek(/<JawabanBerlabel teks=\{msg\.content\} \/>/.test(APP), 'komponen dipakai me
 // Jawaban asisten TIDAK boleh lagi dirender langsung tanpa lewat pemisah label, sementara pesan
 // PENGGUNA tetap apa adanya — tidak ada label yang perlu dipisahkan dari kalimat yang ia ketik sendiri.
 // Sengaja tidak bergantung pada spasi indentasi: versi pertama uji ini merah hanya karena itu.
-cek(/msg\.role === 'assistant'\s*\?\s*<JawabanBerlabel teks=\{msg\.content\} \/>\s*:\s*<div[^>]*dangerouslySetInnerHTML=\{parseMarkdown\(msg\.content\)\}/.test(APP),
+// DIPERBAIKI 2026-10-07: bentuk lama memaku MEKANISME perenderannya —
+// `dangerouslySetInnerHTML={parseMarkdown(msg.content)}`. Saat penyuntikan HTML dihapus (lubang
+// XSS daftar putih, M1 `ROADMAP-SIAP-PENGGUNA.md`), asersi ini merah padahal sifat yang dijaganya
+// utuh. Itu menguji EJAAN, bukan sifatnya — pelajaran yang sama dengan `44d4f9d`.
+//
+// Yang diuji sekarang adalah sifatnya: cabang asisten lewat `JawabanBerlabel`, cabang pengguna
+// TIDAK — apa pun komponen yang dipakai merender teksnya.
+const cabangPesan = APP.match(
+  /msg\.role === 'assistant'\s*\?\s*(<JawabanBerlabel[^>]*\/>)\s*:\s*(<[A-Za-z][^>]*\/>)/,
+);
+cek(!!cabangPesan && !/JawabanBerlabel/.test(cabangPesan[2]),
   'hanya pesan asisten yang lewat JawabanBerlabel; pesan pengguna tetap apa adanya',
   (APP.match(/msg\.role === 'assistant'[\s\S]{0,260}/) || [])[0]);
 
@@ -162,8 +172,13 @@ const blok = APP.slice(iKomponen, iKomponen + 1400);
 cek(/\{label\.penjelasan\}/.test(blok), 'penjelasan label ikut dirender');
 cek(!/group-hover|title=/.test(blok),
   'penjelasan TIDAK disembunyikan di balik hover/tooltip — di layar sentuh itu tak pernah muncul', blok);
-cek(blok.indexOf('{label.judul}') < blok.indexOf('dangerouslySetInnerHTML'),
-  'label diletakkan DI ATAS jawaban — pembaca tahu cara membacanya sebelum terlanjur percaya');
+// Urutannya diukur terhadap tempat BADAN JAWABAN dirender, bukan terhadap nama mekanismenya.
+// `teks={jawaban}` adalah pemakaiannya di JSX — bukan `const { label, jawaban } = pisahLabel(...)`
+// di baris pertama komponen, yang akan selalu mendahului apa pun dan membuat asersinya hampa.
+const iBadanJawaban = blok.search(/teks=\{jawaban\}/);
+cek(iBadanJawaban > 0 && blok.indexOf('{label.judul}') < iBadanJawaban,
+  'label diletakkan DI ATAS jawaban — pembaca tahu cara membacanya sebelum terlanjur percaya',
+  { iJudul: blok.indexOf('{label.judul}'), iBadanJawaban });
 
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));
 process.exit(gagal === 0 ? 0 : 1);
