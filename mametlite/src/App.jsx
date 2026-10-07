@@ -6,7 +6,8 @@ import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from './lib/docume
 import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN, OCR_SERENTAK } from './lib/pdfOcrService';
 import { pisahLabel, warnaLabel, teksSalinan } from './lib/labelRamah';
 import TeksKaya from './lib/TeksKaya';
-import { bacaRiwayat, simpanRiwayat } from './lib/riwayatLokal';
+import { bacaRiwayat, simpanRiwayat, riwayatBaru } from './lib/riwayatLokal';
+import { pesanUntukPengguna, pesanGalatMasuk } from './lib/pesanGalat';
 
 // Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
 const POTONGAN_PERLU_KONFIRMASI = 150; // ±105 ribu huruf ≈ $0,006 (potongan 800 huruf, Item 70)
@@ -87,6 +88,7 @@ function App() {
   // Laci bilah sisi di layar kecil (M3). Tertutup saat dibuka — di `md` ke atas nilainya tidak
   // berpengaruh, karena bilah sisinya menetap di sana.
   const [laciTerbuka, setLaciTerbuka] = useState(false);
+  const [galatMasuk, setGalatMasuk] = useState(null);
   const [kunciTerpasang, setKunciTerpasang] = useState(() => bacaKunci().length > 0);
   const [isianKunci, setIsianKunci] = useState('');
 
@@ -153,11 +155,19 @@ function App() {
 
   const handleDeleteChat = (e, id) => {
     e.stopPropagation();
+    // M4: dulu tanpa konfirmasi sama sekali — satu salah-sentuh di HP menghapus percakapan untuk
+    // selamanya (riwayat hanya ada di peramban ini, tidak ada salinan di server). Hapus DOKUMEN
+    // sudah bertanya sejak dulu; hapus percakapan justru tidak, padahal sama tak bisa dibatalkan.
+    const judul = conversations.find(c => c.id === id)?.title || 'percakapan ini';
+    if (!window.confirm(`Hapus "${judul}"? Riwayat percakapan ini hanya tersimpan di perangkat ini dan tidak bisa dikembalikan.`)) return;
+
     const filtered = conversations.filter(c => c.id !== id);
     if (filtered.length === 0) {
-      const newId = Date.now();
-      setConversations([{ id: newId, title: 'Percakapan Baru', messages: [{ role: 'assistant', content: 'Halo! Saya **Mamet Lite**.' }] }]);
-      setCurrentConvId(newId);
+      // Satu sumber untuk percakapan awal — dulu sapaannya disalin ulang di sini dan sudah
+      // menyimpang dari yang asli (kalimatnya terpotong).
+      const awal = riwayatBaru();
+      setConversations(awal);
+      setCurrentConvId(awal[0].id);
     } else {
       setConversations(filtered);
       if (currentConvId === id) setCurrentConvId(filtered[0].id);
@@ -215,8 +225,12 @@ function App() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setAuthLoading(true);
+    setGalatMasuk(null);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) alert(error.message);
+    // M4: dulu `alert(error.message)` — kotak sistem berisi bahasa Inggris ("Invalid login
+    // credentials"). Kini di formulirnya sendiri, dalam bahasa Indonesia, di tempat mata pengguna
+    // sudah berada.
+    if (error) setGalatMasuk(pesanGalatMasuk(error));
     setAuthLoading(false);
   };
 
@@ -451,9 +465,12 @@ function App() {
         // Stream SSE
         await parseSSEStream(response, (chunk, fullContent) => {
           updateMessages(prev => {
-            const newArr = [...prev];
-            newArr[newArr.length - 1].content = fullContent;
-            return newArr;
+            // Objek pesannya DIGANTI, bukan diubah di tempat. Bentuk lama menyalin array
+            // (`[...prev]`) lalu menulis `newArr[len-1].content = …` — objeknya masih dibagi dengan
+            // state sebelumnya, jadi mutasinya menembus ke belakang. Tidak aman di `StrictMode`.
+            const arr = [...prev];
+            arr[arr.length - 1] = { ...arr[arr.length - 1], content: fullContent };
+            return arr;
           });
         });
       } else if (contentType.includes('application/json')) {
@@ -461,15 +478,31 @@ function App() {
         const data = await response.json();
         const textContent = data.content || data.text || data.message || JSON.stringify(data);
         updateMessages(prev => {
-          const newArr = [...prev];
-          newArr[newArr.length - 1].content = textContent;
-          return newArr;
+          const arr = [...prev];
+          arr[arr.length - 1] = { ...arr[arr.length - 1], content: textContent };
+          return arr;
         });
       } else {
         throw new Error('Unexpected response format');
       }
     } catch(err) {
-      updateMessages(prev => [...prev, { role: 'assistant', content: `❌ Error: ${err.message}` }]);
+      // M4 (2026-10-08): dulu `❌ Error: ${err.message}` — teks server APA ADANYA ke pegawai ASN di
+      // HP (`ENGINEER_NO_API_KEY`, `Failed to fetch`, `Server error: 500`). Kini diterjemahkan beserta
+      // TINDAKANNYA, dan teks teknisnya tetap ikut (kecil) karena pengguna HP tak punya DevTools.
+      const pesan = pesanUntukPengguna(err);
+      const isi = `⚠️ **${pesan.judul}**${pesan.saran ? ` ${pesan.saran}` : ''}\n\n*Pesan teknis: ${pesan.teknis}*`;
+      updateMessages(prev => {
+        const arr = [...prev];
+        const akhir = arr[arr.length - 1];
+        // Gelembung penampung yang masih KOSONG diganti, bukan ditinggalkan. Dulu arus yang gagal
+        // meninggalkan gelembung asisten kosong DAN gelembung galat — dua gelembung untuk satu
+        // kegagalan, yang membuatnya terbaca seperti jawaban yang hilang.
+        if (akhir && akhir.role === 'assistant' && !akhir.content) {
+          arr[arr.length - 1] = { ...akhir, content: isi };
+          return arr;
+        }
+        return [...arr, { role: 'assistant', content: isi }];
+      });
     } finally {
       setLoading(false);
     }
@@ -493,8 +526,15 @@ function App() {
               <label className="block text-sm font-medium text-slate-400 mb-1">Password</label>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)} required className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white focus:border-emerald-500 focus:outline-none" />
             </div>
-            <button type="submit" disabled={authLoading} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 mt-4 transition-all">
-              <Lock className="w-4 h-4" /> Masuk ke Sistem
+            {galatMasuk && (
+              <div role="alert" className="rounded-lg border border-red-700/60 bg-red-950/40 px-3 py-2">
+                <p className="text-sm text-red-200 leading-snug">{galatMasuk.judul}</p>
+                {galatMasuk.saran && <p className="mt-0.5 text-xs text-red-200/80 leading-snug">{galatMasuk.saran}</p>}
+                <p className="mt-1.5 text-[11px] text-red-200/50 break-words leading-snug">Pesan teknis: {galatMasuk.teknis}</p>
+              </div>
+            )}
+            <button type="submit" disabled={authLoading} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 mt-4 transition-all disabled:opacity-60">
+              {authLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />} Masuk ke Sistem
             </button>
           </form>
           <div className="mt-8 text-center text-xs text-slate-500">Created by <span className="font-semibold text-slate-400">mametdev@tm</span></div>
