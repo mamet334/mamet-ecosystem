@@ -134,7 +134,21 @@ cepat ke arah batas ±5 MB.
 Nol error boundary di seluruh `mametlite/` (`grep errorboundary|componentDidCatch|
 getDerivedStateFromError` → 0).
 
-### M3 — Tata letak di HP (ini Item 72, sasarannya sudah dikoreksi Owner 2 Okt)
+### M3 — ✅ SELESAI 8 Okt — tata letak di HP (Item 72)
+
+> **✅ DITUTUP 2026-10-08** — [log](../project-memory/changelog/2026-10-08-mametlite-dari-hp.md)
+>
+> Dikerjakan persis seperti catatan Owner 2 Okt: **satu berkas, tanpa dependency baru, tanpa
+> `DiscoveryManager`, tanpa empat shell.** Bilah sisi jadi laci di bawah `md` dan tetap menetap di
+> atasnya; hamburger + ✕ + lapisan gelap + menutup sendiri saat percakapan dipilih; `h-screen` →
+> `h-dvh`; label tiga mode hanya di `lg`; tiga kendali hover jadi terjangkau sentuhan.
+>
+> Terbukti di peramban **dua arah**: di 375px chat dapat lebar penuh (dulu ±55px) dan laci
+> buka-tutup; di 1280px bilah sisi `position: static` 320px dan hamburger tersembunyi — **tidak ada
+> yang berubah untuk Owner**. `uji/uji-tata-letak-hp.mjs` dibuktikan menggigit lewat 2 mutasi.
+> Suite 90/90.
+
+#### (uraian temuan, sebagaimana ditulis sebelum ditutup)
 
 | | Angka |
 |---|---|
@@ -763,7 +777,7 @@ Gerbang izin Owner di antara fase. Tiap langkah satu commit sendiri.
 |---|---|---|---|
 | ~~**M1**~~ | ✅ **SELESAI 7 Okt** — penyuntikan HTML dihapus (bukan ditambal) + CSP | ✅ `uji-uraian-markdown.mjs` 5 bagian; render sebenarnya; 2 mutasi menggigit; suite 88/88 | — |
 | ~~**M2**~~ | ✅ **SELESAI 8 Okt** — satu pintu riwayat + error boundary + simpan ditunda | ✅ 6 bagian uji; di peramban: nilai rusak → merender; tombol galat sisakan kunci pengguna; suite 89/89 | — |
-| **M3** | Drawer, `h-dvh`, kendali terjangkau sentuhan | tangkapan layar 375px sebelum/sesudah | — |
+| ~~**M3**~~ | ✅ **SELESAI 8 Okt** — laci, `h-dvh`, label mode, 3 kendali sentuh | ✅ 375px: chat lebar penuh, laci buka-tutup · 1280px: tak berubah · 2 mutasi menggigit · suite 90/90 | — |
 | **M4** | Pesan Indonesia + tindakan; konfirmasi hapus chat | matikan jaringan → bukan `Failed to fetch` | — |
 | **M9** | Uji penjaga tiga salinan | **sengaja dibuat gagal sekali** untuk membuktikan ia menggigit | — |
 | **J1** | 69 berkas uji pakai pola `uji-cari-judul.mjs:21-23` | **salin repo ke path lain → hasil sama** (mustahil lulus hari ini) | — |

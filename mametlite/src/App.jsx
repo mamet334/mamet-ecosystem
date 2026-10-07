@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Upload, Send, User, Bot, Loader2, LogOut, Globe, BookOpen, Lock, Plus, MessageSquare, Trash2, Copy, Check, Settings, KeyRound } from 'lucide-react';
+import { Search, Upload, Send, User, Bot, Loader2, LogOut, Globe, BookOpen, Lock, Plus, MessageSquare, Trash2, Copy, Check, Settings, KeyRound, Menu, X } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { callAgentSimple, parseSSEStream } from './lib/callAgentSimple';
 import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from './lib/documentTextExtractor';
@@ -84,6 +84,9 @@ function App() {
 
   // Pengaturan kunci: hanya panjang kunci yang disimpan di state layar, bukan isinya.
   const [panelPengaturan, setPanelPengaturan] = useState(false);
+  // Laci bilah sisi di layar kecil (M3). Tertutup saat dibuka — di `md` ke atas nilainya tidak
+  // berpengaruh, karena bilah sisinya menetap di sana.
+  const [laciTerbuka, setLaciTerbuka] = useState(false);
   const [kunciTerpasang, setKunciTerpasang] = useState(() => bacaKunci().length > 0);
   const [isianKunci, setIsianKunci] = useState('');
 
@@ -145,6 +148,7 @@ function App() {
     const newConv = { id: newId, title: 'Percakapan Baru', messages: [{ role: 'assistant', content: 'Halo! Saya **Mamet Lite**. Anda bisa mencari data di database internal (RAG), atau mengaktifkan fitur pencarian Web di bawah.' }] };
     setConversations(prev => [newConv, ...prev]);
     setCurrentConvId(newId);
+    setLaciTerbuka(false); // di HP lacinya menutupi chat; membuat percakapan berarti ingin MELIHATNYA
   };
 
   const handleDeleteChat = (e, id) => {
@@ -471,11 +475,11 @@ function App() {
     }
   };
 
-  if (authLoading) return <div className="h-screen bg-slate-900 flex items-center justify-center"><Loader2 className="w-8 h-8 text-emerald-500 animate-spin" /></div>;
+  if (authLoading) return <div className="h-dvh bg-slate-900 flex items-center justify-center"><Loader2 className="w-8 h-8 text-emerald-500 animate-spin" /></div>;
 
   if (!session) {
     return (
-      <div className="flex h-screen bg-slate-900 text-slate-200 items-center justify-center">
+      <div className="flex h-dvh bg-slate-900 text-slate-200 items-center justify-center">
         <div className="w-full max-w-md bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-xl">
           <div className="flex items-center justify-center gap-2 text-emerald-400 font-bold text-2xl mb-8">
             <Search className="w-8 h-8" /> Mamet Lite
@@ -500,21 +504,56 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen bg-slate-900 text-slate-200">
-      
-      {/* Sidebar */}
-      <div className="w-80 bg-slate-800 border-r border-slate-700 p-4 flex flex-col">
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-emerald-400 font-bold text-xl">
-            <Search className="w-6 h-6" /> Mamet Lite
+    <div className="flex h-dvh bg-slate-900 text-slate-200">
+
+      {/* TATA LETAK HP (M3, 2026-10-08) — Item 72, dan koreksi Owner 28 Sep yang menetapkan
+          ukurannya: "kerapian suatu aplikasi di berbagai perangkat agar tidak membingungkan
+          pengguna". Sampai 8 Okt 2026, NOL dari 102 `className` di berkas ini punya prefiks
+          responsif. Bilah sisi `w-80` (320px, tanpa syarat) menyisakan ±55px untuk chat di HP
+          375px, dan `min-w-0` di kolom chat membuatnya MENCIUT alih-alih menggulir — jadi chatnya
+          benar-benar jadi sliver, bukan sekadar sempit.
+
+          Yang dikerjakan: bilah sisi jadi laci di bawah ambang `md`, dan tetap menetap di atasnya.
+          Satu berkas, tanpa dependency baru, tanpa DiscoveryManager, tanpa empat shell — persis
+          seperti catatan Owner 2 Okt. */}
+
+      {/* Lapisan gelap hanya ada saat laci terbuka DAN layarnya kecil; di `md` ke atas laci memang
+          tidak pernah menutupi apa pun. */}
+      {laciTerbuka && (
+        <div
+          onClick={() => setLaciTerbuka(false)}
+          className="fixed inset-0 z-30 bg-slate-950/60 md:hidden"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar — laci di bawah `md`, menetap di atasnya */}
+      <div
+        className={`fixed inset-y-0 left-0 z-40 w-80 max-w-[85vw] transform transition-transform duration-200 md:static md:z-auto md:max-w-none md:translate-x-0 ${laciTerbuka ? 'translate-x-0' : '-translate-x-full'} bg-slate-800 border-r border-slate-700 p-4 flex flex-col`}
+      >
+        <div className="mb-6 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-emerald-400 font-bold text-xl min-w-0">
+            <Search className="w-6 h-6 shrink-0" /> <span className="truncate">Mamet Lite</span>
           </div>
-          <button
-            onClick={() => setPanelPengaturan((b) => !b)}
-            title="Pengaturan kunci OpenRouter"
-            className={`p-2 rounded-lg transition-colors ${kunciTerpasang ? 'text-slate-400 hover:text-emerald-400 hover:bg-slate-700' : 'text-amber-400 bg-amber-400/10 hover:bg-amber-400/20'}`}
-          >
-            <Settings className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={() => setPanelPengaturan((b) => !b)}
+              title="Pengaturan kunci OpenRouter"
+              aria-label="Pengaturan kunci OpenRouter"
+              className={`p-2 rounded-lg transition-colors ${kunciTerpasang ? 'text-slate-400 hover:text-emerald-400 hover:bg-slate-700' : 'text-amber-400 bg-amber-400/10 hover:bg-amber-400/20'}`}
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+            {/* Tutup laci — hanya di layar kecil. Di `md` ke atas bilah sisinya menetap dan tidak
+                pernah menutupi apa pun, jadi tombol tutup di sana hanya membingungkan. */}
+            <button
+              onClick={() => setLaciTerbuka(false)}
+              className="md:hidden p-2 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-700"
+              aria-label="Tutup daftar percakapan"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {!kunciTerpasang && !panelPengaturan && (
@@ -584,7 +623,7 @@ function App() {
                     <BookOpen className="w-3 h-3 text-indigo-400 shrink-0" />
                     <span className="truncate" title={formatWaktu(doc.created_at)}>{doc.title}</span>
                   </div>
-                  <button onClick={() => handleDeleteDocument(doc.id)} className="opacity-0 group-hover:opacity-100 hover:text-red-400 p-1 transition-opacity shrink-0">
+                  <button onClick={() => handleDeleteDocument(doc.id)} className="opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:text-red-400 p-1 transition-opacity shrink-0">
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
@@ -599,14 +638,14 @@ function App() {
             {conversations.map(conv => (
               <div 
                 key={conv.id} 
-                onClick={() => setCurrentConvId(conv.id)}
+                onClick={() => { setCurrentConvId(conv.id); setLaciTerbuka(false); }}
                 className={`group flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all ${currentConvId === conv.id ? 'bg-slate-700 text-emerald-400' : 'hover:bg-slate-700/50 text-slate-300'}`}
               >
                 <div className="flex items-center gap-3 overflow-hidden">
                   <MessageSquare className="w-4 h-4 shrink-0" />
                   <span className="text-sm truncate">{conv.title}</span>
                 </div>
-                <button onClick={(e) => handleDeleteChat(e, conv.id)} className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-opacity p-1">
+                <button onClick={(e) => handleDeleteChat(e, conv.id)} className="opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:text-red-400 transition-opacity p-1">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -631,23 +670,35 @@ function App() {
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col relative min-w-0">
         {/* Header */}
-        <div className="h-16 border-b border-slate-800 bg-slate-900/50 flex items-center px-6 justify-between shrink-0">
-          <div className="flex items-center gap-4">
-            <h2 className="font-semibold text-slate-300">Pusat Riset ASN</h2>
-            <button onClick={handleNewChat} className="flex items-center gap-1 text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 border border-slate-700 rounded-md transition-all">
-              <Plus className="w-3 h-3" /> Percakapan Baru
+        <div className="h-16 border-b border-slate-800 bg-slate-900/50 flex items-center px-3 md:px-6 justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-2 md:gap-4 min-w-0">
+            {/* Satu-satunya jalan masuk ke daftar percakapan di HP. Tanpa ini lacinya tidak bisa
+                dibuka sama sekali — jadi ia bukan hiasan. */}
+            <button
+              onClick={() => setLaciTerbuka(true)}
+              className="md:hidden p-2 -ml-1 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 shrink-0"
+              aria-label="Buka daftar percakapan"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <h2 className="font-semibold text-slate-300 truncate">Pusat Riset ASN</h2>
+            <button onClick={handleNewChat} className="flex items-center gap-1 text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 border border-slate-700 rounded-md transition-all shrink-0" aria-label="Percakapan Baru">
+              <Plus className="w-3 h-3 shrink-0" /> <span className="hidden sm:inline">Percakapan Baru</span>
             </button>
           </div>
-          
-          <div className="flex bg-slate-800 p-1 rounded-lg border border-slate-700">
-            <button onClick={() => toggleMode('rag')} className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeModes.rag ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
-              <BookOpen className="w-4 h-4" /> Database RAG
+
+          {/* Tiga tombol berlabel penuh ≈380px. Di kolom chat HP itu mustahil, dan dulu tidak ada
+              `flex-wrap` maupun `overflow-x-auto` yang menyelamatkannya. Labelnya karena itu muncul
+              hanya saat ada ruang; ikon + `aria-label` + `title` tetap menjelaskan fungsinya. */}
+          <div className="flex bg-slate-800 p-1 rounded-lg border border-slate-700 shrink-0">
+            <button onClick={() => toggleMode('rag')} title="Database RAG" aria-label="Database RAG" aria-pressed={activeModes.rag} className={`px-2 lg:px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeModes.rag ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
+              <BookOpen className="w-4 h-4 shrink-0" /> <span className="hidden lg:inline">Database RAG</span>
             </button>
-            <button onClick={() => toggleMode('websearch')} className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeModes.websearch ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
-              <Globe className="w-4 h-4" /> Web Search
+            <button onClick={() => toggleMode('websearch')} title="Web Search" aria-label="Web Search" aria-pressed={activeModes.websearch} className={`px-2 lg:px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeModes.websearch ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
+              <Globe className="w-4 h-4 shrink-0" /> <span className="hidden lg:inline">Web Search</span>
             </button>
-            <button onClick={() => toggleMode('research')} className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeModes.research ? 'bg-purple-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
-              <Search className="w-4 h-4" /> Deep Research
+            <button onClick={() => toggleMode('research')} title="Deep Research" aria-label="Deep Research" aria-pressed={activeModes.research} className={`px-2 lg:px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeModes.research ? 'bg-purple-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}>
+              <Search className="w-4 h-4 shrink-0" /> <span className="hidden lg:inline">Deep Research</span>
             </button>
           </div>
         </div>
@@ -669,7 +720,7 @@ function App() {
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6">
           {messages.map((msg, idx) => (
             <div key={idx} className={`flex gap-4 max-w-4xl mx-auto ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-indigo-500' : 'bg-emerald-600'}`}>
@@ -677,7 +728,7 @@ function App() {
               </div>
               <div className={`p-4 rounded-2xl max-w-[80%] overflow-x-auto relative group ${msg.role === 'user' ? 'bg-indigo-600/20 text-indigo-100 rounded-tr-none border border-indigo-500/30' : 'bg-slate-800 rounded-tl-none border border-slate-700'}`}>
                 {msg.role === 'assistant' && (
-                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 rounded border border-slate-600 shadow-sm z-10">
+                  <div className="absolute top-2 right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity bg-slate-800 rounded border border-slate-600 shadow-sm z-10">
                     <CopyButton text={msg.content} />
                   </div>
                 )}
