@@ -99,7 +99,24 @@ Terbatas pada `http:`/`https:`/`mailto:` untuk `href`/`src`.
 ter-escape. (Nama baru, bukan ubah nama lama — Vite tak memantau `node_modules`, dan patokan lama
 harus tetap bisa dibandingkan.)
 
-### M2 — Layar putih permanen dari satu nilai `localStorage`
+### M2 — ✅ SELESAI 8 Okt — layar putih permanen dari satu nilai `localStorage`
+
+> **✅ DITUTUP 2026-10-08** — [log](../project-memory/changelog/2026-10-08-mametlite-tidak-lagi-layar-putih.md)
+>
+> Bukan satu `try` yang ditambahkan. Akarnya tiga, dan ketiganya ditutup: `lib/riwayatLokal.js`
+> (satu pintu, **memeriksa bentuk** bukan hanya JSON — `'{}'` itu JSON sah yang tetap menjatuhkan
+> `.find()` beberapa baris kemudian), `lib/BatasGalat.jsx` (error boundary, jalan keluar yang
+> menghapus **hanya** riwayat — kunci OpenRouter pengguna tetap), dan penyimpanan yang ditunda
+> 500 ms + `pagehide` (dulu seluruh array ditulis tiap token SSE).
+>
+> "Tidak bisa dibaca" dibedakan dari "tidak ada" (aturan TMN-0006): rusak → pemberitahuan di layar;
+> **kosong → `masalah: null`**, karena kosong itu wajar.
+>
+> Dibuktikan `uji/uji-riwayat-lokal.mjs` (6 bagian) **dan di peramban**: nilai rusak → halaman
+> merender; galat render dipaksa → layar "Mamet Lite tersendat"; tombolnya menghapus riwayat dan
+> **menyisakan** `x-byok-openrouter`. Suite 89/89.
+
+#### (uraian temuan, sebagaimana ditulis sebelum ditutup)
 
 `App.jsx:134`, di dalam inisialisator `useState`:
 
@@ -745,7 +762,7 @@ Gerbang izin Owner di antara fase. Tiap langkah satu commit sendiri.
 | | Pekerjaan | Bukti penutupnya | Butuh Owner? |
 |---|---|---|---|
 | ~~**M1**~~ | ✅ **SELESAI 7 Okt** — penyuntikan HTML dihapus (bukan ditambal) + CSP | ✅ `uji-uraian-markdown.mjs` 5 bagian; render sebenarnya; 2 mutasi menggigit; suite 88/88 | — |
-| **M2** | `try` di `:134`/`:144`, error boundary, berhenti tulis per token | devtools sisipkan JSON rusak → hidup & bersuara | — |
+| ~~**M2**~~ | ✅ **SELESAI 8 Okt** — satu pintu riwayat + error boundary + simpan ditunda | ✅ 6 bagian uji; di peramban: nilai rusak → merender; tombol galat sisakan kunci pengguna; suite 89/89 | — |
 | **M3** | Drawer, `h-dvh`, kendali terjangkau sentuhan | tangkapan layar 375px sebelum/sesudah | — |
 | **M4** | Pesan Indonesia + tindakan; konfirmasi hapus chat | matikan jaringan → bukan `Failed to fetch` | — |
 | **M9** | Uji penjaga tiga salinan | **sengaja dibuat gagal sekali** untuk membuktikan ia menggigit | — |

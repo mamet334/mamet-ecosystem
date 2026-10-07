@@ -6,6 +6,7 @@ import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from './lib/docume
 import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN, OCR_SERENTAK } from './lib/pdfOcrService';
 import { pisahLabel, warnaLabel, teksSalinan } from './lib/labelRamah';
 import TeksKaya from './lib/TeksKaya';
+import { bacaRiwayat, simpanRiwayat } from './lib/riwayatLokal';
 
 // Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
 const POTONGAN_PERLU_KONFIRMASI = 150; // ±105 ribu huruf ≈ $0,006 (potongan 800 huruf, Item 70)
@@ -86,19 +87,38 @@ function App() {
   const [kunciTerpasang, setKunciTerpasang] = useState(() => bacaKunci().length > 0);
   const [isianKunci, setIsianKunci] = useState('');
 
-  // Chat History State
-  const [conversations, setConversations] = useState(() => {
-    const saved = localStorage.getItem('mametlite_conversations');
-    if (saved) return JSON.parse(saved);
-    return [{ id: 1, title: 'Percakapan Baru', messages: [{ role: 'assistant', content: 'Halo! Saya **Mamet Lite**. Anda bisa mencari data di database internal (RAG), atau mengaktifkan fitur pencarian Web di bawah.' }] }];
-  });
-  const [currentConvId, setCurrentConvId] = useState(() => conversations[0]?.id || 1);
+  // Riwayat chat — satu pintu di `lib/riwayatLokal.js` (M2, 2026-10-08).
+  //
+  // Dulu `JSON.parse(localStorage…)` dipanggil di sini TANPA `try`, di dalam inisialisator `useState`:
+  // satu nilai rusak = layar putih, dan karena nilai buruknya tetap tersimpan, layar putih itu kembali
+  // setiap muat ulang. Sekarang pembacaannya selalu memulangkan riwayat yang sah DAN menyebutkan
+  // masalahnya bila ada — "tidak bisa dibaca" tidak boleh terlihat sama dengan "tidak ada".
+  const [awalRiwayat] = useState(bacaRiwayat);
+  const [conversations, setConversations] = useState(awalRiwayat.riwayat);
+  const [masalahRiwayat, setMasalahRiwayat] = useState(awalRiwayat.masalah);
+  const [currentConvId, setCurrentConvId] = useState(() => awalRiwayat.riwayat[0]?.id || 1);
 
   const currentConversation = conversations.find(c => c.id === currentConvId) || conversations[0];
   const messages = currentConversation?.messages || [];
 
+  // Dulu SELURUH array percakapan ditulis ulang ke localStorage pada SETIAP token SSE (updateMessages
+  // dipanggil per potongan arus), jadi satu jawaban RAG panjang menulis ratusan kali dan mendekati
+  // batas ±5 MB dengan cepat. Sekarang penulisannya menunggu arusnya tenang 500 ms.
   useEffect(() => {
-    localStorage.setItem('mametlite_conversations', JSON.stringify(conversations));
+    const tunda = setTimeout(() => {
+      const { masalah } = simpanRiwayat(conversations);
+      if (masalah) setMasalahRiwayat(masalah);
+    }, 500);
+    return () => clearTimeout(tunda);
+  }, [conversations]);
+
+  // Penundaan di atas berarti arus yang terputus tepat sebelum halaman ditutup bisa hilang — jadi
+  // disimpan sekali lagi saat halaman ditinggalkan. `pagehide` dipakai, bukan `beforeunload`: di
+  // Safari iOS `beforeunload` sering tidak menyala sama sekali, dan penggunanya ada di HP.
+  useEffect(() => {
+    const simpanSekarang = () => simpanRiwayat(conversations);
+    window.addEventListener('pagehide', simpanSekarang);
+    return () => window.removeEventListener('pagehide', simpanSekarang);
   }, [conversations]);
 
   const updateMessages = (updater) => {
@@ -633,6 +653,22 @@ function App() {
         </div>
 
         {/* Chat Messages */}
+        {/* Riwayat gagal dibaca/disimpan → dikatakan, bukan didiamkan. Di jalur chat (bukan di bilah
+            sisi yang di HP belum terjangkau), dan bisa ditutup supaya tidak jadi peringatan permanen
+            — peringatan yang selalu menyala sama tak bergunanya dengan yang tak pernah menyala. */}
+        {masalahRiwayat && (
+          <div className="mx-6 mt-4 rounded-lg border border-amber-700/60 bg-amber-950/40 px-3 py-2 flex items-start gap-3">
+            <p className="text-xs text-amber-200/90 leading-snug flex-1">{masalahRiwayat}</p>
+            <button
+              onClick={() => setMasalahRiwayat(null)}
+              className="text-xs text-amber-200/70 hover:text-amber-100 shrink-0 px-1"
+              aria-label="Tutup pemberitahuan"
+            >
+              Tutup
+            </button>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {messages.map((msg, idx) => (
             <div key={idx} className={`flex gap-4 max-w-4xl mx-auto ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
