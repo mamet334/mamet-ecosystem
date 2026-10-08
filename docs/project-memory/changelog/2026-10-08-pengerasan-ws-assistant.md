@@ -267,5 +267,23 @@ Untuk J6: bobotnya tetap naik, tetapi kalimatnya dikoreksi — satu bump depende
 terkirim", melainkan **satu tombol dari terkirim**. Diperbaiki di item 96, §5b (tabel platform + dua
 catatan), tabel §7 (J6 + baris 4.2.15/4.2.16), dan memori `project-rilis-draf-manual`.
 
-**Belum teruji live** — bukti di atas dari Node, build, dan audit. Yang menunggu `.exe`: gelembung
-galat sesungguhnya di ws-assistant, dan satu PDF nyata dibuka di aplikasi terpasang.
+## ✅ TERBUKTI LIVE — 8 Okt, diuji Owner sendiri di 4.2.16 terpasang
+
+Owner menjalankan dua chat berurutan di **ws-assistant**, dengan versi **4.2.16** terlihat di sudut
+aplikasi:
+
+1. **Wi-Fi hidup** → *"hai"* → model menjawab normal (*"Halo Pak Slamet! 👋 …"*). Jalur yang benar
+   tidak ikut tertelan penerjemah — itu kendalinya, dan tanpa kendali ini bukti nomor 2 setengah.
+2. **Wi-Fi mati** → *"anda siap"* → gelembungnya berbunyi:
+
+   > ⚠️ Tidak bisa menghubungi server. Periksa koneksi internet Anda, lalu kirim ulang pertanyaannya.
+   > (teknis: JARINGAN · Failed to fetch)
+
+Ketiga aturan terlihat sekaligus dalam satu gelembung: **judul** tanpa istilah teknis, **tindakan**
+yang bisa dikerjakan pengguna, dan **teks teknis** yang tidak dibuang. Bentuk `JARINGAN · Failed to
+fetch` persis gabungan `{kode} · {teknis}` dari `pesanGalat.js` — jadi yang sampai ke layar memang
+lewat jalur baru, bukan kebetulan berbunyi mirip. Sebelum ini yang muncul di posisi itu adalah
+`⚠️ Error: Failed to fetch`.
+
+**Sisa yang belum diuji live:** jalur PDF (C10b) — satu PDF nyata, dan satu halaman tabel centang,
+dibuka di aplikasi terpasang (blok uji **G** di `INDEX-ROADMAP.md` §5b).
