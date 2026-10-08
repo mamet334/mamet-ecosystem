@@ -850,7 +850,7 @@ prompt-nya masih ±3.300 token.
 **Pengaruhnya ke dokumen ini:** tidak ada satu pun pembuktian di bawah yang menuntut model menjawab
 lewat jalur Engineer. Semuanya offline (`uji/`, `git grep`, SQL, devtools) atau lewat Mametlite yang
 memakai **kunci pengguna**, bukan saldo Owner. Satu-satunya yang terhalang adalah uji live rilis
-4.2.14 — dan itu **menunggu Owner, bukan menunggu pekerjaan**.
+4.2.15 — dan itu **menunggu Owner, bukan menunggu pekerjaan**.
 
 ---
 
@@ -887,7 +887,7 @@ Gerbang izin Owner di antara fase. Tiap langkah satu commit sendiri.
 | **E1** | `webSecurity:false` → akar pindah ke proses utama | — | ⏳ **ADR** |
 | **M9** | Penyatuan tiga salinan | — | ⏳ **ADR** |
 | **E2** | Saringan log renderer | — | ⏳ **arahan** |
-| **4.2.14** | build + Publish | tiga uji §5b | ⏳ **terhalang saldo** |
+| **4.2.15** | build + Publish | uji §5b (kini tujuh: A–E, ditambah F galat & G PDF) | ⏳ **menunggu Owner** |
 | **E6** | Dependency, **paling akhir** | CI dari J3 yang menilainya | — |
 
 ### Yang sengaja TIDAK masuk dokumen ini

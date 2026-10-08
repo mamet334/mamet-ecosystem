@@ -400,7 +400,7 @@ unduh desktop dari web.
 >
 > **Alur rilis tetap MANUAL** (item 96): electron-builder membuat draf, Owner yang menekan Publish.
 
-| Dibawa 4.2.14 | Apa | Sisi |
+| Dibawa 4.2.15 | Apa | Sisi |
 |---|---|---|
 | **Indeks konstitusi** | 33 berkas berhenti dibaca-lalu-dibuang tiap boot; indeksnya benar-benar sampai ke model (+577 token/pesan, item 124) | klien |
 | **Ingatan temuan berhenti diam** (TMN-0006) | "tidak bisa dibaca" tidak lagi disamakan dengan "tidak ada temuan"; peringatan masuk ke konteks model, di DEPAN daftar | renderer |
@@ -412,7 +412,7 @@ unduh desktop dari web.
 `preload.cjs` berubah, kanal `engineer:indeks-konstitusi` hanya ada di proses utama yang baru.
 Muat ulang jendela tidak cukup.
 
-**Uji 4.2.14:**
+**Uji 4.2.15:**
 
 **A. Indeks konstitusi — tiga langkah, dan yang ketiga yang paling mudah terlupakan:**
 
@@ -447,6 +447,26 @@ diam-diam.
 lalu lihat DevTools: harus muncul `[IngatanTemuan] BENTUK BERKAS MELENCENG`. **Kembalikan
 judulnya sesudah menguji** — atau jalankan `node uji/uji-komentar-tak-berbohong.mjs` untuk
 memastikan berkasnya kembali utuh.
+
+**F. Galat ws-assistant memakai bahasa Owner** (E8, 4.2.15). Dipilih uji yang **tidak menyentuh
+kunci API** — menghapus kunci untuk memancing `NO_API_KEY` berisiko kehilangan kunci yang sedang
+dipakai, dan jalur jaringan membuktikan hal yang sama.
+
+| | Yang dilakukan | Yang harus terbaca | Gagal bila |
+|---|---|---|---|
+| a | matikan Wi-Fi, kirim satu pesan di ws-assistant | *"Tidak bisa menghubungi server. Periksa koneksi internet Anda, lalu kirim ulang pertanyaannya."* + baris `(teknis: JARINGAN · Failed to fetch)` | gelembung memuat `⚠️ Error: Failed to fetch`, **atau** baris `(teknis: …)` hilang |
+| b | masih offline, buka panel **Riwayat konversi** | pesan panel ikut diterjemahkan, baris teknisnya **turun ke bawah** | teksnya `err.message` mentah, atau baris teknis menempel di belakang saran |
+
+> Kenapa baris teknis ikut diuji: ia yang dikutip saat melapor. Pesan ramah tanpa teks teknis
+> menukar satu kegagalan (tak terbaca) dengan kegagalan lain (tak bisa dilacak).
+
+**G. PDF tetap terbaca di pdfjs 6** (C10b, 4.2.15). Naik major, jadi yang diuji bukan "ada galat
+atau tidak" — melainkan dua hal yang bisa **salah tanpa galat**:
+
+| | Yang dilakukan | Gagal bila |
+|---|---|---|
+| a | unggah satu PDF nyata di ws-assistant | teks kosong, atau penanda kemajuan tampil `undefined/undefined` |
+| b | unggah satu halaman **tabel centang** (buku Kepbup) | blok `[TABEL CENTANG …]` hilang, atau centangnya pindah kolom — inilah kegagalan senyap yang ditakutkan C10b |
 
 ### Yang dibawa 4.2.13
 
@@ -864,7 +884,7 @@ sedangkan blok yang tak bisa dibuang sama sekali sudah ≈3.100 token. Lihat
 > benar-benar sampai ke model. Biayanya **+577 token per pesan** — lihat item 124; itu
 > **menambah**, bukan memangkas, dan Owner memutuskannya dengan sadar.
 >
-> **Belum terbukti live** — menunggu rilis 4.2.14.
+> **Belum terbukti live** — menunggu rilis 4.2.15.
 
 #### (riwayat temuan, sebagaimana ditulis sebelum ditutup)
 
@@ -913,7 +933,7 @@ mengambil sisanya sendiri lewat `git grep`. Yang tersisa adalah bagian konstitus
 > bukan memangkas. Yang ditukar: 43.942 token yang dibaca lalu dibuang tiap boot, dan Engineer
 > yang mengaku punya cakupan yang tak pernah ia punya.
 >
-> **Pengaruhnya BELUM terukur live** — ia menunggu rilis 4.2.14, bukan menunggu keputusan.
+> **Pengaruhnya BELUM terukur live** — ia menunggu rilis 4.2.15, bukan menunggu keputusan.
 
 ### Dua arahan Owner yang SENGAJA ditunda (1 Okt)
 
