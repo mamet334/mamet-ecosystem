@@ -905,7 +905,7 @@ Gerbang izin Owner di antara fase. Tiap langkah satu commit sendiri.
 | **J3** | Suite + CRLF + lint jadi gerbang CI sebelum `dist:publish` | **PR dengan satu uji sengaja merah → CI menolak** | — |
 | **J4** | Pindaian rahasia diperluas ke `.github/` | masukkan ulang kunci ke `build.yml` → CI menangkap | — |
 | **J5** | Kunci anon → `secrets` | `git grep` di `.github/` → nol JWT literal | — |
-| **J6** | Pemicu rilis berbasis isi, bukan path | ubah satu dependency → **tidak** memicu publish | — |
+| **J6** | Pemicu rilis berbasis isi, bukan path. **BOBOTNYA NAIK 8 Okt:** dulu dibaca sebagai kerapian CI; ternyata pemicu itu **langsung mengirim ke mesin yang menjalankan aplikasi**. Diukur tanpa login: feed atom memuat **draf** 4.2.15 di posisi teratas, `latest.yml` terbaca, `.exe` terunduh **HTTP 200, 189.543.735 byte** — dan 4.2.15 memang terpasang sendiri di mesin Owner saat rilisnya masih `isDraft: true`. Jadi premis item 96 (*"updater tak bisa melihat draf"*) **terbantah**: tombol Publish mengatur halaman rilis, **bukan** distribusi. Satu bump dependency yang menyentuh `frontend/package.json` = satu rilis terkirim | ubah satu dependency → **tidak** memicu publish | — |
 | **J8** | `Kernel.js:63`; `VITE_APP_VERSION` didefinisikan atau dicabut | `Kernel.js` = `app.getVersion()`; diagnostik tak lagi `"unknown"` | — |
 | **E5** | `backend/` masuk `DIR`; prosa diselaraskan | `jalankan-semua.mjs` hijau, nol asersi dilemahkan | — |
 | **E3** | 3 berkas yatim; **nama** berkas di 3 dokumen diperbarui, keputusan ADR-0019 **tidak** disentuh | `git grep` pola impor → nol, **di pesan commit** | ✅ izin hapus |
@@ -921,7 +921,7 @@ Gerbang izin Owner di antara fase. Tiap langkah satu commit sendiri.
 | **E1** | `webSecurity:false` → akar pindah ke proses utama | — | ⏳ **ADR** |
 | **M9** | Penyatuan tiga salinan | — | ⏳ **ADR** |
 | **E2** | Saringan log renderer | — | ⏳ **arahan** |
-| **4.2.15** | Publish draf (build ✅ 8 Okt, aset `Mamet-AI-Setup-4.2.15.exe` sudah ada; 4.2.14 sendiri **sudah terbit** 6 Okt) | uji §5b (kini tujuh: A–E, ditambah F galat & G PDF) | ⏳ **menunggu Owner** |
+| **4.2.15** | ✅ **SUDAH TERKIRIM & TERPASANG** 8 Okt (draf tidak menahan distribusi — lihat J6). Sisanya hanya menekan Publish untuk halaman rilisnya | uji §5b A–G — **terhalang ACL, lihat E9** | ⏳ **halaman rilis + `icacls`** |
 | **E6** | Dependency, **paling akhir** | CI dari J3 yang menilainya | — |
 
 ### Yang sengaja TIDAK masuk dokumen ini

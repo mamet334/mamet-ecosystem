@@ -229,5 +229,33 @@ memicu publish"*). Push ini akan memicu satu build; **Publish tetap manual** (it
 tak bisa diperiksa saat ini (`api.github.com` TLS timeout), dan naik versi membuat itu tak perlu
 dijawab: draf 4.2.15 baru, tanpa menimpa apa pun.
 
+### Koreksi kedua, beberapa jam kemudian — "Publish tetap manual" menyesatkan
+
+Owner mengoreksi: *"kan aplikasi mamet ecosystem update otomatis dari github action, dan akan
+diterapkan di rilis terbaru."* **Ia benar, dan dua kalimat saya di atas salah arah.**
+
+Diukur tanpa login, persis seperti yang dilihat aplikasi:
+
+| Yang diuji | Hasil |
+|---|---|
+| `releases.atom` publik | memuat **`4.2.15`** di posisi teratas — padahal ia DRAF |
+| `releases/download/v4.2.15/latest.yml` | 302 → `version: 4.2.15`, sha512, size |
+| `releases/download/v4.2.15/Mamet-AI-Setup-4.2.15.exe` | 302 → **HTTP 200, 189.543.735 byte** (sama dengan ukuran di latest.yml) |
+
+Dan buktinya di lapangan: **4.2.15 terpasang sendiri** di mesin Owner padahal rilisnya masih
+`isDraft: true` — itulah versi yang jendelanya putih dan diselidiki di
+[log E9](./2026-10-08-jendela-putih-renderer-bisu.md). Pembarunya bahkan terlihat bekerja di log
+Chromium **pada jalan yang jendelanya putih**, karena ia hidup di proses utama, bukan di renderer
+yang mati.
+
+Jadi premis item 96 (*"electron-updater tidak bisa melihat draf"*) **terbantah**. Keputusan Owner
+"tetap manual" tidak berubah — yang berubah adalah **arti tombolnya**: Publish mengatur **halaman
+rilis**, bukan distribusi. Yang benar-benar mengirim ke mesin adalah **kenaikan versi di
+`frontend/package.json`**, satu-satunya pemicu `build.yml`.
+
+Akibatnya untuk J6: bobotnya naik dari kerapian CI menjadi **jalur pengiriman**. Satu bump
+dependency yang menyentuh berkas itu = satu rilis yang sampai ke aplikasi yang berjalan. Diperbaiki
+di item 96, §5b, tabel §7 (J6 + baris 4.2.15), dan memori `project-rilis-draf-manual`.
+
 **Belum teruji live** — bukti di atas dari Node, build, dan audit. Yang menunggu `.exe`: gelembung
 galat sesungguhnya di ws-assistant, dan satu PDF nyata dibuka di aplikasi terpasang.

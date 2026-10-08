@@ -206,7 +206,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 99. ✅ Cari Dokumen Lewat Judulnya — 221 Kepbup Tak Terjangkau Nomornya (2026-10-01) — [log](../project-memory/changelog/2026-10-01-cari-lewat-judul.md) · diukur sendiri: kata "kepbup" muncul di **0 dari 3.629 potongan** dan **221 dari 221** dokumen tak memuat nomornya sendiri — menemukannya lewat nomor MUSTAHIL, bukan sulit. RRF tak bisa menolong karena ambang kemiripan VEKTOR membuangnya lebih dulu. Jalur judul TERPISAH; `match_documents_hybrid` tidak disentuh agar patokan 14/14 tetap sebanding. **TERBUKTI LIVE 1 Okt** — pertanyaan yang sama di dua chat: aturan lama tak menyala, aturan baru menyisipkan 3 potongan dari dokumen yang benar; jawaban VERIFIED. Syarat "semua kata" gagal pada pertanyaan nyata ("apa **isi** Kepbup 204") → diganti "minimal dua kata". **Batas yang ikut ketahuan:** `document_chunks` tak punya kolom urutan (id = uuid), jadi 3 potongan yang disisipkan acak, bukan tiga pertama — jawaban untuk "apa isi dokumen X" selalu sebagian, dan model menyebutnya sendiri
 98. ✅ Unduh Aplikasi Desktop dari Web (2026-09-29) — [log](../project-memory/changelog/2026-09-29-unduh-desktop-dari-web.md) · tautan di layar masuk (tanpa perlu login) & Pengaturan; repo rilis publik, alamat unduh diperiksa 200 tanpa autentikasi; `latest.yml`/`.blockmap` tak pernah diberikan ke manusia; API gagal → jatuh ke halaman releases/latest. **Belum diuji live**
 97. ✅ Panel Pembaruan di Pengaturan (2026-09-29) — [log](../project-memory/changelog/2026-09-29-panel-pembaruan-pengaturan.md) · jembatan preload (checkForUpdates/getAppVersion/onUpdateStatus) ada sejak lama tetapi **nol pemakai** di frontend/src; ikut ketahuan: `update-downloaded` & `error` tak pernah dikirim ke layar, jadi panel akan berhenti di "Mengunduh 100%" selamanya dan kegagalan tak terlihat. **Terbukti live di 4.2.1** — isinya benar; ikut ketahuan ikon `system_update` tampil sebagai tulisan "TEM_UPDATE" (kelas cacat ke-3) → diganti `refresh` + penjaga menyeluruh `uji-ikon-subset.mjs`. **Perbaikan ikon MENUNGGU rilis berikutnya** (keputusan Owner 29 Sep: digabung saja dengan perbaikan lain, jangan naikkan versi khusus untuk ini)
-96. ✅ Versi 4.2.0 & Alur Rilis Manual (2026-09-29) — [log](../project-memory/changelog/2026-09-29-versi-4-2-0.md) · pembaruan otomatis tak pernah menyala bukan karena versi, melainkan karena electron-builder membuat rilis sebagai **draf** secara bawaan dan updater tak bisa melihat draf. **Keputusan Owner: tetap manual** — Owner sendiri yang menekan Publish; jangan usulkan `releaseType: "release"` sebagai "perbaikan"
+96. ✅ Versi 4.2.0 & Alur Rilis Manual (2026-09-29) — [log](../project-memory/changelog/2026-09-29-versi-4-2-0.md) · electron-builder membuat rilis sebagai **draf** secara bawaan. **Keputusan Owner: tetap manual** — Owner sendiri yang menekan Publish; jangan usulkan `releaseType: "release"` sebagai "perbaikan". ⚠️ **PREMISNYA TERBANTAH 8 Okt:** baris ini dulu menyatakan *"updater tak bisa melihat draf"* — diukur tanpa login, feed atom memuat draf 4.2.15 di posisi teratas, `latest.yml`-nya terbaca, dan `.exe`-nya terunduh **HTTP 200, 189.543.735 byte**; 4.2.15 memang terpasang sendiri di mesin Owner saat rilisnya masih `isDraft: true`. Keputusan "tetap manual" **tidak berubah**, tetapi artinya berubah: tombol Publish mengatur **halaman rilis**, bukan distribusi — yang mengirim ke mesin adalah kenaikan versi di `frontend/package.json` (lihat **J6**)
 95. ✅ Label Verifikasi Mametlite dalam Bahasa Penggunanya (2026-09-29) — [log](../project-memory/changelog/2026-09-29-label-ramah-mametlite.md) · `mametlite/src` sebelumnya tak punya kode label sama sekali. **Kotak label terbukti live 29 Sep** ("Dari dokumen"); uji live sekaligus menemukan tombol Salin masih menyalin `[STATUS: …]` mentah — ditutup dengan `teksSalinan()`, peringatan ikut pindah ke dokumen. **Salinannya belum diuji live**
 
 ---
@@ -245,7 +245,7 @@ GitHub 8 Okt** — bukan disimpulkan dari dokumen ini:
 | Rilis | Keadaan | Aset |
 |---|---|---|
 | **v4.2.14** | **TERBIT** 2026-10-06 22:36 UTC (`isDraft: false`) | `Mamet-AI-Setup-4.2.14.exe` |
-| **v4.2.15** | **DRAF** (`isDraft: true`, `publishedAt: null`) — menunggu Owner menekan Publish | `Mamet-AI-Setup-4.2.15.exe` |
+| **v4.2.15** | **DRAF** (`isDraft: true`, `publishedAt: null`) — **tetapi SUDAH terkirim**: ia terpasang sendiri di mesin Owner. Draf bukan rem distribusi (lihat item 96) | `Mamet-AI-Setup-4.2.15.exe` |
 
 > ⚠️ **KOREKSI 8 Okt, dan pelajarannya sama dengan T11.** Bagian ini sebelumnya berbunyi *"Tiga
 > muatan menunggu build"* untuk 4.2.14 — dan itu **sudah basi sejak 6 Okt 22:36**: rilisnya dibangun
@@ -264,7 +264,9 @@ GitHub 8 Okt** — bukan disimpulkan dari dokumen ini:
 >
 > **`main.cjs` berubah**, jadi `npm run desktop` harus **dijalankan ulang**; muat ulang jendela
 > tidak cukup.
-Alur rilis manual — Actions membuat draf, Owner yang menekan Publish (item 96).
+Actions membuat draf, Owner yang menekan Publish (item 96) — tetapi **draf sudah terkirim sendiri**
+ke aplikasi terpasang; yang menahan sesuatu sampai ke mesin adalah **belum ada build**, bukan tombol
+Publish.
 
 ### Sudah TERBUKTI LIVE
 
@@ -404,13 +406,16 @@ Empat uji tertunda lain bisa ikut dalam sesi pasang yang sama: tombol Berhenti, 
 (tanya hal pendek-faktual di Engineer), cacat Tahap 6 ke-1 & ke-2 (patch yang sengaja merusak), dan
 unduh desktop dari web.
 
-### Yang dibawa 4.2.14 (TERBIT 6 Okt) dan draf 4.2.15 (menunggu Publish Owner)
+### Yang dibawa 4.2.14 (TERBIT 6 Okt) dan 4.2.15 (draf, tetapi SUDAH terpasang di mesin Owner)
 
 > ⚠️ **JANGAN dicampur dengan 4.2.13.** Commit rilis 4.2.13 (`ab0fe38`) berada DI BAWAH commit
 > item 124 di riwayat git, jadi **4.2.13 yang terpasang di mesin Owner TIDAK memuat** satu pun
 > dari ketiga muatan di bawah. Blok uji ini sempat salah ditaruh di bagian 4.2.13 — dipindah 5 Okt.
 >
-> **Alur rilis tetap MANUAL** (item 96): electron-builder membuat draf, Owner yang menekan Publish.
+> **Alur rilis tetap MANUAL** (item 96) dalam arti Owner-lah yang menekan Publish — **tetapi itu
+> bukan rem distribusi**: draf sudah ditarik sendiri oleh aplikasi terpasang (diukur 8 Okt; 4.2.15
+> terpasang saat rilisnya masih draf). Yang benar-benar mengirim adalah **kenaikan versi di
+> `frontend/package.json`**, satu-satunya pemicu `build.yml`.
 
 | Muatan | Apa | Sisi |
 |---|---|---|

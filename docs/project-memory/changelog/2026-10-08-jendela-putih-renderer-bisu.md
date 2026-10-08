@@ -124,3 +124,11 @@ untuk kematian sesaat; batas 3 ada supaya kerusakan nyata tidak diputar tanpa he
 **Tidak memicu rilis:** `build.yml` memicu build dari perubahan path `frontend/package.json`;
 perubahan ini hanya `frontend/electron/main.cjs` + `uji/`. Jadi muatan ini **belum ada di .exe mana
 pun** — ia baru sampai ke Owner pada rilis berikutnya.
+
+> **Catatan pengiriman (dikoreksi Owner, 8 Okt):** yang menahan muatan ini **bukan** tombol Publish.
+> Draf terbukti terkirim sendiri ke aplikasi terpasang (diukur: feed atom, `latest.yml`, dan `.exe`
+> draf semuanya terbaca tanpa login — rinciannya di
+> [log E8+C10b](./2026-10-08-pengerasan-ws-assistant.md), "Koreksi kedua"). Yang menahan adalah
+> **belum ada build**: `frontend/package.json` belum berubah. Begitu versinya dinaikkan, Action
+> membangun draf dan aplikasi menariknya sendiri — termasuk saat jendelanya putih, karena pembaru
+> hidup di proses utama, bukan di renderer yang mati.
