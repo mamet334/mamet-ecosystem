@@ -122,13 +122,70 @@ untuk kematian sesaat; batas 3 ada supaya kerusakan nyata tidak diputar tanpa he
 - Suite penuh **95/95**, nol dilewati.
 
 **Tidak memicu rilis:** `build.yml` memicu build dari perubahan path `frontend/package.json`;
-perubahan ini hanya `frontend/electron/main.cjs` + `uji/`. Jadi muatan ini **belum ada di .exe mana
-pun** — ia baru sampai ke Owner pada rilis berikutnya.
+perubahan ini hanya `frontend/electron/main.cjs` + `uji/`. Jadi saat ditulis, muatan ini **belum ada
+di .exe mana pun**. *(Beberapa jam kemudian ia dikirim lewat 4.2.16 dan terbukti live — lihat §6.)*
 
 > **Catatan pengiriman (8 Okt, sesudah dua koreksi):** muatan ini dikirim lewat **4.2.16** — versi
-> dinaikkan atas perintah Owner, build ✅, dan rilisnya **masih draf**. Dua hal menahan sesuatu
-> sampai ke mesin: belum ada build, **dan** rilisnya belum diterbitkan. Saya sempat menulis bahwa
-> yang kedua bukan penahan; klaim itu **dicabut** — pengukurannya diambil sesudah 4.2.15 terbit
-> (rinciannya di [log E8+C10b](./2026-10-08-pengerasan-ws-assistant.md), "Koreksi kedua … dan
-> KETIGA"). Yang terbukti: sesudah Publish, aplikasi menarik sendiri dalam hitungan menit —
-> termasuk saat jendelanya putih, karena pembaru hidup di proses utama, bukan di renderer yang mati.
+> dinaikkan atas perintah Owner. Dua hal menahan sesuatu sampai ke mesin: belum ada build, **dan**
+> rilisnya belum diterbitkan. Saya sempat menulis bahwa yang kedua bukan penahan; klaim itu
+> **dicabut** — pengukurannya diambil sesudah 4.2.15 terbit (rinciannya di
+> [log E8+C10b](./2026-10-08-pengerasan-ws-assistant.md), "Koreksi kedua … dan KETIGA"). Yang
+> terbukti: sesudah Publish, aplikasi menarik sendiri dalam hitungan menit — termasuk saat jendelanya
+> putih, karena pembaru hidup di proses utama, bukan di renderer yang mati.
+
+---
+
+## 6. Penutupan ujung ke ujung — sore 8 Okt
+
+### Sebabnya dicabut: `icacls` dijalankan atas izin Owner
+
+Owner menjawab *"jalankan"*, dengan cakupan yang saya usulkan: **folder Mamet AI saja**, bukan
+`%LOCALAPPDATA%\Programs`.
+
+```
+icacls "…\Programs\Mamet AI" /grant "*S-1-5-32-545:(OI)(CI)(RX)" "*S-1-15-2-1:(OI)(CI)(RX)" /T /C
+→ Successfully processed 160 files; Failed processing 0 files
+```
+
+| | ACL folder instalasi |
+|---|---|
+| **sebelum** | `CodexSandboxUsers` (RX) · SID AppContainer Codex (F) · SYSTEM · Administrators · HP — **semuanya `IsInherited: True`** |
+| **sesudah** | **+ `BUILTIN\Users` (RX)** dan **+ `ALL APPLICATION PACKAGES` (RX)**, keduanya `IsInherited: False` |
+
+ACE barunya **eksplisit, bukan warisan** — itu disengaja: ia menempel pada folder Mamet saja,
+pengerasan Codex di folder induk tidak disentuh, dan mencabutnya kembali cukup satu perintah.
+
+### Bukti aplikasinya hidup
+
+Aplikasi **terpasang** dijalankan sesudah itu:
+
+```
+232 baris renderer · MAEF Kernel Bootstrap Complete — SYSTEM READY · Mounting UI
+FATAL: 14 → 14   (nol tambahan)
+```
+
+Bandingkan dengan sebelum perbaikan: **nol** baris renderer dan satu `[FATAL]` tiap kali dijalankan,
+enam kali berturut-turut.
+
+### Dan E9 sendiri terbukti LIVE di jalan yang sama
+
+Log jalan itu memuat baris dari penangan yang baru dipasang:
+
+```
+[RENDERER MATI] alasan=crashed exitCode=143 (0x8F)
+```
+
+(143 = SIGTERM, dari `timeout` uji saya — bukan kerusakan.) Diperiksa: versi di dalam `app.asar`
+terpasang **4.2.16**, dan rilisnya `published_at = 2026-10-08T15:38:13Z` — Owner menekan Publish
+sendiri, aplikasi menariknya **2 menit** kemudian (cache pembaru: installer 189.544.694 byte, persis
+ukuran aset rilisnya).
+
+Jadi tujuan E9 tercapai bukan di atas kertas: **kalau renderer mati lagi, Owner mendapat sebabnya
+dalam satu baris**, bukan dua belas langkah penyelidikan.
+
+### Yang tetap terbuka
+
+Pengerasan itu milik sandbox Codex. **Bila alat itu memasang ulang aturannya, ACE ini bisa tercabut
+dan layar putih kembali.** Obat yang tahan lama bukan mengulang `icacls`, melainkan mengecualikan
+folder tersebut di sandbox Codex-nya. Dicatat juga di `INDEX-ROADMAP.md` §5b dan di memori
+`project-acl-programs-sandbox-codex`.
