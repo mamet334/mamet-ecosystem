@@ -195,9 +195,32 @@ pengimpor, dengan uji sebelum-sesudah** — bukan karena batas "dependency palin
 
 ## Versi & rilis
 
-`frontend/package.json` **4.2.14 → 4.2.15**. 4.2.14 belum pernah dibangun (menunggu Owner), jadi
-4.2.15 membawa **semuanya**: tiga muatan 4.2.14 (indeks konstitusi, ingatan temuan berhenti diam,
-cangkang Electron) **plus** dua hari ini.
+`frontend/package.json` **4.2.14 → 4.2.15**.
+
+### Koreksi, dan ini kegagalan metode saya sendiri — pelajaran T11 lagi
+
+Saat memutuskan naik versi, saya menulis *"4.2.14 belum pernah dibangun"*. **Salah.** Diperiksa
+sesudahnya lewat API GitHub:
+
+| Rilis | `isDraft` | Terbit |
+|---|---|---|
+| **v4.2.14** | `false` | **2026-10-06 22:36 UTC**, dengan `Mamet-AI-Setup-4.2.14.exe` |
+| **v4.2.15** | `true` | `null` — draf, menunggu Owner menekan Publish |
+
+Sumber kesalahannya: `INDEX-ROADMAP.md` §5b berbunyi *"Tiga muatan menunggu build"*, dan saya
+memercayainya tanpa memeriksa platform. Klaim itu sendiri sudah basi sejak 6 Okt 22:36 — **dua hari
+sebelum saya membacanya**. Persis bentuk T11: *"dihapus dari repo"* dan *"dihapus dari platform"*
+adalah dua klaim berbeda, dan di sini *"versi dinaikkan di `package.json`"* dan *"rilisnya terbit"*
+juga dua klaim berbeda. Hanya yang pertama bisa dibuktikan dari repo.
+
+**Akibatnya kecil, dan itu kebetulan, bukan karena hati-hati:** naik versi tetap keputusan yang
+benar — justru *lebih* benar, karena 4.2.14 sudah terbit dan menimpanya akan mengubah rilis yang
+sudah dipegang orang. Kalau arah salahnya kebalikannya (mengira sudah terbit padahal draf), saya
+bisa menimpa draf Owner tanpa menyadarinya.
+
+§5b sudah dikoreksi beserta sebab basinya. Yang menunggu sekarang: **draf 4.2.15**. Catatan Owner
+menyebut mesinnya menjalankan 4.2.13 — bila masih benar, muatan 4.2.14 pun belum ia lihat meski
+rilisnya terbit. **Terbit ≠ terpasang.**
 
 **Peringatan, dan ini J6 yang terbukti:** `build.yml:7-8` memicu build+publish dari **perubahan path
 `frontend/package.json`**, bukan dari perubahan versi. Bump `pdfjs-dist` saja sudah cukup

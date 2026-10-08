@@ -887,7 +887,7 @@ Gerbang izin Owner di antara fase. Tiap langkah satu commit sendiri.
 | **E1** | `webSecurity:false` → akar pindah ke proses utama | — | ⏳ **ADR** |
 | **M9** | Penyatuan tiga salinan | — | ⏳ **ADR** |
 | **E2** | Saringan log renderer | — | ⏳ **arahan** |
-| **4.2.15** | build + Publish | uji §5b (kini tujuh: A–E, ditambah F galat & G PDF) | ⏳ **menunggu Owner** |
+| **4.2.15** | Publish draf (build ✅ 8 Okt, aset `Mamet-AI-Setup-4.2.15.exe` sudah ada; 4.2.14 sendiri **sudah terbit** 6 Okt) | uji §5b (kini tujuh: A–E, ditambah F galat & G PDF) | ⏳ **menunggu Owner** |
 | **E6** | Dependency, **paling akhir** | CI dari J3 yang menilainya | — |
 
 ### Yang sengaja TIDAK masuk dokumen ini

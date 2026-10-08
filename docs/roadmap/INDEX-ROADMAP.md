@@ -239,13 +239,25 @@ sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
 
 ## 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-10-01)
 
-Versi di `package.json`: **4.2.15** (dinaikkan 8 Okt; 4.2.14 dinaikkan 6 Okt dan **belum pernah
-dibangun**, jadi 4.2.15 membawa muatan keduanya). Terpasang di mesin Owner: **4.2.13**.
+Versi di `package.json`: **4.2.15** (dinaikkan 8 Okt). Keadaan di platform, **diperiksa lewat API
+GitHub 8 Okt** — bukan disimpulkan dari dokumen ini:
 
-> ⚠️ **Lima muatan menunggu build.** Dari 4.2.14: indeks konstitusi (item 124), ingatan temuan
-> yang berhenti diam (TMN-0006), dan pengerasan cangkang Electron (TMN-0009). Dari 4.2.15: galat
-> ws-assistant yang diterjemahkan (E8) dan pdfjs 6 (C10b) — **tak satu pun ada di 4.2.13 yang
-> sedang berjalan**. Jangan menilai kelimanya dari aplikasi yang terpasang sekarang.
+| Rilis | Keadaan | Aset |
+|---|---|---|
+| **v4.2.14** | **TERBIT** 2026-10-06 22:36 UTC (`isDraft: false`) | `Mamet-AI-Setup-4.2.14.exe` |
+| **v4.2.15** | **DRAF** (`isDraft: true`, `publishedAt: null`) — menunggu Owner menekan Publish | `Mamet-AI-Setup-4.2.15.exe` |
+
+> ⚠️ **KOREKSI 8 Okt, dan pelajarannya sama dengan T11.** Bagian ini sebelumnya berbunyi *"Tiga
+> muatan menunggu build"* untuk 4.2.14 — dan itu **sudah basi sejak 6 Okt 22:36**: rilisnya dibangun
+> dan **diterbitkan** hari itu. Klaimnya bertahan karena tak ada yang memeriksa **platformnya**;
+> ia hanya dibaca dari dokumen. "Versi dinaikkan di `package.json`" dan "rilisnya terbit" adalah dua
+> klaim berbeda, dan hanya yang pertama bisa dibuktikan dari repo.
+>
+> **Yang betul-betul menunggu sekarang:** draf **4.2.15** (galat ws-assistant E8 + pdfjs 6 C10b).
+>
+> **Terbit ≠ terpasang.** Catatan Owner menyebut mesinnya menjalankan **4.2.13**; bila itu masih
+> benar, ketiga muatan 4.2.14 pun belum ia lihat meski rilisnya sudah terbit. Jangan menilai muatan
+> mana pun dari aplikasi yang sedang berjalan sebelum versinya diperiksa di layar Tentang/diagnostik.
 >
 > Item **123** juga masuk sesudah rilis 4.2.13, tetapi ia murni edge function dan **sudah
 > ter-deploy** — ia tidak menunggu rilis klien.
@@ -392,7 +404,7 @@ Empat uji tertunda lain bisa ikut dalam sesi pasang yang sama: tombol Berhenti, 
 (tanya hal pendek-faktual di Engineer), cacat Tahap 6 ke-1 & ke-2 (patch yang sengaja merusak), dan
 unduh desktop dari web.
 
-### Yang dibawa 4.2.15 — versi dinaikkan 6 Okt (4.2.14) lalu 8 Okt (4.2.15), menunggu build & Publish Owner
+### Yang dibawa 4.2.14 (TERBIT 6 Okt) dan draf 4.2.15 (menunggu Publish Owner)
 
 > ⚠️ **JANGAN dicampur dengan 4.2.13.** Commit rilis 4.2.13 (`ab0fe38`) berada DI BAWAH commit
 > item 124 di riwayat git, jadi **4.2.13 yang terpasang di mesin Owner TIDAK memuat** satu pun
@@ -400,7 +412,7 @@ unduh desktop dari web.
 >
 > **Alur rilis tetap MANUAL** (item 96): electron-builder membuat draf, Owner yang menekan Publish.
 
-| Dibawa 4.2.15 | Apa | Sisi |
+| Muatan | Apa | Sisi |
 |---|---|---|
 | **Indeks konstitusi** | 33 berkas berhenti dibaca-lalu-dibuang tiap boot; indeksnya benar-benar sampai ke model (+577 token/pesan, item 124) | klien |
 | **Ingatan temuan berhenti diam** (TMN-0006) | "tidak bisa dibaca" tidak lagi disamakan dengan "tidak ada temuan"; peringatan masuk ke konteks model, di DEPAN daftar | renderer |
