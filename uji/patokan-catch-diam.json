@@ -1,7 +1,7 @@
 {
   "catatan": "Patokan catch DIAM per berkas. HANYA BOLEH TURUN. Perbarui dengan: node uji/uji-catch-diam.mjs --perbarui",
-  "diperbarui": "2026-10-06",
-  "total": 94,
+  "diperbarui": "2026-10-08",
+  "total": 92,
   "berkas": {
     "frontend/src/components/dashboard/ActivityGraph.jsx": 1,
     "frontend/src/components/explorer/FileExplorer.jsx": 1,
@@ -14,7 +14,6 @@
     "frontend/src/components/workbench/ConversationEngine.jsx": 1,
     "frontend/src/components/workbench/FolderKerjaTombol.jsx": 1,
     "frontend/src/components/workbench/MemoryContextPanel.jsx": 1,
-    "frontend/src/components/workbench/RiwayatKonversi.jsx": 2,
     "frontend/src/core/runtime/DiscoveryManager.js": 1,
     "frontend/src/core/runtime/EventBus.js": 1,
     "frontend/src/core/runtime/hooks/useDashboardData.js": 2,

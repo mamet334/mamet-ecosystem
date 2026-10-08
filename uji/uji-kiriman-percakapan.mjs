@@ -125,8 +125,14 @@ for (const cb of ['onNalar', 'onChunk']) {
 const potonganDone = src.slice(src.indexOf('onDone:'), src.indexOf('onDone:') + 420);
 cek(potonganDone.includes('if (!diLayar())') && potonganDone.includes('simpanTerlantar('),
   'onDone menyelamatkan jawaban ke percakapan asal');
-const potonganError = src.slice(src.indexOf('onError:'), src.indexOf('onError:') + 420);
+// Jendela 900, bukan 420. Bukan pelonggaran: `onError` kini memanggil penerjemah galat lebih dulu
+// (`blokGalat`, pengerasan ws-assistant 8 Okt) beserta komentar kenapa, dan itu menggeser
+// `simpanTerlantar(` ke luar jendela 420 — merah tanpa ada satu pun penjagaan yang hilang. Jendela
+// seukuran-huruf mengukur JARAK, bukan keselamatan; angkanya harus mengikuti kode, atau ia akan
+// memerah tiap kali ada yang menambah komentar dan dicabut orang dalam sepekan.
+const potonganError = src.slice(src.indexOf('onError:'), src.indexOf('onError:') + 900);
 cek(potonganError.includes('if (!diLayar())') && potonganError.includes('simpanTerlantar('), 'onError ikut dijaga');
+cek(potonganError.includes('blokGalat(galat)'), 'dan galatnya diterjemahkan dulu, bukan teks server mentah');
 cek(src.includes('onNewChatId: () => {}'), 'penyimpanan terlantar TIDAK memindahkan Owner ke percakapan itu');
 
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));

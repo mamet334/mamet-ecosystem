@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { daftarRiwayat, tautanUnduh, hapusKonversi, KUOTA_CACHE_BYTE, KUOTA_CACHE_MB } from '../../core/runtime/services/remoteConversionClient';
+import { blokGalat } from '../../core/runtime/services/pesanGalat.js';
 
 /**
  * Panel "Riwayat konversi" (Item 58) — isi cache Word → PDF milik akun ini.
@@ -38,7 +39,7 @@ export default function RiwayatKonversi() {
       setPesan(null);
     } catch (err) {
       // Tabel belum ada (migrasi belum dijalankan) atau jaringan putus — katakan, jangan kosong diam.
-      setPesan(`Riwayat tidak bisa dimuat: ${err.message}`);
+      setPesan(blokGalat({ kode: 'RIWAYAT_KONVERSI', teknis: err.message }));
     }
   }, []);
 
@@ -73,7 +74,7 @@ export default function RiwayatKonversi() {
       a.click();
       a.remove();
     } catch (err) {
-      setPesan(err.message);
+      setPesan(blokGalat({ kode: 'UNDUH_PDF', teknis: err.message }));
     }
   };
 
@@ -83,7 +84,7 @@ export default function RiwayatKonversi() {
       await hapusKonversi(job);
       await muat();
     } catch (err) {
-      setPesan(err.message);
+      setPesan(blokGalat({ kode: 'HAPUS_KONVERSI', teknis: err.message }));
     }
   };
 
@@ -120,8 +121,12 @@ export default function RiwayatKonversi() {
             </p>
           </div>
 
+          {/* `whitespace-pre-line`: baris "(teknis: …)" dari `blokGalat` harus turun ke bawah,
+              bukan menempel di belakang saran — ia yang dikutip Owner saat melapor. Komentarnya di
+              SINI, bukan di dalam `{pesan && ( … )}`: di dalam tanda kurung itu posisinya ekspresi,
+              dan `{/* */}` di posisi ekspresi dibaca sebagai literal objek — build gagal. */}
           {pesan && (
-            <div className="mx-2 mb-2 px-2 py-1.5 rounded-lg bg-error/10 border border-error/30 text-[11px] text-error leading-snug">
+            <div className="mx-2 mb-2 px-2 py-1.5 rounded-lg bg-error/10 border border-error/30 text-[11px] text-error leading-snug whitespace-pre-line">
               {pesan}
             </div>
           )}

@@ -378,7 +378,10 @@ export class AssistantService {
     _folderKoreksi = false
   }) {
     if (!userMsg || !token) {
-      onError?.('Pesan atau token tidak tersedia.');
+      // Tanda TERSTRUKTUR, bukan teks tampilan: kalimat yang dibaca manusia disusun di satu tempat
+      // (`services/pesanGalat.js`, dipakai `ConversationEngine`). Sebelum ini sebelas tempat di
+      // berkas ini mengarang teksnya sendiri — itu akar kenapa setiap jalur baru mengarang lagi.
+      onError?.({ kode: 'PESAN_KOSONG', teknis: !userMsg ? 'pesan kosong' : 'token tidak ada' });
       return;
     }
 
@@ -868,16 +871,22 @@ export class AssistantService {
       response = await fetch(AGENT_ENDPOINT, { method: 'POST', headers, body: JSON.stringify(payload), signal });
     } catch (fetchErr) {
       if (dibatalkanPemakai(fetchErr, signal)) return;
-      onError?.(`Gagal menghubungi server: ${fetchErr.message}`);
+      onError?.({ kode: 'JARINGAN', teknis: fetchErr.message });
       return;
     }
 
     console.log(`[LIFECYCLE] LOOKUP response received (HTTP ${response.status})`);
 
     if (!response.ok) {
-      let errorText = `HTTP error! status: ${response.status}`;
-      try { const e = await response.json(); errorText = e.error || errorText; } catch (_) { errorText = (await response.text()) || errorText; }
-      onError?.(`⚠️ Error: ${errorText}`);
+      // Kode mesin DAN kalimat manusia dibaca KEDUANYA. Sebelum ini jalur ini menulis
+      // `errorText = e.error || errorText` — mengambil kodenya (`NO_API_KEY`) dan membuang
+      // `e.message`, padahal `request_pipeline.ts:140-158` mengirim kalimat Indonesia yang menyebut
+      // tindakannya. Yang terbaca Owner dulu: "⚠️ Error: NO_API_KEY".
+      let kode = null, pesan = null, teknis = null;
+      try { const e = await response.json(); kode = e?.error || null; pesan = e?.message || null; }
+      catch (_) { teknis = (await response.text()) || null; }
+      console.error('[LIFECYCLE] Edge Function Error:', kode || teknis || `HTTP ${response.status}`);
+      onError?.({ kode, pesan, status: response.status, teknis });
       return;
     }
 
@@ -1012,13 +1021,13 @@ export class AssistantService {
           // Dibatalkan pemakai bukan kegagalan skill — jangan catat ke Skill:Error, nanti riwayat
           // kegagalan skill terisi oleh tombol Berhenti yang bekerja sebagaimana mestinya.
           if (dibatalkanPemakai(fetchErr, signal)) return;
-          onError?.(`Gagal menghubungi server saat eksekusi skill: ${fetchErr.message}`);
+          onError?.({ kode: 'JARINGAN_SKILL', teknis: fetchErr.message });
           this.eventBus.emit('Skill:Error', { skillId: skill.id, step: i + 1, reason: fetchErr.message });
           return;
         }
 
         if (!response.ok) {
-          onError?.(`⚠️ Skill error HTTP ${response.status}`);
+          onError?.({ kode: 'SKILL_HTTP', status: response.status });
           this.eventBus.emit('Skill:Error', { skillId: skill.id, step: i + 1, reason: `HTTP ${response.status}` });
           return;
         }
@@ -1345,18 +1354,19 @@ export class AssistantService {
       response = await fetch(AGENT_ENDPOINT, { method: 'POST', headers, body: JSON.stringify(payload), signal });
     } catch (fetchErr) {
       if (dibatalkanPemakai(fetchErr, signal)) return;
-      onError?.(`Gagal menghubungi server: ${fetchErr.message}`);
+      onError?.({ kode: 'JARINGAN', teknis: fetchErr.message });
       return;
     }
 
     console.log(`[LIFECYCLE] LLM response received (HTTP Status: ${response.status})`);
 
     if (!response.ok) {
-      let errorText = `HTTP error! status: ${response.status}`;
-      try { const errorData = await response.json(); errorText = errorData.error || errorText; }
-      catch (_) { errorText = (await response.text()) || errorText; }
-      console.error('[LIFECYCLE] Edge Function Error:', errorText);
-      onError?.(`⚠️ Error: ${errorText}`);
+      // Sama dengan jalur LOOKUP di atas: `message` dari server tidak lagi dibuang.
+      let kode = null, pesan = null, teknis = null;
+      try { const e = await response.json(); kode = e?.error || null; pesan = e?.message || null; }
+      catch (_) { teknis = (await response.text()) || null; }
+      console.error('[LIFECYCLE] Edge Function Error:', kode || teknis || `HTTP ${response.status}`);
+      onError?.({ kode, pesan, status: response.status, teknis });
       return;
     }
 
@@ -1407,9 +1417,12 @@ export class AssistantService {
     if (buffer.trim()) olah(buffer.trim());
     // Dibatalkan sesudah aliran berhenti tetapi sebelum `hasil` datang: tetap diam.
     if (!hasil && signal?.aborted) return null;
-    if (!hasil) { onError?.('⚠️ Error: Aliran jawaban terputus sebelum selesai.'); return null; }
-    if (hasil.galat) { onError?.(`⚠️ Error: ${hasil.galat}`); return null; }
-    if (hasil.status >= 400) { onError?.(`⚠️ Error: ${hasil.data?.error || `HTTP ${hasil.status}`}`); return null; }
+    if (!hasil) { onError?.({ kode: 'ALIRAN_TERPUTUS', teknis: 'aliran berakhir tanpa blok hasil' }); return null; }
+    if (hasil.galat) { onError?.({ teknis: hasil.galat }); return null; }
+    if (hasil.status >= 400) {
+      onError?.({ kode: hasil.data?.error || null, pesan: hasil.data?.message || null, status: hasil.status });
+      return null;
+    }
     return hasil.data;
   }
 
@@ -1468,7 +1481,7 @@ export class AssistantService {
       decoder = new TextDecoder('utf-8');
     } catch (streamErr) {
       console.error('[LIFECYCLE] Failed to get stream reader:', streamErr);
-      onError?.('⚠️ Error: Gagal membaca aliran data.');
+      onError?.({ kode: 'ALIRAN_TAK_TERBACA', teknis: streamErr?.message });
       return;
     }
 

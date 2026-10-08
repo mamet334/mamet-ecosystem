@@ -475,7 +475,7 @@ Validation..."`; perintah sebenarnya dikomentari di `:64`.
 
 | | Nilai | Catatan |
 |---|---|---|
-| `frontend/package.json:2` | **4.2.14** | otoritatif; memberi `electron-builder` & `app.getVersion()` |
+| `frontend/package.json:2` | **4.2.15** | otoritatif; memberi `electron-builder` & `app.getVersion()` (4.2.14 → 4.2.15 pada 8 Okt, E8+C10b) |
 | `frontend/src/core/runtime/Kernel.js:63` | **3.0.0** | `identity.version` — **satu major tertinggal** |
 | `VITE_APP_VERSION` | **tak pernah didefinisikan** | dirujuk `lazyLoadWithRetry.js:18` |
 
@@ -806,6 +806,39 @@ Jalur eksekusi orchestrator masih rintisan. Dari 8 hasil grep penanda di seluruh
 satu di `airdropEngine.cjs:211` yang **benar-benar** utang; enam sisanya placeholder atau catatan yang
 *menyebut* kata itu sambil mendokumentasikan penghapusan masa lalu.
 
+### E8 — ✅ SELESAI 8 Okt — galat ws-assistant memakai bahasa server, dan kalimat manusianya dibuang
+
+> **✅ DITUTUP 2026-10-08** — [log](../project-memory/changelog/2026-10-08-pengerasan-ws-assistant.md)
+>
+> **Tidak ada di rencana.** Ia muncul dari pertanyaan Owner *"bagaimana dengan ws asisten?"* — dan
+> pertanyaannya tepat: blok M seluruhnya bertarget `mametlite/`, E1–E7 semuanya tentang cangkang
+> Electron dan dokumen. **Tak satu pun menyentuh permukaan chat ws-assistant**, layar yang Owner
+> pakai setiap hari.
+>
+> **Akarnya bukan "bahasanya kurang ramah".** Sebelas tempat menyusun teks galatnya sendiri
+> (`AssistantService` ×9, `ConversationEngine` ×2, ditambah tiga di `RiwayatKonversi`), jadi setiap
+> jalur baru mengarang lagi dari nol. Yang dipindah tanggung jawabnya: **layanan melaporkan apa yang
+> gagal** (`{kode, pesan, status, teknis}`), **layar memutuskan apa yang dibaca manusia**
+> (`services/pesanGalat.js`, baru).
+>
+> **Dan sebagian keterangannya tidak pernah perlu ditulis:** `request_pipeline.ts:140-158` SUDAH
+> mengirim kalimat Indonesia yang menyebut tindakan, dan `AssistantService:878` menulis
+> `errorText = errorData.error || errorText` — mengambil kode mesinnya, membuang `message`-nya. Yang
+> terbaca Owner: `⚠️ Error: NO_API_KEY`. Pola T11 lagi: periksa metodenya, bukan cuma hasilnya.
+>
+> **Bukan salinan Mametlite,** dan itu keputusan: kosakata tandanya berbeda secara sah (sesi
+> Supabase, mode Engineer, aliran hybrid, skill, plafon harian, konversi — lawan formulir masuk).
+> Menyalinnya = dua berkas yang HARUS menyimpang dijaga uji yang menuntut sama. Penyatuannya
+> sebentuk dengan usul ADR **M9**.
+>
+> Bukti: `uji-pesan-galat-ecosystem.mjs` 5 bagian, **3 mutasi menggigit**, suite 95/95. Satu merah
+> pada jalan pertama bukan temuan — polanya cocok dengan **komentar** yang menjelaskan cacat lamanya
+> (kembaran `uji-komentar-tak-berbohong`); ujinya kini membuang komentar lebih dulu, `\r` sebelum `//`.
+>
+> **Sisa:** `EngineerChat.jsx:152` sengaja tidak disentuh (yatim, E3) dan **dijaga uji** — bila
+> berkas itu dipakai lagi, ujinya memerah dan menagih penerjemah. `Settings.jsx:234` juga tidak:
+> itu uji koneksi, tempat teks penyedia apa adanya justru yang dicari.
+
 ---
 
 ## 6. Penghalang yang bukan kode, dan pengaruhnya ke rencana
@@ -845,7 +878,8 @@ Gerbang izin Owner di antara fase. Tiap langkah satu commit sendiri.
 | **E3** | 3 berkas yatim; **nama** berkas di 3 dokumen diperbarui, keputusan ADR-0019 **tidak** disentuh | `git grep` pola impor → nol, **di pesan commit** | ✅ izin hapus |
 | ~~**M8**~~ | ✅ **SELESAI 8 Okt** — `App.css` + 4 aset + 4 dependency dihapus; README, `lang`, judul, `.custom-scrollbar`, `.env.example`, `.gitignore` diperbaiki | ✅ bukti nol-rujukan per berkas; build lulus; suite 92/92 | — |
 | ~~**C10a** (mametlite)~~ | ✅ **SELESAI 8 Okt** — `pdfjs-dist ^6.0.227` → `^6.4.299`; GHSA-hq66-cqwq-w95j (eksekusi JS saat membuka PDF jahat) keluar dari audit | ✅ `uji-baca-pdf-mametlite.mjs`: PDF 2 halaman terbaca lewat jalur sesungguhnya, bentuk kemajuan utuh, PDF rusak ditolak; batas rentang diperiksa di 9 titik; suite 93/93 | — |
-| **C10b** (frontend) | ⚠️ **TERBUKA** — `frontend` memasang `pdfjs-dist ^5.7.284`, juga di rentang rentan. Perbaikannya menuntut **naik major 5 → 6** (hanya ada di `>=6.2.108`), dan jalur PDF Ecosystem lebih luas (`tabelCentang.js` pada koordinat pdf.js, `bacaPdfAsn.js` pada `hitungHalamanPdf`). Bobotnya lebih rendah — penggunanya Owner, dokumennya milik Owner | menuntut `npm run desktop` + penilaian Owner | ⏳ **keputusan** |
+| ~~**C10b** (frontend)~~ | ✅ **SELESAI 8 Okt** — `pdfjs-dist ^5.7.284` → `^6.4.299` (+ deklarasi di `package.json` akar, yang di sana tanpa pengimpor & tanpa terpasang). **Nol baris kode aplikasi berubah**: `documentTextExtractor.js:233-234` sudah ditulis untuk v6 saat C10a. **Koreksi atas baris ini sendiri:** permukaan pdfjs Ecosystem lebih **sempit**, bukan lebih luas — `hitungHalamanPdf` memakai **pdf-lib**, dan `tabelCentang` hanya MENERIMA items; hanya satu berkas memanggil pdfjs. Keduanya kini dijaga uji | ✅ `uji-baca-pdf-ecosystem.mjs` dijalankan **sebelum & sesudah** bump (5.7.284: 1 merah tepat di asersi versi; 6.4.299: 24/24); kontrak koordinat pdf.js diperiksa (`transform[4]/[5]`, `width`) dan centang `Ö` tetap jatuh di kolom **Penting**; `npm run build` lulus + worker 1,3 MB ikut ke `dist`; `npm audit` tak lagi mendaftarkan `pdfjs-dist`; suite 95/95 | — |
+| ~~**E8**~~ | ✅ **SELESAI 8 Okt** — galat ws-assistant: sebelas tempat berhenti mengarang teks tampilan; `message` dari server berhenti dibuang; `services/pesanGalat.js` (baru) | ✅ `uji-pesan-galat-ecosystem.mjs` 5 bagian (21 tanda, aturan 4, 4 tanda tak dikenali yang tidak menuduh, bentuk blok, pemeriksaan kode); 3 mutasi menggigit; suite 95/95 | — |
 | **P4** | Nyalakan leaked-password; komentari `hakim_bayangan` | `get_advisors` diulang: barisnya hilang | — |
 | **§4** | Migrasi hak tabel, bisa dibalik | SQL diulang: 39 → 0 `TRUNCATE` bagi anon; lalu **buka kedua aplikasi**, termasuk "Cadangkan data" 13/13 | — |
 | **P1/P2/P3** | `cron-agent`, `knowledge-health`, `config.toml` | `list_edge_functions` diulang: hilang dari **platform** | ⏳ **keputusan** |

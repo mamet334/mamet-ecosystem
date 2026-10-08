@@ -19,6 +19,7 @@ import { ambilBlokTemuan, bacaBerkasTemuan, susunBerkasTemuan, gabungTemuan, lap
 import { ambilBlokPengetahuan, pengetahuanBaru, barisBrain1 } from '../../core/runtime/services/engineer/PengetahuanBrain1.js';
 import { anggaranKonteks, pilihPesanKonteks, meteranKonteks, bacaMulaiDari, simpanMulaiDari, pesanUntukDipadatkan, bolehPadatkan, bentukPesanRingkasan, tokenPesan, MIN_PESAN_PADATKAN, PATOK } from '../../core/runtime/services/KonteksChat.js';
 import { jejakSisipan } from '../../core/runtime/services/jejakSisipan.js';
+import { blokGalat } from '../../core/runtime/services/pesanGalat.js';
 
 // =============================================
 // HELPER: Parse thinking/answer dari respons AI
@@ -1394,7 +1395,12 @@ export default function ConversationEngine({ sessionId }) {
           }
         },
 
-        onError: (errorMsg) => {
+        onError: (galat) => {
+          // Teks yang dibaca manusia disusun DI SINI, satu tempat. `AssistantService` kini
+          // melaporkan tanda terstruktur ({kode, pesan, status, teknis}) dan tidak lagi mengarang
+          // teks tampilan di sebelas tempat — string lama tetap diterima `blokGalat` apa adanya,
+          // jadi jalur yang belum ikut pindah merosot dengan sopan, bukan menampilkan "[object Object]".
+          const errorMsg = blokGalat(galat);
           if (!diLayar()) {
             // Galat pun milik percakapan asalnya — disimpan bersama pertanyaannya supaya Owner tahu
             // apa yang terjadi saat ia kembali, bukan menemukan percakapan kosong.
@@ -1421,7 +1427,7 @@ export default function ConversationEngine({ sessionId }) {
         console.log('[ConversationEngine] kiriman dihentikan Owner');
       } else {
         console.error('[ConversationEngine] handleSend error:', err);
-        const pesanGalat = `⚠️ Error: ${err.message}`;
+        const pesanGalat = blokGalat(err);
         if (diLayar()) setMessages(prev => [...prev, { role: 'model', content: pesanGalat }]);
         else simpanTerlantar({ content: pesanGalat });
         setIsLoading(false);
@@ -2124,7 +2130,7 @@ export default function ConversationEngine({ sessionId }) {
                               a.click();
                               a.remove();
                             } catch (err) {
-                              setMessages(prev => [...prev, { role: 'model', content: `⚠️ PDF tidak bisa diunduh: ${err.message}` }]);
+                              setMessages(prev => [...prev, { role: 'model', content: blokGalat({ kode: 'UNDUH_PDF', teknis: err.message }) }]);
                             }
                           };
                           return (
