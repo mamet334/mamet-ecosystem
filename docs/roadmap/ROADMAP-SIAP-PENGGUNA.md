@@ -869,8 +869,15 @@ satu di `airdropEngine.cjs:211` yang **benar-benar** utang; enam sisanya placeho
 > `[PULIH] … 1/3`), `uji-cangkang-electron.mjs` v1→v2 dengan 11 asersi baru, **3 mutasi menggigit**
 > (yang kedua membongkar hijau palsu di asersi saya sendiri), suite 95/95.
 >
-> **Belum ada di .exe mana pun** — perubahan ini tak menyentuh `frontend/package.json`, jadi tidak
-> memicu build; ia ikut rilis berikutnya.
+> **✅ SEBABNYA DITUTUP JUGA, 8 Okt 15:4xZ.** Atas izin Owner, `icacls` menambahkan `BUILTIN\Users` +
+> `ALL APPLICATION PACKAGES` (baca+jalankan, `/T`, 160 berkas) **hanya pada folder Mamet AI** —
+> ACE eksplisit, bukan warisan, jadi mudah dicabut; pengerasan Codex pada folder induk tidak
+> disentuh. Sesudahnya aplikasi terpasang **boot**: 232 baris renderer, `SYSTEM READY`, nol FATAL
+> baru. **Bila pengerasan itu dipasang ulang oleh alatnya, ACE ini bisa tercabut** — obat yang tahan
+> lama adalah mengecualikan folder itu di sandbox Codex, bukan mengulang `icacls`.
+>
+> **✅ DAN E9 KINI LIVE** lewat 4.2.16 (terbit 15:38:13Z, ditarik sendiri 2 menit kemudian):
+> penangan barunya sudah memancarkan baris nyata pertamanya di mesin Owner.
 
 ---
 
@@ -922,7 +929,7 @@ Gerbang izin Owner di antara fase. Tiap langkah satu commit sendiri.
 | **M9** | Penyatuan tiga salinan | — | ⏳ **ADR** |
 | **E2** | Saringan log renderer | — | ⏳ **arahan** |
 | ~~**4.2.15**~~ | ✅ **TERBIT & TERPASANG** 8 Okt — Owner menekan Publish 14:04:59Z, aplikasi menariknya sendiri 4 menit kemudian | uji §5b A–G — **terhalang ACL, lihat E9** | ⏳ **`icacls`** |
-| **4.2.16** | versi dinaikkan 8 Okt atas perintah Owner untuk mengirim **E9**; build ✅, **masih DRAF** | sesudah terpasang: log memuat `[RENDERER MATI] alasan=… exitCode=…` — itu mengubah diagnosis ACL dari penyelidikan menjadi satu baris | ⏳ **Publish** |
+| ~~**4.2.16**~~ | ✅ **TERBIT 15:38:13Z & TERPASANG** 8 Okt — membawa **E9**; aplikasi menariknya sendiri 2 menit sesudah Publish | ✅ **TERBUKTI LIVE**: log mesin Owner memuat `[RENDERER MATI] alasan=crashed exitCode=143 (0x8F)` — penangan E9 memancarkan baris nyata pertamanya | — |
 | **E6** | Dependency, **paling akhir** | CI dari J3 yang menilainya | — |
 
 ### Yang sengaja TIDAK masuk dokumen ini

@@ -246,7 +246,7 @@ sama). Keadaan di platform, **diperiksa lewat API GitHub 8 Okt** — bukan disim
 |---|---|---|
 | **v4.2.14** | **TERBIT** 2026-10-06 22:36 UTC (`isDraft: false`) | `Mamet-AI-Setup-4.2.14.exe` |
 | **v4.2.15** | **TERBIT** `2026-10-08T14:04:59Z` — diterbitkan Owner 2 menit sesudah build; aplikasi menariknya sendiri 4 menit kemudian (cache updater, 189.543.735 byte) | `Mamet-AI-Setup-4.2.15.exe` |
-| **v4.2.16** | **DRAF** — dibangun 8 Okt 15:36Z, membawa **E9**. **Menunggu Owner menekan Publish** (lihat item 96: apakah draf saja cukup, belum terukur bersih) | `Mamet-AI-Setup-4.2.16.exe` |
+| **v4.2.16** | **TERBIT** `2026-10-08T15:38:13Z` (dibangun 15:36Z) — membawa **E9**; aplikasi menariknya sendiri **2 menit** kemudian dan **sudah terpasang** di mesin Owner | `Mamet-AI-Setup-4.2.16.exe` (189.544.694 byte) |
 
 > ⚠️ **KOREKSI 8 Okt, dan pelajarannya sama dengan T11.** Bagian ini sebelumnya berbunyi *"Tiga
 > muatan menunggu build"* untuk 4.2.14 — dan itu **sudah basi sejak 6 Okt 22:36**: rilisnya dibangun
@@ -427,12 +427,18 @@ unduh desktop dari web.
 | **pdfjs 6** (C10b, 4.2.15) | `frontend` keluar dari GHSA-hq66-cqwq-w95j (eksekusi JS saat membuka PDF jahat); nol baris kode aplikasi berubah | klien |
 | **Renderer mati bersuara** (E9, 4.2.16) | `render-process-gone` + `did-fail-load`: layar putih kini menyebut `alasan` & `exitCode` (heks), plus pemulihan muat-ulang berbatas 3 | `main.cjs` |
 
-> ⛔ **UJI LIVE 4.2.15 TERHALANG DI MESIN OWNER (8 Okt).** 4.2.15 sudah dipasang dan membuka jendela
-> **putih**. Sebabnya **bukan** build ini: ACL `%LOCALAPPDATA%\Programs` kehilangan `BUILTIN\Users`
-> (pengerasan sandbox Codex), jadi renderer ber-sandbox tak bisa membaca binernya — salinan
-> byte-identik di folder berizin normal **boot sempurna**. Sampai `icacls` dijalankan (keputusan
-> Owner), blok uji **A–G di bawah tidak bisa dijalankan dari aplikasi terpasang**. Rinciannya di
-> [`ROADMAP-SIAP-PENGGUNA.md`](./ROADMAP-SIAP-PENGGUNA.md) **E9**.
+> ✅ **TERSELESAIKAN 8 Okt 15:4xZ — aplikasi terpasang hidup kembali, dan sekarang 4.2.16.**
+> Jendela putih 4.2.15 sebabnya **bukan** build: ACL `%LOCALAPPDATA%\Programs` kehilangan
+> `BUILTIN\Users` (pengerasan sandbox Codex), jadi renderer ber-sandbox tak bisa membaca binernya.
+> Atas izin Owner, `icacls` menambahkan `BUILTIN\Users` + `ALL APPLICATION PACKAGES` (baca+jalankan,
+> `/T`, 160 berkas) **hanya pada folder Mamet AI** — ACE-nya eksplisit, bukan warisan, jadi mudah
+> dicabut. Bukti sesudahnya: **232 baris renderer, `SYSTEM READY`, nol FATAL baru**. Blok uji A–G
+> **kini bisa dijalankan**. Rinciannya di [`ROADMAP-SIAP-PENGGUNA.md`](./ROADMAP-SIAP-PENGGUNA.md)
+> **E9**.
+>
+> ⚠️ **Bila layar putih kembali:** pengerasan itu milik sandbox Codex. Jika alat itu memasang ulang
+> aturannya, ACE ini bisa tercabut. Obat yang tahan lama bukan mengulang `icacls`, melainkan
+> mengecualikan folder itu di sandbox Codex-nya.
 >
 > Perbaikan **E9** sendiri (renderer mati bersuara + pemulihan berbatas) dikirim lewat **4.2.16**
 > (versi dinaikkan 8 Okt atas perintah Owner; build ✅, **draf — menunggu Publish**). Ia **tidak
