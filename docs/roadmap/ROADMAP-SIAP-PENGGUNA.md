@@ -905,7 +905,7 @@ Gerbang izin Owner di antara fase. Tiap langkah satu commit sendiri.
 | **J3** | Suite + CRLF + lint jadi gerbang CI sebelum `dist:publish` | **PR dengan satu uji sengaja merah → CI menolak** | — |
 | **J4** | Pindaian rahasia diperluas ke `.github/` | masukkan ulang kunci ke `build.yml` → CI menangkap | — |
 | **J5** | Kunci anon → `secrets` | `git grep` di `.github/` → nol JWT literal | — |
-| **J6** | Pemicu rilis berbasis isi, bukan path. **BOBOTNYA NAIK 8 Okt:** dulu dibaca sebagai kerapian CI; ternyata pemicu itu **langsung mengirim ke mesin yang menjalankan aplikasi**. Diukur tanpa login: feed atom memuat **draf** 4.2.15 di posisi teratas, `latest.yml` terbaca, `.exe` terunduh **HTTP 200, 189.543.735 byte** — dan 4.2.15 memang terpasang sendiri di mesin Owner saat rilisnya masih `isDraft: true`. Jadi premis item 96 (*"updater tak bisa melihat draf"*) **terbantah**: tombol Publish mengatur halaman rilis, **bukan** distribusi. Satu bump dependency yang menyentuh `frontend/package.json` = satu rilis terkirim | ubah satu dependency → **tidak** memicu publish | — |
+| **J6** | Pemicu rilis berbasis isi, bukan path. **BOBOTNYA NAIK 8 Okt, tetapi bukan sejauh yang saya tulis mula-mula.** Yang **terbukti**: 4.2.15 sampai ke mesin Owner lewat pembaruan **otomatis** (cache updater memuat `installer.exe` 189.543.735 byte) — **4 menit sesudah Owner menekan Publish** (`published_at 14:04:59Z`). Jadi satu bump dependency → build → **satu tombol** dari terkirim. Klaim saya sebelumnya ("draf pun terkirim, Publish bukan gerbang") **dicabut**: pengukurannya diambil sesudah rilisnya terbit. Belum terukur bersih apakah draf saja cukup — lihat item 96 | ubah satu dependency → **tidak** memicu publish | — |
 | **J8** | `Kernel.js:63`; `VITE_APP_VERSION` didefinisikan atau dicabut | `Kernel.js` = `app.getVersion()`; diagnostik tak lagi `"unknown"` | — |
 | **E5** | `backend/` masuk `DIR`; prosa diselaraskan | `jalankan-semua.mjs` hijau, nol asersi dilemahkan | — |
 | **E3** | 3 berkas yatim; **nama** berkas di 3 dokumen diperbarui, keputusan ADR-0019 **tidak** disentuh | `git grep` pola impor → nol, **di pesan commit** | ✅ izin hapus |
@@ -921,8 +921,8 @@ Gerbang izin Owner di antara fase. Tiap langkah satu commit sendiri.
 | **E1** | `webSecurity:false` → akar pindah ke proses utama | — | ⏳ **ADR** |
 | **M9** | Penyatuan tiga salinan | — | ⏳ **ADR** |
 | **E2** | Saringan log renderer | — | ⏳ **arahan** |
-| **4.2.15** | ✅ **SUDAH TERKIRIM & TERPASANG** 8 Okt (draf tidak menahan distribusi — lihat J6). Sisanya hanya menekan Publish untuk halaman rilisnya | uji §5b A–G — **terhalang ACL, lihat E9** | ⏳ **halaman rilis + `icacls`** |
-| **4.2.16** | versi dinaikkan 8 Okt atas perintah Owner untuk mengirim **E9**; aplikasi menariknya sendiri | sesudah terpasang: log memuat `[RENDERER MATI] alasan=… exitCode=…` — itu mengubah diagnosis ACL dari penyelidikan menjadi satu baris | — |
+| ~~**4.2.15**~~ | ✅ **TERBIT & TERPASANG** 8 Okt — Owner menekan Publish 14:04:59Z, aplikasi menariknya sendiri 4 menit kemudian | uji §5b A–G — **terhalang ACL, lihat E9** | ⏳ **`icacls`** |
+| **4.2.16** | versi dinaikkan 8 Okt atas perintah Owner untuk mengirim **E9**; build ✅, **masih DRAF** | sesudah terpasang: log memuat `[RENDERER MATI] alasan=… exitCode=…` — itu mengubah diagnosis ACL dari penyelidikan menjadi satu baris | ⏳ **Publish** |
 | **E6** | Dependency, **paling akhir** | CI dari J3 yang menilainya | — |
 
 ### Yang sengaja TIDAK masuk dokumen ini

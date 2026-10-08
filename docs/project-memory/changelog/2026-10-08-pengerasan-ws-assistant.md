@@ -229,33 +229,43 @@ memicu publish"*). Push ini akan memicu satu build; **Publish tetap manual** (it
 tak bisa diperiksa saat ini (`api.github.com` TLS timeout), dan naik versi membuat itu tak perlu
 dijawab: draf 4.2.15 baru, tanpa menimpa apa pun.
 
-### Koreksi kedua, beberapa jam kemudian — "Publish tetap manual" menyesatkan
+### Koreksi kedua — dan koreksi KETIGA atas koreksi kedua, karena yang kedua saya ambil terlalu cepat
 
 Owner mengoreksi: *"kan aplikasi mamet ecosystem update otomatis dari github action, dan akan
-diterapkan di rilis terbaru."* **Ia benar, dan dua kalimat saya di atas salah arah.**
+diterapkan di rilis terbaru."* **Soal pengirimannya otomatis, Owner benar.**
 
-Diukur tanpa login, persis seperti yang dilihat aplikasi:
+Mula-mula saya menyimpulkan lebih jauh dari itu: bahwa **draf pun terkirim**, jadi tombol Publish
+bukan gerbang distribusi. Saya mengukurnya — feed atom publik memuat `4.2.15`, `latest.yml`-nya
+terbaca, `.exe`-nya 200 — lalu menulisnya ke item 96, §5b, J6, dan memori.
 
-| Yang diuji | Hasil |
-|---|---|
-| `releases.atom` publik | memuat **`4.2.15`** di posisi teratas — padahal ia DRAF |
-| `releases/download/v4.2.15/latest.yml` | 302 → `version: 4.2.15`, sha512, size |
-| `releases/download/v4.2.15/Mamet-AI-Setup-4.2.15.exe` | 302 → **HTTP 200, 189.543.735 byte** (sama dengan ukuran di latest.yml) |
+**Pengukuran itu tak sah, dan saya menemukannya sendiri setengah jam kemudian** saat memeriksa
+keadaan 4.2.16 lewat API:
 
-Dan buktinya di lapangan: **4.2.15 terpasang sendiri** di mesin Owner padahal rilisnya masih
-`isDraft: true` — itulah versi yang jendelanya putih dan diselidiki di
-[log E9](./2026-10-08-jendela-putih-renderer-bisu.md). Pembarunya bahkan terlihat bekerja di log
-Chromium **pada jalan yang jendelanya putih**, karena ia hidup di proses utama, bukan di renderer
-yang mati.
+```
+v4.2.15  draft=false  published_at=2026-10-08T14:04:59Z
+v4.2.16  draft=true   published_at=null
+```
 
-Jadi premis item 96 (*"electron-updater tidak bisa melihat draf"*) **terbantah**. Keputusan Owner
-"tetap manual" tidak berubah — yang berubah adalah **arti tombolnya**: Publish mengatur **halaman
-rilis**, bukan distribusi. Yang benar-benar mengirim ke mesin adalah **kenaikan versi di
-`frontend/package.json`**, satu-satunya pemicu `build.yml`.
+4.2.15 **sudah diterbitkan Owner** pukul 14:04:59Z — dua menit sesudah build-nya selesai, dan
+**sebelum** saya mengukur. Jadi yang saya ukur adalah rilis **TERBIT**, bukan draf. Saya mengukur
+platformnya (benar) tetapi tidak memeriksa keadaannya **pada saat yang sama** (salah) — bentuk yang
+sama dengan kekeliruan 4.2.14 di atas, satu lapis lebih dalam, pada hari yang sama.
 
-Akibatnya untuk J6: bobotnya naik dari kerapian CI menjadi **jalur pengiriman**. Satu bump
-dependency yang menyentuh berkas itu = satu rilis yang sampai ke aplikasi yang berjalan. Diperbaiki
-di item 96, §5b, tabel §7 (J6 + baris 4.2.15), dan memori `project-rilis-draf-manual`.
+Yang **benar-benar terbukti**, dan ini pun dari platform: cache pembaru memuat
+`ai-agent-frontend-updater/installer.exe` **189.543.735 byte** bertanggal 21:09 WIB — persis ukuran
+`Mamet-AI-Setup-4.2.15.exe`, yaitu **4 menit sesudah Publish**. Jadi 4.2.15 memang datang lewat
+pembaruan otomatis, **sesudah** diterbitkan. Pembarunya juga terlihat bekerja di log Chromium pada
+jalan yang jendelanya putih — ia hidup di proses utama, bukan di renderer yang mati.
+
+Yang **masih menggantung** dan sengaja dibiarkan terbuka: draf 4.2.16 MUNCUL di feed atom publik dan
+`latest.yml`-nya 200, tetapi draf lama 4.1.2 (3 aset) tetap 404, dan updater juga menanyakan
+`/releases/latest` yang menyingkirkan draf. Satu menit pertama 4.2.16 bahkan 404 — penyebaran, bukan
+kebijakan. **Belum terukur bersih**, jadi premis item 96 ditandai *dipertanyakan*, bukan *terbantah*,
+dan praktik yang dipakai: **tekan Publish**.
+
+Untuk J6: bobotnya tetap naik, tetapi kalimatnya dikoreksi — satu bump dependency bukan "langsung
+terkirim", melainkan **satu tombol dari terkirim**. Diperbaiki di item 96, §5b (tabel platform + dua
+catatan), tabel §7 (J6 + baris 4.2.15/4.2.16), dan memori `project-rilis-draf-manual`.
 
 **Belum teruji live** — bukti di atas dari Node, build, dan audit. Yang menunggu `.exe`: gelembung
 galat sesungguhnya di ws-assistant, dan satu PDF nyata dibuka di aplikasi terpasang.
