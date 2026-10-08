@@ -11,13 +11,28 @@
 // aturan "jangan menguji cermin", uji/README.md butir 2.
 
 import { pathToFileURL } from 'node:url';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { writeFileSync, mkdirSync } from 'node:fs';
 
 const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
 const { build } = await import(new URL('frontend/node_modules/esbuild/lib/main.js', new URL('../', import.meta.url)).href);
-const TMP_DIR = AKAR + '/frontend/node_modules/.uji-rag';
-mkdirSync(TMP_DIR, { recursive: true });
 
+// Keluaran sementara ditaruh di folder sementara SISTEM, bukan di dalam `node_modules` (8 Okt 2026).
+//
+// Dulu: `frontend/node_modules/.uji-rag/`. Itu folder yang suite ini JUSTRU dipindahkan dari sana —
+// `npm ci` menghapus `node_modules`, dan itulah yang dulu melenyapkan 48 berkas uji sekaligus
+// (lihat `uji/README.md`). Berkas ujinya ikut pindah ke repo; alamat keluaran sementaranya tidak,
+// jadi separuh masalahnya tertinggal. Dibuktikan 8 Okt: folder itu disembunyikan sesaat, dan empat
+// berkas uji langsung jatuh dengan ENOENT — kegagalan yang tidak terlihat seperti "kode rusak".
+//
+// Alasan asli memilih `node_modules` (Vite tidak memantaunya, jadi menulis di sana tidak memicu
+// aplikasi memuat ulang saat Owner sedang memakainya) justru LEBIH terpenuhi di sini: Vite tidak
+// memantau folder sementara sistem sama sekali.
+const DIR_SEMENTARA = join(tmpdir(), 'uji-mamet');
+mkdirSync(DIR_SEMENTARA, { recursive: true });
+
+const TMP_DIR = DIR_SEMENTARA;
 const muat = async (namaTs, namaTmp) => {
   const keluar = await build({
     entryPoints: [`${AKAR}/supabase/functions/agent-process/lib/verification/${namaTs}`],

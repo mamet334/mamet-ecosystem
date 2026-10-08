@@ -2,7 +2,9 @@
 // Sebab: live TUGAS-02 & TUGAS-04, jawaban yang seluruhnya dibangun dari isi berkas nyata (lewat perintah yang
 // Owner setujui) diturunkan ke HYPOTHESIS dengan alasan "tidak mengutip dokumen".
 import { pathToFileURL } from 'node:url';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 
 const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
 const F = await import(pathToFileURL(AKAR + '/frontend/src/core/runtime/services/folderKerjaAlat.js').href + '?v=' + Date.now());
@@ -10,7 +12,22 @@ const F = await import(pathToFileURL(AKAR + '/frontend/src/core/runtime/services
 // label_sumber.ts (TypeScript) → JS lewat esbuild: yang diuji berkas server yang asli.
 const { build } = await import(new URL('frontend/node_modules/esbuild/lib/main.js', new URL('../', import.meta.url)).href); // esbuild ada di frontend/node_modules; dirujuk lewat ALAMAT, bukan nama paket, karena berkas uji ini kini di akar repo (di luar frontend/) — lihat uji/README.md
 const SRC = AKAR + '/supabase/functions/agent-process/lib/verification/label_sumber.ts';
-const TMP = AKAR + '/frontend/node_modules/.uji-rag/_label_sumber.mjs';
+
+// Keluaran sementara ditaruh di folder sementara SISTEM, bukan di dalam `node_modules` (8 Okt 2026).
+//
+// Dulu: `frontend/node_modules/.uji-rag/`. Itu folder yang suite ini JUSTRU dipindahkan dari sana —
+// `npm ci` menghapus `node_modules`, dan itulah yang dulu melenyapkan 48 berkas uji sekaligus
+// (lihat `uji/README.md`). Berkas ujinya ikut pindah ke repo; alamat keluaran sementaranya tidak,
+// jadi separuh masalahnya tertinggal. Dibuktikan 8 Okt: folder itu disembunyikan sesaat, dan empat
+// berkas uji langsung jatuh dengan ENOENT — kegagalan yang tidak terlihat seperti "kode rusak".
+//
+// Alasan asli memilih `node_modules` (Vite tidak memantaunya, jadi menulis di sana tidak memicu
+// aplikasi memuat ulang saat Owner sedang memakainya) justru LEBIH terpenuhi di sini: Vite tidak
+// memantau folder sementara sistem sama sekali.
+const DIR_SEMENTARA = join(tmpdir(), 'uji-mamet');
+mkdirSync(DIR_SEMENTARA, { recursive: true });
+
+const TMP = join(DIR_SEMENTARA, '_label_sumber.mjs');
 // bundle: true sejak T13 (2026-09-28) — label_sumber.ts mengimpor klaim_sumber.ts, jadi impornya
 // harus ikut dibundel ke berkas sementara; dengan bundle:false Node mencarinya di folder sementara.
 writeFileSync(TMP, (await build({ entryPoints: [SRC], bundle: true, platform: 'neutral', write: false, format: 'esm', loader: { '.ts': 'ts' } })).outputFiles[0].text);

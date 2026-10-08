@@ -7,7 +7,7 @@ atau `N GAGAL` di baris terakhir dan keluar dengan kode 0/1.
 # satu berkas
 node uji/uji-konteks-chat.mjs
 
-# semua (±17 detik untuk 51 berkas) — inilah yang dipakai verifikasi patch Tahap 6
+# semua (±60 detik untuk 93 berkas, diukur 8 Okt 2026) — inilah yang dipakai verifikasi patch Tahap 6
 node uji/jalankan-semua.mjs
 ```
 
@@ -95,9 +95,20 @@ Ketiganya lahir dari kegagalan nyata; rinciannya di `constitution/28`.
   (`new URL('frontend/node_modules/…', new URL('../', import.meta.url))`), bukan nama paket — folder ini
   berada di luar `frontend/` sehingga Node tidak bisa menemukannya lewat nama.
 - Berkas `.cjs` menguji kode proses utama Electron; rujukannya `../frontend/electron/…`.
-- Skrip penyelidikan sekali pakai (`cek-*.mjs`, `baca-kepbup.mjs`, dan lainnya) **masih tertinggal** di
-  `frontend/node_modules/.uji-rag/` dan tetap rentan terhapus `npm ci`. Belum dipindahkan karena sifatnya
-  sekali pakai — pindahkan bila ternyata masih dipakai.
+- **Keluaran sementara tidak lagi ditulis ke `node_modules`** (8 Okt 2026). Tujuh berkas uji dulu menulis
+  bundel sementaranya ke `frontend/node_modules/.uji-rag/` — folder yang suite ini **justru dipindahkan dari
+  sana**. Berkas ujinya ikut pindah ke repo; alamat keluarannya tidak, jadi separuh masalahnya tertinggal.
+  Dibuktikan sebelum diperbaiki: folder itu disembunyikan sesaat, dan **empat** berkas uji langsung jatuh
+  dengan ENOENT (dua selamat karena memanggil `mkdirSync`, satu karena esbuild membuat foldernya sendiri).
+  Kini semuanya memakai `join(tmpdir(), 'uji-mamet')` dengan `mkdirSync` — dan alasan asli memilih
+  `node_modules` (Vite tidak memantaunya) justru **lebih** terpenuhi di sana.
+
+- **Skrip penyelidikan sekali pakai itu sudah HILANG, dan peringatan di atas memang terjadi.** Bagian ini
+  dulu berbunyi *"`cek-*.mjs`, `baca-kepbup.mjs`, dan lainnya **masih tertinggal** … tetap rentan terhapus
+  `npm ci`"*. Saat `.uji-rag/` diperiksa 8 Okt sebelum dibuang, isinya tinggal **lima bundel hasil generate**
+  (semua berawalan `_`) — nol skrip sumber. Tak ada yang menyadari kapan mereka lenyap. Dicatat bukan untuk
+  menyesali berkasnya, melainkan karena ia bukti bahwa peringatan yang ditulis tanpa penjaga tidak menahan
+  apa pun.
 
 ---
 

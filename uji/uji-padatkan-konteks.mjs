@@ -3,13 +3,30 @@
 // Beda dengan "Bersihkan": pesan lama diringkas jadi SATU pesan yang TETAP DIKIRIM, lalu batas konteks
 // digeser ke pesan ringkasan itu. Yang diuji di sini: pembantu murni di KonteksChat.js, pembantu murni
 // di padatkan_endpoint.ts (lewat esbuild, berkas server yang asli), dan pemasangannya di jalur nyata.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 const AKAR = 'D:/SLAMET/other/mamet os ecosystem/';
 const K = await import(pathToFileURL(AKAR + 'frontend/src/core/runtime/services/KonteksChat.js').href + '?v=' + Date.now());
 
 const SRC = AKAR + 'supabase/functions/agent-process/lib/request/padatkan_endpoint.ts';
-const TMP = AKAR + 'frontend/node_modules/.uji-rag/_padatkan_endpoint.mjs';
+
+// Keluaran sementara ditaruh di folder sementara SISTEM, bukan di dalam `node_modules` (8 Okt 2026).
+//
+// Dulu: `frontend/node_modules/.uji-rag/`. Itu folder yang suite ini JUSTRU dipindahkan dari sana —
+// `npm ci` menghapus `node_modules`, dan itulah yang dulu melenyapkan 48 berkas uji sekaligus
+// (lihat `uji/README.md`). Berkas ujinya ikut pindah ke repo; alamat keluaran sementaranya tidak,
+// jadi separuh masalahnya tertinggal. Dibuktikan 8 Okt: folder itu disembunyikan sesaat, dan empat
+// berkas uji langsung jatuh dengan ENOENT — kegagalan yang tidak terlihat seperti "kode rusak".
+//
+// Alasan asli memilih `node_modules` (Vite tidak memantaunya, jadi menulis di sana tidak memicu
+// aplikasi memuat ulang saat Owner sedang memakainya) justru LEBIH terpenuhi di sini: Vite tidak
+// memantau folder sementara sistem sama sekali.
+const DIR_SEMENTARA = join(tmpdir(), 'uji-mamet');
+mkdirSync(DIR_SEMENTARA, { recursive: true });
+
+const TMP = join(DIR_SEMENTARA, '_padatkan_endpoint.mjs');
 const { build } = await import(new URL('frontend/node_modules/esbuild/lib/main.js', new URL('../', import.meta.url)).href); // esbuild ada di frontend/node_modules; dirujuk lewat ALAMAT, bukan nama paket, karena berkas uji ini kini di akar repo (di luar frontend/) — lihat uji/README.md
 // Yang diuji adalah pembantu MURNI di berkas server yang asli. Tetangganya (adapter, auth, runtime
 // context) hanya dipakai di dalam handler dan tidak bisa diimpor di node — jadi diganti rintisan

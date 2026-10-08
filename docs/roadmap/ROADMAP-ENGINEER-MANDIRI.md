@@ -349,6 +349,15 @@ berkas yang dikeluarkan dari suite tanpa namanya ikut tertulis di laporan.
 menyebut 43 berkas/26,7 detik pada 24 September; suitenya bertambah dan tetap lebih cepat, karena penjalannya
 tidak lagi lewat shell.
 
+> **Diukur ulang 8 Oktober 2026: 93 berkas, 60,4 detik.** Angka 28 September di atas sengaja **tidak dihapus** —
+> ia benar pada tanggalnya, dan dokumen audit menggambarkan kode pada tanggalnya sendiri.
+>
+> Yang perlu disadari: suitenya **naik 3,5×** sejak itu dan arahnya satu-arah. Anggaran Tahap 6 di
+> `main.cjs:1058-1076` adalah **300 detik**, jadi sisa ruangnya masih 5× — tetapi kalau pertumbuhannya
+> berlanjut dengan laju ini, angka itulah yang pertama menggigit, dan gigitannya berbentuk patch benar
+> yang dipulihkan karena verifikasinya kehabisan waktu. Periksa ulang angkanya saat menambah berkas uji,
+> jangan menunggu ia yang memberi tahu.
+
 **Batas yang tetap terbuka:** di `npm run desktop`, laporan verifikasi bisa hilang dari layar karena Vite memuat
 ulang halaman di tengah jalan. **Pemulihannya tetap terjadi** (itu di proses utama), hanya laporannya yang
 lenyap. Ini tidak ditambal dengan lapisan penyangga keempat — justru itu yang diperingatkan bab ini sejak awal.
@@ -586,7 +595,8 @@ Yang harus dijawab sebelum menghapus — **dengan kode, bukan pendapat**:
 
 1. Apa yang sebenarnya dilakukan `_analyze` dan `_review`, dan apakah keluarannya masih masuk akal hari ini?
 2. Adakah jalur lain yang sudah melakukannya lebih baik? Tersangka: mesin uji klaim (Tahap 2, menjalankan
-   kode sungguhan) dan verifikasi patch yang dijalankan (Tahap 6, menjalankan 51 berkas uji) — keduanya
+   kode sungguhan) dan verifikasi patch yang dijalankan (Tahap 6, menjalankan seluruh berkas uji — 51 saat
+   baris ini ditulis, 93 per 8 Okt 2026) — keduanya
    **membuktikan**, sedangkan `_review` hanya menilai dari bentuk teks, persis cara yang sudah terbukti
    salah 24 September.
 3. Bila TIDAK ada penggantinya: apakah kemampuan itu masih bernilai bagi Owner — misalnya "tinjau perubahan
