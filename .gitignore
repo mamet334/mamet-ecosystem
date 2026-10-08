@@ -43,6 +43,11 @@ token github.txt
 
 .vercel
 .env*
+# …kecuali contohnya. `.env*` menelan `.env.example` juga, jadi berkas yang justru HARUS terbaca
+# orang yang baru meng-clone repo ikut hilang. (`backend/.env.example` selamat hanya karena ia
+# sudah terlacak sebelum pola `.env*` ditambahkan — bukan karena diizinkan.) 2026-10-08, M8.
+!.env.example
+!**/.env.example
 
 
 # Data uji berisi NIP/nama pegawai — TIDAK boleh masuk repo publik (lihat uji/README.md)

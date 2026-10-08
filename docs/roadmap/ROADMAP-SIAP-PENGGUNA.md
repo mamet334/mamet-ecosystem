@@ -243,7 +243,22 @@ pesan di layar login perlu mengatakannya, supaya pengunjung tidak menebak.
 - `callAgentSimple.js:149` → kegagalan parse per-chunk SSE hanya `console.error`; jawabannya
   berlubang tanpa tanda.
 
-### M8 — Kode mati yang **menyesatkan pembaca berikutnya**
+### M8 — ✅ SELESAI 8 Okt — kode mati yang **menyesatkan pembaca berikutnya**
+
+> **✅ DITUTUP 2026-10-08** — [log](../project-memory/changelog/2026-10-08-mametlite-sisa-perancah-vite.md)
+>
+> Owner menyerahkan keputusannya, jadi keempat kelompok dikerjakan. `App.css`, 4 aset, 4 dependency
+> dihapus; `README.md`, `lang`, judul halaman, dan `.custom-scrollbar` diperbaiki (didefinisikan,
+> bukan dicabut — daftar dokumennya memang bergulir).
+>
+> **Dua celah ketahuan saat mengerjakannya:** nama variabel lingkungan tidak tercatat di mana pun
+> (ditambahkan `.env.example`), dan `.gitignore:45` pola `.env*` **menelan contohnya sendiri** —
+> `backend/.env.example` selamat hanya karena sudah terlacak sebelum pola itu ada. Ditambahkan
+> pengecualian, diperiksa dengan `git add --dry-run`.
+>
+> Build lulus, suite 92/92.
+
+#### (uraian temuan, sebagaimana ditulis sebelum ditutup)
 
 | Berkas | Bukti |
 |---|---|
@@ -828,7 +843,8 @@ Gerbang izin Owner di antara fase. Tiap langkah satu commit sendiri.
 | **J8** | `Kernel.js:63`; `VITE_APP_VERSION` didefinisikan atau dicabut | `Kernel.js` = `app.getVersion()`; diagnostik tak lagi `"unknown"` | — |
 | **E5** | `backend/` masuk `DIR`; prosa diselaraskan | `jalankan-semua.mjs` hijau, nol asersi dilemahkan | — |
 | **E3** | 3 berkas yatim; **nama** berkas di 3 dokumen diperbarui, keputusan ADR-0019 **tidak** disentuh | `git grep` pola impor → nol, **di pesan commit** | ✅ izin hapus |
-| **M8** | Kode mati Mametlite | sama | ✅ izin hapus |
+| ~~**M8**~~ | ✅ **SELESAI 8 Okt** — `App.css` + 4 aset + 4 dependency dihapus; README, `lang`, judul, `.custom-scrollbar`, `.env.example`, `.gitignore` diperbaiki | ✅ bukti nol-rujukan per berkas; build lulus; suite 92/92 | — |
+| **C10a** | ⚠️ **BARU** — `pdfjs-dist` GHSA-hq66-cqwq-w95j: eksekusi JS sewenang-wenang saat membuka PDF jahat. Rentang rentan `>=5.6.83 <6.2.108`; **mametlite `^6.0.227`, frontend `^5.7.284`** — keduanya di dalamnya | bump dalam major yang sama; build + suite | — |
 | **P4** | Nyalakan leaked-password; komentari `hakim_bayangan` | `get_advisors` diulang: barisnya hilang | — |
 | **§4** | Migrasi hak tabel, bisa dibalik | SQL diulang: 39 → 0 `TRUNCATE` bagi anon; lalu **buka kedua aplikasi**, termasuk "Cadangkan data" 13/13 | — |
 | **P1/P2/P3** | `cron-agent`, `knowledge-health`, `config.toml` | `list_edge_functions` diulang: hilang dari **platform** | ⏳ **keputusan** |
