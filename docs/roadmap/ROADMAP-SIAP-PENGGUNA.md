@@ -839,6 +839,39 @@ satu di `airdropEngine.cjs:211` yang **benar-benar** utang; enam sisanya placeho
 > berkas itu dipakai lagi, ujinya memerah dan menagih penerjemah. `Settings.jsx:234` juga tidak:
 > itu uji koneksi, tempat teks penyedia apa adanya justru yang dicari.
 
+### E9 — ✅ SELESAI 8 Okt — renderer mati tanpa suara, dan layar putih tanpa keterangan
+
+> **✅ DITUTUP 2026-10-08** — [log](../project-memory/changelog/2026-10-08-jendela-putih-renderer-bisu.md)
+>
+> **Tidak ada di rencana.** Lahir dari Owner: *"kenapa aplikasi mamet ai yang terinstall kok blank
+> putih? apakah karena ngeleg saja?"* — pada 4.2.15 yang baru dipasang, jadi build inilah yang
+> pertama dicurigai.
+>
+> **Sebab layar putihnya DI LUAR repo:** `%LOCALAPPDATA%\Programs` dikeraskan sandbox Codex (grup
+> `CodexSandboxUsers` + SID AppContainer) dan kehilangan `BUILTIN\Users`/`ALL APPLICATION PACKAGES`;
+> seluruh ACE folder Mamet **diwariskan** dari situ. Renderer Chromium ber-token-terbatas tak bisa
+> membaca binernya sendiri → mati sebelum satu baris JS jalan. Dibuktikan dengan menyalin aplikasi
+> terpasang **apa adanya** ke folder berizin normal: **boot sempurna, 182 baris renderer**. Jadi
+> 4.2.15 sendiri sehat. Perbaikannya `icacls` pada folder instalasi — **setelan keamanan, keputusan
+> Owner**. `--no-sandbox` **ditolak**: ia menambal gejala dengan membatalkan TMN-0009.
+>
+> **Yang DIPERBAIKI di repo adalah kebutaannya.** `main.cjs` tak punya `render-process-gone` mau pun
+> `did-fail-load`: satu kematian renderer = satu baris `[FATAL] … ERR_FAILED (-2)` yang menyebut
+> AKIBAT dan menyembunyikan SEBAB — dan karena itu diagnosisnya mula-mula menunjuk "berkas hilang di
+> asar", padahal penangan `mamet://` mengembalikan `200 text/html` dan yang mati adalah prosesnya.
+> Kini: `alasan=` + `exitCode=` (heksadesimal, bentuk yang bisa dicari) + pemulihan muat-ulang
+> berbatas 3 dengan penjaga dua-penangan.
+>
+> **Batas kejujurannya:** pemulihan itu TIDAK menolong kasus ACL ini (ketiga percobaan ikut mati).
+> Yang menolong adalah baris yang **menamai** sebabnya.
+>
+> Bukti: dijalankan di build **terpaket** (`[RENDERER MATI] alasan=crashed exitCode=143` →
+> `[PULIH] … 1/3`), `uji-cangkang-electron.mjs` v1→v2 dengan 11 asersi baru, **3 mutasi menggigit**
+> (yang kedua membongkar hijau palsu di asersi saya sendiri), suite 95/95.
+>
+> **Belum ada di .exe mana pun** — perubahan ini tak menyentuh `frontend/package.json`, jadi tidak
+> memicu build; ia ikut rilis berikutnya.
+
 ---
 
 ## 6. Penghalang yang bukan kode, dan pengaruhnya ke rencana
@@ -880,6 +913,7 @@ Gerbang izin Owner di antara fase. Tiap langkah satu commit sendiri.
 | ~~**C10a** (mametlite)~~ | ✅ **SELESAI 8 Okt** — `pdfjs-dist ^6.0.227` → `^6.4.299`; GHSA-hq66-cqwq-w95j (eksekusi JS saat membuka PDF jahat) keluar dari audit | ✅ `uji-baca-pdf-mametlite.mjs`: PDF 2 halaman terbaca lewat jalur sesungguhnya, bentuk kemajuan utuh, PDF rusak ditolak; batas rentang diperiksa di 9 titik; suite 93/93 | — |
 | ~~**C10b** (frontend)~~ | ✅ **SELESAI 8 Okt** — `pdfjs-dist ^5.7.284` → `^6.4.299` (+ deklarasi di `package.json` akar, yang di sana tanpa pengimpor & tanpa terpasang). **Nol baris kode aplikasi berubah**: `documentTextExtractor.js:233-234` sudah ditulis untuk v6 saat C10a. **Koreksi atas baris ini sendiri:** permukaan pdfjs Ecosystem lebih **sempit**, bukan lebih luas — `hitungHalamanPdf` memakai **pdf-lib**, dan `tabelCentang` hanya MENERIMA items; hanya satu berkas memanggil pdfjs. Keduanya kini dijaga uji | ✅ `uji-baca-pdf-ecosystem.mjs` dijalankan **sebelum & sesudah** bump (5.7.284: 1 merah tepat di asersi versi; 6.4.299: 24/24); kontrak koordinat pdf.js diperiksa (`transform[4]/[5]`, `width`) dan centang `Ö` tetap jatuh di kolom **Penting**; `npm run build` lulus + worker 1,3 MB ikut ke `dist`; `npm audit` tak lagi mendaftarkan `pdfjs-dist`; suite 95/95 | — |
 | ~~**E8**~~ | ✅ **SELESAI 8 Okt** — galat ws-assistant: sebelas tempat berhenti mengarang teks tampilan; `message` dari server berhenti dibuang; `services/pesanGalat.js` (baru) | ✅ `uji-pesan-galat-ecosystem.mjs` 5 bagian (21 tanda, aturan 4, 4 tanda tak dikenali yang tidak menuduh, bentuk blok, pemeriksaan kode); 3 mutasi menggigit; suite 95/95 | — |
+| ~~**E9**~~ | ✅ **SELESAI 8 Okt** — renderer yang mati kini bersuara (`alasan` + `exitCode` heks) + pemulihan muat-ulang berbatas. **Sebab layar putih 4.2.15 sendiri DI LUAR repo**: ACL `%LOCALAPPDATA%\Programs` kehilangan `BUILTIN\Users` karena pengerasan sandbox Codex | ✅ build **terpaket** memancarkan `[RENDERER MATI] … exitCode=143` → `[PULIH] 1/3`; salinan byte-identik di folder berizin normal boot sempurna (182 baris renderer); `uji-cangkang-electron` v1→v2, 11 asersi, 3 mutasi menggigit; suite 95/95 | ⏳ **`icacls` = keputusan Owner** |
 | **P4** | Nyalakan leaked-password; komentari `hakim_bayangan` | `get_advisors` diulang: barisnya hilang | — |
 | **§4** | Migrasi hak tabel, bisa dibalik | SQL diulang: 39 → 0 `TRUNCATE` bagi anon; lalu **buka kedua aplikasi**, termasuk "Cadangkan data" 13/13 | — |
 | **P1/P2/P3** | `cron-agent`, `knowledge-health`, `config.toml` | `list_edge_functions` diulang: hilang dari **platform** | ⏳ **keputusan** |

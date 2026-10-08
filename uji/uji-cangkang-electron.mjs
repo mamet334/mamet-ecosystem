@@ -25,7 +25,7 @@ const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (s) => s.split('\n').filter((b) => !/^\s*(\/\/|\*|\/\*)/.test(b)).join('\n');
 
-console.log('uji-cangkang-electron v1');
+console.log('uji-cangkang-electron v2');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 300)}` : ''}`);
@@ -108,6 +108,52 @@ cek(/corsEnabled: true/.test(Mk),
     'WebComparisonService MASIH memanggil fetch() ke RSS pihak ketiga dari renderer — dasar keputusan di atas',
     { adaFetch, adaRss });
 }
+
+// ── 4. Renderer yang mati harus BERSUARA, dan jendela putih harus mencoba lagi (8 Okt 2026) ──
+//
+// Lahir dari 4.2.15 terpasang yang membuka jendela PUTIH permanen. Diagnosisnya memakan belasan
+// langkah karena satu-satunya jejak adalah `[FATAL] … ERR_FAILED (-2)` — yang menyebut AKIBAT
+// (navigasi gagal) dan menyembunyikan SEBAB. Lewat DevTools Protocol ternyata penangan `mamet://`
+// MENGEMBALIKAN `200 text/html`; yang mati adalah proses renderer-nya (`Target crashed`).
+//
+// Sebab sesungguhnya di luar repo: ACL `%LOCALAPPDATA%\Programs` dikeraskan sandbox Codex dan
+// kehilangan `BUILTIN\Users`/`ALL APPLICATION PACKAGES`, jadi renderer ber-token-terbatas tak bisa
+// membaca binernya sendiri. Dibuktikan dengan menyalin aplikasi terpasang APA ADANYA ke folder
+// berizin normal: boot sempurna. Jadi yang diperbaiki di repo ini BUKAN sebabnya — melainkan
+// kebutaannya.
+//
+// Yang dijaga di bawah, beserta batas kejujurannya: pemulihan muat-ulang TIDAK menolong kasus ACL
+// itu (ketiga percobaan ikut mati). Yang menolong adalah baris yang MENAMAI sebabnya. Pemulihan ada
+// untuk kematian SESAAT, dan batas 3 ada supaya kerusakan nyata tidak diputar tanpa henti.
+cek(/on\('render-process-gone'/.test(Mk), 'render-process-gone terpasang — kematian renderer bersuara');
+cek(/exitCode/.test(Mk) && /reason/.test(Mk),
+  'dan yang dicatat menyebut reason + exitCode (bukan hanya "gagal")');
+cek(/toString\(16\)/.test(Mk), 'kode keluarnya ikut ditulis heksadesimal — itu bentuk yang bisa dicari');
+cek(/on\('did-fail-load'/.test(Mk), 'did-fail-load terpasang');
+cek(/bingkaiUtama/.test(Mk) && /if \(!bingkaiUtama\) return/.test(Mk),
+  'sub-bingkai yang gagal TIDAK dianggap layar putih');
+cek(/kode === -3/.test(Mk), 'ERR_ABORTED (-3) tidak dihitung kegagalan — ia navigasi yang disela');
+
+{
+  const m = Mk.match(/BATAS_MUAT_ULANG\s*=\s*(\d+)/);
+  cek(!!m && Number(m[1]) > 0 && Number(m[1]) <= 5,
+    `pemulihan BERBATAS (${m ? m[1] : 'tak ada'}) — bukan putaran tanpa henti`, m && m[1]);
+  cek(/percobaanMuat >= BATAS_MUAT_ULANG/.test(Mk), 'dan batasnya benar-benar diperiksa sebelum mencoba');
+  // Bentuk pertama asersi ini hanya mencari kata `sedangPulih`, dan uji mutasi menunjukkan ia
+  // HIJAU PALSU: cabut ketiga barisnya, deklarasi `let sedangPulih = false;` tetap tinggal dan
+  // polanya tetap cocok. Yang diperiksa sekarang penjaganya sendiri — pulang awal, dinyalakan,
+  // dan dilepas saat muatan berhasil.
+  cek(/if \(sedangPulih\) return;/.test(Mk) && /sedangPulih = true;/.test(Mk) && /sedangPulih = false;/.test(Mk),
+    'satu kematian menyalakan DUA penangan — penjaganya pulang awal, menyala, lalu dilepas');
+  cek(/on\('did-finish-load'/.test(Mk), 'dan pelepasannya terikat ke muatan yang BERHASIL');
+  cek(/isDestroyed\(\)/.test(Mk), 'jendela yang sudah dibuang tidak dimuat ulang');
+}
+
+// Jalan keluar yang DITOLAK, dicatat sebagai asersi supaya tidak diam-diam dipakai nanti:
+// `--no-sandbox` memang membuat muatan pertama lolos pada kasus ACL di atas. Memakainya berarti
+// membatalkan TMN-0009 demi menambal masalah yang akarnya di luar repo.
+cek(!/appendSwitch\('no-sandbox'\)/.test(Mk),
+  "`--no-sandbox` tetap TIDAK dipakai — ia melolosan muatan pertama, tetapi membatalkan TMN-0009");
 
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));
 process.exit(gagal === 0 ? 0 : 1);

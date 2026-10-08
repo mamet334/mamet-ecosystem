@@ -184,15 +184,92 @@ function createWindow() {
     }
   });
 
-  if (isDev) {
-    mainWindow.loadURL('http://localhost:5173');
-  } else {
-    mainWindow.loadURL('mamet://app/index.html').catch(err => {
-      const logMsg = `[FATAL] loadURL mamet:// gagal: ${err.message}\n`;
-      console.error(logMsg);
-      fs.appendFileSync(path.join(os.tmpdir(), 'mamet-renderer.log'), logMsg);
-    });
-  }
+  // ── PEMULIHAN MUATAN PERTAMA + KETERANGANNYA (8 Oktober 2026) ───────────────────────────
+  //
+  // 4.2.15 terpasang membuka jendela PUTIH permanen. Dibuktikan lewat DevTools Protocol pada
+  // aplikasi terpasang itu sendiri, dan urutannya penting karena ia membalik dugaan pertama:
+  //
+  //   1. penangan `mamet://` MENGEMBALIKAN `200 text/html` — berkasnya ada dan terkirim;
+  //   2. target halamannya menjawab `Target crashed` — proses renderer-nya MATI;
+  //   3. dokumennya lalu `net::ERR_ABORTED (canceled)`, dan `loadURL` menolak `ERR_FAILED`;
+  //   4. satu `Page.reload` memulihkannya sampai `Kernel Boot Complete — SYSTEM READY`.
+  //
+  // Jadi renderer pertama bisa mati SEBELUM satu baris JS jalan, dan yang kedua sehat. Itu
+  // balapan saat start, bukan ketidakcocokan — dan `--no-sandbox` membuat muatan pertama lolos,
+  // yang menunjuk ke sandbox renderer sebagai pihak yang kalah balapan. `--no-sandbox` TIDAK
+  // dipakai sebagai jalan keluar: ia baru saja dicabut dengan sengaja (TMN-0009).
+  //
+  // Dua hal yang sebenarnya kurang, dan keduanya ada di sini:
+  //
+  //   PEMULIHAN  — tak ada satu pun yang mencoba lagi. Satu kematian sesaat = jendela putih
+  //                selamanya, padahal muat ulang memulihkannya.
+  //   KETERANGAN — tak ada `render-process-gone` mau pun `did-fail-load`, jadi satu-satunya
+  //                jejak adalah `[FATAL] … ERR_FAILED (-2)`: ia menyebutkan AKIBAT (navigasi
+  //                gagal) dan menyembunyikan SEBAB (renderer mati, dengan kode keluarnya).
+  //                Tanpa itu, diagnosisnya menebak berkas hilang — dan berkasnya tidak hilang.
+  //
+  // Batasnya 3, dan itu bukan angka hiasan: pengulangan tanpa batas pada kerusakan yang NYATA
+  // (mis. berkas benar-benar hilang) akan memutar jendela putih selamanya tanpa jejak.
+  const catat = (baris) => {
+    try {
+      console.error(baris);
+      fs.appendFileSync(path.join(os.tmpdir(), 'mamet-renderer.log'), baris.endsWith('\n') ? baris : `${baris}\n`);
+    } catch (_) { /* log tak bisa ditulis: jangan jatuhkan aplikasi karena catatannya */ }
+  };
+
+  const ALAMAT_AWAL = isDev ? 'http://localhost:5173' : 'mamet://app/index.html';
+  const BATAS_MUAT_ULANG = 3;
+  let percobaanMuat = 0;
+  let sedangPulih = false;
+
+  const coba = (sebab) => {
+    // Satu kematian renderer menyalakan DUA penangan (`render-process-gone` lalu `did-fail-load`
+    // ERR_FAILED). Tanpa penjaga ini, satu kejadian memakan dua dari tiga percobaan — dan yang
+    // kedua memuat ulang jendela yang sedang dimuat ulang.
+    if (sedangPulih) return;
+    if (percobaanMuat >= BATAS_MUAT_ULANG) {
+      catat(`[FATAL] ${sebab} — sudah ${percobaanMuat}x dicoba, berhenti. Jendela akan tetap kosong; lihat baris di atas untuk sebabnya.`);
+      return;
+    }
+    percobaanMuat += 1;
+    sedangPulih = true;
+    catat(`[PULIH] ${sebab} — memuat ulang (percobaan ${percobaanMuat}/${BATAS_MUAT_ULANG})`);
+    // Jeda kecil: renderer yang baru mati butuh waktu untuk diganti, dan memuat ulang di dalam
+    // penangan kematiannya sendiri membuat Electron memakai webContents yang sudah tak ada.
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.loadURL(ALAMAT_AWAL).catch((err) => catat(`[FATAL] muat ulang gagal: ${err.message}`));
+      }
+    }, 400);
+  };
+
+  // Renderer mati: SEBAB-nya di sini, beserta kode keluarnya. `reason` 'crashed'/'killed'/'oom'/
+  // 'launch-failed'; `exitCode` angka Windows (mis. 0xC0000005 pelanggaran akses, 0xC0000428
+  // DLL asing ditolak code integrity). Inilah yang hilang saat 4.2.15 pertama diselidiki.
+  mainWindow.webContents.on('render-process-gone', (_e, rincian) => {
+    const kode = rincian?.exitCode ?? 0;
+    const hex = (kode >>> 0).toString(16).toUpperCase();
+    catat(`[RENDERER MATI] alasan=${rincian?.reason} exitCode=${kode} (0x${hex})`);
+    if (rincian?.reason !== 'clean-exit') coba(`renderer mati (${rincian?.reason})`);
+  });
+
+  // Muatan berhasil: penjaga dilepas supaya kematian BERIKUTNYA (kalau ada) tetap dipulihkan.
+  // Hitungannya TIDAK direset — tiga percobaan adalah plafon seumur jendela, supaya aplikasi yang
+  // muat-lalu-mati berulang tidak berputar tanpa henti.
+  mainWindow.webContents.on('did-finish-load', () => { sedangPulih = false; });
+
+  mainWindow.webContents.on('did-fail-load', (_e, kode, uraian, alamat, bingkaiUtama) => {
+    if (!bingkaiUtama) return;            // sub-bingkai yang gagal bukan layar putih
+    if (kode === -3) return;              // ERR_ABORTED: dibatalkan navigasi lain, bukan kegagalan
+    catat(`[MUAT GAGAL] ${kode} ${uraian} ${String(alamat).slice(0, 120)}`);
+    coba(`muat gagal (${uraian})`);
+  });
+
+  mainWindow.loadURL(ALAMAT_AWAL).catch(err => {
+    // Tetap dicatat seperti sebelumnya supaya log lama tetap bisa dibandingkan — tetapi sekarang
+    // ia didahului baris [RENDERER MATI]/[MUAT GAGAL] yang menyebut sebabnya.
+    catat(`[FATAL] loadURL ${isDev ? 'dev' : 'mamet://'} gagal: ${err.message}`);
+  });
 
   // ── PENJAGA NAVIGASI (TMN-0009, 2026-10-06) ─────────────────────────────────────────────
   //
