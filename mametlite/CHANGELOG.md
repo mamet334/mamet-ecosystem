@@ -4,6 +4,92 @@ Riwayat perubahan khusus untuk deployment `mametlite.vercel.app`. Untuk perubaha
 
 ---
 
+## 0.1.0 — 2026-10-07/08 — Mamet Lite digarap untuk penggunanya
+
+**Versi pertama yang benar-benar diberi nomor.** Sebelum ini `package.json` berisi `0.0.0` bawaan
+perancah Vite sejak hari pertama, jadi tidak ada cara menunjuk *"build yang mana yang sudah berisi
+perbaikan ini"*. Nomornya tidak dibaca kode mana pun — ia untuk manusia, dan untuk memberi entri
+changelog ini sesuatu untuk dijangkarkan.
+
+> **Changelog ini sendiri sudah tertinggal 22 commit** saat entri ini ditulis — berhenti di 8
+> September padahal `mametlite/` terus berubah. Itu bagian dari apa yang diperbaiki di sini: aplikasi
+> yang punya pengguna di luar Owner tidak boleh riwayatnya hanya ada di `git log`.
+
+Lahir dari permintaan Owner: *"upgrade dan stabilkan untuk mamet ecosystem ini. lihat kode yang ada
+dari awal hingga akhir siap di sajikan untuk user."* Rancangan & sisa pekerjaannya di
+[`docs/roadmap/ROADMAP-SIAP-PENGGUNA.md`](../docs/roadmap/ROADMAP-SIAP-PENGGUNA.md) (item 125).
+
+### 🔒 Keamanan
+
+**Penyuntikan HTML dihapus — bukan ditambal** ([log](../docs/project-memory/changelog/2026-10-07-mametlite-berhenti-menyuntikkan-html.md))
+Parser Markdown membangun string HTML lalu menyuntikkannya dengan `dangerouslySetInnerHTML`, dan
+pelolosannya memakai daftar putih tag yang alternatif `a`-nya panjangnya **satu huruf** — jadi setiap
+tag yang namanya mulai "a" lolos **beserta atributnya**: `<audio src=x onerror=…>`, `<animate>`.
+Di origin ini `localStorage` menyimpan kunci OpenRouter Anda.
+Arahan Owner: *"jangan hanya di tambal. tapi digunakan logikanya dengan semestinya."* Jadi
+penguraiannya kini menghasilkan **data** (`lib/markdown.js`) dan React yang merender
+(`lib/TeksKaya.jsx`). Tanpa penyuntikan, tak ada daftar putih yang perlu dijaga benar.
+
+**CSP + 4 header keamanan** — `mametlite/vercel.json` **baru**; sebelumnya nol header. Dan
+`vite.config.js` membacanya dari berkas yang sama, jadi `npm run dev`/`preview` memakai CSP yang
+**sama dengan produksi** — pelanggaran muncul di konsol kita, bukan di peramban pengguna.
+
+**pdf.js bisa menjalankan JavaScript dari PDF yang diunggah** ([log](../docs/project-memory/changelog/2026-10-08-pdfjs-eksekusi-js-dari-pdf.md))
+`pdfjs-dist` GHSA-hq66-cqwq-w95j, rentang rentan `>=5.6.83 <6.2.108`; terpasang `^6.0.227`.
+Membuka PDF adalah fungsi utama aplikasi ini. Dinaikkan ke `^6.4.299`.
+
+### 💥 Tidak lagi bisa jadi layar putih
+
+([log](../docs/project-memory/changelog/2026-10-08-mametlite-tidak-lagi-layar-putih.md))
+Satu nilai `localStorage` rusak → `JSON.parse` melempar saat render → **layar putih yang kembali
+setiap muat ulang**, tanpa jalan keluar. Kini riwayat lewat satu pintu (`lib/riwayatLokal.js`) yang
+memeriksa **bentuknya** (bukan hanya JSON-nya) dan tidak pernah melempar, ditambah error boundary
+dengan tombol yang menghapus **hanya riwayat** — kunci OpenRouter Anda tidak disentuh.
+Penyimpanan juga tidak lagi menulis seluruh riwayat **tiap token** jawaban.
+
+### 📱 Bisa dipakai dari HP
+
+([log](../docs/project-memory/changelog/2026-10-08-mametlite-dari-hp.md)) — menutup Item 72.
+Sebelumnya **0 dari 102** `className` punya prefiks responsif, dan bilah sisi `w-80` menyisakan
+**±55px** untuk chat di layar 375px. Kini bilah sisi jadi laci di layar kecil (tombol ☰, ✕, lapisan
+gelap, dan menutup sendiri saat percakapan dipilih), `h-screen` → `h-dvh` supaya bilah masukan tidak
+tertimpa chrome iOS, label tiga mode mengalah jadi ikon, dan **tiga kendali yang dulu hanya muncul
+saat hover** (hapus dokumen, hapus chat, salin) kini terjangkau sentuhan.
+Di layar lebar tidak ada yang berubah.
+
+### 💬 Pesan galat memakai bahasa Anda
+
+([log](../docs/project-memory/changelog/2026-10-08-mametlite-bicara-bahasa-penggunanya.md))
+Dulu yang muncul adalah teks server apa adanya — `❌ Error: ENGINEER_NO_API_KEY`,
+`❌ Error: Failed to fetch` — dan galat masuk berupa kotak sistem berbahasa Inggris.
+Kini judul + **tindakan** + pesan teknis kecil untuk pelaporan. Galat yang tandanya tidak dikenali
+diberi pesan **umum**, bukan tebakan yang terdengar yakin.
+Ikut diperbaiki: gelembung jawaban kosong yang tertinggal saat jawaban gagal di tengah jalan, dan
+**hapus percakapan kini bertanya dulu** (hapus dokumen sudah bertanya sejak dulu).
+
+### 🧹 Kerapian
+
+([log](../docs/project-memory/changelog/2026-10-08-mametlite-sisa-perancah-vite.md))
+`src/App.css` (184 baris, nol pengimpor) dihapus — dan ia memuat **satu-satunya** `@media` di proyek
+ini, jadi pembacanya akan menyangka aplikasi ini sudah responsif. Ikut dibersihkan: 4 aset dan 4
+dependency tak terpakai. README template Vite diganti dengan README sungguhan, `lang="en"` → `"id"`,
+judul tab → "Mamet Lite", kelas `custom-scrollbar` akhirnya **didefinisikan**, dan `.env.example`
+ditambahkan — nama variabel lingkungannya dulu tidak tercatat di mana pun.
+
+### ✅ Penjaga baru
+
+Enam berkas uji baru di `uji/` (penguraian Markdown, riwayat lokal, tata letak HP, pesan galat,
+penjaga tiga berkas salinan, dan jalur baca PDF). Tiap satu **dibuktikan menggigit** dengan mutasi
+sengaja — bukan sekadar lulus.
+
+### Diketahui, belum dikerjakan
+
+- **Belum ada pendaftaran & reset kata sandi** dari UI; akun dibuat di luar aplikasi (M6).
+- Riwayat chat masih hanya di peramban ini — bersih-data menghapusnya, dan tidak ada salinan lintas
+  perangkat.
+
+---
+
 ## 2026-09-08 — Fix: Request Mamet Lite Ditolak dengan `ENGINEER_NO_API_KEY`
 
 **Status:** ✅ Diperbaiki & Diverifikasi via log Supabase live
