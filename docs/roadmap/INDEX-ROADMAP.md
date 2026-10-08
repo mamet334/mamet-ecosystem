@@ -239,13 +239,14 @@ sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
 
 ## 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-10-01)
 
-Versi di `package.json`: **4.2.15** (dinaikkan 8 Okt). Keadaan di platform, **diperiksa lewat API
-GitHub 8 Okt** — bukan disimpulkan dari dokumen ini:
+Versi di `package.json`: **4.2.16** (dinaikkan 8 Okt untuk mengirim **E9**; 4.2.15 dinaikkan hari yang
+sama). Keadaan di platform, **diperiksa lewat API GitHub 8 Okt** — bukan disimpulkan dari dokumen ini:
 
 | Rilis | Keadaan | Aset |
 |---|---|---|
 | **v4.2.14** | **TERBIT** 2026-10-06 22:36 UTC (`isDraft: false`) | `Mamet-AI-Setup-4.2.14.exe` |
 | **v4.2.15** | **DRAF** (`isDraft: true`, `publishedAt: null`) — **tetapi SUDAH terkirim**: ia terpasang sendiri di mesin Owner. Draf bukan rem distribusi (lihat item 96) | `Mamet-AI-Setup-4.2.15.exe` |
+| **v4.2.16** | dibangun 8 Okt, membawa **E9** (renderer mati bersuara + pemulihan berbatas) | `Mamet-AI-Setup-4.2.16.exe` |
 
 > ⚠️ **KOREKSI 8 Okt, dan pelajarannya sama dengan T11.** Bagian ini sebelumnya berbunyi *"Tiga
 > muatan menunggu build"* untuk 4.2.14 — dan itu **sudah basi sejak 6 Okt 22:36**: rilisnya dibangun
@@ -424,6 +425,7 @@ unduh desktop dari web.
 | **Cangkang Electron** (TMN-0009) | `no-sandbox` dicabut (konfigurasi berhenti membantah `sandbox: true`), penjaga navigasi ditambahkan; `webSecurity: false` **sengaja dipertahankan** karena load-bearing | `main.cjs` |
 | **Galat ws-assistant diterjemahkan** (E8, 4.2.15) | 11 tempat berhenti mengarang teks tampilan; `message` dari server berhenti dibuang (`⚠️ Error: NO_API_KEY` → judul + tindakan + teks teknis) | renderer |
 | **pdfjs 6** (C10b, 4.2.15) | `frontend` keluar dari GHSA-hq66-cqwq-w95j (eksekusi JS saat membuka PDF jahat); nol baris kode aplikasi berubah | klien |
+| **Renderer mati bersuara** (E9, 4.2.16) | `render-process-gone` + `did-fail-load`: layar putih kini menyebut `alasan` & `exitCode` (heks), plus pemulihan muat-ulang berbatas 3 | `main.cjs` |
 
 > ⛔ **UJI LIVE 4.2.15 TERHALANG DI MESIN OWNER (8 Okt).** 4.2.15 sudah dipasang dan membuka jendela
 > **putih**. Sebabnya **bukan** build ini: ACL `%LOCALAPPDATA%\Programs` kehilangan `BUILTIN\Users`
@@ -432,8 +434,11 @@ unduh desktop dari web.
 > Owner), blok uji **A–G di bawah tidak bisa dijalankan dari aplikasi terpasang**. Rinciannya di
 > [`ROADMAP-SIAP-PENGGUNA.md`](./ROADMAP-SIAP-PENGGUNA.md) **E9**.
 >
-> Perbaikan **E9** sendiri (renderer mati bersuara + pemulihan berbatas) **belum ada di .exe mana
-> pun** — ia tak menyentuh `frontend/package.json`, jadi tidak memicu build; ikut rilis berikutnya.
+> Perbaikan **E9** sendiri (renderer mati bersuara + pemulihan berbatas) dikirim lewat **4.2.16**
+> (versi dinaikkan 8 Okt atas perintah Owner). Ia **tidak menyembuhkan** layar putih — sebabnya izin
+> folder — tetapi sesudah 4.2.16 terpasang, lognya akan **menamai** sebabnya sendiri
+> (`[RENDERER MATI] alasan=… exitCode=…`), jadi diagnosis ACL di atas bisa dikonfirmasi dari
+> aplikasi, bukan dari penyelidikan dua belas langkah.
 
 **PERLU RILIS KLIEN, dan `npm run desktop` harus DIJALANKAN ULANG** — `main.cjs` dan
 `preload.cjs` berubah, kanal `engineer:indeks-konstitusi` hanya ada di proses utama yang baru.

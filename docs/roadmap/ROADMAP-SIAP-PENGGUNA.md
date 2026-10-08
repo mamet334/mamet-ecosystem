@@ -475,7 +475,7 @@ Validation..."`; perintah sebenarnya dikomentari di `:64`.
 
 | | Nilai | Catatan |
 |---|---|---|
-| `frontend/package.json:2` | **4.2.15** | otoritatif; memberi `electron-builder` & `app.getVersion()` (4.2.14 → 4.2.15 pada 8 Okt, E8+C10b) |
+| `frontend/package.json:2` | **4.2.16** | otoritatif; memberi `electron-builder` & `app.getVersion()` (8 Okt: 4.2.14 → 4.2.15 untuk E8+C10b, lalu → 4.2.16 untuk E9) |
 | `frontend/src/core/runtime/Kernel.js:63` | **3.0.0** | `identity.version` — **satu major tertinggal** |
 | `VITE_APP_VERSION` | **tak pernah didefinisikan** | dirujuk `lazyLoadWithRetry.js:18` |
 
@@ -922,6 +922,7 @@ Gerbang izin Owner di antara fase. Tiap langkah satu commit sendiri.
 | **M9** | Penyatuan tiga salinan | — | ⏳ **ADR** |
 | **E2** | Saringan log renderer | — | ⏳ **arahan** |
 | **4.2.15** | ✅ **SUDAH TERKIRIM & TERPASANG** 8 Okt (draf tidak menahan distribusi — lihat J6). Sisanya hanya menekan Publish untuk halaman rilisnya | uji §5b A–G — **terhalang ACL, lihat E9** | ⏳ **halaman rilis + `icacls`** |
+| **4.2.16** | versi dinaikkan 8 Okt atas perintah Owner untuk mengirim **E9**; aplikasi menariknya sendiri | sesudah terpasang: log memuat `[RENDERER MATI] alasan=… exitCode=…` — itu mengubah diagnosis ACL dari penyelidikan menjadi satu baris | — |
 | **E6** | Dependency, **paling akhir** | CI dari J3 yang menilainya | — |
 
 ### Yang sengaja TIDAK masuk dokumen ini
