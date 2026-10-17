@@ -52,3 +52,11 @@ token github.txt
 
 # Data uji berisi NIP/nama pegawai — TIDAK boleh masuk repo publik (lihat uji/README.md)
 uji/data-lokal/
+
+# Keluaran graphify: HASIL TURUNAN dari kode, bisa dibangun ulang kapan saja dengan
+#   graphify . --update --code-only   &&   graphify cluster-only .
+# Dilacak sampai 18 Okt 2026, lalu dikeluarkan: graph.json ±1,9 MB dan graph.html ±1,7 MB berubah
+# total setiap penyegaran, jadi tiap pemindaian menghasilkan diff ±4 MB yang tidak bisa dibaca
+# manusia dan tidak menambah apa pun ke sejarah repo. Berkasnya TETAP ADA di disk — yang berhenti
+# hanyalah pelacakannya. Keadaan graf dicatat sebagai ANGKA di dokumen roadmap, bukan sebagai blob.
+graphify-out/
