@@ -1,7 +1,13 @@
 # ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
 
 **Tipe Dokumen:** Daftar sisa pekerjaan (temuan audit yang belum punya dokumen roadmap sendiri)
-**Status:** ⏳ **6 temuan terbuka** (T1, T10, T11, T12, T13, T14; T2–T9 ditutup).
+**Status:** ⏳ **T15 ditambahkan 18 Okt 2026** — server `agent-process` mengimpor kode klien dari
+`frontend/src`; ketahuan dari keluaran deploy, bukan dari kode.
+**T11 sudah ditutup** dan itu diperiksa ulang hari ini: daftar fungsi lewat API Supabase 18 Okt
+menyebut **6 fungsi** (`agent-process`, `cron-agent`, `rag-process`, `health-check`,
+`knowledge-health`, `ping`) — `check-keys` tidak lagi terdaftar.
+Sisa daftar terbuka di bawah (T1, T10, T12, T13, T14) adalah keadaan **28 September** dan **tidak**
+diaudit ulang pada 18 Okt; baca tiap bagiannya, jangan percaya hitungan di baris ini.
 **28 September 2026: T11, T12, T13, T14 sudah DIPUTUSKAN Owner** (🟢 di masing-masing bagian) tetapi
 **belum dikerjakan**; tiap keputusan disertai cara mengoreksinya bila kenyataan berbeda. T1 menunggu Owner
 mengganti token Apify; T10 menunggu Tahap 2–3 `ROADMAP-ENGINEER-MANDIRI.md`.
@@ -666,6 +672,47 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
 - **Status:** 🟡 kode selesai (53 berkas uji hijau), jalur non-stream terbukti live, **jalur stream menunggu
   satu chat Ecosystem**. Penyedianya belum ditampilkan di layar (Owner memutuskan "simpan", bukan
   "tampilkan") — menampilkannya kemudian tinggal membaca `metadata.penyedia`, tanpa perubahan server.
+
+## T15 — Server `agent-process` mengimpor kode klien dari `frontend/src` (ketahuan saat deploy Item 126, 2026-10-18)
+
+- **Temuan:** **7 titik impor di 5 berkas** `supabase/functions/agent-process` menjangkau
+  `frontend/src/core/runtime/services/`, menarik **4 modul klien ke dalam edge function**:
+
+  | Berkas server | Baris | Modul frontend yang ditarik |
+  |---|---|---|
+  | `lib/data_tabel/data_tabel.ts` | 8 | `dataTabelAsnSaring.js` |
+  | `lib/orchestration/handlers/context_builder.ts` | 18, 19 | `KnowledgeService.js`, `RetrievalStrategyService.js` |
+  | `lib/orchestration/handlers/synthesis_handler.ts` | 8 | `folderKerjaAlat.js` |
+  | `lib/rag/document_search.ts` | 4 | `KnowledgeService.js` |
+  | `lib/request/request_pipeline.ts` | 15, 16 | `dataTabelAsnSaring.js`, `folderKerjaAlat.js` |
+
+  `git blame`: 2 dan 21 September 2026 — bukan dari pekerjaan Item 126. Ketahuannya **bukan dari
+  kode**, melainkan dari keluaran `supabase functions deploy agent-process` yang menampilkan empat
+  berkas `frontend/` ikut terunggah; sampai hari itu tak ada yang pernah melihatnya.
+
+- **Dampak:** bukan ukuran bundel. Mengubah berkas di `frontend/src/core/runtime/services/`
+  **diam-diam mengubah perilaku server**, dan perubahannya baru berlaku sesudah edge function
+  di-deploy ulang — padahal tak ada yang akan berpikir men-deploy fungsi sesudah menyentuh berkas
+  bernama "frontend". Jendela waktu di antaranya adalah keadaan ketika klien dan server menjalankan
+  **dua versi logika yang namanya sama**, tanpa satu pun tanda di layar.
+
+  Bentuk kegagalannya sama dengan jebakan `config.toml` yang ditemukan hari yang sama (changelog
+  Item 126): benar di repo, tidak berlaku di platform sampai ada yang ingat men-deploy. Dan T11
+  sudah mengajarkan bahwa klaim tentang platform tidak bisa dibuktikan dari repo.
+
+- **Yang BELUM diperiksa — jangan dianggap sudah:** (1) apakah keempat modul itu memang logika
+  bersama yang pantas dipakai dua sisi, atau sekadar kebetulan sejarah; (2) apakah hari ini sudah
+  ada perbedaan perilaku nyata antara yang berjalan di klien dan yang terbundel di fungsi versi 529.
+  Keduanya harus diukur sebelum arah solusi dipilih.
+
+- **Arah solusi (BELUM diputuskan Owner, dan kelayakannya belum diuji):** modul bersama dipindah ke
+  satu tempat netral yang bukan milik klien maupun server, lalu diimpor dua sisi — **bukan**
+  disalin, karena dua salinan yang menyimpang adalah kegagalan yang lebih sulit terlihat daripada
+  impor lintas batas. Yang perlu dibuktikan lebih dulu: jalur impor seperti itu benar-benar dimuat
+  Deno (edge function) **dan** Vite (klien) tanpa perkakas tambahan.
+
+- **Status:** ⏳ tercatat, belum dirancang, belum diputuskan Owner. Tabel titik impornya juga ada di
+  [changelog Item 126](../project-memory/changelog/2026-10-18-penanda-pemilih-model.md).
 
 ## T9 — Sub-agent `knowledge_manager` rusak & ikut dipanggil Coordinator (asal Item 92 Tahap 3, 2026-09-21)
 

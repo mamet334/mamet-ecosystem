@@ -78,6 +78,27 @@ kedelapan titik panggilan mengisinya dengan `context.trace_id` — jadi isinya U
 kolom `trace_id` di sebelahnya. Itu sebabnya ia tidak bisa dipakai untuk keperluan ini. Dicatat,
 tidak diubah: mengubah kolom yang sudah berisi data bukan bagian dari butir ini.
 
+**Server mengimpor kode klien lintas batas.** Ketahuan dari keluaran deploy: empat berkas
+`frontend/` ikut terunggah **ke dalam** edge function. Penyebabnya **7 titik impor di 5 berkas
+server** yang menjangkau `frontend/src/core/runtime/services/`:
+
+| Berkas server | Baris | Modul frontend yang ditarik |
+|---|---|---|
+| `lib/data_tabel/data_tabel.ts` | 8 | `dataTabelAsnSaring.js` |
+| `lib/orchestration/handlers/context_builder.ts` | 18, 19 | `KnowledgeService.js`, `RetrievalStrategyService.js` |
+| `lib/orchestration/handlers/synthesis_handler.ts` | 8 | `folderKerjaAlat.js` |
+| `lib/rag/document_search.ts` | 4 | `KnowledgeService.js` |
+| `lib/request/request_pipeline.ts` | 15, 16 | `dataTabelAsnSaring.js`, `folderKerjaAlat.js` |
+
+`git blame`: 2 dan 21 September 2026 — **bukan** dari pekerjaan ini.
+
+Bahayanya bukan ukuran bundel. Mengubah berkas di `frontend/src/core/runtime/services/`
+**diam-diam mengubah perilaku server**, dan perubahannya baru berlaku sesudah edge function
+di-deploy ulang — padahal tak ada yang akan berpikir men-deploy fungsi sesudah menyentuh berkas
+bernama "frontend". Bentuk kegagalannya sama dengan jebakan `config.toml` di atas: keadaan yang
+benar di repo, tetapi tidak berlaku di platform sampai ada yang ingat men-deploy. Dicatat, tidak
+diubah — di luar lingkup Item 126.
+
 ## Bukti
 
 - `uji/uji-pemilih-model.mjs` (baru) — **SEMUA LULUS**, 6 bagian: kolom ada & tanpa CHECK · 8 dari 8
@@ -113,13 +134,33 @@ Diterapkan ke basis data produksi 18 Okt atas izin Owner. Alat migrasinya menjaw
 Nol baris bertanda adalah hasil yang **benar** pada titik ini: server dan klien belum membawa medan
 itu, jadi kolomnya memang harus kosong. Kalau ia sudah terisi sekarang, justru ada yang salah.
 
-## Belum aktif — dua langkah milik Owner
+## Deploy edge function SELESAI — dan diperiksa, bukan dipercaya
 
-Kode lengkap dan kolomnya siap, tetapi hari ini ia **belum mencatat apa pun**:
+Owner menjalankan `supabase functions deploy agent-process` 18 Okt. CLI melaporkan sukses, dan itu
+**tidak dianggap cukup**; keadaannya diukur lewat API Supabase sesudahnya:
 
-1. **Edge function `agent-process` belum di-deploy** — server masih versi lama yang tak mengenal medan ini.
-2. **Klien belum dirilis** — tanpa itu payload tidak membawa penanda dan server mencatat `NULL`.
+| Yang diperiksa | Sebelum | Sesudah |
+|---|---|---|
+| `version` | 528 | **529** |
+| `verify_jwt` | `false` | **`false`** — jebakan `config.toml` tidak menggigit |
+| `status` | ACTIVE | ACTIVE |
 
-Urutan amannya: **deploy → rilis klien** (migrasi sudah beres). Terbalik pun tidak merusak (kolom tak ada =
-medan diabaikan; klien lama = NULL), tetapi urutan ini membuat tak ada satu pun jendela waktu yang
-mencatat setengah-setengah.
+Deploy ini membawa dua commit: `33623be` (penanda pemilih model) dan `b705e06` (empat berkas mati
+dibuang dari fungsi live). `WARNING: Docker is not running` tidak relevan — Docker hanya untuk dev
+lokal; bundelnya dikerjakan di sisi Supabase.
+
+**Versi 529 membuktikan platform menerima kode baru. Ia TIDAK membuktikan penandanya sampai ke
+kolom.** Diukur sesudah deploy: **949 baris, 0 bertanda**, baris terbaru masih 8 Okt. Itu hasil yang
+benar pada titik ini — klien yang terpasang belum dirilis, jadi payload belum membawa medannya.
+
+## Sisa satu langkah milik Owner
+
+**Klien belum dirilis** — tanpa itu `.exe` yang terpasang mengirim payload tanpa penanda dan server
+mencatat `NULL`.
+
+Tetapi **rantai penuhnya bisa diuji sekarang, tanpa menunggu rilis**: `npm run desktop` memakai kode
+repo, dan kode itu sudah membawa penandanya sejak `33623be`. Karena baris terakhir `cost_ledger`
+tanggal 8 Okt, tidak ada lalu lintas yang perlu disaring — baris apa pun yang muncul berasal dari uji
+itu. Yang diharapkan: satu baris `owner-settings`, atau `tier-auto` bila tier aktif dan classifier
+yang memutuskan. `NULL` berarti ada sambungan putus antara klien dan kolom, dan di situlah nilai
+ujinya.
