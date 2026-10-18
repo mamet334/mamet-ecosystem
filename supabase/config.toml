@@ -1,4 +1,19 @@
 
+# agent-process SEMPAT TIDAK TERDAFTAR DI SINI, dan itu jebakan (ditemukan 18 Okt 2026 saat
+# menyiapkan deploy penanda pemilih model, Item 126).
+#
+# Fungsi live-nya berjalan dengan `verify_jwt: false` — diperiksa lewat API Supabase, bukan dikira:
+# `list_edge_functions` menyebut `"slug": "agent-process", "verify_jwt": false, "version": 528`.
+# Tetapi berkas ini tidak memuat seksinya sama sekali, sementara EMPAT fungsi lain punya. Artinya
+# `supabase functions deploy agent-process` akan memakai nilai bawaan CLI (`verify_jwt = true`) dan
+# MEMBALIK setelan yang sudah hidup — diam-diam, karena deploy tetap melaporkan sukses.
+#
+# Ditulis di sini supaya setelannya hidup di repo seperti empat saudaranya, bukan hanya di platform.
+# Pelajaran yang sama dengan T11: keadaan yang hanya ada di platform tidak bisa dibuktikan dari repo,
+# dan yang tidak tertulis akan tertimpa oleh nilai bawaan pada deploy berikutnya.
+[functions.agent-process]
+verify_jwt = false
+
 [functions.rag-process]
 enabled = true
 verify_jwt = false
