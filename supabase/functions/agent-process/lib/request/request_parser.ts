@@ -7,7 +7,7 @@ export async function parseRequestParams(req: Request, user: any) {
   } catch(e) {
     reqJson = {};
   }
-  let { message, tools, model, userId: _clientUserId, userName, file, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource: clientAppSource = 'assistant', workspaceTarget = 'AUTO', auditMode = 'OFF', mode: clientMode, provider, thinking, traceId: clientTraceId, requestId, clientTimezone, streamNalar, memoryEnabled, dataTabel, folderKerja } = reqJson;
+  let { message, tools, model, userId: _clientUserId, userName, file, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource: clientAppSource = 'assistant', workspaceTarget = 'AUTO', auditMode = 'OFF', mode: clientMode, provider, thinking, traceId: clientTraceId, requestId, clientTimezone, streamNalar, memoryEnabled, dataTabel, folderKerja, pemilihModel } = reqJson;
   const traceId = clientTraceId || requestId || null;
   const mode = clientMode || 'ASSISTANT';
   console.log('[RequestParser] Mode diterima:', mode);
@@ -99,6 +99,11 @@ export async function parseRequestParams(req: Request, user: any) {
 
   return {
     message, finalMessage, tools, model, userName, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource, auditMode, extractedImage, guardianPromptDirective, storageTarget, workspaceTarget, mode, provider, thinking, traceId, clientTimezone, streamNalar,
+    // Siapa yang memilih model (Item 126). Diteruskan APA ADANYA — klien lama/mametlite tidak
+    // mengirimnya dan nilainya undefined, yang tercatat sebagai NULL. Tidak diberi nilai bawaan:
+    // menebak "owner-settings" untuk klien yang diam akan membuat cakupan penandanya terlihat 100%
+    // padahal separuhnya karangan.
+    pemilihModel,
     // Tombol Memory desktop (2026-09-15). Hanya `false` yang mematikan — klien yang tidak mengirim (mametlite, versi
     // lama) tetap memakai memori seperti sebelumnya.
     memoryEnabled: memoryEnabled !== false,

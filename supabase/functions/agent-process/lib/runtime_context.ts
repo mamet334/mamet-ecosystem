@@ -132,6 +132,24 @@ export interface ModelConfig {
    * adalah tidak mengirim apa pun kecuali diminta eksplisit.
    */
   thinking?: boolean;
+  /**
+   * SIAPA yang memilih model ini (Item 126, Data Flywheel Fase 0).
+   *
+   *   'owner-settings'  Owner memilih model utama di Settings (termasuk mode Engineer)
+   *   'owner-override'  Owner menekan pil tier di kolom chat; classifier dilewati
+   *   'tier-auto'       TierClassifierService yang memutuskan (deterministik, 0 token)
+   *   'sistem'          panggilan internal: hakim bayangan, pemadat konteks, Coordinator
+   *   undefined         klien belum menandai — dicatat NULL, bukan ditebak
+   *
+   * Kenapa ia ada di sini dan bukan diulirkan sebagai parameter: `recordUsage` dipanggil dari
+   * DELAPAN tempat di `ai_adapter.ts`, semuanya sudah memegang `this.rctx`. Satu medan di sini
+   * lebih sulit dilupakan daripada delapan argumen.
+   *
+   * Kenapa penanda ini perlu sama sekali: 74,3% biaya (diukur 18 Okt 2026) berasal dari model
+   * yang Owner pilih sendiri. Tanpa membedakan pemilihnya, "biaya per jawaban" mengukur selera
+   * Owner, bukan kepintaran sistem.
+   */
+  pemilih?: string;
 }
 
 // ─────────────────────────────────────────────

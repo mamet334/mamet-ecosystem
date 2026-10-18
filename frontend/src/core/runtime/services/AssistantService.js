@@ -843,6 +843,9 @@ export class AssistantService {
     const payload = {
       message: userMsg,
       mode: 'LOOKUP',              // flag ke Edge Function
+      // Item 126: jalur LOOKUP memaku tier 'KECIL' di kode (lihat getActiveBrainContext di atas) —
+      // SISTEM yang memutuskan model murah untuk pertanyaan faktual pendek, bukan Owner.
+      pemilihModel: 'tier-auto',
       appSource: resolvedAppSource,
       workspaceTarget: null,
       history: history.slice(-3),  // hanya 3 pesan terakhir (bukan 10)
@@ -1000,6 +1003,9 @@ export class AssistantService {
         const payload = {
           message: generatePrompt,
           mode: resolvedMode || 'STANDARD',
+          // Item 126: skill memakai `_resolveAIProvider()` → `getActiveBrainContext()` TANPA tier,
+          // yaitu model utama yang Owner set di Settings. Jadi pemilihnya Owner, bukan sistem.
+          pemilihModel: 'owner-settings',
           appSource: resolvedAppSource,
           history: history.slice(-5),
           globalMemory: '',
@@ -1181,6 +1187,28 @@ export class AssistantService {
       console.warn('[AssistantService] BrainService not available:', e);
     }
 
+    // ── SIAPA YANG MEMILIH MODEL (Item 126, Data Flywheel Fase 0) ──────────────────────────────
+    //
+    // Jawabannya hanya diketahui DI SINI, dan sebelum ini tidak pernah meninggalkan konsol: blok
+    // di atas tahu persis apakah Owner menekan pil tier, apakah classifier yang memutuskan, atau
+    // apakah tier dilewati sama sekali (mode Engineer / BrainService tak tersedia). Server tak
+    // punya cara menebaknya — yang ia terima hanya nama model jadi.
+    //
+    // Kenapa ini penting sampai perlu kolom basis data sendiri: diukur 18 Okt 2026, **74,3%**
+    // seluruh biaya berasal dari model yang Owner pilih sendiri, dan harganya 7x per token
+    // dibanding tier murah. Tanpa membedakan pemilihnya, "biaya per jawaban" mengukur selera Owner,
+    // bukan kepintaran sistem — dan roda gila akan mengejar angka yang salah.
+    //
+    // Urutan cabang sengaja sama dengan urutan keputusan di atas, supaya keduanya tak bisa
+    // menyimpang diam-diam.
+    const pemilihModel = isEngineerMode
+      ? 'owner-settings'            // Engineer dikecualikan dari tier: selalu model utama Settings
+      : modelTierOverride
+        ? 'owner-override'          // Owner menekan pil tier; classifier dilewati sepenuhnya
+        : selectedTier
+          ? 'tier-auto'             // TierClassifierService yang memutuskan (0 token)
+          : 'owner-settings';       // tier tak aktif → model utama Settings, tetap pilihan Owner
+
     // Tombol Memory (2026-09-15): kunci 'memory_manager' dari chip Tools; tanpa pilihan tersimpan bernilai nyala.
     const toolPreferencesService = this.serviceManager?.get('ToolPreferencesService');
     const memoryToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'memory_manager') : true;
@@ -1315,6 +1343,7 @@ export class AssistantService {
     const payload = {
       message: userMsg,
       mode: resolvedMode,
+      pemilihModel,                 // Item 126 — dihitung di blok tier di atas, bukan ditebak di sini
       appSource: resolvedAppSource,
       workspaceTarget: workspaceId,
       traceId: requestTraceId,

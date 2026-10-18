@@ -213,7 +213,11 @@ export async function executeRequestPipeline(
     // thinking TIGA keadaan (2026-09-13): true/false dari tier Owner diteruskan apa adanya — false kini
     // benar-benar mematikan nalar di OpenRouter (reasoning_openrouter.ts). undefined = klien tidak
     // mengirim (mis. mametlite) → bawaan model, perilaku lama.
-    model: { model: parsed.model, provider: finalProvider, thinking: parsed.thinking === true ? true : parsed.thinking === false ? false : undefined },
+    // `pemilih` (Item 126): siapa yang memilih model — klien yang tahu, karena hanya klien yang
+    // melihat Owner menekan pil tier atau classifier yang memutuskan. Tidak ditebak di sini:
+    // tanpa kiriman klien nilainya undefined dan tercatat NULL, lalu metrik "cakupan penanda
+    // pemilih" yang menampakkan sisanya. Menebak di server akan membuat baseline berbohong.
+    model: { model: parsed.model, provider: finalProvider, thinking: parsed.thinking === true ? true : parsed.thinking === false ? false : undefined, pemilih: parsed.pemilihModel },
     policy: {},
     // streamNalar (hybrid, 2026-09-14): jawaban tetap JSON utuh, tetapi nalar dialirkan lebih dulu lewat SSE —
     // hanya bila Thinking dinyalakan (tanpa nalar tak ada yang dialirkan). Lihat index.ts.

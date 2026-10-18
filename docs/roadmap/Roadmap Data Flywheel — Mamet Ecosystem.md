@@ -260,9 +260,17 @@ Fase berjalan berurutan, dan setiap gerbang adalah keputusan Owner berdasarkan a
 Urutan diubah di Revisi 1: **yang paling menentukan ditaruh pertama**, dan yang riwayat sudah jawab
 tidak dikerjakan dua kali.
 
-- [ ] **Penanda pemilih model** pada tiap panggilan: `owner` (pilih di Settings), `tier-auto`
-      (sistem), atau `override`. **Ini butir paling penting di seluruh Fase 0** — tanpa ia, setiap
-      angka biaya tercemar dan North Star tak bisa dibaca
+- [x] ~~**Penanda pemilih model** pada tiap panggilan~~ — **KODE SELESAI 18 Okt**
+      ([log](../project-memory/changelog/2026-10-18-penanda-pemilih-model.md)). Kosakata final:
+      `owner-settings` · `owner-override` · `tier-auto` · `sistem` · NULL (belum ditandai).
+      Dipasang di `rctx.model.pemilih` — satu tempat, dibaca di **8 dari 8** titik `recordUsage`.
+      Migrasi **tanpa CHECK** dengan sengaja (`tasks.fire` tidak menunggu hasil insert → constraint
+      akan membunuhnya tanpa suara), dan **tanpa nilai bawaan** di jalur mana pun supaya cakupan
+      penandanya jujur. Bukti: uji baru 6 bagian, **3 mutasi menggigit**, bundel esbuild lolos.
+      **Migrasi ✅ DITERAPKAN & DIPERIKSA 18 Okt** — bukan dipercaya dari jawaban `success`:
+      kolom `text` ada, indeks parsial ada, **0 CHECK**, komentar terpasang, dan 949 baris lama
+      tetap NULL (0 bertanda — hasil yang benar sebelum server/klien membawa medannya).
+      **⏳ BELUM AKTIF** — menunggu dua langkah Owner: deploy `agent-process` → rilis klien
 - [ ] **Hitung baseline dari riwayat yang sudah ada** (92 keputusan router, 465 pesan Owner) sebelum
       menulis instrumentasi baru — ini sudah sebagian dikerjakan di bagian Kondisi di atas
 - [ ] Tabel ramping `keputusan_router` **hanya untuk yang riwayat TIDAK bisa jawab**: kata kunci

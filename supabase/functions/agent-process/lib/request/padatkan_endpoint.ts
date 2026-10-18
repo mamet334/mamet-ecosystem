@@ -171,7 +171,9 @@ export async function handlePadatkanRequest(
     },
     // Model dikirim klien dari BrainService — model utama yang memang dipakai Owner. Sengaja TIDAK
     // menebak nama model di sini; katalog penyedia berubah lebih cepat daripada kode (Item 41, 53).
-    model: { model: typeof body?.model === 'string' ? body.model : '', provider, thinking: false },
+    // `pemilih: 'sistem'` (Item 126): pemadatan konteks dijalankan sistem saat jendela model
+    // hampir penuh — Owner tidak memintanya dan tidak memilih modelnya.
+    model: { model: typeof body?.model === 'string' ? body.model : '', provider, thinking: false, pemilih: 'sistem' },
     policy: {},
     stream: { isStream: false, desktopOSMode: false, auditMode: 'OFF' },
     env: runtimeEnv,

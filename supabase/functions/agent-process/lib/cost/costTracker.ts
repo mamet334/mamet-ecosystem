@@ -8,8 +8,15 @@ export interface UsageData {
   completionTokens: number;
   callerContext?: string;
   traceId?: string;
-  supabaseUrl: string;
-  supabaseServiceKey: string;
+  /**
+   * Siapa yang memilih model (Item 126): 'owner-settings' | 'owner-override' | 'tier-auto' |
+   * 'sistem'. Undefined = belum ditandai → disimpan NULL, tidak ditebak.
+   *
+   * Catatan untuk yang membaca tabelnya: `caller_context` TIDAK bisa dipakai untuk ini. Namanya
+   * menjanjikan "siapa pemanggil", tetapi semua titik panggilan mengisinya dengan
+   * `context.trace_id` — jadi isinya UUID yang menduplikasi kolom `trace_id` di sebelahnya.
+   */
+  pemilihModel?: string;
 }
 
 export interface BlockedData {
@@ -83,7 +90,7 @@ export async function checkGuardrails(
 }
 
 export async function recordUsage(usage: UsageData): Promise<void> {
-  const { supabaseUrl, supabaseServiceKey, userId, adapter, model, promptTokens, completionTokens, callerContext, traceId, actualCostUsd } = usage as any;
+  const { supabaseUrl, supabaseServiceKey, userId, adapter, model, promptTokens, completionTokens, callerContext, traceId, actualCostUsd, pemilihModel } = usage as any;
   if (!supabaseUrl || !supabaseServiceKey) return;
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -121,6 +128,9 @@ export async function recordUsage(usage: UsageData): Promise<void> {
     total_tokens: totalTokens,
     estimated_cost_usd: estimatedCostUsd,
     caller_context: callerContext || null,
+    // Item 126: `|| null` dan bukan nilai bawaan — baris tanpa penanda harus TERLIHAT kosong,
+    // karena metrik "cakupan penanda pemilih" justru bertugas menemukannya.
+    pemilih_model: pemilihModel || null,
     status: 'completed'
   });
 }

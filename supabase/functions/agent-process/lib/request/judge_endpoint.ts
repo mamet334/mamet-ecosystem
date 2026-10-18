@@ -125,7 +125,10 @@ export async function handleJudgeConflictRequest(
     // Model dikirim klien dari BrainService — model yang memang dipakai Owner
     // sehari-hari dan terbukti hidup. Sengaja TIDAK menebak nama model di sini;
     // katalog penyedia berubah lebih cepat daripada kode (Item 41, 53).
-    model: { model: typeof body?.model === 'string' ? body.model : '', provider, thinking: false },
+    // `pemilih: 'sistem'` (Item 126): hakim bayangan dipanggil sistem, bukan dipilih Owner —
+    // modelnya pun model Coordinator, bukan model yang Owner set di Settings. Menandainya di sini
+    // membuat biaya hakim tidak ikut mencemari metrik "biaya saat Owner yang memilih".
+    model: { model: typeof body?.model === 'string' ? body.model : '', provider, thinking: false, pemilih: 'sistem' },
     policy: {},
     stream: { isStream: false, desktopOSMode: false, auditMode: 'OFF' },
     env: runtimeEnv,

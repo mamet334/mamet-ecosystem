@@ -227,6 +227,7 @@ export class GroqAdapter implements CapabilityAdapter {
       callerContext: context.trace_id,
       traceId: context.trace_id,
       supabaseUrl: this.rctx.env.supabaseUrl || '',
+      pemilihModel: this.rctx.model?.pemilih,
       supabaseServiceKey: this.rctx.env.supabaseServiceKey || ''
     }));
     
@@ -292,6 +293,7 @@ export class GroqAdapter implements CapabilityAdapter {
       callerContext: (context.trace_id || 'stream') + '_estimated',
       traceId: context.trace_id,
       supabaseUrl: this.rctx.env.supabaseUrl || '',
+      pemilihModel: this.rctx.model?.pemilih,
       supabaseServiceKey: this.rctx.env.supabaseServiceKey || ''
     }));
   }
@@ -464,6 +466,7 @@ export class OpenRouterAdapter implements CapabilityAdapter {
       callerContext: context.trace_id,
       traceId: context.trace_id,
       supabaseUrl: this.rctx.env.supabaseUrl || '',
+      pemilihModel: this.rctx.model?.pemilih,
       supabaseServiceKey: this.rctx.env.supabaseServiceKey || ''
     } as any));
 
@@ -577,6 +580,7 @@ export class OpenRouterAdapter implements CapabilityAdapter {
       callerContext: (context.trace_id || 'stream') + '_estimated',
       traceId: context.trace_id,
       supabaseUrl: this.rctx.env.supabaseUrl || '',
+      pemilihModel: this.rctx.model?.pemilih,
       supabaseServiceKey: this.rctx.env.supabaseServiceKey || ''
     }));
   }
@@ -651,6 +655,7 @@ export class GeminiAdapter implements CapabilityAdapter {
               callerContext: context.trace_id,
               traceId: context.trace_id,
               supabaseUrl: this.rctx.env.supabaseUrl || '',
+              pemilihModel: this.rctx.model?.pemilih,
               supabaseServiceKey: this.rctx.env.supabaseServiceKey || ''
             }));
 
@@ -848,6 +853,7 @@ export class GeminiAdapter implements CapabilityAdapter {
       callerContext: (context.trace_id || 'stream') + '_estimated',
       traceId: context.trace_id,
       supabaseUrl: this.rctx.env.supabaseUrl || '',
+      pemilihModel: this.rctx.model?.pemilih,
       supabaseServiceKey: this.rctx.env.supabaseServiceKey || ''
     }));
   }
@@ -916,6 +922,7 @@ export class OpenAIAdapter implements CapabilityAdapter {
       callerContext: context.trace_id,
       traceId: context.trace_id,
       supabaseUrl: this.rctx.env.supabaseUrl || '',
+      pemilihModel: this.rctx.model?.pemilih,
       supabaseServiceKey: this.rctx.env.supabaseServiceKey || ''
     }));
 
@@ -978,6 +985,7 @@ export class OpenAIAdapter implements CapabilityAdapter {
       callerContext: (context.trace_id || 'stream') + '_estimated',
       traceId: context.trace_id,
       supabaseUrl: this.rctx.env.supabaseUrl || '',
+      pemilihModel: this.rctx.model?.pemilih,
       supabaseServiceKey: this.rctx.env.supabaseServiceKey || ''
     }));
   }
