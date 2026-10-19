@@ -3,8 +3,9 @@
 **Tipe Dokumen:** Rancangan (blueprint) perubahan UI — memenuhi syarat tata kelola MUS §20 (tujuan,
 ruang lingkup, dokumentasi, analisis, alasan, persetujuan Owner)
 **Item:** 127
-**Status:** 📝 **rancangan (revisi 2) — menunggu keputusan Owner (§9). Belum ada satu baris kode pun yang
-diubah.**
+**Status:** 📝 **rancangan (revisi 2) — K1 dan K3 DIPUTUSKAN Owner 19 Okt (graf terbuka di panel; fondasi
+dulu). Tahap 0–1 tidak bergantung pada keputusan lain, jadi bisa dimulai; K2, K4, K5, K6 baru dibutuhkan di
+Tahap 3. Belum ada satu baris kode pun yang diubah.**
 **Tanggal:** 2026-10-19
 **Aplikasi:** **Mamet Ecosystem** (`frontend/`) — **bukan** Mametlite.
 **Batas tegas:** **`LampLogin.jsx` tidak diubah** dalam pekerjaan ini (arahan Owner 19 Okt). **Face Mamet
@@ -151,7 +152,7 @@ berinteraksi."*
 | **MUS §20** UI Governance | dokumen ini; tidak ada kode sebelum §9 diputuskan |
 | **MUS §21** Metadata Driven | menu **dibangkitkan dari** `public/metadata/navigation.json` + `NavigationService` (`isAvailable`) |
 | **25 Design Philosophy #1, #10, #11** | akar masalah (keadaan di dalam layar) diperbaiki, bukan ditutupi dengan menyembunyikan layar |
-| **23_HOME_DASHBOARD_SPEC** — Home = graf pengetahuan | lihat K1: rancangan ini **bisa** mematuhinya tanpa amandemen |
+| **23_HOME_DASHBOARD_SPEC** — Home = graf pengetahuan | **dipatuhi tanpa amandemen** — graf adalah halaman pertama sesudah masuk (K1 = B, diputuskan Owner 19 Okt) |
 
 ---
 
@@ -236,7 +237,7 @@ menu (jarang) · **K** kondisional (muncul sendiri saat keadaannya terjadi).
 | Navigasi seluler | `MobileBottomNav.jsx` | 1 | menu jadi daftar layar penuh; panel jadi halaman penuh |
 | Notifikasi sistem | `SystemNotificationCenter.jsx` | K | tetap, digayakan ulang |
 | Persetujuan patch Engineer | `EngineerApprovalDialog.jsx` (`Engineer:RequestApproval`) | K | tetap dialog modal |
-| Graf pengetahuan (Home) | `HomeDashboard.jsx` | — | lihat K1 |
+| Graf pengetahuan (Home) | `HomeDashboard.jsx` | 1 | **halaman pertama panel kanan** sesudah masuk, tanpa diubah; "Beranda" di menu membukanya kembali (K1 = B) |
 
 ### 6.2 Halaman chat (`ConversationEngine.jsx`)
 
@@ -283,7 +284,7 @@ Tiap tahap berdiri sendiri dan dapat dihentikan tanpa merusak aplikasi.
 
 ### Tahap 0 — Ukur & lengkapi (tanpa mengubah tampilan)
 
-1. Owner memutuskan K1–K5 (§9).
+1. ~~Owner memutuskan K1–K5 (§9).~~ ✅ K1 dan K3 diputuskan 19 Okt; sisanya baru dibutuhkan di Tahap 3.
 2. **Ukur biaya tumpukan hari ini**: memori & prosesor dengan 11 aplikasi hidup, sebagai pembanding
    Tahap 1. Kalau ternyata kecil, alasan Tahap 1 tinggal kenyamanan & kebenaran keadaan — dan itu dicatat
    apa adanya.
@@ -341,13 +342,24 @@ konstitusi (milik Owner).
 
 ---
 
-## 9. Keputusan Owner yang dibutuhkan
+## 9. Keputusan Owner
+
+**Diputuskan 19 Okt 2026:**
+
+- **K1 = B** — sesudah masuk: ruangan + menu, dan **graf pengetahuan terbuka di panel sebagai halaman
+  pertama**. Konstitusi 23 (Home = graf) **tetap dipatuhi**; tidak ada amandemen. Akibatnya bagi
+  rancangan: halaman pertama panel kanan = `HomeDashboard` yang sekarang, tanpa diubah; "Beranda" di menu
+  membukanya kembali.
+- **K3 = A** — **fondasi dulu**: Tahap 0 → 1 → 2 → 3. Kulit tidak dirintis sebelum susunannya berhenti
+  menumpuk.
+
+**Masih terbuka** — tidak menghalangi Tahap 0–2, baru dibutuhkan di Tahap 3 (kecuali K6, di luar item ini):
 
 | # | Pertanyaan | Pilihan | Rekomendasi & alasannya |
 |---|---|---|---|
-| **K1** | Apa yang tampil sesudah masuk? | **A.** Ruangan + menu saja, panel kosong; graf pindah ke menu — **butuh amandemen konstitusi 23** · **B.** Ruangan + menu, dan **graf terbuka di panel sebagai halaman pertama** — konstitusi 23 tetap dipatuhi | **B.** Tanpa mengubah konstitusi, dapat dibalik kapan saja, dan Owner tetap bisa menutup panelnya untuk melihat ruangan kosong |
+| ~~K1~~ | ~~Apa yang tampil sesudah masuk?~~ | — | ✅ **B, diputuskan 19 Okt** (di atas) |
 | **K2** | Isi menu | struktur `navigation.json` bertingkat (§5.2), dengan atau tanpa **"Lanjutkan"** | dengan "Lanjutkan" — keadaannya nyata dan itu idiom menu game yang paling dikenal |
-| **K3** | Urutan | **A.** fondasi dulu (Tahap 1 → 2 → 3) · **B.** kulit dirintis dulu di **Settings** (tak punya keadaan mengalir, aman jadi halaman sendiri) sambil fondasi berjalan | **A.** Kulit di atas susunan yang menumpuk mengulang masalahnya. B layak bila Owner ingin melihat hasil lebih cepat |
+| ~~K3~~ | ~~Urutan~~ | — | ✅ **A — fondasi dulu, diputuskan 19 Okt** (di atas) |
 | **K4** | Huruf menu | **A.** gaya judul LampLogin (mono krem bercahaya) · **B.** huruf tampilan baru berlisensi OFL, disimpan sendiri | **A.** Kontinu dengan layar masuk, tanpa unduhan huruf. Teks bacaan tetap Inter |
 | **K5** | Utang "dua ruangan" (§5.1) | disatukan nanti dengan izin menyentuh `LampLogin` · dibiarkan | disatukan nanti — dicatat sebagai sisa pekerjaan |
 | **K6** | `Login.jsx` (kode mati sejak Juli) | hapus · biarkan | di luar item ini; dicatat agar tidak terlupa |
