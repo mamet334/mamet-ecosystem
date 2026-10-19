@@ -25,7 +25,7 @@ const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (kode) =>
   kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
-console.log('uji-kerangka-chat v4');
+console.log('uji-kerangka-chat v5');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -86,7 +86,13 @@ const karakter = Math.round((px - 32) / 7.85);
 cek(Number.isFinite(px) && px >= 1024,
   `kolom baca ${px}px — lebar, sesuai keputusan Owner (≈ ${karakter} karakter per baris, di atas pedoman 75: disengaja)`,
   { kolomBaca, px, karakter });
-cek(/rounded-2xl px-4 py-3 \$\{m\.role/.test(CE), 'isi gelembung dipadatkan (px-4 py-3), bukan gelembung yang digemukkan');
+// v5 (Owner 19 Okt, gambar rujukan — "susunannya dibuat seperti di gambar"): jawaban model TANPA kotak, teks langsung
+// di atas latar; hanya pesan pengguna yang bergelembung, dipadatkan px-4 py-3 dan tetap bergaris tepi.
+const kelasPeran = CE.match(/\$\{m\.role === 'user' \? '(rounded-2xl[^']*)' : '([^']*)'\}`\}>/) || [];
+cek(/^rounded-2xl px-4 py-3 /.test(kelasPeran[1] || '') && /border/.test(kelasPeran[1] || ''),
+  'gelembung pengguna dipadatkan (px-4 py-3) dan tetap bergaris tepi', kelasPeran[1]);
+cek(kelasPeran[2] !== undefined && !/glass-panel|border|rounded|bg-/.test(kelasPeran[2]),
+  'jawaban model tanpa kotak — tanpa kaca, garis, sudut, atau latar', kelasPeran[2]);
 cek(/\$\{m\.role === 'user' \? 'max-w-\[85%\] lg:max-w-\[75%\]' : 'w-full'\}/.test(CE),
   'gelembung pengguna ≤75%, jawaban model selebar kolom baca');
 

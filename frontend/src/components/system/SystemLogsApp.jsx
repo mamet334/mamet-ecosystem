@@ -63,7 +63,7 @@ export default function SystemLogsApp() {
   const isDegraded = health?.status === 'DEGRADED' || health?.config?.mode === 'SAFE_MODE';
 
   return (
-    <div className="h-full bg-slate-950 text-white p-6 overflow-y-auto">
+    <div className="h-full text-white p-6 overflow-y-auto">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-emerald-500/20 rounded-lg border border-emerald-500/30">

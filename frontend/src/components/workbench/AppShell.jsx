@@ -85,7 +85,7 @@ export default function AppShell({ mainPanel: MainPanelComponent }) {
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-    <div className="flex flex-col h-full w-full bg-background overflow-hidden font-body-base text-on-surface custom-scrollbar">
+    <div className="flex flex-col h-full w-full overflow-hidden font-body-base text-on-surface custom-scrollbar">
 
 
       {/* Main OS Layout */}

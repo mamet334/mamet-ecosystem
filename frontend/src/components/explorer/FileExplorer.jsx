@@ -289,7 +289,7 @@ const toggleFolder = (item) => {
   const backendLabel = fileMeta?.backend === 'electron' ? 'FS Lokal' : fileMeta?.backend === 'github-raw' ? 'GitHub API' : 'Cache';
 
   return (
-    <div className="flex flex-col h-full w-full bg-slate-950 text-slate-200 overflow-hidden font-sans relative">
+    <div className="flex flex-col h-full w-full text-slate-200 overflow-hidden font-sans relative">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-800 bg-slate-900/70 shrink-0">
         <div className="flex items-center gap-2 shrink-0">

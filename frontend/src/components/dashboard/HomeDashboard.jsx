@@ -185,7 +185,7 @@ export default function HomeDashboard() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-full w-full bg-[#050505] text-slate-200 relative overflow-hidden font-body-base">
+    <div className="flex flex-col md:flex-row h-full w-full text-slate-200 relative overflow-hidden font-body-base">
       {/* Main Graph Area */}
       <div ref={containerRef} className="flex-1 relative h-full w-full z-10">
         <ActivityGraph

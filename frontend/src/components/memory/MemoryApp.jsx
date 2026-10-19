@@ -65,7 +65,7 @@ let query = supabase
     };
 
     return (
-        <div className="h-full bg-slate-950 text-white p-6 overflow-y-auto">
+        <div className="h-full text-white p-6 overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">

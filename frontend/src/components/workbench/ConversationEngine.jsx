@@ -22,6 +22,7 @@ import { jejakSisipan } from '../../core/runtime/services/jejakSisipan.js';
 import { blokGalat } from '../../core/runtime/services/pesanGalat.js';
 import { useKeadaanTersimpan, useRefTersimpan } from '../../core/runtime/hooks/useKeadaanTersimpan.js';
 import { penyimpanKeadaan } from '../../core/runtime/PenyimpanKeadaan.js';
+import TeksMarkdown, { KotakKode } from './TeksMarkdown.jsx';
 
 // =============================================
 // HELPER: Parse thinking/answer dari respons AI
@@ -1640,7 +1641,7 @@ export default function ConversationEngine({ sessionId }) {
   // RENDER
   // =============================================
   return (
-    <div className="flex flex-1 min-w-0 min-h-0 h-full w-full bg-background font-body-base text-on-surface">
+    <div className="flex flex-1 min-w-0 min-h-0 h-full w-full font-body-base text-on-surface">
 
       {/* Sidebar Riwayat Chat */}
       {/* Laci di SEMUA lebar (Item 127 Tahap 2) — dulu `md:relative` membuatnya kolom yang mendorong pesan di
@@ -2037,8 +2038,11 @@ export default function ConversationEngine({ sessionId }) {
                 return (
                   <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     {/* Pesan pengguna = gelembung (≤75%); jawaban model = selebar kolom baca — pola standar
-                        aplikasi asisten (Item 127 Tahap 2). Dulu keduanya ≤75%, jadi jawaban hanya 576 dari 768px. */}
-                    <div className={`relative group ${m.role === 'user' ? 'max-w-[85%] lg:max-w-[75%]' : 'w-full'} rounded-2xl px-4 py-3 ${m.role === 'user' ? 'bg-primary-container/20 text-on-surface border border-primary/30' : 'glass-panel rim-light text-on-surface border border-outline-variant'}`}>
+                        aplikasi asisten (Item 127 Tahap 2). Dulu keduanya ≤75%, jadi jawaban hanya 576 dari 768px.
+                        Jawaban model TANPA KOTAK (Item 127, kenyamanan mata — meniru gambar rujukan Owner 19 Okt):
+                        teks langsung di atas latar, mata hanya melihat isi. Kartu di dalamnya (perintah, laporan,
+                        detail eksekusi) tetap berbingkai — Owner: "garis tepi dibiarkan saja". */}
+                    <div className={`relative group ${m.role === 'user' ? 'max-w-[85%] lg:max-w-[75%]' : 'w-full'} ${m.role === 'user' ? 'rounded-2xl px-4 py-3 bg-primary-container/20 border border-primary/30 min-w-0 [overflow-wrap:anywhere]' : 'px-1 py-1'}`}>
                       <div className="text-body-base leading-relaxed">
                         {/* Nalar AI — blok lipat di atas jawaban (gaya DeepSeek), terbuka secara bawaan demi transparansi */}
                         {parsed.thinking && (
@@ -2072,6 +2076,12 @@ export default function ConversationEngine({ sessionId }) {
                         {/* Render konten dengan parser marker Engineer */}
                         {(() => {
                           if (!displayText) return null;
+                          // Keluaran terminal Engineer (ProsedurEngineer: "[TERMINAL OUTPUT for: <perintah>]\n<keluaran>")
+                          // dikirim sebagai pesan pengguna, tetapi isinya keluaran MESIN — tampil sebagai kotak kode, bukan
+                          // prosa. Dulu teks biasa: baris panjang tanpa spasi menjebol tepi gelembung (Owner, 19 Okt).
+                          // Diurai oleh pengurai yang SAMA dengan riwayat perintah — satu sumber bentuk pesan.
+                          const terminal = m.role === 'user' && riwayatPerintahDariPesan([{ content: displayText }])[0];
+                          if (terminal) return <KotakKode isi={terminal.keluaran} label={`terminal · ${terminal.perintah}`} tinggiMaks />;
                           const MARKER_RE = /(\[MAMET_CMD:[^\]]+\]|\[MAMET_CRITICAL:[^\]]*\]|\[OS EXECUTION REPORT\]|\[SYSTEM:[^\]]+\])/g;
                           const parts = displayText.split(MARKER_RE);
                           const isEngineer = (workspaceManager?.activeWorkspaceId === 'ws-engineer');
@@ -2154,6 +2164,9 @@ export default function ConversationEngine({ sessionId }) {
                               );
                             }
 
+                            // Jawaban model = Markdown yang dirender; pesan pengguna tetap apa adanya (yang diketik Owner
+                            // tampil persis seperti diketik, termasuk bintang & garis tegaknya).
+                            if (m.role !== 'user') return <TeksMarkdown key={i} teks={part} />;
                             return <span key={i} className="whitespace-pre-wrap">{part}</span>;
                           });
                         })()}

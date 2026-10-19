@@ -4,7 +4,7 @@
 ruang lingkup, dokumentasi, analisis, alasan, persetujuan Owner)
 **Item:** 127
 **Status:** 🟡 **Tahap 0 ✅ · Tahap 1 langkah 1–4 ✅ (langkah 5 diparkir) · Tahap 2 ✅ selesai (2a · 2b · 2c) ·
-Tahap 3: menu teks ✅ (K2) · K4 huruf & angka ✅ · palet LampLogin ✅ (titik pulih) — 19 Okt.** **Berikutnya: kenyamanan mata (Owner: palet "kurang nyaman di mata"), lalu sisa Tahap 3 (ruangan, ikon) — K5 terbuka.**
+Tahap 3: menu teks ✅ (K2) · K4 huruf & angka ✅ · palet LampLogin ✅ · kenyamanan mata ✅ (Markdown & kode di chat, latar dinding LampLogin di seluruh aplikasi) — 19 Okt.** **Berikutnya: sisa Tahap 3 (lampu, satu set ikon, gerak dekoratif) — K5 terbuka.**
 K1, K2, K3, K4 diputuskan Owner 19 Okt; K6 di luar item ini.
 **Tanggal:** 2026-10-19
 **Aplikasi:** **Mamet Ecosystem** (`frontend/`) — **bukan** Mametlite.
@@ -449,7 +449,7 @@ menggantikan 47 token Material; satu set ikon; gerak dekoratif dibuang, `prefers
 (hari ini **nol** pemakaian di `src/`). Berurutan per halaman, dimulai dari yang paling sering dipakai
 Owner. **Uji kontras WCAG** di tiap panel.
 
-**Status 19 Okt:** menu teks ✅ (K2) · skala huruf & angka ✅ (K4 — [log](../project-memory/changelog/2026-10-19-menu-game-k4-huruf-angka.md)) · palet LampLogin di sumbernya ✅ ([log](../project-memory/changelog/2026-10-19-menu-game-palet-lamplogin.md)) — dinilai Owner "sama, tapi kurang nyaman di mata"; kenyamanan mata dikerjakan berikutnya. Sisa: ruangan + lampu, satu set ikon, gerak dekoratif.
+**Status 19 Okt:** menu teks ✅ (K2) · skala huruf & angka ✅ (K4 — [log](../project-memory/changelog/2026-10-19-menu-game-k4-huruf-angka.md)) · palet LampLogin di sumbernya ✅ ([log](../project-memory/changelog/2026-10-19-menu-game-palet-lamplogin.md)) — dinilai Owner "sama, tapi kurang nyaman di mata" · kenyamanan mata ✅ ([log](../project-memory/changelog/2026-10-19-menu-game-kenyamanan-mata.md)): jawaban model dirender Markdown tanpa kotak, kotak kode, teks 13:1, latar terdalam = dinding LampLogin (salinan dijaga uji — utang K5), bilah gulir tipis global, keluaran terminal Engineer jadi kotak kode. Sisa: lampu, satu set ikon, gerak dekoratif; bilah mendatar panel kanan Home belum ditemukan penyebabnya.
 
 **Di luar lingkup:** `LampLogin.jsx`; `Login.jsx`; Mametlite; Face Mamet; server dan skema; perubahan
 konstitusi (milik Owner).

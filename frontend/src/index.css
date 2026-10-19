@@ -52,9 +52,10 @@ body {
      sama, jadi angka yang berubah — meteran konteks saat jawaban mengalir, durasi, biaya — tidak "menari"
      ke kiri-kanan, dan kolom angka di tabel Billing/Observability rata. Inter mendukungnya (fitur tnum). */
   font-variant-numeric: tabular-nums;
-  /* Palet LampLogin (Item 127 Tahap 3) — sama dengan token `background` & `on-surface` di tailwind.config. */
+  /* Palet LampLogin (Item 127 Tahap 3) — sama dengan token `background` & `on-surface` di tailwind.config
+     (teks diredam ke ±13:1 demi kenyamanan mata; lihat komentar token di sana). */
   background-color: #0b0806;
-  color: #f3e7d3;
+  color: #dbd0be;
   /* Touch-friendly tap highlight — cahaya lampu, bukan biru */
   -webkit-tap-highlight-color: rgba(240, 202, 109, 0.15);
   touch-action: manipulation;
@@ -135,25 +136,33 @@ body {
   }
 }
 
-/* ── CUSTOM SCROLLBAR ── */
-.custom-scrollbar::-webkit-scrollbar {
+/* ── BILAH GULIR — SATU GAYA UNTUK SEMUA ──
+   Dulu gaya tipis hanya untuk elemen yang memakai kelas .custom-scrollbar; yang lupa memakainya (daftar Knowledge
+   Directory, panel Observability di Home) tampil dengan bilah bawaan Chromium yang tebal dan putih — Owner, 19 Okt:
+   "di Home yang belum diterapkan model scroll-nya". Kini berlaku untuk SEMUA elemen, jadi tak ada yang bisa lupa.
+   Tipis mendatar maupun tegak (blok kode & tabel di chat butuh bilah mendatar sebagai tanda baris berlanjut).
+   Elemen yang sengaja menyembunyikan bilahnya (MenuTeks: [&::-webkit-scrollbar]:hidden) tetap menang — kelasnya
+   lebih spesifik. Kelas .custom-scrollbar tetap ada di komponen, kini tanpa efek tambahan. */
+*::-webkit-scrollbar {
   width: 4px;
+  height: 4px;
 }
 @media (max-width: 767px) {
-  /* Lebih tebal di mobile agar mudah disentuh */
-  .custom-scrollbar::-webkit-scrollbar {
+  *::-webkit-scrollbar {
     width: 2px;
+    height: 2px;
   }
 }
-.custom-scrollbar::-webkit-scrollbar-track {
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
   background: transparent;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 236, 207, 0.14);
   border-radius: 9999px;
 }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 236, 207, 0.28);
 }
 
 /* ── SAFE AREA — iPhone notch & Android cutout ── */

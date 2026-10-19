@@ -123,7 +123,7 @@ export default function AgentForge() {
   }
 
   return (
-    <div className="h-full bg-slate-950 text-white p-6 overflow-y-auto relative">
+    <div className="h-full text-white p-6 overflow-y-auto relative">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">

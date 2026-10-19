@@ -93,7 +93,7 @@ export default function BillingDashboard() {
   if (percentage > 80) progressColor = 'bg-red-500 shadow-red-500/50';
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-900/50">
+    <div className="flex-1 overflow-y-auto p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         
         {/* Header */}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import MenuTeks from './MenuTeks';
+import LatarRuangan from './LatarRuangan';
 import ApplicationContainer from './ApplicationContainer';
 import MobileBottomNav from './MobileBottomNav';
 import SystemNotificationCenter from './SystemNotificationCenter'; // ✅ 1. Tambahkan Import Ini!
@@ -21,7 +22,11 @@ export default function OSDesktopShell() {
   }, []);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background text-on-surface font-body-base selection:bg-primary/30">
+    <div className="relative flex h-screen w-screen overflow-hidden bg-background text-on-surface font-body-base selection:bg-primary/30">
+      {/* Latar terdalam = dinding ruangan LampLogin (Item 127 Tahap 3). Dilukis lebih dulu; isi di bawah ini `relative`
+          tanpa z-index, jadi ia tergambar di atas dinding TANPA membuat konteks tumpukan baru — laci chat (z-[60])
+          tetap bisa menutupi tombol MENU (z-50) seperti sebelumnya. */}
+      <LatarRuangan />
       
       {/* ✅ 2. Tempatkan Komponen <SystemNotificationCenter /> DI SINI (Paling atas sebelum Sidebar) */}
       <SystemNotificationCenter />
@@ -40,7 +45,7 @@ export default function OSDesktopShell() {
 
       {/* ✅ UBAH: Kirim prop isMobile ke ApplicationContainer */}
       {/* `ml-16` dulu memberi ruang bilah ikon yang `fixed`; MenuTeks ada di dalam alur, jadi tak perlu. */}
-      <div className={`flex flex-col flex-1 min-w-0 overflow-hidden ${isMobile ? 'pb-16' : ''}`}>
+      <div className={`relative flex flex-col flex-1 min-w-0 overflow-hidden ${isMobile ? 'pb-16' : ''}`}>
         <ApplicationContainer isMobile={isMobile} />
       </div>
 

@@ -279,7 +279,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="flex-1 overflow-auto bg-background p-4 md:p-6 lg:p-8 custom-scrollbar font-body-base text-on-surface">
+    <div className="flex-1 overflow-auto p-4 md:p-6 lg:p-8 custom-scrollbar font-body-base text-on-surface">
       <div className="max-w-screen-container-max mx-auto space-y-6 md:space-y-8">
         
         {/* Header */}

@@ -20,8 +20,11 @@ export default {
         "surface-container-highest": "#2f2014",
         "surface-variant": "#2f2014",
         "surface-bright": "#3b2a1c",
-        "on-surface": "#f3e7d3",
-        "on-background": "#f3e7d3",
+        // Teks utama diredam ke ±13:1 (Owner 19 Okt: palet "kurang nyaman di mata"). Krem #f3e7d3 di latar ini
+        // 16,3:1 — terlalu tajam untuk tema gelap: huruf terang di latar hampir hitam tampak berpendar saat dibaca
+        // lama. Tetap jauh di atas 4,5:1, dan tetap terpisah jelas dari teks redup on-surface-variant (±10:1).
+        "on-surface": "#dbd0be",
+        "on-background": "#dbd0be",
         "inverse-surface": "#f3e7d3",
         "on-surface-variant": "#c9b49a",
         "inverse-on-surface": "#2a1a0d",
@@ -59,13 +62,15 @@ export default {
         "on-error-container": "#ffdad6",
         // Skala slate DITIMPA ke kayu-krem: 615 pemakaian `slate-*` mentah (sistem warna kedua) ikut
         // berpindah ke palet yang sama — dua sistem warna kini menuju satu sumber.
+        // 400 & 500 dinaikkan (19 Okt) sejak latar terdalam = dinding LampLogin: titik paling terang dinding (#4d2d17)
+        // menjatuhkan slate-500 lama ke 3,35:1. Kini ≥ 4,5:1 di titik itu juga (dijaga uji-latar-ruangan).
         slate: {
           50: "#faf5ec",
           100: "#f3e7d3",
           200: "#e6d4b8",
           300: "#d9c3a2",
-          400: "#b89b78",
-          500: "#9b8164",
+          400: "#c4a886",
+          500: "#b49975",
           600: "#6b533b",
           700: "#4d3a28",
           800: "#33241a",

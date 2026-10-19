@@ -20,6 +20,9 @@
 // DIKECUALIKAN: `LampLogin.jsx` — acuan yang dilindungi (Owner: tidak diubah dalam pekerjaan ini),
 // jadi angkanya tidak pernah bisa turun dan hanya akan mengaburkan gerak berkas lain. Ia dijaga
 // terpisah oleh `uji-penjaga-lamplogin.mjs`.
+// v3 (19 Okt): `os/LatarRuangan.jsx` juga — ia SALINAN dinding LampLogin (latar terdalam seluruh aplikasi, permintaan
+// Owner), dibangun dari gradien yang sama; menghitungnya berarti menghukum acuan yang sama dua kali. Salinan itu
+// dijaga `uji-latar-ruangan.mjs` agar sama persis dengan LampLogin — tak bisa dipakai menyelundupkan gradien lain.
 //
 // Komentar dibuang sebelum menghitung: kelas yang hanya disebut di komentar bukan tampilan.
 
@@ -29,12 +32,12 @@ import { fileURLToPath } from 'node:url';
 
 const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const SRC = join(AKAR, 'frontend', 'src');
-const DIKECUALIKAN = new Set(['components/LampLogin.jsx']);
+const DIKECUALIKAN = new Set(['components/LampLogin.jsx', 'components/os/LatarRuangan.jsx']);
 
 const tanpaKomentar = (kode) =>
   kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
-console.log('uji-ciri-tampilan v1');
+console.log('uji-ciri-tampilan v3');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -128,8 +131,12 @@ for (const r of DIKECUALIKAN) {
 // LampLogin: gradien 19→6, glow 37→26, lucide 27→26, gerak 52→51. Cahaya lampunya memang dibuat
 // dari gradien & glow — di sana ia bermakna, jadi ia tidak dihitung sebagai resep generik.
 const GARIS_DASAR = {
-  tokenMaterial: 568,
-  warnaSlate: 615,
+  // 568 → 576 (19 Okt, v2) — SATU-SATUNYA kenaikan, dan disengaja: jawaban model kini dirender Markdown
+  // (TeksMarkdown.jsx, permintaan Owner). Blok kode, tabel, kutipan, dan garis pemisah adalah elemen BARU yang
+  // butuh garis & latar; yang mubazir (warna yang diwarisi) sudah dibuang lebih dulu, sisanya +8. Token ini kini
+  // bernilai palet LampLogin, bukan lagi sistem warna yang bersaing. Kenaikan berikutnya tetap merah.
+  tokenMaterial: 576,
+  warnaSlate: 609, // 615 → 609 (19 Okt): akar 6 aplikasi tak lagi mengecat latar slate sendiri (latar = dinding LampLogin)
   aksenPelangi: 250,
   gerakDekoratif: 51,
   kacaBlur: 15,

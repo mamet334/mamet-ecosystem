@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 
-console.log('uji-palet-lamplogin v1');
+console.log('uji-palet-lamplogin v2');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -66,7 +66,13 @@ for (const [t, l, batas] of PASANGAN) {
   const r = rasio(TOKEN[t], TOKEN[l]);
   cek(r >= batas, `${t} di ${l}: ${r.toFixed(2)}:1 (≥ ${batas})`);
 }
-const PASANGAN_SLATE = [[300, 800], [400, 900], [400, 950], [500, 900], [500, 950]];
+// v2 (Owner 19 Okt: "sama sih tapi kurang nyaman di mata"): teks utama di latar tidak boleh SETAJAM dulu (16,3:1).
+// Batas atas 14:1 — huruf terang di latar hampir hitam tampak berpendar saat dibaca lama; batas bawah 7:1 (AAA).
+const rUtama = rasio(TOKEN['on-surface'], TOKEN.surface);
+cek(rUtama >= 7 && rUtama <= 14, `teks utama ${rUtama.toFixed(2)}:1 — nyaman dibaca lama (7–14:1, tidak menyilaukan)`);
+cek(TOKEN['on-surface'] === TOKEN['on-background'], 'on-surface = on-background');
+cek(rUtama - rasio(TOKEN['on-surface-variant'], TOKEN.surface) >= 2, 'teks utama tetap jelas lebih terang dari teks redup');
+const PASANGAN_SLATE =[[300, 800], [400, 900], [400, 950], [500, 900], [500, 950]];
 for (const [t, l] of PASANGAN_SLATE) {
   const r = rasio(SLATE[t], SLATE[l]);
   cek(r >= 4.5, `slate-${t} di slate-${l}: ${r.toFixed(2)}:1 (≥ 4.5)`);
@@ -90,6 +96,8 @@ cek(!/#0052ff|0,\s*82,\s*255/i.test(css), 'tak ada cahaya biru #0052ff (kaca, in
 const blokBody = (css.match(/\nbody \{[\s\S]*?\n\}/) || [''])[0];
 const latarBody = (blokBody.match(/background-color:\s*(#[0-9a-f]{6})/i) || [])[1];
 cek(latarBody?.toLowerCase() === TOKEN.background.toLowerCase(), `latar body (${latarBody}) = token background`);
+const teksBody = (blokBody.match(/\n\s*color:\s*(#[0-9a-f]{6})/i) || [])[1];
+cek(teksBody?.toLowerCase() === TOKEN['on-surface'].toLowerCase(), `teks body (${teksBody}) = token on-surface`);
 
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));
 process.exit(gagal === 0 ? 0 : 1);
