@@ -4,8 +4,8 @@
 ruang lingkup, dokumentasi, analisis, alasan, persetujuan Owner)
 **Item:** 127
 **Status:** 🟡 **Tahap 0 ✅ · Tahap 1 langkah 1–4 ✅ (langkah 5 diparkir) · Tahap 2 ✅ selesai (2a · 2b · 2c) ·
-Tahap 3: menu teks ✅ (K2) — 19 Okt.** **Berikutnya: sisa Tahap 3 (ruangan, palet, skala huruf) — menunggu K4, K5.**
-K1, K2, K3 diputuskan Owner 19 Okt; K6 di luar item ini.
+Tahap 3: menu teks ✅ (K2) · K4 huruf & angka ✅ · palet LampLogin ✅ (titik pulih) — 19 Okt.** **Berikutnya: kenyamanan mata (Owner: palet "kurang nyaman di mata"), lalu sisa Tahap 3 (ruangan, ikon) — K5 terbuka.**
+K1, K2, K3, K4 diputuskan Owner 19 Okt; K6 di luar item ini.
 **Tanggal:** 2026-10-19
 **Aplikasi:** **Mamet Ecosystem** (`frontend/`) — **bukan** Mametlite.
 **Batas tegas:** **`LampLogin.jsx` tidak diubah** dalam pekerjaan ini (arahan Owner 19 Okt). **Face Mamet
@@ -449,6 +449,8 @@ menggantikan 47 token Material; satu set ikon; gerak dekoratif dibuang, `prefers
 (hari ini **nol** pemakaian di `src/`). Berurutan per halaman, dimulai dari yang paling sering dipakai
 Owner. **Uji kontras WCAG** di tiap panel.
 
+**Status 19 Okt:** menu teks ✅ (K2) · skala huruf & angka ✅ (K4 — [log](../project-memory/changelog/2026-10-19-menu-game-k4-huruf-angka.md)) · palet LampLogin di sumbernya ✅ ([log](../project-memory/changelog/2026-10-19-menu-game-palet-lamplogin.md)) — dinilai Owner "sama, tapi kurang nyaman di mata"; kenyamanan mata dikerjakan berikutnya. Sisa: ruangan + lampu, satu set ikon, gerak dekoratif.
+
 **Di luar lingkup:** `LampLogin.jsx`; `Login.jsx`; Mametlite; Face Mamet; server dan skema; perubahan
 konstitusi (milik Owner).
 
@@ -485,7 +487,7 @@ konstitusi (milik Owner).
 | ~~K1~~ | ~~Apa yang tampil sesudah masuk?~~ | — | ✅ **B, diputuskan 19 Okt** (di atas) |
 | ~~K2~~ | ~~Isi menu~~ | — | ✅ **struktur `navigation.json` bertingkat + "Lanjutkan", diputuskan 19 Okt** — dalam bentuk kotak melayang + tombol MENU (lihat catatan §5.2) |
 | ~~K3~~ | ~~Urutan~~ | — | ✅ **A — fondasi dulu, diputuskan 19 Okt** (di atas) |
-| **K4** | Huruf menu — **A dipakai SEMENTARA di menu teks (19 Okt), belum diputuskan**; diusulkan diperluas menjadi skala huruf (teks 16px, menu 14px, label ≥12px, kontras ≥4,5:1, angka tabular, format id-ID) | **A.** gaya judul LampLogin (mono krem bercahaya) · **B.** huruf tampilan baru berlisensi OFL, disimpan sendiri | **A.** Kontinu dengan layar masuk, tanpa unduhan huruf. Teks bacaan tetap Inter |
+| ~~K4~~ | ~~Huruf & angka~~ | — | ✅ **diputuskan 19 Okt** — skala huruf (menu 14px, minimum 12px, angka tabular, format id-ID); huruf menu tetap A (gaya judul LampLogin). Owner membalik pedoman 45–75 karakter: kolom chat **diperlebar** ke 1088px, isinya yang dipadatkan |
 | **K5** | Utang "dua ruangan" (§5.1) | disatukan nanti dengan izin menyentuh `LampLogin` · dibiarkan | disatukan nanti — dicatat sebagai sisa pekerjaan |
 | **K6** | Kode mati §6.0: `Login.jsx` · `EngineerChat.jsx` · `ActivityBar.jsx` (470 baris) | hapus · biarkan | di luar item ini; dicatat agar tidak terlupa |
 

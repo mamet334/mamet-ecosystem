@@ -36,23 +36,24 @@ async function bootstrapOS() {
     ReactDOM.createRoot(document.getElementById('root')).render(
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        height: '100vh', background: '#020817', color: '#ef4444',
+        // Palet LampLogin (Item 127 Tahap 3) — layar panik boot ikut ruangan kayu; MERAH galat sengaja dipertahankan.
+        height: '100vh', background: '#0b0806', color: '#ef4444',
         fontFamily: 'monospace', flexDirection: 'column', gap: '16px', padding: '24px'
       }}>
         <div style={{ fontSize: '18px', fontWeight: 'bold' }}>MAMET OS KERNEL PANIC</div>
-        <div style={{ color: '#94a3b8', fontSize: '13px' }}>An unexpected runtime error occurred during boot.</div>
+        <div style={{ color: '#c9b49a', fontSize: '13px' }}>An unexpected runtime error occurred during boot.</div>
         <div style={{
-          background: '#0f172a', padding: '16px', borderRadius: '8px',
+          background: '#120c08', padding: '16px', borderRadius: '8px',
           maxWidth: '600px', width: '100%', fontSize: '12px', color: '#f87171',
-          border: '1px solid #1e293b', whiteSpace: 'pre-wrap', wordBreak: 'break-word'
+          border: '1px solid #3e2b1b', whiteSpace: 'pre-wrap', wordBreak: 'break-word'
         }}>
           {bootError.message || String(bootError)}
         </div>
         <button
           onClick={() => window.location.reload()}
           style={{
-            padding: '8px 24px', background: '#1e293b', color: '#94a3b8',
-            border: '1px solid #334155', borderRadius: '6px', cursor: 'pointer',
+            padding: '8px 24px', background: '#24180f', color: '#c9b49a',
+            border: '1px solid #3e2b1b', borderRadius: '6px', cursor: 'pointer',
             fontFamily: 'monospace', fontSize: '12px'
           }}
         >

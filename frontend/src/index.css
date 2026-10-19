@@ -52,10 +52,11 @@ body {
      sama, jadi angka yang berubah — meteran konteks saat jawaban mengalir, durasi, biaya — tidak "menari"
      ke kiri-kanan, dan kolom angka di tabel Billing/Observability rata. Inter mendukungnya (fitur tnum). */
   font-variant-numeric: tabular-nums;
-  background-color: #0a0a0c;
-  color: #e5e1e4;
-  /* Touch-friendly tap highlight */
-  -webkit-tap-highlight-color: rgba(0, 82, 255, 0.15);
+  /* Palet LampLogin (Item 127 Tahap 3) — sama dengan token `background` & `on-surface` di tailwind.config. */
+  background-color: #0b0806;
+  color: #f3e7d3;
+  /* Touch-friendly tap highlight — cahaya lampu, bukan biru */
+  -webkit-tap-highlight-color: rgba(240, 202, 109, 0.15);
   touch-action: manipulation;
 }
 
@@ -66,29 +67,31 @@ body {
 }
 
 /* ── GLASS & RIM EFFECTS ── */
+/* Item 127 Tahap 3: warna kelas-kelas ini dipindah ke palet LampLogin — kayu gelap, tepi kayu terang, cahaya
+   lampu emas. Dulu abu-abu kebiruan dengan cahaya BIRU #0052ff; itu sisa biru terakhir di tengah ruangan kayu. */
 .glass-panel {
-  background: rgba(22, 22, 26, 0.7);
+  background: rgba(26, 18, 12, 0.72);
   backdrop-filter: blur(20px);
-  border: 1px solid #27272a;
-  box-shadow: 0px 20px 40px rgba(0, 82, 255, 0.05);
+  border: 1px solid #3e2b1b;
+  box-shadow: 0px 20px 40px rgba(240, 202, 109, 0.04);
 }
 .rim-light {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 236, 207, 0.08);
 }
 
 /* ── INPUT STYLES ── */
 .input-etched {
-  background-color: #0e0e10;
-  border: 1px solid #27272a;
+  background-color: #120c08;
+  border: 1px solid #3e2b1b;
   transition: all 0.2s ease-in-out;
 }
 .input-etched:focus {
-  border-color: #0052ff;
-  box-shadow: 0 0 0 2px rgba(0, 82, 255, 0.2);
+  border-color: #f0ca6d;
+  box-shadow: 0 0 0 2px rgba(240, 202, 109, 0.2);
   outline: none;
 }
 .btn-glow:hover {
-  box-shadow: 0 0 15px rgba(0, 82, 255, 0.4);
+  box-shadow: 0 0 15px rgba(240, 202, 109, 0.35);
 }
 
 /* ── MATERIAL ICONS ──
