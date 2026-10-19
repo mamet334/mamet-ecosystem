@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
 const U = await import(pathToFileURL(`${AKAR}/frontend/src/core/runtime/services/unduhAplikasi.js`).href + '?v=' + Date.now());
 
-console.log('uji-unduh-desktop v1');
+console.log('uji-unduh-desktop v2');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 300)}` : ''}`);
@@ -89,7 +89,9 @@ cek(/import TombolUnduhDesktop from '\.\/TombolUnduhDesktop'/.test(SET) && /<Tom
 // Di aplikasi desktop tombol ini TIDAK boleh muncul — pembaruannya datang sendiri.
 cek(/window\.electronAPI\?\.checkForUpdates/.test(TOMBOL), 'komponen memeriksa apakah sedang di desktop');
 cek(/if \(diDesktop\) return null;/.test(TOMBOL), 'di aplikasi desktop tombolnya tidak dirender sama sekali');
-cek(/\{!adaPembaruan && \(/.test(SET), 'bagian Pengaturan hanya muncul di web — pasangan panel Pembaruan');
+// v2 (2026-10-19, Item 127 Tahap 2b): Settings bertab menambah syarat `bagianAktif === 'desktop'`.
+// Yang dijaga tetap `!adaPembaruan` sebagai syarat render — bukan susunan teks harfiahnya.
+cek(/\{!adaPembaruan && (?:bagianAktif === '[a-z]+' && )?\(/.test(SET), 'bagian Pengaturan hanya muncul di web — pasangan panel Pembaruan');
 
 // Pengambilan dibatalkan bila komponen ditutup lebih dulu.
 cek(/let batal = false;/.test(TOMBOL) && /return \(\) => \{ batal = true; \};/.test(TOMBOL),

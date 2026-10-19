@@ -18,6 +18,9 @@ const TOOL_LABELS = {
 };
 
 export default function Settings() {
+  // Item 127 Tahap 2: Settings bertab — satu bagian tampil pada satu waktu, bukan sembilan kartu yang
+  // digulir. Bentuknya sama dengan gambar referensi menu Owner: daftar di kiri, isi di kanan.
+  const [bagianAktif, setBagianAktif] = useState('model');
   const [user, setUser] = useState(null);
   const [health, setHealth] = useState(null);
 
@@ -168,6 +171,21 @@ export default function Settings() {
   const [sedangPeriksa, setSedangPeriksa] = useState(false);
   const adaPembaruan = !!window.electronAPI?.checkForUpdates;
 
+  // Urutan & syaratnya SAMA dengan bagian di bawah: Pembaruan hanya di aplikasi terpasang, Unduh Desktop
+  // hanya di web — jadi yang tampil selalu delapan, dan tak ada tab yang membuka halaman kosong. Ikonnya
+  // diambil dari kepala bagian masing-masing (Identitas memakai `person`, bukan `logout` milik tombolnya).
+  const BAGIAN_SETTINGS = [
+    { id: 'model', label: 'Model AI', ikon: 'psychology', tampil: true },
+    { id: 'apikey', label: 'API Key', ikon: 'key', tampil: true },
+    { id: 'tier', label: 'Tingkat Model', ikon: 'layers', tampil: true },
+    { id: 'biaya', label: 'Batas Biaya', ikon: 'savings', tampil: true },
+    { id: 'pembaruan', label: 'Pembaruan', ikon: 'refresh', tampil: adaPembaruan },
+    { id: 'desktop', label: 'Aplikasi Desktop', ikon: 'download', tampil: !adaPembaruan },
+    { id: 'alat', label: 'Alat & Kemampuan', ikon: 'tune', tampil: true },
+    { id: 'registry', label: 'Tool Registry', ikon: 'extension', tampil: true },
+    { id: 'identitas', label: 'Identitas', ikon: 'person', tampil: true },
+  ];
+
   useEffect(() => {
     if (!adaPembaruan) return;
     window.electronAPI.getAppVersion?.().then(setVersiApl).catch(() => setVersiApl(null));
@@ -269,9 +287,26 @@ export default function Settings() {
           <p className="text-on-surface-variant text-body-base">Configure your deep-dark AI workspace and management parameters.</p>
         </div>
 
-        <div className="grid grid-cols-12 gap-4 md:gap-gutter">
+        <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+          <nav aria-label="Bagian pengaturan" className="md:w-56 shrink-0 flex md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-1 md:pb-0">
+            {BAGIAN_SETTINGS.filter((g) => g.tampil).map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => setBagianAktif(g.id)}
+                aria-current={bagianAktif === g.id ? 'page' : undefined}
+                className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm whitespace-nowrap transition-colors ${bagianAktif === g.id ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
+              >
+                <span className="material-symbols-outlined text-[18px]">{g.ikon}</span>
+                {g.label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="flex-1 min-w-0 space-y-6">
           
           {/* AI Model Management — full width di mobile, 8/12 di desktop */}
+          {bagianAktif === 'model' && (
           <section className="col-span-12 lg:col-span-8 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant relative overflow-hidden">
             <div className="flex items-center gap-3 mb-8">
               <div className="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center">
@@ -335,8 +370,10 @@ export default function Settings() {
               </div>
             </div>
           </section>
+          )}
 
           {/* API Key Management */}
+          {bagianAktif === 'apikey' && (
           <section className="col-span-12 lg:col-span-4 glass-panel rim-light p-gutter rounded-xl border border-outline-variant flex flex-col">
             <div className="flex items-center gap-3 mb-8">
               <div className="w-10 h-10 rounded-lg bg-secondary-container/20 flex items-center justify-center">
@@ -396,11 +433,13 @@ export default function Settings() {
               <p className="text-body-sm text-primary/80 leading-relaxed italic">"Masukkan API Key yang sesuai dengan provider pilihan Anda. Jika menggunakan OpenRouter, gunakan OpenRouter API Key. Klik <strong>Save</strong>, kemudian <strong>Test Connection</strong> untuk memastikan koneksi AI berhasil."</p>
             </div>
           </section>
+          )}
 
 
           {/* Adaptive Model Tiering — 3 slot kurasi Owner, khusus jalur Assistant.
               Sistem hanya memutuskan TINGKAT mana yang dipakai per pesan (TierClassifierService,
               deterministik tanpa LLM); model apa yang mengisi tiap tingkat sepenuhnya pilihan Owner. */}
+          {bagianAktif === 'tier' && (
           <section className="col-span-12 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center">
@@ -488,12 +527,14 @@ export default function Settings() {
               </p>
             </div>
           </section>
+          )}
 
 
           {/* Batas Biaya Harian — circuit breaker per akun.
               Nilai efektif = min(batas pribadi ini, plafon sistem). Plafon hanya bisa diubah
               lewat service role, supaya tidak ada pengguna yang bisa menaikkan jatah belanjanya
               sendiri di atas API key sistem. */}
+          {bagianAktif === 'biaya' && (
           <section className="col-span-12 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center">
@@ -540,12 +581,13 @@ export default function Settings() {
               </div>
             )}
           </section>
+          )}
 
 
           {/* Pembaruan Aplikasi — hanya di aplikasi terpasang; di web tidak ada auto-updater.
               Versi yang sedang berjalan ditampilkan lebih dulu: tanpa itu, tidak ada cara memastikan
               dua orang memakai versi yang sama, dan laporan bug jadi membingungkan. */}
-          {adaPembaruan && (
+          {adaPembaruan && bagianAktif === 'pembaruan' && (
           <section className="col-span-12 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center">
@@ -594,7 +636,7 @@ export default function Settings() {
           {/* Unduh Aplikasi Desktop — pasangan panel di atas: yang itu untuk yang SUDAH memakai
               desktop, yang ini untuk yang membuka lewat web. Komponennya sendiri yang memutuskan
               menampilkan diri atau tidak, jadi hanya satu dari keduanya yang pernah muncul. */}
-          {!adaPembaruan && (
+          {!adaPembaruan && bagianAktif === 'desktop' && (
           <section className="col-span-12 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center">
@@ -615,6 +657,7 @@ export default function Settings() {
           )}
 
           {/* Tools & Capabilities */}
+          {bagianAktif === 'alat' && (
           <section className="col-span-12 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center">
@@ -695,9 +738,11 @@ export default function Settings() {
               </div>
             </div>
           </section>
+          )}
 
           {/* Tool Registry — folder tools/ di root repo, discan otomatis saat boot,
               atau manual lewat tombol ini tanpa perlu restart app. */}
+          {bagianAktif === 'registry' && (
           <section className="col-span-12 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant">
             <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
               <div className="flex items-center gap-3">
@@ -752,8 +797,10 @@ export default function Settings() {
               )}
             </div>
           </section>
+          )}
 
           {/* Identity & Danger Zone */}
+          {bagianAktif === 'identitas' && (
           <section className="col-span-12 glass-panel rim-light p-gutter rounded-xl border border-outline-variant">
              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                 <div className="flex-1">
@@ -774,7 +821,9 @@ export default function Settings() {
                 </div>
              </div>
           </section>
+          )}
 
+          </div>
         </div>
       </div>
     </div>

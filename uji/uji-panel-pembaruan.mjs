@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
 const S = await import(pathToFileURL(`${AKAR}/frontend/src/core/runtime/services/statusPembaruan.js`).href + '?v=' + Date.now());
 
-console.log('uji-panel-pembaruan v1');
+console.log('uji-panel-pembaruan v2');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 300)}` : ''}`);
@@ -101,7 +101,10 @@ cek(/return \(\) => \{ try \{ lepas\?\.\(\); \}/.test(blokEffect),
 
 // Di web tidak ada Electron: panelnya tidak boleh dirender sama sekali.
 cek(/const adaPembaruan = !!window\.electronAPI\?\.checkForUpdates;/.test(SET), 'keberadaan Electron diperiksa');
-cek(/\{adaPembaruan && \(/.test(SET), 'panel tidak dirender di web/Mametlite', (SET.match(/adaPembaruan[^\n]*/g) || []));
+// v2 (2026-10-19, Item 127 Tahap 2b): Settings kini bertab, jadi syaratnya bertambah satu
+// (`bagianAktif === 'pembaruan'`). Niat yang dijaga tetap sama — `adaPembaruan` WAJIB menjadi syarat
+// render panel ini — bukan susunan teks harfiahnya.
+cek(/\{adaPembaruan && (?:bagianAktif === '[a-z]+' && )?\(/.test(SET), 'panel tidak dirender di web/Mametlite', (SET.match(/adaPembaruan[^\n]*/g) || []));
 
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));
 process.exit(gagal === 0 ? 0 : 1);

@@ -3,8 +3,8 @@
 **Tipe Dokumen:** Rancangan (blueprint) perubahan UI — memenuhi syarat tata kelola MUS §20 (tujuan,
 ruang lingkup, dokumentasi, analisis, alasan, persetujuan Owner)
 **Item:** 127
-**Status:** 🟡 **Tahap 0 ✅ · Tahap 1 langkah 1–4 ✅ (langkah 5 diparkir) · Tahap 2a ✅ — 19 Okt.**
-**Berikutnya: 2b Settings bertab.** K1 dan K3 diputuskan Owner 19 Okt (graf terbuka di panel; fondasi dulu);
+**Status:** 🟡 **Tahap 0 ✅ · Tahap 1 langkah 1–4 ✅ (langkah 5 diparkir) · Tahap 2a ✅ · 2b ✅ — 19 Okt.**
+**Berikutnya: 2c uji inventaris.** K1 dan K3 diputuskan Owner 19 Okt (graf terbuka di panel; fondasi dulu);
 K2, K4, K5, K6 baru dibutuhkan di Tahap 3.
 **Tanggal:** 2026-10-19
 **Aplikasi:** **Mamet Ecosystem** (`frontend/`) — **bukan** Mametlite.
@@ -426,8 +426,8 @@ Langkah:
   bilah tombol jadi satu baris, tiga ikon kembar bilah samping diganti. Jawaban model **524 → 768px**; kolom
   baca tidak bergeser saat laci mana pun dibuka. `uji-kerangka-chat.mjs` v2, 12 mutasi menggigit —
   [log](../project-memory/changelog/2026-10-19-menu-game-tahap2a-kerangka-chat.md).
-- **2b** — Settings bertab: 9 bagian jadi daftar kiri, isi di kanan; Keluar tetap di bagian identitas sampai
-  menu utama ada (Tahap 3).
+- **2b** ✅ **19 Okt** — Settings bertab: 9 bagian jadi daftar kiri, isi di kanan (8 tampil; Pembaruan/Unduh Desktop saling meniadakan); Keluar tetap di bagian identitas sampai
+  menu utama ada (Tahap 3). `uji-settings-bertab.mjs`, 6 mutasi menggigit — [log](../project-memory/changelog/2026-10-19-menu-game-tahap2b-settings-bertab.md).
 - **2c** — **uji inventaris**: tiap baris §6 dipetakan ke jangkar kodenya (tombol, `title`, penangan); baris
   yang jangkarnya hilang = merah. Inilah yang membuat "tidak ada fungsi yang hilang" menjadi uji, bukan janji.
 
