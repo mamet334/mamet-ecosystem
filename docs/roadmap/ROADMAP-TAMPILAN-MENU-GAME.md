@@ -3,8 +3,8 @@
 **Tipe Dokumen:** Rancangan (blueprint) perubahan UI — memenuhi syarat tata kelola MUS §20 (tujuan,
 ruang lingkup, dokumentasi, analisis, alasan, persetujuan Owner)
 **Item:** 127
-**Status:** 🟡 **Tahap 0 ✅ · Tahap 1 langkah 1–4 ✅ (langkah 5 diparkir) · Tahap 2a ✅ · 2b ✅ — 19 Okt.**
-**Berikutnya: 2c uji inventaris.** K1 dan K3 diputuskan Owner 19 Okt (graf terbuka di panel; fondasi dulu);
+**Status:** 🟡 **Tahap 0 ✅ · Tahap 1 langkah 1–4 ✅ (langkah 5 diparkir) · Tahap 2 ✅ selesai (2a · 2b · 2c) — 19 Okt.**
+**Berikutnya: Tahap 3 (kulit ruangan) — menunggu keputusan Owner K2, K4, K5.** K1 dan K3 diputuskan Owner 19 Okt (graf terbuka di panel; fondasi dulu);
 K2, K4, K5, K6 baru dibutuhkan di Tahap 3.
 **Tanggal:** 2026-10-19
 **Aplikasi:** **Mamet Ecosystem** (`frontend/`) — **bukan** Mametlite.
@@ -428,8 +428,8 @@ Langkah:
   [log](../project-memory/changelog/2026-10-19-menu-game-tahap2a-kerangka-chat.md).
 - **2b** ✅ **19 Okt** — Settings bertab: 9 bagian jadi daftar kiri, isi di kanan (8 tampil; Pembaruan/Unduh Desktop saling meniadakan); Keluar tetap di bagian identitas sampai
   menu utama ada (Tahap 3). `uji-settings-bertab.mjs`, 6 mutasi menggigit — [log](../project-memory/changelog/2026-10-19-menu-game-tahap2b-settings-bertab.md).
-- **2c** — **uji inventaris**: tiap baris §6 dipetakan ke jangkar kodenya (tombol, `title`, penangan); baris
-  yang jangkarnya hilang = merah. Inilah yang membuat "tidak ada fungsi yang hilang" menjadi uji, bukan janji.
+- **2c** ✅ **19 Okt** — **uji inventaris**: tiap baris §6 dipetakan ke jangkar kodenya (tombol, `title`, penangan); baris
+  yang jangkarnya hilang = merah. Inilah yang membuat "tidak ada fungsi yang hilang" menjadi uji, bukan janji. `uji-inventaris-fungsi.mjs` membaca tabel §6 langsung dari dokumen (dokumen = uji), 36 fungsi wajib + 2 boleh hilang, 8 mutasi menggigit — [log](../project-memory/changelog/2026-10-19-menu-game-tahap2c-uji-inventaris.md).
 
 **Satu efek yang perlu diketahui Owner:** tata letak tersimpan menyimpan Monitor MAEF **terbuka** untuk
 Assistant & Engineer (diukur Tahap 0). Sesudah 2a ia muncul sebagai laci terbuka yang menutupi tepi kanan
