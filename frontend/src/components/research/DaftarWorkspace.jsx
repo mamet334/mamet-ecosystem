@@ -70,7 +70,7 @@ export default function DaftarWorkspace({ daftar, terpilih, onPilih, jumlahDokum
             </div>
 
             {ruang && mode === null && (
-                <div className="mt-2 flex items-center gap-3 text-[11px] text-slate-500">
+                <div className="mt-2 flex items-center gap-3 text-[12px] text-slate-500">
                     <span>Unggahan dokumen masuk ke <span className="text-slate-300">"{ruang.name}"</span></span>
                     <button onClick={() => buka('ganti')} disabled={sibuk} className="flex items-center gap-1 hover:text-blue-300" title="Ganti nama workspace ini">
                         <Pencil className="w-3 h-3" /> Ganti nama
@@ -105,9 +105,9 @@ export default function DaftarWorkspace({ daftar, terpilih, onPilih, jumlahDokum
                             <X className="w-4 h-4" />
                         </button>
                     </div>
-                    {pesan && <p className="text-[11px] text-red-400">{pesan}</p>}
+                    {pesan && <p className="text-[12px] text-red-400">{pesan}</p>}
                     {mode === 'buat' && !pesan && (
-                        <p className="text-[11px] text-slate-500">Workspace baru langsung terpilih; unggahan berikutnya masuk ke sana. Chat tetap mencari di semua workspace.</p>
+                        <p className="text-[12px] text-slate-500">Workspace baru langsung terpilih; unggahan berikutnya masuk ke sana. Chat tetap mencari di semua workspace.</p>
                     )}
                 </div>
             )}

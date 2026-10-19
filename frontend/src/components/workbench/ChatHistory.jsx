@@ -232,7 +232,7 @@ export default function ChatHistory({ onSelectChat, onNewChat, activeChatId,  ac
                 >
                   {chat.title || 'Percakapan Baru'}
                 </p>
-                <p className="text-[10px] text-on-surface-variant mt-0.5 opacity-70">
+                <p className="text-[12px] text-on-surface-variant mt-0.5 opacity-70">
                   {formatDate(chat.updated_at || chat.created_at)}
                 </p>
               </div>
@@ -258,7 +258,7 @@ export default function ChatHistory({ onSelectChat, onNewChat, activeChatId,  ac
 
       {/* Footer */}
       <div className="p-3 border-t border-outline-variant text-center">
-        <p className="text-label-mono text-[10px] text-on-surface-variant tracking-widest uppercase">
+        <p className="text-label-mono text-[12px] text-on-surface-variant tracking-widest uppercase">
           {chats.length} Percakapan
         </p>
       </div>

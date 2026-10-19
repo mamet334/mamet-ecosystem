@@ -31,13 +31,13 @@ class WidgetErrorBoundary extends React.Component {
         <div className="flex flex-col items-center justify-center h-full p-4 text-center bg-slate-900 border border-slate-800 rounded">
           <AlertTriangle className="w-8 h-8 text-amber-500 mb-2" />
           <div className="text-xs font-bold text-slate-300">Module Load Failure</div>
-          <div className="text-[10px] text-slate-500 mt-1 max-w-[200px] break-words">
+          <div className="text-[12px] text-slate-500 mt-1 max-w-[200px] break-words">
             Failed to load widget: {this.props.widgetId}
           </div>
           <button
             type="button"
             onClick={() => this.setState({ hasError: false, error: null })}
-            className="mt-3 px-3 py-1 bg-slate-800 text-emerald-500 text-[10px] rounded border border-slate-700 hover:bg-slate-700 transition-colors"
+            className="mt-3 px-3 py-1 bg-slate-800 text-emerald-500 text-[12px] rounded border border-slate-700 hover:bg-slate-700 transition-colors"
           >
             Retry Loading
           </button>
@@ -158,7 +158,7 @@ export default function WidgetHost({ widgetId, onClose, dragHandleListeners, dra
 
       {/* Collapsed state: tampilkan info ringkas */}
       {collapsed && (
-        <div className="px-3 py-2 text-[10px] text-slate-600 font-mono italic">
+        <div className="px-3 py-2 text-[12px] text-slate-600 font-mono italic">
           Widget collapsed — klik ▾ untuk expand
         </div>
       )}

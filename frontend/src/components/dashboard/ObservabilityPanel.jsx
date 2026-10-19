@@ -66,7 +66,7 @@ export default function ObservabilityPanel({
         <div className="group pt-2 border-t border-white/5">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">
+              <div className="text-[12px] text-slate-500 uppercase tracking-wider font-mono">
                 Execution Trace Timeline
               </div>
               {(() => {
@@ -76,30 +76,30 @@ export default function ObservabilityPanel({
                 const hasRunning = executionTrace.timeline.some(e => (e.status || '').toLowerCase() === 'running' || (e.status || '').toLowerCase() === 'pending');
 
                 if (hasTimeout) return (
-                  <div className="text-[9px] mt-1 text-amber-300 font-mono">Status: ⏳ TIMEOUT (possible disconnect)</div>
+                  <div className="text-[12px] mt-1 text-amber-300 font-mono">Status: ⏳ TIMEOUT (possible disconnect)</div>
                 );
                 if (hasFailed) return (
-                  <div className="text-[9px] mt-1 text-red-400 font-mono">Status: ❌ FAILED (possible disconnect)</div>
+                  <div className="text-[12px] mt-1 text-red-400 font-mono">Status: ❌ FAILED (possible disconnect)</div>
                 );
                 if (hasRunning) return (
-                  <div className="text-[9px] mt-1 text-sky-300 font-mono">Status: 🟡 RUNNING</div>
+                  <div className="text-[12px] mt-1 text-sky-300 font-mono">Status: 🟡 RUNNING</div>
                 );
                 return (
-                  <div className="text-[9px] mt-1 text-emerald-300 font-mono">Status: ✅ CONNECTED</div>
+                  <div className="text-[12px] mt-1 text-emerald-300 font-mono">Status: ✅ CONNECTED</div>
                 );
               })()}
             </div>
-            <div className="text-[9px] text-slate-600 font-mono">
+            <div className="text-[12px] text-slate-600 font-mono">
               {executionTrace?.traceId ? String(executionTrace.traceId).slice(0, 10) + '…' : '—'}
             </div>
           </div>
 
           {executionTrace.loading ? (
-            <div className="text-[10px] text-slate-400 font-mono">Loading timeline…</div>
+            <div className="text-[12px] text-slate-400 font-mono">Loading timeline…</div>
           ) : executionTrace.error ? (
-            <div className="text-[10px] text-red-400 font-mono">Timeline error: {executionTrace.error}</div>
+            <div className="text-[12px] text-red-400 font-mono">Timeline error: {executionTrace.error}</div>
           ) : executionTrace?.unknown || !executionTrace?.timeline || executionTrace.timeline.length === 0 ? (
-            <div className="text-[10px] text-slate-500 font-mono">NO TELEMETRY AVAILABLE (UNKNOWN)</div>
+            <div className="text-[12px] text-slate-500 font-mono">NO TELEMETRY AVAILABLE (UNKNOWN)</div>
           ) : (
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
               {executionTrace.timeline
@@ -133,10 +133,10 @@ export default function ObservabilityPanel({
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <div className="text-[10px] font-mono text-slate-200 truncate">{label}</div>
-                          <div className="text-[9px] text-slate-500 font-mono whitespace-nowrap">{ts}</div>
+                          <div className="text-[12px] font-mono text-slate-200 truncate">{label}</div>
+                          <div className="text-[12px] text-slate-500 font-mono whitespace-nowrap">{ts}</div>
                         </div>
-                        <div className="text-[9px] font-mono mt-0.5">
+                        <div className="text-[12px] font-mono mt-0.5">
                           <span className={statusColor}>{status}</span>
                           {metaSummary && <span className="text-slate-500"> • {metaSummary}</span>}
                         </div>
@@ -151,7 +151,7 @@ export default function ObservabilityPanel({
         {/* Pipeline Execution */}
         {executionTrace?.pipeline?.steps && executionTrace.pipeline.steps.length > 0 && (
           <div className="group pt-4 border-t border-white/5">
-            <div className="text-[10px] text-slate-500 uppercase tracking-wider font-mono mb-3">
+            <div className="text-[12px] text-slate-500 uppercase tracking-wider font-mono mb-3">
               Pipeline Execution (V2 Core)
             </div>
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
@@ -165,17 +165,17 @@ export default function ObservabilityPanel({
                 return (
                   <div key={step.key} className="bg-white/5 border border-white/5 rounded-lg px-3 py-2">
                     <div className="flex items-center justify-between gap-3">
-                      <div className="text-[10px] text-slate-200 font-mono">{step.order}. {step.label}</div>
-                      <div className={`text-[9px] font-mono ${statusClass}`}>{status}</div>
+                      <div className="text-[12px] text-slate-200 font-mono">{step.order}. {step.label}</div>
+                      <div className={`text-[12px] font-mono ${statusClass}`}>{status}</div>
                     </div>
-                    <div className="text-[9px] text-slate-500 font-mono mt-1">
+                    <div className="text-[12px] text-slate-500 font-mono mt-1">
                       latency: {typeof step.latencyMs === 'number' ? `${step.latencyMs}ms` : 'UNKNOWN'} • provider: {step.provider || 'UNKNOWN'}
                     </div>
                   </div>
                 );
               })}
             </div>
-            <div className="mt-3 space-y-1 text-[10px] font-mono border-t border-white/5 pt-3">
+            <div className="mt-3 space-y-1 text-[12px] font-mono border-t border-white/5 pt-3">
               <div className="text-slate-400">ROOT CAUSE: <span className="text-red-300">{executionTrace.pipeline.summary?.rootCause || 'UNKNOWN'}</span></div>
               <div className="text-slate-400">FAILED STEP: <span className="text-red-300">{executionTrace.pipeline.summary?.failedStep || 'UNKNOWN'}</span></div>
               <div className="text-slate-400">BOTTLENECK: <span className="text-amber-300">{executionTrace.pipeline.summary?.bottleneck ? `${executionTrace.pipeline.summary.bottleneck.step} (${executionTrace.pipeline.summary.bottleneck.latencyMs}ms)` : 'UNKNOWN'}</span></div>
@@ -186,30 +186,30 @@ export default function ObservabilityPanel({
         {/* Metrics Grid */}
         <div className="grid grid-cols-2 gap-4">
           <div className="group">
-            <div className="text-[10px] text-slate-500 mb-1 uppercase tracking-wider font-mono group-hover:text-green-400 transition-colors">Memory Reads</div>
+            <div className="text-[12px] text-slate-500 mb-1 uppercase tracking-wider font-mono group-hover:text-green-400 transition-colors">Memory Reads</div>
             <div className="text-2xl font-light text-green-400 font-mono drop-shadow-[0_0_15px_rgba(34,197,94,0.4)]">{observability.memoryReads}</div>
           </div>
           <div className="group">
-            <div className="text-[10px] text-slate-500 mb-1 uppercase tracking-wider font-mono group-hover:text-emerald-300 transition-colors">Memory Writes</div>
+            <div className="text-[12px] text-slate-500 mb-1 uppercase tracking-wider font-mono group-hover:text-emerald-300 transition-colors">Memory Writes</div>
             <div className="text-2xl font-light text-emerald-300 font-mono drop-shadow-[0_0_15px_rgba(16,185,129,0.35)]">{observability.memoryWrites}</div>
           </div>
           <div className="group">
-            <div className="text-[10px] text-slate-500 mb-1 uppercase tracking-wider font-mono group-hover:text-blue-300 transition-colors">LLM Calls</div>
+            <div className="text-[12px] text-slate-500 mb-1 uppercase tracking-wider font-mono group-hover:text-blue-300 transition-colors">LLM Calls</div>
             <div className="text-2xl font-light text-blue-300 font-mono drop-shadow-[0_0_15px_rgba(59,130,246,0.35)]">{observability.llmCalls}</div>
           </div>
           <div className="group">
-            <div className="text-[10px] text-slate-500 mb-1 uppercase tracking-wider font-mono group-hover:text-amber-200 transition-colors">Avg Latency</div>
-            <div className="text-2xl font-light text-amber-200 font-mono drop-shadow-[0_0_15px_rgba(245,158,11,0.35)]">{observability.avgLatencyMs}<span className="text-[10px] text-slate-400 ml-1">ms</span></div>
+            <div className="text-[12px] text-slate-500 mb-1 uppercase tracking-wider font-mono group-hover:text-amber-200 transition-colors">Avg Latency</div>
+            <div className="text-2xl font-light text-amber-200 font-mono drop-shadow-[0_0_15px_rgba(245,158,11,0.35)]">{observability.avgLatencyMs}<span className="text-[12px] text-slate-400 ml-1">ms</span></div>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="group">
-            <div className="text-[10px] text-slate-500 mb-1 uppercase tracking-wider font-mono">Errors</div>
+            <div className="text-[12px] text-slate-500 mb-1 uppercase tracking-wider font-mono">Errors</div>
             <div className="text-2xl font-light text-red-400 font-mono drop-shadow-[0_0_15px_rgba(239,68,68,0.35)]">{observability.errorCount}</div>
           </div>
           <div className="group">
-            <div className="text-[10px] text-slate-500 mb-1 uppercase tracking-wider font-mono">Cost Alerts</div>
+            <div className="text-[12px] text-slate-500 mb-1 uppercase tracking-wider font-mono">Cost Alerts</div>
             <div className="text-2xl font-light text-amber-400 font-mono drop-shadow-[0_0_15px_rgba(234,179,8,0.35)]">{observability.costAlertCount}</div>
           </div>
         </div>
@@ -217,8 +217,8 @@ export default function ObservabilityPanel({
         {/* Ecosystem Health */}
         <div className="group pt-4 border-t border-white/5">
           <div className="flex items-center justify-between mb-4">
-            <div className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">Ecosystem Health</div>
-            <div className="text-[9px] text-slate-600 font-mono">LAST CHECK: {lastCheckTime}</div>
+            <div className="text-[12px] text-slate-500 uppercase tracking-wider font-mono">Ecosystem Health</div>
+            <div className="text-[12px] text-slate-600 font-mono">LAST CHECK: {lastCheckTime}</div>
           </div>
 
           {(() => {
@@ -237,13 +237,13 @@ export default function ObservabilityPanel({
 
             return (
               <div className="mb-4">
-                <div className="text-[9px] text-slate-500 mb-1 uppercase tracking-wider font-mono">System Status</div>
+                <div className="text-[12px] text-slate-500 mb-1 uppercase tracking-wider font-mono">System Status</div>
                 <div className={`text-lg font-light tracking-widest font-mono ${overallColor} ${overallGlow}`}>{overallStatus}</div>
               </div>
             );
           })()}
 
-          <div className="space-y-2 text-[10px] font-mono tracking-widest text-slate-300 border-t border-white/5 pt-4">
+          <div className="space-y-2 text-[12px] font-mono tracking-widest text-slate-300 border-t border-white/5 pt-4">
             {Object.entries(vitals).map(([key, val]) => (
               <div key={key} className="flex items-center gap-2">
                 <span className={
@@ -260,29 +260,29 @@ export default function ObservabilityPanel({
 
         {/* Bottleneck Panel */}
         <div className="group pt-4 border-t border-white/5">
-          <div className="text-[10px] text-slate-500 mb-2 uppercase tracking-wider font-mono">Bottleneck (P50 / P95 / P99)</div>
+          <div className="text-[12px] text-slate-500 mb-2 uppercase tracking-wider font-mono">Bottleneck (P50 / P95 / P99)</div>
           <div className="grid grid-cols-3 gap-2 mb-3">
             <div className="bg-white/5 rounded p-2">
-              <div className="text-[9px] text-slate-500 font-mono">P50</div>
+              <div className="text-[12px] text-slate-500 font-mono">P50</div>
               <div className="text-xs text-emerald-300 font-mono">{typeof observability.latencyP50Ms === 'number' ? `${observability.latencyP50Ms}ms` : 'UNKNOWN'}</div>
             </div>
             <div className="bg-white/5 rounded p-2">
-              <div className="text-[9px] text-slate-500 font-mono">P95</div>
+              <div className="text-[12px] text-slate-500 font-mono">P95</div>
               <div className="text-xs text-amber-300 font-mono">{typeof observability.latencyP95Ms === 'number' ? `${observability.latencyP95Ms}ms` : 'UNKNOWN'}</div>
             </div>
             <div className="bg-white/5 rounded p-2">
-              <div className="text-[9px] text-slate-500 font-mono">P99</div>
+              <div className="text-[12px] text-slate-500 font-mono">P99</div>
               <div className="text-xs text-red-300 font-mono">{typeof observability.latencyP99Ms === 'number' ? `${observability.latencyP99Ms}ms` : 'UNKNOWN'}</div>
             </div>
           </div>
           {observability.topSlowComponents.length === 0 ? (
-            <div className="text-[10px] text-slate-500 font-mono">No component latency telemetry.</div>
+            <div className="text-[12px] text-slate-500 font-mono">No component latency telemetry.</div>
           ) : (
             <div className="space-y-2">
               {observability.topSlowComponents.map((c, idx) => (
                 <div key={`${c.component}-${idx}`} className="bg-white/5 border border-white/5 rounded px-3 py-2">
-                  <div className="text-[10px] text-slate-200 font-mono truncate">{c.component}</div>
-                  <div className="text-[9px] text-slate-400 font-mono">p95:{typeof c.p95 === 'number' ? `${c.p95}ms` : 'UNKNOWN'} • p99:{typeof c.p99 === 'number' ? `${c.p99}ms` : 'UNKNOWN'} • avg:{typeof c.avg === 'number' ? `${c.avg}ms` : 'UNKNOWN'}</div>
+                  <div className="text-[12px] text-slate-200 font-mono truncate">{c.component}</div>
+                  <div className="text-[12px] text-slate-400 font-mono">p95:{typeof c.p95 === 'number' ? `${c.p95}ms` : 'UNKNOWN'} • p99:{typeof c.p99 === 'number' ? `${c.p99}ms` : 'UNKNOWN'} • avg:{typeof c.avg === 'number' ? `${c.avg}ms` : 'UNKNOWN'}</div>
                 </div>
               ))}
             </div>
@@ -291,9 +291,9 @@ export default function ObservabilityPanel({
 
         {/* Recent Failures */}
         <div className="group pt-4 border-t border-white/5">
-          <div className="text-[10px] text-slate-500 mb-2 uppercase tracking-wider font-mono">Recent Known Failures</div>
+          <div className="text-[12px] text-slate-500 mb-2 uppercase tracking-wider font-mono">Recent Known Failures</div>
           {observability.recentFailures.length === 0 ? (
-            <div className="text-[10px] text-slate-500 font-mono">No known failures in current telemetry.</div>
+            <div className="text-[12px] text-slate-500 font-mono">No known failures in current telemetry.</div>
           ) : (
             <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
               {observability.recentFailures.map((f, idx) => {
@@ -306,9 +306,9 @@ export default function ObservabilityPanel({
                 }
                 return (
                   <div key={`${f.type}-${idx}`} className="bg-red-500/10 border border-red-500/20 rounded px-3 py-2">
-                    <div className="text-[10px] text-red-300 font-mono uppercase">{f.type}</div>
-                    <div className="text-[10px] text-slate-300 mt-0.5 break-words">{displayMsg.slice(0, 160)}</div>
-                    <div className="text-[9px] text-slate-500 font-mono mt-1">{f.at ? new Date(f.at).toLocaleString('id-ID', { hour12: false }) : 'UNKNOWN'}</div>
+                    <div className="text-[12px] text-red-300 font-mono uppercase">{f.type}</div>
+                    <div className="text-[12px] text-slate-300 mt-0.5 break-words">{displayMsg.slice(0, 160)}</div>
+                    <div className="text-[12px] text-slate-500 font-mono mt-1">{f.at ? new Date(f.at).toLocaleString('id-ID', { hour12: false }) : 'UNKNOWN'}</div>
                   </div>
                 );
               })}
@@ -318,7 +318,7 @@ export default function ObservabilityPanel({
 
         {/* Orphan Nodes */}
         <div className="group pt-4 border-t border-white/5" title="Nodes that exist but are not connected to the Mamet knowledge graph.">
-          <div className="text-[10px] text-slate-500 mb-1 uppercase tracking-wider font-mono">Orphan Nodes</div>
+          <div className="text-[12px] text-slate-500 mb-1 uppercase tracking-wider font-mono">Orphan Nodes</div>
           {(() => {
             const oc = stats.orphans || 0;
             let colorClass = 'text-[#00ff88] drop-shadow-[0_0_15px_rgba(0,255,136,0.4)]';
@@ -330,7 +330,7 @@ export default function ObservabilityPanel({
 
         {/* Connected Nodes */}
         <div className="group pt-4 border-t border-white/5" title="Nodes with at least one active relation.">
-          <div className="text-[10px] text-slate-500 mb-1 uppercase tracking-wider font-mono">Connected Nodes</div>
+          <div className="text-[12px] text-slate-500 mb-1 uppercase tracking-wider font-mono">Connected Nodes</div>
           {(() => {
             const cc = stats.connected || 0;
             let colorClass = 'text-[#00ff88] drop-shadow-[0_0_15px_rgba(0,255,136,0.4)]';
@@ -343,9 +343,9 @@ export default function ObservabilityPanel({
         {/* Memory Governance Conflicts */}
         <div className="group pt-4 border-t border-white/5" title="Memories with status CONFLICT_PENDING_REVIEW requiring user resolution.">
           <div className="flex items-center justify-between mb-1">
-            <div className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">Memory Conflicts</div>
+            <div className="text-[12px] text-slate-500 uppercase tracking-wider font-mono">Memory Conflicts</div>
             {(stats.memoryConflicts || 0) > 0 && (
-              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse">
+              <span className="px-1.5 py-0.5 rounded text-[12px] font-bold bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse">
                 ACTION REQUIRED
               </span>
             )}
@@ -360,7 +360,7 @@ export default function ObservabilityPanel({
                 <div className={`text-3xl font-light font-mono ${colorClass}`}>{mc}</div>
                 {mc > 0 && (
                   <div className="mt-1.5 space-y-1">
-                    <p className="text-[9px] text-red-300">Buka Memory Context Panel di Chat untuk resolusi konflik.</p>
+                    <p className="text-[12px] text-red-300">Buka Memory Context Panel di Chat untuk resolusi konflik.</p>
                     <button
                       onClick={() => {
                         sessionStorage.setItem('mamet_memory_active_tab', 'CONFLICTS');
@@ -374,7 +374,7 @@ export default function ObservabilityPanel({
                           eventBus.emit('Memory:OpenConflicts', { tab: 'CONFLICTS' });
                         }
                       }}
-                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-[9px] font-mono transition-all active:scale-95 cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-[12px] font-mono transition-all active:scale-95 cursor-pointer"
                     >
                       <span>Resolusi di Chat ➔</span>
                     </button>
@@ -388,9 +388,9 @@ export default function ObservabilityPanel({
         {/* System Governor: Session Digest & Level 4 Approval Gate (Tahap 2) */}
         <div className="group pt-4 border-t border-white/5">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-[10px] text-slate-500 uppercase tracking-wider font-mono">System Governor Digest</div>
+            <div className="text-[12px] text-slate-500 uppercase tracking-wider font-mono">System Governor Digest</div>
             {digest?.highCount > 0 && (
-              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
+              <span className="px-1.5 py-0.5 rounded text-[12px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">
                 {digest.highCount} HIGH
               </span>
             )}
@@ -399,26 +399,26 @@ export default function ObservabilityPanel({
           {/* Level 4 Approval Gate Banner */}
           {pendingApproval && (
             <div className="mb-3 p-2.5 rounded-lg bg-red-950/40 border border-red-500/50 space-y-2 animate-in fade-in">
-              <div className="flex items-center justify-between text-[10px] text-red-400 font-bold">
+              <div className="flex items-center justify-between text-[12px] text-red-400 font-bold">
                 <span>🛑 LEVEL 4 DEEP AUDIT APPROVAL</span>
-                <span className="text-[9px] font-normal text-slate-400">~{pendingApproval.tokenEstimate} tokens</span>
+                <span className="text-[12px] font-normal text-slate-400">~{pendingApproval.tokenEstimate} tokens</span>
               </div>
-              <p className="text-[10px] text-slate-300 font-mono break-all leading-tight">
+              <p className="text-[12px] text-slate-300 font-mono break-all leading-tight">
                 {pendingApproval.filePath}
               </p>
-              <p className="text-[9px] text-slate-400 leading-tight">
+              <p className="text-[12px] text-slate-400 leading-tight">
                 {pendingApproval.reason}
               </p>
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={() => handleResolveApproval(true)}
-                  className="flex-1 py-1 rounded text-[9px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+                  className="flex-1 py-1 rounded text-[12px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
                 >
                   Setujui Deep Audit
                 </button>
                 <button
                   onClick={() => handleResolveApproval(false)}
-                  className="flex-1 py-1 rounded text-[9px] font-bold bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors"
+                  className="flex-1 py-1 rounded text-[12px] font-bold bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors"
                 >
                   Tolak (0 Token)
                 </button>
@@ -427,25 +427,25 @@ export default function ObservabilityPanel({
           )}
 
           {/* Session Digest Grid */}
-          <div className="grid grid-cols-2 gap-2 text-center text-[10px] font-mono">
+          <div className="grid grid-cols-2 gap-2 text-center text-[12px] font-mono">
             <div className="p-2 rounded bg-white/5 border border-white/5">
-              <div className="text-slate-400 text-[9px] uppercase">LOW Queue</div>
+              <div className="text-slate-400 text-[12px] uppercase">LOW Queue</div>
               <div className="text-sm font-bold text-slate-200 mt-0.5">{digest?.lowCount ?? 0}</div>
             </div>
             <div className="p-2 rounded bg-white/5 border border-white/5">
-              <div className="text-slate-400 text-[9px] uppercase">HIGH Priority</div>
+              <div className="text-slate-400 text-[12px] uppercase">HIGH Priority</div>
               <div className={`text-sm font-bold mt-0.5 ${digest?.highCount ? 'text-red-400' : 'text-slate-200'}`}>
                 {digest?.highCount ?? 0}
               </div>
             </div>
             <div className="p-2 rounded bg-white/5 border border-white/5">
-              <div className="text-slate-400 text-[9px] uppercase">TTL H-1 Expiry</div>
+              <div className="text-slate-400 text-[12px] uppercase">TTL H-1 Expiry</div>
               <div className={`text-sm font-bold mt-0.5 ${digest?.approachingTtlCount ? 'text-amber-400' : 'text-slate-200'}`}>
                 {digest?.approachingTtlCount ?? 0}
               </div>
             </div>
             <div className="p-2 rounded bg-white/5 border border-white/5">
-              <div className="text-slate-400 text-[9px] uppercase">Parser Failures</div>
+              <div className="text-slate-400 text-[12px] uppercase">Parser Failures</div>
               <div className={`text-sm font-bold mt-0.5 ${digest?.failedDeterministicCount ? 'text-amber-300' : 'text-slate-200'}`}>
                 {digest?.failedDeterministicCount ?? 0}
               </div>

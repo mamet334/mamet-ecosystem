@@ -35,13 +35,13 @@ export default function EngineeringTasksWidget() {
       {tasks.map(task => (
         <div key={task.id} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-blue-500/30 transition-colors">
           <div className="flex justify-between items-start mb-1">
-            <span className="text-[10px] font-mono text-blue-400">{task.task_number}</span>
-            <span className={`text-[9px] px-1.5 py-0.5 rounded-full border ${getStatusColor(task.status)}`}>
+            <span className="text-[12px] font-mono text-blue-400">{task.task_number}</span>
+            <span className={`text-[12px] px-1.5 py-0.5 rounded-full border ${getStatusColor(task.status)}`}>
               {task.status}
             </span>
           </div>
           <h4 className="text-xs font-semibold text-slate-200 mb-1">{task.title}</h4>
-          <p className="text-[10px] text-slate-400 line-clamp-2 leading-relaxed">{task.goal}</p>
+          <p className="text-[12px] text-slate-400 line-clamp-2 leading-relaxed">{task.goal}</p>
         </div>
       ))}
     </div>

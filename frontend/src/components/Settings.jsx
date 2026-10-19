@@ -4,6 +4,7 @@ import { kernel } from '../core/runtime/Kernel';
 import { User, Mail, Shield, LogOut, Palette, Activity, Monitor, Bell, Cpu, Clock, Brain, Key } from 'lucide-react';
 import { ringkasPembaruan, bentukVersi, warnaStatus } from '../core/runtime/services/statusPembaruan';
 import TombolUnduhDesktop from './TombolUnduhDesktop';
+import { angka } from '../core/runtime/services/formatAngka.js';
 
 // Workspace yang bisa punya override preferensi tool sendiri (lihat WorkspaceManager.js)
 const TOGGLEABLE_WORKSPACES = [
@@ -354,17 +355,17 @@ export default function Settings() {
               <div className="grid grid-cols-3 gap-4 mt-4">
                 <div className="bg-surface-container-low border border-outline-variant/50 p-4 rounded-lg flex flex-col items-center gap-2 text-center group/card hover:border-primary/50 transition-colors">
                   <span className="material-symbols-outlined text-primary-fixed-dim" style={{fontVariationSettings: "'FILL' 1"}}>speed</span>
-                  <span className="text-label-mono text-[10px] uppercase">Status</span>
+                  <span className="text-label-mono text-[12px] uppercase">Status</span>
                   <span className="text-on-surface font-semibold">{health?.status || 'UNKNOWN'}</span>
                 </div>
                 <div className="bg-surface-container-low border border-outline-variant/50 p-4 rounded-lg flex flex-col items-center gap-2 text-center group/card hover:border-primary/50 transition-colors">
                   <span className="material-symbols-outlined text-primary-fixed-dim" style={{fontVariationSettings: "'FILL' 1"}}>memory</span>
-                  <span className="text-label-mono text-[10px] uppercase">Uptime</span>
+                  <span className="text-label-mono text-[12px] uppercase">Uptime</span>
                   <span className="text-on-surface font-semibold">{formatUptime(health?.uptime)}</span>
                 </div>
                 <div className="bg-surface-container-low border border-outline-variant/50 p-4 rounded-lg flex flex-col items-center gap-2 text-center group/card hover:border-primary/50 transition-colors">
                   <span className="material-symbols-outlined text-primary-fixed-dim" style={{fontVariationSettings: "'FILL' 1"}}>token</span>
-                  <span className="text-label-mono text-[10px] uppercase">Events</span>
+                  <span className="text-label-mono text-[12px] uppercase">Events</span>
                   <span className="text-on-surface font-semibold">{health?.totalEvents || 0}</span>
                 </div>
               </div>
@@ -424,7 +425,7 @@ export default function Settings() {
               {/* Error detail */}
               {testStatus.startsWith('error:') && (
                 <div className="p-3 rounded-lg bg-error/10 border border-error/30">
-                  <p className="text-[11px] text-error leading-relaxed break-words">{testStatus.replace('error:', '')}</p>
+                  <p className="text-[12px] text-error leading-relaxed break-words">{testStatus.replace('error:', '')}</p>
                 </div>
               )}
             </div>
@@ -451,7 +452,7 @@ export default function Settings() {
               </div>
             </div>
 
-            <p className="text-[11px] text-on-surface-variant leading-relaxed mb-5">
+            <p className="text-[12px] text-on-surface-variant leading-relaxed mb-5">
               Sistem memilih <strong>tingkat</strong> otomatis tiap pesan (tanpa biaya token — murni kata kunci &amp; panjang pesan).
               Anda yang menentukan <strong>model</strong> di tiap tingkat. Engineer tidak memakai slot ini — Engineer tetap pakai
               Provider/Model utama di atas. Kalau slot dibiarkan sama semua, tidak ada perubahan perilaku.
@@ -468,7 +469,7 @@ export default function Settings() {
                   <div key={tier.id} className="p-4 rounded-lg bg-surface-container-low border border-outline-variant/50">
                     <div className="flex items-baseline gap-2 mb-3">
                       <span className="text-label-mono text-primary uppercase tracking-widest text-xs font-bold">{tier.label}</span>
-                      <span className="text-[10px] text-on-surface-variant">{tier.hint}</span>
+                      <span className="text-[12px] text-on-surface-variant">{tier.hint}</span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <input
@@ -498,7 +499,7 @@ export default function Settings() {
                         onChange={(e) => handleTierChange(tier.id, 'thinking', e.target.checked)}
                         className="mt-0.5 w-4 h-4 rounded border-outline-variant bg-surface-container-lowest text-primary focus:ring-0 focus:ring-offset-0 cursor-pointer"
                       />
-                      <span className="text-[11px] leading-relaxed">
+                      <span className="text-[12px] leading-relaxed">
                         <span className="text-on-surface font-medium group-hover:text-primary transition-colors">Nyalakan reasoning mendalam</span>
                         <span className="block text-on-surface-variant mt-0.5">
                           Sebaiknya hanya untuk model yang memang mendukung reasoning. Sebagian model
@@ -521,7 +522,7 @@ export default function Settings() {
             </div>
 
             <div className="mt-5 p-3 rounded-lg bg-primary-container/5 border border-primary/20">
-              <p className="text-[11px] text-primary/80 leading-relaxed">
+              <p className="text-[12px] text-primary/80 leading-relaxed">
                 Perubahan tersimpan otomatis dan disinkronkan ke akun Anda, jadi ikut terbawa ke device lain.
                 API Key diambil dari provider yang sama seperti yang sudah Anda simpan di bagian API Key di atas.
               </p>
@@ -546,9 +547,9 @@ export default function Settings() {
               </div>
             </div>
 
-            <p className="text-[11px] text-on-surface-variant leading-relaxed mb-4">
+            <p className="text-[12px] text-on-surface-variant leading-relaxed mb-4">
               Batas pribadi Anda hanya bisa <strong>memperketat</strong>, tidak bisa melewati plafon sistem
-              {systemCap !== null ? <> (saat ini <strong>${systemCap.toFixed(2)}</strong>)</> : null}.
+              {systemCap !== null ? <> (saat ini <strong>${angka(systemCap, 2)}</strong>)</> : null}.
               Kosongkan untuk mengikuti plafon sistem apa adanya.
             </p>
 
@@ -577,7 +578,7 @@ export default function Settings() {
 
             {capStatus.startsWith('error:') && (
               <div className="mt-3 p-3 rounded-lg bg-error/10 border border-error/30">
-                <p className="text-[11px] text-error leading-relaxed break-words">{capStatus.replace('error:', '')}</p>
+                <p className="text-[12px] text-error leading-relaxed break-words">{capStatus.replace('error:', '')}</p>
               </div>
             )}
           </section>
@@ -626,7 +627,7 @@ export default function Settings() {
               );
             })()}
 
-            <p className="text-[11px] text-on-surface-variant leading-relaxed mt-4">
+            <p className="text-[12px] text-on-surface-variant leading-relaxed mt-4">
               Pembaruan diunduh sendiri di latar belakang dan dipasang saat aplikasi ditutup.
               Tombol di atas hanya mempercepat pemeriksaannya.
             </p>
@@ -648,7 +649,7 @@ export default function Settings() {
               </div>
             </div>
 
-            <p className="text-[11px] text-on-surface-variant leading-relaxed mb-4">
+            <p className="text-[12px] text-on-surface-variant leading-relaxed mb-4">
               Sesudah terpasang, pembaruan berikutnya datang sendiri — tidak perlu kembali ke halaman ini.
             </p>
 
@@ -776,7 +777,7 @@ export default function Settings() {
             {lastScan?.errors?.length > 0 && (
               <div className="mb-3 p-3 rounded-lg bg-error/10 border border-error/30 space-y-1">
                 {lastScan.errors.map((err, i) => (
-                  <p key={i} className="text-[11px] text-error"><code>{err.file}</code>: {err.message}</p>
+                  <p key={i} className="text-[12px] text-error"><code>{err.file}</code>: {err.message}</p>
                 ))}
               </div>
             )}
@@ -787,7 +788,7 @@ export default function Settings() {
                   <div className="flex items-center gap-2 mb-1">
                     <span className="material-symbols-outlined text-[16px] text-primary-fixed-dim">bolt</span>
                     <span className="font-mono text-sm font-semibold text-on-surface">{tool.name}</span>
-                    {tool.category && <span className="text-[10px] uppercase tracking-wide text-on-surface-variant bg-surface-container-highest px-1.5 py-0.5 rounded">{tool.category}</span>}
+                    {tool.category && <span className="text-[12px] uppercase tracking-wide text-on-surface-variant bg-surface-container-highest px-1.5 py-0.5 rounded">{tool.category}</span>}
                   </div>
                   <p className="text-body-sm text-on-surface-variant">{tool.description || '(tidak ada deskripsi)'}</p>
                 </div>

@@ -145,7 +145,7 @@ export default function WorkbenchZone({
              <SortableWidgetWrapper key={widgetId} widgetId={widgetId} position={position} onClose={onClose} />
           ))}
           {isEmpty && (
-            <div className="w-full h-full m-2 border-2 border-dashed border-slate-800 rounded-lg flex items-center justify-center text-slate-700 text-[10px] font-mono text-center opacity-50 uppercase tracking-widest p-2">
+            <div className="w-full h-full m-2 border-2 border-dashed border-slate-800 rounded-lg flex items-center justify-center text-slate-700 text-[12px] font-mono text-center opacity-50 uppercase tracking-widest p-2">
               Drop<br/>{position}
             </div>
           )}

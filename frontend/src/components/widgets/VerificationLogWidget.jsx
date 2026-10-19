@@ -35,12 +35,12 @@ export default function VerificationLogWidget() {
       {logs.map(log => (
         <div key={log.id} className="p-3 rounded-lg bg-slate-900 border border-slate-800 hover:border-emerald-500/30 transition-colors">
           <div className="flex justify-between items-center mb-1">
-            <span className="text-[10px] font-mono text-slate-300 font-bold">{log.related_task}</span>
-            <span className={`text-[9px] px-1.5 py-0.5 rounded-full border ${getStatusColor(log.result)}`}>
+            <span className="text-[12px] font-mono text-slate-300 font-bold">{log.related_task}</span>
+            <span className={`text-[12px] px-1.5 py-0.5 rounded-full border ${getStatusColor(log.result)}`}>
               {log.result}
             </span>
           </div>
-          <p className="text-[10px] text-slate-400 mt-1 whitespace-pre-wrap font-mono">{log.evidence}</p>
+          <p className="text-[12px] text-slate-400 mt-1 whitespace-pre-wrap font-mono">{log.evidence}</p>
         </div>
       ))}
     </div>

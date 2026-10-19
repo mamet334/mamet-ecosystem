@@ -169,6 +169,9 @@ export function pilihPesanKonteks(pesan, { anggaranToken, mulaiDari = 0, sisakan
 export function angkaRingkas(n) {
   const x = Number(n) || 0;
   if (x < 1000) return String(x);
+  // "k" DIPERTAHANKAN: bentuk "723,8k / 1,0jt (72%)" adalah contoh Owner sendiri (uji-konteks-chat). Item 127 K4
+  // sempat menggantinya jadi "rb" atas usul AI, lalu dikembalikan — mengganti format pilihan Owner adalah
+  // keputusan Owner, bukan bagian dari "merapikan angka".
   if (x < 1_000_000) return `${(x / 1000).toFixed(1).replace('.', ',')}k`;
   return `${(x / 1_000_000).toFixed(1).replace('.', ',')}jt`;
 }

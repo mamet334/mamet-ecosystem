@@ -120,7 +120,7 @@ export default function Sidebar({ isMobile = false, isOpen = false, onClose }) {
       return (
         <div key={`group-${node.name}`} className={isMobile ? 'mb-2' : 'mb-4 space-y-1'}>
           {isMobile && node.name && (
-            <p className="px-6 py-1 text-[10px] font-semibold text-on-surface-variant/60 uppercase tracking-widest">
+            <p className="px-6 py-1 text-[12px] font-semibold text-on-surface-variant/60 uppercase tracking-widest">
               {node.name}
             </p>
           )}
@@ -184,7 +184,7 @@ export default function Sidebar({ isMobile = false, isOpen = false, onClose }) {
           </div>
           <div>
             <p className="text-sm font-bold text-on-surface">Mamet OS</p>
-            <p className="text-[10px] text-on-surface-variant">MAEF Engine</p>
+            <p className="text-[12px] text-on-surface-variant">MAEF Engine</p>
           </div>
         </div>
         <button

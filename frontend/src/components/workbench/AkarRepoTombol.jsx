@@ -56,7 +56,7 @@ export default function AkarRepoTombol() {
         title={judul}
       >
         {status.aktif ? <FolderGit2 className="w-4 h-4" /> : <GitBranch className="w-4 h-4" />}
-        <span className="text-[11px] max-w-[130px] truncate">{status.aktif ? status.nama : 'Pilih repo'}</span>
+        <span className="text-[12px] max-w-[130px] truncate">{status.aktif ? status.nama : 'Pilih repo'}</span>
       </button>
       {status.aktif && !dariPengembangan && (
         <button type="button" onClick={lepas} className="p-1 rounded-lg text-on-surface-variant hover:text-red-400" title="Lepas akar repo">
@@ -64,7 +64,7 @@ export default function AkarRepoTombol() {
         </button>
       )}
       {pesan && (
-        <span className="absolute bottom-full left-0 mb-1 max-w-[380px] rounded bg-red-900/90 px-2 py-1 text-[10px] leading-snug text-red-100">
+        <span className="absolute bottom-full left-0 mb-1 max-w-[380px] rounded bg-red-900/90 px-2 py-1 text-[12px] leading-snug text-red-100">
           {pesan}
         </span>
       )}

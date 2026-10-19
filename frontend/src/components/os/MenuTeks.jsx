@@ -65,14 +65,14 @@ function ItemMenu({ label, keterangan, aktif, onClick, judul, akhiran }) {
       onClick={onClick}
       title={judul}
       aria-current={aktif ? 'page' : undefined}
-      className={`group flex items-baseline gap-2 w-full text-left py-1.5 font-mono uppercase tracking-[0.12em] text-[13px] whitespace-nowrap transition-opacity ${aktif ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`}
+      className={`group flex items-baseline gap-2 w-full text-left py-1.5 font-mono uppercase tracking-[0.12em] text-[14px] whitespace-nowrap transition-opacity ${aktif ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`}
       style={{ color: KREM, textShadow: aktif ? CAHAYA : 'none' }}
     >
       {/* Kursor menu game: tampil pada pilihan aktif, dan saat ditunjuk */}
       <span aria-hidden="true" className={aktif ? '' : 'invisible group-hover:visible'}>▸</span>
       <span>
         <span className="block">{label}{akhiran}</span>
-        {keterangan && <span className="block normal-case tracking-normal text-[11px] opacity-80">{keterangan}</span>}
+        {keterangan && <span className="block normal-case tracking-normal text-[12px] opacity-80">{keterangan}</span>}
       </span>
     </button>
   );
@@ -249,7 +249,7 @@ export default function MenuTeks() {
           <nav className="flex flex-col gap-0.5">
             {grup ? (
               <>
-                <p className="mb-2 font-mono uppercase tracking-[0.15em] text-[11px] opacity-[0.55]" style={{ color: KREM }}>
+                <p className="mb-2 font-mono uppercase tracking-[0.15em] text-[12px] opacity-[0.55]" style={{ color: KREM }}>
                   {grup.name}
                 </p>
                 {grup.items.filter((i) => i.isAvailable !== false).map((i) => (

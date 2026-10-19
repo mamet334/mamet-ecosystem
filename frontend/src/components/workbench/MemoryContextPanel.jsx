@@ -287,7 +287,7 @@ export default function MemoryContextPanel({
           </div>
           <div>
             <div className="text-body-sm font-semibold text-on-surface leading-tight">Memory Context</div>
-            <div className="text-[10px] text-on-surface-variant leading-tight">
+            <div className="text-[12px] text-on-surface-variant leading-tight">
               {effectiveMemories.length} aktif • {conflicts.length} konflik • {trashItems.length} sampah
             </div>
           </div>
@@ -326,7 +326,7 @@ export default function MemoryContextPanel({
       </div>
 
       {/* Navigasi Tab Utama */}
-      <div className="flex items-center border-b border-outline-variant bg-surface-container-lowest/50 text-[11px] font-medium">
+      <div className="flex items-center border-b border-outline-variant bg-surface-container-lowest/50 text-[12px] font-medium">
         <button
           onClick={() => setActiveTab('ACTIVE')}
           className={`flex-1 py-2 text-center border-b-2 transition-colors flex items-center justify-center gap-1.5 ${
@@ -350,7 +350,7 @@ export default function MemoryContextPanel({
           <ShieldAlert className="w-3 h-3" />
           <span>Konflik</span>
           {conflicts.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-red-500 text-white">
+            <span className="px-1.5 py-0.2 rounded-full text-[12px] font-bold bg-red-500 text-white">
               {conflicts.length}
             </span>
           )}
@@ -367,7 +367,7 @@ export default function MemoryContextPanel({
           <Trash2 className="w-3 h-3" />
           <span>Trash</span>
           {trashItems.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-surface-variant text-on-surface-variant">
+            <span className="px-1.5 py-0.2 rounded-full text-[12px] font-bold bg-surface-variant text-on-surface-variant">
               {trashItems.length}
             </span>
           )}
@@ -382,11 +382,11 @@ export default function MemoryContextPanel({
           {/* Query terakhir */}
           {query && (
             <div className="px-3 py-2 border-b border-outline-variant bg-surface-container-low/40">
-              <div className="flex items-center gap-1.5 text-[10px] text-on-surface-variant mb-1">
+              <div className="flex items-center gap-1.5 text-[12px] text-on-surface-variant mb-1">
                 <Search className="w-3 h-3" />
                 <span className="uppercase tracking-wider font-medium">Query Terakhir</span>
               </div>
-              <p className="text-[11px] text-on-surface line-clamp-2 break-words leading-snug">{query}</p>
+              <p className="text-[12px] text-on-surface line-clamp-2 break-words leading-snug">{query}</p>
             </div>
           )}
 
@@ -394,7 +394,7 @@ export default function MemoryContextPanel({
           <div className="flex items-center gap-1 px-2.5 py-1.5 border-b border-outline-variant">
             <button
               onClick={() => setFilter('ALL')}
-              className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors ${
+              className={`px-2 py-0.5 rounded-md text-[12px] font-medium transition-colors ${
                 filter === 'ALL' ? 'bg-primary/20 text-primary' : 'text-on-surface-variant hover:bg-surface-variant'
               }`}
             >
@@ -402,7 +402,7 @@ export default function MemoryContextPanel({
             </button>
             <button
               onClick={() => setFilter('USER_MEMORY')}
-              className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors ${
+              className={`px-2 py-0.5 rounded-md text-[12px] font-medium transition-colors ${
                 filter === 'USER_MEMORY' ? 'bg-emerald-500/20 text-emerald-400' : 'text-on-surface-variant hover:bg-surface-variant'
               }`}
             >
@@ -410,7 +410,7 @@ export default function MemoryContextPanel({
             </button>
             <button
               onClick={() => setFilter('PERSONAL_KNOWLEDGE')}
-              className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors ${
+              className={`px-2 py-0.5 rounded-md text-[12px] font-medium transition-colors ${
                 filter === 'PERSONAL_KNOWLEDGE' ? 'bg-blue-500/20 text-blue-400' : 'text-on-surface-variant hover:bg-surface-variant'
               }`}
             >
@@ -423,16 +423,16 @@ export default function MemoryContextPanel({
             {loading ? (
               <div className="flex items-center justify-center py-8 text-on-surface-variant">
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                <span className="text-[11px]">Memuat memori...</span>
+                <span className="text-[12px]">Memuat memori...</span>
               </div>
             ) : filteredMemories.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-on-surface-variant text-center px-4">
                 <Brain className="w-8 h-8 mb-2 opacity-30" />
-                <p className="text-[11px] font-medium">
+                <p className="text-[12px] font-medium">
                   {effectiveMemories.length === 0 ? 'Belum ada memori ter-retrieve' : 'Tidak ada yang cocok dengan filter'}
                 </p>
                 {effectiveMemories.length === 0 && (
-                  <p className="text-[10px] mt-1 opacity-60">
+                  <p className="text-[12px] mt-1 opacity-60">
                     Kirim pesan untuk memicu retrieval memori otomatis
                   </p>
                 )}
@@ -457,7 +457,7 @@ export default function MemoryContextPanel({
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-1">
-                        <p className="text-[11px] text-on-surface break-words leading-snug">{content}</p>
+                        <p className="text-[12px] text-on-surface break-words leading-snug">{content}</p>
                         {/* Tombol Soft-Delete (Arsipkan) */}
                         {m.id && !isConflict && (
                           <button
@@ -471,7 +471,7 @@ export default function MemoryContextPanel({
                         )}
                       </div>
 
-                      <div className={`flex items-center gap-2 mt-1.5 text-[9px] font-medium ${
+                      <div className={`flex items-center gap-2 mt-1.5 text-[12px] font-medium ${
                         isConflict ? 'text-red-400' : type === 'PERSONAL_KNOWLEDGE' ? 'text-blue-400' : 'text-emerald-400'
                       }`}>
                         <span className="px-1 py-0.5 rounded border border-current/20 bg-current/10">
@@ -500,7 +500,7 @@ export default function MemoryContextPanel({
             <div className="flex flex-col items-center justify-center py-14 text-center px-4">
               <Check className="w-8 h-8 text-emerald-400 mb-2 opacity-60" />
               <p className="text-[12px] font-semibold text-on-surface">Tidak Ada Konflik</p>
-              <p className="text-[10px] text-on-surface-variant mt-1">
+              <p className="text-[12px] text-on-surface-variant mt-1">
                 Semua memori dalam keadaan sinkron dan tidak ada benturan versi.
               </p>
             </div>
@@ -517,12 +517,12 @@ export default function MemoryContextPanel({
                   className="border border-red-500/40 bg-red-950/20 rounded-xl p-3 space-y-2.5 shadow-sm"
                 >
                   {/* Header Konflik */}
-                  <div className="flex items-center justify-between text-[10px] text-red-400 font-semibold border-b border-red-500/20 pb-1.5">
+                  <div className="flex items-center justify-between text-[12px] text-red-400 font-semibold border-b border-red-500/20 pb-1.5">
                     <div className="flex items-center gap-1.5">
                       <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                       <span>Konflik Memori #{conf.id.substring(0, 8)}</span>
                     </div>
-                    <span className="text-[9px] text-red-300/80 font-normal">
+                    <span className="text-[12px] text-red-300/80 font-normal">
                       {formatDate(detectedAt)}
                     </span>
                   </div>
@@ -532,7 +532,7 @@ export default function MemoryContextPanel({
                       dideteksi cara baru (SEMANTIC_CONTRADICTION, Item 55).
                       Konflik lama tidak punya keduanya — jangan tampilkan
                       kolom kosong yang seolah-olah bermakna. */}
-                  <div className="text-[9px] text-on-surface-variant space-y-0.5">
+                  <div className="text-[12px] text-on-surface-variant space-y-0.5">
                     <div><span className="font-semibold text-on-surface">Alasan:</span> {info.reason || 'KONTEN BERBEDA / VERSI TIDAK SEKUENSIAL'}</div>
                     {info.similarity != null && (
                       <div><span className="font-semibold text-on-surface">Kemiripan:</span> {info.similarity}</div>
@@ -546,15 +546,15 @@ export default function MemoryContextPanel({
                       Tanpa ini, "Pertahankan Lama" terbaca seolah membatalkan
                       memori baru — padahal memori baru selalu tersimpan dan
                       yang diputuskan di sini hanya nasib memori lama. */}
-                  <div className="text-[9px] leading-relaxed rounded-lg p-2 bg-surface-container-lowest/50 border border-outline-variant text-on-surface-variant">
+                  <div className="text-[12px] leading-relaxed rounded-lg p-2 bg-surface-container-lowest/50 border border-outline-variant text-on-surface-variant">
                     Memori baru <span className="font-semibold text-on-surface">sudah tersimpan</span>. Yang Anda putuskan di sini hanya apakah memori lama masih berlaku.
                   </div>
 
                   {/* Diff Container */}
-                  <div className="space-y-1.5 text-[10px]">
+                  <div className="space-y-1.5 text-[12px]">
                     {/* Memori Lama — inilah yang nasibnya diputuskan */}
                     <div className="rounded-lg p-2 bg-red-900/20 border border-red-500/30">
-                      <div className="flex items-center gap-1 text-[9px] font-bold text-red-400 mb-0.5 uppercase tracking-wide">
+                      <div className="flex items-center gap-1 text-[12px] font-bold text-red-400 mb-0.5 uppercase tracking-wide">
                         <span>🔴 Memori Lama — menunggu keputusan Anda</span>
                       </div>
                       <p className="text-on-surface break-words leading-relaxed">{previousContent}</p>
@@ -562,7 +562,7 @@ export default function MemoryContextPanel({
 
                     {/* Memori Baru — sudah masuk, tidak diputuskan di sini */}
                     <div className="rounded-lg p-2 bg-emerald-900/20 border border-emerald-500/30">
-                      <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-400 mb-0.5 uppercase tracking-wide">
+                      <div className="flex items-center gap-1 text-[12px] font-bold text-emerald-400 mb-0.5 uppercase tracking-wide">
                         <span>🟢 Memori Baru — sudah tersimpan</span>
                       </div>
                       <p className="text-on-surface break-words leading-relaxed">{incomingContent}</p>
@@ -579,7 +579,7 @@ export default function MemoryContextPanel({
                     <button
                       disabled={processingId === conf.id}
                       onClick={() => handleResolve(conf.id, 'keep')}
-                      className="flex-1 py-1.5 px-2 rounded-lg text-[10px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-all text-center shadow disabled:opacity-50"
+                      className="flex-1 py-1.5 px-2 rounded-lg text-[12px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-all text-center shadow disabled:opacity-50"
                       title="Kedua memori tetap aktif dan keduanya bisa muncul di jawaban AI"
                     >
                       {processingId === conf.id ? 'Memproses...' : 'Simpan Keduanya'}
@@ -588,7 +588,7 @@ export default function MemoryContextPanel({
                     <button
                       disabled={processingId === conf.id}
                       onClick={() => handleResolve(conf.id, 'discard')}
-                      className="flex-1 py-1.5 px-2 rounded-lg text-[10px] font-semibold bg-red-700 hover:bg-red-600 text-white transition-all text-center shadow disabled:opacity-50"
+                      className="flex-1 py-1.5 px-2 rounded-lg text-[12px] font-semibold bg-red-700 hover:bg-red-600 text-white transition-all text-center shadow disabled:opacity-50"
                       title="Memori lama diarsipkan; hanya memori baru yang berlaku"
                     >
                       {processingId === conf.id ? 'Memproses...' : 'Arsipkan yang Lama'}
@@ -610,7 +610,7 @@ export default function MemoryContextPanel({
             <div className="flex flex-col items-center justify-center py-14 text-center px-4">
               <Archive className="w-8 h-8 text-on-surface-variant/40 mb-2" />
               <p className="text-[12px] font-semibold text-on-surface">Kotak Sampah Kosong</p>
-              <p className="text-[10px] text-on-surface-variant mt-1">
+              <p className="text-[12px] text-on-surface-variant mt-1">
                 Tidak ada memori berstatus arsip atau pending purge.
               </p>
             </div>
@@ -628,7 +628,7 @@ export default function MemoryContextPanel({
                       : 'bg-surface-container-low border-outline-variant/60'
                   }`}
                 >
-                  <div className="flex items-center justify-between text-[9px]">
+                  <div className="flex items-center justify-between text-[12px]">
                     <span className={`px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
                       isPendingPurge
                         ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
@@ -639,25 +639,25 @@ export default function MemoryContextPanel({
                     <span className="text-on-surface-variant opacity-70">{formatDate(item.created_at)}</span>
                   </div>
 
-                  <p className="text-[11px] text-on-surface break-words leading-snug">{content}</p>
+                  <p className="text-[12px] text-on-surface break-words leading-snug">{content}</p>
 
                   {/* Modal / Inline Konfirmasi Hard Delete */}
                   {confirmPurgeId === item.id ? (
                     <div className="bg-red-950/50 border border-red-500/40 rounded-lg p-2 space-y-1.5 animate-in fade-in">
-                      <p className="text-[9px] text-red-300 font-semibold leading-tight">
+                      <p className="text-[12px] text-red-300 font-semibold leading-tight">
                         ⚠️ Hapus permanen dari database? Aksi ini tidak dapat dibatalkan!
                       </p>
                       <div className="flex gap-1.5">
                         <button
                           onClick={() => setConfirmPurgeId(null)}
-                          className="flex-1 py-1 rounded text-[9px] bg-surface-variant hover:bg-surface-container-high text-on-surface font-medium transition-colors"
+                          className="flex-1 py-1 rounded text-[12px] bg-surface-variant hover:bg-surface-container-high text-on-surface font-medium transition-colors"
                         >
                           Batal
                         </button>
                         <button
                           disabled={processingId === item.id}
                           onClick={() => handleExecutePurge(item.id)}
-                          className="flex-1 py-1 rounded text-[9px] bg-red-600 hover:bg-red-500 text-white font-bold transition-colors disabled:opacity-50"
+                          className="flex-1 py-1 rounded text-[12px] bg-red-600 hover:bg-red-500 text-white font-bold transition-colors disabled:opacity-50"
                         >
                           {processingId === item.id ? '...' : 'Ya, Hard Delete'}
                         </button>
@@ -670,7 +670,7 @@ export default function MemoryContextPanel({
                       <button
                         disabled={processingId === item.id}
                         onClick={() => handleRestore(item.id)}
-                        className="flex-1 py-1 px-1.5 rounded-md text-[9px] font-semibold bg-surface-variant hover:bg-surface-container-high text-on-surface flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
+                        className="flex-1 py-1 px-1.5 rounded-md text-[12px] font-semibold bg-surface-variant hover:bg-surface-container-high text-on-surface flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
                         title="Kembalikan ke status aktif"
                       >
                         <RotateCcw className="w-2.5 h-2.5" />
@@ -682,7 +682,7 @@ export default function MemoryContextPanel({
                         <button
                           disabled={processingId === item.id}
                           onClick={() => handleRequestPurge(item.id)}
-                          className="flex-1 py-1 px-1.5 rounded-md text-[9px] font-semibold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
+                          className="flex-1 py-1 px-1.5 rounded-md text-[12px] font-semibold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
                           title="Tandai untuk Purge (Tahap 1)"
                         >
                           <Clock className="w-2.5 h-2.5" />
@@ -692,7 +692,7 @@ export default function MemoryContextPanel({
                         <button
                           disabled={processingId === item.id}
                           onClick={() => setConfirmPurgeId(item.id)}
-                          className="flex-1 py-1 px-1.5 rounded-md text-[9px] font-bold bg-red-600/80 hover:bg-red-600 text-white flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
+                          className="flex-1 py-1 px-1.5 rounded-md text-[12px] font-bold bg-red-600/80 hover:bg-red-600 text-white flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
                           title="Eksekusi Hard Delete Permanen"
                         >
                           <Trash2 className="w-2.5 h-2.5" />
@@ -710,7 +710,7 @@ export default function MemoryContextPanel({
 
       {/* Footer Statistik */}
       <div className="px-3 py-2 border-t border-outline-variant text-center bg-surface-container-low/50">
-        <p className="text-[9px] text-on-surface-variant tracking-widest uppercase">
+        <p className="text-[12px] text-on-surface-variant tracking-widest uppercase">
           {effectiveMemories.length} Aktif • {conflicts.length} Konflik • {trashItems.length} Trash
         </p>
       </div>

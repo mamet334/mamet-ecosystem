@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { daftarRiwayat, tautanUnduh, hapusKonversi, KUOTA_CACHE_BYTE, KUOTA_CACHE_MB } from '../../core/runtime/services/remoteConversionClient';
 import { blokGalat } from '../../core/runtime/services/pesanGalat.js';
+import { ukuranMB } from '../../core/runtime/services/formatAngka.js';
 
 /**
  * Panel "Riwayat konversi" (Item 58) — isi cache Word → PDF milik akun ini.
@@ -14,7 +15,7 @@ import { blokGalat } from '../../core/runtime/services/pesanGalat.js';
  * dan tidak masuk cache.
  */
 
-const mb = (n) => ((Number(n) || 0) / 1048576).toFixed(1);
+const mb = (n) => ukuranMB(n);
 
 const STATUS = {
   pending:    { ikon: 'schedule',       warna: 'text-amber-400',   teks: 'Menunggu laptop' },
@@ -104,19 +105,19 @@ export default function RiwayatKonversi() {
 
       {buka && (
         <div className="absolute left-0 top-12 z-50 w-80 max-w-[90vw] rounded-xl border border-outline-variant bg-surface-container-low shadow-lg p-2">
-          <div className="px-2 py-1 text-[11px] font-bold text-on-surface-variant uppercase tracking-wide">
+          <div className="px-2 py-1 text-[12px] font-bold text-on-surface-variant uppercase tracking-wide">
             Riwayat konversi Word → PDF
           </div>
 
           <div className="px-2 pb-2">
-            <div className="flex justify-between text-[10px] text-on-surface-variant mb-1">
+            <div className="flex justify-between text-[12px] text-on-surface-variant mb-1">
               <span>Cache terpakai</span>
               <span>{mb(terpakai)} MB dari {KUOTA_CACHE_MB} MB</span>
             </div>
             <div className="h-1.5 rounded-full bg-surface-variant overflow-hidden">
               <div className="h-full bg-primary transition-all" style={{ width: `${persen}%` }} />
             </div>
-            <p className="mt-1 text-[10px] text-on-surface-variant leading-snug">
+            <p className="mt-1 text-[12px] text-on-surface-variant leading-snug">
               Bila penuh, PDF yang paling lama tidak dipakai dibuang lebih dulu.
             </p>
           </div>
@@ -126,7 +127,7 @@ export default function RiwayatKonversi() {
               SINI, bukan di dalam `{pesan && ( … )}`: di dalam tanda kurung itu posisinya ekspresi,
               dan `{/* */}` di posisi ekspresi dibaca sebagai literal objek — build gagal. */}
           {pesan && (
-            <div className="mx-2 mb-2 px-2 py-1.5 rounded-lg bg-error/10 border border-error/30 text-[11px] text-error leading-snug whitespace-pre-line">
+            <div className="mx-2 mb-2 px-2 py-1.5 rounded-lg bg-error/10 border border-error/30 text-[12px] text-error leading-snug whitespace-pre-line">
               {pesan}
             </div>
           )}
@@ -149,14 +150,14 @@ export default function RiwayatKonversi() {
                     <span className={`material-symbols-outlined text-[16px] mt-0.5 ${s.warna}`}>{s.ikon}</span>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-semibold text-on-surface truncate" title={job.source_name}>{job.source_name}</div>
-                      <div className="text-[10px] text-on-surface-variant">
+                      <div className="text-[12px] text-on-surface-variant">
                         {s.teks}
                         {job.status === 'done' && r.halaman_pdf ? ` · ${r.halaman_pdf} hal` : ''}
                         {job.status === 'done' && job.output_size ? ` · ${mb(job.output_size)} MB` : ''}
                         {` · ${new Date(job.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}`}
                       </div>
                       {job.status === 'failed' && job.error && (
-                        <div className="text-[10px] text-error/80 leading-snug mt-0.5">{job.error}</div>
+                        <div className="text-[12px] text-error/80 leading-snug mt-0.5">{job.error}</div>
                       )}
                     </div>
                     <div className="flex items-center shrink-0">

@@ -13,7 +13,7 @@
 //   2. Riwayat menutupi di semua lebar (tanpa `md:relative`); latar penutupnya di semua lebar.
 //   3. Lapisan: bilah z-50 < latar z-[55] < laci z-[60] — dulu tombol bilah menembus kepala laci.
 //   4. Bilah sesi adalah BARIS, bukan `absolute` yang melayang di atas pesan.
-//   5. Kolom baca = lebar kotak ketik (max-w-3xl), dan jawaban model selebar kolom itu.
+//   5. Kolom baca = lebar kotak ketik, LEBAR (≥ 64rem, keputusan Owner v4), isi dipadatkan, jawaban model selebar kolom.
 //   6. Zona kanan AppShell bukan kolom grid — laci di desktop.
 
 import { readFileSync } from 'node:fs';
@@ -25,7 +25,7 @@ const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (kode) =>
   kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
-console.log('uji-kerangka-chat v2');
+console.log('uji-kerangka-chat v4');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -63,10 +63,30 @@ cek(/shrink-0/.test(bilah), 'bilah sesi baris yang tidak menyusut (memakan tingg
 
 // ── 5. Kolom baca ───────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 5. kolom baca --');
+// v3 (K4, "nyaman dibaca secara lama"): yang dijaga bukan lagi nama kelas `max-w-3xl`, tetapi dua NIAT —
+// (a) kolom baca, kotak ketik, kartu lampiran & kartu konfirmasi web memakai lebar yang SAMA, dan (b) lebar itu
+// menghasilkan ≤ 75 karakter per baris (batas nyaman tipografi 45–75). Diukur 19 Okt di browser: Inter 16px
+// pada kalimat Bahasa Indonesia = rata-rata 7,85px per huruf; gelembung jawaban berpadding px-5 (2 × 20px).
 // `(?:\{\s*\}\s*)*`: komentar JSX `{/* … */}` di antaranya meninggalkan `{}` sesudah tanpaKomentar().
-cek(/ref=\{scrollContainerRef\}[^>]*>\s*(?:\{\s*\}\s*)*<div className="max-w-3xl mx-auto w-full space-y-3">/.test(CE),
-  'isi wadah gulir dikolomkan max-w-3xl dan ditengahkan');
-cek(/<form onSubmit=\{handleSend\} className="w-full max-w-3xl /.test(CE), 'kotak ketik memakai lebar yang SAMA (max-w-3xl)');
+const kolomBaca = (CE.match(/ref=\{scrollContainerRef\}[^>]*>\s*(?:\{\s*\}\s*)*<div className="(max-w-\S+) mx-auto w-full space-y-3">/) || [])[1];
+cek(!!kolomBaca, 'isi wadah gulir dikolomkan dan ditengahkan', kolomBaca);
+const lebarKotakKetik = (CE.match(/<form onSubmit=\{handleSend\} className="w-full (max-w-\S+) /) || [])[1];
+const lebarKartu = [...CE.matchAll(/className="w-full (max-w-\S+) mb-2(?:\.5)? /g)].map((m) => m[1]);
+cek(lebarKotakKetik === kolomBaca && lebarKartu.length === 2 && lebarKartu.every((l) => l === kolomBaca),
+  `kotak ketik & dua kartu di atasnya memakai lebar yang SAMA dengan kolom baca (${kolomBaca})`,
+  { kolomBaca, lebarKotakKetik, lebarKartu });
+// v4 (Owner 19 Okt, sesudah melihat versi 608px di layarnya): "justru harus diperlebar… tujuannya saya
+// mendapatkan layar interaksi yang luas pada chat… panel jangan dilebarkan, tetapi isinya yang dipadatkan."
+// Owner SENGAJA mendahulukan ruang interaksi di atas pedoman panjang baris 45–75 — jadi yang dijaga kini
+// keputusan itu: kolom lebar (≥ 64rem) dan isi gelembung yang dipadatkan. Karakter per baris tetap dicetak
+// sebagai keterangan, supaya konsekuensinya terlihat, bukan disembunyikan.
+const PX = { 'max-w-2xl': 672, 'max-w-3xl': 768, 'max-w-4xl': 896, 'max-w-5xl': 1024, 'max-w-6xl': 1152 };
+const px = PX[kolomBaca] ?? (/^max-w-\[(\d+(?:\.\d+)?)rem\]$/.test(kolomBaca || '') ? Number(kolomBaca.match(/[\d.]+/)[0]) * 16 : NaN);
+const karakter = Math.round((px - 32) / 7.85);
+cek(Number.isFinite(px) && px >= 1024,
+  `kolom baca ${px}px — lebar, sesuai keputusan Owner (≈ ${karakter} karakter per baris, di atas pedoman 75: disengaja)`,
+  { kolomBaca, px, karakter });
+cek(/rounded-2xl px-4 py-3 \$\{m\.role/.test(CE), 'isi gelembung dipadatkan (px-4 py-3), bukan gelembung yang digemukkan');
 cek(/\$\{m\.role === 'user' \? 'max-w-\[85%\] lg:max-w-\[75%\]' : 'w-full'\}/.test(CE),
   'gelembung pengguna ≤75%, jawaban model selebar kolom baca');
 

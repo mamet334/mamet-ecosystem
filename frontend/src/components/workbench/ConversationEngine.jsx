@@ -1701,12 +1701,12 @@ export default function ConversationEngine({ sessionId }) {
               >
                 <span className="material-symbols-outlined text-[18px]">bolt</span>
                 Tools
-                <span className="text-[10px] opacity-70">{toolsEnabledCount}</span>
+                <span className="text-[12px] opacity-70">{toolsEnabledCount}</span>
               </button>
 
               {showToolsPanel && (
                 <div className="absolute left-0 top-12 z-50 w-64 rounded-xl border border-outline-variant bg-surface-container-low shadow-lg p-2">
-                  <div className="px-2 py-1 text-[11px] font-bold text-on-surface-variant uppercase tracking-wide">
+                  <div className="px-2 py-1 text-[12px] font-bold text-on-surface-variant uppercase tracking-wide">
                     Tools untuk workspace ini
                   </div>
                   <button
@@ -1772,7 +1772,7 @@ export default function ConversationEngine({ sessionId }) {
 
               {panelKonteks && (
                 <div className="absolute left-0 top-12 z-50 w-80 rounded-xl border border-outline-variant bg-surface-container-low shadow-lg p-2">
-                  <div className="px-2 py-1.5 text-[11px] text-on-surface-variant leading-relaxed">
+                  <div className="px-2 py-1.5 text-[12px] text-on-surface-variant leading-relaxed">
                     {konteksInfo.rincian}
                   </div>
 
@@ -1786,7 +1786,7 @@ export default function ConversationEngine({ sessionId }) {
                     <span className="material-symbols-outlined text-[18px] mt-0.5">compress</span>
                     <span>
                       <span className="block text-xs font-bold text-on-surface">Padatkan</span>
-                      <span className="block text-[11px] text-on-surface-variant">
+                      <span className="block text-[12px] text-on-surface-variant">
                         {bisaPadatkan
                           ? 'Ringkas pesan lama jadi satu pesan yang tetap dikirim — ingatan percakapan tidak hilang. Satu panggilan model berbayar.'
                           : `Perlu minimal ${MIN_PESAN_PADATKAN} pesan untuk dipadatkan.`}
@@ -1802,7 +1802,7 @@ export default function ConversationEngine({ sessionId }) {
                     <span className="material-symbols-outlined text-[18px] mt-0.5">delete</span>
                     <span>
                       <span className="block text-xs font-bold text-on-surface">Bersihkan</span>
-                      <span className="block text-[11px] text-on-surface-variant">
+                      <span className="block text-[12px] text-on-surface-variant">
                         Berhenti mengirim pesan lama tanpa meringkasnya. Gratis, tapi ingatan percakapannya hilang.
                       </span>
                     </span>
@@ -1817,14 +1817,14 @@ export default function ConversationEngine({ sessionId }) {
                       <span className="material-symbols-outlined text-[18px] mt-0.5">history</span>
                       <span>
                         <span className="block text-xs font-bold text-on-surface">Pulihkan konteks penuh</span>
-                        <span className="block text-[11px] text-on-surface-variant">
+                        <span className="block text-[12px] text-on-surface-variant">
                           Kirim lagi seluruh {konteksInfo.dilewati} pesan lama, sebatas anggaran.
                         </span>
                       </span>
                     </button>
                   )}
 
-                  <div className="px-2 pt-1.5 pb-0.5 text-[10px] text-on-surface-variant border-t border-outline-variant mt-1">
+                  <div className="px-2 pt-1.5 pb-0.5 text-[12px] text-on-surface-variant border-t border-outline-variant mt-1">
                     Tidak ada pilihan di sini yang menghapus pesan. Semuanya tetap terlihat dan tetap tersimpan.
                   </div>
                 </div>
@@ -1884,7 +1884,7 @@ export default function ConversationEngine({ sessionId }) {
 
               {showTierPanel && (
                 <div className="absolute left-0 top-12 z-50 w-60 rounded-xl border border-outline-variant bg-surface-container-low shadow-lg p-2">
-                  <div className="px-2 py-1 text-[11px] font-bold text-on-surface-variant uppercase tracking-wide">
+                  <div className="px-2 py-1 text-[12px] font-bold text-on-surface-variant uppercase tracking-wide">
                     Tingkat model
                   </div>
                   {[
@@ -1903,12 +1903,12 @@ export default function ConversationEngine({ sessionId }) {
                         <span className={`material-symbols-outlined text-[18px] ${active ? 'text-primary' : 'text-transparent'}`}>check</span>
                         <span className="flex flex-col">
                           <span className={`text-xs font-semibold ${active ? 'text-primary' : 'text-on-surface'}`}>{option.label}</span>
-                          <span className="text-[10px] text-on-surface-variant">{option.hint}</span>
+                          <span className="text-[12px] text-on-surface-variant">{option.hint}</span>
                         </span>
                       </button>
                     );
                   })}
-                  <p className="px-2 pt-2 text-[10px] text-on-surface-variant leading-relaxed border-t border-outline-variant/50 mt-1">
+                  <p className="px-2 pt-2 text-[12px] text-on-surface-variant leading-relaxed border-t border-outline-variant/50 mt-1">
                     Kuncian ini hanya berlaku selama sesi chat ini terbuka — pindah chat atau muat ulang akan kembali ke Auto.
                   </p>
                 </div>
@@ -1933,7 +1933,7 @@ export default function ConversationEngine({ sessionId }) {
               <span className="material-symbols-outlined text-[16px]">psychology</span>
               <span className="hidden sm:inline">Memory</span>
               {activeMemories.length > 0 && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                <span className={`text-[12px] px-1.5 py-0.5 rounded-full font-bold ${
                   isMemoryPanelOpen ? 'bg-emerald-500/30 text-emerald-200' : 'bg-surface-variant text-on-surface-variant'
                 }`}>
                   {activeMemories.length}
@@ -2010,15 +2010,22 @@ export default function ConversationEngine({ sessionId }) {
           <div className="flex-1 flex flex-col relative overflow-hidden pt-4 min-h-0 min-w-0">
 
             <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto p-3 md:p-4 custom-scrollbar relative z-10">
-              {/* KOLOM BACA (Item 127 Tahap 2): pesan dibatasi lebar yang SAMA dengan kotak ketik (max-w-3xl)
-                  dan ditengahkan — pola standar aplikasi asisten. Wadah gulirnya tetap selebar area chat, jadi
-                  bilah gulir tetap di tepi; hanya isinya yang dikolomkan. */}
-              <div className="max-w-3xl mx-auto w-full space-y-3">
+              {/* KOLOM BACA (Item 127 Tahap 2): pesan dibatasi lebar yang SAMA dengan kotak ketik dan ditengahkan —
+                  pola standar aplikasi asisten. Wadah gulirnya tetap selebar area chat, jadi bilah gulir tetap di
+                  tepi; hanya isinya yang dikolomkan.
+                  LEBARNYA 68rem (1088px) — KEPUTUSAN OWNER 19 Okt, yang sengaja menimpa pedoman tipografi. K4 sempat
+                  mempersempitnya ke 38rem (608px, ±72 karakter per baris, dalam batas nyaman 45–75); Owner menilainya
+                  di layarnya sendiri: "justru harus diperlebar… space sisa kanan kirinya sangat lebar sekali… panel
+                  jangan dilebarkan, tetapi isinya yang dipadatkan. Tujuannya saya mendapatkan layar interaksi yang
+                  luas pada chat." Ruang interaksi didahulukan di atas panjang baris: di 1088px satu baris ±134
+                  karakter (Inter 16px, 7,85px/huruf). "Dipadatkan" = bantalan gelembung px-4 py-3, bukan px-5 py-4.
+                  Kartu lampiran, kartu konfirmasi web, dan kotak ketik memakai lebar yang SAMA (dijaga uji). */}
+              <div className="max-w-[68rem] mx-auto w-full space-y-3">
 
               {messages.length === 0 && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center opacity-20 pointer-events-none gap-1">
                   <span className="material-symbols-outlined text-[28px] text-primary">chat_bubble</span>
-                  <div className="text-[10px] tracking-widest text-primary uppercase font-mono">Conversation Engine</div>
+                  <div className="text-[12px] tracking-widest text-primary uppercase font-mono">Conversation Engine</div>
                 </div>
               )}
 
@@ -2031,7 +2038,7 @@ export default function ConversationEngine({ sessionId }) {
                   <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     {/* Pesan pengguna = gelembung (≤75%); jawaban model = selebar kolom baca — pola standar
                         aplikasi asisten (Item 127 Tahap 2). Dulu keduanya ≤75%, jadi jawaban hanya 576 dari 768px. */}
-                    <div className={`relative group ${m.role === 'user' ? 'max-w-[85%] lg:max-w-[75%]' : 'w-full'} rounded-2xl px-5 py-4 ${m.role === 'user' ? 'bg-primary-container/20 text-on-surface border border-primary/30' : 'glass-panel rim-light text-on-surface border border-outline-variant'}`}>
+                    <div className={`relative group ${m.role === 'user' ? 'max-w-[85%] lg:max-w-[75%]' : 'w-full'} rounded-2xl px-4 py-3 ${m.role === 'user' ? 'bg-primary-container/20 text-on-surface border border-primary/30' : 'glass-panel rim-light text-on-surface border border-outline-variant'}`}>
                       <div className="text-body-base leading-relaxed">
                         {/* Nalar AI — blok lipat di atas jawaban (gaya DeepSeek), terbuka secara bawaan demi transparansi */}
                         {parsed.thinking && (
@@ -2052,7 +2059,7 @@ export default function ConversationEngine({ sessionId }) {
                               {parsed.isThinkingComplete && (
                                 <button
                                   onClick={() => openLifecycleInspector('AI_REASONING', parsed.thinking)}
-                                  className="mt-2 block text-[11px] text-on-surface-variant/70 hover:text-primary underline underline-offset-2"
+                                  className="mt-2 block text-[12px] text-on-surface-variant/70 hover:text-primary underline underline-offset-2"
                                   title="Buka nalar di Right Workbench"
                                 >
                                   Buka di Workbench
@@ -2089,7 +2096,7 @@ export default function ConversationEngine({ sessionId }) {
                                   ) : state.status === 'done' ? (
                                     <details className="inline">
                                       <summary className="flex items-center gap-1.5 text-xs text-emerald-400 cursor-pointer"><span className="material-symbols-outlined text-[14px]">check_circle</span>Selesai — lihat output</summary>
-                                      <pre className="mt-1 p-2 rounded bg-surface-container text-[11px] font-mono text-on-surface-variant overflow-x-auto max-h-40 custom-scrollbar">{state.output}</pre>
+                                      <pre className="mt-1 p-2 rounded bg-surface-container text-[12px] font-mono text-on-surface-variant overflow-x-auto max-h-40 custom-scrollbar">{state.output}</pre>
                                     </details>
                                   ) : state.status === 'skipped' ? (
                                     <span className="text-xs text-on-surface-variant italic">Dilewati</span>
@@ -2108,7 +2115,7 @@ export default function ConversationEngine({ sessionId }) {
                                   ) : (
                                     <details className="inline">
                                       <summary className="flex items-center gap-1.5 text-xs text-red-400 cursor-pointer"><span className="material-symbols-outlined text-[14px]">error</span>Error — lihat detail</summary>
-                                      <pre className="mt-1 p-2 rounded bg-red-900/20 text-[11px] font-mono text-red-300 overflow-x-auto max-h-40 custom-scrollbar">{state.output}</pre>
+                                      <pre className="mt-1 p-2 rounded bg-red-900/20 text-[12px] font-mono text-red-300 overflow-x-auto max-h-40 custom-scrollbar">{state.output}</pre>
                                     </details>
                                   )}
                                 </div>
@@ -2160,11 +2167,11 @@ export default function ConversationEngine({ sessionId }) {
                         if (!Array.isArray(tools) || tools.length === 0) return null;
                         return (
                           <div className="mt-3 pt-2 border-t border-white/5 flex flex-wrap items-center gap-1.5">
-                            <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider mr-1">Tools:</span>
+                            <span className="text-[12px] text-slate-500 font-mono uppercase tracking-wider mr-1">Tools:</span>
                             {tools.map((tool, tIdx) => (
                               <span
                                 key={tIdx}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono bg-white/5 text-slate-300 border border-white/10"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[12px] font-mono bg-white/5 text-slate-300 border border-white/10"
                               >
                                 <span className="material-symbols-outlined text-[12px] text-primary">build</span>
                                 {String(tool).replace(/_/g, ' ')}
@@ -2245,7 +2252,7 @@ export default function ConversationEngine({ sessionId }) {
                         if (!Array.isArray(sources) || sources.length === 0) return null;
                         return (
                           <div className="mt-2.5 pt-2 border-t border-white/5">
-                            <div className="text-[10px] text-slate-500 font-mono uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                            <div className="text-[12px] text-slate-500 font-mono uppercase tracking-wider mb-1.5 flex items-center gap-1">
                               <span className="material-symbols-outlined text-[13px] text-purple-400">travel_explore</span>
                               <span>Sumber Referensi:</span>
                             </div>
@@ -2259,7 +2266,7 @@ export default function ConversationEngine({ sessionId }) {
                                     href={url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/20 transition-all max-w-xs truncate group/link"
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[12px] bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/20 transition-all max-w-xs truncate group/link"
                                     title={title}
                                   >
                                     <span className="truncate">{title}</span>
@@ -2278,12 +2285,12 @@ export default function ConversationEngine({ sessionId }) {
                         if (!execution) return null;
                         const execName = execution.name || execution.tool || 'eksekusi_tool';
                         return (
-                          <details className="mt-2.5 pt-2 border-t border-white/5 text-[11px] group/details">
-                            <summary className="cursor-pointer text-slate-400 hover:text-slate-200 font-mono text-[10px] flex items-center gap-1 select-none">
+                          <details className="mt-2.5 pt-2 border-t border-white/5 text-[12px] group/details">
+                            <summary className="cursor-pointer text-slate-400 hover:text-slate-200 font-mono text-[12px] flex items-center gap-1 select-none">
                               <span className="material-symbols-outlined text-[13px] transition-transform group-open/details:rotate-90">chevron_right</span>
                               <span>Detail Eksekusi ({execName})</span>
                             </summary>
-                            <div className="mt-1.5 p-2 rounded bg-black/40 border border-white/10 font-mono text-[10px] text-slate-300 max-h-40 overflow-y-auto whitespace-pre-wrap">
+                            <div className="mt-1.5 p-2 rounded bg-black/40 border border-white/10 font-mono text-[12px] text-slate-300 max-h-40 overflow-y-auto whitespace-pre-wrap">
                               {typeof execution === 'string'
                                 ? execution
                                 : JSON.stringify(execution, null, 2)}
@@ -2391,7 +2398,7 @@ export default function ConversationEngine({ sessionId }) {
             {/* Input Area */}
             <div className="px-3 pt-2 pb-2 bg-gradient-to-t from-background via-background to-transparent z-10 flex flex-col items-center w-full">
               {attachedFile && (
-                <div className="w-full max-w-3xl mb-2 flex items-center justify-between bg-surface-container border border-outline-variant rounded-lg px-3 py-2 animate-in fade-in slide-in-from-bottom-2">
+                <div className="w-full max-w-[68rem] mb-2 flex items-center justify-between bg-surface-container border border-outline-variant rounded-lg px-3 py-2 animate-in fade-in slide-in-from-bottom-2">
                   <div className="flex items-center gap-2 text-body-sm text-on-surface">
                     <span className="material-symbols-outlined text-[16px] text-primary">attach_file</span>
                     <span className="truncate max-w-[200px]">{attachedFile.name}</span>
@@ -2404,7 +2411,7 @@ export default function ConversationEngine({ sessionId }) {
 
               {/* PR#9: TIER 3 WEB COMPARISON CONFIRMATION CARD */}
               {webConfirmation && (
-                <div className="w-full max-w-3xl mb-2.5 p-3.5 bg-surface-container-high/95 backdrop-blur border border-primary/40 rounded-2xl shadow-xl animate-in fade-in slide-in-from-bottom-2 z-20">
+                <div className="w-full max-w-[68rem] mb-2.5 p-3.5 bg-surface-container-high/95 backdrop-blur border border-primary/40 rounded-2xl shadow-xl animate-in fade-in slide-in-from-bottom-2 z-20">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div className="flex items-start gap-2.5">
                       <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0 mt-0.5">
@@ -2412,20 +2419,20 @@ export default function ConversationEngine({ sessionId }) {
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
+                          <span className="text-[12px] font-bold uppercase tracking-wider text-primary">
                             Human-in-Command • Tier 3 Web Retrieval
                           </span>
-                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-primary/10 text-primary font-medium border border-primary/20">
+                          <span className="text-[12px] px-1.5 py-0.2 rounded bg-primary/10 text-primary font-medium border border-primary/20">
                             PR#9 Gate
                           </span>
                         </div>
                         <p className="text-xs font-bold text-on-surface mt-0.5">
                           Konfirmasi Akses Web Pembanding
                         </p>
-                        <p className="text-[11px] text-on-surface-variant mt-0.5 leading-tight">
+                        <p className="text-[12px] text-on-surface-variant mt-0.5 leading-tight">
                           {(webConfirmation.reason || webConfirmation.data?.reason) || 'Konteks lokal belum memadai untuk menjawab pertanyaan terkini.'}
                         </p>
-                        <div className="mt-1.5 text-[11px] font-mono bg-surface-container-lowest/80 px-2 py-1 rounded border border-outline-variant text-on-surface flex items-center gap-1.5">
+                        <div className="mt-1.5 text-[12px] font-mono bg-surface-container-lowest/80 px-2 py-1 rounded border border-outline-variant text-on-surface flex items-center gap-1.5">
                           <span className="text-primary font-bold shrink-0">Query:</span>
                           <span className="truncate max-w-[320px] sm:max-w-md">{webConfirmation.query || webConfirmation.data?.query}</span>
                         </div>
@@ -2452,7 +2459,7 @@ export default function ConversationEngine({ sessionId }) {
                 </div>
               )}
 
-              <form onSubmit={handleSend} className="w-full max-w-3xl relative flex items-center gap-1.5 bg-surface-container-low border border-outline-variant rounded-2xl p-1.5 focus-within:border-primary transition-all shadow-lg pulse-focus">
+              <form onSubmit={handleSend} className="w-full max-w-[68rem] relative flex items-center gap-1.5 bg-surface-container-low border border-outline-variant rounded-2xl p-1.5 focus-within:border-primary transition-all shadow-lg pulse-focus">
                 {/* 📁 Folder kerja — hanya Assistant (Item 85) */}
                 {workspaceManager?.activeWorkspaceId === 'ws-assistant' && (
                   <div className="shrink-0 ml-1">
@@ -2509,7 +2516,7 @@ export default function ConversationEngine({ sessionId }) {
                   </button>
                 )}
               </form>
-              <div className="text-center mt-1 text-[9px] text-on-surface-variant tracking-widest uppercase opacity-50">
+              <div className="text-center mt-1 text-[12px] text-on-surface-variant tracking-widest uppercase opacity-50">
                 CE v3.0 • {workspaceManager.activeWorkspaceId}
               </div>
             </div>

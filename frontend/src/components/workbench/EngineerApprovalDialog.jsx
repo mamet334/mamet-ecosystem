@@ -159,15 +159,15 @@ export default function EngineerApprovalDialog() {
           {/* METRICS BAR */}
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50 text-center">
-              <p className="text-[10px] text-slate-500 uppercase">Coverage</p>
+              <p className="text-[12px] text-slate-500 uppercase">Coverage</p>
               <p className="text-lg font-bold text-slate-200">{confidence.coverage}%</p>
             </div>
             <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50 text-center">
-              <p className="text-[10px] text-slate-500 uppercase">Evidence</p>
+              <p className="text-[12px] text-slate-500 uppercase">Evidence</p>
               <p className="text-lg font-bold text-slate-200">{confidence.evidence}/100</p>
             </div>
             <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50 text-center">
-              <p className="text-[10px] text-slate-500 uppercase">Files</p>
+              <p className="text-[12px] text-slate-500 uppercase">Files</p>
               <p className="text-lg font-bold text-slate-200">{pendingApproval.files?.length || 0}</p>
             </div>
           </div>
@@ -199,7 +199,7 @@ export default function EngineerApprovalDialog() {
                       <FileText className="w-4 h-4 text-blue-400 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-slate-200 font-mono truncate">{file.path}</p>
-                        <p className="text-[10px] text-slate-500">
+                        <p className="text-[12px] text-slate-500">
                           {file.size} bytes 
                           {isImmutable && <span className="text-red-400 font-bold ml-2">IMMUTABLE (AUTO-REJECTED)</span>}
                           {file.isProtected && <span className="text-yellow-400 font-bold ml-2">PROTECTED</span>}
@@ -210,7 +210,7 @@ export default function EngineerApprovalDialog() {
                     {/* Expanded Code Viewer */}
                     {isExpanded && (
                       <div className="border-t border-slate-700/50 bg-slate-950 p-4 max-h-64 overflow-auto custom-scrollbar">
-                        <p className="text-[10px] text-slate-500 uppercase mb-2">Proposed New Content:</p>
+                        <p className="text-[12px] text-slate-500 uppercase mb-2">Proposed New Content:</p>
                         <pre className="text-xs text-slate-300 font-mono whitespace-pre-wrap break-all">
                           {file.newContent || '(Empty file)'}
                         </pre>

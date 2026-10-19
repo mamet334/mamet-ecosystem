@@ -122,10 +122,10 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
       {/* Title & Type Badge */}
       <div className="mb-5 bg-white/[0.02] border border-white/5 p-3 rounded-xl">
         <div className="flex items-center justify-between mb-1.5">
-          <span className={`text-[9px] px-2 py-0.5 rounded border font-bold uppercase tracking-wider ${badgeBorder}`}>
+          <span className={`text-[12px] px-2 py-0.5 rounded border font-bold uppercase tracking-wider ${badgeBorder}`}>
             {badgeLabel}
           </span>
-          <span className="text-[10px] text-slate-500">ID: {selectedNode.id?.substring(0, 14)}...</span>
+          <span className="text-[12px] text-slate-500">ID: {selectedNode.id?.substring(0, 14)}...</span>
         </div>
         <div className="text-sm font-semibold text-white break-words mt-1 leading-snug">
           {selectedNode.name}
@@ -141,7 +141,7 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
           <>
             <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-3">
               <div>
-                <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Status Memori</div>
+                <div className="text-[12px] text-slate-500 uppercase tracking-wider mb-1">Status Memori</div>
                 {isConflict ? (
                   <div className="flex items-center gap-1.5 text-red-400 font-bold text-xs bg-red-500/10 border border-red-500/20 px-2.5 py-1.5 rounded-lg">
                     <span className="material-symbols-outlined text-sm animate-pulse">crisis_alert</span>
@@ -157,23 +157,23 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
 
               <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
                 <div>
-                  <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Dirujuk AI</div>
+                  <div className="text-[12px] text-slate-500 uppercase tracking-wider mb-0.5">Dirujuk AI</div>
                   <div className="text-slate-200 font-bold">{selectedNode.data?.used ?? 0} kali</div>
                 </div>
                 <div>
-                  <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Tautan Relasi</div>
+                  <div className="text-[12px] text-slate-500 uppercase tracking-wider mb-0.5">Tautan Relasi</div>
                   <div className="text-slate-200 font-bold">{selectedNode.data?.relations ?? 0} relasi aktif</div>
                 </div>
               </div>
 
               <div className="pt-2 border-t border-white/5">
-                <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Kategori</div>
+                <div className="text-[12px] text-slate-500 uppercase tracking-wider mb-0.5">Kategori</div>
                 <div className="text-slate-300 capitalize">{selectedNode.data?.metadata?.category || selectedNode.data?.metadata?.type || 'Preferensi / Profil User'}</div>
               </div>
 
               <div className="pt-2 border-t border-white/5">
-                <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Waktu Dicatat</div>
-                <div className="text-slate-400 text-[11px]">{formatDate(selectedNode.data?.created)}</div>
+                <div className="text-[12px] text-slate-500 uppercase tracking-wider mb-0.5">Waktu Dicatat</div>
+                <div className="text-slate-400 text-[12px]">{formatDate(selectedNode.data?.created)}</div>
               </div>
             </div>
 
@@ -206,13 +206,13 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
             <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Format Berkas</div>
+                  <div className="text-[12px] text-slate-500 uppercase tracking-wider mb-0.5">Format Berkas</div>
                   <div className="text-purple-300 font-bold uppercase">
                     {selectedNode.data?.metadata?.file_type || selectedNode.name.split('.').pop() || 'TXT'}
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Potongan (Chunks)</div>
+                  <div className="text-[12px] text-slate-500 uppercase tracking-wider mb-0.5">Potongan (Chunks)</div>
                   <div className="text-purple-300 font-bold">
                     {selectedNode.data?.relations ?? 0} pgvector
                   </div>
@@ -220,7 +220,7 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
               </div>
 
               <div className="pt-2 border-t border-white/5">
-                <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Status Indeks</div>
+                <div className="text-[12px] text-slate-500 uppercase tracking-wider mb-0.5">Status Indeks</div>
                 <div className="flex items-center gap-1.5 text-purple-400 font-medium text-xs">
                   <span className="material-symbols-outlined text-sm">auto_stories</span>
                   Tersedia untuk Pencarian RAG
@@ -228,8 +228,8 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
               </div>
 
               <div className="pt-2 border-t border-white/5">
-                <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Waktu Diunggah</div>
-                <div className="text-slate-400 text-[11px]">{formatDate(selectedNode.data?.created)}</div>
+                <div className="text-[12px] text-slate-500 uppercase tracking-wider mb-0.5">Waktu Diunggah</div>
+                <div className="text-slate-400 text-[12px]">{formatDate(selectedNode.data?.created)}</div>
               </div>
             </div>
 
@@ -260,11 +260,11 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
                   ) : (
                     chunks.map((chunk, idx) => (
                       <div key={chunk.id || idx} className="p-2.5 rounded-lg bg-white/[0.02] border border-white/5 space-y-1.5">
-                        <div className="text-[10px] text-purple-400 font-bold uppercase tracking-wider flex items-center justify-between border-b border-white/5 pb-1">
+                        <div className="text-[12px] text-purple-400 font-bold uppercase tracking-wider flex items-center justify-between border-b border-white/5 pb-1">
                           <span>Potongan #{idx + 1}</span>
-                          <span className="text-slate-500 text-[9px] font-normal">{chunk.content?.length || 0} karakter</span>
+                          <span className="text-slate-500 text-[12px] font-normal">{chunk.content?.length || 0} karakter</span>
                         </div>
-                        <p className="text-[11px] text-slate-300 whitespace-pre-wrap leading-relaxed select-text font-sans break-words">
+                        <p className="text-[12px] text-slate-300 whitespace-pre-wrap leading-relaxed select-text font-sans break-words">
                           {chunk.content}
                         </p>
                       </div>
@@ -283,14 +283,14 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
           <>
             <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-3">
               <div>
-                <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Peran Workspace</div>
+                <div className="text-[12px] text-slate-500 uppercase tracking-wider mb-0.5">Peran Workspace</div>
                 <div className="text-yellow-400 font-bold capitalize">
                   {selectedNode.data?.source || 'Assistant'}
                 </div>
               </div>
 
               <div className="pt-2 border-t border-white/5">
-                <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Status Sesi</div>
+                <div className="text-[12px] text-slate-500 uppercase tracking-wider mb-0.5">Status Sesi</div>
                 <div className="flex items-center gap-1.5 text-yellow-300 font-medium text-xs">
                   <span className="material-symbols-outlined text-sm">forum</span>
                   Sesi Percakapan Tersimpan
@@ -298,8 +298,8 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
               </div>
 
               <div className="pt-2 border-t border-white/5">
-                <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Waktu Sesi</div>
-                <div className="text-slate-400 text-[11px]">{formatDate(selectedNode.data?.created)}</div>
+                <div className="text-[12px] text-slate-500 uppercase tracking-wider mb-0.5">Waktu Sesi</div>
+                <div className="text-slate-400 text-[12px]">{formatDate(selectedNode.data?.created)}</div>
               </div>
             </div>
 
@@ -319,7 +319,7 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
         {(nodeType === 'Pipeline Service' || selectedNode.group === 'pipeline') && (
           <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-3">
             <div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Status Layanan</div>
+              <div className="text-[12px] text-slate-500 uppercase tracking-wider mb-1">Status Layanan</div>
               <div className="flex items-center gap-1.5">
                 {selectedNode.data?.status === 'HEALTHY' ? (
                   <span className="text-emerald-400 font-bold text-xs bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded">
@@ -338,13 +338,13 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
             </div>
 
             <div className="pt-2 border-t border-white/5">
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Komponen Inti</div>
+              <div className="text-[12px] text-slate-500 uppercase tracking-wider mb-0.5">Komponen Inti</div>
               <div className="text-slate-300 font-semibold">{selectedNode.name}</div>
             </div>
 
             {selectedNode.data?.latencyMs && (
               <div className="pt-2 border-t border-white/5">
-                <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Latensi Eksekusi</div>
+                <div className="text-[12px] text-slate-500 uppercase tracking-wider mb-0.5">Latensi Eksekusi</div>
                 <div className="text-slate-300">{selectedNode.data.latencyMs} ms</div>
               </div>
             )}
@@ -355,10 +355,10 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
         {/* OPTIONAL METADATA ACCORDION */}
         {/* ================================================================= */}
         {selectedNode.data?.metadata && Object.keys(selectedNode.data.metadata).length > 0 && (
-          <details className="mt-3 border border-white/5 rounded-lg bg-black/30 text-[10px]">
+          <details className="mt-3 border border-white/5 rounded-lg bg-black/30 text-[12px]">
             <summary className="p-2 text-slate-400 hover:text-slate-200 cursor-pointer font-semibold uppercase tracking-wider flex items-center justify-between">
               <span>Metadata Riil Basis Data</span>
-              <span className="text-[10px] text-slate-500">▼</span>
+              <span className="text-[12px] text-slate-500">▼</span>
             </summary>
             <pre className="p-2.5 text-slate-400 bg-black/60 rounded-b-lg overflow-x-auto max-h-40 border-t border-white/5 leading-relaxed font-mono">
               {JSON.stringify(selectedNode.data.metadata, null, 2)}

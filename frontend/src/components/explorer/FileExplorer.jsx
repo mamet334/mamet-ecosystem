@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { kernel } from '../../core/runtime/Kernel';
+import { angka } from '../../core/runtime/services/formatAngka.js';
 import {
   Folder, FolderOpen, FileText, FileCode, FileJson, File,
   Search, X, Copy, Check, Loader2, ChevronRight, ChevronDown,
@@ -104,8 +105,8 @@ function highlightCode(code, path) {
 function formatSize(b) {
   if (!b || b <= 0) return '';
   if (b < 1024) return b + ' B';
-  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
-  return (b / 1048576).toFixed(1) + ' MB';
+  if (b < 1048576) return angka(b / 1024, 1) + ' KB';
+  return angka(b / 1048576, 1) + ' MB';
 }
 
 export default function FileExplorer() {
@@ -294,7 +295,7 @@ const toggleFolder = (item) => {
         <div className="flex items-center gap-2 shrink-0">
           <FolderOpen className="w-4 h-4 text-purple-400" />
           <span className="text-xs font-bold tracking-widest uppercase text-slate-300">File Explorer</span>
-          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-400 font-mono">{isElectron ? 'Electron' : 'GitHub'}</span>
+          <span className="text-[12px] px-1.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-400 font-mono">{isElectron ? 'Electron' : 'GitHub'}</span>
         </div>
         <div className="flex-1 max-w-md mx-auto relative min-w-[120px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
@@ -325,7 +326,7 @@ const toggleFolder = (item) => {
                     <button key={rp} onClick={() => { setSearchQuery(''); setSearchResults([]); openFile(rp); }} className="w-full flex items-center gap-2.5 px-4 py-2 hover:bg-slate-800 text-left">
                       <IC className={`w-3.5 h-3.5 shrink-0 ${icon.color}`} />
                       <span className="text-xs text-slate-300 truncate">{name}</span>
-                      <span className="text-[10px] text-slate-500 truncate ml-auto font-mono">{rp}</span>
+                      <span className="text-[12px] text-slate-500 truncate ml-auto font-mono">{rp}</span>
                     </button>
                   );
                 })}
@@ -336,7 +337,7 @@ const toggleFolder = (item) => {
       )}
 
       {/* Breadcrumb */}
-      <div className="flex items-center gap-1 px-4 py-1.5 bg-slate-900/50 border-b border-slate-800 text-[11px] font-mono overflow-x-auto custom-scrollbar shrink-0">
+      <div className="flex items-center gap-1 px-4 py-1.5 bg-slate-900/50 border-b border-slate-800 text-[12px] font-mono overflow-x-auto custom-scrollbar shrink-0">
         <button onClick={() => navigateTo('')} className={`flex items-center gap-1 px-1.5 py-0.5 rounded hover:text-purple-400 whitespace-nowrap ${currentPath === '' ? 'text-purple-400 font-semibold' : 'text-slate-400'}`}><FolderOpen className="w-3 h-3" /> root</button>
         {breadcrumbs.map((crumb, idx) => (
           <React.Fragment key={crumb.path}>
@@ -350,14 +351,14 @@ const toggleFolder = (item) => {
       <div className="flex flex-1 min-h-0 flex-col md:flex-row">
         {/* Panel kiri: tree */}
         <div className="w-full md:w-72 md:max-w-72 shrink-0 border-b md:border-b-0 md:border-r border-slate-800 flex flex-col min-h-0 bg-slate-900/30">
-          <div className="px-4 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500 border-b border-slate-800/70 shrink-0">Direktori {isElectron ? '(Lokal)' : '(GitHub)'}</div>
+          <div className="px-4 py-2 text-[12px] font-semibold uppercase tracking-widest text-slate-500 border-b border-slate-800/70 shrink-0">Direktori {isElectron ? '(Lokal)' : '(GitHub)'}</div>
           <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
             {loadingDir ? (
-              <div className="flex flex-col items-center justify-center py-8 text-slate-500 gap-2"><Loader2 className="w-5 h-5 animate-spin text-purple-400" /><span className="text-[11px] font-mono">Memuat direktori...</span></div>
+              <div className="flex flex-col items-center justify-center py-8 text-slate-500 gap-2"><Loader2 className="w-5 h-5 animate-spin text-purple-400" /><span className="text-[12px] font-mono">Memuat direktori...</span></div>
             ) : dirError ? (
-              <div className="mx-2 mt-2 flex items-start gap-2 bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-[11px] text-red-400"><AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /><span className="break-words">{dirError}</span></div>
+              <div className="mx-2 mt-2 flex items-start gap-2 bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-[12px] text-red-400"><AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /><span className="break-words">{dirError}</span></div>
             ) : entries.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 text-slate-600 gap-2"><FolderOpen className="w-8 h-8 opacity-40" /><p className="text-[11px]">Direktori kosong</p>{currentPath && <button onClick={() => navigateTo('')} className="text-[10px] text-purple-400 hover:text-purple-300 mt-1">← Kembali ke root</button>}</div>
+              <div className="flex flex-col items-center justify-center py-10 text-slate-600 gap-2"><FolderOpen className="w-8 h-8 opacity-40" /><p className="text-[12px]">Direktori kosong</p>{currentPath && <button onClick={() => navigateTo('')} className="text-[12px] text-purple-400 hover:text-purple-300 mt-1">← Kembali ke root</button>}</div>
             ) : (
               <div className="space-y-0.5">
                 {entries.map((item) => {
@@ -379,14 +380,14 @@ const toggleFolder = (item) => {
                       <span className="w-3 shrink-0" />
                       <IC className={`w-4 h-4 shrink-0 ${icon.color}`} />
                       <span className="text-xs truncate flex-1">{item.name}</span>
-                      <span className="text-[9px] text-slate-600 opacity-0 group-hover:opacity-100">{formatSize(item.size)}</span>
+                      <span className="text-[12px] text-slate-600 opacity-0 group-hover:opacity-100">{formatSize(item.size)}</span>
                     </button>
                   );
                 })}
               </div>
             )}
           </div>
-          <div className="px-4 py-2 border-t border-slate-800/70 text-[9px] text-slate-600 font-mono flex items-center gap-1.5 shrink-0">
+          <div className="px-4 py-2 border-t border-slate-800/70 text-[12px] text-slate-600 font-mono flex items-center gap-1.5 shrink-0">
             <Database className="w-3 h-3 shrink-0" />
             <span className="truncate">{entries.length} item • {service ? (isElectron ? 'FS Lokal' : 'github/mamet334/mamet-ecosystem') : 'menunggu service...'}</span>
           </div>
@@ -400,12 +401,12 @@ const toggleFolder = (item) => {
                 <div className="flex items-center gap-2 min-w-0">
                   <SelIcon className={`w-4 h-4 shrink-0 ${selColor}`} />
                   <span className="text-xs font-medium truncate text-slate-300">{selectedName}</span>
-                  <span className="text-[9px] font-mono text-slate-500 truncate hidden sm:block">{selectedFilePath}</span>
+                  <span className="text-[12px] font-mono text-slate-500 truncate hidden sm:block">{selectedFilePath}</span>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {fileMeta && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400 font-mono">{LANG_LABEL[getLang(selectedFilePath)]}</span>}
-                  {fileMeta && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono hidden sm:inline">{backendLabel} • {formatSize(fileMeta.size)}</span>}
-                  <button onClick={() => handleCopyPath(selectedFilePath)} className="flex items-center gap-1 px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 text-[10px]" title="Salin path">
+                  {fileMeta && <span className="text-[12px] px-1.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400 font-mono">{LANG_LABEL[getLang(selectedFilePath)]}</span>}
+                  {fileMeta && <span className="text-[12px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono hidden sm:inline">{backendLabel} • {formatSize(fileMeta.size)}</span>}
+                  <button onClick={() => handleCopyPath(selectedFilePath)} className="flex items-center gap-1 px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 text-[12px]" title="Salin path">
                     {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                     <span className="hidden sm:inline">{copied ? 'Tersalin' : 'Salin Path'}</span>
                   </button>
@@ -417,11 +418,11 @@ const toggleFolder = (item) => {
           </div>
           <div id="file-preview-scroll" className="flex-1 overflow-auto custom-scrollbar bg-slate-950 p-4">
             {loadingFile ? (
-              <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-2"><Loader2 className="w-6 h-6 animate-spin text-purple-400" /><span className="text-[11px] font-mono">Membaca file...</span></div>
+              <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-2"><Loader2 className="w-6 h-6 animate-spin text-purple-400" /><span className="text-[12px] font-mono">Membaca file...</span></div>
             ) : fileError ? (
               <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-3"><AlertTriangle className="w-8 h-8 text-red-400/60" /><p className="text-xs text-red-400">{fileError}</p></div>
             ) : selectedFilePath ? (
-              <pre className="text-[11px] leading-relaxed text-slate-300 font-mono whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: highlightedHtml || '<span class="text-slate-500">(File kosong)</span>' }} />
+              <pre className="text-[12px] leading-relaxed text-slate-300 font-mono whitespace-pre-wrap break-words" dangerouslySetInnerHTML={{ __html: highlightedHtml || '<span class="text-slate-500">(File kosong)</span>' }} />
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-slate-600 gap-2"><FolderOpen className="w-12 h-12 opacity-30" /><p className="text-xs">Klik file di panel kiri untuk melihat isi</p></div>
             )}

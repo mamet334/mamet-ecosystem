@@ -30,7 +30,7 @@ function StatCard({ icon: Icon, label, value, tone = 'slate' }) {
     <div className={`flex items-center gap-3 bg-slate-900/50 border rounded-lg px-4 py-3 ${tones[tone] || tones.slate}`}>
       <Icon className="w-4 h-4 shrink-0" />
       <div className="min-w-0">
-        <p className="text-[10px] uppercase tracking-wider text-slate-500">{label}</p>
+        <p className="text-[12px] uppercase tracking-wider text-slate-500">{label}</p>
         <p className="text-sm font-mono font-bold truncate">{value}</p>
       </div>
     </div>
@@ -169,16 +169,16 @@ export default function SystemLogsApp() {
                     <p className={`text-sm font-medium ${isError ? 'text-red-200' : 'text-amber-200'}`}>
                       {entry.message}
                     </p>
-                    <p className="text-[11px] font-mono text-slate-500 mt-1">
+                    <p className="text-[12px] font-mono text-slate-500 mt-1">
                       {entry.timestamp} · {entry.level}
                     </p>
                   </div>
                   {entry.data && (
-                    <span className="text-[10px] text-slate-500 shrink-0 mt-1">{isOpen ? 'Tutup' : 'Detail'}</span>
+                    <span className="text-[12px] text-slate-500 shrink-0 mt-1">{isOpen ? 'Tutup' : 'Detail'}</span>
                   )}
                 </button>
                 {isOpen && entry.data && (
-                  <pre className="px-4 pb-4 text-[11px] font-mono text-slate-400 whitespace-pre-wrap break-all">
+                  <pre className="px-4 pb-4 text-[12px] font-mono text-slate-400 whitespace-pre-wrap break-all">
                     {(() => {
                       try {
                         return JSON.stringify(entry.data, null, 2);

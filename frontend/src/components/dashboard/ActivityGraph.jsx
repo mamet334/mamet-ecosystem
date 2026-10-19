@@ -271,7 +271,7 @@ export default function ActivityGraph({
         <p className="text-slate-400 text-xs mt-2 tracking-[0.2em] uppercase font-mono">
           Neural Brain Constellation — Constitution 23
         </p>
-        <div className="mt-5 flex flex-wrap items-center gap-3.5 text-[11px] font-mono">
+        <div className="mt-5 flex flex-wrap items-center gap-3.5 text-[12px] font-mono">
           <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#22c55e] shadow-[0_0_6px_rgba(34,197,94,0.6)]"></div> Memory</div>
           <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#a855f7] shadow-[0_0_6px_rgba(168,85,247,0.6)]"></div> RAG Docs</div>
           <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#eab308] shadow-[0_0_6px_rgba(234,179,8,0.6)]"></div> Conversations</div>
@@ -292,9 +292,9 @@ export default function ActivityGraph({
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
               <span className="text-xs font-bold tracking-wider text-slate-200 uppercase">Knowledge Directory</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-slate-400 font-semibold">{counts.total}</span>
+              <span className="text-[12px] px-1.5 py-0.5 rounded bg-white/10 text-slate-400 font-semibold">{counts.total}</span>
             </div>
-            <button className="text-slate-400 hover:text-white text-[11px] px-1">
+            <button className="text-slate-400 hover:text-white text-[12px] px-1">
               {isExplorerOpen ? '▲ Sembunyikan' : '▼ Tampilkan'}
             </button>
           </div>
@@ -313,7 +313,7 @@ export default function ActivityGraph({
                 {searchQuery && (
                   <button 
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-2 top-1.5 text-[10px] text-slate-400 hover:text-white"
+                    className="absolute right-2 top-1.5 text-[12px] text-slate-400 hover:text-white"
                   >
                     ✕
                   </button>
@@ -321,7 +321,7 @@ export default function ActivityGraph({
               </div>
 
               {/* Filter Tabs (Horizontal scrollbar hidden) */}
-              <div className="flex items-center gap-1 overflow-x-auto pb-1.5 mb-2 border-b border-white/5 text-[10px] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex items-center gap-1 overflow-x-auto pb-1.5 mb-2 border-b border-white/5 text-[12px] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 <button
                   onClick={() => setActiveFilter('ALL')}
                   className={`px-2 py-0.5 rounded transition-all shrink-0 ${activeFilter === 'ALL' ? 'bg-white/20 text-white font-bold' : 'text-slate-400 hover:text-slate-200'}`}
@@ -363,7 +363,7 @@ export default function ActivityGraph({
               {/* Entity Items List (Dark sleek scrollbar) */}
               <div className="space-y-1 max-h-56 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.2)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/40">
                 {filteredNodes.length === 0 ? (
-                  <div className="py-4 text-center text-[10px] text-slate-500 font-mono">Tidak ada entitas ditemukan.</div>
+                  <div className="py-4 text-center text-[12px] text-slate-500 font-mono">Tidak ada entitas ditemukan.</div>
                 ) : (
                   filteredNodes.map(node => {
                     const isConflict = node.isConflict || node.data?.status === 'CONFLICT_PENDING_REVIEW';
@@ -396,11 +396,11 @@ export default function ActivityGraph({
                             className="w-2 h-2 rounded-full shrink-0" 
                             style={{ backgroundColor: dotColor }}
                           />
-                          <span className="text-[11px] text-slate-300 group-hover/item:text-white truncate">
+                          <span className="text-[12px] text-slate-300 group-hover/item:text-white truncate">
                             {node.name || 'Entitas'}
                           </span>
                         </div>
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded border shrink-0 uppercase font-semibold ${badgeClass}`}>
+                        <span className={`text-[12px] px-1.5 py-0.5 rounded border shrink-0 uppercase font-semibold ${badgeClass}`}>
                           {typeBadge}
                         </span>
                       </div>

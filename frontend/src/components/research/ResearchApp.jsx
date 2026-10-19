@@ -14,6 +14,7 @@ import { ambilBerkasAktif, ambilPegawaiBerkas, simpanBerkasAsn, daftarBerkasAsn,
 import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN, OCR_SERENTAK } from '../../core/runtime/services/pdfOcrService.js';
 import { adalahPdf, perkiraanPdfAsn, bacaBerkasPdfAsn } from '../../core/runtime/services/bacaPdfAsn.js';
 import { buatCadangan, periksaBerkasCadangan, namaBerkasCadangan } from '../../core/runtime/services/cadanganData.js';
+import { angka, ukuranMB } from '../../core/runtime/services/formatAngka.js';
 
 // Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
 const POTONGAN_PERLU_KONFIRMASI = 150; // ±105 ribu huruf ≈ $0,006 (potongan 800 huruf, Item 70)
@@ -220,14 +221,14 @@ export default function ResearchApp() {
                 const lanjutOcr = window.confirm(
                     `${banyak ? `${berkasBertabel} dari ${siap.length} berkas` : `"${siap[0].file.name}"`}: ` +
                     `${totalTabel} halaman tampak berupa tabel yang mungkin rusak dibaca pdf.js.\n\n` +
-                    `Perbaiki dengan OCR (mistral-ocr)? Perkiraan biaya ±$${perkiraanOcr(totalTabel).toFixed(3)} ` +
+                    `Perbaiki dengan OCR (mistral-ocr)? Perkiraan biaya ±${angka(perkiraanOcr(totalTabel), 3)} ` +
                     `dari saldo OpenRouter Anda, di luar biaya embedding.`
                 );
                 // OCR massal (2026-09-16): buku Kepbup 1.004 halaman menandai 939 halaman bertabel —
                 // ±$1,9 dan berjam-jam. Konfirmasi kedua menyebut lama pengerjaan sebelum uang terpakai.
                 pakaiOcr = lanjutOcr && (totalTabel <= OCR_BANYAK_HALAMAN || window.confirm(
                     `${totalTabel} halaman itu banyak.\n\n` +
-                    `Perkiraan: ±${perkiraanMenitOcr(totalTabel)} menit dan ±$${perkiraanOcr(totalTabel).toFixed(3)}, ` +
+                    `Perkiraan: ±${perkiraanMenitOcr(totalTabel)} menit dan ±${angka(perkiraanOcr(totalTabel), 3)}, ` +
                     `dikirim ${OCR_SERENTAK} halaman sekaligus agar tidak kena batas laju.\n` +
                     `Halaman yang tetap gagal akan dilewati (teks biasa tetap dipakai), bukan membatalkan unggahan.\n` +
                     (banyak ? 'Biarkan aplikasi tetap terbuka sampai semua berkas selesai.\n' : '') +
@@ -245,7 +246,7 @@ export default function ResearchApp() {
                     `${banyak ? `${siap.length} berkas` : `"${siap[0].file.name}"`}: ` +
                     `${totalHalaman ? `${totalHalaman} halaman, ` : ''}±${totalPotongan} potongan teks.` +
                     `${infoKosong ? `\n${infoKosong} halaman berupa gambar dilewati.` : ''}\n\n` +
-                    `Perkiraan biaya embedding ±$${totalDolar.toFixed(3)} dari saldo OpenRouter Anda. Lanjutkan?`
+                    `Perkiraan biaya embedding ±${angka(totalDolar, 3)} dari saldo OpenRouter Anda. Lanjutkan?`
                 );
                 if (!lanjut) return;
             }
@@ -366,7 +367,7 @@ export default function ResearchApp() {
             const p = await perkiraanPdfAsn(file);
             const lanjut = window.confirm(
                 `"${file.name}": ${p.halaman} halaman.\n\n` +
-                `Semua halaman dibaca dengan OCR (mistral-ocr): perkiraan ±$${p.dolar.toFixed(3)} dari saldo OpenRouter Anda, ` +
+                `Semua halaman dibaca dengan OCR (mistral-ocr): perkiraan ±${angka(p.dolar, 3)} dari saldo OpenRouter Anda, ` +
                 `±${perkiraanMenitOcr(p.halaman)} menit.\n\n` +
                 'Hasilnya tampil sebagai pratinjau Data Tabel — belum disimpan sampai Anda menekan Simpan. Lanjutkan?'
             );
@@ -415,7 +416,7 @@ export default function ResearchApp() {
             a.click();
             a.remove();
             setTimeout(() => URL.revokeObjectURL(url), 60000);
-            const mb = (teks.length / 1048576).toFixed(1);
+            const mb = ukuranMB(teks.length);
             const baris = ringkas.tabel.map((t) => `${t.cocok ? '✓' : '✗'} ${t.nama}: ${t.berkas}${t.cocok ? '' : ` (database ${t.db})`}`).join('\n');
             alert(
                 (cek.sah ? '✓ Cadangan lengkap — semua tabel cocok dengan database.' : `✗ Cadangan TIDAK lengkap:\n${cek.masalah.join('\n')}`) +
@@ -614,7 +615,7 @@ export default function ResearchApp() {
                                 <FileText className="w-5 h-5 text-blue-400 shrink-0" />
                                 <div>
                                     <p className="text-sm text-slate-200">{doc.title}</p>
-                                    <p className="text-[10px] text-slate-500">{formatDate(doc.created_at)}</p>
+                                    <p className="text-[12px] text-slate-500">{formatDate(doc.created_at)}</p>
                                 </div>
                             </div>
                             <button
@@ -633,7 +634,7 @@ export default function ResearchApp() {
                     ))}
                     {documents.length < totalDokumen && (
                         <div className="flex flex-col items-center gap-2 pt-2">
-                            <p className="text-[11px] text-slate-500">
+                            <p className="text-[12px] text-slate-500">
                                 Menampilkan {documents.length} dari {totalDokumen} dokumen — dokumen lama juga bisa dicari lewat judul
                             </p>
                             <button
@@ -650,7 +651,7 @@ export default function ResearchApp() {
             )}
 
             {/* Stats */}
-            <div className="mt-6 text-center text-[10px] text-slate-600">
+            <div className="mt-6 text-center text-[12px] text-slate-600">
                 {documents.length < totalDokumen ? `${documents.length} dari ${totalDokumen}` : documents.length} dokumen • {knowledgeSpaces.length} spaces
             </div>
         </div>

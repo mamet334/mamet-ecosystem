@@ -72,7 +72,7 @@ export default function MobileBottomNav({ onMenuOpen }) {
         title="Menu"
       >
         <span className="material-symbols-outlined text-[22px]">menu</span>
-        <span className="text-[9px] font-medium uppercase tracking-wider">Menu</span>
+        <span className="text-[12px] font-medium uppercase tracking-wider">Menu</span>
       </button>
 
       {/* Nav Items dari metadata */}
@@ -100,7 +100,7 @@ export default function MobileBottomNav({ onMenuOpen }) {
             >
               {icon}
             </span>
-            <span className="text-[9px] font-medium uppercase tracking-wider truncate max-w-[52px]">
+            <span className="text-[12px] font-medium uppercase tracking-wider truncate max-w-[52px]">
               {app.name}
             </span>
           </button>
@@ -120,7 +120,7 @@ export default function MobileBottomNav({ onMenuOpen }) {
         >
           settings
         </span>
-        <span className="text-[9px] font-medium uppercase tracking-wider">Settings</span>
+        <span className="text-[12px] font-medium uppercase tracking-wider">Settings</span>
       </button>
     </nav>
   );

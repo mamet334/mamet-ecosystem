@@ -221,7 +221,7 @@ export default function HomeDashboard() {
         )}
 
         <div className="mt-auto pt-6 border-t border-white/5">
-          <div className="text-[9px] text-slate-600 font-mono text-center tracking-widest uppercase">
+          <div className="text-[12px] text-slate-600 font-mono text-center tracking-widest uppercase">
             MAEF Observatory V4.0
           </div>
         </div>

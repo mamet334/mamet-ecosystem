@@ -27,15 +27,15 @@ function KartuSheet({ s, terbukaAwal }) {
       <button onClick={() => setBuka((b) => !b)} className="w-full flex items-center gap-3 p-3 text-left">
         <Ikon className="w-4 h-4 text-slate-500 shrink-0" />
         <span className="text-sm text-slate-200 font-medium truncate">{s.sheet}</span>
-        <span className="text-[11px] text-slate-500">{LABEL_KELOMPOK[s.kelompok] || s.kelompok}</span>
+        <span className="text-[12px] text-slate-500">{LABEL_KELOMPOK[s.kelompok] || s.kelompok}</span>
         {/* Catatan ringan (mis. pembagian L/P beda) tidak mengubah status BERSIH — tetap harus terlihat tanpa membuka kartu. */}
         {s.kejanggalan.length > 0 && (
-          <span className="ml-auto flex items-center gap-1 text-[11px] text-amber-300" title="buka kartu untuk melihat catatan">
+          <span className="ml-auto flex items-center gap-1 text-[12px] text-amber-300" title="buka kartu untuk melihat catatan">
             <AlertTriangle className="w-3.5 h-3.5" /> {s.kejanggalan.length} catatan
           </span>
         )}
         <span className={`${s.kejanggalan.length ? '' : 'ml-auto '}text-xs text-slate-300`}>{s.orang.length} orang</span>
-        <span className={`text-[10px] px-2 py-0.5 rounded border ${WARNA_STATUS[s.status] || ''}`}>{s.status.replace('_', ' ')}</span>
+        <span className={`text-[12px] px-2 py-0.5 rounded border ${WARNA_STATUS[s.status] || ''}`}>{s.status.replace('_', ' ')}</span>
       </button>
       {buka && (
         <div className="px-4 pb-4 space-y-3 text-xs">
@@ -83,7 +83,7 @@ function KartuSheet({ s, terbukaAwal }) {
               </button>
               {tabel && (
                 <div className="mt-2 max-h-80 overflow-auto border border-slate-800 rounded">
-                  <table className="w-full text-[11px]">
+                  <table className="w-full text-[12px]">
                     <thead className="sticky top-0 bg-slate-900 text-slate-400">
                       <tr>{['No', 'Nama', 'NIP', 'L/P', 'Pend. akhir', 'Jabatan', 'PIM', 'Pelatihan', 'IPA', 'Baris'].map((h) => <th key={h} className="text-left font-medium px-2 py-1">{h}</th>)}</tr>
                     </thead>
@@ -148,7 +148,7 @@ export default function PratinjauDataTabel({ hasil, onTutup, opdAwal, onPeriksaV
           {hasil.catatanOcr?.map((c, i) => <p key={i} className="text-amber-200/80">• {c.pesan}</p>)}
         </div>
       )}
-      <p className="text-[11px] text-slate-500 mb-3">
+      <p className="text-[12px] text-slate-500 mb-3">
         {hasil.sumber === SUMBER_OCR ? 'Hasil OCR ditampilkan di perangkat ini' : 'Dibaca di perangkat ini'} — <b>belum disimpan</b> sampai Anda menekan Simpan.
       </p>
       <div className="space-y-2">

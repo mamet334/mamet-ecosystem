@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { DollarSign, AlertTriangle, RefreshCw, BarChart2 } from 'lucide-react';
 import { supabase } from '../supabase';
+import { angka, waktuLokal } from '../core/runtime/services/formatAngka.js';
 
 // Dipakai kalau plafon sistem tidak terbaca. Angkanya sengaja disamakan dengan
 // FALLBACK_DAILY_LIMIT di quota_middleware.ts — layar ini tidak boleh menjanjikan
@@ -121,7 +122,7 @@ export default function BillingDashboard() {
             <div>
               <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Pemakaian Hari Ini</h3>
               <div className="text-4xl font-black text-white tracking-tight">
-                ${dailyCost.toFixed(4)} <span className="text-lg text-slate-500 font-medium">/ ${DAILY_LIMIT.toFixed(2)}</span>
+                ${angka(dailyCost, 4)} <span className="text-lg text-slate-500 font-medium">/ ${angka(DAILY_LIMIT, 2)}</span>
               </div>
             </div>
             {percentage >= 100 && (
@@ -135,19 +136,19 @@ export default function BillingDashboard() {
             <div className={`h-4 rounded-full transition-all duration-1000 shadow-lg ${progressColor}`} style={{ width: `${percentage}%` }}></div>
           </div>
           <p className="text-xs text-slate-400 relative z-10">
-            <strong className="text-slate-300">{percentage.toFixed(1)}%</strong> dari batas harian efektif. Direset setiap jam 00:00 UTC.
+            <strong className="text-slate-300">{angka(percentage, 1)}%</strong> dari batas harian efektif. Direset setiap jam 00:00 UTC.
           </p>
           {/* Menampilkan KEDUA batas, bukan cuma hasil akhirnya. Saat Owner kena
               circuit breaker, pertanyaan pertamanya adalah "batas yang mana?" —
               dan menjawabnya butuh melihat keduanya sekaligus. */}
-          <p className="text-[11px] text-slate-500 mt-2 relative z-10">
+          <p className="text-[12px] text-slate-500 mt-2 relative z-10">
             Batas efektif = nilai terkecil antara batas pribadi Anda dan plafon sistem.{' '}
             <span className="text-slate-400">
-              Pribadi: {Number.isFinite(batasPribadi) && batasPribadi > 0 ? `$${batasPribadi}` : 'tidak diset'}
+              Pribadi: {Number.isFinite(batasPribadi) && batasPribadi > 0 ? `$${angka(batasPribadi, 2)}` : 'tidak diset'}
             </span>
             {' · '}
             <span className="text-slate-400">
-              Plafon sistem: {Number.isFinite(plafonSistem) && plafonSistem > 0 ? `$${plafonSistem}` : `tidak terbaca (fallback $${FALLBACK_DAILY_LIMIT})`}
+              Plafon sistem: {Number.isFinite(plafonSistem) && plafonSistem > 0 ? `$${angka(plafonSistem, 2)}` : `tidak terbaca (fallback $${angka(FALLBACK_DAILY_LIMIT, 2)})`}
             </span>
             . Plafon sistem hanya bisa diubah lewat service role, jadi tombol di UI hanya bisa membuat batas lebih ketat.
           </p>
@@ -185,7 +186,7 @@ export default function BillingDashboard() {
                 ) : (
                   logs.map(log => (
                     <tr key={log.id} className="hover:bg-slate-800/50 transition-colors text-slate-300">
-                      <td className="px-5 py-3 text-xs text-slate-400">{new Date(log.created_at).toLocaleString()}</td>
+                      <td className="px-5 py-3 text-xs text-slate-400">{waktuLokal(log.created_at)}</td>
                       <td className="px-5 py-3 font-medium capitalize flex items-center gap-2">
                         <span className={`w-2 h-2 rounded-full ${log.provider === 'gemini' ? 'bg-blue-400' : log.provider === 'openai' ? 'bg-emerald-400' : log.provider === 'groq' ? 'bg-orange-400' : 'bg-purple-400'}`}></span>
                         {log.provider}
@@ -195,7 +196,7 @@ export default function BillingDashboard() {
                         <span className="text-blue-400">{log.input_tokens}</span> / <span className="text-emerald-400">{log.output_tokens}</span>
                       </td>
                       <td className="px-5 py-3 text-right font-mono text-xs font-bold text-emerald-400">
-                        ${Number(log.cost_usd).toFixed(5)}
+                        ${angka(log.cost_usd, 5)}
                       </td>
                     </tr>
                   ))

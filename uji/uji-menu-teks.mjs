@@ -18,7 +18,7 @@ const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (kode) =>
   kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
-console.log('uji-menu-teks v1');
+console.log('uji-menu-teks v2');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -87,14 +87,22 @@ const rasio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
 const krem = hex((M.match(/const KREM = '(#[0-9a-f]{6})'/i) || [])[1] || '#000000');
 const latar = hex((M.match(/bg-\[(#[0-9a-f]{6})\]/i) || [])[1] || '#ffffff');
 const opTakAktif = Number((M.match(/aktif \? 'opacity-100' : 'opacity-(\d+) hover:opacity-100'/) || [])[1]) / 100;
-const opKet = Number((M.match(/text-\[11px\] opacity-(\d+)/) || [])[1]) / 100;
-const opJudul = Number((M.match(/text-\[11px\] opacity-\[(0\.\d+)\]/) || [])[1]);
+// v2 (K4): pola tidak lagi memaku ukuran 11px — yang diukur di sini tingkat kecerahan, bukan ukurannya.
+const opKet = Number((M.match(/text-\[\d+px\] opacity-(\d+)/) || [])[1]) / 100;
+const opJudul = Number((M.match(/text-\[\d+px\] opacity-\[(0\.\d+)\]/) || [])[1]);
 const ukur = {
   'pilihan tidak aktif': rasio(campur(krem, latar, opTakAktif), latar),
   'keterangan Lanjutkan': rasio(campur(krem, latar, opTakAktif * opKet), latar),
   'judul sub-menu': rasio(campur(krem, latar, opJudul), latar),
 };
 for (const [n, r] of Object.entries(ukur)) cek(Number.isFinite(r) && r >= 4.5, `${n}: ${r.toFixed(2)}:1`);
+
+// ── 7b. Skala huruf K4 (Owner 19 Okt: "nyaman dibaca secara lama") ────────────────────────────────
+console.log('\n-- 7b. skala huruf: isi menu ≥ 14px, tak ada teks < 12px --');
+const ukuranItem = Number((M.match(/tracking-\[0\.12em\] text-\[(\d+)px\]/) || [])[1]);
+cek(ukuranItem >= 14, `isi menu ${ukuranItem}px (≥ 14px)`);
+const semuaUkuran = [...M.matchAll(/text-\[(\d+)px\]/g)].map((m) => Number(m[1]));
+cek(semuaUkuran.length > 0 && Math.min(...semuaUkuran) >= 12, `teks terkecil di menu ${Math.min(...semuaUkuran)}px (≥ 12px)`, semuaUkuran);
 
 // ── 8. Tak menambah resep generik ───────────────────────────────────────────────────────────────
 console.log('\n-- 8. warna dari palet LampLogin, bukan token Material --');

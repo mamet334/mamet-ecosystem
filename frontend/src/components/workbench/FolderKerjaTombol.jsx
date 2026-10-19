@@ -43,14 +43,14 @@ export default function FolderKerjaTombol() {
           : 'Pilih folder kerja — Mamet bisa membaca isinya, lalu mengubah atau menjalankan program hanya dengan izin Anda'}
       >
         {status.aktif ? <FolderOpen className="w-4 h-4" /> : <Folder className="w-4 h-4" />}
-        {status.aktif && <span className="text-[11px] max-w-[120px] truncate">{status.nama}</span>}
+        {status.aktif && <span className="text-[12px] max-w-[120px] truncate">{status.nama}</span>}
       </button>
       {status.aktif && (
         <button type="button" onClick={lepas} className="p-1 rounded-lg text-on-surface-variant hover:text-red-400" title="Lepas folder kerja">
           <X className="w-3.5 h-3.5" />
         </button>
       )}
-      {pesan && <span className="absolute bottom-full left-0 mb-1 whitespace-nowrap rounded bg-red-900/80 px-2 py-1 text-[10px] text-red-100">{pesan}</span>}
+      {pesan && <span className="absolute bottom-full left-0 mb-1 whitespace-nowrap rounded bg-red-900/80 px-2 py-1 text-[12px] text-red-100">{pesan}</span>}
     </div>
   );
 }

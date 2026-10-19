@@ -25,7 +25,7 @@ export default function WorkspaceNavWidget() {
 
   return (
     <div className="flex flex-col space-y-1">
-      <div className="text-[10px] font-bold text-slate-500 uppercase px-2 mb-2 tracking-wider">
+      <div className="text-[12px] font-bold text-slate-500 uppercase px-2 mb-2 tracking-wider">
         Workspaces
       </div>
       {workspaces.map((ws) => {

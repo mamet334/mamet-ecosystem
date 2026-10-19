@@ -48,6 +48,10 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Angka TABULAR di seluruh aplikasi (Item 127, K4 "nyaman dibaca secara lama"): setiap digit selebar
+     sama, jadi angka yang berubah — meteran konteks saat jawaban mengalir, durasi, biaya — tidak "menari"
+     ke kiri-kanan, dan kolom angka di tabel Billing/Observability rata. Inter mendukungnya (fitur tnum). */
+  font-variant-numeric: tabular-nums;
   background-color: #0a0a0c;
   color: #e5e1e4;
   /* Touch-friendly tap highlight */

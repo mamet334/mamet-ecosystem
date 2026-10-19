@@ -30,7 +30,7 @@ export default function ApplicationContainer({ isMobile }) {
             key={app.id} 
             className={`absolute inset-0 ${isActive ? 'flex' : 'hidden'} flex-col h-full w-full ${isMobile ? 'pb-20' : ''}`}
           >
-            <React.Suspense fallback={<div className="flex h-full w-full items-center justify-center text-primary text-[10px] font-label-mono uppercase tracking-widest">Loading OS Module...</div>}>
+            <React.Suspense fallback={<div className="flex h-full w-full items-center justify-center text-primary text-[12px] font-label-mono uppercase tracking-widest">Loading OS Module...</div>}>
               <Component />
             </React.Suspense>
           </div>
