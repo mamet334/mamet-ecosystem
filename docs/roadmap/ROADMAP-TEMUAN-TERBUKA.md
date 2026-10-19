@@ -1,7 +1,8 @@
 # ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
 
 **Tipe Dokumen:** Daftar sisa pekerjaan (temuan audit yang belum punya dokumen roadmap sendiri)
-**Status:** ⏳ **T17 ditambahkan 19 Okt 2026** — penyimpanan otomatis chat melewatkan perubahan saat penyimpanan sebelumnya berjalan.
+**Status:** ⏳ **T18 ditambahkan 19 Okt 2026** — 19 kelas Tailwind di komponen tak pernah dibuat (gaya yang tertulis tapi tak tampil).
+**T17 ditambahkan 19 Okt 2026** — penyimpanan otomatis chat melewatkan perubahan saat penyimpanan sebelumnya berjalan.
 **T16 ditambahkan 19 Okt 2026** — lima modul konsol uji menunjuk folder yang sudah tidak ada.
 **T15 ditambahkan 18 Okt 2026** — server `agent-process` mengimpor kode klien dari
 `frontend/src`; ketahuan dari keluaran deploy, bukan dari kode.
@@ -715,6 +716,28 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
 
 - **Status:** ⏳ tercatat, belum dirancang, belum diputuskan Owner. Tabel titik impornya juga ada di
   [changelog Item 126](../project-memory/changelog/2026-10-18-penanda-pemilih-model.md).
+
+## T18 — 19 kelas Tailwind di komponen tak pernah dibuat — gaya yang tertulis tapi tak tampil (ketahuan saat pemeriksaan "error tersembunyi" Item 127, 2026-10-19)
+
+- **Temuan:** kelas di `className` komponen dipindai terhadap CSS build produksi; **19** tidak ada di sana. Tailwind
+  membuangnya tanpa suara — nilai di luar skala atau plugin yang tidak terpasang:
+  - animasi masuk `animate-in` · `fade-in` · `slide-in-from-bottom-2/4` · `slide-in-from-right-2/4` (plugin
+    `tailwindcss-animate` tidak terpasang) — Billing, NodeInspector, ObservabilityPanel, ConversationEngine,
+    MemoryContextPanel; `animate-shrink-width` · `animate-slide-in-right` (SystemNotificationCenter);
+  - `text-headline-sm` · `max-w-screen-container-max` (Settings) · `rounded-DEFAULT` (Login.jsx, kode mati K6);
+  - `py-0.2` (ConversationEngine, MemoryContextPanel) · `bg-current/10` · `border-current/20` (MemoryContextPanel);
+  - LampLogin: `from-black/43` · `to-black/52` · `via-78%` (bayangan samping tak pernah tampil) ·
+    `duration-600` · `duration-900`.
+- **Dampak:** kecil — tidak ada yang rusak, hanya gaya yang dimaksud penulisnya tak tampil (animasi masuk tak ada,
+  ukuran judul Settings jatuh ke bawaan, lencana di MemoryContextPanel tanpa latar/garis). Yang berdampak
+  **sudah ditangani**: bayangan samping LampLogin menjatuhkan kontras label redup di dinding aplikasi → salinan di
+  `LatarRuangan.jsx` ditulis dengan nilai bebas (keputusan Owner A, 19 Okt).
+- **Kenapa tidak diperbaiki sekarang:** tiap kelas butuh keputusan sendiri — menambah plugin animasi bertentangan
+  dengan arah Tahap 3 (buang gerak dekoratif); LampLogin tak boleh disentuh (K5); Login.jsx kode mati (K6).
+- **Arah:** animasi masuk dibuang saat Tahap 3 "gerak dekoratif"; sisanya diganti nilai yang ada di skala. Penjaga
+  menyeluruh: uji yang mengompilasi kelas komponen dengan Tailwind sungguhan (cara `uji-latar-ruangan` v2) agar
+  kelas mati baru langsung merah. LampLogin menunggu K5.
+- **Status:** ⏳ tercatat, belum diputuskan.
 
 ## T17 — Penyimpanan otomatis chat melewatkan perubahan yang datang saat penyimpanan sebelumnya masih berjalan (ketahuan saat Item 127 Tahap 1, 2026-10-19)
 

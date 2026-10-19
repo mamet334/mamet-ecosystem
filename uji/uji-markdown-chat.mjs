@@ -27,7 +27,7 @@ const FE = join(AKAR, 'frontend');
 const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (kode) => kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
-console.log('uji-markdown-chat v2');
+console.log('uji-markdown-chat v3');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -47,13 +47,13 @@ await esbuild.build({
       import { riwayatPerintahDariPesan, pesanKeluaranPerintah } from './src/core/runtime/services/engineer/ProsedurEngineer.js';
       export const render = (teks) => renderToStaticMarkup(React.createElement(TeksMarkdown, { teks }));
       export const renderKotak = (p) => renderToStaticMarkup(React.createElement(KotakKode, p));
-      export { riwayatPerintahDariPesan, pesanKeluaranPerintah };`,
+      export { riwayatPerintahDariPesan, pesanKeluaranPerintah, TeksMarkdown };`,
     resolveDir: FE, loader: 'jsx',
   },
   bundle: true, platform: 'node', format: 'esm', outfile: keluar, jsx: 'automatic', logLevel: 'silent',
   banner: { js: "import { createRequire as __cr } from 'module'; const require = __cr(import.meta.url);" },
 });
-const { render, renderKotak, riwayatPerintahDariPesan, pesanKeluaranPerintah } = await import(pathToFileURL(keluar).href);
+const { render, renderKotak, riwayatPerintahDariPesan, pesanKeluaranPerintah, TeksMarkdown } = await import(pathToFileURL(keluar).href);
 rmSync(tmp, { recursive: true, force: true });
 
 // ── 1. Bentuk ───────────────────────────────────────────────────────────────────────────────────
@@ -117,6 +117,16 @@ cek(iSplit > 0 && iPakai > iSplit, 'penanda Engineer dipisah SEBELUM Markdown di
 cek(/if \(m\.role !== 'user'\) return <TeksMarkdown key=\{i\} teks=\{part\} \/>;\s*return <span key=\{i\} className="whitespace-pre-wrap">\{part\}<\/span>;/.test(CE),
   'hanya jawaban model yang dirender Markdown; pesan pengguna tetap apa adanya');
 cek(/\{parsed\.thinking\}/.test(CE), 'nalar <think> tetap ditampilkan');
+
+// v3 (pemeriksaan "error tersembunyi" 19 Okt): setiap potongan jawaban merender ulang SELURUH daftar pesan. Tanpa memo,
+// Markdown semua jawaban lama diurai ulang tiap token — diukur ±6,7 ms per jawaban panjang → chat 30 jawaban ±200 ms
+// per token (anggaran satu bingkai 16 ms). Yang dijaga: komponen yang DIEKSPOR benar-benar memo, dan tak ada prop
+// beridentitas baru tiap render yang akan menggagalkan memo-nya diam-diam.
+cek(TeksMarkdown?.$$typeof === Symbol.for('react.memo'), 'TeksMarkdown yang diekspor adalah React.memo — jawaban lama tak diurai ulang tiap token');
+const TMk = tanpaKomentar(baca('frontend/src/components/workbench/TeksMarkdown.jsx'));
+cek(/remarkPlugins=\{PLUGIN\}/.test(TMk) && /const PLUGIN = \[remarkGfm\];/.test(TMk), 'daftar plugin konstan di luar komponen (tak dibuat ulang tiap render)');
+const pakaiTM = [...CE.matchAll(/<TeksMarkdown ([^>]*)\/>/g)].map((m) => m[1].trim());
+cek(pakaiTM.length > 0 && pakaiTM.every((p) => /^key=\{[^}]+\} teks=\{[^}]+\}$/.test(p)), 'ConversationEngine hanya mengoper `teks` (string) — memo bisa bekerja', pakaiTM);
 
 // ── 5. Keluaran terminal Engineer (v2) ──────────────────────────────────────────────────────────
 // Owner 19 Okt (gambar WS Engineer): "[TERMINAL OUTPUT for: …]" tampil sebagai teks biasa di gelembung pengguna —

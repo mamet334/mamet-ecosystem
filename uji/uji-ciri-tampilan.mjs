@@ -141,7 +141,7 @@ const GARIS_DASAR = {
   gerakDekoratif: 51,
   kacaBlur: 15,
   glowRgba: 26,
-  gradien: 6,
+  gradien: 5, // 6 → 5 (19 Okt): gradien area kotak ketik chat dibuang — jadi pita gelap di atas dinding ruangan
   berkasIkonLucide: 26,
   berkasIkonMaterialSymbols: 8,
 };

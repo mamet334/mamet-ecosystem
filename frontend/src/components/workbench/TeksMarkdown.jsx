@@ -92,11 +92,19 @@ const KOMPONEN = {
   td: ({ node, ...p }) => <td className="px-3 py-2 border-b border-outline-variant align-top" {...p} />,
 };
 
-export default function TeksMarkdown({ teks }) {
+const PLUGIN = [remarkGfm];
+
+function TeksMarkdown({ teks }) {
   if (!teks) return null;
   return (
     <div className="leading-7 break-words">
-      <Markdown remarkPlugins={[remarkGfm]} components={KOMPONEN}>{teks}</Markdown>
+      <Markdown remarkPlugins={PLUGIN} components={KOMPONEN}>{teks}</Markdown>
     </div>
   );
 }
+
+// DI-MEMO. Saat jawaban mengalir, setiap potongan memanggil setMessages dan SELURUH daftar pesan dirender ulang;
+// tanpa memo, Markdown setiap jawaban LAMA ikut diurai ulang tiap token — diukur 19 Okt: ±6,7 ms per jawaban
+// panjang, jadi chat 30 jawaban ±200 ms per token (anggaran satu bingkai 16 ms) → jawaban tampak tersendat.
+// Prop-nya hanya `teks` (string), jadi jawaban yang teksnya tak berubah dilewati; yang diurai hanya yang mengalir.
+export default React.memo(TeksMarkdown);

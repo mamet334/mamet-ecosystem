@@ -2408,8 +2408,9 @@ export default function ConversationEngine({ sessionId }) {
               </div>
             </div>
 
-            {/* Input Area */}
-            <div className="px-3 pt-2 pb-2 bg-gradient-to-t from-background via-background to-transparent z-10 flex flex-col items-center w-full">
+            {/* Input Area — tanpa gradien latar: dulu `from-background` (warna latar lama) memudar ke atas; di atas dinding
+                ruangan ia menjadi pita gelap. Area ini ada di alur (bukan melayang di atas pesan), jadi tak perlu peredam. */}
+            <div className="px-3 pt-2 pb-2 z-10 flex flex-col items-center w-full">
               {attachedFile && (
                 <div className="w-full max-w-[68rem] mb-2 flex items-center justify-between bg-surface-container border border-outline-variant rounded-lg px-3 py-2 animate-in fade-in slide-in-from-bottom-2">
                   <div className="flex items-center gap-2 text-body-sm text-on-surface">

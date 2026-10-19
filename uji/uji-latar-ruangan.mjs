@@ -14,16 +14,23 @@
 //   3. TEMBUS — akar sebelas layar tidak mengecat latar sendiri.
 //   4. TERBACA — kontras teks di titik dinding PALING TERANG (dihitung dari gradiennya sendiri) ≥ 4,5:1.
 //   5. BILAH GULIR — gaya tipis berlaku untuk SEMUA elemen, tak bergantung kelas yang bisa lupa dipasang.
+//
+// v2 (19 Okt, pemeriksaan "error tersembunyi"): v1 LULUS padahal salah. Ia menghitung kontras dengan bayangan samping
+// LampLogin (`from-black/43 via-78% to-black/52`) — tetapi Tailwind 3.4 tidak pernah membuat ketiga kelas itu (43, 52,
+// 78% di luar skala), jadi bayangannya tak pernah tergambar dan titik terang sebenarnya rgb(98,58,30), bukan (77,45,23):
+// slate-500 3,62:1, bukan 4,55. Uji menghitung CSS yang DITULIS, bukan yang DIBUAT. Kini setiap kelas latar
+// DIKOMPILASI dengan Tailwind sungguhan (konfigurasi proyek), dan lapisan hanya ikut dihitung bila kelasnya dibuat.
 
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (kode) => kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
 
-console.log('uji-latar-ruangan v1');
+console.log('uji-latar-ruangan v2');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -39,11 +46,37 @@ const konst = (nama) => (LR.match(new RegExp(`const ${nama} = (['\`])([\\s\\S]*?
 console.log('\n-- 1. salinan dinding identik dengan LampLogin --');
 const DINDING = konst('DINDING'), SAMPING = konst('BAYANGAN_SAMPING'), VINYET = konst('VINYET'), NOISE = konst('NOISE');
 cek(DINDING && LL.includes(`className="absolute inset-0 ${DINDING}"`), 'gradien dinding = lapisan 0 LampLogin', DINDING);
-cek(SAMPING && LL.includes(`className="absolute inset-0 ${SAMPING}"`), 'bayangan samping = LampLogin', SAMPING);
+// Bayangan samping: NILAINYA sama dengan yang dimaksud LampLogin (.43 · 78% · .52), tetapi ditulis sebagai nilai bebas
+// supaya benar-benar dibuat Tailwind (keputusan Owner A, 19 Okt).
+const angkaLL = (LL.match(/bg-gradient-to-r from-black\/(\d+) via-transparent via-(\d+)% to-black\/(\d+)/) || []).slice(1).map(Number);
+const angkaLR = ((SAMPING || '').match(/^bg-gradient-to-r from-black\/\[\.(\d+)\] via-transparent via-\[(\d+)%\] to-black\/\[\.(\d+)\]$/) || []).slice(1).map(Number);
+cek(angkaLL.length === 3 && JSON.stringify(angkaLL) === JSON.stringify(angkaLR), `bayangan samping bernilai sama dengan maksud LampLogin (${angkaLL.join(' · ')})`, { angkaLL, angkaLR, SAMPING });
 cek(VINYET && LL.includes(VINYET), 'vinyet = vinyet akhir LampLogin', VINYET);
 cek(NOISE && LL.includes(NOISE), 'tekstur noise = LampLogin', (NOISE || '').slice(0, 60));
 cek(/opacity-10 mix-blend-overlay/.test(LR) && /opacity-10 mix-blend-overlay/.test(LL), 'kekuatan noise sama (opacity-10, overlay)');
 cek(/pointer-events-none/.test(LR) && /aria-hidden="true"/.test(LR), 'dinding tak menangkap klik dan tak dibaca pembaca layar');
+
+// ── 1b. Setiap kelas latar benar-benar DIBUAT Tailwind ──────────────────────────────────────────
+console.log('\n-- 1b. kelas latar dikompilasi dengan Tailwind sungguhan --');
+const reqFE = createRequire(join(AKAR, 'frontend', 'package.json'));
+const postcss = reqFE('postcss'), tailwind = reqFE('tailwindcss'), loadConfig = reqFE('tailwindcss/loadConfig');
+const konfigurasi = loadConfig(join(AKAR, 'frontend', 'tailwind.config.js'));
+// Pelolosan nama kelas memakai fungsi Tailwind SENDIRI — tulisan tangan meleset (koma jadi `\2c `), dan pemeriksa yang
+// meleset memberi "tak dibuat" palsu.
+const esc = reqFE('tailwindcss/lib/util/escapeClassName').default;
+const dibuat = async (daftar) => {
+  // `block` ikut agar Tailwind tak memperingatkan "tak ada kelas" saat yang diperiksa memang kelas mati.
+  const { css } = await postcss([tailwind({ ...konfigurasi, content: [{ raw: `<div className="block ${daftar.join(' ')}">`, extension: 'jsx' }] })])
+    .process('@tailwind utilities;', { from: undefined });
+  return Object.fromEntries(daftar.map((k) => [k, css.includes('.' + esc(k) + ' ') || css.includes('.' + esc(k) + '{')]));
+};
+const kelasLR = [DINDING, SAMPING, VINYET].join(' ').split(/\s+/).filter(Boolean);
+const hasilLR = await dibuat(kelasLR);
+const takDibuat = Object.entries(hasilLR).filter(([, ada]) => !ada).map(([k]) => k);
+cek(takDibuat.length === 0, `${kelasLR.length} kelas latar semuanya dibuat Tailwind`, takDibuat);
+const hasilLL = await dibuat(['from-black/43', 'via-78%', 'to-black/52']);
+cek(Object.values(hasilLL).every((ada) => !ada),
+  'kelas bayangan LampLogin memang TIDAK dibuat (alasan nilai bebas di atas; bila Tailwind kelak membuatnya, tinjau ulang)', hasilLL);
 
 // ── 2. Terpasang ────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 2. terpasang di OSDesktopShell --');
@@ -75,6 +108,14 @@ for (const [berkas, awalan] of AKAR_LAYAR) {
   const kelas = i < 0 ? null : kode.slice(i).match(/className="([^"]*)"/)[1];
   cek(kelas !== null && !/(^|\s)bg-/.test(kelas), `${berkas}: akar tembus pandang`, kelas);
 }
+// v2: gradien yang memudar KE warna latar lama (from-/via-/to-background) — di atas dinding ia jadi pita gelap. Dulu
+// area kotak ketik chat memakainya.
+const pakaiLatarLama = [];
+for (const f of ['workbench/ConversationEngine.jsx', 'workbench/AppShell.jsx', 'dashboard/HomeDashboard.jsx', 'Settings.jsx', 'os/ApplicationContainer.jsx', 'os/OSDesktopShell.jsx']) {
+  const kode = tanpaKomentar(baca('frontend/src/components/' + f));
+  for (const m of kode.matchAll(/\b(?:from|via|to)-background\b/g)) pakaiLatarLama.push(`${f}: ${m[0]}`);
+}
+cek(pakaiLatarLama.length === 0, 'tak ada gradien yang memudar ke warna latar lama (pita gelap di atas dinding)', pakaiLatarLama);
 
 // ── 4. Terbaca di titik dinding paling terang ───────────────────────────────────────────────────
 console.log('\n-- 4. kontras di titik dinding paling terang --');
@@ -95,8 +136,13 @@ const [rx, ry, cx, cy] = radial.slice(1, 5).map((n) => Number(n) / 100);
 const hentiRadial = radial[5].split(/,(?![^(]*\))/).map((s) => { const [c, p] = s.split('_'); return [parseFloat(p) / 100, warna(c)]; });
 const linier = DINDING.match(/linear-gradient\(180deg,(.*?)\)\]$/)[1].split(',');
 const hentiLinier = linier.map((s, i) => { const [c, p] = s.split('_'); return [p ? parseFloat(p) / 100 : i / (linier.length - 1), warna(c)]; });
-const hentiSamping = [[0, [0, 0, 0, 0.43]], [0.78, [0, 0, 0, 0]], [1, [0, 0, 0, 0.52]]];
-cek(SAMPING === 'bg-gradient-to-r from-black/43 via-transparent via-78% to-black/52', 'bayangan samping sesuai model hitungan');
+// Bayangan samping ikut dihitung HANYA bila ketiga kelasnya benar-benar dibuat — kalau tidak, ia tak tergambar.
+const sampingTergambar = SAMPING.split(/\s+/).every((k) => hasilLR[k]);
+const [a0, posVia, a1] = angkaLR;
+const hentiSamping = sampingTergambar
+  ? [[0, [0, 0, 0, a0 / 100]], [posVia / 100, [0, 0, 0, 0]], [1, [0, 0, 0, a1 / 100]]]
+  : [[0, [0, 0, 0, 0]], [1, [0, 0, 0, 0]]];
+console.log(`     bayangan samping ${sampingTergambar ? `tergambar (.${a0} · ${posVia}% · .${a1})` : 'TIDAK tergambar — tak ikut dihitung'}`);
 let terang = null;
 for (let x = 0; x <= 1.0001; x += 0.01) for (let y = 0; y <= 1.0001; y += 0.01) {
   let c = tumpuk(titik(hentiRadial, Math.hypot((x - cx) / rx, (y - cy) / ry)), titik(hentiLinier, y));

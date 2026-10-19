@@ -125,7 +125,10 @@ export default function RiwayatKonversi() {
           {/* `whitespace-pre-line`: baris "(teknis: …)" dari `blokGalat` harus turun ke bawah,
               bukan menempel di belakang saran — ia yang dikutip Owner saat melapor. Komentarnya di
               SINI, bukan di dalam `{pesan && ( … )}`: di dalam tanda kurung itu posisinya ekspresi,
-              dan `{/* */}` di posisi ekspresi dibaca sebagai literal objek — build gagal. */}
+              dan komentar JSX di posisi ekspresi dibaca sebagai literal objek — build gagal.
+              (Komentar ini dulu MENULIS contoh pembuka-penutup komentar di dalam dirinya; penutupnya
+              mengakhiri komentar lebih awal dan sisa kalimatnya tampil sebagai teks di layar, 8–19 Okt.
+              Dijaga uji-komentar-jsx.) */}
           {pesan && (
             <div className="mx-2 mb-2 px-2 py-1.5 rounded-lg bg-error/10 border border-error/30 text-[12px] text-error leading-snug whitespace-pre-line">
               {pesan}
