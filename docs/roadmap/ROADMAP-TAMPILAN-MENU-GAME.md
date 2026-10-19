@@ -3,9 +3,9 @@
 **Tipe Dokumen:** Rancangan (blueprint) perubahan UI — memenuhi syarat tata kelola MUS §20 (tujuan,
 ruang lingkup, dokumentasi, analisis, alasan, persetujuan Owner)
 **Item:** 127
-**Status:** 🟡 **Tahap 0 ✅ selesai 19 Okt** (inventaris lengkap, dua uji penjaga, biaya tumpukan diukur) —
-**Tahap 1 berikutnya.** K1 dan K3 diputuskan Owner 19 Okt (graf terbuka di panel; fondasi dulu); K2, K4,
-K5, K6 baru dibutuhkan di Tahap 3. **Kode aplikasi belum diubah** — Tahap 0 hanya menambah berkas uji.
+**Status:** 🟡 **Tahap 0 ✅ · Tahap 1 langkah 1–4 ✅ (langkah 5 diparkir) · Tahap 2a ✅ — 19 Okt.**
+**Berikutnya: 2b Settings bertab.** K1 dan K3 diputuskan Owner 19 Okt (graf terbuka di panel; fondasi dulu);
+K2, K4, K5, K6 baru dibutuhkan di Tahap 3.
 **Tanggal:** 2026-10-19
 **Aplikasi:** **Mamet Ecosystem** (`frontend/`) — **bukan** Mametlite.
 **Batas tegas:** **`LampLogin.jsx` tidak diubah** dalam pekerjaan ini (arahan Owner 19 Okt). **Face Mamet
@@ -422,8 +422,10 @@ yang sudah ada, jadi pesan dan kotak ketik akhirnya sejajar.
 
 Langkah:
 
-- **2a** — tiga laci + kolom baca di layar chat. Diuji dengan tangkapan layar 1366×720 sebelum/sesudah dan
-  pengukuran lebar kolom baca di browser.
+- **2a** ✅ **19 Okt** — tiga laci + kolom baca di layar chat; ditambah atas permintaan Owner ("kurang cakep"):
+  bilah tombol jadi satu baris, tiga ikon kembar bilah samping diganti. Jawaban model **524 → 768px**; kolom
+  baca tidak bergeser saat laci mana pun dibuka. `uji-kerangka-chat.mjs` v2, 12 mutasi menggigit —
+  [log](../project-memory/changelog/2026-10-19-menu-game-tahap2a-kerangka-chat.md).
 - **2b** — Settings bertab: 9 bagian jadi daftar kiri, isi di kanan; Keluar tetap di bagian identitas sampai
   menu utama ada (Tahap 3).
 - **2c** — **uji inventaris**: tiap baris §6 dipetakan ke jangkar kodenya (tombol, `title`, penangan); baris

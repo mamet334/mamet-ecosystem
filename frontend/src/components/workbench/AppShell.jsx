@@ -93,10 +93,12 @@ export default function AppShell({ mainPanel: MainPanelComponent }) {
         className={`flex-1 ${isMobile ? 'flex flex-col overflow-y-auto' : 'grid overflow-hidden'} relative transition-all duration-300`}
         style={!isMobile ? {
           gridTemplateRows: 'minmax(0, 1fr)',
+          // Zona kanan TIDAK lagi kolom grid (Item 127 Tahap 2): ia laci yang menutupi tepi kanan, supaya
+          // kolom baca chat tidak dijepit. Satu-satunya isinya yang benar-benar dibuka adalah Monitor MAEF —
+          // diukur 19 Okt: tersimpan terbuka untuk Assistant & Engineer, memakan 350px dari layar 1366px Owner.
           gridTemplateColumns: [
             leftWidgets.length > 0 ? `${layout?.left_size || 300}px` : null,
-            '1fr',
-            rightWidgets.length > 0 ? `${layout?.right_size || 350}px` : null
+            '1fr'
           ].filter(Boolean).join(' ')
         } : {}}
       >
@@ -144,15 +146,20 @@ export default function AppShell({ mainPanel: MainPanelComponent }) {
           )}
         </div>
 
-        {/* Right Workbench */}
+        {/* Right Workbench — laci yang menutupi di desktop; di seluler tetap bertumpuk seperti sebelumnya */}
         {rightWidgets.length > 0 && (
-          <WorkbenchZone 
-            position="right" 
-            widgets={rightWidgets} 
-            width={layout?.right_size || 350}
-            onResize={handleResize}
-            onClose={(id) => manager.closeWidget(id)}
-          />
+          <div
+            className={isMobile ? '' : 'absolute right-0 top-0 h-full z-40 shadow-2xl'}
+            style={isMobile ? undefined : { width: `${layout?.right_size || 350}px` }}
+          >
+            <WorkbenchZone
+              position="right"
+              widgets={rightWidgets}
+              width={layout?.right_size || 350}
+              onResize={handleResize}
+              onClose={(id) => manager.closeWidget(id)}
+            />
+          </div>
         )}
         
       </div>

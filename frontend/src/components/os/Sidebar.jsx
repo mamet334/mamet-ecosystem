@@ -58,6 +58,13 @@ export default function Sidebar({ isMobile = false, isOpen = false, onClose }) {
     if (lower.includes('knowledge')) return 'menu_book';
     if (lower.includes('memory'))    return 'database';
     if (lower.includes('forge'))     return 'architecture';
+    // Item 127 Tahap 2: tiga aplikasi ini dulu tak cocok tebakan mana pun dan SEMUANYA jatuh ke 'apps' —
+    // tiga ikon kotak-titik kembar di bilah samping. Ikonnya dipilih dari yang SUDAH ada di subset font
+    // (src/assets/fonts/daftar-ikon.txt), jadi tak perlu `npm run ikon`. Akar masalahnya — bilah ini
+    // menebak dari NAMA padahal metadata sudah menyimpan ikonnya — dituntaskan di Tahap 3 (satu set ikon).
+    if (lower.includes('file'))      return 'folder_open';
+    if (lower.includes('log'))       return 'description';
+    if (lower.includes('billing'))   return 'savings';
     return 'apps';
   };
 

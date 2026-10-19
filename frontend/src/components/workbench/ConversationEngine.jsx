@@ -193,7 +193,8 @@ export default function ConversationEngine({ sessionId }) {
   // --- Memory Context Panel State ---
   const [activeMemories, setActiveMemories] = useKeadaanTersimpan(kunciSesi, 'activeMemories', []);
   const [lastMemoryQuery, setLastMemoryQuery] = useKeadaanTersimpan(kunciSesi, 'lastMemoryQuery', '');
-  const [isMemoryPanelOpen, setIsMemoryPanelOpen] = useKeadaanTersimpan(kunciSesi, 'isMemoryPanelOpen', true);
+  // Tertutup bawaan (Item 127 Tahap 2): ia laci "satu klik", bukan kolom tetap — pola standar aplikasi asisten.
+  const [isMemoryPanelOpen, setIsMemoryPanelOpen] = useKeadaanTersimpan(kunciSesi, 'isMemoryPanelOpen', false);
   const [isMemoryLoading, setIsMemoryLoading] = useKeadaanTersimpan(kunciSesi, 'isMemoryLoading', false);
 
   // --- Engineer State ---
@@ -1642,7 +1643,9 @@ export default function ConversationEngine({ sessionId }) {
     <div className="flex flex-1 min-w-0 min-h-0 h-full w-full bg-background font-body-base text-on-surface">
 
       {/* Sidebar Riwayat Chat */}
-      <div className={`transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-64' : 'w-0 overflow-hidden'} shrink-0 z-50 md:relative absolute left-0 top-0 h-full bg-background border-r border-outline-variant`}>
+      {/* Laci di SEMUA lebar (Item 127 Tahap 2) — dulu `md:relative` membuatnya kolom yang mendorong pesan di
+          desktop; di layar 1366px Owner itu 256px yang diambil dari kolom baca. */}
+      <div className={`transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-64' : 'w-0 overflow-hidden'} shrink-0 z-[60] absolute left-0 top-0 h-full bg-background border-r border-outline-variant`}>
         <ChatHistory
           onSelectChat={handleLoadChat}
           onNewChat={handleNewChat}
@@ -1652,10 +1655,12 @@ export default function ConversationEngine({ sessionId }) {
         />
       </div>
 
-      {/* Mobile Overlay */}
+      {/* Latar penutup laci riwayat — kini di semua lebar, bukan hanya seluler: klik di luar = tutup.
+          Lapisannya: bilah sesi z-50 < latar z-[55] < laci z-[60]. Dulu laci & bilah sama-sama z-50, jadi
+          tombol bilah menembus kepala laci dan tetap terang di atas latar yang diredupkan. */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[55]"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
@@ -1664,7 +1669,9 @@ export default function ConversationEngine({ sessionId }) {
       <div className="flex-1 flex flex-col relative min-w-0 min-h-0">
 
         {/* Session Toolbar */}
-        <div className="absolute top-6 left-6 z-50 flex items-center gap-2">
+        {/* Bilah sesi kini BARIS biasa, bukan `absolute top-6 left-6` yang melayang di atas pesan (Item 127
+            Tahap 2): dulu awal pesan pertama tertutup tombol-tombol ini — terlihat di tangkapan 1366×720. */}
+        <div className="relative z-50 flex flex-wrap items-center gap-2 px-6 pt-4 pb-2 shrink-0">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="w-10 h-10 flex items-center justify-center bg-surface-container-low border border-outline-variant rounded-xl hover:bg-surface-variant text-on-surface transition-all shadow-sm"
@@ -1908,11 +1915,64 @@ export default function ConversationEngine({ sessionId }) {
               )}
             </div>
           )}
+          {/* Pil kanan — Memory · Monitor · Luaskan. Dulu kelompok `absolute top-3 right-5` yang melayang di
+              area chat, di baris KEDUA yang terpisah dari tombol kiri; kini ujung kanan bilah sesi yang sama
+              (Item 127 Tahap 2): satu baris tombol, rata, dan tidak lagi menempel di atas pesan pertama. */}
+          <div className="ml-auto flex items-center gap-2">
+            {/* Toggle Memory Context Pill */}
+            <button
+              type="button"
+              onClick={() => setIsMemoryPanelOpen(!isMemoryPanelOpen)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-medium transition-all shadow-sm cursor-pointer border ${
+                isMemoryPanelOpen
+                  ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25'
+                  : 'bg-surface-container-low/90 backdrop-blur-md border-outline-variant text-on-surface-variant hover:text-on-surface hover:bg-surface-variant'
+              }`}
+              title={isMemoryPanelOpen ? 'Minimize Memory Context' : 'Buka Memory Context'}
+            >
+              <span className="material-symbols-outlined text-[16px]">psychology</span>
+              <span className="hidden sm:inline">Memory</span>
+              {activeMemories.length > 0 && (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                  isMemoryPanelOpen ? 'bg-emerald-500/30 text-emerald-200' : 'bg-surface-variant text-on-surface-variant'
+                }`}>
+                  {activeMemories.length}
+                </span>
+              )}
+            </button>
+
+            {/* Toggle MAEF Monitor Pill */}
+            <button
+              type="button"
+              onClick={handleToggleMaefMonitor}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-medium transition-all shadow-sm cursor-pointer border ${
+                (osState?.layout?.right_workbench || []).includes('widget:maef-monitor')
+                  ? 'bg-blue-500/15 border-blue-500/30 text-blue-300 hover:bg-blue-500/25'
+                  : 'bg-surface-container-low/90 backdrop-blur-md border-outline-variant text-on-surface-variant hover:text-on-surface hover:bg-surface-variant'
+              }`}
+              title="Toggle MAEF Monitor"
+            >
+              <span className="material-symbols-outlined text-[16px]">shield</span>
+              <span className="hidden sm:inline">Monitor</span>
+            </button>
+
+            {/* One-Click Minimize All / Fullscreen Chat */}
+            {(isMemoryPanelOpen || (osState?.layout?.right_workbench || []).length > 0) && (
+              <button
+                type="button"
+                onClick={handleMinimizeSidePanels}
+                className="p-1.5 rounded-xl bg-surface-container-low/90 backdrop-blur-md border border-outline-variant text-on-surface-variant hover:text-on-surface hover:bg-surface-variant transition-all shadow-sm cursor-pointer"
+                title="Luaskan Kolom Chat (Minimize Semua Panel Samping)"
+              >
+                <span className="material-symbols-outlined text-[18px]">fullscreen</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Engineer Rollback Banner */}
         {lastCheckpoint && (
-          <div className="mx-3 mt-14 mb-0 flex items-center gap-2 px-3 py-2 rounded-xl border border-amber-500/30 bg-amber-950/20 text-amber-300 text-xs z-40 shrink-0">
+          <div className="mx-3 mt-2 mb-0 flex items-center gap-2 px-3 py-2 rounded-xl border border-amber-500/30 bg-amber-950/20 text-amber-300 text-xs z-40 shrink-0">
             <span className="material-symbols-outlined text-[15px] text-amber-400 shrink-0">history</span>
             <div className="flex-1 min-w-0 truncate">
               <span className="font-bold">Checkpoint tersedia</span>
@@ -1948,59 +2008,12 @@ export default function ConversationEngine({ sessionId }) {
         {/* Chat + Memory Context Panel */}
         <div className="flex-1 flex flex-col md:flex-row relative min-h-0 min-w-0">
           <div className="flex-1 flex flex-col relative overflow-hidden pt-4 min-h-0 min-w-0">
-            {/* Floating Workspace Controls (Top-Right of Chat Area) */}
-            <div className="absolute top-3 right-5 z-30 flex items-center gap-2">
-              {/* Toggle Memory Context Pill */}
-              <button
-                type="button"
-                onClick={() => setIsMemoryPanelOpen(!isMemoryPanelOpen)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-medium transition-all shadow-sm cursor-pointer border ${
-                  isMemoryPanelOpen
-                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25'
-                    : 'bg-surface-container-low/90 backdrop-blur-md border-outline-variant text-on-surface-variant hover:text-on-surface hover:bg-surface-variant'
-                }`}
-                title={isMemoryPanelOpen ? 'Minimize Memory Context' : 'Buka Memory Context'}
-              >
-                <span className="material-symbols-outlined text-[16px]">psychology</span>
-                <span className="hidden sm:inline">Memory</span>
-                {activeMemories.length > 0 && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-                    isMemoryPanelOpen ? 'bg-emerald-500/30 text-emerald-200' : 'bg-surface-variant text-on-surface-variant'
-                  }`}>
-                    {activeMemories.length}
-                  </span>
-                )}
-              </button>
 
-              {/* Toggle MAEF Monitor Pill */}
-              <button
-                type="button"
-                onClick={handleToggleMaefMonitor}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-medium transition-all shadow-sm cursor-pointer border ${
-                  (osState?.layout?.right_workbench || []).includes('widget:maef-monitor')
-                    ? 'bg-blue-500/15 border-blue-500/30 text-blue-300 hover:bg-blue-500/25'
-                    : 'bg-surface-container-low/90 backdrop-blur-md border-outline-variant text-on-surface-variant hover:text-on-surface hover:bg-surface-variant'
-                }`}
-                title="Toggle MAEF Monitor"
-              >
-                <span className="material-symbols-outlined text-[16px]">shield</span>
-                <span className="hidden sm:inline">Monitor</span>
-              </button>
-
-              {/* One-Click Minimize All / Fullscreen Chat */}
-              {(isMemoryPanelOpen || (osState?.layout?.right_workbench || []).length > 0) && (
-                <button
-                  type="button"
-                  onClick={handleMinimizeSidePanels}
-                  className="p-1.5 rounded-xl bg-surface-container-low/90 backdrop-blur-md border border-outline-variant text-on-surface-variant hover:text-on-surface hover:bg-surface-variant transition-all shadow-sm cursor-pointer"
-                  title="Luaskan Kolom Chat (Minimize Semua Panel Samping)"
-                >
-                  <span className="material-symbols-outlined text-[18px]">fullscreen</span>
-                </button>
-              )}
-            </div>
-
-            <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto p-3 md:p-4 space-y-3 custom-scrollbar relative z-10">
+            <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto p-3 md:p-4 custom-scrollbar relative z-10">
+              {/* KOLOM BACA (Item 127 Tahap 2): pesan dibatasi lebar yang SAMA dengan kotak ketik (max-w-3xl)
+                  dan ditengahkan — pola standar aplikasi asisten. Wadah gulirnya tetap selebar area chat, jadi
+                  bilah gulir tetap di tepi; hanya isinya yang dikolomkan. */}
+              <div className="max-w-3xl mx-auto w-full space-y-3">
 
               {messages.length === 0 && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center opacity-20 pointer-events-none gap-1">
@@ -2016,7 +2029,9 @@ export default function ConversationEngine({ sessionId }) {
 
                 return (
                   <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`relative group max-w-[85%] lg:max-w-[75%] rounded-2xl px-5 py-4 ${m.role === 'user' ? 'bg-primary-container/20 text-on-surface border border-primary/30' : 'glass-panel rim-light text-on-surface border border-outline-variant'}`}>
+                    {/* Pesan pengguna = gelembung (≤75%); jawaban model = selebar kolom baca — pola standar
+                        aplikasi asisten (Item 127 Tahap 2). Dulu keduanya ≤75%, jadi jawaban hanya 576 dari 768px. */}
+                    <div className={`relative group ${m.role === 'user' ? 'max-w-[85%] lg:max-w-[75%]' : 'w-full'} rounded-2xl px-5 py-4 ${m.role === 'user' ? 'bg-primary-container/20 text-on-surface border border-primary/30' : 'glass-panel rim-light text-on-surface border border-outline-variant'}`}>
                       <div className="text-body-base leading-relaxed">
                         {/* Nalar AI — blok lipat di atas jawaban (gaya DeepSeek), terbuka secara bawaan demi transparansi */}
                         {parsed.thinking && (
@@ -2370,6 +2385,7 @@ export default function ConversationEngine({ sessionId }) {
                 </div>
               )}
               <div ref={messagesEndRef} />
+              </div>
             </div>
 
             {/* Input Area */}
@@ -2503,8 +2519,10 @@ export default function ConversationEngine({ sessionId }) {
             <div className="absolute -top-32 -left-32 w-96 h-96 bg-secondary/5 blur-[120px] rounded-full pointer-events-none z-0"></div>
           </div>
 
-          {/* Memory Context Panel (Sidebar Kanan) */}
+          {/* Memory Context Panel — LACI KANAN yang menutupi (Item 127 Tahap 2). Dulu kolom 320px yang terbuka
+              bawaan dan mendorong pesan; kini dibuka saat dibutuhkan lewat pil "Memory" di bilah atas chat. */}
           {isMemoryPanelOpen && (
+            <div className="absolute right-0 top-0 h-full z-40 shadow-2xl">
             <MemoryContextPanel
               memories={activeMemories}
               query={lastMemoryQuery}
@@ -2547,6 +2565,7 @@ export default function ConversationEngine({ sessionId }) {
                 }
               }}
             />
+            </div>
           )}
         </div>
       </div>
