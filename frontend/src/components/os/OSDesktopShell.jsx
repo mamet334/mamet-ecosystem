@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
+import MenuTeks from './MenuTeks';
 import ApplicationContainer from './ApplicationContainer';
 import MobileBottomNav from './MobileBottomNav';
 import SystemNotificationCenter from './SystemNotificationCenter'; // ✅ 1. Tambahkan Import Ini!
@@ -25,7 +26,10 @@ export default function OSDesktopShell() {
       {/* ✅ 2. Tempatkan Komponen <SystemNotificationCenter /> DI SINI (Paling atas sebelum Sidebar) */}
       <SystemNotificationCenter />
 
-      <Sidebar isMobile={isMobile} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {/* Desktop: menu teks bergaya menu game (Item 127 K2 — percobaan). Seluler tetap laci Sidebar. */}
+      {isMobile
+        ? <Sidebar isMobile={isMobile} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        : <MenuTeks />}
 
       {isMobile && sidebarOpen && (
         <div
@@ -35,7 +39,8 @@ export default function OSDesktopShell() {
       )}
 
       {/* ✅ UBAH: Kirim prop isMobile ke ApplicationContainer */}
-      <div className={`flex flex-col flex-1 min-w-0 overflow-hidden ${isMobile ? 'pb-16' : 'ml-16'}`}>
+      {/* `ml-16` dulu memberi ruang bilah ikon yang `fixed`; MenuTeks ada di dalam alur, jadi tak perlu. */}
+      <div className={`flex flex-col flex-1 min-w-0 overflow-hidden ${isMobile ? 'pb-16' : ''}`}>
         <ApplicationContainer isMobile={isMobile} />
       </div>
 

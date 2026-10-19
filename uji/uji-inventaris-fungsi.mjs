@@ -24,7 +24,7 @@ const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (kode) =>
   kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
-console.log('uji-inventaris-fungsi v1');
+console.log('uji-inventaris-fungsi v2');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -53,7 +53,8 @@ const KODE = Object.fromEntries(Object.entries(F).map(([k, p]) => [k, tanpaKomen
 // fungsi → [berkas, pola] … ; status 'boleh-hilang' = disetujui Owner untuk dihapus.
 const INVENTARIS = [
   // §6.1 kerangka & lapisan global
-  ['Navigasi 11 aplikasi', [['SIDE', /renderNavNode/], ['SHELL', /<Sidebar\b/]]],
+  // v2: desktop kini lewat menu teks (Item 127 K2); Sidebar tinggal laci seluler. Keduanya wajib ada.
+  ['Navigasi 11 aplikasi', [['SIDE', /renderNavNode/], ['SHELL', /<Sidebar\b/], ['SHELL', /<MenuTeks \/>/]]],
   ['Navigasi seluler', [['SHELL', /<MobileBottomNav\b/]]],
   ['Notifikasi sistem', [['SHELL', /<SystemNotificationCenter\b/]]],
   ['Persetujuan patch Engineer', [['APP', /<EngineerApprovalDialog\b/], ['APPROVAL', /eventBus\.on\('Engineer:RequestApproval'/]]],

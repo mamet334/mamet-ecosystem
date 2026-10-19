@@ -3,9 +3,9 @@
 **Tipe Dokumen:** Rancangan (blueprint) perubahan UI — memenuhi syarat tata kelola MUS §20 (tujuan,
 ruang lingkup, dokumentasi, analisis, alasan, persetujuan Owner)
 **Item:** 127
-**Status:** 🟡 **Tahap 0 ✅ · Tahap 1 langkah 1–4 ✅ (langkah 5 diparkir) · Tahap 2 ✅ selesai (2a · 2b · 2c) — 19 Okt.**
-**Berikutnya: Tahap 3 (kulit ruangan) — menunggu keputusan Owner K2, K4, K5.** K1 dan K3 diputuskan Owner 19 Okt (graf terbuka di panel; fondasi dulu);
-K2, K4, K5, K6 baru dibutuhkan di Tahap 3.
+**Status:** 🟡 **Tahap 0 ✅ · Tahap 1 langkah 1–4 ✅ (langkah 5 diparkir) · Tahap 2 ✅ selesai (2a · 2b · 2c) ·
+Tahap 3: menu teks ✅ (K2) — 19 Okt.** **Berikutnya: sisa Tahap 3 (ruangan, palet, skala huruf) — menunggu K4, K5.**
+K1, K2, K3 diputuskan Owner 19 Okt; K6 di luar item ini.
 **Tanggal:** 2026-10-19
 **Aplikasi:** **Mamet Ecosystem** (`frontend/`) — **bukan** Mametlite.
 **Batas tegas:** **`LampLogin.jsx` tidak diubah** dalam pekerjaan ini (arahan Owner 19 Okt). **Face Mamet
@@ -177,6 +177,13 @@ untuk satu ruangan**. Dicatat sebagai sisa pekerjaan: menyatukannya sesudah Owne
 disentuh. Sampai itu, uji penjaga membandingkan konstanta palet keduanya.
 
 ### 5.2 Menu teks di kiri — bertingkat seperti menu game
+
+> **Diganti sebagian oleh hasil 19 Okt (K2):** isi & susunannya dipakai seperti di bawah, tetapi **bentuknya
+> bukan kolom kiri yang selalu tampil**. Sesudah empat putaran penilaian Owner di layarnya sendiri, menu menjadi
+> **kotak melayang** yang dibuka tombol **MENU** — kotak kecil yang bisa digeser (bawaan kiri bawah); di Home
+> kotaknya terbuka sendiri (lobi). Alasan & jejak putarannya:
+> [changelog K2](../project-memory/changelog/2026-10-19-menu-game-menu-teks.md). Konsekuensinya, "menu kiri
+> menyusut jadi ikon tipis di halaman kerja" (§5.3) tidak diperlukan: menu tak mengambil kolom sama sekali.
 
 ```
             💡
@@ -476,9 +483,9 @@ konstitusi (milik Owner).
 | # | Pertanyaan | Pilihan | Rekomendasi & alasannya |
 |---|---|---|---|
 | ~~K1~~ | ~~Apa yang tampil sesudah masuk?~~ | — | ✅ **B, diputuskan 19 Okt** (di atas) |
-| **K2** | Isi menu | struktur `navigation.json` bertingkat (§5.2), dengan atau tanpa **"Lanjutkan"** | dengan "Lanjutkan" — keadaannya nyata dan itu idiom menu game yang paling dikenal |
+| ~~K2~~ | ~~Isi menu~~ | — | ✅ **struktur `navigation.json` bertingkat + "Lanjutkan", diputuskan 19 Okt** — dalam bentuk kotak melayang + tombol MENU (lihat catatan §5.2) |
 | ~~K3~~ | ~~Urutan~~ | — | ✅ **A — fondasi dulu, diputuskan 19 Okt** (di atas) |
-| **K4** | Huruf menu | **A.** gaya judul LampLogin (mono krem bercahaya) · **B.** huruf tampilan baru berlisensi OFL, disimpan sendiri | **A.** Kontinu dengan layar masuk, tanpa unduhan huruf. Teks bacaan tetap Inter |
+| **K4** | Huruf menu — **A dipakai SEMENTARA di menu teks (19 Okt), belum diputuskan**; diusulkan diperluas menjadi skala huruf (teks 16px, menu 14px, label ≥12px, kontras ≥4,5:1, angka tabular, format id-ID) | **A.** gaya judul LampLogin (mono krem bercahaya) · **B.** huruf tampilan baru berlisensi OFL, disimpan sendiri | **A.** Kontinu dengan layar masuk, tanpa unduhan huruf. Teks bacaan tetap Inter |
 | **K5** | Utang "dua ruangan" (§5.1) | disatukan nanti dengan izin menyentuh `LampLogin` · dibiarkan | disatukan nanti — dicatat sebagai sisa pekerjaan |
 | **K6** | Kode mati §6.0: `Login.jsx` · `EngineerChat.jsx` · `ActivityBar.jsx` (470 baris) | hapus · biarkan | di luar item ini; dicatat agar tidak terlupa |
 
