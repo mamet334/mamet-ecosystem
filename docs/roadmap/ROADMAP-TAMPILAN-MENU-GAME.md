@@ -3,9 +3,9 @@
 **Tipe Dokumen:** Rancangan (blueprint) perubahan UI — memenuhi syarat tata kelola MUS §20 (tujuan,
 ruang lingkup, dokumentasi, analisis, alasan, persetujuan Owner)
 **Item:** 127
-**Status:** 📝 **rancangan (revisi 2) — K1 dan K3 DIPUTUSKAN Owner 19 Okt (graf terbuka di panel; fondasi
-dulu). Tahap 0–1 tidak bergantung pada keputusan lain, jadi bisa dimulai; K2, K4, K5, K6 baru dibutuhkan di
-Tahap 3. Belum ada satu baris kode pun yang diubah.**
+**Status:** 🟡 **Tahap 0 ✅ selesai 19 Okt** (inventaris lengkap, dua uji penjaga, biaya tumpukan diukur) —
+**Tahap 1 berikutnya.** K1 dan K3 diputuskan Owner 19 Okt (graf terbuka di panel; fondasi dulu); K2, K4,
+K5, K6 baru dibutuhkan di Tahap 3. **Kode aplikasi belum diubah** — Tahap 0 hanya menambah berkas uji.
 **Tanggal:** 2026-10-19
 **Aplikasi:** **Mamet Ecosystem** (`frontend/`) — **bukan** Mametlite.
 **Batas tegas:** **`LampLogin.jsx` tidak diubah** dalam pekerjaan ini (arahan Owner 19 Okt). **Face Mamet
@@ -75,7 +75,8 @@ hakim terakhirnya mata Owner.
 dari `public/metadata/system.json`, dan `ApplicationContainer.jsx` **merender semuanya sekaligus**; yang
 tidak aktif hanya diberi `hidden` (komentar di kodenya: *"We do NOT unmount"*). Tiga di antaranya adalah
 **tiga salinan `ConversationEngine.jsx` (2.506 baris)** — Assistant, Mametlite, Engineer — berjalan
-bersamaan walau hanya satu yang dipakai. Biaya memori/prosesornya **belum diukur** (Tahap 0).
+bersamaan walau hanya satu yang dipakai. **Diukur di Tahap 0:** 86% simpul DOM milik layar yang tidak
+dilihat, pendengar event berlipat tiga — tetapi kerja latar saat diam praktis nol (§7 Tahap 0 butir 7).
 
 **Kenapa ditumpuk:** keadaan chat disimpan **di dalam layar** — 27 `useState` di `ConversationEngine.jsx`,
 termasuk `messages` (`:166`). Jawaban yang mengalir ditulis langsung ke layar oleh `onChunk` · `onDone` ·
@@ -99,8 +100,10 @@ layar chat sendiri:
 | Bilah ikon aplikasi (`OSDesktopShell` `ml-16`) | 64px | selalu |
 | Riwayat chat (`ConversationEngine.jsx:1596` `w-64`) | 256px | tertutup (`:178`) |
 | **Memory Context** (`MemoryContextPanel.jsx:281` `w-80`) | **320px** | **TERBUKA** (`:184` `useState(true)`) |
+| Zona kanan `AppShell` — **Monitor MAEF** dibuka ke sini | 350px | tertutup; dibuka tombol chat (`:245`) dan "Buka nalar di Right Workbench" (`:221`) |
 
-Di layar Owner (1366px): kolom chat **±982px** dalam keadaan bawaan, **±726px** bila riwayat dibuka.
+Di layar Owner (1366px): kolom chat **±982px** dalam keadaan bawaan, **±726px** bila riwayat dibuka,
+**±632px** bila Monitor MAEF dibuka bersama Memory Context.
 Owner sudah menyatakan (16 Okt): *"ui mamet ecosystem saja dengan layar penuh saya masih cukup sulit untuk
 berinteraksi."*
 
@@ -223,8 +226,23 @@ Management · API Key · Adaptive Model Tiering · Batas Biaya Harian · Pembaru
 ## 6. Inventaris fungsi — uji penerimaan
 
 **Aturannya:** setiap fungsi yang tampil hari ini punya satu baris dan **tempat baru**. **Baris tanpa
-tempat baru = desain belum selesai.** Daftar ini draf pertama, disusun dari kode 19 Okt; Tahap 0
-melengkapinya per berkas.
+tempat baru = desain belum selesai.** Disusun dari kode 19 Okt dan **dilengkapi di Tahap 0** (semua halaman
+yang terjangkau).
+
+### 6.0 Yang TIDAK masuk inventaris — tidak terjangkau dari layar
+
+Inventaris hanya mendaftar yang benar-benar tampil; kode mati yang ikut didaftar akan menjadi uji
+penerimaan yang salah sasaran. Diperiksa 19 Okt (impor di seluruh `src/`):
+
+| Komponen | Baris | Keadaan | Terakhir disentuh |
+|---|---:|---|---|
+| `components/Login.jsx` | 152 | **tak diimpor** — layar masuk yang tampil adalah `LampLogin` | `3e5aaab` 14 Jul |
+| `components/EngineerChat.jsx` | 227 | **tak diimpor** — sisa jalur desktop lama | `ed19ba1` 15 Sep |
+| `components/os/ActivityBar.jsx` | 91 | **tak diimpor** | `5289d28` 30 Jul |
+| 5 dari 6 widget `widgets.json` (Engineering Tasks · Architecture Gaps · Verification Log · Workspace Nav · Disaster Recovery) | — | **tak dibuka dari kode mana pun**; zona workbench kosong bawaan. Hanya Monitor MAEF yang dibuka. **Tetapi** tata letak workbench dipulihkan dari `localStorage` (`WorkspaceManager.js:150`), jadi apakah salah satunya masih tampil di mesin Owner hanya bisa dipastikan dari pengukuran Tahap 0 butir 2 | — |
+
+Ketiga komponen mati itu (470 baris) dicatat, **tidak dihapus** — penghapusan butuh izin Owner (K6
+diperluas).
 
 **Tingkat:** **1** selalu terlihat (dipakai tiap giliran) · **2** satu klik (dipakai sesekali) · **3** di
 menu (jarang) · **K** kondisional (muncul sendiri saat keadaannya terjadi).
@@ -238,6 +256,8 @@ menu (jarang) · **K** kondisional (muncul sendiri saat keadaannya terjadi).
 | Notifikasi sistem | `SystemNotificationCenter.jsx` | K | tetap, digayakan ulang |
 | Persetujuan patch Engineer | `EngineerApprovalDialog.jsx` (`Engineer:RequestApproval`) | K | tetap dialog modal |
 | Graf pengetahuan (Home) | `HomeDashboard.jsx` | 1 | **halaman pertama panel kanan** sesudah masuk, tanpa diubah; "Beranda" di menu membukanya kembali (K1 = B) |
+| **Keluar (logout)** | **hanya** di dasar halaman Settings (`Settings.jsx:768`) | 3 → menu | **pilihan menu utama "Keluar"** — naik dari dasar halaman panjang ke menu |
+| Unduh aplikasi desktop | `TombolUnduhDesktop.jsx` (juga di layar masuk) | 3 | bagian Pengaturan "Aplikasi Desktop" |
 
 ### 6.2 Halaman chat (`ConversationEngine.jsx`)
 
@@ -270,11 +290,15 @@ menu (jarang) · **K** kondisional (muncul sendiri saat keadaannya terjadi).
 
 ### 6.3 Halaman lain
 
-| Halaman | Tingkat | Tempat baru |
+| Halaman · fungsi di dalamnya | Tingkat | Tempat baru |
 |---|:-:|---|
-| Settings (9 bagian) | 3 | halaman bertab (§5.3) |
-| Knowledge (`ResearchApp`) · Memory · File Explorer · Agent Forge | 3 | halaman kerja lebar |
-| Kernel (`SystemLogsApp`) · Billing | 3 | halaman pengaturan/daftar |
+| **Settings** — AI Model Management (grid status) · API Key + Test Connection · Adaptive Model Tiering (3 slot + sakelar nalar) · Batas Biaya Harian · Pembaruan Aplikasi · Aplikasi Desktop · Tools & Capabilities (bawaan global + per workspace) · Tool Registry · User Identity | 3 | halaman bertab: 9 bagian = sub-menu kiri, isi di panel (§5.3); Keluar pindah ke menu utama |
+| **Knowledge** (`ResearchApp`) — unggah dokumen · unduh cadangan (Item 93) · Data Tabel: pratinjau, daftar, laporan kejanggalan (Item 92) · cari dokumen · Knowledge Spaces (`DaftarWorkspace`) · daftar & hapus dokumen · statistik | 3 | halaman kerja lebar; Data Tabel jadi tab di dalamnya |
+| **Memory** (`MemoryApp`) — cari · daftar memori + metadata Golden Source · hapus · statistik | 3 | halaman kerja lebar |
+| **File Explorer** — cari berkas · ke akar · muat ulang · breadcrumb · pohon kiri + pratinjau kanan · salin path | 3 | halaman kerja lebar; pohon & pratinjau **di dalam** panel |
+| **Agent Forge** — statistik · daftar agen · daftar alat · dialog tambah/ubah agen & alat | 3 | halaman daftar; dialog tetap modal |
+| **Kernel** (`SystemLogsApp`) — saring ERROR/WARN/semua · muat ulang · daftar entri | 3 | halaman daftar |
+| **Billing** — pemakaian hari ini (kedua batas) · tabel log | 3 | halaman daftar |
 
 ---
 
@@ -288,9 +312,44 @@ Tiap tahap berdiri sendiri dan dapat dihentikan tanpa merusak aplikasi.
 2. **Ukur biaya tumpukan hari ini**: memori & prosesor dengan 11 aplikasi hidup, sebagai pembanding
    Tahap 1. Kalau ternyata kecil, alasan Tahap 1 tinggal kenyamanan & kebenaran keadaan — dan itu dicatat
    apa adanya.
-3. **Lengkapi inventaris §6** per berkas `.jsx`.
-4. **Uji ukur ciri generik** (§2.1) sebagai garis dasar — angkanya hanya boleh turun.
-5. **Uji penjaga `LampLogin.jsx`**: gagal bila berkas itu berubah.
+3. ✅ **Inventaris §6 dilengkapi** (19 Okt) — semua halaman terjangkau; §6.0 memisahkan 3 komponen mati
+   (470 baris) dan 5 widget yang tak dibuka kode mana pun. Temuan: **Keluar hanya ada di dasar Settings**.
+4. ✅ **`uji/uji-ciri-tampilan.mjs`** — gigi searah atas 9 penanda (tanpa `LampLogin`, komentar dibuang):
+   token Material 568 · slate 615 · pelangi 250 · gerak 51 · blur 15 · glow 26 · gradien 6 · berkas lucide
+   26 · berkas Material Symbols 8. Penghitungnya diuji dengan fixture; **mutasi** satu `bg-slate-900`
+   tambahan → merah (616 ≤ 615). Selisih dengan tabel §2.1 hanya milik `LampLogin` (cahaya lampunya
+   memang dibuat dari gradien & glow).
+5. ✅ **`uji/uji-penjaga-lamplogin.mjs`** — sidik jari SHA-256 dengan akhir baris dinormalkan (berkas di disk
+   ber-CRLF), plus memastikan `App.jsx` masih merender `<LampLogin>`. **Mutasi** satu spasi → merah;
+   berkasnya dipulihkan dan `git diff` bersih.
+6. ✅ Suite **98/98** (96 + 2 uji baru).
+7. ✅ **Butir 2 — diukur 19 Okt** dengan `uji/uji-ukur-tumpukan.js` (hanya membaca; ditempel di konsol
+   DevTools karena `vite.config` tidak mengizinkan `/@fs/` ke `uji/`). Server dev di panel browser, Owner
+   login sendiri, viewport **1366×720 tetap dari awal sampai akhir** (sampel 2; sampel 1 dibuang untuk angka
+   simpul karena lebar panel berubah di tengah pengukuran). Aplikasi yang terlihat: Engineer.
+
+   | Ukuran | Hasil | Arti |
+   |---|---|---|
+   | Aplikasi terpasang · terlihat · tersembunyi tetap hidup | **11 · 1 · 10** | tumpukan terbukti di runtime, bukan hanya di kode |
+   | Kotak ketik terpasang | **3** | tiga `ConversationEngine` hidup bersamaan |
+   | Simpul DOM: seluruh halaman · milik aplikasi tersembunyi | 3.333 · **2.868 (86%)** | 86% halaman adalah layar yang tidak dilihat; angka tersembunyi **sama persis** di kedua sampel |
+   | Pendengar EventBus | 81–90 di 47 jenis event | banyak event didengar **tepat 3 kali** (`Chat:Updated`, tujuh `MemoryGovernor:*`, `Engineer:Recommendation`) — sidik jari tiga mesin chat |
+   | Tugas panjang selama 15 detik diam | sampel 1: 2 (139 ms) · sampel 2: **0** | **kerja latar saat diam praktis nol** |
+   | Heap JS | 39–56 MB, naik-turun antar sampel | **tidak bisa** diatribusikan ke aplikasi tersembunyi dari satu keadaan — baru terukur sebagai selisih sesudah Tahap 1 |
+   | Kanal realtime terbuka | 1 (`activity-tracing`) | — |
+
+   **Kesimpulan yang jujur:** biaya tumpukan **bukan prosesor** — saat diam aplikasi hampir tidak bekerja.
+   Biayanya adalah **struktur**: 86% DOM dan pendengar yang berlipat tiga untuk layar yang tidak dilihat, dan
+   keadaan chat yang hanya bisa selamat dengan cara itu. Jadi alasan Tahap 1 adalah **kebenaran keadaan**
+   (jawaban milik percakapan yang bertanya, selamat saat pindah halaman) dan **satu halaman pada satu waktu**,
+   bukan "aplikasi jadi lebih cepat". Klaim kecepatan **tidak** boleh dibuat sebelum diukur ulang.
+
+   **Tata letak tersimpan** di profil yang diukur: Monitor MAEF tersimpan **terbuka** di zona kanan untuk
+   **Assistant dan Engineer** (kunci `v4`) — jadi di profil itu kolom chat Assistant/Engineer dimulai dari
+   **±632px**, bukan ±982px. Lima widget lain **tidak ada** di tata letak mana pun → tak terjangkau,
+   terkonfirmasi. Juga tersisa kunci lama `mamet_v3_*` yang tidak dibaca lagi.
+   *Batasnya:* ini `localStorage` panel browser di `localhost:5173`, **bukan** aplikasi `.exe` Owner (yang
+   menyimpan setelannya sendiri). Tata letak di `.exe` belum diperiksa.
 
 ### Tahap 1 — Fondasi: keadaan di luar layar, satu halaman pada satu waktu
 
@@ -362,7 +421,7 @@ konstitusi (milik Owner).
 | ~~K3~~ | ~~Urutan~~ | — | ✅ **A — fondasi dulu, diputuskan 19 Okt** (di atas) |
 | **K4** | Huruf menu | **A.** gaya judul LampLogin (mono krem bercahaya) · **B.** huruf tampilan baru berlisensi OFL, disimpan sendiri | **A.** Kontinu dengan layar masuk, tanpa unduhan huruf. Teks bacaan tetap Inter |
 | **K5** | Utang "dua ruangan" (§5.1) | disatukan nanti dengan izin menyentuh `LampLogin` · dibiarkan | disatukan nanti — dicatat sebagai sisa pekerjaan |
-| **K6** | `Login.jsx` (kode mati sejak Juli) | hapus · biarkan | di luar item ini; dicatat agar tidak terlupa |
+| **K6** | Kode mati §6.0: `Login.jsx` · `EngineerChat.jsx` · `ActivityBar.jsx` (470 baris) | hapus · biarkan | di luar item ini; dicatat agar tidak terlupa |
 
 ---
 

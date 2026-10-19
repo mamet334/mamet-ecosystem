@@ -1,7 +1,8 @@
 # ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
 
 **Tipe Dokumen:** Daftar sisa pekerjaan (temuan audit yang belum punya dokumen roadmap sendiri)
-**Status:** ⏳ **T15 ditambahkan 18 Okt 2026** — server `agent-process` mengimpor kode klien dari
+**Status:** ⏳ **T16 ditambahkan 19 Okt 2026** — lima modul konsol uji menunjuk folder yang sudah tidak ada.
+**T15 ditambahkan 18 Okt 2026** — server `agent-process` mengimpor kode klien dari
 `frontend/src`; ketahuan dari keluaran deploy, bukan dari kode.
 **T11 sudah ditutup** dan itu diperiksa ulang hari ini: daftar fungsi lewat API Supabase 18 Okt
 menyebut **6 fungsi** (`agent-process`, `cron-agent`, `rag-process`, `health-check`,
@@ -713,6 +714,24 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
 
 - **Status:** ⏳ tercatat, belum dirancang, belum diputuskan Owner. Tabel titik impornya juga ada di
   [changelog Item 126](../project-memory/changelog/2026-10-18-penanda-pemilih-model.md).
+
+## T16 — Lima modul konsol uji menunjuk folder yang sudah tidak ada (ketahuan saat Item 127 Tahap 0, 2026-10-19)
+
+- **Temuan:** `uji-pengambilan.js`, `-v2`, `-v3`, `-v4`, dan `uji-konteks-potongan.js` (modul konsol DevTools,
+  tidak dijalankan `jalankan-semua.mjs`) masih mengimpor dan mengambil data dari
+  `/@fs/…/frontend/node_modules/.uji-rag/`. Folder itu **sudah tidak ada** sejak uji dipindah ke `uji/`
+  (`e1ca067`, 24 Sep). Data yang mereka butuhkan (`set-uji-pengambilan.json`,
+  `potongan-uji-kepbup-tahapC.json`) kini ada di `uji/data-lokal/`.
+- **Kenapa memperbaiki path saja tidak cukup:** `frontend/vite.config` `server.fs.allow` hanya `['.', '../tools']`,
+  jadi `/@fs/` ke `uji/` di akar repo **ditolak** server dev. Item 127 menghindarinya dengan membuat skrip
+  ukurnya bisa *ditempel* (`uji-ukur-tumpukan.js`), bukan diimpor.
+- **Dampak:** rusak tanpa suara — tak ada uji yang merah, karena suite memang tidak menjalankan berkas `.js`.
+  Siapa pun yang mencoba mengulang uji mutu RAG dari konsol akan mendapat galat impor.
+- **Arah (BELUM diputuskan Owner):** (a) tambah `'../uji'` ke `fs.allow` lalu perbaiki path — perhatikan
+  `uji/data-lokal/` memuat NIP & nama pegawai, jadi membukanya ke server dev harus dipertimbangkan; atau
+  (b) pensiunkan modul yang set ujinya sudah tidak sah lagi (set lama 13 pertanyaan dinyatakan tidak sah,
+  dibangun ulang di Item 90 Tahap A) dan pertahankan hanya yang masih dipakai.
+- **Status:** ⏳ tercatat, belum diputuskan.
 
 ## T9 — Sub-agent `knowledge_manager` rusak & ikut dipanggil Coordinator (asal Item 92 Tahap 3, 2026-09-21)
 
