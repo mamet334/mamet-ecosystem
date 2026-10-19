@@ -28,6 +28,7 @@ import { WebComparisonService } from './services/WebComparisonService.js';
 import { RetrievalOrchestrator } from './services/RetrievalOrchestrator.js';
 import { ModuleDiscoveryService } from './services/ModuleDiscoveryService.js';
 import { RequestClassifierService } from './services/RequestClassifierService.js';
+import { penyimpanKeadaan } from './PenyimpanKeadaan.js';
 import { TierClassifierService } from './services/TierClassifierService.js';
 import { SkillRegistry } from './services/SkillRegistry.js';
 import { SkillGuardService } from './services/SkillGuardService.js';
@@ -266,6 +267,11 @@ class Kernel {
     const toolPreferencesService = new ToolPreferencesService(serviceManager);
     await toolPreferencesService.initialize();
     serviceManager.register('ToolPreferencesService', toolPreferencesService);
+
+    // Penyimpan Keadaan (Item 127 Tahap 1) — keadaan layar yang hidup di luar layarnya. Instance-nya
+    // tunggal milik modul (hook React memakainya langsung, tanpa menunggu boot); didaftarkan di sini supaya
+    // terlihat dan bisa diperiksa seperti layanan lain (`window.__mamet` di mode dev).
+    serviceManager.register('PenyimpanKeadaan', penyimpanKeadaan);
 
     // KnowledgeService tidak lagi didaftarkan di browser (Item 90, 2026-09-17): satu-satunya pemakainya,
     // Tier 1 RetrievalOrchestrator, dihapus. Berkasnya tetap dipakai server (cadangan pencocokan kata).

@@ -1,7 +1,8 @@
 # ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
 
 **Tipe Dokumen:** Daftar sisa pekerjaan (temuan audit yang belum punya dokumen roadmap sendiri)
-**Status:** ⏳ **T16 ditambahkan 19 Okt 2026** — lima modul konsol uji menunjuk folder yang sudah tidak ada.
+**Status:** ⏳ **T17 ditambahkan 19 Okt 2026** — penyimpanan otomatis chat melewatkan perubahan saat penyimpanan sebelumnya berjalan.
+**T16 ditambahkan 19 Okt 2026** — lima modul konsol uji menunjuk folder yang sudah tidak ada.
 **T15 ditambahkan 18 Okt 2026** — server `agent-process` mengimpor kode klien dari
 `frontend/src`; ketahuan dari keluaran deploy, bukan dari kode.
 **T11 sudah ditutup** dan itu diperiksa ulang hari ini: daftar fungsi lewat API Supabase 18 Okt
@@ -714,6 +715,21 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
 
 - **Status:** ⏳ tercatat, belum dirancang, belum diputuskan Owner. Tabel titik impornya juga ada di
   [changelog Item 126](../project-memory/changelog/2026-10-18-penanda-pemilih-model.md).
+
+## T17 — Penyimpanan otomatis chat melewatkan perubahan yang datang saat penyimpanan sebelumnya masih berjalan (ketahuan saat Item 127 Tahap 1, 2026-10-19)
+
+- **Temuan:** di penyimpanan otomatis `ConversationEngine.jsx` (kini pengamat `simpanOtomatis` di
+  `PenyimpanKeadaan`), timer yang berbunyi saat penyimpanan sebelumnya **masih berjalan** langsung keluar —
+  `if (isSavingRef.current) return;` — **tanpa menjadwal ulang**. Perubahan itu baru tersimpan pada perubahan
+  BERIKUTNYA.
+- **Dampak:** kecil kemungkinannya (jeda simpan 1 detik, dan selama jawaban mengalir `isLoading` menahan
+  penyimpanan), tetapi bila terjadi pada pesan terakhir sebuah percakapan, jawaban itu tidak tersimpan ke
+  `chats` sampai Owner menulis lagi — dan hilang bila aplikasi ditutup lebih dulu.
+- **Kenapa tidak diperbaiki saat ditemukan:** langkah itu memindahkan logika, bukan mengubahnya; mencampur
+  keduanya membuat regresi tak bisa dibedakan dari perbaikan. Perilaku lama dipertahankan persis.
+- **Arah:** saat penyimpanan selesai, jalankan ulang pengamat bila `kunciSimpan` keadaan sekarang berbeda
+  dari yang baru disimpan. Uji: penyimpanan lambat + perubahan di tengahnya → tersimpan tanpa perubahan ketiga.
+- **Status:** ⏳ tercatat, belum diputuskan.
 
 ## T16 — Lima modul konsol uji menunjuk folder yang sudah tidak ada (ketahuan saat Item 127 Tahap 0, 2026-10-19)
 

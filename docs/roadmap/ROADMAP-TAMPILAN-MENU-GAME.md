@@ -358,7 +358,7 @@ Tiap tahap berdiri sendiri dan dapat dihentikan tanpa merusak aplikasi.
    (`ApplicationManager.js:13`) + `useService`.
 2. `onChunk` · `onDone` · `onError` menulis ke **layanan**, bukan ke `useState` layar → **jawaban terus
    mengalir walau halamannya ditutup**. Tujuan tulisnya tetap ditentukan **penanda kiriman**
-   `pengirimanChat.js` — `uji/uji-kiriman-percakapan.mjs` dan `uji/uji-pemulihan-chat-v5.mjs` wajib
+   `pengirimanChat.js` — `uji/uji-kiriman-percakapan.mjs` dan `uji/uji-pemulihan-chat-v6.mjs` wajib
    tetap hijau **tanpa diubah**.
 3. Dipindah lebih dulu yang hilangnya merugikan: pesan, jawaban yang mengalir, ketikan yang belum
    terkirim, chat aktif. Keadaan tampilan murni (popover terbuka, dsb.) boleh kembali ke bawaan.
@@ -370,11 +370,68 @@ di percakapan baru, pindah ke riwayat lain *dan* ke halaman lain sambil menunggu
 percakapan yang bertanya; (d) suite penuh hijau. `ConversationEngine.jsx`
 2.506 baris: dipindah sedikit demi sedikit, satu keadaan per langkah.
 
+#### Keadaan 19 Okt — langkah 1–4 ✅, langkah 5 DIPARKIR (keputusan Owner)
+
+Dikerjakan sebagai lima langkah; empat pertama selesai, semua layar **masih terpasang** sehingga perilaku
+aplikasi tidak berubah:
+
+| Langkah | Isi | Bukti |
+|---|---|---|
+| 1 | `PenyimpanKeadaan.js` (tanpa React) + `useKeadaanTersimpan`/`useRefTersimpan`; Kernel mendaftarkannya; **`App.jsx` mengosongkannya saat pengguna berganti** — keadaan di luar layar tidak hilang sendiri saat logout | `uji-penyimpan-keadaan.mjs` 25 asersi, 4 mutasi menggigit |
+| 2 | 5 keadaan inti (`messages`, `input`, `isLoading`, `currentChatId`, `initialRestoreDone`) + 5 ref (kendali kiriman, nomor urut percakapan, kunci simpan terakhir, sedang-menyimpan, pemulihan-gagal) | pemulihan riwayat diuji di browser: 2 pesan terpulihkan, **`updated_at` tidak berubah** |
+| 3 | **Penyimpanan otomatis menjadi pengamat** di penyimpan — jalan walau layarnya dilepas. Badan logikanya tidak diubah satu penjaga pun | `uji-pemulihan-chat-v6` (dulu v5) — 2 mutasi menggigit |
+| 4 | 11 keadaan lagi + 3 penjaga duplikat (perintah otomatis, uji klaim, temuan); reset pil tier hanya saat chat benar-benar berganti. **11 `useState` sengaja tetap lokal**, tiap satunya beralasan | `uji-keadaan-chat-di-luar-layar.mjs`, 5 mutasi menggigit |
+
+Suite **100/100**. Tiga uji lama yang mencocokkan teks harfiah (`useRef(…)`) diubah agar menjaga NIATNYA —
+`uji-hentikan-kiriman` v2, `uji-pemulihan-chat-v6`, `uji-perintah-tanpa-persetujuan` v2 — masing-masing
+dibuktikan dengan mutasi.
+
+**Langkah 5 (melepas layar yang tidak aktif) diparkir — Owner, 19 Okt.** Dua alasan, keduanya terukur:
+
+1. **Manfaatnya bagi Owner kecil.** Tahap 0 mengukur kerja latar saat diam ≈ 0; di mata Owner aplikasi sudah
+   "satu halaman pada satu waktu" karena yang lain tersembunyi. Menu & ruangan (Tahap 3) dan kolom chat yang
+   tidak dijepit (Tahap 2) **tidak membutuhkan** langkah 5.
+2. **Lingkupnya ternyata lebih besar.** Layar chat Engineer bukan hanya tampilan — ia juga **pengendali** yang
+   bekerja walau tersembunyi: mendengarkan `Engineer:PatchApplied` (mencatat checkpoint = **tombol Undo**),
+   `Engineer:PatchPersisted`, `Engineer:ReasoningReport`, `Engineer:RequestConfirmation`,
+   `Engineer:Recommendation`, `Memory:Retrieved`; dan menjalankan **perintah aman secara otomatis** (keputusan
+   Owner 1 Okt) — yang pembatalannya (`batal`) dipicu cleanup efek, sehingga melepas layar di tengah perintah
+   akan membuang hasilnya padahal perintah itu sudah tercatat "dijalankan". Melepas layar tanpa memindahkan
+   pengendali itu = Owner menyetujui patch, membuka Settings, dan tombol Undo tak pernah muncul.
+
+**Syarat bila kelak dilanjutkan:** pengendali di atas pindah keluar layar seperti penyimpanan otomatis
+(langkah 3) — **sebelum** `ApplicationContainer` hanya merender aplikasi aktif.
+
 ### Tahap 2 — Kerangka standar + inventaris
 
 Kolom baca tunggal di tengah; riwayat & Memory Context menjadi laci (Memory Context **tertutup bawaan**);
 Settings menjadi halaman bertab. Tampilan masih kulit lama — perubahan susunan diuji terpisah dari
 perubahan warna. **Uji penerimaan: setiap baris §6 punya tempat baru dan bisa dicapai.**
+
+**Rincian (dibaca dari kode 19 Okt).** Tiga hal yang menjepit kolom baca di layar 1366px, semuanya susunan,
+bukan logika:
+
+| Penjepit | Hari ini | Jadi |
+|---|---|---|
+| Memory Context | kolom `w-80` di samping pesan (`ConversationEngine.jsx` "Chat + Memory Context Panel"), **terbuka bawaan** | **laci kanan yang menutupi**, tertutup bawaan; isi `MemoryContextPanel.jsx` tidak disentuh |
+| Riwayat chat | `md:relative` — di desktop ia **mendorong** kolom pesan | laci yang menutupi di semua lebar, dengan latar penutup yang menutupnya bila diklik di luar |
+| Monitor MAEF | kolom grid 350px zona kanan `AppShell.jsx` | laci yang menutupi; ia satu-satunya widget yang memang dibuka (§6.0) |
+
+Plus **kolom baca**: daftar pesan dibatasi `max-w-3xl` dan ditengahkan — lebar yang SAMA dengan kotak ketik
+yang sudah ada, jadi pesan dan kotak ketik akhirnya sejajar.
+
+Langkah:
+
+- **2a** — tiga laci + kolom baca di layar chat. Diuji dengan tangkapan layar 1366×720 sebelum/sesudah dan
+  pengukuran lebar kolom baca di browser.
+- **2b** — Settings bertab: 9 bagian jadi daftar kiri, isi di kanan; Keluar tetap di bagian identitas sampai
+  menu utama ada (Tahap 3).
+- **2c** — **uji inventaris**: tiap baris §6 dipetakan ke jangkar kodenya (tombol, `title`, penangan); baris
+  yang jangkarnya hilang = merah. Inilah yang membuat "tidak ada fungsi yang hilang" menjadi uji, bukan janji.
+
+**Satu efek yang perlu diketahui Owner:** tata letak tersimpan menyimpan Monitor MAEF **terbuka** untuk
+Assistant & Engineer (diukur Tahap 0). Sesudah 2a ia muncul sebagai laci terbuka yang menutupi tepi kanan
+chat pada pembukaan pertama — ditutup sekali, tata letaknya menyimpan keadaan tertutup.
 
 ### Tahap 3 — Kulit ruangan
 

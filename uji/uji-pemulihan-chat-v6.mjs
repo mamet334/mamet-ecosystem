@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 
 const AKAR = 'D:/SLAMET/other/mamet os ecosystem/frontend/src/components/workbench/';
 const P = await import(pathToFileURL(AKAR + 'pemulihanChat.js').href + '?v=' + Date.now());
-console.log('uji-pemulihan-chat v5');
+console.log('uji-pemulihan-chat v6');
 
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
@@ -76,8 +76,19 @@ const iSimpan = src.indexOf('PERSISTENSI: Auto-save messages');
 const badanSimpan = src.slice(iSimpan, iSimpan + 4500);
 cek(/if \(!initialRestoreDone\) return;/.test(badanSimpan),
   'autosave menunggu pemulihan selesai (chat tidak ditimpa satu pesan)');
-cek(/\[messages, currentChatId, isLoading, initialRestoreDone\]/.test(badanSimpan),
-  'initialRestoreDone masuk dependency autosave (tetap tersimpan sesudah pemulihan)');
+// v6 (2026-10-19, Item 127 Tahap 1): penyimpanan otomatis kini PENGAMAT di PenyimpanKeadaan, bukan
+// `useEffect` layar — supaya tetap jalan saat layarnya dilepas. Niat asersinya tetap sama: ia harus jalan
+// LAGI saat initialRestoreDone berubah. Dulu itu dijamin daftar dependency efek; kini daftar yang diamati.
+cek(/\[messages, currentChatId, isLoading, initialRestoreDone\]/.test(badanSimpan) ||
+    /amati\(kunciSesi, 'simpanOtomatis', \[[^\]]*'initialRestoreDone'[^\]]*\]/.test(badanSimpan),
+  'initialRestoreDone memicu ulang autosave (tetap tersimpan sesudah pemulihan)');
+// Pengamat yang dilepas bersama layarnya mengembalikan bug yang ditutup Tahap 1: jawaban yang selesai saat
+// Owner di halaman lain tidak pernah tersimpan. Jadi efek pendaftarnya TIDAK boleh mengembalikan pelepas.
+// Pendaftarannya harus pernyataan telanjang: dikembalikan (`return p.amati(…)`) berarti React memanggil
+// pelepasnya saat layar dilepas; disimpan ke variabel (`const lepas = p.amati(…)`) membuka jalan yang sama.
+cek(/\n\s+p\.amati\(kunciSesi, 'simpanOtomatis'/.test(badanSimpan) &&
+    !/(?:return|=)\s*p\.amati\(kunciSesi, 'simpanOtomatis'/.test(badanSimpan),
+  'pengamat autosave TIDAK dilepas saat layar dilepas');
 const iLaporan = src.indexOf('PATCH YANG TERPUTUS MUAT ULANG');
 const badanLaporan = src.slice(iLaporan, iLaporan + 3200);
 // Diperbarui 24 September: penjaganya kini per-INSTANCE (`iniInstansiEngineer`), bukan workspace yang

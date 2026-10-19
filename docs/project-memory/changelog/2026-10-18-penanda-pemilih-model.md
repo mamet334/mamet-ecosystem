@@ -164,3 +164,20 @@ tanggal 8 Okt, tidak ada lalu lintas yang perlu disaring — baris apa pun yang 
 itu. Yang diharapkan: satu baris `owner-settings`, atau `tier-auto` bila tier aktif dan classifier
 yang memutuskan. `NULL` berarti ada sambungan putus antara klien dan kolom, dan di situlah nilai
 ujinya.
+
+## Rantai penuh TERBUKTI — 19 Okt 2026
+
+Owner mengirim satu pesan "tes" dari `npm run desktop` (jendela dibuka 09:21:51 WIB, memuat kode repo
+dari `localhost:5173`). Hasil di `cost_ledger`:
+
+| `created_at` (UTC) | `model` | `pemilih_model` |
+|---|---|---|
+| 02:32:57 | `deepseek/deepseek-v4-flash-0731` | **`tier-auto`** |
+| 02:33:21 | `deepseek/deepseek-v4-flash-0731` | **`tier-auto`** |
+
+**Baris bertanda pertama dalam sejarah tabel itu** (sebelumnya 949 baris, 0 bertanda). Klien → payload →
+`request_parser` → `rctx.model.pemilih` → `recordUsage` → kolom: tersambung ujung ke ujung. Nilainya
+`tier-auto` karena tier aktif dan TierClassifierService yang memutuskan `flash` untuk pesan sependek itu —
+persis cabang yang diharapkan, bukan `NULL`.
+
+Sisa langkah tetap satu: **rilis klien**, supaya `.exe` yang terpasang ikut membawa penandanya.

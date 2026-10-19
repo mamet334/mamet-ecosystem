@@ -20,7 +20,7 @@ const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
 const baca = (p) => readFileSync(`${AKAR}/${p}`, 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (s) => s.split('\n').filter((b) => !/^\s*(\/\/|\*|\/\*)/.test(b)).join('\n');
 
-console.log('uji-hentikan-kiriman v1');
+console.log('uji-hentikan-kiriman v2');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 300)}` : ''}`);
@@ -108,7 +108,13 @@ cek(/throw bacaErr;/.test(blokBaca),
 // ── 5. Layar ────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- layar --');
 
-cek(/const kendaliKirimRef = useRef\(null\)/.test(CE_KODE), 'kendali disimpan di ref, bukan state');
+// v2 (2026-10-19, Item 127 Tahap 1): kendalinya kini ref yang hidup DI LUAR layar (`useRefTersimpan`),
+// supaya tombol Berhenti tetap memegang kiriman yang sedang berjalan walau layarnya dilepas lalu dipasang
+// lagi. Yang dijaga tetap NIAT aslinya — ref, bukan state yang memicu render — bukan nama fungsinya.
+cek(/const kendaliKirimRef = (?:useRef\(null\)|useRefTersimpan\(kunciSesi, '[a-zA-Z]+', null\))/.test(CE_KODE),
+  'kendali disimpan di ref, bukan state');
+cek(!/\[\s*kendaliKirim\w*\s*,\s*set\w+\s*\]\s*=\s*(?:useState|useKeadaanTersimpan)\(/.test(CE_KODE),
+  'kendali TIDAK pernah dijadikan keadaan yang memicu render');
 cek(/signal: kendali\.signal,/.test(CE_KODE), 'signal ikut ke processMessage');
 cek(/kendaliKirimRef\.current\?\.abort\(\);/.test(CE_KODE),
   'kiriman lama yang menggantung diputus sebelum kendalinya tertimpa');

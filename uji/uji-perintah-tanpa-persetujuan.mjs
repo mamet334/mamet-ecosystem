@@ -24,7 +24,7 @@ const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
 const require = createRequire(`${AKAR}/frontend/`);
 const { tanpaPersetujuan, PROFIL, pecahPerintah } = require(`${AKAR}/frontend/electron/alatFolderJalan.cjs`);
 
-console.log('uji-perintah-tanpa-persetujuan v1');
+console.log('uji-perintah-tanpa-persetujuan v2');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 300)}` : ''}`);
@@ -134,7 +134,11 @@ console.log('\n-- terpasang --');
   cek(/handleSend\(null, hasil\.join\('\\n\\n'\)\)/.test(CE_KODE),
     'SATU kiriman untuk semua hasil — bukan satu panggilan model berbayar per perintah',
     (CE_KODE.match(/.*hasil\.join.*/g) || []));
-  cek(/const cmdOtomatisRef = useRef\(new Set\(\)\)/.test(CE_KODE), 'perintah yang sudah jalan tidak diulang');
+  // v2 (2026-10-19, Item 127 Tahap 1): ingatan "sudah dijalankan" kini hidup DI LUAR layar
+  // (`useRefTersimpan`) — tanpa itu, layar yang dipasang ulang lupa dan bisa menjalankan ulang perintahnya.
+  // Niat yang dijaga sama: sebuah Set di ref, bukan nama fungsi pembuatnya.
+  cek(/const cmdOtomatisRef = (?:useRef\(new Set\(\)\)|useRefTersimpan\(kunciSesi, '[a-zA-Z]+', \(\) => new Set\(\)\))/.test(CE_KODE),
+    'perintah yang sudah jalan tidak diulang');
   cek(/if \(chatOtomatisRef\.current !== currentChatId\)/.test(CE_KODE),
     'pindah percakapan & pemuatan awal dilewati — membuka riwayat lama tak boleh menjalankan ulang perintah');
 }

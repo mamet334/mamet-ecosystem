@@ -20,6 +20,8 @@ import { ambilBlokPengetahuan, pengetahuanBaru, barisBrain1 } from '../../core/r
 import { anggaranKonteks, pilihPesanKonteks, meteranKonteks, bacaMulaiDari, simpanMulaiDari, pesanUntukDipadatkan, bolehPadatkan, bentukPesanRingkasan, tokenPesan, MIN_PESAN_PADATKAN, PATOK } from '../../core/runtime/services/KonteksChat.js';
 import { jejakSisipan } from '../../core/runtime/services/jejakSisipan.js';
 import { blokGalat } from '../../core/runtime/services/pesanGalat.js';
+import { useKeadaanTersimpan, useRefTersimpan } from '../../core/runtime/hooks/useKeadaanTersimpan.js';
+import { penyimpanKeadaan } from '../../core/runtime/PenyimpanKeadaan.js';
 
 // =============================================
 // HELPER: Parse thinking/answer dari respons AI
@@ -82,6 +84,10 @@ const parseThinkingContent = (text) => {
 // =============================================
 export default function ConversationEngine({ sessionId }) {
   const { manager: workspaceManager, osState } = useWorkspace();
+  // Kunci keadaan di luar layar (Item 127 Tahap 1): satu per aplikasi — app:assistant, app:mametlite,
+  // app:engineer. Tersedia sejak render pertama, tidak seperti osState.workspaceId yang baru terisi
+  // sesudah switchWorkspace(). Keadaan yang dibaca lewat kunci ini SELAMAT bila layarnya dilepas.
+  const kunciSesi = workspaceManager.appId;
 
   // [FIX: localStorage isolation] Kunci spesifik per workspace untuk mencegah tabrakan
   // antar tiga instance chat (ws-assistant, ws-lite, ws-engineer) yang berjalan bersamaan
@@ -129,7 +135,7 @@ export default function ConversationEngine({ sessionId }) {
   // state React biasa, berlaku hanya untuk sesi thread yang sedang terbuka di tab ini.
   // Reload, buka chat lain, atau membuka chat yang sama dari device lain → kembali ke Auto.
   // Konsekuensinya tidak ada kolom DB / migrasi skema baru untuk fitur ini (roadmap §4.4).
-  const [modelTierOverride, setModelTierOverride] = useState(null); // null = Auto
+  const [modelTierOverride, setModelTierOverride] = useKeadaanTersimpan(kunciSesi, 'modelTierOverride', null); // null = Auto
   const [showTierPanel, setShowTierPanel] = useState(false);
   const tierPanelRef = useRef(null);
   const isEngineerWorkspace = osState?.workspaceId === 'ws-engineer';
@@ -162,38 +168,44 @@ export default function ConversationEngine({ sessionId }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showToolsPanel]);
 
-  // --- UI State ---
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  // --- Keadaan percakapan — hidup DI LUAR layar (Item 127 Tahap 1) ---
+  // Lima keadaan dan lima ref di bawah ini menentukan apakah jawaban selamat dan tersimpan ke percakapan
+  // yang benar. Dulu semuanya `useState`/`useRef` layar, sehingga layar tidak boleh dilepas — itulah sebab
+  // 11 aplikasi dirender sekaligus. Bentuk kembaliannya sama persis, jadi tak ada baris pemakai yang berubah.
+  const [messages, setMessages] = useKeadaanTersimpan(kunciSesi, 'messages', []);
+  const [input, setInput] = useKeadaanTersimpan(kunciSesi, 'input', '');
+  const [isLoading, setIsLoading] = useKeadaanTersimpan(kunciSesi, 'isLoading', false);
   // Pembatalan kiriman (2026-10-01). Disimpan di ref, bukan state: menggantinya tidak boleh memicu
-  // render, dan `hentikanKirim` harus selalu memegang kendali kiriman yang SEDANG berjalan.
-  const kendaliKirimRef = useRef(null);
+  // render, dan `hentikanKirim` harus selalu memegang kendali kiriman yang SEDANG berjalan — juga sesudah
+  // layarnya dilepas lalu dipasang lagi, maka ref-nya ikut hidup di luar layar.
+  const kendaliKirimRef = useRefTersimpan(kunciSesi, 'kendaliKirim', null);
   const [copiedIndex, setCopiedIndex] = useState(null);
   // currentChatId diinisialisasi null — ID chat di-restore via useEffect setelah
   // chatStorageKey tersedia (workspace diketahui). Ini mencegah tiga instance
   // chat membaca/menghapus kunci yang sama saat mount.
-  const [currentChatId, setCurrentChatId] = useState(null);
-  const [initialRestoreDone, setInitialRestoreDone] = useState(false);
+  const [currentChatId, setCurrentChatId] = useKeadaanTersimpan(kunciSesi, 'currentChatId', null);
+  // Di luar layar juga: layar yang dipasang ulang TIDAK boleh memulihkan ulang dari localStorage — itu
+  // akan menimpa percakapan yang sedang berjalan dengan salinan database yang lebih tua.
+  const [initialRestoreDone, setInitialRestoreDone] = useKeadaanTersimpan(kunciSesi, 'initialRestoreDone', false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [attachedFile, setAttachedFile] = useState(null);
+  const [attachedFile, setAttachedFile] = useKeadaanTersimpan(kunciSesi, 'attachedFile', null);
 
   // --- Memory Context Panel State ---
-  const [activeMemories, setActiveMemories] = useState([]);
-  const [lastMemoryQuery, setLastMemoryQuery] = useState('');
-  const [isMemoryPanelOpen, setIsMemoryPanelOpen] = useState(true);
-  const [isMemoryLoading, setIsMemoryLoading] = useState(false);
+  const [activeMemories, setActiveMemories] = useKeadaanTersimpan(kunciSesi, 'activeMemories', []);
+  const [lastMemoryQuery, setLastMemoryQuery] = useKeadaanTersimpan(kunciSesi, 'lastMemoryQuery', '');
+  const [isMemoryPanelOpen, setIsMemoryPanelOpen] = useKeadaanTersimpan(kunciSesi, 'isMemoryPanelOpen', true);
+  const [isMemoryLoading, setIsMemoryLoading] = useKeadaanTersimpan(kunciSesi, 'isMemoryLoading', false);
 
   // --- Engineer State ---
-  const [engineerCmdStates, setEngineerCmdStates] = useState({});
+  const [engineerCmdStates, setEngineerCmdStates] = useKeadaanTersimpan(kunciSesi, 'engineerCmdStates', {});
   // Perintah yang sudah pernah dijalankan OTOMATIS — bukan state, karena mengubahnya tidak boleh
   // memicu render (render ulang akan memicu efeknya lagi, dan perintahnya jalan dua kali).
-  const cmdOtomatisRef = useRef(new Set());
-  const [lastCheckpoint, setLastCheckpoint] = useState(null);
-  const [rollbackState, setRollbackState] = useState('idle');
+  const cmdOtomatisRef = useRefTersimpan(kunciSesi, 'cmdOtomatis', () => new Set());
+  const [lastCheckpoint, setLastCheckpoint] = useKeadaanTersimpan(kunciSesi, 'lastCheckpoint', null);
+  const [rollbackState, setRollbackState] = useKeadaanTersimpan(kunciSesi, 'rollbackState', 'idle');
 
   // --- PR#9: Tier 3 Web Comparison Confirmation State ---
-  const [webConfirmation, setWebConfirmation] = useState(null);
+  const [webConfirmation, setWebConfirmation] = useKeadaanTersimpan(kunciSesi, 'webConfirmation', null);
 
   // --- Refs ---
   const messagesEndRef = useRef(null);
@@ -204,7 +216,9 @@ export default function ConversationEngine({ sessionId }) {
   // Nomor urut percakapan: naik setiap kali Owner BERPINDAH (chat baru / membuka riwayat). Dipakai
   // callback jawaban untuk tahu apakah Owner masih di percakapan yang mengirim pertanyaan — lihat
   // `pengirimanChat.js`. `chatId` saja tidak cukup karena percakapan baru belum punya id.
-  const percakapanSeqRef = useRef(0);
+  // Di luar layar: callback jawaban yang masih menunggu memegang ref INI, dan layar yang dipasang ulang
+  // harus membaca nomor yang sama — dua ref terpisah akan membuat setiap jawaban tampak "terlantar".
+  const percakapanSeqRef = useRefTersimpan(kunciSesi, 'percakapanSeq', 0);
   const isInitialMount = useRef(true);
   const prevSessionIdRef = useRef(sessionId);
 
@@ -275,78 +289,106 @@ export default function ConversationEngine({ sessionId }) {
     window.dispatchEvent(new Event('resize'));
   }, [isSidebarOpen]);
 
-  const lastSavedKeyRef = useRef('');
-  const isSavingRef = useRef(false);
+  // Di luar layar (Item 127 Tahap 1): tanpa ini layar yang dipasang ulang menganggap percakapan BELUM
+  // pernah disimpan dan menulis ulang barisnya (updated_at naik, chat melompat ke puncak riwayat).
+  const lastSavedKeyRef = useRefTersimpan(kunciSesi, 'lastSavedKey', '');
+  const isSavingRef = useRefTersimpan(kunciSesi, 'isSaving', false);
   // Pemulihan riwayat gagal karena gangguan (bukan karena chatnya hilang): penunjuk chat lama dipertahankan
   // supaya riwayatnya tidak "dilupakan" aplikasi, dan chat lama tidak ditimpa pesan baru.
-  const pemulihanGagalRef = useRef(false);
-  const osStateRef = useRef(osState);
+  const pemulihanGagalRef = useRefTersimpan(kunciSesi, 'pemulihanGagal', false);
+  // Di luar layar: penyimpanan otomatis di bawah butuh workspaceId TERAKHIR yang diketahui, juga saat
+  // layarnya sedang tidak terpasang.
+  const osStateRef = useRefTersimpan(kunciSesi, 'osState', osState);
   osStateRef.current = osState;
+  const timerSimpanRef = useRefTersimpan(kunciSesi, 'timerSimpan', null);
 
   // =============================================
   // PERSISTENSI: Auto-save messages (debounced & throttled)
   // =============================================
+  // Item 127 Tahap 1: dulu ini `useEffect` milik layar — ia hanya jalan SELAMA layarnya terpasang. Jawaban
+  // yang selesai saat Owner sedang di halaman lain ditulis ke `messages` (Owner tidak berpindah PERCAKAPAN,
+  // jadi `pengirimanChat.js` menganggapnya "di layar"), lalu tidak ada siapa pun yang menyimpannya ke
+  // database. Kini ia PENGAMAT di PenyimpanKeadaan: jalan setiap kali salah satu dari empat keadaan di bawah
+  // berubah, dengan atau tanpa layar.
+  //
+  // Isi logikanya SENGAJA tidak diubah satu penjaga pun — termasuk jeda 1 detik dan pembatalan timer
+  // setiap ada perubahan (dulu dikerjakan cleanup efek; kini di awal tiap jalan). Nilai dibaca dari
+  // penyimpan dengan NAMA YANG SAMA supaya badan fungsinya tetap terbaca seperti efek lamanya.
+  //
+  // Pendaftaran diulang setiap layar dipasang (id yang sama MENGGANTI, bukan menambah), dan SENGAJA tidak
+  // dilepas saat layar dilepas — itu seluruh tujuannya. Ia berhenti hanya saat pengguna berganti
+  // (`lupakanSemua`, App.jsx).
   useEffect(() => {
-    // Jangan auto-save jika tidak ada pesan atau sedang streaming
-    if (!messages || messages.length === 0 || isLoading) return;
+    const p = penyimpanKeadaan;
+    p.amati(kunciSesi, 'simpanOtomatis', ['messages', 'currentChatId', 'isLoading', 'initialRestoreDone'], () => {
+      const messages = p.baca(kunciSesi, 'messages');
+      const currentChatId = p.baca(kunciSesi, 'currentChatId');
+      const isLoading = p.baca(kunciSesi, 'isLoading');
+      const initialRestoreDone = p.baca(kunciSesi, 'initialRestoreDone');
+      clearTimeout(timerSimpanRef.current);
+      timerSimpanRef.current = null;
 
-    // [FIX 2026-09-23 putaran 2] JANGAN menyimpan sebelum pemulihan riwayat selesai. Sesudah muat ulang,
-    // currentChatId sudah terisi (dibaca dari localStorage) sementara isi chat MASIH KOSONG karena pembacaan dari
-    // database belum selesai. Pesan baru yang muncul lebih dulu — mis. laporan patch setelah muat ulang Vite —
-    // membuat penyimpanan menimpa baris chat dengan SATU pesan itu saja.
-    // Live TUGAS-02 putaran 1 (2026-09-23 09:29): percakapan lengkap (permintaan, analisis, konfirmasi) hilang,
-    // tersisa satu pesan "Patch diterapkan" — bukti uji ikut terhapus.
-    if (!initialRestoreDone) return;
+      // Jangan auto-save jika tidak ada pesan atau sedang streaming
+      if (!messages || messages.length === 0 || isLoading) return;
 
-    // [FIX 2026-09-23] Pesan yang dibuat sistem sendiri (laporan penalaran Engineer, dialog konfirmasi,
-    // laporan patch setelah muat ulang) tidak boleh MELAHIRKAN chat baru. Tanpa penjaga ini, pesan seperti itu
-    // tersimpan sebagai chat tersendiri yang judulnya isi laporan — live 2026-09-23 satu tugas Engineer
-    // terpecah jadi empat baris di tabel `chats`. Bila chat sudah ada, pesan sistem tetap ikut tersimpan.
-    if (!bolehSimpanChat({ currentChatId, messages })) return;
+      // [FIX 2026-09-23 putaran 2] JANGAN menyimpan sebelum pemulihan riwayat selesai. Sesudah muat ulang,
+      // currentChatId sudah terisi (dibaca dari localStorage) sementara isi chat MASIH KOSONG karena pembacaan dari
+      // database belum selesai. Pesan baru yang muncul lebih dulu — mis. laporan patch setelah muat ulang Vite —
+      // membuat penyimpanan menimpa baris chat dengan SATU pesan itu saja.
+      // Live TUGAS-02 putaran 1 (2026-09-23 09:29): percakapan lengkap (permintaan, analisis, konfirmasi) hilang,
+      // tersisa satu pesan "Patch diterapkan" — bukti uji ikut terhapus.
+      if (!initialRestoreDone) return;
 
-    const saveKey = kunciSimpan({ chatId: currentChatId, messages });
+      // [FIX 2026-09-23] Pesan yang dibuat sistem sendiri (laporan penalaran Engineer, dialog konfirmasi,
+      // laporan patch setelah muat ulang) tidak boleh MELAHIRKAN chat baru. Tanpa penjaga ini, pesan seperti itu
+      // tersimpan sebagai chat tersendiri yang judulnya isi laporan — live 2026-09-23 satu tugas Engineer
+      // terpecah jadi empat baris di tabel `chats`. Bila chat sudah ada, pesan sistem tetap ikut tersimpan.
+      if (!bolehSimpanChat({ currentChatId, messages })) return;
 
-    // Lewati jika pesan belum berubah sejak penyimpanan terakhir
-    if (saveKey === lastSavedKeyRef.current) {
-      return;
-    }
+      const saveKey = kunciSimpan({ chatId: currentChatId, messages });
 
-    const timer = setTimeout(async () => {
-      if (isSavingRef.current) return;
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user?.id) return;
-      const assistantService = getAssistantService();
-      if (!assistantService) return;
-
-       isSavingRef.current = true;
-      try {
-        // [FIX: Cross-workspace leak] Jangan simpan chat jika workspace belum diketahui —
-        // fallback ke 'ws-assistant' akan menyebabkan chat Engineer/Lite tersimpan
-        // dengan workspace_type yang salah di database.
-        const currentWsId = osStateRef.current?.workspaceId;
-        if (!currentWsId) {
-          isSavingRef.current = false;
-          return;
-        }
-        await assistantService.saveChatToDB({
-          messages,
-          chatId: currentChatId,
-          userId: session.user.id,
-          workspaceId: currentWsId,
-          onNewChatId: (newId) => {
-            setCurrentChatId(newId);
-            // [FIX: localStorage isolation] Gunakan kunci workspace-spesifik
-            const wsId = osStateRef.current?.workspaceId;
-            if (wsId) localStorage.setItem(`mamet_v4_${wsId}_current_chat_id`, newId);
-          }
-        });
-        lastSavedKeyRef.current = saveKey;
-      } finally {
-        isSavingRef.current = false;
+      // Lewati jika pesan belum berubah sejak penyimpanan terakhir
+      if (saveKey === lastSavedKeyRef.current) {
+        return;
       }
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [messages, currentChatId, isLoading, initialRestoreDone]);
+
+      timerSimpanRef.current = setTimeout(async () => {
+        timerSimpanRef.current = null;
+        if (isSavingRef.current) return;
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user?.id) return;
+        const assistantService = getAssistantService();
+        if (!assistantService) return;
+
+         isSavingRef.current = true;
+        try {
+          // [FIX: Cross-workspace leak] Jangan simpan chat jika workspace belum diketahui —
+          // fallback ke 'ws-assistant' akan menyebabkan chat Engineer/Lite tersimpan
+          // dengan workspace_type yang salah di database.
+          const currentWsId = osStateRef.current?.workspaceId;
+          if (!currentWsId) {
+            isSavingRef.current = false;
+            return;
+          }
+          await assistantService.saveChatToDB({
+            messages,
+            chatId: currentChatId,
+            userId: session.user.id,
+            workspaceId: currentWsId,
+            onNewChatId: (newId) => {
+              setCurrentChatId(newId);
+              // [FIX: localStorage isolation] Gunakan kunci workspace-spesifik
+              const wsId = osStateRef.current?.workspaceId;
+              if (wsId) localStorage.setItem(`mamet_v4_${wsId}_current_chat_id`, newId);
+            }
+          });
+          lastSavedKeyRef.current = saveKey;
+        } finally {
+          isSavingRef.current = false;
+        }
+      }, 1000);
+    });
+  }, [kunciSesi]);
 
   // =============================================
   // PERSISTENSI: Sync currentChatId ke localStorage (workspace-spesifik)
@@ -438,7 +480,14 @@ export default function ConversationEngine({ sessionId }) {
 
   // Override tingkat model dilepas setiap berpindah chat — termasuk saat membuka chat lama
   // dari riwayat, bukan cuma saat membuat chat baru.
+  //
+  // Item 127 Tahap 1: efek ini jalan juga setiap layar DIPASANG. Dulu itu tak berarti apa-apa (layar tak
+  // pernah dilepas); kini ia akan membuang pil tier pilihan Owner setiap ia kembali dari halaman lain.
+  // Jadi reset hanya bila chat-nya benar-benar berganti dari yang terakhir diingat — di luar layar.
+  const chatTierRef = useRefTersimpan(kunciSesi, 'chatTier', undefined);
   useEffect(() => {
+    if (chatTierRef.current === currentChatId) return;
+    chatTierRef.current = currentChatId;
     setModelTierOverride(null);
   }, [currentChatId]);
 
@@ -629,7 +678,7 @@ export default function ConversationEngine({ sessionId }) {
 
   // PADATKAN KONTEKS — pesan lama diringkas jadi SATU pesan yang tetap dikirim, lalu batas konteks
   // digeser ke ringkasan itu. Beda dengan "Bersihkan" yang membuang ingatannya sama sekali.
-  const [sedangMemadatkan, setSedangMemadatkan] = useState(false);
+  const [sedangMemadatkan, setSedangMemadatkan] = useKeadaanTersimpan(kunciSesi, 'sedangMemadatkan', false);
   const [panelKonteks, setPanelKonteks] = useState(false);
   const panelKonteksRef = useRef(null);
   const bisaPadatkan = bolehPadatkan(messages, bacaMulaiDari(currentChatId));
@@ -687,7 +736,7 @@ export default function ConversationEngine({ sessionId }) {
   // MESIN UJI KLAIM (ROADMAP-ENGINEER-MANDIRI Tahap 2, 2026-09-23): jawaban Engineer yang memuat blok <uji_klaim>
   // dijalankan terhadap kode nyata di repo, lalu hasilnya ditempel sebagai pesan tersendiri. Jawaban model TIDAK
   // diubah — laporan uji berdiri sendiri supaya jelas mana kata model dan mana hasil mesin.
-  const klaimDiprosesRef = useRef(new Set());
+  const klaimDiprosesRef = useRefTersimpan(kunciSesi, 'klaimDiproses', () => new Set());
   useEffect(() => {
     if (workspaceManager?.activeWorkspaceId !== 'ws-engineer') return;
     const i = messages.length - 1;
@@ -717,7 +766,7 @@ export default function ConversationEngine({ sessionId }) {
   // atau sudah DITUTUP Owner tidak diangkat lagi. Penulisannya ke disk MENUNGGU tombol Owner — batas
   // "menulis berkas selalu lewat persetujuan Owner" tidak digeser untuk kenyamanan.
   const [temuanTersimpan, setTemuanTersimpan] = useState([]);
-  const temuanDiprosesRef = useRef(new Set());
+  const temuanDiprosesRef = useRefTersimpan(kunciSesi, 'temuanDiproses', () => new Set());
 
   // Keutuhan ingatan temuan (TMN-0006). Dicatat terpisah dari daftarnya karena DAFTAR KOSONG
   // punya dua sebab yang sama sekali berbeda — "memang tidak ada temuan" dan "berkasnya tidak
