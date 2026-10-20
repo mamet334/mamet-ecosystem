@@ -16,7 +16,12 @@ const teksSimpul = (n) => (n?.type === 'text' ? n.value : (n?.children || []).ma
 // Kotak kode — dipakai blok kode di jawaban model DAN keluaran terminal Engineer (yang dulu tampil sebagai teks biasa
 // di gelembung, sehingga baris panjang tanpa spasi menjebol tepi gelembung). `tinggiMaks`: keluaran terminal bisa
 // ratusan baris — digulir di dalam kotaknya, tidak memanjangkan percakapan.
-export function KotakKode({ isi, label, tinggiMaks = false }) {
+//
+// Bentuknya = KOLOM ISIAN SETTINGS (Owner 20 Okt: "kolom code sama dengan kolom bertulisan gemini"): kelas kotaknya
+// sama dengan isian Provider/Model ID di Settings (latar surface-container-lowest, garis outline-variant, px-5 py-4,
+// rounded-lg — dijaga uji-markdown-chat), dan labelnya di ATAS kotak seperti label "MODEL ID" di sana. Label jenis
+// (`kode`, nama bahasa, `terminal`) ditulis kapital; `perintah` terminal TIDAK — huruf besar-kecil perintah bermakna.
+export function KotakKode({ isi, label, perintah = '', tinggiMaks = false }) {
   // Hasil salin DITAMPILKAN di tombolnya, berhasil atau tidak — tombol yang diam saat gagal membuat Owner mengira
   // kodenya sudah tersalin lalu menempel isi papan klip yang lama.
   const [hasilSalin, setHasilSalin] = useState(null);
@@ -30,14 +35,17 @@ export function KotakKode({ isi, label, tinggiMaks = false }) {
       });
   };
   return (
-    <div className="my-3 min-w-0 rounded-lg border border-outline-variant bg-surface-container-lowest overflow-hidden">
-      <div className="flex items-center justify-between gap-3 px-3 py-1.5 border-b border-outline-variant text-on-surface-variant">
-        <span className="font-mono text-[12px] truncate">{label}</span>
-        <button type="button" onClick={salin} className="shrink-0 text-[12px] tracking-wide hover:underline underline-offset-2" title="Salin kode">
+    <div className="my-3 min-w-0 flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-3 px-1 text-label-mono text-on-surface-variant">
+        <span className="min-w-0 truncate">
+          <span className="uppercase tracking-widest">{label}</span>
+          {perintah && <span className="normal-case tracking-normal"> · {perintah}</span>}
+        </span>
+        <button type="button" onClick={salin} className="shrink-0 uppercase tracking-widest hover:text-primary transition-colors" title="Salin kode">
           {hasilSalin || 'Salin'}
         </button>
       </div>
-      <pre className={`p-3 overflow-x-auto custom-scrollbar ${tinggiMaks ? 'max-h-[24rem] overflow-y-auto' : ''}`}>
+      <pre className={`w-full bg-surface-container-lowest border border-outline-variant px-5 py-4 rounded-lg overflow-x-auto custom-scrollbar ${tinggiMaks ? 'max-h-[24rem] overflow-y-auto' : ''}`}>
         <code className="block whitespace-pre font-mono text-[14px] leading-[1.6] [tab-size:2]">{isi}</code>
       </pre>
     </div>
@@ -63,15 +71,15 @@ function BlokKode({ node }) {
 // panjang butuh jarak lebih supaya mata tidak salah pindah baris.
 const KOMPONEN = {
   p: ({ node, ...p }) => <p className="my-3 first:mt-0 last:mb-0" {...p} />,
-  strong: ({ node, ...p }) => <strong className="font-semibold" {...p} />,
+  strong: ({ node, ...p }) => <strong className="font-semibold text-on-surface-strong" {...p} />,
   em: ({ node, ...p }) => <em className="italic" {...p} />,
   a: ({ node, ...p }) => <a className="text-primary underline underline-offset-2 hover:decoration-2" target="_blank" rel="noopener noreferrer" {...p} />,
   ul: ({ node, ...p }) => <ul className="my-3 pl-6 list-disc space-y-1" {...p} />,
   ol: ({ node, ...p }) => <ol className="my-3 pl-6 list-decimal space-y-1" {...p} />,
   li: ({ node, ...p }) => <li className="pl-1" {...p} />,
-  h1: ({ node, ...p }) => <h1 className="mt-5 mb-2 first:mt-0 text-[20px] leading-8 font-semibold" {...p} />,
-  h2: ({ node, ...p }) => <h2 className="mt-5 mb-2 first:mt-0 text-[18px] leading-7 font-semibold" {...p} />,
-  h3: ({ node, ...p }) => <h3 className="mt-4 mb-1.5 first:mt-0 text-[16px] leading-7 font-semibold" {...p} />,
+  h1: ({ node, ...p }) => <h1 className="mt-5 mb-2 first:mt-0 text-[20px] leading-8 font-semibold text-on-surface-strong" {...p} />,
+  h2: ({ node, ...p }) => <h2 className="mt-5 mb-2 first:mt-0 text-[18px] leading-7 font-semibold text-on-surface-strong" {...p} />,
+  h3: ({ node, ...p }) => <h3 className="mt-4 mb-1.5 first:mt-0 text-[16px] leading-7 font-semibold text-on-surface-strong" {...p} />,
   h4: ({ node, ...p }) => <h4 className="mt-4 mb-1.5 first:mt-0 text-[16px] leading-7 font-semibold opacity-80" {...p} />,
   blockquote: ({ node, ...p }) => <blockquote className="my-3 pl-4 border-l-2 border-outline-variant opacity-80" {...p} />,
   hr: ({ node, ...p }) => <hr className="my-5 border-outline-variant" {...p} />,

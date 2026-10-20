@@ -25,6 +25,9 @@ export default {
         // lama. Tetap jauh di atas 4,5:1, dan tetap terpisah jelas dari teks redup on-surface-variant (±10:1).
         "on-surface": "#dbd0be",
         "on-background": "#dbd0be",
+        // Teks tebal & judul di jawaban model (20 Okt, pratinjau bingkai jawaban yang disetujui Owner): satu langkah
+        // lebih terang dari teks biasa supaya tetap menonjol di dalam bingkai hampir hitam.
+        "on-surface-strong": "#e8dcc8",
         "inverse-surface": "#f3e7d3",
         "on-surface-variant": "#c9b49a",
         "inverse-on-surface": "#2a1a0d",

@@ -37,7 +37,7 @@ const DIKECUALIKAN = new Set(['components/LampLogin.jsx', 'components/os/LatarRu
 const tanpaKomentar = (kode) =>
   kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
-console.log('uji-ciri-tampilan v3');
+console.log('uji-ciri-tampilan v4');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -135,7 +135,9 @@ const GARIS_DASAR = {
   // (TeksMarkdown.jsx, permintaan Owner). Blok kode, tabel, kutipan, dan garis pemisah adalah elemen BARU yang
   // butuh garis & latar; yang mubazir (warna yang diwarisi) sudah dibuang lebih dulu, sisanya +8. Token ini kini
   // bernilai palet LampLogin, bukan lagi sistem warna yang bersaing. Kenaikan berikutnya tetap merah.
-  tokenMaterial: 576,
+  // 576 → 581 (20 Okt, v4) — kartu jawaban model bergaya kartu Settings atas permintaan Owner: garis
+  // border-outline-variant kartu (+1) dan token baru on-surface-strong untuk teks tebal & judul (+4). Kenaikan berikutnya tetap merah.
+  tokenMaterial: 581,
   warnaSlate: 609, // 615 → 609 (19 Okt): akar 6 aplikasi tak lagi mengecat latar slate sendiri (latar = dinding LampLogin)
   aksenPelangi: 250,
   gerakDekoratif: 51,

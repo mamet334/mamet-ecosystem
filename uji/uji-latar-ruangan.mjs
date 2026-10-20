@@ -30,7 +30,7 @@ const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (kode) => kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
 
-console.log('uji-latar-ruangan v2');
+console.log('uji-latar-ruangan v4');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -162,6 +162,27 @@ for (const [nama, h] of [['on-surface', token('on-surface')], ['on-surface-varia
 }
 const urut = [300, 400, 500].map((n) => lum(hex(slate(n))));
 cek(urut[0] > urut[1] && urut[1] > urut[2], 'urutan terang slate 300 > 400 > 500 tetap terjaga');
+
+// v4 (20 Okt): jawaban model di dalam kartu bergaya Settings (`.glass-panel`, tembus sebagian) — teksnya berdiri di atas
+// campuran kartu + dinding. Latar kartu dibaca dari index.css; campurannya dihitung di titik dinding paling terang.
+// Kaca buramnya (blur) hanya meratakan dinding di baliknya, jadi tak bisa lebih terang dari titik paling terang.
+const CEteks = baca('frontend/src/components/workbench/ConversationEngine.jsx');
+const kartuDipakai = /: 'glass-panel [^']*'\}`\}>/.test(CEteks);
+const cssKaca = baca('frontend/src/index.css').replace(/\/\*[\s\S]*?\*\//g, '');
+const latarKaca = (cssKaca.match(/\.glass-panel \{[^}]*background:\s*rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/) || []).slice(1).map(Number);
+cek(kartuDipakai && latarKaca.length === 4, `kartu jawaban model memakai .glass-panel — latar rgba(${latarKaca.join(', ')})`);
+const bingkai = latarKaca.length === 4 ? [null, ...latarKaca] : null;
+if (bingkai) {
+  const [r0, g0, b0, a0b] = bingkai.slice(1).map(Number);
+  const dalamBingkai = latarTerang.map((v, k) => Math.round([r0, g0, b0][k] * a0b + v * (1 - a0b)));
+  console.log(`     di dalam bingkai (${Math.round(a0b * 100)}% pekat) di titik terang: rgb(${dalamBingkai.join(', ')})`);
+  for (const [nama, h] of [['on-surface (teks jawaban)', token('on-surface')], ['on-surface-strong (tebal & judul)', token('on-surface-strong')],
+    ['on-surface-variant', token('on-surface-variant')], ['slate-500 (label "TOOLS:")', slate(500)]]) {
+    const r = rasio(hex(h), dalamBingkai);
+    cek(h && r >= 4.5, `${nama} ${h}: ${r.toFixed(2)}:1 di dalam bingkai (≥ 4,5)`);
+  }
+  cek(lum(dalamBingkai) > lum([r0, g0, b0]), 'dinding memang ikut terlihat di dalam bingkai (bingkai tidak pekat penuh)');
+}
 
 // ── 5. Bilah gulir tipis berlaku global ─────────────────────────────────────────────────────────
 console.log('\n-- 5. bilah gulir --');

@@ -27,7 +27,7 @@ const FE = join(AKAR, 'frontend');
 const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (kode) => kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
-console.log('uji-markdown-chat v3');
+console.log('uji-markdown-chat v4');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -136,14 +136,33 @@ const perintah = 'git grep -n -E "[a-z]+Registry" -- frontend/src';
 const keluaran = 'frontend/src/core/runtime/services/engineer/CapabilityGuard.js:137:  // [FIX 2026-09-09] leading slash dihapus\n  baris berlekuk';
 const urai = riwayatPerintahDariPesan([{ content: pesanKeluaranPerintah(perintah, keluaran) }])[0];
 cek(urai?.perintah === perintah, 'perintah yang memuat "]" diurai utuh (pengurai yang sama dengan riwayat perintah)', urai);
-const hTerminal = renderKotak({ isi: urai?.keluaran, label: `terminal · ${urai?.perintah}`, tinggiMaks: true });
+const hTerminal = renderKotak({ isi: urai?.keluaran, label: 'terminal', perintah: urai?.perintah, tinggiMaks: true });
+// v4: label jenis kapital, tetapi PERINTAH tetap huruf aslinya — huruf besar-kecil perintah bermakna (`-E` ≠ `-e`).
+const perintahTampil = (hTerminal.match(/<span class="([^"]*)"> · ([^<]*)<\/span>/) || []);
+cek(perintahTampil[2] && dekode(perintahTampil[2]) === perintah && /normal-case/.test(perintahTampil[1]) && !/(^|\s)uppercase(\s|$)/.test(perintahTampil[1]),
+  'perintah terminal tampil dengan huruf aslinya (tidak dikapitalkan)', perintahTampil[0]);
 const isiTerminal = (hTerminal.match(/<pre[^>]*>([\s\S]*?)<\/pre>/) || [, ''])[1];
 cek(dekode(isiTerminal) === urai?.keluaran, 'isi keluaran utuh, lekuk tetap', dekode(isiTerminal));
 cek(/<pre class="[^"]*overflow-x-auto[^"]*max-h-\[24rem\] overflow-y-auto/.test(hTerminal), 'baris panjang digulir mendatar; keluaran panjang digulir di dalam kotak');
 cek(/<code class="[^"]*whitespace-pre(?!-)/.test(hTerminal), 'baris keluaran tidak dipatahkan');
 cek(/<div class="my-3 min-w-0 /.test(hTerminal), 'kotak boleh menyempit di dalam gelembung (min-w-0) — tidak menjebol tepinya');
-cek(/const terminal = m\.role === 'user' && riwayatPerintahDariPesan\(\[\{ content: displayText \}\]\)\[0\];\s*if \(terminal\) return <KotakKode isi=\{terminal\.keluaran\} label=\{`terminal · \$\{terminal\.perintah\}`\} tinggiMaks \/>;/.test(CE),
+cek(/const terminal = m\.role === 'user' && riwayatPerintahDariPesan\(\[\{ content: displayText \}\]\)\[0\];\s*if \(terminal\) return <KotakKode isi=\{terminal\.keluaran\} label="terminal" perintah=\{terminal\.perintah\} tinggiMaks \/>;/.test(CE),
   'ConversationEngine merender keluaran terminal sebagai KotakKode, memakai pengurai riwayat perintah');
+
+// ── 6. Kotak kode = kolom isian Settings (v4) ───────────────────────────────────────────────────
+// Owner 20 Okt: "kolom code sama dengan kolom bertulisan gemini". Kelas tampilan isian Provider di Settings dibaca
+// langsung dari Settings.jsx; kotak kode harus memuat semuanya — bila salah satu diubah tanpa yang lain, merah.
+console.log('\n-- 6. kotak kode = kolom isian "gemini" di Settings --');
+const STm = tanpaKomentar(baca('frontend/src/components/Settings.jsx'));
+const iProvider = STm.indexOf('value={aiProvider}');
+const kelasIsian = (STm.slice(iProvider, iProvider + 600).match(/className="([^"]*)"/) || [])[1] || '';
+const TAMPILAN_ISIAN = kelasIsian.split(/\s+/).filter((k) => /^(bg-|border|px-|py-|rounded)/.test(k));
+cek(TAMPILAN_ISIAN.length >= 5, `isian Provider di Settings: ${TAMPILAN_ISIAN.join(' ')}`, kelasIsian);
+const kelasPre = (hTerminal.match(/<pre class="([^"]*)"/) || [])[1] || '';
+const kurangIsian = TAMPILAN_ISIAN.filter((k) => !kelasPre.split(/\s+/).includes(k));
+cek(kurangIsian.length === 0, 'kotak kode memakai kelas tampilan yang sama persis dengan isian Settings', { kurangIsian, kelasPre });
+const iLabel = hTerminal.indexOf('text-label-mono'), iPre = hTerminal.indexOf('<pre');
+cek(iLabel > 0 && iLabel < iPre, 'label (jenis · Salin) di ATAS kotak, bergaya label "MODEL ID" (text-label-mono)', { iLabel, iPre });
 const iTerminal = CE.indexOf('const terminal = m.role');
 cek(iTerminal > 0 && iTerminal < CE.indexOf('const parts = displayText.split(MARKER_RE)'), 'deteksi terminal mendahului pemisahan penanda');
 cek(/'rounded-2xl px-4 py-3 [^']*\[overflow-wrap:anywhere\]/.test(CE), 'teks panjang lain di gelembung pengguna dipatahkan di dalam gelembung');

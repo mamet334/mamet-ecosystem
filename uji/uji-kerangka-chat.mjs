@@ -18,6 +18,7 @@
 
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -25,7 +26,7 @@ const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (kode) =>
   kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
-console.log('uji-kerangka-chat v5');
+console.log('uji-kerangka-chat v7');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -86,13 +87,41 @@ const karakter = Math.round((px - 32) / 7.85);
 cek(Number.isFinite(px) && px >= 1024,
   `kolom baca ${px}px — lebar, sesuai keputusan Owner (≈ ${karakter} karakter per baris, di atas pedoman 75: disengaja)`,
   { kolomBaca, px, karakter });
-// v5 (Owner 19 Okt, gambar rujukan — "susunannya dibuat seperti di gambar"): jawaban model TANPA kotak, teks langsung
-// di atas latar; hanya pesan pengguna yang bergelembung, dipadatkan px-4 py-3 dan tetap bergaris tepi.
+// v5 (19 Okt) jawaban model sempat TANPA kotak (gambar rujukan). v6 (Owner 20 Okt, dipilih dari pratinjau varian C):
+// "beri bingkai dengan warna di dalamnya hampir hitam… lebih transparan agar siluet background dasar sedikit terlihat".
+// Yang dijaga: jawaban model berbingkai, latarnya HAMPIR HITAM dan SEDIKIT tembus (pekat 70–90%: kurang dari itu
+// dinding terlalu ramai di belakang teks, lebih dari itu siluetnya hilang), garis emas tipis; gelembung pengguna tetap.
 const kelasPeran = CE.match(/\$\{m\.role === 'user' \? '(rounded-2xl[^']*)' : '([^']*)'\}`\}>/) || [];
 cek(/^rounded-2xl px-4 py-3 /.test(kelasPeran[1] || '') && /border/.test(kelasPeran[1] || ''),
   'gelembung pengguna dipadatkan (px-4 py-3) dan tetap bergaris tepi', kelasPeran[1]);
-cek(kelasPeran[2] !== undefined && !/glass-panel|border|rounded|bg-/.test(kelasPeran[2]),
-  'jawaban model tanpa kotak — tanpa kaca, garis, sudut, atau latar', kelasPeran[2]);
+// v7 (Owner 20 Okt siang, menunjuk halaman Settings): "kolom jawaban sama seperti kolom untuk tulisan AI Model
+// Management… warna dalam bingkai sama persis". v6 (bingkai hampir hitam 80%) ternyata salah tangkap. Yang dijaga kini:
+// kartu jawaban memakai kelas tampilan YANG SAMA dengan kartu itu — dibaca langsung dari Settings.jsx, jadi bila salah
+// satu diubah tanpa yang lain, uji ini merah.
+const kelasJawaban = kelasPeran[2] || '';
+const ST = tanpaKomentar(baca('frontend/src/components/Settings.jsx'));
+const iKartu = ST.indexOf('>AI Model Management<');
+const kelasKartu = (ST.slice(0, iKartu).match(/<section className="([^"]*)"/g) || []).pop()?.match(/className="([^"]*)"/)[1] || '';
+const TATA_LETAK = /^(col-span-|lg:col-span-|relative$|overflow-hidden$)/; // penempatan di grid Settings, bukan tampilan
+const tampilanKartu = kelasKartu.split(/\s+/).filter((k) => k && !TATA_LETAK.test(k));
+cek(tampilanKartu.includes('glass-panel') && tampilanKartu.length >= 5, `kartu "AI Model Management" ditemukan: ${tampilanKartu.join(' ')}`, kelasKartu);
+const kurang = tampilanKartu.filter((k) => !kelasJawaban.split(/\s+/).includes(k));
+cek(kurang.length === 0, 'kartu jawaban model = kartu AI Model Management (kelas tampilan sama persis)', { kurang, kelasJawaban });
+cek(!/\bbg-(?!opacity)|border-primary/.test(kelasJawaban), 'tak ada latar/garis tambahan yang menimpa warna kartu Settings', kelasJawaban);
+
+// Kelas bingkai DIKOMPILASI dengan Tailwind sungguhan — nilai bebas dan opasitas garis harus benar-benar dibuat
+// (pelajaran 19 Okt: `from-black/43` LampLogin tak pernah dibuat, dan uji yang membaca tulisan tak tahu).
+const reqFE = createRequire(join(AKAR, 'frontend', 'package.json'));
+const postcss = reqFE('postcss'), tailwind = reqFE('tailwindcss'), loadConfig = reqFE('tailwindcss/loadConfig');
+const escTW = reqFE('tailwindcss/lib/util/escapeClassName').default;
+const kelasDiuji = [...new Set(`${kelasPeran[1] || ''} ${kelasJawaban}`.split(/\s+/).filter(Boolean))];
+const { css: cssBingkai } = await postcss([tailwind({ ...loadConfig(join(AKAR, 'frontend', 'tailwind.config.js')),
+  content: [{ raw: `<div className="${kelasDiuji.join(' ')}">`, extension: 'jsx' }] })]).process('@tailwind utilities;', { from: undefined });
+// Kelas global buatan sendiri (glass-panel, rim-light) tidak dibuat Tailwind — ia harus didefinisikan di index.css.
+const cssGlobal = baca('frontend/src/index.css').replace(/\/\*[\s\S]*?\*\//g, '');
+const takDibuat = kelasDiuji.filter((k) => !cssBingkai.includes('.' + escTW(k) + ' ') && !cssBingkai.includes('.' + escTW(k) + '{')
+  && !new RegExp(`(^|\\n)\\.${k.replace(/[-]/g, '\\-')}\\s*\\{`).test(cssGlobal));
+cek(takDibuat.length === 0, `${kelasDiuji.length} kelas gelembung & kartu semuanya benar-benar ada (Tailwind atau index.css)`, takDibuat);
 cek(/\$\{m\.role === 'user' \? 'max-w-\[85%\] lg:max-w-\[75%\]' : 'w-full'\}/.test(CE),
   'gelembung pengguna ≤75%, jawaban model selebar kolom baca');
 

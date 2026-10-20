@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 
-console.log('uji-palet-lamplogin v2');
+console.log('uji-palet-lamplogin v3');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -72,6 +72,10 @@ const rUtama = rasio(TOKEN['on-surface'], TOKEN.surface);
 cek(rUtama >= 7 && rUtama <= 14, `teks utama ${rUtama.toFixed(2)}:1 — nyaman dibaca lama (7–14:1, tidak menyilaukan)`);
 cek(TOKEN['on-surface'] === TOKEN['on-background'], 'on-surface = on-background');
 cek(rUtama - rasio(TOKEN['on-surface-variant'], TOKEN.surface) >= 2, 'teks utama tetap jelas lebih terang dari teks redup');
+// v3 (20 Okt): teks tebal & judul jawaban model satu langkah lebih terang dari teks biasa — tetapi tidak kembali ke
+// ketajaman lama (≤ 15:1; krem #f3e7d3 yang dinilai "kurang nyaman di mata" 16,3:1).
+const rKuat = TOKEN['on-surface-strong'] ? rasio(TOKEN['on-surface-strong'], TOKEN.surface) : 0;
+cek(rKuat > rUtama && rKuat <= 15, `teks tebal & judul ${TOKEN['on-surface-strong']}: ${rKuat.toFixed(2)}:1 — lebih terang dari teks biasa, tak setajam krem lama`);
 const PASANGAN_SLATE =[[300, 800], [400, 900], [400, 950], [500, 900], [500, 950]];
 for (const [t, l] of PASANGAN_SLATE) {
   const r = rasio(SLATE[t], SLATE[l]);
