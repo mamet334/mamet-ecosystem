@@ -1,0 +1,212 @@
+/* WARNA DASAR "GELAP" — fondasi bersama semua tema gelap (Item 128 Tahap D1, 20 Okt 2026).
+
+   Owner, 20 Okt: "buat warna dasar dari code dibuat bisa berubah-ubah sesuai setelan, agar bila nanti ingin membuat
+   tema lain bisa mudah diterapkan tanpa mengubah code source". Maka putih, hitam, SEMUA warna status bawaan Tailwind
+   (17 rona × 11 tingkat), dan warna yang dulu ditulis langsung di komponen kini menjadi variabel. Nilai di bawah =
+   palet bawaan Tailwind 3.4 & nilai lama komponen APA ADANYA, jadi tema gelap tampil persis seperti sebelumnya
+   (dijaga uji-tema-tahap-d). Dasar "terang" (Tahap D3) memberi nilai lain untuk variabel yang sama.
+
+   Sebuah tema memilih dasarnya di public/metadata/themes.json (`"dasar": "gelap" | "terang"`); TemaService menulis
+   data-dasar di <html>. Tema boleh menimpa variabel mana pun lewat `nilai` di metadata. */
+:root,
+[data-dasar="gelap"] {
+  --warna-white: 255 255 255; /* #fff */
+  --warna-black: 0 0 0; /* #000 */
+  --warna-di-warna: 255 255 255; /* teks di atas latar warna padat (tombol, lencana) — Tahap D3 */
+  --warna-red-50: 254 242 242; /* #fef2f2 */
+  --warna-red-100: 254 226 226; /* #fee2e2 */
+  --warna-red-200: 254 202 202; /* #fecaca */
+  --warna-red-300: 252 165 165; /* #fca5a5 */
+  --warna-red-400: 248 113 113; /* #f87171 */
+  --warna-red-500: 239 68 68; /* #ef4444 */
+  --warna-red-600: 220 38 38; /* #dc2626 */
+  --warna-red-700: 185 28 28; /* #b91c1c */
+  --warna-red-800: 153 27 27; /* #991b1b */
+  --warna-red-900: 127 29 29; /* #7f1d1d */
+  --warna-red-950: 69 10 10; /* #450a0a */
+  --warna-orange-50: 255 247 237; /* #fff7ed */
+  --warna-orange-100: 255 237 213; /* #ffedd5 */
+  --warna-orange-200: 254 215 170; /* #fed7aa */
+  --warna-orange-300: 253 186 116; /* #fdba74 */
+  --warna-orange-400: 251 146 60; /* #fb923c */
+  --warna-orange-500: 249 115 22; /* #f97316 */
+  --warna-orange-600: 234 88 12; /* #ea580c */
+  --warna-orange-700: 194 65 12; /* #c2410c */
+  --warna-orange-800: 154 52 18; /* #9a3412 */
+  --warna-orange-900: 124 45 18; /* #7c2d12 */
+  --warna-orange-950: 67 20 7; /* #431407 */
+  --warna-amber-50: 255 251 235; /* #fffbeb */
+  --warna-amber-100: 254 243 199; /* #fef3c7 */
+  --warna-amber-200: 253 230 138; /* #fde68a */
+  --warna-amber-300: 252 211 77; /* #fcd34d */
+  --warna-amber-400: 251 191 36; /* #fbbf24 */
+  --warna-amber-500: 245 158 11; /* #f59e0b */
+  --warna-amber-600: 217 119 6; /* #d97706 */
+  --warna-amber-700: 180 83 9; /* #b45309 */
+  --warna-amber-800: 146 64 14; /* #92400e */
+  --warna-amber-900: 120 53 15; /* #78350f */
+  --warna-amber-950: 69 26 3; /* #451a03 */
+  --warna-yellow-50: 254 252 232; /* #fefce8 */
+  --warna-yellow-100: 254 249 195; /* #fef9c3 */
+  --warna-yellow-200: 254 240 138; /* #fef08a */
+  --warna-yellow-300: 253 224 71; /* #fde047 */
+  --warna-yellow-400: 250 204 21; /* #facc15 */
+  --warna-yellow-500: 234 179 8; /* #eab308 */
+  --warna-yellow-600: 202 138 4; /* #ca8a04 */
+  --warna-yellow-700: 161 98 7; /* #a16207 */
+  --warna-yellow-800: 133 77 14; /* #854d0e */
+  --warna-yellow-900: 113 63 18; /* #713f12 */
+  --warna-yellow-950: 66 32 6; /* #422006 */
+  --warna-lime-50: 247 254 231; /* #f7fee7 */
+  --warna-lime-100: 236 252 203; /* #ecfccb */
+  --warna-lime-200: 217 249 157; /* #d9f99d */
+  --warna-lime-300: 190 242 100; /* #bef264 */
+  --warna-lime-400: 163 230 53; /* #a3e635 */
+  --warna-lime-500: 132 204 22; /* #84cc16 */
+  --warna-lime-600: 101 163 13; /* #65a30d */
+  --warna-lime-700: 77 124 15; /* #4d7c0f */
+  --warna-lime-800: 63 98 18; /* #3f6212 */
+  --warna-lime-900: 54 83 20; /* #365314 */
+  --warna-lime-950: 26 46 5; /* #1a2e05 */
+  --warna-green-50: 240 253 244; /* #f0fdf4 */
+  --warna-green-100: 220 252 231; /* #dcfce7 */
+  --warna-green-200: 187 247 208; /* #bbf7d0 */
+  --warna-green-300: 134 239 172; /* #86efac */
+  --warna-green-400: 74 222 128; /* #4ade80 */
+  --warna-green-500: 34 197 94; /* #22c55e */
+  --warna-green-600: 22 163 74; /* #16a34a */
+  --warna-green-700: 21 128 61; /* #15803d */
+  --warna-green-800: 22 101 52; /* #166534 */
+  --warna-green-900: 20 83 45; /* #14532d */
+  --warna-green-950: 5 46 22; /* #052e16 */
+  --warna-emerald-50: 236 253 245; /* #ecfdf5 */
+  --warna-emerald-100: 209 250 229; /* #d1fae5 */
+  --warna-emerald-200: 167 243 208; /* #a7f3d0 */
+  --warna-emerald-300: 110 231 183; /* #6ee7b7 */
+  --warna-emerald-400: 52 211 153; /* #34d399 */
+  --warna-emerald-500: 16 185 129; /* #10b981 */
+  --warna-emerald-600: 5 150 105; /* #059669 */
+  --warna-emerald-700: 4 120 87; /* #047857 */
+  --warna-emerald-800: 6 95 70; /* #065f46 */
+  --warna-emerald-900: 6 78 59; /* #064e3b */
+  --warna-emerald-950: 2 44 34; /* #022c22 */
+  --warna-teal-50: 240 253 250; /* #f0fdfa */
+  --warna-teal-100: 204 251 241; /* #ccfbf1 */
+  --warna-teal-200: 153 246 228; /* #99f6e4 */
+  --warna-teal-300: 94 234 212; /* #5eead4 */
+  --warna-teal-400: 45 212 191; /* #2dd4bf */
+  --warna-teal-500: 20 184 166; /* #14b8a6 */
+  --warna-teal-600: 13 148 136; /* #0d9488 */
+  --warna-teal-700: 15 118 110; /* #0f766e */
+  --warna-teal-800: 17 94 89; /* #115e59 */
+  --warna-teal-900: 19 78 74; /* #134e4a */
+  --warna-teal-950: 4 47 46; /* #042f2e */
+  --warna-cyan-50: 236 254 255; /* #ecfeff */
+  --warna-cyan-100: 207 250 254; /* #cffafe */
+  --warna-cyan-200: 165 243 252; /* #a5f3fc */
+  --warna-cyan-300: 103 232 249; /* #67e8f9 */
+  --warna-cyan-400: 34 211 238; /* #22d3ee */
+  --warna-cyan-500: 6 182 212; /* #06b6d4 */
+  --warna-cyan-600: 8 145 178; /* #0891b2 */
+  --warna-cyan-700: 14 116 144; /* #0e7490 */
+  --warna-cyan-800: 21 94 117; /* #155e75 */
+  --warna-cyan-900: 22 78 99; /* #164e63 */
+  --warna-cyan-950: 8 51 68; /* #083344 */
+  --warna-sky-50: 240 249 255; /* #f0f9ff */
+  --warna-sky-100: 224 242 254; /* #e0f2fe */
+  --warna-sky-200: 186 230 253; /* #bae6fd */
+  --warna-sky-300: 125 211 252; /* #7dd3fc */
+  --warna-sky-400: 56 189 248; /* #38bdf8 */
+  --warna-sky-500: 14 165 233; /* #0ea5e9 */
+  --warna-sky-600: 2 132 199; /* #0284c7 */
+  --warna-sky-700: 3 105 161; /* #0369a1 */
+  --warna-sky-800: 7 89 133; /* #075985 */
+  --warna-sky-900: 12 74 110; /* #0c4a6e */
+  --warna-sky-950: 8 47 73; /* #082f49 */
+  --warna-blue-50: 239 246 255; /* #eff6ff */
+  --warna-blue-100: 219 234 254; /* #dbeafe */
+  --warna-blue-200: 191 219 254; /* #bfdbfe */
+  --warna-blue-300: 147 197 253; /* #93c5fd */
+  --warna-blue-400: 96 165 250; /* #60a5fa */
+  --warna-blue-500: 59 130 246; /* #3b82f6 */
+  --warna-blue-600: 37 99 235; /* #2563eb */
+  --warna-blue-700: 29 78 216; /* #1d4ed8 */
+  --warna-blue-800: 30 64 175; /* #1e40af */
+  --warna-blue-900: 30 58 138; /* #1e3a8a */
+  --warna-blue-950: 23 37 84; /* #172554 */
+  --warna-indigo-50: 238 242 255; /* #eef2ff */
+  --warna-indigo-100: 224 231 255; /* #e0e7ff */
+  --warna-indigo-200: 199 210 254; /* #c7d2fe */
+  --warna-indigo-300: 165 180 252; /* #a5b4fc */
+  --warna-indigo-400: 129 140 248; /* #818cf8 */
+  --warna-indigo-500: 99 102 241; /* #6366f1 */
+  --warna-indigo-600: 79 70 229; /* #4f46e5 */
+  --warna-indigo-700: 67 56 202; /* #4338ca */
+  --warna-indigo-800: 55 48 163; /* #3730a3 */
+  --warna-indigo-900: 49 46 129; /* #312e81 */
+  --warna-indigo-950: 30 27 75; /* #1e1b4b */
+  --warna-violet-50: 245 243 255; /* #f5f3ff */
+  --warna-violet-100: 237 233 254; /* #ede9fe */
+  --warna-violet-200: 221 214 254; /* #ddd6fe */
+  --warna-violet-300: 196 181 253; /* #c4b5fd */
+  --warna-violet-400: 167 139 250; /* #a78bfa */
+  --warna-violet-500: 139 92 246; /* #8b5cf6 */
+  --warna-violet-600: 124 58 237; /* #7c3aed */
+  --warna-violet-700: 109 40 217; /* #6d28d9 */
+  --warna-violet-800: 91 33 182; /* #5b21b6 */
+  --warna-violet-900: 76 29 149; /* #4c1d95 */
+  --warna-violet-950: 46 16 101; /* #2e1065 */
+  --warna-purple-50: 250 245 255; /* #faf5ff */
+  --warna-purple-100: 243 232 255; /* #f3e8ff */
+  --warna-purple-200: 233 213 255; /* #e9d5ff */
+  --warna-purple-300: 216 180 254; /* #d8b4fe */
+  --warna-purple-400: 192 132 252; /* #c084fc */
+  --warna-purple-500: 168 85 247; /* #a855f7 */
+  --warna-purple-600: 147 51 234; /* #9333ea */
+  --warna-purple-700: 126 34 206; /* #7e22ce */
+  --warna-purple-800: 107 33 168; /* #6b21a8 */
+  --warna-purple-900: 88 28 135; /* #581c87 */
+  --warna-purple-950: 59 7 100; /* #3b0764 */
+  --warna-fuchsia-50: 253 244 255; /* #fdf4ff */
+  --warna-fuchsia-100: 250 232 255; /* #fae8ff */
+  --warna-fuchsia-200: 245 208 254; /* #f5d0fe */
+  --warna-fuchsia-300: 240 171 252; /* #f0abfc */
+  --warna-fuchsia-400: 232 121 249; /* #e879f9 */
+  --warna-fuchsia-500: 217 70 239; /* #d946ef */
+  --warna-fuchsia-600: 192 38 211; /* #c026d3 */
+  --warna-fuchsia-700: 162 28 175; /* #a21caf */
+  --warna-fuchsia-800: 134 25 143; /* #86198f */
+  --warna-fuchsia-900: 112 26 117; /* #701a75 */
+  --warna-fuchsia-950: 74 4 78; /* #4a044e */
+  --warna-pink-50: 253 242 248; /* #fdf2f8 */
+  --warna-pink-100: 252 231 243; /* #fce7f3 */
+  --warna-pink-200: 251 207 232; /* #fbcfe8 */
+  --warna-pink-300: 249 168 212; /* #f9a8d4 */
+  --warna-pink-400: 244 114 182; /* #f472b6 */
+  --warna-pink-500: 236 72 153; /* #ec4899 */
+  --warna-pink-600: 219 39 119; /* #db2777 */
+  --warna-pink-700: 190 24 93; /* #be185d */
+  --warna-pink-800: 157 23 77; /* #9d174d */
+  --warna-pink-900: 131 24 67; /* #831843 */
+  --warna-pink-950: 80 7 36; /* #500724 */
+  --warna-rose-50: 255 241 242; /* #fff1f2 */
+  --warna-rose-100: 255 228 230; /* #ffe4e6 */
+  --warna-rose-200: 254 205 211; /* #fecdd3 */
+  --warna-rose-300: 253 164 175; /* #fda4af */
+  --warna-rose-400: 251 113 133; /* #fb7185 */
+  --warna-rose-500: 244 63 94; /* #f43f5e */
+  --warna-rose-600: 225 29 72; /* #e11d48 */
+  --warna-rose-700: 190 18 60; /* #be123c */
+  --warna-rose-800: 159 18 57; /* #9f1239 */
+  --warna-rose-900: 136 19 55; /* #881337 */
+  --warna-rose-950: 76 5 25; /* #4c0519 */
+
+  /* Warna yang dulu ditulis langsung di komponen. */
+  --warna-panel-sisi: 10 10 10; /* #0a0a0a — panel kanan Home (HomeDashboard, dulu bg-[#0a0a0a]/90) */
+  --warna-neon-hijau: 0 255 136; /* #00ff88 — status baik di Observability (dulu text-[#00ff88]) */
+  --warna-neon-merah: 255 68 68; /* #ff4444 — status buruk di Observability (dulu text-[#ff4444]) */
+  --warna-neon-kuning: 255 204 0; /* #ffcc00 — status waspada di Observability (dulu text-[#ffcc00]) */
+  --warna-tautan-unduh: 228 184 79; /* #e4b84f — tautan unduh desktop (TombolUnduhDesktop, dulu text-[#e4b84f]) */
+  --warna-tautan-unduh-sorot: 255 226 154; /* #ffe29a — tautan unduh saat disorot (dulu hover:text-[#ffe29a]) */
+  --warna-label-graf: 226 232 240; /* rgba(226,232,240,.85) — label simpul graf Home (kanvas ActivityGraph) */
+}

@@ -10,7 +10,7 @@
 
 import { supabase } from '../../../supabase';
 import {
-  KUNCI_LOKAL, PILIHAN_SISTEM, metaDipakai, normalisasiSetelan, pilihTema, latarNyala, aturanCssTema, gerakDikurangi, lampuNyala,
+  KUNCI_LOKAL, PILIHAN_SISTEM, metaDipakai, normalisasiSetelan, pilihTema, latarNyala, aturanCssTema, gerakDikurangi, lampuNyala, dasarTema,
 } from './tema.js';
 
 const ID_GAYA = 'mamet-tema';
@@ -86,6 +86,7 @@ class TemaService {
     if (typeof document !== 'undefined') {
       const html = document.documentElement;
       html.dataset.tema = id;
+      html.dataset.dasar = dasarTema(id, this.meta);
       const latar = latarNyala(this.setelan, id, this.meta);
       html.dataset.latar = latar ? 'nyala' : 'mati';
       html.dataset.lampu = lampuNyala(this.setelan, latar) ? 'nyala' : 'mati';

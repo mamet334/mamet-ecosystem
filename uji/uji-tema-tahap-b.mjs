@@ -22,7 +22,7 @@ const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (k) => k.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
 
-console.log('uji-tema-tahap-b v1');
+console.log('uji-tema-tahap-b v2');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -40,7 +40,12 @@ cek(WAJIB.every((k) => meta[k]), 'medan skema wajib MetadataService ada', WAJIB.
 cek(T.periksaMeta(meta).length === 0, 'bentuk metadata sah (periksaMeta)', T.periksaMeta(meta));
 const nama = Object.fromEntries(meta.themes.map((t) => [t.id, t.nama]));
 cek(nama['ruangan-kayu'] === 'Ruangan kayu' && nama['gelap-netral'] === 'Gelap netral', 'T1 — nama tema berbahasa Indonesia', nama);
-cek(meta.ikutiSistem.terang === 'gelap-netral', 'T2 — "Ikuti sistem", Windows terang → Gelap netral (sampai tema Terang ada)', meta.ikutiSistem);
+// v2 (Tahap D3): T2 berbunyi "Gelap netral SAMPAI tema Terang ada" — kini tema berdasar terang ada, jadi "Ikuti
+// sistem" saat Windows terang wajib menunjuk tema berdasar terang (bila ada), dan Gelap netral bila belum ada.
+const adaTerang = meta.themes.find((t) => t.dasar === 'terang');
+const temaUntukTerang = meta.themes.find((t) => t.id === meta.ikutiSistem.terang);
+cek(adaTerang ? temaUntukTerang?.dasar === 'terang' : meta.ikutiSistem.terang === 'gelap-netral',
+  `T2 — "Ikuti sistem", Windows terang → ${temaUntukTerang?.nama} (${adaTerang ? 'tema terang sudah ada' : 'sampai tema Terang ada'})`, meta.ikutiSistem);
 cek(meta.bawaan === 'ruangan-kayu' && meta.themes.find((t) => t.id === 'ruangan-kayu')?.nilai === null,
   'T3 — bawaan Ruangan kayu, nilainya dari berkas tema (frontend/src/tema/ruangan-kayu.css)');
 
@@ -82,9 +87,14 @@ for (const [id, P] of Object.entries(PALET)) {
   cek(gagalPolos.length === 0, `${nm}: ${PASANGAN.length} pasangan di latar polos lulus`, gagalPolos);
   const utama = rasio(hex(P['on-surface']), hex(P.surface));
   cek(utama >= 7 && utama <= 14, `${nm}: teks utama ${utama.toFixed(2)}:1 — nyaman dibaca lama (7–14:1)`);
-  const gagalDinding = DI_DINDING.map((k) => [k, rasio(hex(P[k]), DINDING)]).filter(([, r]) => r < 4.5).map(([k, r]) => `${k} ${r.toFixed(2)}`);
-  cek(gagalDinding.length === 0, `${nm}: ${DI_DINDING.length} warna teks lulus di atas dinding ruangan (latar bisa dinyalakan)`, gagalDinding);
-  if (kaca) {
+  // Dinding kayu hanya bisa dinyalakan di tema berdasar GELAP (tema terang: latarNyala selalu false — Tahap D3).
+  const bisaBerdinding = (meta.themes.find((t) => t.id === id)?.dasar ?? 'gelap') === 'gelap';
+  if (!bisaBerdinding) {
+    cek(T.latarNyala({ tema: id, latarRuangan: true }, id, meta) === false, `${nm}: tema terang — dinding tak pernah tampil (meski pengguna menyalakannya)`);
+  }
+  const gagalDinding = !bisaBerdinding ? [] : DI_DINDING.map((k) => [k, rasio(hex(P[k]), DINDING)]).filter(([, r]) => r < 4.5).map(([k, r]) => `${k} ${r.toFixed(2)}`);
+  if (bisaBerdinding) cek(gagalDinding.length === 0, `${nm}: ${DI_DINDING.length} warna teks lulus di atas dinding ruangan (latar bisa dinyalakan)`, gagalDinding);
+  if (kaca && bisaBerdinding) {
     const a = Number(kaca[2]);
     const dalam = hex(P[kaca[1]]).map((v, i) => Math.round(v * a + DINDING[i] * (1 - a)));
     const gagalKartu = ['on-surface', 'on-surface-strong', 'on-surface-variant', 'slate-500'].map((k) => [k, rasio(hex(P[k]), dalam)])

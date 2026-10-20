@@ -51,7 +51,7 @@ export default function DaftarWorkspace({ daftar, terpilih, onPilih, jumlahDokum
                         key={space.id}
                         onClick={() => { tutup(); onPilih(space.id); }}
                         className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${terpilih === space.id
-                            ? 'bg-blue-600 text-white'
+                            ? 'bg-blue-600 text-di-warna'
                             : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                             }`}
                         title={space.space_type === 'CORE' ? 'Workspace inti' : undefined}

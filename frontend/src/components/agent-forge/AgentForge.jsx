@@ -215,7 +215,7 @@ export default function AgentForge() {
               <select value={newAgent.status} onChange={e => setNewAgent({...newAgent, status: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
                 <option value="active">Active</option><option value="inactive">Inactive</option>
               </select>
-              <button onClick={handleAddAgent} className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors text-sm">Add Agent</button>
+              <button onClick={handleAddAgent} className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-di-warna rounded-lg transition-colors text-sm">Add Agent</button>
             </div>
           </div>
         </div>
@@ -232,7 +232,7 @@ export default function AgentForge() {
               <select value={newTool.category} onChange={e => setNewTool({...newTool, category: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200">
                 <option value="general">General</option><option value="memory">Memory</option><option value="research">Research</option><option value="analysis">Analysis</option>
               </select>
-              <button onClick={handleAddTool} className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors text-sm">Add Tool</button>
+              <button onClick={handleAddTool} className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-di-warna rounded-lg transition-colors text-sm">Add Tool</button>
             </div>
           </div>
         </div>
@@ -249,7 +249,7 @@ export default function AgentForge() {
                   <option value="active">Active</option><option value="inactive">Inactive</option>
                 </select>
               </div>
-              <button onClick={handleSaveEditAgent} className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors text-sm">Save Changes</button>
+              <button onClick={handleSaveEditAgent} className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-di-warna rounded-lg transition-colors text-sm">Save Changes</button>
             </div>
           </div>
         </div>

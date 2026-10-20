@@ -181,7 +181,7 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
             {isConflict ? (
               <button
                 onClick={handleResolveConflict}
-                className="w-full py-2.5 px-4 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-mono text-xs font-bold rounded-lg shadow-[0_0_15px_rgba(239,68,68,0.4)] flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
+                className="w-full py-2.5 px-4 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-di-warna font-mono text-xs font-bold rounded-lg shadow-[0_0_15px_rgba(239,68,68,0.4)] flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
               >
                 <span className="material-symbols-outlined text-sm animate-pulse">bolt</span>
                 Selesaikan Konflik di Chat ➔

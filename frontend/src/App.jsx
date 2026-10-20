@@ -64,8 +64,15 @@ export default function App() {
     )
   }
 
+  // Layar masuk SELALU memakai ruangannya sendiri, apa pun tema pilihan (Item 128): pembungkus ini mengembalikan
+  // variabel tema & warna dasar ke Ruangan kayu untuk LampLogin dan isinya (mis. TombolUnduhDesktop). LampLogin.jsx
+  // sendiri tidak disentuh.
   if (!session) {
-    return <LampLogin onLoginSuccess={() => { }} />
+    return (
+      <div data-tema="ruangan-kayu" data-dasar="gelap" className="contents">
+        <LampLogin onLoginSuccess={() => { }} />
+      </div>
+    )
   }
 
   return (

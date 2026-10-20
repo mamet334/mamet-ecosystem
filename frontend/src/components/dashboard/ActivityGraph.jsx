@@ -1,11 +1,29 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { kernel } from '../../core/runtime/Kernel';
+import { temaService } from '../../core/runtime/services/TemaService';
 
 const FALLBACK_COLOR = '#475569';
 // [ROADMAP-KNOWLEDGE-GALAXY-COSMIC-ORBITS §3.A] Lengkungan orbit gravitasi kosmik
 // menggantikan garis lurus polygonal — nilai 0.12-0.16 sesuai spesifikasi desain.
 const ORBIT_CURVATURE = 0.14;
+
+// Warna terang kanvas (label, jalur aktif, partikel) — dari variabel tema (Item 128 Tahap D3). Kanvas menggambar
+// dengan string warna, bukan kelas CSS, jadi variabelnya dibaca langsung. Di tema gelap nilainya sama dengan dulu
+// (#ffffff, rgba(226,232,240,.85), #fca5a5); di tema terang menjadi gelap supaya terbaca. Warna SIMPUL (makna,
+// konstitusi 23) tidak ikut tema.
+function bacaWarnaKanvas() {
+  if (typeof document === 'undefined') return { putih: '#ffffff', label: 'rgba(226, 232, 240, 0.85)', konflik: '#fca5a5', partikel: 'rgba(255,255,255,0.5)', putihRgb: '255, 255, 255' };
+  const gaya = getComputedStyle(document.documentElement);
+  const v = (n, cadangan) => (gaya.getPropertyValue(`--warna-${n}`).trim() || cadangan).split(/\s+/).join(', ');
+  return {
+    putih: `rgb(${v('white', '255 255 255')})`,
+    label: `rgba(${v('label-graf', '226 232 240')}, 0.85)`,
+    konflik: `rgb(${v('red-300', '252 165 165')})`,
+    partikel: `rgba(${v('white', '255 255 255')}, 0.5)`,
+    putihRgb: v('white', '255 255 255'),
+  };
+}
 
 export default function ActivityGraph({
   graphData,
@@ -27,6 +45,11 @@ export default function ActivityGraph({
 
   // Handler event di bawah dipasang sekali (deps []), jadi tidak boleh membaca prop graphData
   // langsung — nilainya akan terkunci pada saat mount (kemungkinan besar masih kosong).
+  // Dibaca ulang setiap tema berganti — fungsi gambar kanvas membaca ref ini, bukan variabel saat mount.
+  const warnaKanvasRef = useRef(null);
+  if (!warnaKanvasRef.current) warnaKanvasRef.current = bacaWarnaKanvas();
+  useEffect(() => temaService.langgan(() => { warnaKanvasRef.current = bacaWarnaKanvas(); }), []);
+
   const graphDataRef = useRef(graphData);
   useEffect(() => {
     graphDataRef.current = graphData;
@@ -141,12 +164,12 @@ export default function ActivityGraph({
               // Subtle outer halo for orphan/isolated nodes while retaining semantic color
               ctx.beginPath();
               ctx.arc(node.x, node.y, size * (1.2 + pulse * 0.2), 0, 2 * Math.PI, false);
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+              ctx.fillStyle = `rgba(${warnaKanvasRef.current.putihRgb}, 0.08)`;
               ctx.fill();
 
               ctx.beginPath();
               ctx.arc(node.x, node.y, size * 1.05, 0, 2 * Math.PI, false);
-              ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+              ctx.strokeStyle = `rgba(${warnaKanvasRef.current.putihRgb}, 0.35)`;
               ctx.lineWidth = 0.8;
               ctx.stroke();
             }
@@ -181,11 +204,11 @@ export default function ActivityGraph({
                 ctx.textBaseline = 'top';
 
                 if (isConflict) {
-                  ctx.fillStyle = '#fca5a5';
+                  ctx.fillStyle = warnaKanvasRef.current.konflik;
                 } else if (isCategory) {
-                  ctx.fillStyle = '#ffffff';
+                  ctx.fillStyle = warnaKanvasRef.current.putih;
                 } else {
-                  ctx.fillStyle = 'rgba(226, 232, 240, 0.85)';
+                  ctx.fillStyle = warnaKanvasRef.current.label;
                 }
 
                 const maxLen = isCategory ? 26 : 18;
@@ -196,15 +219,15 @@ export default function ActivityGraph({
           }}
           linkCurvature={ORBIT_CURVATURE}
           linkColor={(link) => {
-            if (!link || !link.source || !link.target) return 'rgba(255,255,255,0.35)';
+            if (!link || !link.source || !link.target) return `rgba(${warnaKanvasRef.current.putihRgb}, 0.35)`;
             const sourceId = (link.source && (link.source.id || link.source)) || '';
             const targetId = (link.target && (link.target.id || link.target)) || '';
-            if (!sourceId || !targetId) return 'rgba(255,255,255,0.35)';
+            if (!sourceId || !targetId) return `rgba(${warnaKanvasRef.current.putihRgb}, 0.35)`;
             if (activePath) {
               if (activePath.links.has(`${sourceId}->${targetId}`)) return '#00ffcc';
-              return 'rgba(255,255,255,0.02)';
+              return `rgba(${warnaKanvasRef.current.putihRgb}, 0.02)`;
             }
-            return link.color || 'rgba(255,255,255,0.35)';
+            return link.color || `rgba(${warnaKanvasRef.current.putihRgb}, 0.35)`;
           }}
           linkWidth={(link) => {
             if (!link || !link.source || !link.target) return 1.5;
@@ -236,15 +259,15 @@ export default function ActivityGraph({
             return activePath && activePath.links.has(`${sourceId}->${targetId}`) ? 0.02 : 0.006;
           }}
           linkDirectionalParticleColor={(link) => {
-            if (!link || !link.source || !link.target) return 'rgba(255,255,255,0.5)';
+            if (!link || !link.source || !link.target) return warnaKanvasRef.current.partikel;
             const sourceId = (link.source && (link.source.id || link.source)) || '';
             const targetId = (link.target && (link.target.id || link.target)) || '';
-            if (!sourceId || !targetId) return 'rgba(255,255,255,0.5)';
-            if (activePath && activePath.links.has(`${sourceId}->${targetId}`)) return '#ffffff';
+            if (!sourceId || !targetId) return warnaKanvasRef.current.partikel;
+            if (activePath && activePath.links.has(`${sourceId}->${targetId}`)) return warnaKanvasRef.current.putih;
             try {
-              return typeof link.source === 'object' ? getNodeColor(link.source) : 'rgba(255,255,255,0.5)';
+              return typeof link.source === 'object' ? getNodeColor(link.source) : warnaKanvasRef.current.partikel;
             } catch (e) {
-              return 'rgba(255,255,255,0.5)';
+              return warnaKanvasRef.current.partikel;
             }
           }}
           backgroundColor="#00000000"

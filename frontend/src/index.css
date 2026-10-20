@@ -1,4 +1,7 @@
-/* Nilai palet tema (Item 128). Tema bawaan; tema lain kelak memberi nilai lain untuk variabel yang sama. */
+/* Nilai palet tema (Item 128): warna DASAR (putih, hitam, warna status — Tahap D1) lalu palet tema bawaan. Tema lain
+   memberi nilai lain untuk variabel yang sama lewat public/metadata/themes.json. */
+@import './tema/dasar-gelap.css';
+@import './tema/dasar-terang.css';
 @import './tema/ruangan-kayu.css';
 
 @tailwind base;

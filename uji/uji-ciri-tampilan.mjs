@@ -40,7 +40,7 @@ const DIKECUALIKAN = new Set(['components/LampLogin.jsx', 'components/os/LatarRu
 const tanpaKomentar = (kode) =>
   kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
-console.log('uji-ciri-tampilan v5');
+console.log('uji-ciri-tampilan v6');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -50,8 +50,9 @@ const cek = (syarat, pesan, detail) => {
 
 // ── Penghitung — satu definisi, dipakai untuk kode sungguhan DAN untuk uji gigitnya ─────────────
 const POLA = {
-  // Warna yang tak ikut tema: hex di kelas (`bg-[#0a0a0a]`) dan putih/hitam mentah (`text-white`, `bg-black/40`).
-  warnaTetap: /\b(?:bg|text|border|from|via|to|fill|stroke|ring|divide|outline|shadow|placeholder)-(?:\[#[0-9a-fA-F]{3,8}\]|(?:white|black)\b)/g,
+  // Warna yang tak ikut tema: hex yang ditulis langsung di kelas (`bg-[#0a0a0a]`). v6 (Item 128 Tahap D1): putih &
+  // hitam (`text-white`, `bg-black/40`) dan semua rona status kini variabel warna dasar — ikut tema, tak dihitung lagi.
+  warnaTetap: /\b(?:bg|text|border|from|via|to|fill|stroke|ring|divide|outline|shadow|placeholder)-\[#[0-9a-fA-F]{3,8}\]/g,
   warnaSlate: /\b(?:bg|text|border)-slate-\d+/g,
   aksenPelangi: /\b(?:bg|text|border|from|to|via)-(?:emerald|cyan|violet|indigo|purple|fuchsia)-\d+/g,
   gerakDekoratif: /\banimate-(?:pulse|ping|spin)\b/g,
@@ -85,7 +86,7 @@ const a = <div className="bg-surface-container-low text-on-surface border-outlin
   <span className="material-symbols-outlined">home</span></div>;
 `;
 const f = hitung(FIXTURE);
-cek(f.warnaTetap === 3, 'warna tetap dihitung: hex di kelas + putih/hitam mentah (3); token palet TIDAK dihitung', f.warnaTetap);
+cek(f.warnaTetap === 1, 'warna tetap dihitung: hex di kelas (1); putih/hitam & token palet TIDAK dihitung (ikut tema)', f.warnaTetap);
 cek(f.warnaSlate === 2, 'warna slate dihitung, yang di komentar tidak (2)', f.warnaSlate);
 cek(f.aksenPelangi === 3, 'aksen pelangi dihitung termasuk from/via/to (3)', f.aksenPelangi);
 cek(f.gerakDekoratif === 2, 'gerak dekoratif dihitung (2)', f.gerakDekoratif);
@@ -137,7 +138,9 @@ for (const r of DIKECUALIKAN) {
 // Diukur 20 Okt (v5), tanpa LampLogin & LatarRuangan: 154 warna yang tak ikut tema; → 150 (MenuTeks kini memakai
 // variabel tema, Item 128 Tahap B). Tema Terang (Item 128 Tahap D)
 // menurunkannya; kenaikan = layar baru yang menulis warna tetap alih-alih token palet.
-const GARIS_WARNA_TETAP = 150;
+// → 6 (Item 128 Tahap D1): putih/hitam & rona status kini variabel warna dasar; hex komponen diganti variabel. Sisa 6
+// SENGAJA: 5 titik legenda graf Home (warna makna konstitusi 23 — tak ikut tema) + 1 di Login.jsx (kode mati, K6).
+const GARIS_WARNA_TETAP = 6;
 const GARIS_DASAR = {
   // tokenMaterial DIPENSIUNKAN (20 Okt, v5): 568 → 581 selama Item 127 — tiap kenaikan disengaja & tercatat di
   // riwayat berkas ini. Sejak Item 128 token palet adalah mekanisme tema; yang dijaga kini warna yang tak ikut tema.

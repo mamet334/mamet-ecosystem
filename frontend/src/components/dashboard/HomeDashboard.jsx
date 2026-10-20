@@ -202,7 +202,7 @@ export default function HomeDashboard() {
       </div>
 
       {/* Right Panel: Detail / Metrics */}
-      <div className="w-full md:w-80 border-t md:border-t-0 md:border-l border-white/10 bg-[#0a0a0a]/90 backdrop-blur-xl p-6 flex flex-col z-20 overflow-y-auto h-1/2 md:h-full shrink-0">
+      <div className="w-full md:w-80 border-t md:border-t-0 md:border-l border-white/10 bg-[rgb(var(--warna-panel-sisi)/0.9)] backdrop-blur-xl p-6 flex flex-col z-20 overflow-y-auto h-1/2 md:h-full shrink-0">
         {selectedNode && !selectedNode.isCategory ? (
           <NodeInspector 
             selectedNode={selectedNode} 

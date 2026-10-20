@@ -350,7 +350,7 @@ export default function MemoryContextPanel({
           <ShieldAlert className="w-3 h-3" />
           <span>Konflik</span>
           {conflicts.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full text-[12px] font-bold bg-red-500 text-white">
+            <span className="px-1.5 py-0.2 rounded-full text-[12px] font-bold bg-red-500 text-di-warna">
               {conflicts.length}
             </span>
           )}
@@ -579,7 +579,7 @@ export default function MemoryContextPanel({
                     <button
                       disabled={processingId === conf.id}
                       onClick={() => handleResolve(conf.id, 'keep')}
-                      className="flex-1 py-1.5 px-2 rounded-lg text-[12px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition-all text-center shadow disabled:opacity-50"
+                      className="flex-1 py-1.5 px-2 rounded-lg text-[12px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-di-warna transition-all text-center shadow disabled:opacity-50"
                       title="Kedua memori tetap aktif dan keduanya bisa muncul di jawaban AI"
                     >
                       {processingId === conf.id ? 'Memproses...' : 'Simpan Keduanya'}
@@ -588,7 +588,7 @@ export default function MemoryContextPanel({
                     <button
                       disabled={processingId === conf.id}
                       onClick={() => handleResolve(conf.id, 'discard')}
-                      className="flex-1 py-1.5 px-2 rounded-lg text-[12px] font-semibold bg-red-700 hover:bg-red-600 text-white transition-all text-center shadow disabled:opacity-50"
+                      className="flex-1 py-1.5 px-2 rounded-lg text-[12px] font-semibold bg-red-700 hover:bg-red-600 text-di-warna transition-all text-center shadow disabled:opacity-50"
                       title="Memori lama diarsipkan; hanya memori baru yang berlaku"
                     >
                       {processingId === conf.id ? 'Memproses...' : 'Arsipkan yang Lama'}
@@ -657,7 +657,7 @@ export default function MemoryContextPanel({
                         <button
                           disabled={processingId === item.id}
                           onClick={() => handleExecutePurge(item.id)}
-                          className="flex-1 py-1 rounded text-[12px] bg-red-600 hover:bg-red-500 text-white font-bold transition-colors disabled:opacity-50"
+                          className="flex-1 py-1 rounded text-[12px] bg-red-600 hover:bg-red-500 text-di-warna font-bold transition-colors disabled:opacity-50"
                         >
                           {processingId === item.id ? '...' : 'Ya, Hard Delete'}
                         </button>
@@ -692,7 +692,7 @@ export default function MemoryContextPanel({
                         <button
                           disabled={processingId === item.id}
                           onClick={() => setConfirmPurgeId(item.id)}
-                          className="flex-1 py-1 px-1.5 rounded-md text-[12px] font-bold bg-red-600/80 hover:bg-red-600 text-white flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
+                          className="flex-1 py-1 px-1.5 rounded-md text-[12px] font-bold bg-red-600/80 hover:bg-red-600 text-di-warna flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
                           title="Eksekusi Hard Delete Permanen"
                         >
                           <Trash2 className="w-2.5 h-2.5" />

@@ -216,7 +216,7 @@ export default function EngineerChat({ userId }) {
           <button
             type="submit"
             disabled={!input.trim() || isLoading}
-            className="p-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-2.5 bg-emerald-600 hover:bg-emerald-500 text-di-warna rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Send className="w-4 h-4" />
           </button>

@@ -1989,7 +1989,7 @@ export default function ConversationEngine({ sessionId }) {
               <>
                 <button
                   onClick={handleRollback}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition-all active:scale-95 shrink-0"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-di-warna text-xs font-bold transition-all active:scale-95 shrink-0"
                 >
                   <span className="material-symbols-outlined text-[13px]">undo</span>
                   Rollback
@@ -2098,7 +2098,7 @@ export default function ConversationEngine({ sessionId }) {
                                   <code className="px-2 py-1 rounded bg-surface-container-high border border-outline-variant text-body-sm font-mono text-primary">{cmd}</code>
                                   {!state || state.status === 'pending' ? (
                                     <>
-                                      <button onClick={() => handleRunCommand(cmd, cmdKey)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm active:scale-95">
+                                      <button onClick={() => handleRunCommand(cmd, cmdKey)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-di-warna text-xs font-bold transition-all shadow-sm active:scale-95">
                                         <span className="material-symbols-outlined text-[14px]">terminal</span>🖥️ Jalankan
                                       </button>
                                       <button onClick={() => setEngineerCmdStates(prev => ({ ...prev, [cmdKey]: { status: 'skipped', output: '' } }))} className="px-3 py-1.5 rounded-lg border border-outline-variant text-on-surface-variant text-xs hover:bg-surface-variant transition-all">Lewati</button>
@@ -2325,7 +2325,7 @@ export default function ConversationEngine({ sessionId }) {
                                 setMessages(prev => { const next = [...prev]; next[idx] = { ...next[idx], content: `✅ **Konfirmasi Diterima**\n\nMelanjutkan ke pembuatan patch...`, isConfirmationRequest: false }; return next; });
                               }
                             }}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-colors shadow-lg shadow-emerald-500/20"
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-di-warna text-sm font-bold transition-colors shadow-lg shadow-emerald-500/20"
                           >
                             <span className="material-symbols-outlined text-[18px]">check_circle</span>✅ Lanjutkan ke Patch
                           </button>

@@ -3,7 +3,7 @@
 **Tipe Dokumen:** Rancangan (blueprint) perubahan UI — memenuhi syarat tata kelola MUS §20 (tujuan,
 ruang lingkup, dokumentasi, analisis, alasan, persetujuan Owner)
 **Item:** 128 — **menggabungkan sisa Item 127** ([`ROADMAP-TAMPILAN-MENU-GAME.md`](./ROADMAP-TAMPILAN-MENU-GAME.md))
-**Status:** 🟡 **Tahap A ✅ (20 Okt)** — token palet menjadi variabel CSS, tampilan tidak berubah ([log](../project-memory/changelog/2026-10-20-tema-tahap-a-variabel-css.md)). · **Tahap B ✅ (20 Okt)** — Settings › Tampilan, Ruangan kayu & Gelap netral, per akun ([log](../project-memory/changelog/2026-10-20-tema-tahap-b-settings-tampilan.md)); simpan-ke-akun menunggu dicoba Owner. · **Tahap C ✅ (20 Okt)** — Kurangi gerakan (ikuti Windows · kurangi · normal) & lampu ruangan (pendar 25%, mati bawaannya) ([log](../project-memory/changelog/2026-10-20-tema-tahap-c-gerakan-lampu.md)). **Berikutnya: Tahap D** (tema Terang & Biru dominan).
+**Status:** ✅ **SELESAI 20 Okt — Tahap A–D** (tema dipilih pengguna, warna dasar diganti setelan; Ruangan kayu · Gelap netral · Biru malam · Terang). Riwayat: **Tahap A ✅ (20 Okt)** — token palet menjadi variabel CSS, tampilan tidak berubah ([log](../project-memory/changelog/2026-10-20-tema-tahap-a-variabel-css.md)). · **Tahap B ✅ (20 Okt)** — Settings › Tampilan, Ruangan kayu & Gelap netral, per akun ([log](../project-memory/changelog/2026-10-20-tema-tahap-b-settings-tampilan.md)); simpan-ke-akun menunggu dicoba Owner. · **Tahap C ✅ (20 Okt)** — Kurangi gerakan (ikuti Windows · kurangi · normal) & lampu ruangan (pendar 25%, mati bawaannya) ([log](../project-memory/changelog/2026-10-20-tema-tahap-c-gerakan-lampu.md)). · **Tahap D ✅ (20 Okt)** — warna dasar menjadi variabel (dasar gelap/terang), Biru malam & Terang ([log](../project-memory/changelog/2026-10-20-tema-tahap-d-warna-dasar-terang-biru.md)).
 **Tanggal:** 2026-10-20
 **Aplikasi:** **Mamet Ecosystem** (`frontend/`) — **bukan** Mametlite.
 **Batas tegas:** **`LampLogin.jsx` tidak diubah** (arahan Owner 19 Okt, tetap berlaku). Layar masuk tetap memakai
@@ -181,7 +181,7 @@ uji per tema (Ruangan kayu tetap wajib hangat; tema lain punya aturannya sendiri
 peringatan berhenti berkedip, hiasan dibuang, animasi masuk yang mati dibersihkan; "Kurangi gerakan" menghentikan
 semuanya. Lampu: gambar lampu disalin dari LampLogin (menambah utang K5, dijaga uji salinan).
 
-**Tahap D — Tema Terang & Biru dominan.** Masing-masing diputuskan dan dinilai Owner terpisah; Terang didahului
+**Tahap D — Tema Terang & Biru dominan.** ✅ 20 Okt — pilihan Owner Terang B (netral) & Biru A (biru malam); warna dasar (putih, hitam, 17 rona, warna komponen) menjadi variabel dengan dasar gelap/terang — tema baru cukup satu entri metadata (permintaan Owner). Masing-masing diputuskan dan dinilai Owner terpisah; Terang didahului
 pembersihan kelas putih/hitam mentah.
 
 **Sisa yang dibawa dari Item 127** (tidak bergantung tema, dikerjakan bila Owner memintanya):

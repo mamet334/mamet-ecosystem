@@ -38,7 +38,7 @@ export default function TombolUnduhDesktop({ ringkas = false }) {
         href={alamat}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-[12px] text-[#e4b84f] hover:text-[#ffe29a] transition-colors underline underline-offset-2"
+        className="text-[12px] text-[rgb(var(--warna-tautan-unduh))] hover:text-[rgb(var(--warna-tautan-unduh-sorot))] transition-colors underline underline-offset-2"
       >
         {teks}
       </a>

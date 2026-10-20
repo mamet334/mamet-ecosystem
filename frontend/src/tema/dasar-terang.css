@@ -1,0 +1,209 @@
+/* WARNA DASAR "TERANG" — fondasi bersama semua tema terang (Item 128 Tahap D3, 20 Okt 2026).
+
+   Variabel yang SAMA dengan dasar-gelap.css, nilai lain — komponen tidak diubah:
+   - putih ↔ hitam bertukar: `text-white`, `bg-white/5`, `border-white/10` (latar depan & lapisan di atas latar gelap)
+     menjadi gelap di atas latar terang. Teks putih DI ATAS latar warna padat memakai token `di-warna` (tetap putih).
+   - tingkat rona dibalik ke yang terbaca di latar terang: 100–200 → 900, 300–600 → 800, 700–800 → 900; 900/950
+     (lapisan tipis) → 100/50. Tingkat 700 tak cukup untuk rona yang terang secara alami (kuning, amber, hijau) di
+     latar abu-abu muda — diukur 20 Okt: dengan 800, 32 kelas teks rona terendah 5,40:1.
+   Kontras tiap kelas teks rona yang dipakai komponen diukur di latar tema terang (uji-tema-tahap-d). */
+[data-dasar="terang"] {
+  --warna-white: 24 24 27; /* putih → hampir hitam (latar depan di atas latar terang) */
+  --warna-black: 255 255 255; /* hitam → putih (lapisan & bayangan di atas latar terang) */
+  --warna-di-warna: 255 255 255; /* teks di atas latar warna padat — tetap putih */
+  --warna-red-50: 69 10 10; /* red-950 #450a0a */
+  --warna-red-100: 127 29 29; /* red-900 #7f1d1d */
+  --warna-red-200: 127 29 29; /* red-900 #7f1d1d */
+  --warna-red-300: 153 27 27; /* red-800 #991b1b */
+  --warna-red-400: 153 27 27; /* red-800 #991b1b */
+  --warna-red-500: 153 27 27; /* red-800 #991b1b */
+  --warna-red-600: 153 27 27; /* red-800 #991b1b */
+  --warna-red-700: 127 29 29; /* red-900 #7f1d1d */
+  --warna-red-800: 127 29 29; /* red-900 #7f1d1d */
+  --warna-red-900: 254 226 226; /* red-100 #fee2e2 */
+  --warna-red-950: 254 242 242; /* red-50 #fef2f2 */
+  --warna-orange-50: 67 20 7; /* orange-950 #431407 */
+  --warna-orange-100: 124 45 18; /* orange-900 #7c2d12 */
+  --warna-orange-200: 124 45 18; /* orange-900 #7c2d12 */
+  --warna-orange-300: 154 52 18; /* orange-800 #9a3412 */
+  --warna-orange-400: 154 52 18; /* orange-800 #9a3412 */
+  --warna-orange-500: 154 52 18; /* orange-800 #9a3412 */
+  --warna-orange-600: 154 52 18; /* orange-800 #9a3412 */
+  --warna-orange-700: 124 45 18; /* orange-900 #7c2d12 */
+  --warna-orange-800: 124 45 18; /* orange-900 #7c2d12 */
+  --warna-orange-900: 255 237 213; /* orange-100 #ffedd5 */
+  --warna-orange-950: 255 247 237; /* orange-50 #fff7ed */
+  --warna-amber-50: 69 26 3; /* amber-950 #451a03 */
+  --warna-amber-100: 120 53 15; /* amber-900 #78350f */
+  --warna-amber-200: 120 53 15; /* amber-900 #78350f */
+  --warna-amber-300: 146 64 14; /* amber-800 #92400e */
+  --warna-amber-400: 146 64 14; /* amber-800 #92400e */
+  --warna-amber-500: 146 64 14; /* amber-800 #92400e */
+  --warna-amber-600: 146 64 14; /* amber-800 #92400e */
+  --warna-amber-700: 120 53 15; /* amber-900 #78350f */
+  --warna-amber-800: 120 53 15; /* amber-900 #78350f */
+  --warna-amber-900: 254 243 199; /* amber-100 #fef3c7 */
+  --warna-amber-950: 255 251 235; /* amber-50 #fffbeb */
+  --warna-yellow-50: 66 32 6; /* yellow-950 #422006 */
+  --warna-yellow-100: 113 63 18; /* yellow-900 #713f12 */
+  --warna-yellow-200: 113 63 18; /* yellow-900 #713f12 */
+  --warna-yellow-300: 133 77 14; /* yellow-800 #854d0e */
+  --warna-yellow-400: 133 77 14; /* yellow-800 #854d0e */
+  --warna-yellow-500: 133 77 14; /* yellow-800 #854d0e */
+  --warna-yellow-600: 133 77 14; /* yellow-800 #854d0e */
+  --warna-yellow-700: 113 63 18; /* yellow-900 #713f12 */
+  --warna-yellow-800: 113 63 18; /* yellow-900 #713f12 */
+  --warna-yellow-900: 254 249 195; /* yellow-100 #fef9c3 */
+  --warna-yellow-950: 254 252 232; /* yellow-50 #fefce8 */
+  --warna-lime-50: 26 46 5; /* lime-950 #1a2e05 */
+  --warna-lime-100: 54 83 20; /* lime-900 #365314 */
+  --warna-lime-200: 54 83 20; /* lime-900 #365314 */
+  --warna-lime-300: 63 98 18; /* lime-800 #3f6212 */
+  --warna-lime-400: 63 98 18; /* lime-800 #3f6212 */
+  --warna-lime-500: 63 98 18; /* lime-800 #3f6212 */
+  --warna-lime-600: 63 98 18; /* lime-800 #3f6212 */
+  --warna-lime-700: 54 83 20; /* lime-900 #365314 */
+  --warna-lime-800: 54 83 20; /* lime-900 #365314 */
+  --warna-lime-900: 236 252 203; /* lime-100 #ecfccb */
+  --warna-lime-950: 247 254 231; /* lime-50 #f7fee7 */
+  --warna-green-50: 5 46 22; /* green-950 #052e16 */
+  --warna-green-100: 20 83 45; /* green-900 #14532d */
+  --warna-green-200: 20 83 45; /* green-900 #14532d */
+  --warna-green-300: 22 101 52; /* green-800 #166534 */
+  --warna-green-400: 22 101 52; /* green-800 #166534 */
+  --warna-green-500: 22 101 52; /* green-800 #166534 */
+  --warna-green-600: 22 101 52; /* green-800 #166534 */
+  --warna-green-700: 20 83 45; /* green-900 #14532d */
+  --warna-green-800: 20 83 45; /* green-900 #14532d */
+  --warna-green-900: 220 252 231; /* green-100 #dcfce7 */
+  --warna-green-950: 240 253 244; /* green-50 #f0fdf4 */
+  --warna-emerald-50: 2 44 34; /* emerald-950 #022c22 */
+  --warna-emerald-100: 6 78 59; /* emerald-900 #064e3b */
+  --warna-emerald-200: 6 78 59; /* emerald-900 #064e3b */
+  --warna-emerald-300: 6 95 70; /* emerald-800 #065f46 */
+  --warna-emerald-400: 6 95 70; /* emerald-800 #065f46 */
+  --warna-emerald-500: 6 95 70; /* emerald-800 #065f46 */
+  --warna-emerald-600: 6 95 70; /* emerald-800 #065f46 */
+  --warna-emerald-700: 6 78 59; /* emerald-900 #064e3b */
+  --warna-emerald-800: 6 78 59; /* emerald-900 #064e3b */
+  --warna-emerald-900: 209 250 229; /* emerald-100 #d1fae5 */
+  --warna-emerald-950: 236 253 245; /* emerald-50 #ecfdf5 */
+  --warna-teal-50: 4 47 46; /* teal-950 #042f2e */
+  --warna-teal-100: 19 78 74; /* teal-900 #134e4a */
+  --warna-teal-200: 19 78 74; /* teal-900 #134e4a */
+  --warna-teal-300: 17 94 89; /* teal-800 #115e59 */
+  --warna-teal-400: 17 94 89; /* teal-800 #115e59 */
+  --warna-teal-500: 17 94 89; /* teal-800 #115e59 */
+  --warna-teal-600: 17 94 89; /* teal-800 #115e59 */
+  --warna-teal-700: 19 78 74; /* teal-900 #134e4a */
+  --warna-teal-800: 19 78 74; /* teal-900 #134e4a */
+  --warna-teal-900: 204 251 241; /* teal-100 #ccfbf1 */
+  --warna-teal-950: 240 253 250; /* teal-50 #f0fdfa */
+  --warna-cyan-50: 8 51 68; /* cyan-950 #083344 */
+  --warna-cyan-100: 22 78 99; /* cyan-900 #164e63 */
+  --warna-cyan-200: 22 78 99; /* cyan-900 #164e63 */
+  --warna-cyan-300: 21 94 117; /* cyan-800 #155e75 */
+  --warna-cyan-400: 21 94 117; /* cyan-800 #155e75 */
+  --warna-cyan-500: 21 94 117; /* cyan-800 #155e75 */
+  --warna-cyan-600: 21 94 117; /* cyan-800 #155e75 */
+  --warna-cyan-700: 22 78 99; /* cyan-900 #164e63 */
+  --warna-cyan-800: 22 78 99; /* cyan-900 #164e63 */
+  --warna-cyan-900: 207 250 254; /* cyan-100 #cffafe */
+  --warna-cyan-950: 236 254 255; /* cyan-50 #ecfeff */
+  --warna-sky-50: 8 47 73; /* sky-950 #082f49 */
+  --warna-sky-100: 12 74 110; /* sky-900 #0c4a6e */
+  --warna-sky-200: 12 74 110; /* sky-900 #0c4a6e */
+  --warna-sky-300: 7 89 133; /* sky-800 #075985 */
+  --warna-sky-400: 7 89 133; /* sky-800 #075985 */
+  --warna-sky-500: 7 89 133; /* sky-800 #075985 */
+  --warna-sky-600: 7 89 133; /* sky-800 #075985 */
+  --warna-sky-700: 12 74 110; /* sky-900 #0c4a6e */
+  --warna-sky-800: 12 74 110; /* sky-900 #0c4a6e */
+  --warna-sky-900: 224 242 254; /* sky-100 #e0f2fe */
+  --warna-sky-950: 240 249 255; /* sky-50 #f0f9ff */
+  --warna-blue-50: 23 37 84; /* blue-950 #172554 */
+  --warna-blue-100: 30 58 138; /* blue-900 #1e3a8a */
+  --warna-blue-200: 30 58 138; /* blue-900 #1e3a8a */
+  --warna-blue-300: 30 64 175; /* blue-800 #1e40af */
+  --warna-blue-400: 30 64 175; /* blue-800 #1e40af */
+  --warna-blue-500: 30 64 175; /* blue-800 #1e40af */
+  --warna-blue-600: 30 64 175; /* blue-800 #1e40af */
+  --warna-blue-700: 30 58 138; /* blue-900 #1e3a8a */
+  --warna-blue-800: 30 58 138; /* blue-900 #1e3a8a */
+  --warna-blue-900: 219 234 254; /* blue-100 #dbeafe */
+  --warna-blue-950: 239 246 255; /* blue-50 #eff6ff */
+  --warna-indigo-50: 30 27 75; /* indigo-950 #1e1b4b */
+  --warna-indigo-100: 49 46 129; /* indigo-900 #312e81 */
+  --warna-indigo-200: 49 46 129; /* indigo-900 #312e81 */
+  --warna-indigo-300: 55 48 163; /* indigo-800 #3730a3 */
+  --warna-indigo-400: 55 48 163; /* indigo-800 #3730a3 */
+  --warna-indigo-500: 55 48 163; /* indigo-800 #3730a3 */
+  --warna-indigo-600: 55 48 163; /* indigo-800 #3730a3 */
+  --warna-indigo-700: 49 46 129; /* indigo-900 #312e81 */
+  --warna-indigo-800: 49 46 129; /* indigo-900 #312e81 */
+  --warna-indigo-900: 224 231 255; /* indigo-100 #e0e7ff */
+  --warna-indigo-950: 238 242 255; /* indigo-50 #eef2ff */
+  --warna-violet-50: 46 16 101; /* violet-950 #2e1065 */
+  --warna-violet-100: 76 29 149; /* violet-900 #4c1d95 */
+  --warna-violet-200: 76 29 149; /* violet-900 #4c1d95 */
+  --warna-violet-300: 91 33 182; /* violet-800 #5b21b6 */
+  --warna-violet-400: 91 33 182; /* violet-800 #5b21b6 */
+  --warna-violet-500: 91 33 182; /* violet-800 #5b21b6 */
+  --warna-violet-600: 91 33 182; /* violet-800 #5b21b6 */
+  --warna-violet-700: 76 29 149; /* violet-900 #4c1d95 */
+  --warna-violet-800: 76 29 149; /* violet-900 #4c1d95 */
+  --warna-violet-900: 237 233 254; /* violet-100 #ede9fe */
+  --warna-violet-950: 245 243 255; /* violet-50 #f5f3ff */
+  --warna-purple-50: 59 7 100; /* purple-950 #3b0764 */
+  --warna-purple-100: 88 28 135; /* purple-900 #581c87 */
+  --warna-purple-200: 88 28 135; /* purple-900 #581c87 */
+  --warna-purple-300: 107 33 168; /* purple-800 #6b21a8 */
+  --warna-purple-400: 107 33 168; /* purple-800 #6b21a8 */
+  --warna-purple-500: 107 33 168; /* purple-800 #6b21a8 */
+  --warna-purple-600: 107 33 168; /* purple-800 #6b21a8 */
+  --warna-purple-700: 88 28 135; /* purple-900 #581c87 */
+  --warna-purple-800: 88 28 135; /* purple-900 #581c87 */
+  --warna-purple-900: 243 232 255; /* purple-100 #f3e8ff */
+  --warna-purple-950: 250 245 255; /* purple-50 #faf5ff */
+  --warna-fuchsia-50: 74 4 78; /* fuchsia-950 #4a044e */
+  --warna-fuchsia-100: 112 26 117; /* fuchsia-900 #701a75 */
+  --warna-fuchsia-200: 112 26 117; /* fuchsia-900 #701a75 */
+  --warna-fuchsia-300: 134 25 143; /* fuchsia-800 #86198f */
+  --warna-fuchsia-400: 134 25 143; /* fuchsia-800 #86198f */
+  --warna-fuchsia-500: 134 25 143; /* fuchsia-800 #86198f */
+  --warna-fuchsia-600: 134 25 143; /* fuchsia-800 #86198f */
+  --warna-fuchsia-700: 112 26 117; /* fuchsia-900 #701a75 */
+  --warna-fuchsia-800: 112 26 117; /* fuchsia-900 #701a75 */
+  --warna-fuchsia-900: 250 232 255; /* fuchsia-100 #fae8ff */
+  --warna-fuchsia-950: 253 244 255; /* fuchsia-50 #fdf4ff */
+  --warna-pink-50: 80 7 36; /* pink-950 #500724 */
+  --warna-pink-100: 131 24 67; /* pink-900 #831843 */
+  --warna-pink-200: 131 24 67; /* pink-900 #831843 */
+  --warna-pink-300: 157 23 77; /* pink-800 #9d174d */
+  --warna-pink-400: 157 23 77; /* pink-800 #9d174d */
+  --warna-pink-500: 157 23 77; /* pink-800 #9d174d */
+  --warna-pink-600: 157 23 77; /* pink-800 #9d174d */
+  --warna-pink-700: 131 24 67; /* pink-900 #831843 */
+  --warna-pink-800: 131 24 67; /* pink-900 #831843 */
+  --warna-pink-900: 252 231 243; /* pink-100 #fce7f3 */
+  --warna-pink-950: 253 242 248; /* pink-50 #fdf2f8 */
+  --warna-rose-50: 76 5 25; /* rose-950 #4c0519 */
+  --warna-rose-100: 136 19 55; /* rose-900 #881337 */
+  --warna-rose-200: 136 19 55; /* rose-900 #881337 */
+  --warna-rose-300: 159 18 57; /* rose-800 #9f1239 */
+  --warna-rose-400: 159 18 57; /* rose-800 #9f1239 */
+  --warna-rose-500: 159 18 57; /* rose-800 #9f1239 */
+  --warna-rose-600: 159 18 57; /* rose-800 #9f1239 */
+  --warna-rose-700: 136 19 55; /* rose-900 #881337 */
+  --warna-rose-800: 136 19 55; /* rose-900 #881337 */
+  --warna-rose-900: 255 228 230; /* rose-100 #ffe4e6 */
+  --warna-rose-950: 255 241 242; /* rose-50 #fff1f2 */
+
+  --warna-panel-sisi: 255 255 255; /* #ffffff — panel kanan Home */
+  --warna-neon-hijau: 21 128 61; /* #15803d — status baik — hijau tua, terbaca di latar terang */
+  --warna-neon-merah: 185 28 28; /* #b91c1c — status buruk */
+  --warna-neon-kuning: 161 98 7; /* #a16207 — status waspada */
+  --warna-tautan-unduh: 146 64 14; /* #92400e — tautan unduh desktop */
+  --warna-tautan-unduh-sorot: 120 53 15; /* #78350f — tautan unduh saat disorot */
+  --warna-label-graf: 63 63 70; /* #3f3f46 — label simpul graf Home, terbaca di latar terang */
+}

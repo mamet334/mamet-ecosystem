@@ -31,7 +31,7 @@ const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (kode) => kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
 
-console.log('uji-latar-ruangan v6');
+console.log('uji-latar-ruangan v7');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -211,7 +211,8 @@ console.log(`     titik paling terang dengan lampu nyala: rgb(${latarLampu.join(
 cek(naikTerbesar > 0.005, `lampu memang menerangi area di bawahnya (kenaikan luminans terbesar ${naikTerbesar.toFixed(3)})`);
 const metaTemaL = JSON.parse(baca('frontend/public/metadata/themes.json'));
 const PALET_TEMA = { 'ruangan-kayu': PALET.VAR };
-for (const t of metaTemaL.themes.filter((x) => x.nilai)) PALET_TEMA[t.id] = Object.fromEntries(Object.entries(t.nilai).map(([k, v]) => [k, '#' + v.split(' ').map((n) => Number(n).toString(16).padStart(2, '0')).join('')]));
+// v7 (Item 128 Tahap D3): dinding & lampu hanya ada di tema berdasar GELAP — tema terang tak diukur di atas dinding.
+for (const t of metaTemaL.themes.filter((x) => x.nilai && (x.dasar ?? 'gelap') === 'gelap')) PALET_TEMA[t.id] = Object.fromEntries(Object.entries(t.nilai).map(([k, v]) => [k, '#' + v.split(' ').map((n) => Number(n).toString(16).padStart(2, '0')).join('')]));
 const cssLampu = baca('frontend/src/index.css').replace(/\/\*[\s\S]*?\*\//g, '');
 const kacaLampu = cssLampu.match(/\.glass-panel \{[^}]*background:\s*rgb\(var\(--warna-([a-z0-9-]+)\)\s*\/\s*([\d.]+)\)/);
 for (const [id, P] of Object.entries(PALET_TEMA)) {

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { temaService } from '../core/runtime/services/TemaService';
-import { PILIHAN_SISTEM, latarNyala, lampuNyala } from '../core/runtime/services/tema.js';
+import { PILIHAN_SISTEM, latarNyala, lampuNyala, dasarTema } from '../core/runtime/services/tema.js';
 
 // Settings › Tampilan (Item 128 Tahap B). Pilihan tema & latar ruangan, disimpan per akun lewat TemaService.
 //
@@ -119,7 +119,9 @@ export default function BagianTampilan() {
             <span className="min-w-0">
               <span className="block text-sm font-semibold text-on-surface">Dinding kayu di belakang aplikasi</span>
               <span className="block text-[12px] text-on-surface-variant">
-                {setelan.latarRuangan === null ? 'Mengikuti bawaan tema' : 'Pilihan Anda'} — sekarang {latar ? 'nyala' : 'mati'}
+                {dasarTema(temaTampil, meta) === 'terang'
+                  ? 'Tidak tampil di tema terang — teks gelap tak terbaca di atas dinding gelap. Pilihan Anda tetap tersimpan untuk tema gelap.'
+                  : `${setelan.latarRuangan === null ? 'Mengikuti bawaan tema' : 'Pilihan Anda'} — sekarang ${latar ? 'nyala' : 'mati'}`}
               </span>
             </span>
             <span className={`material-symbols-outlined text-[32px] shrink-0 ${latar ? 'text-primary' : 'text-on-surface-variant'}`}>

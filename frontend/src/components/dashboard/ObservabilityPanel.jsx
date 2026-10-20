@@ -321,9 +321,9 @@ export default function ObservabilityPanel({
           <div className="text-[12px] text-slate-500 mb-1 uppercase tracking-wider font-mono">Orphan Nodes</div>
           {(() => {
             const oc = stats.orphans || 0;
-            let colorClass = 'text-[#00ff88] drop-shadow-[0_0_15px_rgba(0,255,136,0.4)]';
-            if (oc >= 1 && oc <= 5) colorClass = 'text-[#ffcc00] drop-shadow-[0_0_15px_rgba(255,204,0,0.4)]';
-            else if (oc > 5) colorClass = 'text-[#ff4444] drop-shadow-[0_0_15px_rgba(255,68,68,0.4)]';
+            let colorClass = 'text-[rgb(var(--warna-neon-hijau))] drop-shadow-[0_0_15px_rgb(var(--warna-neon-hijau)/0.4)]';
+            if (oc >= 1 && oc <= 5) colorClass = 'text-[rgb(var(--warna-neon-kuning))] drop-shadow-[0_0_15px_rgb(var(--warna-neon-kuning)/0.4)]';
+            else if (oc > 5) colorClass = 'text-[rgb(var(--warna-neon-merah))] drop-shadow-[0_0_15px_rgb(var(--warna-neon-merah)/0.4)]';
             return <div className={`text-3xl font-light font-mono ${colorClass}`}>{oc}</div>;
           })()}
         </div>
@@ -333,9 +333,9 @@ export default function ObservabilityPanel({
           <div className="text-[12px] text-slate-500 mb-1 uppercase tracking-wider font-mono">Connected Nodes</div>
           {(() => {
             const cc = stats.connected || 0;
-            let colorClass = 'text-[#00ff88] drop-shadow-[0_0_15px_rgba(0,255,136,0.4)]';
-            if (cc === 0) colorClass = 'text-[#ff4444] drop-shadow-[0_0_15px_rgba(255,68,68,0.4)]';
-            else if (cc >= 1 && cc <= 20) colorClass = 'text-[#ffcc00] drop-shadow-[0_0_15px_rgba(255,204,0,0.4)]';
+            let colorClass = 'text-[rgb(var(--warna-neon-hijau))] drop-shadow-[0_0_15px_rgb(var(--warna-neon-hijau)/0.4)]';
+            if (cc === 0) colorClass = 'text-[rgb(var(--warna-neon-merah))] drop-shadow-[0_0_15px_rgb(var(--warna-neon-merah)/0.4)]';
+            else if (cc >= 1 && cc <= 20) colorClass = 'text-[rgb(var(--warna-neon-kuning))] drop-shadow-[0_0_15px_rgb(var(--warna-neon-kuning)/0.4)]';
             return <div className={`text-3xl font-light font-mono ${colorClass}`}>{cc}</div>;
           })()}
         </div>
@@ -353,8 +353,8 @@ export default function ObservabilityPanel({
           {(() => {
             const mc = stats.memoryConflicts || 0;
             const colorClass = mc > 0
-              ? 'text-[#ff4444] drop-shadow-[0_0_15px_rgba(255,68,68,0.4)]'
-              : 'text-[#00ff88] drop-shadow-[0_0_15px_rgba(0,255,136,0.4)]';
+              ? 'text-[rgb(var(--warna-neon-merah))] drop-shadow-[0_0_15px_rgb(var(--warna-neon-merah)/0.4)]'
+              : 'text-[rgb(var(--warna-neon-hijau))] drop-shadow-[0_0_15px_rgb(var(--warna-neon-hijau)/0.4)]';
             return (
               <div>
                 <div className={`text-3xl font-light font-mono ${colorClass}`}>{mc}</div>
@@ -412,7 +412,7 @@ export default function ObservabilityPanel({
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={() => handleResolveApproval(true)}
-                  className="flex-1 py-1 rounded text-[12px] font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+                  className="flex-1 py-1 rounded text-[12px] font-bold bg-emerald-600 hover:bg-emerald-500 text-di-warna transition-colors"
                 >
                   Setujui Deep Audit
                 </button>

@@ -225,7 +225,7 @@ function BagianSimpan({ hasil, opdAwal, onPeriksaVersi, onSimpan }) {
           placeholder="mis. RSUD dr. H. Ibnu Sutowo"
         />
         {(tahap === 'siap' || tahap === 'galat') && (
-          <button onClick={mulai} disabled={kosong} className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-semibold">
+          <button onClick={mulai} disabled={kosong} className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-di-warna font-semibold">
             Simpan {hasil.ringkasan.jumlahOrang} orang
           </button>
         )}
@@ -277,7 +277,7 @@ function BagianSimpan({ hasil, opdAwal, onPeriksaVersi, onSimpan }) {
             ))
           )}
           <div className="flex gap-2 pt-1">
-            <button onClick={konfirmasi} className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold">Simpan</button>
+            <button onClick={konfirmasi} className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-di-warna font-semibold">Simpan</button>
             <button onClick={() => setTahap('siap')} className="px-3 py-1.5 rounded-lg text-slate-400 hover:text-slate-200">Batal</button>
           </div>
         </div>

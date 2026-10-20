@@ -7,13 +7,16 @@
 // — latarRuangan null = ikut bawaan temanya.
 
 export const KUNCI_LOKAL = 'mamet_tampilan';
+
+/** Warna dasar (Item 128 Tahap D1): fondasi putih/hitam/warna status yang dipilih tiap tema — src/tema/dasar-<id>.css. */
+export const DASAR = Object.freeze(['gelap', 'terang']);
 export const PILIHAN_SISTEM = 'sistem';
 
 /** Metadata cadangan bila themes.json gagal dimuat: aplikasi tetap jalan dengan tema bawaan saja. */
 export const META_CADANGAN = Object.freeze({
   bawaan: 'ruangan-kayu',
   ikutiSistem: { gelap: 'ruangan-kayu', terang: 'ruangan-kayu' },
-  themes: [{ id: 'ruangan-kayu', nama: 'Ruangan kayu', keterangan: 'Hangat, berlatar dinding kayu seperti layar masuk.', latarRuangan: true, nilai: null }],
+  themes: [{ id: 'ruangan-kayu', nama: 'Ruangan kayu', keterangan: 'Hangat, berlatar dinding kayu seperti layar masuk.', dasar: 'gelap', latarRuangan: true, nilai: null }],
 });
 
 /** Kesalahan bentuk metadata — daftar kosong = sah. */
@@ -27,6 +30,7 @@ export function periksaMeta(meta) {
     if (!/^[a-z0-9-]+$/.test(t?.id || '')) salah.push(`id tema tak sah: ${t?.id}`);
     if (!t?.nama) salah.push(`tema ${t?.id} tanpa nama`);
     if (typeof t?.latarRuangan !== 'boolean') salah.push(`tema ${t?.id}: latarRuangan harus true/false`);
+    if (!DASAR.includes(t?.dasar)) salah.push(`tema ${t?.id}: dasar harus salah satu dari ${DASAR.join('/')}`);
     if (t?.id !== meta?.bawaan && (t?.nilai == null || typeof t.nilai !== 'object')) salah.push(`tema ${t?.id} bukan bawaan tetapi tanpa nilai`);
     for (const [k, v] of Object.entries(t?.nilai || {})) {
       if (!/^[a-z0-9-]+$/.test(k)) salah.push(`tema ${t.id}: nama variabel tak sah ${k}`);
@@ -78,10 +82,20 @@ export function pilihTema(setelan, sistemGelap, meta) {
   return s.tema === PILIHAN_SISTEM ? m.ikutiSistem[sistemGelap ? 'gelap' : 'terang'] : s.tema;
 }
 
+/** Warna dasar tema yang tampil — `gelap` bila tak dikenal. */
+export function dasarTema(idTema, meta) {
+  const m = metaDipakai(meta);
+  const d = m.themes.find((t) => t.id === idTema)?.dasar;
+  return DASAR.includes(d) ? d : 'gelap';
+}
+
 /** Apakah dinding ruangan tampil: pilihan pengguna, atau bawaan tema bila pengguna belum memilih. */
 export function latarNyala(setelan, idTema, meta) {
   const m = metaDipakai(meta);
   const s = normalisasiSetelan(setelan, m);
+  // Tema berdasar terang: dinding kayu (gelap) tak pernah tampil — teks gelapnya tak terbaca di atas dinding gelap.
+  // Pilihan pengguna tetap tersimpan dan berlaku lagi bila kembali ke tema gelap.
+  if (dasarTema(idTema, m) === 'terang') return false;
   if (s.latarRuangan !== null) return s.latarRuangan;
   return m.themes.find((t) => t.id === idTema)?.latarRuangan ?? true;
 }

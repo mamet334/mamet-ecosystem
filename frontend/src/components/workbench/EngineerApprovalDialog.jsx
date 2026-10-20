@@ -238,7 +238,7 @@ export default function EngineerApprovalDialog() {
             <button
               onClick={handleApproveSelected}
               disabled={selectedFiles.size === 0}
-              className="flex items-center gap-2 px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-white transition-colors text-sm font-bold shadow-lg shadow-emerald-500/20"
+              className="flex items-center gap-2 px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-di-warna transition-colors text-sm font-bold shadow-lg shadow-emerald-500/20"
             >
               <CheckCircle className="w-4 h-4" /> Approve Selected ({selectedFiles.size})
             </button>
