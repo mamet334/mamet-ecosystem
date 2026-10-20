@@ -10,7 +10,7 @@
 
 import { supabase } from '../../../supabase';
 import {
-  KUNCI_LOKAL, PILIHAN_SISTEM, metaDipakai, normalisasiSetelan, pilihTema, latarNyala, aturanCssTema,
+  KUNCI_LOKAL, PILIHAN_SISTEM, metaDipakai, normalisasiSetelan, pilihTema, latarNyala, aturanCssTema, gerakDikurangi, lampuNyala,
 } from './tema.js';
 
 const ID_GAYA = 'mamet-tema';
@@ -21,6 +21,7 @@ class TemaService {
     this.setelan = normalisasiSetelan(null, this.meta);
     this.pendengar = new Set();
     this.mq = null;
+    this.mqGerak = null;
   }
 
   /** Dipanggil kernel sesudah metadata dimuat, sebelum tampilan dipasang. */
@@ -39,6 +40,9 @@ class TemaService {
       this.mq = window.matchMedia('(prefers-color-scheme: dark)');
       // "Ikuti sistem": Windows berganti gelap/terang saat aplikasi terbuka → tema ikut berganti.
       this.mq.addEventListener?.('change', () => { if (this.setelan.tema === PILIHAN_SISTEM) this.#terapkan(); });
+      // "Kurangi gerakan" mengikuti sistem (bawaan): setelan animasi Windows berubah → aplikasi ikut.
+      this.mqGerak = window.matchMedia('(prefers-reduced-motion: reduce)');
+      this.mqGerak.addEventListener?.('change', () => { if (this.setelan.gerak === 'sistem') this.#terapkan(); });
     }
     this.setelan = normalisasiSetelan(this.#bacaLokal(), this.meta);
     this.#terapkan();
@@ -48,6 +52,7 @@ class TemaService {
   ambilMeta() { return this.meta; }
   ambilSetelan() { return { ...this.setelan }; }
   temaTampil() { return pilihTema(this.setelan, this.#sistemGelap(), this.meta); }
+  gerakTampilDikurangi() { return gerakDikurangi(this.setelan, this.mqGerak?.matches); }
 
   /** Ubah setelan + simpan ke akun. Mengembalikan { error } dari Supabase — tampilan sudah berganti apa pun hasilnya. */
   async simpan(setelanBaru) {
@@ -63,7 +68,7 @@ class TemaService {
     const diAkun = user?.user_metadata?.tampilan;
     if (!diAkun) return;
     const s = normalisasiSetelan(diAkun, this.meta);
-    if (s.tema === this.setelan.tema && s.latarRuangan === this.setelan.latarRuangan) return;
+    if (s.tema === this.setelan.tema && s.latarRuangan === this.setelan.latarRuangan && s.gerak === this.setelan.gerak && s.lampu === this.setelan.lampu) return;
     this.setelan = s;
     this.#terapkan();
     this.#tulisLokal();
@@ -81,7 +86,10 @@ class TemaService {
     if (typeof document !== 'undefined') {
       const html = document.documentElement;
       html.dataset.tema = id;
-      html.dataset.latar = latarNyala(this.setelan, id, this.meta) ? 'nyala' : 'mati';
+      const latar = latarNyala(this.setelan, id, this.meta);
+      html.dataset.latar = latar ? 'nyala' : 'mati';
+      html.dataset.lampu = lampuNyala(this.setelan, latar) ? 'nyala' : 'mati';
+      html.dataset.gerak = this.gerakTampilDikurangi() ? 'kurangi' : 'normal';
     }
     for (const fn of this.pendengar) fn(this.ambilSetelan(), id);
   }

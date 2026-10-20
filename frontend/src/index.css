@@ -76,6 +76,34 @@ body {
 html[data-latar="mati"] .latar-ruangan {
   display: none;
 }
+/* Pendar lampu (Item 128 Tahap C) — mati bawaannya; hanya tampil bila pengguna menyalakannya DAN latar ruangan nyala
+   (lampu bagian dari ruangan: ia berada di dalam .latar-ruangan, jadi ikut tersembunyi bila latar mati). */
+.lampu-ruangan {
+  display: none;
+}
+html[data-lampu="nyala"] .lampu-ruangan {
+  display: block;
+}
+
+/* ── KURANGI GERAKAN (Item 128 Tahap C) ──
+   Pilihan di Settings › Tampilan; bawaannya mengikuti setelan animasi Windows (prefers-reduced-motion).
+   TemaService menulis data-gerak di <html>. Saat "kurangi", SEMUA animasi & transisi berhenti di keadaan akhirnya
+   (WCAG 2.2 — 2.2.2, 2.3.3): kedipan peringatan berhenti, ikon putar berhenti, perpindahan tak bergeser. Penanda
+   proses tetap terbaca dari ikon & teksnya ("Memuat…", "Menjalankan…", kursor ▍). Durasi 0.01ms, bukan `none`,
+   supaya peristiwa animationend/transitionend tetap terjadi bagi kode yang menunggunya. */
+html[data-gerak="kurangi"] *,
+html[data-gerak="kurangi"] *::before,
+html[data-gerak="kurangi"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0ms !important;
+  transition-duration: 0.01ms !important;
+  transition-delay: 0ms !important;
+  scroll-behavior: auto !important;
+}
+html[data-gerak="kurangi"] {
+  scroll-behavior: auto !important;
+}
 
 /* ── GLASS & RIM EFFECTS ── */
 /* Item 127 Tahap 3: warna kelas-kelas ini dipindah ke palet LampLogin — kayu gelap, tepi kayu terang, cahaya

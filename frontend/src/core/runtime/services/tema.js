@@ -41,13 +41,34 @@ export function metaDipakai(meta) {
   return meta && periksaMeta(meta).length === 0 ? meta : META_CADANGAN;
 }
 
+/**
+ * "Kurangi gerakan" (Item 128 Tahap C): 'sistem' = ikuti setelan animasi Windows (prefers-reduced-motion) — bawaan;
+ * 'kurangi' = selalu tanpa gerakan; 'normal' = selalu dengan gerakan. Bawaan mengikuti sistem, jadi pengguna yang
+ * tidak mengubah apa pun melihat aplikasi persis seperti sebelumnya kecuali Windows-nya sendiri meminta gerakan dikurangi.
+ */
+export const PILIHAN_GERAK = Object.freeze(['sistem', 'kurangi', 'normal']);
+
 /** Setelan mentah (dari localStorage / akun) → setelan sah. Nilai yang tak dikenal jatuh ke bawaan. */
 export function normalisasiSetelan(mentah, meta) {
   const m = metaDipakai(meta);
   const ids = m.themes.map((t) => t.id);
   const tema = mentah?.tema === PILIHAN_SISTEM || ids.includes(mentah?.tema) ? mentah.tema : m.bawaan;
   const latarRuangan = typeof mentah?.latarRuangan === 'boolean' ? mentah.latarRuangan : null;
-  return { tema, latarRuangan };
+  const gerak = PILIHAN_GERAK.includes(mentah?.gerak) ? mentah.gerak : 'sistem';
+  // Lampu (Item 128 Tahap C): mati bawaannya — keputusan Owner 20 Okt.
+  const lampu = typeof mentah?.lampu === 'boolean' ? mentah.lampu : false;
+  return { tema, latarRuangan, gerak, lampu };
+}
+
+/** Pendar lampu tampil hanya bila pengguna menyalakannya DAN latar ruangan nyala — lampu bagian dari ruangan. */
+export function lampuNyala(setelan, latarSedangNyala) {
+  return setelan?.lampu === true && !!latarSedangNyala;
+}
+
+/** Apakah gerakan dikurangi untuk setelan ini. `sistemKurangi` = Windows meminta animasi dikurangi. */
+export function gerakDikurangi(setelan, sistemKurangi) {
+  const g = PILIHAN_GERAK.includes(setelan?.gerak) ? setelan.gerak : 'sistem';
+  return g === 'kurangi' || (g === 'sistem' && !!sistemKurangi);
 }
 
 /** Tema yang benar-benar tampil untuk setelan ini. "Ikuti sistem" membaca sisi gelap/terang Windows. */

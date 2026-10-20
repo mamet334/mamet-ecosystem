@@ -1,12 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { temaService } from '../core/runtime/services/TemaService';
-import { PILIHAN_SISTEM, latarNyala } from '../core/runtime/services/tema.js';
+import { PILIHAN_SISTEM, latarNyala, lampuNyala } from '../core/runtime/services/tema.js';
 
 // Settings › Tampilan (Item 128 Tahap B). Pilihan tema & latar ruangan, disimpan per akun lewat TemaService.
 //
 // Pratinjau tiap tema memakai warna SUNGGUHAN tema itu: kotaknya diberi `data-tema`, jadi variabel --warna-* di
 // dalamnya milik tema tersebut sementara halaman tetap memakai tema aktif. Pelajaran Item 127: Owner menilai dari
 // melihat, bukan dari deskripsi.
+
+// "Kurangi gerakan" (Item 128 Tahap C) — bawaannya mengikuti setelan animasi Windows.
+const PILIHAN_GERAK_TAMPIL = [
+  { id: 'sistem', nama: 'Ikuti Windows', keterangan: 'Mengikuti setelan efek animasi di Windows.' },
+  { id: 'kurangi', nama: 'Kurangi', keterangan: 'Animasi & kedipan berhenti — lebih tenang di mata.' },
+  { id: 'normal', nama: 'Normal', keterangan: 'Animasi tetap berjalan, apa pun setelan Windows.' },
+];
 
 function Pratinjau({ idTema }) {
   return (
@@ -73,7 +80,7 @@ export default function BagianTampilan() {
         </div>
         <div>
           <h2 className="font-headline-md text-headline-md">Tampilan</h2>
-          <p className="text-body-sm text-on-surface-variant">Tema dan latar — disimpan di akun Anda, ikut ke desktop dan web</p>
+          <p className="text-body-sm text-on-surface-variant">Tema, latar, dan gerakan — disimpan di akun Anda, ikut ke desktop dan web</p>
         </div>
       </div>
 
@@ -101,7 +108,7 @@ export default function BagianTampilan() {
         </div>
 
         <div className="flex flex-col gap-3">
-          <label className="text-label-mono text-on-surface-variant uppercase tracking-widest pl-1">Latar ruangan</label>
+          <label className="text-label-mono text-on-surface-variant uppercase tracking-widest pl-1">Ruangan</label>
           <button
             type="button"
             role="switch"
@@ -119,6 +126,48 @@ export default function BagianTampilan() {
               {latar ? 'toggle_on' : 'toggle_off'}
             </span>
           </button>
+          {/* Lampu (Item 128 Tahap C) — pendar hangat dari atas, 25% kekuatan layar masuk; bagian dari ruangan. */}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={setelan.lampu}
+            onClick={() => simpan({ lampu: !setelan.lampu })}
+            className="w-full flex items-center justify-between gap-4 rounded-lg border border-outline-variant px-5 py-4 hover:bg-surface-container-high transition-colors text-left"
+          >
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-on-surface">Lampu ruangan</span>
+              <span className="block text-[12px] text-on-surface-variant">
+                {setelan.lampu && !latar
+                  ? 'Nyala — tetapi baru tampil bila dinding kayu dinyalakan'
+                  : `Pendar hangat dari atas — sekarang ${lampuNyala(setelan, latar) ? 'nyala' : 'mati'}`}
+              </span>
+            </span>
+            <span className={`material-symbols-outlined text-[32px] shrink-0 ${setelan.lampu ? 'text-primary' : 'text-on-surface-variant'}`}>
+              {setelan.lampu ? 'toggle_on' : 'toggle_off'}
+            </span>
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <label className="text-label-mono text-on-surface-variant uppercase tracking-widest pl-1">Gerakan</label>
+          <div role="radiogroup" aria-label="Gerakan" className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {PILIHAN_GERAK_TAMPIL.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                role="radio"
+                aria-checked={setelan.gerak === g.id}
+                onClick={() => simpan({ gerak: g.id })}
+                className={`text-left rounded-lg border px-4 py-3 transition-colors ${setelan.gerak === g.id ? 'border-primary bg-primary-container/20' : 'border-outline-variant hover:bg-surface-container-high'}`}
+              >
+                <span className="block text-sm font-semibold text-on-surface">{g.nama}</span>
+                <span className="block text-[12px] text-on-surface-variant leading-snug">{g.keterangan}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-[12px] text-on-surface-variant pl-1">
+            Sekarang: {temaService.gerakTampilDikurangi() ? 'gerakan dikurangi — animasi berhenti, penanda proses tetap terbaca dari teksnya' : 'gerakan normal'}
+          </p>
         </div>
 
         {status && (

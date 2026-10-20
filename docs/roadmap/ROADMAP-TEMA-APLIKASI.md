@@ -3,7 +3,7 @@
 **Tipe Dokumen:** Rancangan (blueprint) perubahan UI — memenuhi syarat tata kelola MUS §20 (tujuan,
 ruang lingkup, dokumentasi, analisis, alasan, persetujuan Owner)
 **Item:** 128 — **menggabungkan sisa Item 127** ([`ROADMAP-TAMPILAN-MENU-GAME.md`](./ROADMAP-TAMPILAN-MENU-GAME.md))
-**Status:** 🟡 **Tahap A ✅ (20 Okt)** — token palet menjadi variabel CSS, tampilan tidak berubah ([log](../project-memory/changelog/2026-10-20-tema-tahap-a-variabel-css.md)). · **Tahap B ✅ (20 Okt)** — Settings › Tampilan, Ruangan kayu & Gelap netral, per akun ([log](../project-memory/changelog/2026-10-20-tema-tahap-b-settings-tampilan.md)); simpan-ke-akun menunggu dicoba Owner. **Berikutnya: Tahap C** (lampu, kurangi gerakan).
+**Status:** 🟡 **Tahap A ✅ (20 Okt)** — token palet menjadi variabel CSS, tampilan tidak berubah ([log](../project-memory/changelog/2026-10-20-tema-tahap-a-variabel-css.md)). · **Tahap B ✅ (20 Okt)** — Settings › Tampilan, Ruangan kayu & Gelap netral, per akun ([log](../project-memory/changelog/2026-10-20-tema-tahap-b-settings-tampilan.md)); simpan-ke-akun menunggu dicoba Owner. · **Tahap C ✅ (20 Okt)** — Kurangi gerakan (ikuti Windows · kurangi · normal) & lampu ruangan (pendar 25%, mati bawaannya) ([log](../project-memory/changelog/2026-10-20-tema-tahap-c-gerakan-lampu.md)). **Berikutnya: Tahap D** (tema Terang & Biru dominan).
 **Tanggal:** 2026-10-20
 **Aplikasi:** **Mamet Ecosystem** (`frontend/`) — **bukan** Mametlite.
 **Batas tegas:** **`LampLogin.jsx` tidak diubah** (arahan Owner 19 Okt, tetap berlaku). Layar masuk tetap memakai
@@ -177,7 +177,7 @@ sebelum/sesudah; semua kelas tetap dibuat Tailwind (pelajaran Item 127: kelas ya
 penyimpanan per akun, diterapkan sebelum tampilan pertama. Uji kontras **per tema** — `uji-palet-lamplogin` menjadi
 uji per tema (Ruangan kayu tetap wajib hangat; tema lain punya aturannya sendiri; semua wajib ≥ 4,5:1).
 
-**Tahap C — Lampu & Kurangi gerakan.** Peta 51 animasi dari Item 127 dipakai: penanda proses dipertahankan,
+**Tahap C — Lampu & Kurangi gerakan.** ✅ 20 Okt — keputusan Owner: lampu wujud A (pendar saja), 25%, mati bawaannya, tampil hanya bila latar nyala; kurangi gerakan bawaannya mengikuti Windows. Peta 51 animasi dari Item 127 dipakai: penanda proses dipertahankan,
 peringatan berhenti berkedip, hiasan dibuang, animasi masuk yang mati dibersihkan; "Kurangi gerakan" menghentikan
 semuanya. Lampu: gambar lampu disalin dari LampLogin (menambah utang K5, dijaga uji salinan).
 

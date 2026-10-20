@@ -31,7 +31,7 @@ const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (kode) => kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
 
-console.log('uji-latar-ruangan v5');
+console.log('uji-latar-ruangan v6');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -164,6 +164,71 @@ for (const [nama, h] of [['on-surface', token('on-surface')], ['on-surface-varia
 }
 const urut = [300, 400, 500].map((n) => lum(hex(slate(n))));
 cek(urut[0] > urut[1] && urut[1] > urut[2], 'urutan terang slate 300 > 400 > 500 tetap terjaga');
+
+// ── 4b. Lampu nyala (v6, Item 128 Tahap C) ──────────────────────────────────────────────────────
+// Pendar lampu = salinan medan cahaya LampLogin, diredam di wadahnya. Owner 20 Okt: 25% — pada kekuatan penuh teks
+// di atas latar di area terang turun ke ±3,6:1. Titik paling terang dihitung ulang DENGAN pendar (tanpa blur — blur
+// hanya meratakan puncak, jadi hitungan ini batas atas yang aman).
+console.log('\n-- 4b. lampu nyala: salinan LampLogin, diredam, tetap terbaca --');
+const PENDAR = [konst('PENDAR_1'), konst('PENDAR_2')];
+cek(PENDAR.every((p) => p && LL.includes(`className="${p}"`)), 'dua lapisan pendar = medan cahaya LampLogin (sama persis)', PENDAR.map((p) => (p || '').slice(0, 60)));
+const wadah = (LR.match(/className="lampu-ruangan absolute left-0 top-0 w-full h-\[(\d+)%\] opacity-(\d+)"/) || []).slice(1).map(Number);
+cek(wadah.length === 2 && wadah[0] === 75, 'wadah pendar setinggi 75% layar — sama dengan LampLogin', wadah);
+const opasitasLampu = wadah[1] / 100;
+cek(opasitasLampu === 0.25, `pendar diredam ke ${wadah[1]}% (keputusan Owner 20 Okt: 25%)`);
+const hasilPendar = await dibuat(PENDAR.join(' ').split(/\s+/).filter(Boolean));
+cek(Object.values(hasilPendar).every(Boolean), 'semua kelas pendar dibuat Tailwind', Object.entries(hasilPendar).filter(([, v]) => !v).map(([k]) => k.slice(0, 50)));
+const lapisanPendar = PENDAR.map((p) => {
+  const [l, t, w, h] = p.match(/left-\[(\d+)%\] top-\[(\d+)%\] w-\[(\d+)%\] h-\[(\d+)%\]/).slice(1).map((n) => Number(n) / 100);
+  const g = p.match(/radial-gradient\(ellipse_at_(\d+)%_(\d+)%,(.*)\)\] blur/);
+  const [px, py] = [Number(g[1]) / 100, Number(g[2]) / 100];
+  const potong = g[3].split(/,(?![^(]*\))/);
+  const henti = potong.map((s, i) => { const [c, pos] = s.split('_'); return [pos ? parseFloat(pos) / 100 : (i === 0 ? 0 : 1), c === 'transparent' ? [0, 0, 0, 0] : warna(c)]; });
+  const T_WADAH = wadah[0] / 100;
+  // Elips "farthest-corner": melewati sudut terjauh dengan perbandingan sumbu yang sama dengan jarak ke sisi terjauh.
+  const [rxP, ryP] = [Math.max(px, 1 - px) * w * Math.SQRT2, Math.max(py, 1 - py) * h * T_WADAH * Math.SQRT2];
+  return { x0: l, x1: l + w, y0: t * T_WADAH, y1: (t + h) * T_WADAH, ex: l + px * w, ey: (t + py * h) * T_WADAH, rxP, ryP, henti };
+});
+let terangLampu = null, naikTerbesar = 0;
+for (let x = 0; x <= 1.0001; x += 0.01) for (let y = 0; y <= 1.0001; y += 0.01) {
+  let c = tumpuk(titik(hentiRadial, Math.hypot((x - cx) / rx, (y - cy) / ry)), titik(hentiLinier, y));
+  c = tumpuk(titik(hentiSamping, x), c);
+  for (const L of lapisanPendar) {
+    if (x < L.x0 || x > L.x1 || y < L.y0 || y > L.y1) continue;
+    const s = titik(L.henti, Math.hypot((x - L.ex) / L.rxP, (y - L.ey) / L.ryP));
+    c = tumpuk([s[0], s[1], s[2], s[3] * opasitasLampu], c);
+  }
+  // Seberapa jauh lampu menerangi titik ini dibanding dinding saja — bukti lapisannya benar-benar dihitung.
+  const tanpaLampu = tumpuk(titik(hentiSamping, x), tumpuk(titik(hentiRadial, Math.hypot((x - cx) / rx, (y - cy) / ry)), titik(hentiLinier, y)));
+  naikTerbesar = Math.max(naikTerbesar, lum(c) - lum(tanpaLampu));
+  if (!terangLampu || lum(c) > lum(terangLampu)) terangLampu = c;
+}
+const latarLampu = terangLampu.slice(0, 3).map(Math.round);
+console.log(`     titik paling terang dengan lampu nyala: rgb(${latarLampu.join(', ')})`);
+// Pendar menerangi bagian ATAS (y < 55%) — area dinding yang semula gelap; pusat terang dinding (39%, 56%) berada di
+// luar kotak pendar, jadi titik paling terang layar bisa tetap di sana. Yang dibuktikan: lapisan pendar benar-benar
+// menerangi, dan kontras diukur di titik paling terang mana pun (dengan atau tanpa lampu).
+cek(naikTerbesar > 0.005, `lampu memang menerangi area di bawahnya (kenaikan luminans terbesar ${naikTerbesar.toFixed(3)})`);
+const metaTemaL = JSON.parse(baca('frontend/public/metadata/themes.json'));
+const PALET_TEMA = { 'ruangan-kayu': PALET.VAR };
+for (const t of metaTemaL.themes.filter((x) => x.nilai)) PALET_TEMA[t.id] = Object.fromEntries(Object.entries(t.nilai).map(([k, v]) => [k, '#' + v.split(' ').map((n) => Number(n).toString(16).padStart(2, '0')).join('')]));
+const cssLampu = baca('frontend/src/index.css').replace(/\/\*[\s\S]*?\*\//g, '');
+const kacaLampu = cssLampu.match(/\.glass-panel \{[^}]*background:\s*rgb\(var\(--warna-([a-z0-9-]+)\)\s*\/\s*([\d.]+)\)/);
+for (const [id, P] of Object.entries(PALET_TEMA)) {
+  const gagalLatar = ['on-surface', 'on-surface-variant', 'primary', 'slate-500'].map((k) => [k, rasio(hex(P[k]), latarLampu)]).filter(([, r]) => r < 4.5).map(([k, r]) => `${k} ${r.toFixed(2)}`);
+  cek(gagalLatar.length === 0, `${id}: teks langsung di atas latar ber-lampu ≥ 4,5:1`, gagalLatar);
+  if (kacaLampu) {
+    const a = Number(kacaLampu[2]);
+    const dalam = hex(P[kacaLampu[1]]).map((v, i) => Math.round(v * a + latarLampu[i] * (1 - a)));
+    const gagalKartu = ['on-surface', 'on-surface-strong', 'slate-500'].map((k) => [k, rasio(hex(P[k]), dalam)]).filter(([, r]) => r < 4.5).map(([k, r]) => `${k} ${r.toFixed(2)}`);
+    cek(gagalKartu.length === 0, `${id}: teks di dalam kartu di atas latar ber-lampu ≥ 4,5:1`, gagalKartu);
+  }
+}
+cek(/\.lampu-ruangan \{\s*display: none;\s*\}/.test(cssLampu) && /html\[data-lampu="nyala"\] \.lampu-ruangan \{\s*display: block;/.test(cssLampu),
+  'pendar tersembunyi bawaannya; tampil hanya bila html[data-lampu="nyala"]');
+const iLampu = LR.indexOf('lampu-ruangan'), iVinyet = LR.indexOf('${VINYET}');
+cek(iLampu > LR.indexOf('${BAYANGAN_SAMPING}') && iLampu < iVinyet && /className="latar-ruangan /.test(LR),
+  'pendar di dalam latar ruangan (ikut tersembunyi bila latar mati), di atas bayangan samping, di bawah vinyet');
 
 // v4 (20 Okt): jawaban model di dalam kartu bergaya Settings (`.glass-panel`, tembus sebagian) — teksnya berdiri di atas
 // campuran kartu + dinding. Latar kartu dibaca dari index.css; campurannya dihitung di titik dinding paling terang.

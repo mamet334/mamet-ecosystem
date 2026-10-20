@@ -1,7 +1,8 @@
 # ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
 
 **Tipe Dokumen:** Daftar sisa pekerjaan (temuan audit yang belum punya dokumen roadmap sendiri)
-**Status:** ⏳ **T18 ditambahkan 19 Okt 2026** — 19 kelas Tailwind di komponen tak pernah dibuat (gaya yang tertulis tapi tak tampil).
+**Status:** ⏳ **T19 ditambahkan 20 Okt 2026** — fitur lupa & ganti kata sandi belum ada; ditunda Owner ke fase hardening.
+**T18 ditambahkan 19 Okt 2026** — 19 kelas Tailwind di komponen tak pernah dibuat (gaya yang tertulis tapi tak tampil).
 **T17 ditambahkan 19 Okt 2026** — penyimpanan otomatis chat melewatkan perubahan saat penyimpanan sebelumnya berjalan.
 **T16 ditambahkan 19 Okt 2026** — lima modul konsol uji menunjuk folder yang sudah tidak ada.
 **T15 ditambahkan 18 Okt 2026** — server `agent-process` mengimpor kode klien dari
@@ -716,6 +717,21 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
 
 - **Status:** ⏳ tercatat, belum dirancang, belum diputuskan Owner. Tabel titik impornya juga ada di
   [changelog Item 126](../project-memory/changelog/2026-10-18-penanda-pemilih-model.md).
+
+## T19 — Fitur lupa kata sandi & ganti kata sandi belum ada (ketahuan saat Owner mencoba masuk akun lain, 2026-10-20)
+
+- **Temuan:** di layar masuk `LampLogin.jsx` ada tulisan "Lupa kata sandi?", tetapi hanya tautan kosong (`href="#"`).
+  Tak ada alur pemulihan (`resetPasswordForEmail`, peristiwa `PASSWORD_RECOVERY`, layar kata sandi baru) di Ecosystem
+  maupun Mametlite, dan tak ada "ganti kata sandi" untuk akun yang sedang masuk.
+- **Dampak:** pengguna yang lupa kata sandi tak bisa masuk sendiri. Owner mengalaminya 20 Okt (akun kedua).
+- **Jalan sementara (oleh Owner, bukan AI):** Supabase Dashboard → Authentication → Users → *Send password recovery* /
+  *Send magic link*; tautannya membuka versi web dan memasukkan pengguna. Catatan: email bawaan Supabase biasanya hanya
+  terkirim ke anggota tim proyek kecuali SMTP sendiri dipasang.
+- **Arah (dikerjakan di fase hardening, keputusan Owner 20 Okt):** (1) "Lupa kata sandi?" → isian email →
+  tautan pemulihan; (2) layar "buat kata sandi baru" saat tautan dibuka; (3) "ganti kata sandi" di Settings › Identitas.
+  Perlu: izin menyentuh `LampLogin.jsx`; keputusan Ecosystem saja atau juga Mametlite; Site URL / Redirect URLs dan
+  SMTP di Supabase.
+- **Status:** ⏳ ditunda ke fase hardening.
 
 ## T18 — 19 kelas Tailwind di komponen tak pernah dibuat — gaya yang tertulis tapi tak tampil (ketahuan saat pemeriksaan "error tersembunyi" Item 127, 2026-10-19)
 
