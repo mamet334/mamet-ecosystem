@@ -1,22 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Brain,
-  Loader2,
-  RefreshCw,
-  X,
-  Minus,
-  Search,
-  Database,
-  BookOpen,
-  AlertTriangle,
-  Trash2,
-  Archive,
-  RotateCcw,
-  ShieldAlert,
-  Clock,
-  Layers,
-  Check
-} from 'lucide-react';
+import Ikon from '../Ikon';
 import { supabase } from '../../supabase';
 import { kernel } from '../../core/runtime/Kernel';
 
@@ -172,9 +155,9 @@ export default function MemoryContextPanel({
 
   const getTypeIcon = (m) => {
     if (getMemoryType(m) === 'PERSONAL_KNOWLEDGE') {
-      return <BookOpen className="w-3 h-3" />;
+      return <Ikon nama="menu_book" ukuran={12} />;
     }
-    return <Database className="w-3 h-3" />;
+    return <Ikon nama="database" ukuran={12} />;
   };
 
   const formatDate = (dateStr) => {
@@ -283,7 +266,7 @@ export default function MemoryContextPanel({
       <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-outline-variant bg-surface-container-low">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-lg bg-primary/15 border border-primary/30">
-            <Brain className="w-4 h-4 text-primary" />
+            <Ikon nama="psychology" ukuran={16} className="text-primary" />
           </div>
           <div>
             <div className="text-body-sm font-semibold text-on-surface leading-tight">Memory Context</div>
@@ -302,7 +285,7 @@ export default function MemoryContextPanel({
             className="p-1.5 rounded-lg hover:bg-surface-variant text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-50"
             title="Refresh semua data"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading || isLoadingExtras ? 'animate-spin' : ''}`} />
+            <Ikon nama="refresh" ukuran={14} className={`${loading || isLoadingExtras ? 'animate-spin' : ''}`} />
           </button>
           {onMinimize && (
             <button
@@ -310,7 +293,7 @@ export default function MemoryContextPanel({
               className="p-1.5 rounded-lg hover:bg-surface-variant text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
               title="Minimize panel (Luaskan kolom percakapan)"
             >
-              <Minus className="w-3.5 h-3.5" />
+              <Ikon nama="remove" ukuran={14} />
             </button>
           )}
           {onClose && (
@@ -319,7 +302,7 @@ export default function MemoryContextPanel({
               className="p-1.5 rounded-lg hover:bg-surface-variant text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
               title="Tutup panel"
             >
-              <X className="w-3.5 h-3.5" />
+              <Ikon nama="close" ukuran={14} />
             </button>
           )}
         </div>
@@ -335,7 +318,7 @@ export default function MemoryContextPanel({
               : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30'
           }`}
         >
-          <Layers className="w-3 h-3" />
+          <Ikon nama="layers" ukuran={12} />
           <span>Aktif ({effectiveMemories.length})</span>
         </button>
 
@@ -347,7 +330,7 @@ export default function MemoryContextPanel({
               : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30'
           }`}
         >
-          <ShieldAlert className="w-3 h-3" />
+          <Ikon nama="gpp_maybe" ukuran={12} />
           <span>Konflik</span>
           {conflicts.length > 0 && (
             <span className="px-1.5 py-0.2 rounded-full text-[12px] font-bold bg-red-500 text-di-warna">
@@ -364,7 +347,7 @@ export default function MemoryContextPanel({
               : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/30'
           }`}
         >
-          <Trash2 className="w-3 h-3" />
+          <Ikon nama="delete" ukuran={12} />
           <span>Trash</span>
           {trashItems.length > 0 && (
             <span className="px-1.5 py-0.2 rounded-full text-[12px] font-bold bg-surface-variant text-on-surface-variant">
@@ -383,7 +366,7 @@ export default function MemoryContextPanel({
           {query && (
             <div className="px-3 py-2 border-b border-outline-variant bg-surface-container-low/40">
               <div className="flex items-center gap-1.5 text-[12px] text-on-surface-variant mb-1">
-                <Search className="w-3 h-3" />
+                <Ikon nama="search" ukuran={12} />
                 <span className="uppercase tracking-wider font-medium">Query Terakhir</span>
               </div>
               <p className="text-[12px] text-on-surface line-clamp-2 break-words leading-snug">{query}</p>
@@ -422,12 +405,12 @@ export default function MemoryContextPanel({
           <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2">
             {loading ? (
               <div className="flex items-center justify-center py-8 text-on-surface-variant">
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                <Ikon nama="progress_activity" ukuran={16} className="animate-spin mr-2" />
                 <span className="text-[12px]">Memuat memori...</span>
               </div>
             ) : filteredMemories.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-on-surface-variant text-center px-4">
-                <Brain className="w-8 h-8 mb-2 opacity-30" />
+                <Ikon nama="psychology" ukuran={32} className="mb-2 opacity-30" />
                 <p className="text-[12px] font-medium">
                   {effectiveMemories.length === 0 ? 'Belum ada memori ter-retrieve' : 'Tidak ada yang cocok dengan filter'}
                 </p>
@@ -453,7 +436,7 @@ export default function MemoryContextPanel({
                     }`}
                   >
                     <div className={`mt-0.5 p-1 rounded-md border shrink-0 ${isConflict ? 'border-red-500/40 bg-red-500/10 text-red-400' : getTypeColor(m)}`}>
-                      {isConflict ? <AlertTriangle size={12} /> : getTypeIcon(m)}
+                      {isConflict ? <Ikon nama="warning" ukuran={12} /> : getTypeIcon(m)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-1">
@@ -466,7 +449,7 @@ export default function MemoryContextPanel({
                             className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/20 text-on-surface-variant hover:text-red-400 transition-all shrink-0"
                             title="Arsipkan (Soft-Delete)"
                           >
-                            <Archive size={11} />
+                            <Ikon nama="archive" ukuran={11} />
                           </button>
                         )}
                       </div>
@@ -498,7 +481,7 @@ export default function MemoryContextPanel({
         <div className="flex-1 overflow-y-auto custom-scrollbar p-2.5 space-y-3">
           {conflicts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-14 text-center px-4">
-              <Check className="w-8 h-8 text-emerald-400 mb-2 opacity-60" />
+              <Ikon nama="check" ukuran={32} className="text-emerald-400 mb-2 opacity-60" />
               <p className="text-[12px] font-semibold text-on-surface">Tidak Ada Konflik</p>
               <p className="text-[12px] text-on-surface-variant mt-1">
                 Semua memori dalam keadaan sinkron dan tidak ada benturan versi.
@@ -519,7 +502,7 @@ export default function MemoryContextPanel({
                   {/* Header Konflik */}
                   <div className="flex items-center justify-between text-[12px] text-red-400 font-semibold border-b border-red-500/20 pb-1.5">
                     <div className="flex items-center gap-1.5">
-                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                      <Ikon nama="warning" ukuran={14} className="shrink-0" />
                       <span>Konflik Memori #{conf.id.substring(0, 8)}</span>
                     </div>
                     <span className="text-[12px] text-red-300/80 font-normal">
@@ -608,7 +591,7 @@ export default function MemoryContextPanel({
         <div className="flex-1 overflow-y-auto custom-scrollbar p-2.5 space-y-2.5">
           {trashItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-14 text-center px-4">
-              <Archive className="w-8 h-8 text-on-surface-variant/40 mb-2" />
+              <Ikon nama="archive" ukuran={32} className="text-on-surface-variant/40 mb-2" />
               <p className="text-[12px] font-semibold text-on-surface">Kotak Sampah Kosong</p>
               <p className="text-[12px] text-on-surface-variant mt-1">
                 Tidak ada memori berstatus arsip atau pending purge.
@@ -673,7 +656,7 @@ export default function MemoryContextPanel({
                         className="flex-1 py-1 px-1.5 rounded-md text-[12px] font-semibold bg-surface-variant hover:bg-surface-container-high text-on-surface flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
                         title="Kembalikan ke status aktif"
                       >
-                        <RotateCcw className="w-2.5 h-2.5" />
+                        <Ikon nama="restore" ukuran={10} />
                         <span>Pulihkan</span>
                       </button>
 
@@ -685,7 +668,7 @@ export default function MemoryContextPanel({
                           className="flex-1 py-1 px-1.5 rounded-md text-[12px] font-semibold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
                           title="Tandai untuk Purge (Tahap 1)"
                         >
-                          <Clock className="w-2.5 h-2.5" />
+                          <Ikon nama="schedule" ukuran={10} />
                           <span>Minta Purge</span>
                         </button>
                       ) : (
@@ -695,7 +678,7 @@ export default function MemoryContextPanel({
                           className="flex-1 py-1 px-1.5 rounded-md text-[12px] font-bold bg-red-600/80 hover:bg-red-600 text-di-warna flex items-center justify-center gap-1 transition-colors disabled:opacity-50"
                           title="Eksekusi Hard Delete Permanen"
                         >
-                          <Trash2 className="w-2.5 h-2.5" />
+                          <Ikon nama="delete" ukuran={10} />
                           <span>Hard Delete</span>
                         </button>
                       )}

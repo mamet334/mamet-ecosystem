@@ -26,7 +26,7 @@ const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const sidik = (teks) => createHash('sha256').update(teks).digest('hex');
 
-console.log('uji-penjaga-lamplogin v1');
+console.log('uji-penjaga-lamplogin v2');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -45,9 +45,37 @@ cek(sidik(asli.replace(/\n/g, '\r\n').replace(/\r\n/g, '\n')) === sidik(asli),
   'CRLF yang dinormalkan menghasilkan sidik jari yang sama');
 
 // ── 2. Berkasnya tidak berubah ──────────────────────────────────────────────────────────────────
-console.log('\n-- 2. LampLogin.jsx tidak berubah --');
-cek(sidik(asli) === SIDIK_JARI, 'isi LampLogin.jsx sama dengan sidik jari 19 Okt',
-  { sekarang: sidik(asli), seharusnya: SIDIK_JARI });
+// v2 (20 Okt) — SATU-SATUNYA perubahan yang diizinkan Owner: ikon lucide → Material Symbols ("satu set ikon"):
+//   "bila perubahan icon tidak menjadi masalah keamanan dari segi apapun, saya rasa samakan saja" — Owner, 20 Okt.
+// Sidik jari 19 Okt TIDAK diganti. Uji membalik tepat empat penggantian ikon di bawah ini lalu menuntut hasilnya
+// sama persis dengan sidik jari lama — jadi perubahan apa pun SELAIN ikon tetap merah. Ini lebih ketat daripada
+// mengganti sidik jari: sidik jari baru akan ikut "memberkati" baris lain yang kebetulan berubah bersamaan.
+const IZIN_IKON_20_OKT = [
+  ["import Ikon from './Ikon';", "import { AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';"],
+  ['{showPassword ? <Ikon nama="visibility" ukuran={20} /> : <Ikon nama="visibility_off" ukuran={20} />}',
+   '{showPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}'],
+  ['<Ikon nama="error" ukuran={20} className="flex-shrink-0" />', '<AlertCircle className="w-5 h-5 flex-shrink-0" />'],
+  ['<Ikon nama="progress_activity" ukuran={20} className="animate-spin" />', '<Loader2 className="w-5 h-5 animate-spin" />'],
+];
+function balikIzinIkon(teks) {
+  let t = teks;
+  for (const [kini, dulu] of IZIN_IKON_20_OKT) {
+    if (t.split(kini).length - 1 !== 1) return null;   // ikon yang diizinkan harus ada TEPAT sekali
+    t = t.replace(kini, () => dulu);
+  }
+  return t;
+}
+console.log('\n-- 2. LampLogin.jsx tidak berubah selain ikon yang diizinkan --');
+const dipulihkan = balikIzinIkon(asli);
+cek(dipulihkan !== null, 'keempat ikon pengganti ada, masing-masing tepat sekali');
+cek(dipulihkan !== null && sidik(dipulihkan) === SIDIK_JARI,
+  'setelah 4 ikon dibalik, isi LampLogin.jsx sama persis dengan sidik jari 19 Okt',
+  { sekarang: dipulihkan && sidik(dipulihkan), seharusnya: SIDIK_JARI });
+// Kendali: perubahan di luar ikon — dan ikon yang hilang — harus tetap merah.
+const ubahLain = balikIzinIkon(asli.replace('Memproses...', 'Memproses…'));
+cek(ubahLain === null || sidik(ubahLain) !== SIDIK_JARI, 'kendali: satu kata di luar ikon berubah → merah');
+cek(balikIzinIkon(asli.replace('<Ikon nama="error" ukuran={20} className="flex-shrink-0" />', '')) === null,
+  'kendali: ikon galat dihapus → merah');
 
 // ── 3. Penjaga ini menjaga hal yang benar ───────────────────────────────────────────────────────
 // Sidik jari yang utuh tidak berarti apa-apa bila layar masuk diam-diam diganti komponen lain. Yang

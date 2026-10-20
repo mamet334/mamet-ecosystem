@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Table2, Trash2, Loader2 } from 'lucide-react';
+import Ikon from '../Ikon';
 
 // DATA TABEL TERSIMPAN (Item 92 Tahap 2): berkas rekonsiliasi yang sudah dikonfirmasi Owner. Aktif = dihitung; riwayat
 // = versi lama yang sudah digantikan (tetap disimpan untuk diperiksa). Hapus = batalkan unggahan: bila berkas itu
@@ -26,7 +26,7 @@ export default function DaftarDataTabel({ daftar, onHapus }) {
   return (
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-2">
-        <Table2 className="w-4 h-4 text-emerald-400" />
+        <Ikon nama="table" ukuran={16} className="text-emerald-400" />
         <h2 className="text-sm font-semibold text-slate-200">Data Tabel Tersimpan</h2>
         <span className="text-[12px] text-slate-500">{aktif.length} berkas aktif · {orangAktif} orang dihitung</span>
       </div>
@@ -45,7 +45,7 @@ export default function DaftarDataTabel({ daftar, onHapus }) {
               {b.digantikan_oleh ? 'RIWAYAT' : 'AKTIF'}
             </span>
             <button onClick={() => hapus(b)} disabled={menghapus === b.id} className="p-1 rounded text-slate-600 hover:text-red-400 hover:bg-red-400/10" title="Hapus data tabel ini">
-              {menghapus === b.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+              {menghapus === b.id ? <Ikon nama="progress_activity" ukuran={14} className="animate-spin" /> : <Ikon nama="delete" ukuran={14} />}
             </button>
           </div>
         ))}

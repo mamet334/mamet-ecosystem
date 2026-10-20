@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { kernel } from '../core/runtime/Kernel';
-import { User, Mail, Shield, LogOut, Palette, Activity, Monitor, Bell, Cpu, Clock, Brain, Key } from 'lucide-react';
 import { ringkasPembaruan, bentukVersi, warnaStatus } from '../core/runtime/services/statusPembaruan';
 import TombolUnduhDesktop from './TombolUnduhDesktop';
 import { angka } from '../core/runtime/services/formatAngka.js';

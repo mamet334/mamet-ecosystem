@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { kernel } from '../../core/runtime/Kernel';
-import { ShieldAlert, CheckCircle, RefreshCw, Activity, Cpu, Network, Database } from 'lucide-react';
+import Ikon from '../Ikon';
 
 export default function MaefExecutionMonitorWidget() {
   const [activeTrace, setActiveTrace] = useState(null);
@@ -47,7 +47,7 @@ export default function MaefExecutionMonitorWidget() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-slate-500 space-y-3">
-        <Activity className="w-6 h-6 animate-pulse text-emerald-500" />
+        <Ikon nama="monitor_heart" ukuran={24} className="animate-pulse text-emerald-500" />
         <span className="text-xs uppercase tracking-widest font-mono">Initializing MAEF Trace...</span>
       </div>
     );
@@ -56,7 +56,7 @@ export default function MaefExecutionMonitorWidget() {
   if (!activeTrace) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-slate-500 space-y-2 text-center p-4">
-        <ShieldAlert className="w-8 h-8 text-slate-600 mb-2" />
+        <Ikon nama="gpp_maybe" ukuran={32} className="text-slate-600 mb-2" />
         <p className="text-[12px] font-mono">Waiting for AI Execution Trace...</p>
         <p className="text-[12px] text-slate-600 max-w-[200px]">Send a message in the conversation engine to capture runtime telemetry.</p>
       </div>
@@ -70,7 +70,7 @@ export default function MaefExecutionMonitorWidget() {
       <div className="bg-slate-900 border border-emerald-500/30 rounded-lg p-3">
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2 text-emerald-400">
-            <Cpu className="w-4 h-4" />
+            <Ikon nama="memory" ukuran={16} />
             <span className="text-xs font-bold font-mono">EXECUTION_SUCCESS</span>
           </div>
           <span className="text-[12px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">VERIFIED</span>
@@ -91,7 +91,7 @@ export default function MaefExecutionMonitorWidget() {
       {/* Execution Pipeline Steps */}
       <div className="space-y-2">
         <h4 className="text-[12px] text-slate-400 uppercase tracking-wider font-semibold mb-2 flex items-center gap-2">
-          <Network className="w-3 h-3" /> Runtime Pipeline
+          <Ikon nama="lan" ukuran={12} /> Runtime Pipeline
         </h4>
         
         <div className="bg-slate-900 rounded-lg border border-slate-800 p-3 space-y-3 relative">
@@ -126,7 +126,7 @@ export default function MaefExecutionMonitorWidget() {
       {activeTrace.groundingSources && activeTrace.groundingSources.length > 0 && (
         <div className="space-y-2 mt-4">
           <h4 className="text-[12px] text-slate-400 uppercase tracking-wider font-semibold mb-2 flex items-center gap-2">
-            <Database className="w-3 h-3" /> Grounding Evidence
+            <Ikon nama="database" ukuran={12} /> Grounding Evidence
           </h4>
           <div className="bg-slate-900 rounded-lg border border-slate-800 p-3 text-[12px] text-slate-400 font-mono">
             {activeTrace.groundingSources.map((source, i) => (

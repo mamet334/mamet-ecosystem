@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { GitBranch, FolderGit2, X } from 'lucide-react';
+import Ikon from '../Ikon';
 
 // TOMBOL AKAR REPO ENGINEER (ROADMAP-ENGINEER-MANDIRI Tahap 5, 2026-09-28).
 //
@@ -55,12 +55,12 @@ export default function AkarRepoTombol() {
           : 'bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500/25'}`}
         title={judul}
       >
-        {status.aktif ? <FolderGit2 className="w-4 h-4" /> : <GitBranch className="w-4 h-4" />}
+        {status.aktif ? <Ikon nama="source" ukuran={16} /> : <Ikon nama="account_tree" ukuran={16} />}
         <span className="text-[12px] max-w-[130px] truncate">{status.aktif ? status.nama : 'Pilih repo'}</span>
       </button>
       {status.aktif && !dariPengembangan && (
         <button type="button" onClick={lepas} className="p-1 rounded-lg text-on-surface-variant hover:text-red-400" title="Lepas akar repo">
-          <X className="w-3.5 h-3.5" />
+          <Ikon nama="close" ukuran={14} />
         </button>
       )}
       {pesan && (

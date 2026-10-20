@@ -16,7 +16,7 @@ class WidgetRegistry {
    * @param {Object} metadata 
    * @param {string} metadata.id - Unique identifier for the widget (e.g. 'widget:task-list')
    * @param {string} metadata.name - Human readable name
-   * @param {string} metadata.icon - Lucide icon name (string representation)
+   * @param {string} metadata.icon - nama ikon Material Symbols (mis. "monitor_heart")
    * @param {string} metadata.version - Widget version
    * @param {string[]} metadata.allowed_workspaces - Array of workspace types (e.g. 'ENGINEER', 'ASSISTANT')
    * @param {Object} metadata.default_size - { width, height }

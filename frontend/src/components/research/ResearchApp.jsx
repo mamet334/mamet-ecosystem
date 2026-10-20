@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabase';
 import { kernel } from '../../core/runtime/Kernel';
-import { Search, Upload, Trash2, FileText, Loader2, Database, PlusCircle, ScanLine, HardDriveDownload } from 'lucide-react';
+import Ikon from '../Ikon';
 import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from '../../core/runtime/services/documentTextExtractor.js';
 import { bacaBerkasExcelAsn, adalahExcel, EKSTENSI_EXCEL, unduhExcelJanggal } from '../../core/runtime/services/bacaExcelAsn.js';
 import PratinjauDataTabel from './PratinjauDataTabel.jsx';
@@ -474,7 +474,7 @@ export default function ResearchApp() {
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <div className="p-3 bg-blue-500/20 rounded-lg border border-blue-500/30">
-                        <Database className="w-6 h-6 text-blue-400" />
+                        <Ikon nama="database" ukuran={24} className="text-blue-400" />
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
@@ -492,16 +492,16 @@ export default function ResearchApp() {
                     className="flex items-center gap-2 px-3 py-2 border border-emerald-500/40 text-emerald-200 hover:bg-emerald-500/10 rounded-lg transition-colors text-sm disabled:opacity-50"
                     title="Unduh cadangan lengkap data Anda (Item 93)"
                 >
-                    <HardDriveDownload className="w-4 h-4" />
+                    <Ikon nama="download_for_offline" ukuran={16} />
                     Cadangkan data
                 </button>
                 <label className="flex items-center gap-2 px-3 py-2 border border-amber-500/40 text-amber-200 hover:bg-amber-500/10 rounded-lg cursor-pointer transition-colors text-sm" title="Berkas rekonsiliasi ASN hasil pindaian (PDF) → Data Tabel, lewat OCR">
-                    <ScanLine className="w-4 h-4" />
+                    <Ikon nama="document_scanner" ukuran={16} />
                     PDF → Data Tabel
                     <input type="file" className="hidden" onChange={handlePdfDataTabel} accept=".pdf" disabled={uploading} />
                 </label>
                 <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg cursor-pointer transition-colors text-sm">
-                    <Upload className="w-4 h-4" />
+                    <Ikon nama="upload" ukuran={16} />
                     {uploading ? (statusUnggah || 'Mengunggah...') : 'Upload Dokumen'}
                     <input type="file" multiple className="hidden" onChange={handleUpload} accept={[ACCEPT_UNGGAH, ...EKSTENSI_EXCEL].join(',')} disabled={uploading} />
                 </label>
@@ -558,7 +558,7 @@ export default function ResearchApp() {
             {/* Search Bar */}
             <div className="mb-6">
                 <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 focus-within:border-blue-500/50 transition-colors">
-                    <Search className="w-4 h-4 text-slate-500" />
+                    <Ikon nama="search" ukuran={16} className="text-slate-500" />
                     <input
                         type="text"
                         placeholder="Cari dokumen..."
@@ -595,12 +595,12 @@ export default function ResearchApp() {
             {/* Document List */}
             {loading ? (
                 <div className="flex items-center justify-center py-12 text-slate-500">
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                    <Ikon nama="progress_activity" ukuran={20} className="animate-spin mr-2" />
                     Memuat dokumen...
                 </div>
             ) : documents.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-slate-600">
-                    <FileText className="w-16 h-16 mb-4 opacity-50" />
+                    <Ikon nama="description" ukuran={64} className="mb-4 opacity-50" />
                     <p className="text-sm">Belum ada dokumen</p>
                     <p className="text-xs mt-1">Upload dokumen untuk memulai research</p>
                 </div>
@@ -612,7 +612,7 @@ export default function ResearchApp() {
                             className="flex items-center justify-between bg-slate-900/50 border border-slate-800 rounded-lg p-4 hover:border-blue-500/30 transition-all"
                         >
                             <div className="flex items-center gap-3">
-                                <FileText className="w-5 h-5 text-blue-400 shrink-0" />
+                                <Ikon nama="description" ukuran={20} className="text-blue-400 shrink-0" />
                                 <div>
                                     <p className="text-sm text-slate-200">{doc.title}</p>
                                     <p className="text-[12px] text-slate-500">{formatDate(doc.created_at)}</p>
@@ -625,9 +625,9 @@ export default function ResearchApp() {
                                 title="Hapus dokumen"
                             >
                                 {deletingId === doc.id ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <Ikon nama="progress_activity" ukuran={16} className="animate-spin" />
                                 ) : (
-                                    <Trash2 className="w-4 h-4" />
+                                    <Ikon nama="delete" ukuran={16} />
                                 )}
                             </button>
                         </div>
@@ -642,7 +642,7 @@ export default function ResearchApp() {
                                 disabled={memuatLagi}
                                 className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-blue-300 border border-blue-500/30 hover:bg-blue-500/10 transition-all disabled:opacity-50"
                             >
-                                {memuatLagi && <Loader2 className="w-3 h-3 animate-spin" />}
+                                {memuatLagi && <Ikon nama="progress_activity" ukuran={12} className="animate-spin" />}
                                 Muat {Math.min(DOKUMEN_PER_HALAMAN, totalDokumen - documents.length)} lagi
                             </button>
                         </div>

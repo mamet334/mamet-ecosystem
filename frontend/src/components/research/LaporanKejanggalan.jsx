@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, ChevronDown, ChevronRight, Download, Loader2, RefreshCw } from 'lucide-react';
+import Ikon from '../Ikon';
 import { uraiBaris } from '../../core/runtime/services/dataTabelAsnOcr.js';
 import { susunLaporanJanggal, lembarExcelOpd, lembarRingkasan, namaLembar, JENIS, TINGKAT } from '../../core/runtime/services/dataTabelAsnJanggal.js';
 
@@ -46,7 +46,7 @@ export default function LaporanKejanggalan({ onMuatBahan, onUnduh }) {
     return (
       <div className="mb-6">
         <button onClick={muat} disabled={memuat} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-amber-300 border border-amber-500/30 hover:bg-amber-500/10 transition-colors disabled:opacity-50">
-          {memuat ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <AlertTriangle className="w-3.5 h-3.5" />}
+          {memuat ? <Ikon nama="progress_activity" ukuran={14} className="animate-spin" /> : <Ikon nama="warning" ukuran={14} />}
           Laporan kejanggalan per OPD
         </button>
         {galat && <p className="mt-1 text-[12px] text-red-400">Gagal memuat: {galat}</p>}
@@ -57,7 +57,7 @@ export default function LaporanKejanggalan({ onMuatBahan, onUnduh }) {
   return (
     <div className="mb-6 rounded-lg border border-amber-500/20 bg-slate-900/40 p-3">
       <div className="flex flex-wrap items-center gap-2 mb-2">
-        <AlertTriangle className="w-4 h-4 text-amber-400" />
+        <Ikon nama="warning" ukuran={16} className="text-amber-400" />
         <h2 className="text-sm font-semibold text-slate-200">Laporan Kejanggalan</h2>
         <span className="text-[12px] text-slate-500">
           {laporan.perOpd.length} berkas aktif · <span className="text-red-300">{laporan.total.salah} perlu dibetulkan</span> · <span className="text-amber-300">{laporan.total.lengkapi} perlu dilengkapi</span>
@@ -67,10 +67,10 @@ export default function LaporanKejanggalan({ onMuatBahan, onUnduh }) {
             <input type="checkbox" checked={hanyaSalah} onChange={(e) => setHanyaSalah(e.target.checked)} /> hanya yang perlu dibetulkan
           </label>
           <button onClick={muat} disabled={memuat} className="p-1 rounded text-slate-500 hover:text-slate-200" title="Periksa ulang dari data tersimpan">
-            {memuat ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            {memuat ? <Ikon nama="progress_activity" ukuran={14} className="animate-spin" /> : <Ikon nama="refresh" ukuran={14} />}
           </button>
           <button onClick={unduhSemua} disabled={!!mengunduh} className="flex items-center gap-1 px-2 py-1 rounded text-[12px] text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/10">
-            {mengunduh === 'semua' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />} Excel semua OPD
+            {mengunduh === 'semua' ? <Ikon nama="progress_activity" ukuran={12} className="animate-spin" /> : <Ikon nama="download" ukuran={12} />} Excel semua OPD
           </button>
           <button onClick={() => setLaporan(null)} className="text-[12px] text-slate-500 hover:text-slate-300">Tutup</button>
         </div>
@@ -89,14 +89,14 @@ export default function LaporanKejanggalan({ onMuatBahan, onUnduh }) {
             <div key={x.berkas_id} className="rounded border border-slate-800 bg-slate-900/50">
               <div className="flex items-center gap-2 px-2 py-1.5 text-xs">
                 <button onClick={() => setTerbuka(buka ? null : x.berkas_id)} className="flex min-w-0 flex-1 items-center gap-1 text-left text-slate-200">
-                  {buka ? <ChevronDown className="w-3.5 h-3.5 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 shrink-0" />}
+                  {buka ? <Ikon nama="expand_more" ukuran={14} className="shrink-0" /> : <Ikon nama="chevron_right" ukuran={14} className="shrink-0" />}
                   <span className="truncate">{x.opd}</span>
                   <span className="truncate text-[12px] text-slate-500">· {x.jumlah_orang} orang</span>
                 </button>
                 <span className={`text-[12px] ${x.salah ? 'text-red-300' : 'text-slate-600'}`}>{x.salah} dibetulkan</span>
                 <span className={`text-[12px] ${x.lengkapi ? 'text-amber-300' : 'text-slate-600'}`}>{x.lengkapi} dilengkapi</span>
                 <button onClick={() => unduhOpd(x)} disabled={!!mengunduh} className="p-1 rounded text-slate-500 hover:text-emerald-300" title={`Unduh Excel ${x.opd}`}>
-                  {mengunduh === x.berkas_id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                  {mengunduh === x.berkas_id ? <Ikon nama="progress_activity" ukuran={14} className="animate-spin" /> : <Ikon nama="download" ukuran={14} />}
                 </button>
               </div>
               {buka && (

@@ -617,18 +617,16 @@ class Kernel {
     const { AppComponents } = await import('../application/AppRegistry.js');
     const metadataService = serviceManager.get('MetadataService');
     const apps = metadataService.getApps();
-    const Lucide = await import('lucide-react');
     const appManagerInstance = serviceManager.get('ApplicationManager');
 
     apps.forEach(app => {
       if (app.disabled) return;
-      const IconComp = Lucide[app.icon] || Lucide.Box;
       const RenderComp = AppComponents[app.component] || AppComponents['HomeDashboard'];
       
       appManagerInstance.registerApp({
         id: app.id,
         name: app.name,
-        iconComponent: IconComp,
+        icon: app.icon || 'apps',  // nama Material Symbols dari metadata — dirender <Ikon>/ligatur
         renderComponent: (props) => React.createElement(RenderComp, { ...props, appId: app.id, workspaceId: app.workspace })
       });
     });

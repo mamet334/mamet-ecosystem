@@ -147,14 +147,18 @@ const GARIS_DASAR = {
   warnaTetap: GARIS_WARNA_TETAP,
   warnaSlate: 609, // 615 → 609 (19 Okt): akar 6 aplikasi tak lagi mengecat latar slate sendiri (latar = dinding LampLogin)
   aksenPelangi: 250,
-  gerakDekoratif: 51,
+  gerakDekoratif: 50, // 51 → 50 (20 Okt): cabang desktop Sidebar.jsx (titik berdenyut di avatar) dihapus — keputusan Owner
   kacaBlur: 15,
-  glowRgba: 26,
+  glowRgba: 18, // 26 → 18 (20 Okt): pendar status Observability kini variabel warna dasar (Item 128 Tahap D1)
   gradien: 5, // 6 → 5 (19 Okt): gradien area kotak ketik chat dibuang — jadi pita gelap di atas dinding ruangan
-  berkasIkonLucide: 26,
+  // 26 → 3 (20 Okt): satu set ikon — keputusan Owner "pakai yang terbaru". Sisa 3 = kode mati K6 (Login.jsx,
+  // EngineerChat.jsx, ActivityBar.jsx, tak diimpor mana pun); turun ke 0 saat K6 dihapus.
+  berkasIkonLucide: 3,
   // 8 → 9 (20 Okt, v5): BagianTampilan.jsx — bagian Settings › Tampilan dipecah ke berkasnya sendiri (Settings.jsx
   // sudah memakai Material Symbols); jumlah SET ikon tidak bertambah. Kenaikan berikutnya tetap merah.
-  berkasIkonMaterialSymbols: 9,
+  // 9 → 10 (20 Okt): components/Ikon.jsx — komponen tunggal pengganti lucide (162 tag di 24 berkas memakainya tanpa
+  // menulis kelas ligatur sendiri). Angka ini kini = berkas yang menulis ligatur LANGSUNG; idealnya hanya Ikon.jsx.
+  berkasIkonMaterialSymbols: 10,
 };
 
 console.log('\n-- 3. tidak ada angka yang naik dari garis dasar --');

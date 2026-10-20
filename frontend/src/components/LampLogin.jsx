@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabase';
-import { AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
+import Ikon from './Ikon';
 import TombolUnduhDesktop from './TombolUnduhDesktop';
 
 export default function LampLogin({ onLoginSuccess }) {
@@ -342,14 +342,14 @@ export default function LampLogin({ onLoginSuccess }) {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-[14px] top-1/2 -translate-y-1/2 p-[6px] text-[rgba(255,235,205,.62)] hover:text-[#f4d18e] transition-colors"
                   >
-                    {showPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                    {showPassword ? <Ikon nama="visibility" ukuran={20} /> : <Ikon nama="visibility_off" ukuran={20} />}
                   </button>
                 </div>
               </div>
 
               {error && (
                 <div className="flex items-center gap-2 p-3 bg-red-900/30 border border-red-500 rounded-lg text-red-400 text-sm text-left">
-                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                  <Ikon nama="error" ukuran={20} className="flex-shrink-0" />
                   <span>{error}</span>
                 </div>
               )}
@@ -360,7 +360,7 @@ export default function LampLogin({ onLoginSuccess }) {
                 className="w-full h-[48px] border-0 rounded-[11px] cursor-pointer text-[14px] font-bold tracking-[.02em] text-[#1b1105] bg-gradient-to-br from-[#d9ad51] to-[#f0ca6d] shadow-[0_8px_22px_rgba(0,0,0,.28),inset_0_1px_0_rgba(255,255,255,.30)] transition-all hover:brightness-110 hover:shadow-[0_10px_28px_rgba(0,0,0,.34),0_0_20px_rgba(239,190,83,.12)] active:translate-y-[2px] disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
               >
                 {loading ? (
-                  <><Loader2 className="w-5 h-5 animate-spin" /> Memproses...</>
+                  <><Ikon nama="progress_activity" ukuran={20} className="animate-spin" /> Memproses...</>
                 ) : (
                   isSignUp ? 'DAFTAR' : 'MASUK'
                 )}

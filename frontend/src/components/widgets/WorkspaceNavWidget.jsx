@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Code, Zap } from 'lucide-react';
+import Ikon from '../Ikon';
 import { useWorkspace } from '../../core/workspaces/WorkspaceContext';
 
 export default function WorkspaceNavWidget() {
@@ -8,9 +8,9 @@ export default function WorkspaceNavWidget() {
   const activeWorkspace = osState.workspaceId || 'ws-assistant';
 
   let workspaces = [
-    { id: 'ws-assistant', name: 'Assistant', icon: LayoutDashboard, type: 'ASSISTANT' },
-    { id: 'ws-lite', name: 'Lite', icon: Zap, type: 'LITE' },
-    { id: 'ws-engineer', name: 'Engineer', icon: Code, type: 'ENGINEER' }
+    { id: 'ws-assistant', name: 'Assistant', icon: 'dashboard', type: 'ASSISTANT' },
+    { id: 'ws-lite', name: 'Lite', icon: 'bolt', type: 'LITE' },
+    { id: 'ws-engineer', name: 'Engineer', icon: 'code', type: 'ENGINEER' }
   ];
 
   // Phase 3: Context Isolation.
@@ -29,7 +29,6 @@ export default function WorkspaceNavWidget() {
         Workspaces
       </div>
       {workspaces.map((ws) => {
-        const Icon = ws.icon;
         const isActive = activeWorkspace === ws.id;
         return (
           <button
@@ -41,7 +40,7 @@ export default function WorkspaceNavWidget() {
                 : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 border border-transparent'
             }`}
           >
-            <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-500' : 'text-slate-500'}`} />
+            <Ikon nama={ws.icon} ukuran={16} className={isActive ? 'text-emerald-500' : 'text-slate-500'} />
             {ws.name}
           </button>
         );

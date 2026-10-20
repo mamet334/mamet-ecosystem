@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { kernel } from '../../core/runtime/Kernel';
-import { 
-  ShieldCheck, ShieldAlert, XCircle, CheckCircle, FileText, 
-  AlertTriangle, ChevronDown, ChevronRight, CheckSquare, Square, Lock
-} from 'lucide-react';
+import Ikon from '../Ikon';
 
 export default function EngineerApprovalDialog() {
   const [pendingApproval, setPendingApproval] = useState(null);
@@ -116,7 +113,7 @@ export default function EngineerApprovalDialog() {
         {/* HEADER & METRICS */}
         <div className="bg-slate-800/50 px-6 py-4 border-b border-slate-700 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <ShieldCheck className="w-6 h-6 text-emerald-400" />
+            <Ikon nama="verified_user" ukuran={24} className="text-emerald-400" />
             <div>
               <h2 className="text-lg font-bold text-slate-100">Executive Engineering Approval</h2>
               <p className="text-xs text-slate-400">Patch ID: {pendingApproval.patchId}</p>
@@ -139,7 +136,7 @@ export default function EngineerApprovalDialog() {
           {/* CRITICAL ALERTS (CORE PROTECTION & MAEF VIOLATIONS) */}
           {alerts.critical.length > 0 && (
             <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl flex items-start gap-3">
-              <ShieldAlert className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+              <Ikon nama="gpp_maybe" ukuran={20} className="text-red-400 shrink-0 mt-0.5" />
               <div className="space-y-1">
                 {alerts.critical.map((msg, i) => <p key={i} className="text-sm text-red-300 font-medium">{msg}</p>)}
               </div>
@@ -149,7 +146,7 @@ export default function EngineerApprovalDialog() {
           {/* WARNINGS */}
           {alerts.warnings.length > 0 && (
             <div className="bg-yellow-950/30 border border-yellow-500/30 p-4 rounded-xl flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
+              <Ikon nama="warning" ukuran={20} className="text-yellow-400 shrink-0 mt-0.5" />
               <div className="space-y-1">
                 {alerts.warnings.map((msg, i) => <p key={i} className="text-sm text-yellow-300">{msg}</p>)}
               </div>
@@ -187,16 +184,16 @@ export default function EngineerApprovalDialog() {
                     {/* File Header */}
                     <div className="flex items-center gap-3 p-3 cursor-pointer" onClick={() => !isImmutable && toggleFileSelection(file.path)}>
                       {!isImmutable ? (
-                        isSelected ? <CheckSquare className="w-5 h-5 text-emerald-400 shrink-0" /> : <Square className="w-5 h-5 text-slate-500 shrink-0" />
+                        isSelected ? <Ikon nama="check_box" ukuran={20} className="text-emerald-400 shrink-0" /> : <Ikon nama="check_box_outline_blank" ukuran={20} className="text-slate-500 shrink-0" />
                       ) : (
-                        <Lock className="w-5 h-5 text-red-400 shrink-0" />
+                        <Ikon nama="lock" ukuran={20} className="text-red-400 shrink-0" />
                       )}
                       
                       <button onClick={(e) => { e.stopPropagation(); toggleExpand(file.path); }} className="text-slate-400 hover:text-slate-200">
-                        {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                        {isExpanded ? <Ikon nama="expand_more" ukuran={16} /> : <Ikon nama="chevron_right" ukuran={16} />}
                       </button>
 
-                      <FileText className="w-4 h-4 text-blue-400 shrink-0" />
+                      <Ikon nama="description" ukuran={16} className="text-blue-400 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm text-slate-200 font-mono truncate">{file.path}</p>
                         <p className="text-[12px] text-slate-500">
@@ -233,14 +230,14 @@ export default function EngineerApprovalDialog() {
               onClick={handleRejectAll}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 transition-colors text-sm font-medium"
             >
-              <XCircle className="w-4 h-4" /> Reject All
+              <Ikon nama="cancel" ukuran={16} /> Reject All
             </button>
             <button
               onClick={handleApproveSelected}
               disabled={selectedFiles.size === 0}
               className="flex items-center gap-2 px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:text-slate-500 text-di-warna transition-colors text-sm font-bold shadow-lg shadow-emerald-500/20"
             >
-              <CheckCircle className="w-4 h-4" /> Approve Selected ({selectedFiles.size})
+              <Ikon nama="check_circle" ukuran={16} /> Approve Selected ({selectedFiles.size})
             </button>
           </div>
         </div>

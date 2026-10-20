@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, AlertTriangle, CheckCircle2, FileSpreadsheet, ChevronDown, ChevronRight, Loader2, ScanLine } from 'lucide-react';
+import Ikon from '../Ikon';
 import { uraiBaris, labelBaris, SUMBER_OCR } from '../../core/runtime/services/dataTabelAsnOcr.js';
 
 // PRATINJAU DATA TABEL (Item 92 Tahap 1): hasil pembacaan Excel rekonsiliasi ASN ditampilkan untuk diperiksa Owner
@@ -21,17 +21,16 @@ const LABEL_BIDANG = {
 function KartuSheet({ s, terbukaAwal }) {
   const [buka, setBuka] = useState(terbukaAwal);
   const [tabel, setTabel] = useState(false);
-  const Ikon = buka ? ChevronDown : ChevronRight;
   return (
     <div className="border border-slate-800 rounded-lg bg-slate-900/50">
       <button onClick={() => setBuka((b) => !b)} className="w-full flex items-center gap-3 p-3 text-left">
-        <Ikon className="w-4 h-4 text-slate-500 shrink-0" />
+        <Ikon nama={buka ? 'expand_more' : 'chevron_right'} ukuran={16} className="text-slate-500 shrink-0" />
         <span className="text-sm text-slate-200 font-medium truncate">{s.sheet}</span>
         <span className="text-[12px] text-slate-500">{LABEL_KELOMPOK[s.kelompok] || s.kelompok}</span>
         {/* Catatan ringan (mis. pembagian L/P beda) tidak mengubah status BERSIH — tetap harus terlihat tanpa membuka kartu. */}
         {s.kejanggalan.length > 0 && (
           <span className="ml-auto flex items-center gap-1 text-[12px] text-amber-300" title="buka kartu untuk melihat catatan">
-            <AlertTriangle className="w-3.5 h-3.5" /> {s.kejanggalan.length} catatan
+            <Ikon nama="warning" ukuran={14} /> {s.kejanggalan.length} catatan
           </span>
         )}
         <span className={`${s.kejanggalan.length ? '' : 'ml-auto '}text-xs text-slate-300`}>{s.orang.length} orang</span>
@@ -50,7 +49,7 @@ function KartuSheet({ s, terbukaAwal }) {
             <div className="space-y-1">
               {s.kejanggalan.map((k, i) => (
                 <div key={i} className="flex items-start gap-2 text-amber-200">
-                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-400" />
+                  <Ikon nama="warning" ukuran={14} className="mt-0.5 shrink-0 text-amber-400" />
                   <span>{k.pesan}{k.baris ? ` (${labelBaris(k.baris)})` : ''}</span>
                 </div>
               ))}
@@ -121,8 +120,8 @@ export default function PratinjauDataTabel({ hasil, onTutup, opdAwal, onPeriksaV
     <div className="mb-6 border border-blue-500/30 rounded-xl bg-slate-900/70 p-4">
       <div className="flex items-start gap-3 mb-3">
         {hasil.sumber === SUMBER_OCR
-          ? <ScanLine className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" />
-          : <FileSpreadsheet className="w-5 h-5 text-emerald-400 mt-0.5 shrink-0" />}
+          ? <Ikon nama="document_scanner" ukuran={20} className="text-amber-400 mt-0.5 shrink-0" />
+          : <Ikon nama="table_chart" ukuran={20} className="text-emerald-400 mt-0.5 shrink-0" />}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-slate-100 truncate">{hasil.berkas}</p>
           <p className="text-xs text-slate-400">
@@ -130,10 +129,10 @@ export default function PratinjauDataTabel({ hasil, onTutup, opdAwal, onPeriksaV
             {Object.entries(r.perKelompok).filter(([, n]) => n).map(([k, n]) => ` · ${LABEL_KELOMPOK[k] || k} ${n}`).join('')}
           </p>
         </div>
-        <button onClick={onTutup} className="p-1 text-slate-500 hover:text-slate-200" title="Tutup pratinjau"><X className="w-4 h-4" /></button>
+        <button onClick={onTutup} className="p-1 text-slate-500 hover:text-slate-200" title="Tutup pratinjau"><Ikon nama="close" ukuran={16} /></button>
       </div>
       <div className={`flex items-center gap-2 text-xs mb-3 ${perluCek ? 'text-amber-300' : 'text-emerald-300'}`}>
-        {perluCek ? <AlertTriangle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+        {perluCek ? <Ikon nama="warning" ukuran={16} /> : <Ikon nama="check_circle" ukuran={16} />}
         {perluCek ? `${perluCek} sheet perlu dicek — lihat kejanggalan di bawah.` : 'Semua sheet terbaca tanpa kejanggalan berat.'}
         {r.nipGandaAntarSheet > 0 && <span className="text-amber-300"> · {r.nipGandaAntarSheet} NIP muncul di lebih dari satu sheet</span>}
       </div>
@@ -208,7 +207,7 @@ function BagianSimpan({ hasil, opdAwal, onPeriksaVersi, onSimpan }) {
   if (tahap === 'tersimpan') {
     return (
       <div className="mt-4 flex items-center gap-2 text-sm text-emerald-300">
-        <CheckCircle2 className="w-4 h-4" /> Tersimpan: {opd} — {hasil.ringkasan.jumlahOrang} orang. Lihat di "Data Tabel Tersimpan" di bawah.
+        <Ikon nama="check_circle" ukuran={16} /> Tersimpan: {opd} — {hasil.ringkasan.jumlahOrang} orang. Lihat di "Data Tabel Tersimpan" di bawah.
       </div>
     );
   }
@@ -230,7 +229,7 @@ function BagianSimpan({ hasil, opdAwal, onPeriksaVersi, onSimpan }) {
           </button>
         )}
         {(tahap === 'memeriksa' || tahap === 'menyimpan') && (
-          <span className="flex items-center gap-2 text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /> {tahap === 'memeriksa' ? 'Memeriksa versi…' : 'Menyimpan…'}</span>
+          <span className="flex items-center gap-2 text-slate-400"><Ikon nama="progress_activity" ukuran={16} className="animate-spin" /> {tahap === 'memeriksa' ? 'Memeriksa versi…' : 'Menyimpan…'}</span>
         )}
       </div>
       {tahap === 'galat' && <p className="text-red-300">Gagal: {pesan}</p>}

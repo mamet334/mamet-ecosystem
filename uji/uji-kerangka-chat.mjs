@@ -26,7 +26,7 @@ const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (kode) =>
   kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
-console.log('uji-kerangka-chat v7');
+console.log('uji-kerangka-chat v8');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -147,20 +147,21 @@ cek(!/mt-14 mb-0 flex items-center gap-2 px-3 py-2 rounded-xl border border-ambe
   'banner rollback tak lagi menyisakan jarak 56px untuk bilah lama yang melayang');
 
 // ── 8. Ikon bilah samping tidak kembar ──────────────────────────────────────────────────────────
-// Bilah samping MENEBAK ikon dari nama aplikasi (Sidebar.jsx getIcon); nama yang tak cocok jatuh ke 'apps'.
-// 19 Okt: tiga aplikasi jatuh ke sana sekaligus. Uji ini menjalankan getIcon yang ASLI pada nama di metadata.
+// 19 Okt: bilah samping MENEBAK ikon dari nama aplikasi (getIcon) dan tiga aplikasi jatuh ke cadangan 'apps' sekaligus.
+// v8 (20 Okt, satu set ikon): tebakan dihapus — ikon tiap aplikasi ditulis di metadata system.json dan laci membaca
+// `app.icon`. Yang dijaga tetap sama: tak kembar, tak ada yang jatuh ke cadangan, semua ada di subset font.
 console.log('\n-- 8. ikon bilah samping --');
 const SIDEBAR = baca('frontend/src/components/os/Sidebar.jsx');
-const badanIkon = SIDEBAR.slice(SIDEBAR.indexOf('const getIcon'), SIDEBAR.indexOf('const renderNavNode'));
-const getIcon = new Function('return ' + badanIkon.replace('const getIcon = ', '').trim().replace(/;\s*$/, ''))();
-const namaApp = JSON.parse(baca('frontend/public/metadata/system.json')).apps.map((a) => a.name);
-const ikon = namaApp.map((n) => getIcon(n));
+cek(SIDEBAR.includes("{app.icon || 'apps'}") && !/getIcon/.test(SIDEBAR), 'laci membaca ikon dari metadata (app.icon), bukan menebak dari nama');
+const APPS = JSON.parse(baca('frontend/public/metadata/system.json')).apps;
+const namaApp = APPS.map((a) => a.name);
+const ikon = APPS.map((a) => a.icon || 'apps');
 const subset = baca('frontend/src/assets/fonts/daftar-ikon.txt').split('\n').map((s) => s.trim());
 const kembar = ikon.filter((v, i) => ikon.indexOf(v) !== i);
 cek(kembar.length === 0, `${namaApp.length} aplikasi, ${new Set(ikon).size} ikon berbeda — tak ada yang kembar`, kembar);
 // "Tak kembar" saja tidak cukup — terbukti lewat mutasi: SATU aplikasi yang jatuh ke cadangan tidak kembar
 // dengan siapa pun, tetapi tetap tampil sebagai kotak-titik generik. Yang dijaga: tak ada yang jatuh ke sana.
-const jatuh = namaApp.filter((n, i) => ikon[i] === getIcon('\u0000tak-cocok-apa-pun\u0000'));
+const jatuh = namaApp.filter((n, i) => ikon[i] === 'apps');
 cek(jatuh.length === 0, 'tak ada aplikasi yang jatuh ke ikon cadangan generik', jatuh);
 const takAda = ikon.filter((i) => !subset.includes(i));
 cek(takAda.length === 0, 'semua ikon ada di subset font (kalau tidak, yang tampil adalah KATANYA)', takAda);

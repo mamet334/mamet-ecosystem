@@ -6,8 +6,11 @@ ruang lingkup, dokumentasi, analisis, alasan, persetujuan Owner)
 **Status:** ✅ **SELESAI 20 Okt — Tahap A–D** (tema dipilih pengguna, warna dasar diganti setelan; Ruangan kayu · Gelap netral · Biru malam · Terang). Riwayat: **Tahap A ✅ (20 Okt)** — token palet menjadi variabel CSS, tampilan tidak berubah ([log](../project-memory/changelog/2026-10-20-tema-tahap-a-variabel-css.md)). · **Tahap B ✅ (20 Okt)** — Settings › Tampilan, Ruangan kayu & Gelap netral, per akun ([log](../project-memory/changelog/2026-10-20-tema-tahap-b-settings-tampilan.md)); simpan-ke-akun menunggu dicoba Owner. · **Tahap C ✅ (20 Okt)** — Kurangi gerakan (ikuti Windows · kurangi · normal) & lampu ruangan (pendar 25%, mati bawaannya) ([log](../project-memory/changelog/2026-10-20-tema-tahap-c-gerakan-lampu.md)). · **Tahap D ✅ (20 Okt)** — warna dasar menjadi variabel (dasar gelap/terang), Biru malam & Terang ([log](../project-memory/changelog/2026-10-20-tema-tahap-d-warna-dasar-terang-biru.md)).
 **Tanggal:** 2026-10-20
 **Aplikasi:** **Mamet Ecosystem** (`frontend/`) — **bukan** Mametlite.
-**Batas tegas:** **`LampLogin.jsx` tidak diubah** (arahan Owner 19 Okt, tetap berlaku). Layar masuk tetap memakai
-ruangannya sendiri, apa pun tema yang dipilih sesudah masuk.
+**Batas tegas:** **`LampLogin.jsx` tidak diubah** (arahan Owner 19 Okt, tetap berlaku) — satu pengecualian: 4 ikon
+ke set ikon tunggal, diizinkan Owner 20 Okt (§9). Layar masuk tetap memakai ruangannya sendiri, apa pun tema yang
+dipilih sesudah masuk.
+**Sisa Item 127 (20 Okt):** satu set ikon ✅ · nama menu tetap Inggris ✅ · cabang desktop `Sidebar.jsx` dihapus ✅ ·
+K5 ditolak ([log](../project-memory/changelog/2026-10-20-satu-set-ikon.md)).
 
 ---
 
@@ -185,9 +188,10 @@ semuanya. Lampu: gambar lampu disalin dari LampLogin (menambah utang K5, dijaga 
 pembersihan kelas putih/hitam mentah.
 
 **Sisa yang dibawa dari Item 127** (tidak bergantung tema, dikerjakan bila Owner memintanya):
-- satu set ikon (Lucide 26 berkas + Material 8 berkas → satu); ikon Agent Forge = logo Mamet;
-- nama menu berbahasa Inggris (dari `navigation.json`) — keputusan istilah oleh Owner;
-- cabang desktop `Sidebar.jsx` yang tak terpakai sejak menu teks;
+- ~~satu set ikon; ikon Agent Forge = logo Mamet~~ ✅ 20 Okt — Material Symbols lewat komponen `<Ikon>`; ikon aplikasi
+  dari metadata `system.json`; Agent Forge = `smart_toy` ([log](../project-memory/changelog/2026-10-20-satu-set-ikon.md));
+- ~~nama menu berbahasa Inggris~~ ✅ 20 Okt — **dibiarkan berbahasa Inggris** (keputusan Owner);
+- ~~cabang desktop `Sidebar.jsx`~~ ✅ 20 Okt — dihapus; `Sidebar.jsx` kini laci seluler saja;
 - bilah gulir mendatar panel kanan Home — penyebab belum ditemukan;
 - T18: kelas Tailwind yang tak pernah dibuat (catatan: dua entri `SystemNotificationCenter` ternyata **bukan** kelas
   mati — animasinya didefinisikan di komponen sendiri; T18 perlu dikoreksi).
@@ -201,7 +205,7 @@ pembersihan kelas putih/hitam mentah.
 3. Setiap tema lulus kontras ≥ 4,5:1 — diukur, termasuk di atas dinding bila latar ruangan nyala.
 4. Warna simpul graf Home tetap sesuai konstitusi 23 di semua tema.
 5. Menambah tema baru = menambah satu entri metadata, tanpa mengubah komponen.
-6. `LampLogin.jsx` tidak berubah satu bait pun.
+6. `LampLogin.jsx` tidak berubah satu bait pun — kecuali 4 ikon yang diizinkan Owner 20 Okt (§9).
 7. Ruangan kayu sesudah Tahap A tampil **persis** seperti sebelum Tahap A.
 
 ---
@@ -215,6 +219,14 @@ pembersihan kelas putih/hitam mentah.
 - Tema awal: **Ruangan kayu** dan **Gelap netral**; menyusul **Terang** dan **Biru dominan**.
 - Lampu dan gerak dekoratif **ditunda** sebagai pekerjaan tetap, dan dibawa ke sini sebagai pilihan pengguna.
 - Item 127 digabung dan disesuaikan ke dokumen ini; **dokumen ini dikoreksi Owner** sebelum dikerjakan.
+- Sisa Item 127 (20 Okt, sesudah Tahap D): *"satu set ikon pakai yang terbaru"* (Material Symbols) · *"nama menu
+  biarkan bahasa inggris"* · *"cabang hapus"* · *"login jangan di gabungkan"* (K5 ditolak).
+- **Pengecualian `LampLogin.jsx` — ikon saja (20 Okt).** Owner menunda pekerjaan layar masuk karena ia titik masuk
+  aplikasi dan keamanannya harus maksimal; diizinkan *"bila perubahan icon tidak menjadi masalah keamanan dari segi
+  apapun"*. Dianalisis: ikon hanya gambar (tak menyentuh email/sandi/Supabase, logika `showPassword` tak berubah), font
+  dari aplikasi sendiri (CSP `font-src 'self'`, tak ada sambungan baru), dan satu paket JavaScript pihak ketiga hilang
+  dari layar masuk. Yang berubah tepat 4 baris ikon — `uji-penjaga-lamplogin` v2 membalik keempatnya dan menuntut sidik
+  jari 19 Okt tetap sama, jadi perubahan lain tetap merah. Pekerjaan keamanan layar masuk tetap ditunda.
 
 **Masih terbuka:**
 
@@ -223,8 +235,8 @@ pembersihan kelas putih/hitam mentah.
 | ~~T1~~ | ~~Nama tema berbahasa Indonesia?~~ | ✅ ya — diputuskan 20 Okt |
 | ~~T2~~ | ~~"Ikuti sistem" saat Windows terang~~ | ✅ Gelap netral sampai tema Terang ada — diputuskan 20 Okt |
 | ~~T3~~ | ~~Tema bawaan pengguna baru~~ | ✅ Ruangan kayu — diputuskan 20 Okt |
-| K5 | Menyatukan dua sumber ruangan (perlu izin menyentuh `LampLogin.jsx`) | dari Item 127 |
-| K6 | Kode mati `Login.jsx` · `EngineerChat.jsx` · `ActivityBar.jsx` | dari Item 127, di luar item ini |
+| ~~K5~~ | ~~Menyatukan dua sumber ruangan~~ | ❌ ditolak 20 Okt — *"login jangan di gabungkan"*; LampLogin & LatarRuangan tetap terpisah, salinan dijaga uji |
+| K6 | Kode mati `Login.jsx` · `EngineerChat.jsx` · `ActivityBar.jsx` | dari Item 127, di luar item ini — kini juga satu-satunya pemakai `lucide-react`; paket itu dibuang bersama K6 |
 | L5 | Tahap 1 langkah 5 Item 127 (melepas layar tak aktif) | diparkir |
 
 ---

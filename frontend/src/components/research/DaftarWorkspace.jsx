@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Pencil, Trash2, Check, X, Loader2 } from 'lucide-react';
+import Ikon from '../Ikon';
 import { periksaNamaRuang, bolehDihapus, PANJANG_NAMA_MAKS } from '../../core/runtime/services/ruangPengetahuan.js';
 
 // Deretan workspace + buat / ganti nama / hapus-bila-kosong (2026-09-21). jumlahDokumen = isi workspace terpilih
@@ -65,7 +65,7 @@ export default function DaftarWorkspace({ daftar, terpilih, onPilih, jumlahDokum
                     className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs text-blue-300 border border-dashed border-blue-500/40 hover:bg-blue-500/10 transition-colors"
                     title="Buat workspace baru"
                 >
-                    <Plus className="w-3 h-3" /> Workspace baru
+                    <Ikon nama="add" ukuran={12} /> Workspace baru
                 </button>
             </div>
 
@@ -73,7 +73,7 @@ export default function DaftarWorkspace({ daftar, terpilih, onPilih, jumlahDokum
                 <div className="mt-2 flex items-center gap-3 text-[12px] text-slate-500">
                     <span>Unggahan dokumen masuk ke <span className="text-slate-300">"{ruang.name}"</span></span>
                     <button onClick={() => buka('ganti')} disabled={sibuk} className="flex items-center gap-1 hover:text-blue-300" title="Ganti nama workspace ini">
-                        <Pencil className="w-3 h-3" /> Ganti nama
+                        <Ikon nama="edit" ukuran={12} /> Ganti nama
                     </button>
                     <button
                         onClick={hapus}
@@ -81,7 +81,7 @@ export default function DaftarWorkspace({ daftar, terpilih, onPilih, jumlahDokum
                         className="flex items-center gap-1 hover:text-red-400 disabled:opacity-40 disabled:hover:text-slate-500"
                         title={alasanTakBisaHapus}
                     >
-                        {sibuk ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} Hapus
+                        {sibuk ? <Ikon nama="progress_activity" ukuran={12} className="animate-spin" /> : <Ikon nama="delete" ukuran={12} />} Hapus
                     </button>
                 </div>
             )}
@@ -99,10 +99,10 @@ export default function DaftarWorkspace({ daftar, terpilih, onPilih, jumlahDokum
                             className="flex-1 max-w-sm bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500/60"
                         />
                         <button onClick={simpan} disabled={sibuk} className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-400/10" title="Simpan">
-                            {sibuk ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                            {sibuk ? <Ikon nama="progress_activity" ukuran={16} className="animate-spin" /> : <Ikon nama="check" ukuran={16} />}
                         </button>
                         <button onClick={tutup} disabled={sibuk} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-700/50" title="Batal">
-                            <X className="w-4 h-4" />
+                            <Ikon nama="close" ukuran={16} />
                         </button>
                     </div>
                     {pesan && <p className="text-[12px] text-red-400">{pesan}</p>}

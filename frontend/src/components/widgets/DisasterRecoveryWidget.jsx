@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { serviceManager } from '../../core/runtime/ServiceManager';
 import { supabase } from '../../supabase';
-import { HardDrive, RefreshCw, AlertTriangle, ShieldCheck } from 'lucide-react';
+import Ikon from '../Ikon';
 
 export default function DisasterRecoveryWidget() {
   const [loading, setLoading] = useState(false);
@@ -47,13 +47,13 @@ export default function DisasterRecoveryWidget() {
   return (
     <div className="flex flex-col h-full bg-slate-950 text-slate-300 p-4 font-mono text-xs">
       <div className="flex items-center gap-2 mb-4">
-        <HardDrive className="w-5 h-5 text-emerald-500" />
+        <Ikon nama="hard_drive" ukuran={20} className="text-emerald-500" />
         <h3 className="text-sm font-semibold text-emerald-400">Disaster Recovery</h3>
       </div>
       
       {error && (
         <div className="mb-4 p-2 bg-red-900/30 border border-red-500/50 rounded text-red-400 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <Ikon nama="warning" ukuran={16} className="shrink-0" />
           <span>{error}</span>
         </div>
       )}
@@ -66,12 +66,12 @@ export default function DisasterRecoveryWidget() {
               <span className="text-slate-400 animate-pulse">Checking...</span>
             ) : backupStatus === 'READY' ? (
               <>
-                <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                <Ikon nama="verified_user" ukuran={16} className="text-emerald-500" />
                 <span className="text-emerald-500 font-bold">READY (Secure)</span>
               </>
             ) : (
               <>
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
+                <Ikon nama="warning" ukuran={16} className="text-amber-500" />
                 <span className="text-amber-500 font-bold">{backupStatus || 'UNKNOWN'}</span>
               </>
             )}
@@ -83,7 +83,7 @@ export default function DisasterRecoveryWidget() {
             className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded transition-colors text-center text-slate-300 flex flex-col items-center gap-1 cursor-not-allowed opacity-50"
             title="Backup requires CLI manual validation"
           >
-            <HardDrive className="w-4 h-4" />
+            <Ikon nama="hard_drive" ukuran={16} />
             <span>Export Backup</span>
           </button>
           
@@ -91,7 +91,7 @@ export default function DisasterRecoveryWidget() {
             className="p-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded transition-colors text-center text-amber-500 flex flex-col items-center gap-1 cursor-not-allowed opacity-50"
             title="Restore requires CLI manual validation"
           >
-            <RefreshCw className="w-4 h-4" />
+            <Ikon nama="refresh" ukuran={16} />
             <span>Restore Data</span>
           </button>
         </div>

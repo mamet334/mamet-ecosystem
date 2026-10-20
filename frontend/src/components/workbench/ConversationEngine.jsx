@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Loader2, Globe } from 'lucide-react';
+import Ikon from '../Ikon';
 import { useWorkspace } from '../../core/workspaces/WorkspaceContext';
 import { supabase } from '../../supabase';
 import { tautanUnduh } from '../../core/runtime/services/remoteConversionClient';
@@ -2402,7 +2402,7 @@ export default function ConversationEngine({ sessionId }) {
               {isLoading && messages[messages.length - 1]?.role !== 'model' && (
                 <div className="flex justify-start">
                   <div className="glass-panel rim-light px-5 py-3 rounded-2xl border border-outline-variant text-on-surface-variant text-body-sm flex items-center gap-3">
-                    <Loader2 className="w-4 h-4 animate-spin text-primary" /> Awaiting Intent Dispatch...
+                    <Ikon nama="progress_activity" ukuran={16} className="animate-spin text-primary" /> Awaiting Intent Dispatch...
                   </div>
                 </div>
               )}
@@ -2431,7 +2431,7 @@ export default function ConversationEngine({ sessionId }) {
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div className="flex items-start gap-2.5">
                       <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0 mt-0.5">
-                        <Globe className="w-4 h-4 animate-pulse" />
+                        <Ikon nama="public" ukuran={16} className="animate-pulse" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">

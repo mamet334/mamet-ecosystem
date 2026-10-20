@@ -44,19 +44,6 @@ export default function MobileBottomNav({ onMenuOpen }) {
     .filter(n => n.type === 'item' && n.app && !n.app.id?.includes('settings'))
     .slice(0, 4);
 
-  // Fungsi map icon nama app → material symbol
-  const getIcon = (appName = '') => {
-    const lower = appName.toLowerCase();
-    if (lower.includes('home'))      return 'home';
-    if (lower.includes('assistant')) return 'chat_bubble';
-    if (lower.includes('lite'))      return 'bolt';
-    if (lower.includes('engineer'))  return 'terminal';
-    if (lower.includes('knowledge')) return 'menu_book';
-    if (lower.includes('memory'))    return 'database';
-    if (lower.includes('forge'))     return 'architecture';
-    return 'apps';
-  };
-
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 h-16 flex items-center justify-around
@@ -79,7 +66,7 @@ export default function MobileBottomNav({ onMenuOpen }) {
       {navItems.map((node) => {
         const app = node.app;
         const active = isActive(app.id);
-        const icon = getIcon(app.name);
+        const icon = app.icon || 'apps';  // dari metadata system.json
         return (
           <button
             key={app.id}

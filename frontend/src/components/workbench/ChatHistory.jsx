@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../supabase';
-import { MessageSquare, PlusCircle, Trash2, Loader2 } from 'lucide-react';
+import Ikon from '../Ikon';
 import { kernel } from '../../core/runtime/Kernel';
 
 /**
@@ -153,7 +153,7 @@ export default function ChatHistory({ onSelectChat, onNewChat, activeChatId,  ac
         <div className="flex-1 overflow-y-auto space-y-1 w-full flex flex-col items-center custom-scrollbar">
           {loading ? (
             <div className="flex justify-center py-2">
-              <Loader2 size={14} className="animate-spin text-on-surface-variant" />
+              <Ikon nama="progress_activity" ukuran={14} className="animate-spin text-on-surface-variant" />
             </div>
           ) : (
             chats.map(chat => (
@@ -194,7 +194,7 @@ export default function ChatHistory({ onSelectChat, onNewChat, activeChatId,  ac
       <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-1">
         {loading ? (
           <div className="flex items-center justify-center py-8 text-on-surface-variant">
-            <Loader2 size={18} className="animate-spin mr-2" />
+            <Ikon nama="progress_activity" ukuran={18} className="animate-spin mr-2" />
             <span className="text-body-sm">Memuat riwayat...</span>
           </div>
         ) : error ? (
@@ -246,7 +246,7 @@ export default function ChatHistory({ onSelectChat, onNewChat, activeChatId,  ac
                 title="Hapus percakapan"
               >
                 {deletingId === chat.id ? (
-                  <Loader2 size={14} className="animate-spin" />
+                  <Ikon nama="progress_activity" ukuran={14} className="animate-spin" />
                 ) : (
                   <span className="material-symbols-outlined text-[16px]">delete</span>
                 )}

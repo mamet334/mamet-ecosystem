@@ -31,7 +31,7 @@ class ApplicationManager {
   }
 
   /**
-   * App Definition: { id, name, iconComponent, renderComponent }
+   * App Definition: { id, name, icon, renderComponent } — icon = nama Material Symbols (metadata system.json)
    */
   registerApp(appDef) {
     if (this.apps.has(appDef.id)) {

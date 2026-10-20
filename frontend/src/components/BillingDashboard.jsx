@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, AlertTriangle, RefreshCw, BarChart2 } from 'lucide-react';
+import Ikon from './Ikon';
 import { supabase } from '../supabase';
 import { angka, waktuLokal } from '../core/runtime/services/formatAngka.js';
 
@@ -100,7 +100,7 @@ export default function BillingDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-3">
-              <DollarSign className="w-6 h-6 text-emerald-400" />
+              <Ikon nama="attach_money" ukuran={24} className="text-emerald-400" />
               Billing & Quota Dashboard
             </h2>
             <p className="text-slate-400 mt-2 text-sm">
@@ -111,7 +111,7 @@ export default function BillingDashboard() {
             onClick={fetchData}
             className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors border border-slate-700"
           >
-            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            <Ikon nama="refresh" ukuran={20} className={`${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
@@ -127,7 +127,7 @@ export default function BillingDashboard() {
             </div>
             {percentage >= 100 && (
               <div className="flex items-center gap-1.5 text-xs font-bold text-red-400 bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20 animate-pulse">
-                <AlertTriangle className="w-4 h-4" /> CIRCUIT BREAKER AKTIF
+                <Ikon nama="warning" ukuran={16} /> CIRCUIT BREAKER AKTIF
               </div>
             )}
           </div>
@@ -158,7 +158,7 @@ export default function BillingDashboard() {
         <div className="bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden shadow-xl">
           <div className="p-4 border-b border-slate-700 bg-slate-800/80 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-              <BarChart2 className="w-4 h-4 text-blue-400" /> Riwayat Transaksi API
+              <Ikon nama="bar_chart" ukuran={16} className="text-blue-400" /> Riwayat Transaksi API
             </h3>
             <span className="text-xs text-slate-500">50 Transaksi Terakhir</span>
           </div>
@@ -178,7 +178,7 @@ export default function BillingDashboard() {
                   <tr>
                     <td colSpan="5" className="px-5 py-12 text-center text-slate-500">
                       <div className="flex flex-col items-center justify-center gap-2">
-                        <DollarSign className="w-8 h-8 text-slate-600 mb-2" />
+                        <Ikon nama="attach_money" ukuran={32} className="text-slate-600 mb-2" />
                         Belum ada pemakaian token API tercatat.
                       </div>
                     </td>

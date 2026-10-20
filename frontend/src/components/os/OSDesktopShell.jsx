@@ -33,7 +33,7 @@ export default function OSDesktopShell() {
 
       {/* Desktop: menu teks bergaya menu game (Item 127 K2 — percobaan). Seluler tetap laci Sidebar. */}
       {isMobile
-        ? <Sidebar isMobile={isMobile} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        ? <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         : <MenuTeks />}
 
       {isMobile && sidebarOpen && (

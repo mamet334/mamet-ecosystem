@@ -27,10 +27,15 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 
 // Nama yang tertangkap pemindai tapi bukan ikon — berasal dari perbandingan status
 // (mis. saveStatus === 'success'). Google mengabaikan nama tak dikenal, ini hanya agar daftarnya bersih.
-const BUKAN_IKON = new Set(['open', 'running', 'scanning', 'success', 'testing', 'idle', 'error_state', 'icon', 'ikon', 'loading', 'processing', 'skipped', 'pending']);
+const BUKAN_IKON = new Set(['open', 'running', 'scanning', 'success', 'testing', 'idle', 'error_state', 'icon', 'ikon', 'loading', 'processing', 'skipped', 'pending', 'blocked',
+  'nama']);  // 'nama' = {nama} di components/Ikon.jsx sendiri
 
 // Ikon yang namanya dirakit saat berjalan sehingga tak bisa dipindai. Tambahkan manual di sini.
-const TAMBAHAN_MANUAL = ['home', 'menu_book', 'database', 'apps'];  // Sidebar.jsx getIcon()
+// Ikon aplikasi kini dibaca dari metadata (lihat METADATA di bawah) — 'apps' = cadangan bila metadata tak menyebutnya.
+const TAMBAHAN_MANUAL = ['apps'];
+
+// Ikon tiap aplikasi ada di metadata (`apps[].icon`), bukan di kode — Sidebar & MobileBottomNav membacanya dari sana.
+const METADATA = path.join(AKAR, 'public/metadata/system.json');
 
 function berkasSumber(dir, hasil = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -67,7 +72,8 @@ function kumpulkanNama() {
 
     // 3. Peta status: { ikon: 'schedule', … }. Nama gaya Lucide di metadata ("Home", "Zap")
     //    tidak ikut karena polanya hanya menerima huruf kecil.
-    for (const m of isi.matchAll(/\b(icon|ikon)\s*:\s*'([a-z][a-z0-9_]{1,39})'/g)) {
+    //    Juga penugasan `ikon = 'data_object'` (FileExplorer memilih ikon jenis berkas lewat variabel).
+    for (const m of isi.matchAll(/\b(icon|ikon)\s*[:=]\s*'([a-z][a-z0-9_]{1,39})'/g)) {
       if (sahih(m[2])) catat(m[2], rel);
     }
 
@@ -76,6 +82,19 @@ function kumpulkanNama() {
     for (const m of isi.matchAll(/\b(icon|ikon)=["']([a-z][a-z0-9_]{1,39})["']/g)) {
       if (sahih(m[2])) catat(m[2], rel);
     }
+
+    // 5. Komponen <Ikon nama="close" /> (components/Ikon.jsx) — satu-satunya cara baru menampilkan ikon.
+    //    nama={buka ? 'expand_more' : 'chevron_right'} → setiap nama berkutip di dalam kurung kurawalnya. Hanya di
+    //    dalam nama={…}: jendela baris pola 2 di sini menangkap kata Indonesia biasa ('ganti', 'semua', …).
+    for (const m of isi.matchAll(/<Ikon\b[^>]*?\bnama="([a-z][a-z0-9_]{1,39})"/g)) {
+      if (sahih(m[1])) catat(m[1], rel);
+    }
+    for (const m of isi.matchAll(/<Ikon\b[^>]*?\bnama=\{([^}]*)\}/g)) {
+      for (const k of m[1].matchAll(/'([a-z][a-z0-9_]{1,39})'/g)) if (sahih(k[1])) catat(k[1], rel);
+    }
+  }
+  for (const app of JSON.parse(fs.readFileSync(METADATA, 'utf8')).apps || []) {
+    if (app.icon && sahih(app.icon)) catat(app.icon, 'public/metadata/system.json');
   }
   for (const n of TAMBAHAN_MANUAL) catat(n, '(tambahan manual)');
   return nama;

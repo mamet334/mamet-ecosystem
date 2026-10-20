@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabase';
-import { Brain, Trash2, Loader2, RefreshCw, Search } from 'lucide-react';
+import Ikon from '../Ikon';
 
 export default function MemoryApp() {
     const [memories, setMemories] = useState([]);
@@ -70,7 +70,7 @@ let query = supabase
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <div className="p-3 bg-purple-500/20 rounded-lg border border-purple-500/30">
-                        <Brain className="w-6 h-6 text-purple-400" />
+                        <Ikon nama="psychology" ukuran={24} className="text-purple-400" />
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
@@ -84,14 +84,14 @@ let query = supabase
                     disabled={refreshing}
                     className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-all"
                 >
-                    <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                    <Ikon nama="refresh" ukuran={16} className={`${refreshing ? 'animate-spin' : ''}`} />
                 </button>
             </div>
 
             {/* Search */}
             <div className="mb-6">
                 <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 focus-within:border-purple-500/50 transition-colors">
-                    <Search className="w-4 h-4 text-slate-500" />
+                    <Ikon nama="search" ukuran={16} className="text-slate-500" />
                     <input
                         type="text"
                         placeholder="Cari memori..."
@@ -105,12 +105,12 @@ let query = supabase
             {/* Memory List */}
             {loading ? (
                 <div className="flex items-center justify-center py-12 text-slate-500">
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                    <Ikon nama="progress_activity" ukuran={20} className="animate-spin mr-2" />
                     Memuat memori...
                 </div>
             ) : memories.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-slate-600">
-                    <Brain className="w-16 h-16 mb-4 opacity-50" />
+                    <Ikon nama="psychology" ukuran={64} className="mb-4 opacity-50" />
                     <p className="text-sm">Belum ada memori</p>
                     <p className="text-xs mt-1">Chat dengan Mamet untuk menyimpan memori</p>
                 </div>
@@ -162,9 +162,9 @@ let query = supabase
                                 title="Hapus memori"
                             >
                                 {deletingId === memory.id ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <Ikon nama="progress_activity" ukuran={16} className="animate-spin" />
                                 ) : (
-                                    <Trash2 className="w-4 h-4" />
+                                    <Ikon nama="delete" ukuran={16} />
                                 )}
                             </button>
                         </div>

@@ -1,5 +1,5 @@
 import React, { Suspense, useState } from 'react';
-import { Maximize2, Minimize2, Minus, ChevronDown, ChevronUp, X, AlertTriangle, GripHorizontal } from 'lucide-react';
+import Ikon from '../Ikon';
 import { serviceManager } from '../../core/runtime/ServiceManager';
 
 /**
@@ -29,7 +29,7 @@ class WidgetErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center h-full p-4 text-center bg-slate-900 border border-slate-800 rounded">
-          <AlertTriangle className="w-8 h-8 text-amber-500 mb-2" />
+          <Ikon nama="warning" ukuran={32} className="text-amber-500 mb-2" />
           <div className="text-xs font-bold text-slate-300">Module Load Failure</div>
           <div className="text-[12px] text-slate-500 mt-1 max-w-[200px] break-words">
             Failed to load widget: {this.props.widgetId}
@@ -89,7 +89,7 @@ export default function WidgetHost({ widgetId, onClose, dragHandleListeners, dra
             {...(dragHandleAttributes || {})}
             {...(dragHandleListeners || {})}
           >
-            <GripHorizontal className="w-3.5 h-3.5" />
+            <Ikon nama="drag_handle" ukuran={14} />
           </span>
           {/* Status dot + name */}
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
@@ -106,8 +106,8 @@ export default function WidgetHost({ widgetId, onClose, dragHandleListeners, dra
             title={collapsed ? 'Expand widget' : 'Collapse widget'}
           >
             {collapsed
-              ? <ChevronDown className="w-3 h-3" />
-              : <Minus className="w-3 h-3" />
+              ? <Ikon nama="expand_more" ukuran={12} />
+              : <Ikon nama="remove" ukuran={12} />
             }
           </button>
 
@@ -119,8 +119,8 @@ export default function WidgetHost({ widgetId, onClose, dragHandleListeners, dra
             title={fullscreen ? 'Keluar fullscreen' : 'Fullscreen widget'}
           >
             {fullscreen
-              ? <Minimize2 className="w-3 h-3" />
-              : <Maximize2 className="w-3 h-3" />
+              ? <Ikon nama="close_fullscreen" ukuran={12} />
+              : <Ikon nama="open_in_full" ukuran={12} />
             }
           </button>
 
@@ -132,7 +132,7 @@ export default function WidgetHost({ widgetId, onClose, dragHandleListeners, dra
               className="p-1 hover:bg-red-500/20 text-slate-500 hover:text-red-400 rounded transition-colors"
               title="Hapus widget"
             >
-              <X className="w-3 h-3" />
+              <Ikon nama="close" ukuran={12} />
             </button>
           )}
         </div>

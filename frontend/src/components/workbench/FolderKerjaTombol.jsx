@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FolderOpen, Folder, X } from 'lucide-react';
+import Ikon from '../Ikon';
 
 // TOMBOL 📁 FOLDER KERJA ASSISTANT (Item 85 Tahap 1, 2026-09-22). Menggantikan FolderSelector: folder dipilih lewat
 // IPC berpagar `folder:pilih` — akarnya dicatat & diingat di PROSES UTAMA, layar hanya menerima NAMA folder. Pesan
@@ -42,12 +42,12 @@ export default function FolderKerjaTombol() {
           ? `Folder kerja: ${status.nama} — Mamet bisa MEMBACA isinya, serta MENGUBAHNYA dan MENJALANKAN program (python, node, git, …) setelah Anda izinkan di dialog (hapus = ke Recycle Bin). Isi berkas & keluaran perintah ikut terkirim ke penyedia model. Klik untuk ganti.`
           : 'Pilih folder kerja — Mamet bisa membaca isinya, lalu mengubah atau menjalankan program hanya dengan izin Anda'}
       >
-        {status.aktif ? <FolderOpen className="w-4 h-4" /> : <Folder className="w-4 h-4" />}
+        {status.aktif ? <Ikon nama="folder_open" ukuran={16} /> : <Ikon nama="folder" ukuran={16} />}
         {status.aktif && <span className="text-[12px] max-w-[120px] truncate">{status.nama}</span>}
       </button>
       {status.aktif && (
         <button type="button" onClick={lepas} className="p-1 rounded-lg text-on-surface-variant hover:text-red-400" title="Lepas folder kerja">
-          <X className="w-3.5 h-3.5" />
+          <Ikon nama="close" ukuran={14} />
         </button>
       )}
       {pesan && <span className="absolute bottom-full left-0 mb-1 whitespace-nowrap rounded bg-red-900/80 px-2 py-1 text-[12px] text-red-100">{pesan}</span>}

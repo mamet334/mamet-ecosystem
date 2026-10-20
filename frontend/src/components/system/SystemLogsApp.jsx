@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { kernel } from '../../core/runtime/Kernel';
-import { ScrollText, RefreshCw, AlertTriangle, XCircle, Cpu, Clock, Radio, Layers } from 'lucide-react';
+import Ikon from '../Ikon';
 
 const FILTERS = [
   { id: 'ALL', label: 'Semua' },
@@ -19,7 +19,7 @@ function formatUptime(ms) {
   return `${seconds}d`;
 }
 
-function StatCard({ icon: Icon, label, value, tone = 'slate' }) {
+function StatCard({ icon, label, value, tone = 'slate' }) {
   const tones = {
     slate: 'text-slate-300 border-slate-800',
     emerald: 'text-emerald-400 border-emerald-500/30',
@@ -28,7 +28,7 @@ function StatCard({ icon: Icon, label, value, tone = 'slate' }) {
   };
   return (
     <div className={`flex items-center gap-3 bg-slate-900/50 border rounded-lg px-4 py-3 ${tones[tone] || tones.slate}`}>
-      <Icon className="w-4 h-4 shrink-0" />
+      <Ikon nama={icon} ukuran={16} className="shrink-0" />
       <div className="min-w-0">
         <p className="text-[12px] uppercase tracking-wider text-slate-500">{label}</p>
         <p className="text-sm font-mono font-bold truncate">{value}</p>
@@ -67,7 +67,7 @@ export default function SystemLogsApp() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-emerald-500/20 rounded-lg border border-emerald-500/30">
-            <ScrollText className="w-6 h-6 text-emerald-400" />
+            <Ikon nama="receipt_long" ukuran={24} className="text-emerald-400" />
           </div>
           <div>
             <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
@@ -92,14 +92,14 @@ export default function SystemLogsApp() {
             className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-all"
             title="Muat ulang"
           >
-            <RefreshCw className="w-4 h-4 text-slate-300" />
+            <Ikon nama="refresh" ukuran={16} className="text-slate-300" />
           </button>
         </div>
       </div>
 
       {isDegraded && (
         <div className="mb-6 flex items-start gap-3 bg-red-500/10 border border-red-500/40 rounded-lg p-4">
-          <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+          <Ikon nama="warning" ukuran={20} className="text-red-400 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-bold text-red-300">Kernel berjalan dalam mode terbatas</p>
             <p className="text-xs text-red-200/70 mt-1">
@@ -111,12 +111,12 @@ export default function SystemLogsApp() {
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
-        <StatCard icon={Cpu} label="Status" value={health?.status || '—'} tone={isDegraded ? 'red' : 'emerald'} />
-        <StatCard icon={Layers} label="Fase" value={health?.phase ?? '—'} />
-        <StatCard icon={Clock} label="Uptime" value={formatUptime(health?.uptime)} />
-        <StatCard icon={Radio} label="Total Event" value={health?.totalEvents ?? 0} />
-        <StatCard icon={XCircle} label="Error" value={errorCount} tone={errorCount > 0 ? 'red' : 'slate'} />
-        <StatCard icon={AlertTriangle} label="Peringatan" value={warningCount} tone={warningCount > 0 ? 'amber' : 'slate'} />
+        <StatCard icon="memory" label="Status" value={health?.status || '—'} tone={isDegraded ? 'red' : 'emerald'} />
+        <StatCard icon="layers" label="Fase" value={health?.phase ?? '—'} />
+        <StatCard icon="schedule" label="Uptime" value={formatUptime(health?.uptime)} />
+        <StatCard icon="sensors" label="Total Event" value={health?.totalEvents ?? 0} />
+        <StatCard icon="cancel" label="Error" value={errorCount} tone={errorCount > 0 ? 'red' : 'slate'} />
+        <StatCard icon="warning" label="Peringatan" value={warningCount} tone={warningCount > 0 ? 'amber' : 'slate'} />
       </div>
 
       <div className="flex items-center gap-2 mb-4">
@@ -139,7 +139,7 @@ export default function SystemLogsApp() {
 
       {entries.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-slate-600">
-          <ScrollText className="w-16 h-16 mb-4 opacity-40" />
+          <Ikon nama="receipt_long" ukuran={64} className="mb-4 opacity-40" />
           <p className="text-sm">Tidak ada error atau peringatan tercatat</p>
           <p className="text-xs mt-1">Kernel berjalan bersih sejak boot terakhir</p>
         </div>
@@ -161,9 +161,9 @@ export default function SystemLogsApp() {
                   className="w-full flex items-start gap-3 p-4 text-left hover:bg-slate-800/40 transition-colors"
                 >
                   {isError ? (
-                    <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                    <Ikon nama="cancel" ukuran={16} className="text-red-400 shrink-0 mt-0.5" />
                   ) : (
-                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <Ikon nama="warning" ukuran={16} className="text-amber-400 shrink-0 mt-0.5" />
                   )}
                   <div className="min-w-0 flex-1">
                     <p className={`text-sm font-medium ${isError ? 'text-red-200' : 'text-amber-200'}`}>
