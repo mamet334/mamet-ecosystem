@@ -2,8 +2,12 @@
 
 **Tipe Dokumen:** Rancangan (blueprint) perubahan UI — memenuhi syarat tata kelola MUS §20 (tujuan,
 ruang lingkup, dokumentasi, analisis, alasan, persetujuan Owner)
-**Item:** 127
-**Status:** 🟡 **Tahap 0 ✅ · Tahap 1 langkah 1–4 ✅ (langkah 5 diparkir) · Tahap 2 ✅ selesai (2a · 2b · 2c) ·
+**Item:** 127 — **digabung ke Item 128** ([`ROADMAP-TEMA-APLIKASI.md`](./ROADMAP-TEMA-APLIKASI.md), 20 Okt)
+**Status (20 Okt):** ✅ **Tahap 0–2 selesai, Tahap 3 sebagian — sisanya DIPINDAH ke Item 128 (tema aplikasi).**
+Owner, 20 Okt: *"saya malah berpikir membuat setelan di kolom setting berupa tema aplikasi"* — tampilan tidak lagi
+dicari sebagai satu kulit tetap, melainkan dipilih pengguna. Lampu dan gerak dekoratif ditunda Owner dan dibawa ke
+Item 128 sebagai pilihan. Riwayat status di bawah ini dipertahankan apa adanya.
+**Status sebelumnya:** 🟡 **Tahap 0 ✅ · Tahap 1 langkah 1–4 ✅ (langkah 5 diparkir) · Tahap 2 ✅ selesai (2a · 2b · 2c) ·
 Tahap 3: menu teks ✅ (K2) · K4 huruf & angka ✅ · palet LampLogin ✅ · kenyamanan mata ✅ (Markdown & kode di chat, latar dinding LampLogin di seluruh aplikasi) · pemeriksaan error tersembunyi ✅ (4 temuan diperbaiki) — 19 Okt · kartu jawaban = kartu Settings ✅ — 20 Okt.** **Berikutnya: sisa Tahap 3 (lampu, satu set ikon, gerak dekoratif) — K5 terbuka.**
 K1, K2, K3, K4 diputuskan Owner 19 Okt; K6 di luar item ini.
 **Tanggal:** 2026-10-19
@@ -444,12 +448,27 @@ chat pada pembukaan pertama — ditutup sekali, tata letaknya menyimpan keadaan 
 
 ### Tahap 3 — Kulit ruangan
 
+> **20 Okt — sisa tahap ini dipindah ke Item 128** ([`ROADMAP-TEMA-APLIKASI.md`](./ROADMAP-TEMA-APLIKASI.md) §2):
+> lampu → pilihan "Lampu"; gerak dekoratif → pilihan "Kurangi gerakan" (peta 51 animasi sudah dibuat); latar ruangan
+> → pilihan "Latar ruangan"; satu set ikon, nama menu, cabang `Sidebar.jsx`, K5/K6, langkah 5 → dibawa sebagai sisa.
+
 Komponen ruangan + lampu; menu teks kiri bertingkat dari `navigation.json`; panel kanan; palet LampLogin
 menggantikan 47 token Material; satu set ikon; gerak dekoratif dibuang, `prefers-reduced-motion` dihormati
 (hari ini **nol** pemakaian di `src/`). Berurutan per halaman, dimulai dari yang paling sering dipakai
 Owner. **Uji kontras WCAG** di tiap panel.
 
 **Status 20 Okt:** kartu jawaban chat = kartu "AI Model Management" di Settings, kolom kode = isian "gemini" ✅ ([log](../project-memory/changelog/2026-10-20-menu-game-kartu-jawaban-settings.md)) — keduanya dijaga uji agar tetap sama dengan Settings. **Status 19 Okt:** menu teks ✅ (K2) · skala huruf & angka ✅ (K4 — [log](../project-memory/changelog/2026-10-19-menu-game-k4-huruf-angka.md)) · palet LampLogin di sumbernya ✅ ([log](../project-memory/changelog/2026-10-19-menu-game-palet-lamplogin.md)) — dinilai Owner "sama, tapi kurang nyaman di mata" · kenyamanan mata ✅ ([log](../project-memory/changelog/2026-10-19-menu-game-kenyamanan-mata.md)): jawaban model dirender Markdown tanpa kotak, kotak kode, teks 13:1, latar terdalam = dinding LampLogin (salinan dijaga uji — utang K5), bilah gulir tipis global, keluaran terminal Engineer jadi kotak kode. Pemeriksaan "error tersembunyi" ✅ ([log](../project-memory/changelog/2026-10-19-menu-game-error-tersembunyi.md)): bayangan samping LampLogin tak pernah dibuat Tailwind → kontras label di dinding salah dihitung, kini tergambar di aplikasi (pilihan Owner A); Markdown di-memo (225 → 0,4 ms per token); teks bocor di Riwayat Konversi; pita gelap kotak ketik. Sisa: lampu, satu set ikon, gerak dekoratif (termasuk animasi masuk mati, T18); bilah mendatar panel kanan Home belum ditemukan penyebabnya.
+
+**Sisa kecil — dicatat 20 Okt** (pernah disebut di percakapan, belum masuk dokumen):
+- **Ikon Agent Forge** sama dengan logo Mamet — dua hal berbeda tampil dengan satu tanda. Ditangani bersama "satu set ikon".
+- **Nama menu masih berbahasa Inggris** ("Knowledge Base", "Data & Capability", …) — berasal dari
+  `public/metadata/navigation.json` (MUS §21, menu dibaca dari metadata), jadi diperbaiki di metadata, bukan di komponen.
+  Perlu keputusan Owner: istilah Indonesia, atau dibiarkan karena istilah teknis.
+- **Cabang desktop `Sidebar.jsx`** tidak dipakai lagi sejak menu teks (K2) — desktop memakai `MenuTeks`, seluler tetap
+  memakai laci `Sidebar`. Cabang desktopnya kode mati; dibersihkan setelah dipastikan tak ada jalur lain yang memakainya.
+- **Ukuran berhasil §8 yang belum terpenuhi:** #2 (satu aplikasi terpasang) bergantung pada Tahap 1 langkah 5 yang
+  diparkir; #5 kontras baru diukur untuk chat & dinding; #6 angka ciri generik campuran (slate & gradien turun, token
+  warna naik disengaja, sisanya tetap); #8 menunggu pemakaian Owner sendiri.
 
 **Di luar lingkup:** `LampLogin.jsx`; `Login.jsx`; Mametlite; Face Mamet; server dan skema; perubahan
 konstitusi (milik Owner).
