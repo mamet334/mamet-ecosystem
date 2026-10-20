@@ -10,7 +10,7 @@ ruang lingkup, dokumentasi, analisis, alasan, persetujuan Owner)
 ke set ikon tunggal, diizinkan Owner 20 Okt (§9). Layar masuk tetap memakai ruangannya sendiri, apa pun tema yang
 dipilih sesudah masuk.
 **Sisa Item 127 (20 Okt):** satu set ikon ✅ · nama menu tetap Inggris ✅ · cabang desktop `Sidebar.jsx` dihapus ✅ ·
-K5 ditolak ([log](../project-memory/changelog/2026-10-20-satu-set-ikon.md)).
+K5 ditolak ([log](../project-memory/changelog/2026-10-20-satu-set-ikon.md)) · K6 kode mati dihapus ✅ ([log](../project-memory/changelog/2026-10-20-k6-kode-mati.md)).
 
 ---
 
@@ -236,7 +236,7 @@ pembersihan kelas putih/hitam mentah.
 | ~~T2~~ | ~~"Ikuti sistem" saat Windows terang~~ | ✅ Gelap netral sampai tema Terang ada — diputuskan 20 Okt |
 | ~~T3~~ | ~~Tema bawaan pengguna baru~~ | ✅ Ruangan kayu — diputuskan 20 Okt |
 | ~~K5~~ | ~~Menyatukan dua sumber ruangan~~ | ❌ ditolak 20 Okt — *"login jangan di gabungkan"*; LampLogin & LatarRuangan tetap terpisah, salinan dijaga uji |
-| K6 | Kode mati `Login.jsx` · `EngineerChat.jsx` · `ActivityBar.jsx` | dari Item 127, di luar item ini — kini juga satu-satunya pemakai `lucide-react`; paket itu dibuang bersama K6 |
+| ~~K6~~ | ~~Kode mati `Login.jsx` · `EngineerChat.jsx` · `ActivityBar.jsx`~~ | ✅ dihapus 20 Okt (470 baris) beserta paket `lucide-react` — [log](../project-memory/changelog/2026-10-20-k6-kode-mati.md) |
 | L5 | Tahap 1 langkah 5 Item 127 (melepas layar tak aktif) | diparkir |
 
 ---

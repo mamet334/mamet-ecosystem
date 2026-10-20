@@ -137,8 +137,7 @@ cek(kembar.length === 0, `metadata: ${ikonApp.length} aplikasi, tak ada ikon kem
 const forge = APPS.find((a) => a.id === 'app:agent-forge')?.icon;
 cek(forge && forge !== 'architecture', `Agent Forge (${forge}) tak lagi memakai ikon logo Mamet (architecture)`);
 
-// Kode mati K6 (Login, EngineerChat, ActivityBar — tak diimpor mana pun) masih mengimpor lucide; dihapus bersama K6.
-const MATI = new Set(['components/Login.jsx', 'components/EngineerChat.jsx', 'components/os/ActivityBar.jsx']);
+// Kode mati K6 (Login, EngineerChat, ActivityBar) — pemakai lucide terakhir — dihapus 20 Okt bersama paketnya.
 const masihLucide = [];
 (function jalan(dir) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -146,10 +145,12 @@ const masihLucide = [];
     if (e.isDirectory()) { if (e.name !== 'assets') jalan(p); continue; }
     if (!/\.(jsx?|tsx?)$/.test(e.name)) continue;
     const rel = path.relative(AKAR, p).split(path.sep).join('/');
-    if (!MATI.has(rel) && /['"]lucide-react['"]/.test(readFileSync(p, 'utf8'))) masihLucide.push(rel);
+    if (/['"]lucide-react['"]/.test(readFileSync(p, 'utf8'))) masihLucide.push(rel);
   }
 })(AKAR);
-cek(masihLucide.length === 0, 'tak ada berkas hidup yang memakai lucide-react (termasuk import() dinamis di Kernel)', masihLucide);
+cek(masihLucide.length === 0, 'tak ada berkas yang memakai lucide-react (termasuk import() dinamis di Kernel)', masihLucide);
+const PKG = JSON.parse(readFileSync(`${AKAR}/../package.json`, 'utf8'));
+cek(!('lucide-react' in { ...PKG.dependencies, ...PKG.devDependencies }), 'paket lucide-react tak lagi menjadi dependensi (K6)');
 const tebak = ['components/os/Sidebar.jsx', 'components/os/MobileBottomNav.jsx']
   .filter((f) => /getIcon\s*\(/.test(readFileSync(`${AKAR}/${f}`, 'utf8')));
 cek(tebak.length === 0, 'menu tak lagi MENEBAK ikon dari nama aplikasi — membaca app.icon dari metadata', tebak);

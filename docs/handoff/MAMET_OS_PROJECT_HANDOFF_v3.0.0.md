@@ -82,7 +82,7 @@ Daftar modul inti OS dan fungsinya:
 - `core/application/ApplicationManager.js`: Menjaga memori/status aplikasi yang tidak aktif agar tetap hidup.
 - `core/window/WindowManager.js`: Menyediakan API struktural untuk *Floating* dan *Split Screen*.
 - `core/workspace/WorkspaceManager.js`: Mengelola data posisi *Widget* dan isolasi *Context* per Aplikasi.
-- `components/os/ActivityBar.jsx`: Navigasi level tertinggi (Kiri ekstrim). Berkomunikasi dengan `ApplicationManager`.
+- `components/os/ActivityBar.jsx`: Navigasi level tertinggi (Kiri ekstrim). Berkomunikasi dengan `ApplicationManager`. *(Catatan 2026-10-20: dihapus — K6; perannya kini `MenuTeks.jsx` (desktop) dan `Sidebar.jsx` (laci seluler).)*
 - `components/os/ApplicationContainer.jsx`: *Container* utama yang merender *semua* Aplikasi secara bersamaan namun menyembunyikan yang tidak aktif via CSS `display: none`.
 - `components/workbench/AppShell.jsx`: Cangkang antarmuka yang membungkus *Main Panel* spesifik (misal: *ConversationEngine*) bersama dengan *Widgets*.
 

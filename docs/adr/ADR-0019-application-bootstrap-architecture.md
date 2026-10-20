@@ -7,6 +7,13 @@
 > [!NOTE]
 > **Direnumerasi 2026-09-09.** Dokumen ini semula berada di `docs/project-memory/ADR-008-Application-Bootstrap-Architecture.md` dengan nomor "ADR-008" — bertabrakan dengan `docs/adr/ADR-0008-single-context-pipeline.md` yang merupakan ADR berbeda topik dengan nomor sama. Dipindahkan ke lokasi kanonis `docs/adr/` dan diberi nomor unik berikutnya (ADR-0019, setelah ADR-0018). Isi keputusan tidak berubah. Rujukan lama ke "ADR-008" di beberapa changelog historis (`docs/project-memory/2026-07-05-phase3-changelog.md`, `docs/project-memory/changelog/2026-07-05.md`) tidak diedit — dipertahankan sebagai jejak sejarah, tapi sekarang mengarah ke dokumen yang sudah pindah lokasi/nomor.
 
+> [!NOTE]
+> **Nama komponen, 2026-10-20.** `ActivityBar.jsx` yang disebut di bawah tidak diimpor sejak Juli dan **dihapus 20 Okt**
+> (K6, keputusan Owner). Peran yang diberikan ADR ini — navigasi pasif yang hanya merender pohon dari
+> `NavigationService` — dijalankan `components/os/MenuTeks.jsx` (desktop) dan `components/os/Sidebar.jsx` (laci
+> seluler). **Keputusan ADR ini tidak berubah**; hanya nama berkasnya. Ikon tiap aplikasi dibaca dari metadata
+> (`system.json` `apps[].icon`), bukan ditentukan komponen.
+
 ## 1. Konteks
 Pada saat eksekusi **Phase 2** (Transisi ke arsitektur navigasi MUS), ditemukan adanya **Architecture Gap** yang krusial:
 Komponen UI tingkat presentasi (`ActivityBar.jsx`) dan pembungkus aplikasi (`App.jsx`) memiliki kontrol imperatif terhadap siklus inisialisasi aplikasi (misal: mendaftarkan aplikasi baru atau memaksa perpindahan ke halaman Home). Hal ini menciptakan *Race Condition*, *Hardcode Dependency*, dan secara fundamental melanggar batas pemisahan tugas (*Separation of Responsibility*) yang digariskan oleh MAEF.

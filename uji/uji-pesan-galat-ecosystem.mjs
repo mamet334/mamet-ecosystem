@@ -18,7 +18,7 @@
 //   3. TIDAK MENELAN — teks teknisnya tetap ada; ia yang dikutip Owner saat melapor.
 //   4. TIDAK MEMBUANG KALIMAT SERVER — kode tak dikenali + `message` → `message` yang dipakai.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 
@@ -195,11 +195,11 @@ cek(/if \(kendali\.signal\.aborted\) \{/.test(CE),
 cek(!/setPesan\(err\.message\)/.test(RK), 'RiwayatKonversi tidak lagi menampilkan err.message mentah');
 cek(/whitespace-pre-line/.test(RK), 'dan baris teknisnya benar-benar turun ke bawah, bukan menempel');
 
-// Jalur yatim tidak ikut diubah — dan itu keputusan, bukan kelupaan. `EngineerChat.jsx` nol
-// pengimpor (E3 `ROADMAP-SIAP-PENGGUNA.md`), jadi menyentuhnya hanya menambah kode mati yang rapi.
-const EC = tanpaKomentar(baca('frontend/src/components/EngineerChat.jsx'));
-cek(/⚠️ Error: \$\{err\.message\}/.test(EC),
-  'EngineerChat (yatim, nol pengimpor) SENGAJA tidak disentuh — bila uji ini merah, berkas itu sudah dipakai lagi dan ikut perlu penerjemah');
+// Jalur yatim dulu sengaja tidak ikut diubah: `EngineerChat.jsx` nol pengimpor (E3 `ROADMAP-SIAP-PENGGUNA.md`) dan masih
+// menulis `err.message` mentah. 20 Okt berkas itu dihapus (K6, keputusan Owner) — yang dijaga kini: ia tidak kembali
+// tanpa penerjemah galat.
+cek(!existsSync(`${AKAR}/frontend/src/components/EngineerChat.jsx`),
+  'EngineerChat.jsx (yatim, menulis err.message mentah) sudah dihapus — K6');
 
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));
 process.exit(gagal === 0 ? 0 : 1);

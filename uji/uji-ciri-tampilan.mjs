@@ -140,20 +140,23 @@ for (const r of DIKECUALIKAN) {
 // menurunkannya; kenaikan = layar baru yang menulis warna tetap alih-alih token palet.
 // → 6 (Item 128 Tahap D1): putih/hitam & rona status kini variabel warna dasar; hex komponen diganti variabel. Sisa 6
 // SENGAJA: 5 titik legenda graf Home (warna makna konstitusi 23 — tak ikut tema) + 1 di Login.jsx (kode mati, K6).
-const GARIS_WARNA_TETAP = 6;
+// → 5 (20 Okt): Login.jsx dihapus (K6). Sisa 5 = titik legenda graf, sengaja.
+const GARIS_WARNA_TETAP = 5;
 const GARIS_DASAR = {
   // tokenMaterial DIPENSIUNKAN (20 Okt, v5): 568 → 581 selama Item 127 — tiap kenaikan disengaja & tercatat di
   // riwayat berkas ini. Sejak Item 128 token palet adalah mekanisme tema; yang dijaga kini warna yang tak ikut tema.
   warnaTetap: GARIS_WARNA_TETAP,
-  warnaSlate: 609, // 615 → 609 (19 Okt): akar 6 aplikasi tak lagi mengecat latar slate sendiri (latar = dinding LampLogin)
-  aksenPelangi: 250,
-  gerakDekoratif: 50, // 51 → 50 (20 Okt): cabang desktop Sidebar.jsx (titik berdenyut di avatar) dihapus — keputusan Owner
+  warnaSlate: 591, // 615 → 609 (19 Okt): akar 6 aplikasi tak lagi mengecat latar slate sendiri (latar = dinding LampLogin)
+  // 609 → 591, aksenPelangi 250 → 242, gerak 50 → 48 (20 Okt): kode mati K6 dihapus (Login, EngineerChat, ActivityBar)
+  aksenPelangi: 242,
+  gerakDekoratif: 48, // 51 → 50 (20 Okt): cabang desktop Sidebar.jsx (titik berdenyut di avatar) dihapus — keputusan Owner
   kacaBlur: 15,
   glowRgba: 18, // 26 → 18 (20 Okt): pendar status Observability kini variabel warna dasar (Item 128 Tahap D1)
   gradien: 5, // 6 → 5 (19 Okt): gradien area kotak ketik chat dibuang — jadi pita gelap di atas dinding ruangan
   // 26 → 3 (20 Okt): satu set ikon — keputusan Owner "pakai yang terbaru". Sisa 3 = kode mati K6 (Login.jsx,
   // EngineerChat.jsx, ActivityBar.jsx, tak diimpor mana pun); turun ke 0 saat K6 dihapus.
-  berkasIkonLucide: 3,
+  // 3 → 0 (20 Okt): K6 dihapus beserta paket lucide-react. Satu set ikon tuntas.
+  berkasIkonLucide: 0,
   // 8 → 9 (20 Okt, v5): BagianTampilan.jsx — bagian Settings › Tampilan dipecah ke berkasnya sendiri (Settings.jsx
   // sudah memakai Material Symbols); jumlah SET ikon tidak bertambah. Kenaikan berikutnya tetap merah.
   // 9 → 10 (20 Okt): components/Ikon.jsx — komponen tunggal pengganti lucide (162 tag di 24 berkas memakainya tanpa
