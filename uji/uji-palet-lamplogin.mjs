@@ -17,11 +17,12 @@
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { bacaPalet } from './palet-tema.mjs';
 
 const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 
-console.log('uji-palet-lamplogin v3');
+console.log('uji-palet-lamplogin v4');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -29,13 +30,9 @@ const cek = (syarat, pesan, detail) => {
   else { gagal++; console.log('  ✗ ' + pesan + (detail !== undefined ? '\n      ' + JSON.stringify(detail).slice(0, 500) : '')); }
 };
 
-// Konfigurasi DIBACA sebagai teks, tidak dijalankan: ia memanggil `require(...)` di dalam modul ES — Tailwind
-// memuatnya lewat pemuatnya sendiri, tetapi `import` node biasa menolaknya.
-const confTeks = baca('frontend/tailwind.config.js');
-const blokWarna = confTeks.slice(confTeks.indexOf('      colors: {'), confTeks.indexOf('      borderRadius: {'));
-const blokSlate = (blokWarna.match(/slate: \{([\s\S]*?)\}/) || [, ''])[1];
-const TOKEN = Object.fromEntries([...blokWarna.replace(/slate: \{[\s\S]*?\}/, '').matchAll(/"([a-z-]+)": "(#[0-9a-fA-F]{6})"/g)].map((m) => [m[1], m[2]]));
-const SLATE = Object.fromEntries([...blokSlate.matchAll(/(\d+): "(#[0-9a-fA-F]{6})"/g)].map((m) => [m[1], m[2]]));
+// v4 (Item 128 Tahap A, 20 Okt): nilai palet tidak lagi di tailwind.config.js (config hanya menunjuk variabel CSS)
+// — dibaca dari tema Ruangan kayu, frontend/src/tema/ruangan-kayu.css, lewat pembaca bersama uji/palet-tema.mjs.
+const { TOKEN, SLATE } = bacaPalet(AKAR, 'ruangan-kayu');
 
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
@@ -98,10 +95,8 @@ console.log('\n-- 5. index.css --');
 const css = baca('frontend/src/index.css').replace(/\/\*[\s\S]*?\*\//g, '');
 cek(!/#0052ff|0,\s*82,\s*255/i.test(css), 'tak ada cahaya biru #0052ff (kaca, input, tombol, sorotan sentuh)');
 const blokBody = (css.match(/\nbody \{[\s\S]*?\n\}/) || [''])[0];
-const latarBody = (blokBody.match(/background-color:\s*(#[0-9a-f]{6})/i) || [])[1];
-cek(latarBody?.toLowerCase() === TOKEN.background.toLowerCase(), `latar body (${latarBody}) = token background`);
-const teksBody = (blokBody.match(/\n\s*color:\s*(#[0-9a-f]{6})/i) || [])[1];
-cek(teksBody?.toLowerCase() === TOKEN['on-surface'].toLowerCase(), `teks body (${teksBody}) = token on-surface`);
+cek(/background-color:\s*rgb\(var\(--warna-background\)\);/.test(blokBody), 'latar body = token background (variabel tema)');
+cek(/\n\s*color:\s*rgb\(var\(--warna-on-surface\)\);/.test(blokBody), 'teks body = token on-surface (variabel tema)');
 
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));
 process.exit(gagal === 0 ? 0 : 1);

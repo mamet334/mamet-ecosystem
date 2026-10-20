@@ -25,12 +25,13 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { bacaPalet } from './palet-tema.mjs';
 
 const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (kode) => kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
 
-console.log('uji-latar-ruangan v4');
+console.log('uji-latar-ruangan v5');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -152,9 +153,10 @@ for (let x = 0; x <= 1.0001; x += 0.01) for (let y = 0; y <= 1.0001; y += 0.01) 
 const latarTerang = terang.slice(0, 3).map(Math.round);
 console.log(`     titik paling terang: rgb(${latarTerang.join(', ')})`);
 cek(lum(latarTerang) > lum(hex('#0b0806')), 'dinding memang lebih terang dari latar lama — kontrasnya perlu diukur ulang');
-const conf = baca('frontend/tailwind.config.js');
-const token = (k) => (conf.match(new RegExp(`"${k}": "(#[0-9a-fA-F]{6})"`)) || [])[1];
-const slate = (n) => (conf.match(new RegExp(`\\b${n}: "(#[0-9a-fA-F]{6})"`)) || [])[1];
+// v5 (Item 128 Tahap A): nilai palet dibaca dari tema Ruangan kayu (frontend/src/tema/ruangan-kayu.css).
+const PALET = bacaPalet(AKAR, 'ruangan-kayu');
+const token = (k) => PALET.TOKEN[k];
+const slate = (n) => PALET.SLATE[String(n)];
 for (const [nama, h] of [['on-surface', token('on-surface')], ['on-surface-variant', token('on-surface-variant')], ['primary', token('primary')],
   ['slate-300', slate(300)], ['slate-400', slate(400)], ['slate-500 (label redup, 135 tempat)', slate(500)]]) {
   const r = rasio(hex(h), latarTerang);
@@ -169,7 +171,9 @@ cek(urut[0] > urut[1] && urut[1] > urut[2], 'urutan terang slate 300 > 400 > 500
 const CEteks = baca('frontend/src/components/workbench/ConversationEngine.jsx');
 const kartuDipakai = /: 'glass-panel [^']*'\}`\}>/.test(CEteks);
 const cssKaca = baca('frontend/src/index.css').replace(/\/\*[\s\S]*?\*\//g, '');
-const latarKaca = (cssKaca.match(/\.glass-panel \{[^}]*background:\s*rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/) || []).slice(1).map(Number);
+// Latar .glass-panel = variabel tema + opasitas: `rgb(var(--warna-X) / a)` — nilainya diurai dari palet tema.
+const kaca = cssKaca.match(/\.glass-panel \{[^}]*background:\s*rgb\(var\(--warna-([a-z0-9-]+)\)\s*\/\s*([\d.]+)\)/);
+const latarKaca = kaca && PALET.VAR[kaca[1]] ? [...hex(PALET.VAR[kaca[1]]), Number(kaca[2])] : [];
 cek(kartuDipakai && latarKaca.length === 4, `kartu jawaban model memakai .glass-panel — latar rgba(${latarKaca.join(', ')})`);
 const bingkai = latarKaca.length === 4 ? [null, ...latarKaca] : null;
 if (bingkai) {
@@ -191,7 +195,8 @@ const blokGlobal = (css.match(/\n\*::-webkit-scrollbar \{([^}]*)\}/) || [])[1] |
 const px = (p) => Number((blokGlobal.match(new RegExp(`${p}:\\s*(\\d+)px`)) || [])[1]);
 cek(px('width') > 0 && px('width') <= 6 && px('height') > 0 && px('height') <= 6, `semua elemen: bilah tipis tegak & mendatar (${px('width')}px / ${px('height')}px)`, blokGlobal);
 cek(!/\.custom-scrollbar::-webkit-scrollbar/.test(css), 'tak ada lagi gaya yang hanya berlaku bila kelas .custom-scrollbar dipasang');
-cek(/\*::-webkit-scrollbar-thumb \{[^}]*rgba\(255, 236, 207/.test(css), 'jempol bilah krem hangat, bukan putih');
+cek(/\*::-webkit-scrollbar-thumb \{[^}]*rgb\(var\(--warna-kilau\)\s*\/\s*[\d.]+\)/.test(css) && PALET.VAR.kilau === '#ffeccf',
+  `jempol bilah krem hangat (--warna-kilau ${PALET.VAR.kilau}), bukan putih`);
 const MT = baca('frontend/src/components/os/MenuTeks.jsx');
 cek(/\[&::-webkit-scrollbar\]:hidden/.test(MT), 'MenuTeks tetap menyembunyikan bilahnya (kelasnya lebih spesifik dari aturan global)');
 

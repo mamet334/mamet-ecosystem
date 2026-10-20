@@ -3,7 +3,7 @@
 **Tipe Dokumen:** Rancangan (blueprint) perubahan UI — memenuhi syarat tata kelola MUS §20 (tujuan,
 ruang lingkup, dokumentasi, analisis, alasan, persetujuan Owner)
 **Item:** 128 — **menggabungkan sisa Item 127** ([`ROADMAP-TAMPILAN-MENU-GAME.md`](./ROADMAP-TAMPILAN-MENU-GAME.md))
-**Status:** 📝 **Rancangan, menunggu koreksi Owner (20 Okt 2026).** Belum ada kode yang ditulis untuk item ini.
+**Status:** 🟡 **Tahap A ✅ (20 Okt)** — token palet menjadi variabel CSS, tampilan tidak berubah ([log](../project-memory/changelog/2026-10-20-tema-tahap-a-variabel-css.md)). **Berikutnya: Tahap B** — menunggu jawaban T1–T3 (§9).
 **Tanggal:** 2026-10-20
 **Aplikasi:** **Mamet Ecosystem** (`frontend/`) — **bukan** Mametlite.
 **Batas tegas:** **`LampLogin.jsx` tidak diubah** (arahan Owner 19 Okt, tetap berlaku). Layar masuk tetap memakai
@@ -170,7 +170,7 @@ mengandaikan latar gelap baru perlu dibereskan untuk Terang.
 
 ## 7. Tahapan
 
-**Tahap A — Fondasi: token menjadi variabel CSS.** Tampilan tidak berubah. Uji: warna terhitung tiap token sama
+**Tahap A — Fondasi: token menjadi variabel CSS.** ✅ 20 Okt — nilai di `frontend/src/tema/ruangan-kayu.css`; diukur di peramban (2.608 elemen) dan dijaga `uji-tema-tahap-a`. Tampilan tidak berubah. Uji: warna terhitung tiap token sama
 sebelum/sesudah; semua kelas tetap dibuat Tailwind (pelajaran Item 127: kelas yang ditulis ≠ kelas yang dibuat).
 
 **Tahap B — Settings › Tampilan + dua tema gelap.** Ruangan kayu & Gelap netral, Ikuti sistem, Latar ruangan,

@@ -1,3 +1,6 @@
+/* Nilai palet tema (Item 128). Tema bawaan; tema lain kelak memberi nilai lain untuk variabel yang sama. */
+@import './tema/ruangan-kayu.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -52,12 +55,12 @@ body {
      sama, jadi angka yang berubah — meteran konteks saat jawaban mengalir, durasi, biaya — tidak "menari"
      ke kiri-kanan, dan kolom angka di tabel Billing/Observability rata. Inter mendukungnya (fitur tnum). */
   font-variant-numeric: tabular-nums;
-  /* Palet LampLogin (Item 127 Tahap 3) — sama dengan token `background` & `on-surface` di tailwind.config
-     (teks diredam ke ±13:1 demi kenyamanan mata; lihat komentar token di sana). */
-  background-color: #0b0806;
-  color: #dbd0be;
+  /* Palet tema (Item 127 Tahap 3 → Item 128 Tahap A): token `background` & `on-surface` — nilainya di
+     src/tema/ruangan-kayu.css (teks diredam ke ±13:1 demi kenyamanan mata; alasannya di komentar token). */
+  background-color: rgb(var(--warna-background));
+  color: rgb(var(--warna-on-surface));
   /* Touch-friendly tap highlight — cahaya lampu, bukan biru */
-  -webkit-tap-highlight-color: rgba(240, 202, 109, 0.15);
+  -webkit-tap-highlight-color: rgb(var(--warna-primary) / 0.15);
   touch-action: manipulation;
 }
 
@@ -69,30 +72,31 @@ body {
 
 /* ── GLASS & RIM EFFECTS ── */
 /* Item 127 Tahap 3: warna kelas-kelas ini dipindah ke palet LampLogin — kayu gelap, tepi kayu terang, cahaya
-   lampu emas. Dulu abu-abu kebiruan dengan cahaya BIRU #0052ff; itu sisa biru terakhir di tengah ruangan kayu. */
+   lampu emas. Dulu abu-abu kebiruan dengan cahaya BIRU #0052ff; itu sisa biru terakhir di tengah ruangan kayu.
+   Item 128 Tahap A: warnanya menunjuk variabel tema (nilai sama persis) supaya ikut berganti tema. */
 .glass-panel {
-  background: rgba(26, 18, 12, 0.72);
+  background: rgb(var(--warna-surface-container) / 0.72);
   backdrop-filter: blur(20px);
-  border: 1px solid #3e2b1b;
-  box-shadow: 0px 20px 40px rgba(240, 202, 109, 0.04);
+  border: 1px solid rgb(var(--warna-outline-variant));
+  box-shadow: 0px 20px 40px rgb(var(--warna-primary) / 0.04);
 }
 .rim-light {
-  border-top: 1px solid rgba(255, 236, 207, 0.08);
+  border-top: 1px solid rgb(var(--warna-kilau) / 0.08);
 }
 
 /* ── INPUT STYLES ── */
 .input-etched {
-  background-color: #120c08;
-  border: 1px solid #3e2b1b;
+  background-color: rgb(var(--warna-surface-container-low));
+  border: 1px solid rgb(var(--warna-outline-variant));
   transition: all 0.2s ease-in-out;
 }
 .input-etched:focus {
-  border-color: #f0ca6d;
-  box-shadow: 0 0 0 2px rgba(240, 202, 109, 0.2);
+  border-color: rgb(var(--warna-primary));
+  box-shadow: 0 0 0 2px rgb(var(--warna-primary) / 0.2);
   outline: none;
 }
 .btn-glow:hover {
-  box-shadow: 0 0 15px rgba(240, 202, 109, 0.35);
+  box-shadow: 0 0 15px rgb(var(--warna-primary) / 0.35);
 }
 
 /* ── MATERIAL ICONS ──
@@ -158,11 +162,11 @@ body {
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background: rgba(255, 236, 207, 0.14);
+  background: rgb(var(--warna-kilau) / 0.14);
   border-radius: 9999px;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 236, 207, 0.28);
+  background: rgb(var(--warna-kilau) / 0.28);
 }
 
 /* ── SAFE AREA — iPhone notch & Android cutout ── */

@@ -1,0 +1,74 @@
+/* TEMA "RUANGAN KAYU" — nilai palet aplikasi (Item 128 Tahap A, 20 Okt 2026).
+
+   Dipindah APA ADANYA dari tailwind.config.js: sebelum tahap ini nilai di bawah ditulis sebagai hex di sana dan
+   dibakukan saat build. Kini tailwind.config.js hanya menunjuk variabel ini, jadi tema lain (Gelap netral, Terang,
+   Biru dominan — Item 128 Tahap B/D) cukup memberi nilai lain untuk variabel yang sama. Tampilan Ruangan kayu
+   tidak berubah: uji-tema-tahap-a membandingkan setiap nilai dengan rekaman palet sebelum tahap ini.
+
+   Bentuk nilainya saluran "R G B" (bukan #hex) supaya Tailwind bisa menambah opasitas: rgb(var(--x) / 0.3).
+   Asal palet & alasan tiap nilai: changelog 19 Okt (palet LampLogin, kenyamanan mata) dan 20 Okt (kartu Settings). */
+:root,
+[data-tema="ruangan-kayu"] {
+  --warna-background: 11 8 6; /* #0b0806 */
+  --warna-surface: 11 8 6; /* #0b0806 */
+  --warna-surface-dim: 11 8 6; /* #0b0806 */
+  --warna-surface-container-lowest: 8 6 5; /* #080605 */
+  --warna-surface-container-low: 18 12 8; /* #120c08 */
+  --warna-surface-container: 26 18 12; /* #1a120c */
+  --warna-surface-container-high: 36 24 15; /* #24180f */
+  --warna-surface-container-highest: 47 32 20; /* #2f2014 */
+  --warna-surface-variant: 47 32 20; /* #2f2014 */
+  --warna-surface-bright: 59 42 28; /* #3b2a1c */
+  --warna-on-surface: 219 208 190; /* #dbd0be */
+  --warna-on-background: 219 208 190; /* #dbd0be */
+  --warna-on-surface-strong: 232 220 200; /* #e8dcc8 */
+  --warna-inverse-surface: 243 231 211; /* #f3e7d3 */
+  --warna-on-surface-variant: 201 180 154; /* #c9b49a */
+  --warna-inverse-on-surface: 42 26 13; /* #2a1a0d */
+  --warna-outline: 154 125 92; /* #9a7d5c */
+  --warna-outline-variant: 62 43 27; /* #3e2b1b */
+  --warna-primary: 240 202 109; /* #f0ca6d */
+  --warna-primary-fixed: 255 226 154; /* #ffe29a */
+  --warna-primary-fixed-dim: 240 202 109; /* #f0ca6d */
+  --warna-surface-tint: 240 202 109; /* #f0ca6d */
+  --warna-primary-container: 138 77 28; /* #8a4d1c */
+  --warna-on-primary-container: 255 226 154; /* #ffe29a */
+  --warna-on-primary: 27 17 5; /* #1b1105 */
+  --warna-on-primary-fixed: 27 17 5; /* #1b1105 */
+  --warna-on-primary-fixed-variant: 110 61 24; /* #6e3d18 */
+  --warna-inverse-primary: 169 95 40; /* #a95f28 */
+  --warna-secondary: 217 195 162; /* #d9c3a2 */
+  --warna-secondary-fixed: 240 226 204; /* #f0e2cc */
+  --warna-secondary-fixed-dim: 217 195 162; /* #d9c3a2 */
+  --warna-secondary-container: 59 42 28; /* #3b2a1c */
+  --warna-on-secondary-container: 227 207 179; /* #e3cfb3 */
+  --warna-on-secondary: 42 26 13; /* #2a1a0d */
+  --warna-on-secondary-fixed: 26 14 8; /* #1a0e08 */
+  --warna-on-secondary-fixed-variant: 77 58 40; /* #4d3a28 */
+  --warna-tertiary: 216 198 173; /* #d8c6ad */
+  --warna-tertiary-fixed: 240 226 204; /* #f0e2cc */
+  --warna-tertiary-fixed-dim: 216 198 173; /* #d8c6ad */
+  --warna-tertiary-container: 91 70 50; /* #5b4632 */
+  --warna-on-tertiary-container: 243 231 211; /* #f3e7d3 */
+  --warna-on-tertiary: 42 26 13; /* #2a1a0d */
+  --warna-on-tertiary-fixed: 26 14 8; /* #1a0e08 */
+  --warna-on-tertiary-fixed-variant: 77 58 40; /* #4d3a28 */
+  --warna-error: 255 180 171; /* #ffb4ab */
+  --warna-on-error: 105 0 5; /* #690005 */
+  --warna-error-container: 147 0 10; /* #93000a */
+  --warna-on-error-container: 255 218 214; /* #ffdad6 */
+  --warna-slate-50: 250 245 236; /* #faf5ec */
+  --warna-slate-100: 243 231 211; /* #f3e7d3 */
+  --warna-slate-200: 230 212 184; /* #e6d4b8 */
+  --warna-slate-300: 217 195 162; /* #d9c3a2 */
+  --warna-slate-400: 196 168 134; /* #c4a886 */
+  --warna-slate-500: 180 153 117; /* #b49975 */
+  --warna-slate-600: 107 83 59; /* #6b533b */
+  --warna-slate-700: 77 58 40; /* #4d3a28 */
+  --warna-slate-800: 51 36 26; /* #33241a */
+  --warna-slate-900: 31 21 14; /* #1f150e */
+  --warna-slate-950: 18 11 7; /* #120b07 */
+
+  /* Bukan token Tailwind — dipakai kelas global di index.css (kilau tepi kaca, jempol bilah gulir). */
+  --warna-kilau: 255 236 207; /* #ffeccf */
+}
