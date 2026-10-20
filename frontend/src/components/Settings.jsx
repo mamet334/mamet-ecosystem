@@ -5,6 +5,7 @@ import { User, Mail, Shield, LogOut, Palette, Activity, Monitor, Bell, Cpu, Cloc
 import { ringkasPembaruan, bentukVersi, warnaStatus } from '../core/runtime/services/statusPembaruan';
 import TombolUnduhDesktop from './TombolUnduhDesktop';
 import { angka } from '../core/runtime/services/formatAngka.js';
+import BagianTampilan from './BagianTampilan';
 
 // Workspace yang bisa punya override preferensi tool sendiri (lihat WorkspaceManager.js)
 const TOGGLEABLE_WORKSPACES = [
@@ -184,6 +185,7 @@ export default function Settings() {
     { id: 'desktop', label: 'Aplikasi Desktop', ikon: 'download', tampil: !adaPembaruan },
     { id: 'alat', label: 'Alat & Kemampuan', ikon: 'tune', tampil: true },
     { id: 'registry', label: 'Tool Registry', ikon: 'extension', tampil: true },
+    { id: 'tampilan', label: 'Tampilan', ikon: 'visibility', tampil: true }, // Item 128 — tema & latar
     { id: 'identitas', label: 'Identitas', ikon: 'person', tampil: true },
   ];
 
@@ -798,6 +800,11 @@ export default function Settings() {
               )}
             </div>
           </section>
+          )}
+
+          {/* Tampilan — tema & latar ruangan (Item 128 Tahap B) */}
+          {bagianAktif === 'tampilan' && (
+          <BagianTampilan />
           )}
 
           {/* Identity & Danger Zone */}

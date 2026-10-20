@@ -5,6 +5,9 @@
 // ditemukan saat mengukur 46 berkas .jsx pada 19 Okt (ROADMAP-TAMPILAN-MENU-GAME.md §2.1):
 //
 //   - dua sistem warna bersaing: 47 token gaya Material 3 + warna mentah `slate-*` yang melewatinya
+//     (v5, Item 128 Tahap B: token palet kini JUSTRU yang diinginkan — merekalah yang ikut berganti tema. Penghitung
+//     `tokenMaterial` dipensiunkan; gantinya `warnaTetap` menghitung warna yang TIDAK ikut tema: hex yang ditulis
+//     langsung di kelas dan putih/hitam mentah. Itulah yang kini harus turun.)
 //   - aksen pelangi (emerald/cyan/violet/indigo/purple/fuchsia) — tak ada satu warna yang berarti "Mamet"
 //   - dua set ikon (lucide-react + Material Symbols)
 //   - gerak dekoratif (animate-pulse/ping/spin) yang tidak mewakili keadaan
@@ -37,7 +40,7 @@ const DIKECUALIKAN = new Set(['components/LampLogin.jsx', 'components/os/LatarRu
 const tanpaKomentar = (kode) =>
   kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
-console.log('uji-ciri-tampilan v4');
+console.log('uji-ciri-tampilan v5');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -47,7 +50,8 @@ const cek = (syarat, pesan, detail) => {
 
 // ── Penghitung — satu definisi, dipakai untuk kode sungguhan DAN untuk uji gigitnya ─────────────
 const POLA = {
-  tokenMaterial: /\b(?:bg|text|border)-(?:surface|on-surface|on-background|primary|outline|secondary|tertiary)[a-z-]*/g,
+  // Warna yang tak ikut tema: hex di kelas (`bg-[#0a0a0a]`) dan putih/hitam mentah (`text-white`, `bg-black/40`).
+  warnaTetap: /\b(?:bg|text|border|from|via|to|fill|stroke|ring|divide|outline|shadow|placeholder)-(?:\[#[0-9a-fA-F]{3,8}\]|(?:white|black)\b)/g,
   warnaSlate: /\b(?:bg|text|border)-slate-\d+/g,
   aksenPelangi: /\b(?:bg|text|border|from|to|via)-(?:emerald|cyan|violet|indigo|purple|fuchsia)-\d+/g,
   gerakDekoratif: /\banimate-(?:pulse|ping|spin)\b/g,
@@ -75,13 +79,13 @@ const FIXTURE = `
 import { X } from 'lucide-react';
 // bg-slate-900 di komentar baris TIDAK dihitung
 /* text-primary di komentar blok TIDAK dihitung */
-const a = <div className="bg-surface-container-low text-on-surface border-outline-variant bg-slate-950 text-slate-400
+const a = <div className="bg-surface-container-low text-on-surface border-outline-variant bg-slate-950 text-slate-400 bg-[#0a0a0a]/90 text-white bg-black/40
   from-emerald-500 via-cyan-400 to-purple-600 animate-pulse animate-spin backdrop-blur-md
   shadow-[0_0_20px_rgba(0,0,0,.5)] bg-gradient-to-r" style={{ background: 'radial-gradient(#000, #fff)' }}>
   <span className="material-symbols-outlined">home</span></div>;
 `;
 const f = hitung(FIXTURE);
-cek(f.tokenMaterial === 3, 'token Material dihitung (3 di fixture)', f.tokenMaterial);
+cek(f.warnaTetap === 3, 'warna tetap dihitung: hex di kelas + putih/hitam mentah (3); token palet TIDAK dihitung', f.warnaTetap);
 cek(f.warnaSlate === 2, 'warna slate dihitung, yang di komentar tidak (2)', f.warnaSlate);
 cek(f.aksenPelangi === 3, 'aksen pelangi dihitung termasuk from/via/to (3)', f.aksenPelangi);
 cek(f.gerakDekoratif === 2, 'gerak dekoratif dihitung (2)', f.gerakDekoratif);
@@ -130,14 +134,14 @@ for (const r of DIKECUALIKAN) {
 // Selisih dengan tabel §2.1 roadmap (yang mengukur 46 berkas TERMASUK LampLogin) hanya milik
 // LampLogin: gradien 19→6, glow 37→26, lucide 27→26, gerak 52→51. Cahaya lampunya memang dibuat
 // dari gradien & glow — di sana ia bermakna, jadi ia tidak dihitung sebagai resep generik.
+// Diukur 20 Okt (v5), tanpa LampLogin & LatarRuangan: 154 warna yang tak ikut tema; → 150 (MenuTeks kini memakai
+// variabel tema, Item 128 Tahap B). Tema Terang (Item 128 Tahap D)
+// menurunkannya; kenaikan = layar baru yang menulis warna tetap alih-alih token palet.
+const GARIS_WARNA_TETAP = 150;
 const GARIS_DASAR = {
-  // 568 → 576 (19 Okt, v2) — SATU-SATUNYA kenaikan, dan disengaja: jawaban model kini dirender Markdown
-  // (TeksMarkdown.jsx, permintaan Owner). Blok kode, tabel, kutipan, dan garis pemisah adalah elemen BARU yang
-  // butuh garis & latar; yang mubazir (warna yang diwarisi) sudah dibuang lebih dulu, sisanya +8. Token ini kini
-  // bernilai palet LampLogin, bukan lagi sistem warna yang bersaing. Kenaikan berikutnya tetap merah.
-  // 576 → 581 (20 Okt, v4) — kartu jawaban model bergaya kartu Settings atas permintaan Owner: garis
-  // border-outline-variant kartu (+1) dan token baru on-surface-strong untuk teks tebal & judul (+4). Kenaikan berikutnya tetap merah.
-  tokenMaterial: 581,
+  // tokenMaterial DIPENSIUNKAN (20 Okt, v5): 568 → 581 selama Item 127 — tiap kenaikan disengaja & tercatat di
+  // riwayat berkas ini. Sejak Item 128 token palet adalah mekanisme tema; yang dijaga kini warna yang tak ikut tema.
+  warnaTetap: GARIS_WARNA_TETAP,
   warnaSlate: 609, // 615 → 609 (19 Okt): akar 6 aplikasi tak lagi mengecat latar slate sendiri (latar = dinding LampLogin)
   aksenPelangi: 250,
   gerakDekoratif: 51,
@@ -145,7 +149,9 @@ const GARIS_DASAR = {
   glowRgba: 26,
   gradien: 5, // 6 → 5 (19 Okt): gradien area kotak ketik chat dibuang — jadi pita gelap di atas dinding ruangan
   berkasIkonLucide: 26,
-  berkasIkonMaterialSymbols: 8,
+  // 8 → 9 (20 Okt, v5): BagianTampilan.jsx — bagian Settings › Tampilan dipecah ke berkasnya sendiri (Settings.jsx
+  // sudah memakai Material Symbols); jumlah SET ikon tidak bertambah. Kenaikan berikutnya tetap merah.
+  berkasIkonMaterialSymbols: 9,
 };
 
 console.log('\n-- 3. tidak ada angka yang naik dari garis dasar --');

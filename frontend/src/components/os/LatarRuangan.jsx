@@ -24,7 +24,7 @@ const NOISE = `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http:
 
 export default function LatarRuangan() {
   return (
-    <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
+    <div aria-hidden="true" className="latar-ruangan absolute inset-0 pointer-events-none overflow-hidden">
       <div className={`absolute inset-0 ${DINDING}`} />
       <div
         className="absolute inset-0 opacity-10 mix-blend-overlay"

@@ -12,13 +12,14 @@
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { bacaPalet } from './palet-tema.mjs';
 
 const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (kode) =>
   kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
-console.log('uji-menu-teks v2');
+console.log('uji-menu-teks v3');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -84,18 +85,27 @@ const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 
 const lum = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 const campur = (f, b, a) => f.map((v, i) => Math.round(v * a + b[i] * (1 - a)));
 const rasio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
-const krem = hex((M.match(/const KREM = '(#[0-9a-f]{6})'/i) || [])[1] || '#000000');
-const latar = hex((M.match(/bg-\[(#[0-9a-f]{6})\]/i) || [])[1] || '#ffffff');
+// v3 (Item 128 Tahap B): warna menu kini variabel tema — `KREM` = --warna-menu-teks, latar = --warna-menu-latar.
+// Kontras diukur untuk SETIAP tema (bawaan dari berkas tema, lainnya dari themes.json).
+cek(/const KREM = 'rgb\(var\(--warna-menu-teks\)\)';/.test(M) && /bg-\[rgb\(var\(--warna-menu-latar\)\)\]/.test(M),
+  'warna menu menunjuk variabel tema (ikut berganti tema)');
 const opTakAktif = Number((M.match(/aktif \? 'opacity-100' : 'opacity-(\d+) hover:opacity-100'/) || [])[1]) / 100;
 // v2 (K4): pola tidak lagi memaku ukuran 11px — yang diukur di sini tingkat kecerahan, bukan ukurannya.
 const opKet = Number((M.match(/text-\[\d+px\] opacity-(\d+)/) || [])[1]) / 100;
 const opJudul = Number((M.match(/text-\[\d+px\] opacity-\[(0\.\d+)\]/) || [])[1]);
-const ukur = {
-  'pilihan tidak aktif': rasio(campur(krem, latar, opTakAktif), latar),
-  'keterangan Lanjutkan': rasio(campur(krem, latar, opTakAktif * opKet), latar),
-  'judul sub-menu': rasio(campur(krem, latar, opJudul), latar),
-};
-for (const [n, r] of Object.entries(ukur)) cek(Number.isFinite(r) && r >= 4.5, `${n}: ${r.toFixed(2)}:1`);
+const metaTema = JSON.parse(readFileSync(join(AKAR, 'frontend/public/metadata/themes.json'), 'utf8'));
+const keHex = (rgb) => '#' + rgb.split(' ').map((n) => Number(n).toString(16).padStart(2, '0')).join('');
+const PALET_MENU = { [metaTema.bawaan]: bacaPalet(AKAR, metaTema.bawaan).VAR };
+for (const t of metaTema.themes.filter((x) => x.nilai)) PALET_MENU[t.id] = Object.fromEntries(Object.entries(t.nilai).map(([k, v]) => [k, keHex(v)]));
+for (const [id, P] of Object.entries(PALET_MENU)) {
+  const krem = hex(P['menu-teks'] || '#000000'), latar = hex(P['menu-latar'] || '#ffffff');
+  const ukur = {
+    'pilihan tidak aktif': rasio(campur(krem, latar, opTakAktif), latar),
+    'keterangan Lanjutkan': rasio(campur(krem, latar, opTakAktif * opKet), latar),
+    'judul sub-menu': rasio(campur(krem, latar, opJudul), latar),
+  };
+  for (const [n, r] of Object.entries(ukur)) cek(Number.isFinite(r) && r >= 4.5, `${id} — ${n}: ${r.toFixed(2)}:1`);
+}
 
 // ── 7b. Skala huruf K4 (Owner 19 Okt: "nyaman dibaca secara lama") ────────────────────────────────
 console.log('\n-- 7b. skala huruf: isi menu ≥ 14px, tak ada teks < 12px --');

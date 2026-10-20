@@ -29,6 +29,7 @@ import { RetrievalOrchestrator } from './services/RetrievalOrchestrator.js';
 import { ModuleDiscoveryService } from './services/ModuleDiscoveryService.js';
 import { RequestClassifierService } from './services/RequestClassifierService.js';
 import { penyimpanKeadaan } from './PenyimpanKeadaan.js';
+import { temaService } from './services/TemaService.js';
 import { TierClassifierService } from './services/TierClassifierService.js';
 import { SkillRegistry } from './services/SkillRegistry.js';
 import { SkillGuardService } from './services/SkillGuardService.js';
@@ -198,6 +199,11 @@ class Kernel {
     await metadataService.initialize();
     serviceManager.register('MetadataService', metadataService);
     this.log('INFO', 'MetadataService Initialized & Registered');
+
+    // Tema aplikasi (Item 128) — dipasang di sini, sesudah metadata dimuat dan SEBELUM tampilan dipasang, supaya
+    // aplikasi terbuka langsung dengan tema pilihan pengguna, tanpa berkedip dari tema bawaan.
+    temaService.pasang(metadataService.getThemes());
+    serviceManager.register('TemaService', temaService);
 
     this._emitEvent(serviceManager, 'Kernel:PhaseCompleted', { phase: 1, name: 'SYSTEM_CORE_REGISTRATION' });
     this.log('INFO', 'PHASE 1 — SYSTEM CORE REGISTRATION: Completed');

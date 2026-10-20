@@ -20,6 +20,7 @@ export function bacaPalet(akar, tema = 'ruangan-kayu') {
   const tanpaKomentar = teks.replace(/\/\*[\s\S]*?\*\//g, '');
   const VAR = Object.fromEntries([...tanpaKomentar.matchAll(/--warna-([a-z0-9-]+):\s*(\d+\s+\d+\s+\d+)\s*;/g)].map((m) => [m[1], keHex(m[2])]));
   const SLATE = Object.fromEntries(Object.entries(VAR).filter(([k]) => /^slate-\d+$/.test(k)).map(([k, v]) => [k.slice(6), v]));
-  const TOKEN = Object.fromEntries(Object.entries(VAR).filter(([k]) => !/^slate-\d+$/.test(k) && k !== 'kilau'));
+  // Bukan token Tailwind: kilau (kelas global) dan menu-* (MenuTeks, Item 128 Tahap B).
+  const TOKEN = Object.fromEntries(Object.entries(VAR).filter(([k]) => !/^slate-\d+$/.test(k) && k !== 'kilau' && !k.startsWith('menu-')));
   return { VAR, TOKEN, SLATE, teks };
 }

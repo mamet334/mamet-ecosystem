@@ -3,7 +3,7 @@
 **Tipe Dokumen:** Rancangan (blueprint) perubahan UI — memenuhi syarat tata kelola MUS §20 (tujuan,
 ruang lingkup, dokumentasi, analisis, alasan, persetujuan Owner)
 **Item:** 128 — **menggabungkan sisa Item 127** ([`ROADMAP-TAMPILAN-MENU-GAME.md`](./ROADMAP-TAMPILAN-MENU-GAME.md))
-**Status:** 🟡 **Tahap A ✅ (20 Okt)** — token palet menjadi variabel CSS, tampilan tidak berubah ([log](../project-memory/changelog/2026-10-20-tema-tahap-a-variabel-css.md)). **Berikutnya: Tahap B** — menunggu jawaban T1–T3 (§9).
+**Status:** 🟡 **Tahap A ✅ (20 Okt)** — token palet menjadi variabel CSS, tampilan tidak berubah ([log](../project-memory/changelog/2026-10-20-tema-tahap-a-variabel-css.md)). · **Tahap B ✅ (20 Okt)** — Settings › Tampilan, Ruangan kayu & Gelap netral, per akun ([log](../project-memory/changelog/2026-10-20-tema-tahap-b-settings-tampilan.md)); simpan-ke-akun menunggu dicoba Owner. **Berikutnya: Tahap C** (lampu, kurangi gerakan).
 **Tanggal:** 2026-10-20
 **Aplikasi:** **Mamet Ecosystem** (`frontend/`) — **bukan** Mametlite.
 **Batas tegas:** **`LampLogin.jsx` tidak diubah** (arahan Owner 19 Okt, tetap berlaku). Layar masuk tetap memakai
@@ -173,7 +173,7 @@ mengandaikan latar gelap baru perlu dibereskan untuk Terang.
 **Tahap A — Fondasi: token menjadi variabel CSS.** ✅ 20 Okt — nilai di `frontend/src/tema/ruangan-kayu.css`; diukur di peramban (2.608 elemen) dan dijaga `uji-tema-tahap-a`. Tampilan tidak berubah. Uji: warna terhitung tiap token sama
 sebelum/sesudah; semua kelas tetap dibuat Tailwind (pelajaran Item 127: kelas yang ditulis ≠ kelas yang dibuat).
 
-**Tahap B — Settings › Tampilan + dua tema gelap.** Ruangan kayu & Gelap netral, Ikuti sistem, Latar ruangan,
+**Tahap B — Settings › Tampilan + dua tema gelap.** ✅ 20 Okt — T1–T3 sesuai usul; menu teks ikut tema; 150 warna tetap tersisa (dibereskan bersama Tahap D). Ruangan kayu & Gelap netral, Ikuti sistem, Latar ruangan,
 penyimpanan per akun, diterapkan sebelum tampilan pertama. Uji kontras **per tema** — `uji-palet-lamplogin` menjadi
 uji per tema (Ruangan kayu tetap wajib hangat; tema lain punya aturannya sendiri; semua wajib ≥ 4,5:1).
 
@@ -220,9 +220,9 @@ pembersihan kelas putih/hitam mentah.
 
 | # | Pertanyaan | Catatan |
 |---|---|---|
-| T1 | Nama tema tampil dalam bahasa Indonesia? ("Ruangan kayu", "Gelap netral") | usul: ya |
-| T2 | Pilihan "Ikuti sistem" — tema apa yang dipakai saat Windows terang, sebelum tema Terang ada? | usul: tetap Gelap netral sampai Terang tersedia |
-| T3 | Tema bawaan untuk pengguna baru | usul: Ruangan kayu |
+| ~~T1~~ | ~~Nama tema berbahasa Indonesia?~~ | ✅ ya — diputuskan 20 Okt |
+| ~~T2~~ | ~~"Ikuti sistem" saat Windows terang~~ | ✅ Gelap netral sampai tema Terang ada — diputuskan 20 Okt |
+| ~~T3~~ | ~~Tema bawaan pengguna baru~~ | ✅ Ruangan kayu — diputuskan 20 Okt |
 | K5 | Menyatukan dua sumber ruangan (perlu izin menyentuh `LampLogin.jsx`) | dari Item 127 |
 | K6 | Kode mati `Login.jsx` · `EngineerChat.jsx` · `ActivityBar.jsx` | dari Item 127, di luar item ini |
 | L5 | Tahap 1 langkah 5 Item 127 (melepas layar tak aktif) | diparkir |

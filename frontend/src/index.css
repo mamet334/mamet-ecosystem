@@ -70,6 +70,13 @@ body {
   overflow: hidden;
 }
 
+/* ── LATAR RUANGAN (Item 128) ──
+   Pilihan "Latar ruangan" di Settings › Tampilan. TemaService menulis data-latar di <html>; saat mati, dinding kayu
+   disembunyikan dan yang tampil latar polos tema (--warna-background di body). Cukup CSS — tak ada render ulang. */
+html[data-latar="mati"] .latar-ruangan {
+  display: none;
+}
+
 /* ── GLASS & RIM EFFECTS ── */
 /* Item 127 Tahap 3: warna kelas-kelas ini dipindah ke palet LampLogin — kayu gelap, tepi kayu terang, cahaya
    lampu emas. Dulu abu-abu kebiruan dengan cahaya BIRU #0052ff; itu sisa biru terakhir di tengah ruangan kayu.

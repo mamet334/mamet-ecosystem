@@ -1,0 +1,79 @@
+// Logika tema aplikasi (Item 128 Tahap B) — MURNI: tanpa DOM, tanpa Supabase, tanpa localStorage, supaya bisa diuji
+// langsung di node. Yang menyentuh dunia luar ada di TemaService.js.
+//
+// Bentuk metadata: public/metadata/themes.json (MUS §21) — { bawaan, ikutiSistem: { gelap, terang }, themes: [...] }.
+// Tema bawaan mengambil nilainya dari frontend/src/tema/<id>.css (`nilai: null`); tema lain menuliskan nilai setiap
+// variabel --warna-* di metadata. Setelan pengguna: { tema: <id> | 'sistem', latarRuangan: true | false | null }
+// — latarRuangan null = ikut bawaan temanya.
+
+export const KUNCI_LOKAL = 'mamet_tampilan';
+export const PILIHAN_SISTEM = 'sistem';
+
+/** Metadata cadangan bila themes.json gagal dimuat: aplikasi tetap jalan dengan tema bawaan saja. */
+export const META_CADANGAN = Object.freeze({
+  bawaan: 'ruangan-kayu',
+  ikutiSistem: { gelap: 'ruangan-kayu', terang: 'ruangan-kayu' },
+  themes: [{ id: 'ruangan-kayu', nama: 'Ruangan kayu', keterangan: 'Hangat, berlatar dinding kayu seperti layar masuk.', latarRuangan: true, nilai: null }],
+});
+
+/** Kesalahan bentuk metadata — daftar kosong = sah. */
+export function periksaMeta(meta) {
+  const salah = [];
+  const ids = new Set((meta?.themes || []).map((t) => t?.id));
+  if (!Array.isArray(meta?.themes) || meta.themes.length === 0) salah.push('themes kosong');
+  if (!ids.has(meta?.bawaan)) salah.push(`bawaan "${meta?.bawaan}" tak ada di themes`);
+  for (const sisi of ['gelap', 'terang']) if (!ids.has(meta?.ikutiSistem?.[sisi])) salah.push(`ikutiSistem.${sisi} tak menunjuk tema yang ada`);
+  for (const t of meta?.themes || []) {
+    if (!/^[a-z0-9-]+$/.test(t?.id || '')) salah.push(`id tema tak sah: ${t?.id}`);
+    if (!t?.nama) salah.push(`tema ${t?.id} tanpa nama`);
+    if (typeof t?.latarRuangan !== 'boolean') salah.push(`tema ${t?.id}: latarRuangan harus true/false`);
+    if (t?.id !== meta?.bawaan && (t?.nilai == null || typeof t.nilai !== 'object')) salah.push(`tema ${t?.id} bukan bawaan tetapi tanpa nilai`);
+    for (const [k, v] of Object.entries(t?.nilai || {})) {
+      if (!/^[a-z0-9-]+$/.test(k)) salah.push(`tema ${t.id}: nama variabel tak sah ${k}`);
+      if (!/^\d{1,3} \d{1,3} \d{1,3}$/.test(String(v)) || String(v).split(' ').some((n) => Number(n) > 255)) salah.push(`tema ${t.id}: nilai ${k} bukan "R G B"`);
+    }
+  }
+  return salah;
+}
+
+/** Metadata yang dipakai: yang dimuat bila sah, selain itu cadangan. */
+export function metaDipakai(meta) {
+  return meta && periksaMeta(meta).length === 0 ? meta : META_CADANGAN;
+}
+
+/** Setelan mentah (dari localStorage / akun) → setelan sah. Nilai yang tak dikenal jatuh ke bawaan. */
+export function normalisasiSetelan(mentah, meta) {
+  const m = metaDipakai(meta);
+  const ids = m.themes.map((t) => t.id);
+  const tema = mentah?.tema === PILIHAN_SISTEM || ids.includes(mentah?.tema) ? mentah.tema : m.bawaan;
+  const latarRuangan = typeof mentah?.latarRuangan === 'boolean' ? mentah.latarRuangan : null;
+  return { tema, latarRuangan };
+}
+
+/** Tema yang benar-benar tampil untuk setelan ini. "Ikuti sistem" membaca sisi gelap/terang Windows. */
+export function pilihTema(setelan, sistemGelap, meta) {
+  const m = metaDipakai(meta);
+  const s = normalisasiSetelan(setelan, m);
+  return s.tema === PILIHAN_SISTEM ? m.ikutiSistem[sistemGelap ? 'gelap' : 'terang'] : s.tema;
+}
+
+/** Apakah dinding ruangan tampil: pilihan pengguna, atau bawaan tema bila pengguna belum memilih. */
+export function latarNyala(setelan, idTema, meta) {
+  const m = metaDipakai(meta);
+  const s = normalisasiSetelan(setelan, m);
+  if (s.latarRuangan !== null) return s.latarRuangan;
+  return m.themes.find((t) => t.id === idTema)?.latarRuangan ?? true;
+}
+
+/**
+ * Aturan CSS untuk setiap tema yang punya nilai di metadata. Selektornya dua: `html[data-tema=…]` (lebih spesifik
+ * dari `:root` di berkas tema bawaan, jadi tema terpilih selalu menang) dan `[data-tema=…]` (kotak pratinjau di
+ * Settings memakai tema lain di dalam dirinya sendiri, tanpa mengganti tema halaman).
+ */
+export function aturanCssTema(meta) {
+  const m = metaDipakai(meta);
+  return m.themes.filter((t) => t.nilai).map((t) => {
+    const isi = Object.entries(t.nilai).map(([k, v]) => `  --warna-${k}: ${v};`).join('\n');
+    return `html[data-tema="${t.id}"],\n[data-tema="${t.id}"] {\n${isi}\n}`;
+  }).join('\n\n');
+}

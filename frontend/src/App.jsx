@@ -6,6 +6,7 @@ import LampLogin from './components/LampLogin'
 import { kernel } from './core/runtime/Kernel'
 import { supabase } from './supabase'
 import { penyimpanKeadaan } from './core/runtime/PenyimpanKeadaan'
+import { temaService } from './core/runtime/services/TemaService'
 import './App.css'
 
 export default function App() {
@@ -39,6 +40,11 @@ export default function App() {
     }
     penggunaSebelumnyaRef.current = id
   }, [session, loading])
+
+  // Tema (Item 128): sesudah masuk, setelan tampilan di akun menjadi sumber kebenaran — tema ikut ke desktop & web.
+  useEffect(() => {
+    if (session?.user) temaService.sinkronDariAkun(session.user)
+  }, [session])
 
   useEffect(() => {
     if (session) {

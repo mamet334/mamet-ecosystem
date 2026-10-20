@@ -21,7 +21,7 @@ const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (kode) =>
   kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
-console.log('uji-settings-bertab v1');
+console.log('uji-settings-bertab v2');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -32,10 +32,13 @@ const cek = (syarat, pesan, detail) => {
 const S = tanpaKomentar(baca('frontend/src/components/Settings.jsx'));
 
 // ── 1. Setiap bagian bersyarat tab ──────────────────────────────────────────────────────────────
-console.log('\n-- 1. sembilan bagian, sembilan syarat --');
+// v2 (Item 128, 20 Okt): bagian ke-10 "Tampilan" adalah komponen tersendiri (`<BagianTampilan />`, isinya <section>
+// di berkasnya) — Settings.jsx sudah panjang. Bagian dikenali dari baris `<section ` ATAU `<Bagian… />`; syaratnya sama:
+// baris tepat sebelumnya adalah syarat tab aktif.
+console.log('\n-- 1. sepuluh bagian, sepuluh syarat --');
 const baris = S.split('\n');
-const iSection = baris.map((x, i) => (/^\s*<section /.test(x) ? i : -1)).filter((i) => i >= 0);
-cek(iSection.length === 9, `9 <section> (${iSection.length})`);
+const iSection = baris.map((x, i) => (/^\s*(<section |<Bagian[A-Z]\w* \/>)/.test(x) ? i : -1)).filter((i) => i >= 0);
+cek(iSection.length === 10, `10 bagian: <section> atau <Bagian… /> (${iSection.length})`);
 const idBagian = iSection.map((i) => (baris[i - 1].match(/bagianAktif === '([a-z]+)' && \($/) || [])[1]);
 cek(idBagian.every(Boolean), 'baris tepat sebelum tiap <section> adalah syarat tab aktif', idBagian);
 cek(new Set(idBagian).size === idBagian.length, 'id bagian unik — tak ada dua bagian di tab yang sama', idBagian);

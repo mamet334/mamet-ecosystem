@@ -26,8 +26,10 @@ import { supabase } from '../../supabase';
 
 const APP_CHAT = ['app:assistant', 'app:mametlite', 'app:engineer'];
 const KUNCI_CHAT_TERAKHIR = 'mamet_menu_chat_terakhir';   // hanya id aplikasi, bukan isi percakapan
-const KREM = '#fff8ec';
-const CAHAYA = '0 0 10px rgba(255, 220, 150, 0.55), 0 0 22px rgba(255, 200, 100, 0.25)';
+// Warna menu = variabel tema (Item 128 Tahap B) — nilai Ruangan kayu SAMA dengan sebelumnya (krem #fff8ec, cahaya
+// lampu, latar #0b0806, garis #3a2113), tetapi kini ikut berganti tema. Gelap netral: krem → abu terang, tanpa cahaya.
+const KREM = 'rgb(var(--warna-menu-teks))';
+const CAHAYA = '0 0 10px rgb(var(--warna-menu-cahaya-1) / 0.55), 0 0 22px rgb(var(--warna-menu-cahaya-2) / 0.25)';
 
 const bacaChatTerakhir = () => {
   // localStorage bisa diblokir (profil terkunci) — diperlakukan "belum ada chat terakhir": "Lanjutkan" sekadar
@@ -209,7 +211,7 @@ export default function MenuTeks() {
         title={terbuka ? 'Tutup menu (Esc) — seret untuk memindahkan' : 'Buka menu — seret untuk memindahkan'}
         aria-expanded={terbuka}
         aria-controls="menu-utama"
-        className={`fixed z-50 h-10 px-3.5 flex items-center justify-center rounded-lg bg-[#0b0806] border border-[#3a2113] shadow-2xl font-mono uppercase tracking-[0.15em] text-[12px] leading-none cursor-grab active:cursor-grabbing select-none transition-opacity ${terbuka ? 'opacity-100' : 'opacity-80 hover:opacity-100'}`}
+        className={`fixed z-50 h-10 px-3.5 flex items-center justify-center rounded-lg bg-[rgb(var(--warna-menu-latar))] border border-[rgb(var(--warna-menu-garis))] shadow-2xl font-mono uppercase tracking-[0.15em] text-[12px] leading-none cursor-grab active:cursor-grabbing select-none transition-opacity ${terbuka ? 'opacity-100' : 'opacity-80 hover:opacity-100'}`}
         style={{ left: posisi.x, top: posisi.y, touchAction: 'none', color: KREM, textShadow: terbuka ? CAHAYA : 'none' }}
       >
         Menu
@@ -235,7 +237,7 @@ export default function MenuTeks() {
           // Bilah gulir DISEMBUNYIKAN, guliran tetap jalan (roda, touchpad, seret) — bilah putih bawaan Chromium
           // dinilai Owner "tidak nyaman" di kotak gelap ini. Dua aturan karena Chromium punya dua jalur gambar:
           // `scrollbar-width` (standar) dan `::-webkit-scrollbar` (lama).
-          className="fixed z-[70] w-max min-w-[12rem] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden bg-[#0b0806] border border-[#3a2113] rounded-lg px-5 py-5 shadow-2xl select-none"
+          className="fixed z-[70] w-max min-w-[12rem] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden bg-[rgb(var(--warna-menu-latar))] border border-[rgb(var(--warna-menu-garis))] rounded-lg px-5 py-5 shadow-2xl select-none"
         >
           <div
             className="mb-5 font-mono font-light uppercase tracking-[0.15em] leading-[1.25] text-[15px]"

@@ -71,4 +71,11 @@
 
   /* Bukan token Tailwind — dipakai kelas global di index.css (kilau tepi kaca, jempol bilah gulir). */
   --warna-kilau: 255 236 207; /* #ffeccf */
+
+  /* Menu teks (MenuTeks.jsx) — nilai yang dulu ditulis langsung di komponen (Item 128 Tahap B). */
+  --warna-menu-latar: 11 8 6; /* #0b0806 */
+  --warna-menu-garis: 58 33 19; /* #3a2113 */
+  --warna-menu-teks: 255 248 236; /* #fff8ec — krem judul LampLogin */
+  --warna-menu-cahaya-1: 255 220 150; /* cahaya lampu pada teks aktif */
+  --warna-menu-cahaya-2: 255 200 100;
 }

@@ -51,6 +51,17 @@ export class MetadataService {
       this.validateSchema(widgetData, 'widgets');
       this.metadata.widgets = widgetData.widgets;
 
+      // Tema (Item 128) — TIDAK kritis: tanpa daftar tema aplikasi tetap jalan dengan tema bawaan, jadi kegagalannya
+      // tidak menghentikan boot seperti metadata lain. Bentuknya diperiksa lagi oleh tema.js (periksaMeta).
+      try {
+        const temaData = await fetchJson('themes.json');
+        this.validateSchema(temaData, 'themes');
+        this.metadata.themes = temaData;
+      } catch (eTema) {
+        console.warn('[MetadataService] themes.json gagal dimuat — hanya tema bawaan yang tersedia:', eTema.message);
+        this.metadata.themes = null;
+      }
+
       console.log('[MetadataService] Successfully validated and loaded all metadata');
     } catch (e) {
       console.error('[MetadataService] CRITICAL ERROR: Failed to load metadata:', e.message);
@@ -73,6 +84,10 @@ export class MetadataService {
 
   getWidgets() {
     return this.metadata.widgets;
+  }
+
+  getThemes() {
+    return this.metadata.themes ?? null;
   }
 
   getSystemConfig() {
