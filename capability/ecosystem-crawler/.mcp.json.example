@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "ecosystem-crawler": {
+      "command": "<path-ke-folder-ini>/.venv/Scripts/crawler-mcp.exe",
+      "args": []
+    }
+  }
+}

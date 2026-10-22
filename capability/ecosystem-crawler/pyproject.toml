@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ecosystem-crawler"
+version = "0.1.0"
+description = "Indra dan tangan Mamet Ecosystem: mencari dan menyimpan data mentah dari banyak sumber."
+requires-python = ">=3.12"
+# Tool asli dari upstream, versi dikunci pada rilis resmi (ADR-CRW-0007, ADR-CRW-0010).
+# Fork milik Owner ada di akun mamet334 (Scrapling, scrapy, playwright-python, curl_cffi, crawl4ai, firecrawl).
+# Selama kode tool belum diubah, versi rilis dari PyPI = kode di fork, dan PyPI lebih andal untuk paket biner.
+# Bila suatu tool benar-benar di-patch di fork, ganti barisnya ke:
+#   "scrapling[fetchers] @ git+https://github.com/mamet334/Scrapling@<cabang>"
+dependencies = [
+    "curl_cffi==0.16.3",
+    "feedparser==6.0.14",
+    "google-play-scraper==1.2.7",
+    "mcp==2.3.0",
+    "praw==8.0.3",
+    "python-dotenv==1.2.4",
+    "PyYAML==6.0.3",
+    "requests==2.34.2",
+    "scrapling[fetchers]==0.5",
+    "trafilatura==2.3.1",
+    "yt-dlp==2026.10.21",
+]
+
+[project.optional-dependencies]
+uji = ["pytest==9.1.1"]
+
+[project.scripts]
+crawler = "crawler.wajah.cli:main"
+crawler-mcp = "crawler.wajah.mcp_server:main"
+
+[tool.setuptools.packages.find]
+include = ["crawler*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["jaringan: uji yang memanggil internet sungguhan (jalankan dengan -m jaringan)"]
+addopts = "-m 'not jaringan'"

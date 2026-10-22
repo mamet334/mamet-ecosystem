@@ -1,0 +1,23 @@
+CARA PAKAI FOLDER INBOX
+=======================
+
+Untuk platform yang tidak diambil otomatis (Facebook Groups, Quora, X, TikTok, Instagram, grup WA, ...).
+Salin postingan yang Anda temukan saat browsing ke file di folder ini, lalu jalankan misi dengan sumber "inbox".
+
+1. Nama file diawali nama platform:  facebook_umkm.txt, quora_keuangan.txt, x_asn.txt, kaskus_bisnis.txt
+2. Pisahkan tiap postingan dengan baris berisi tiga tanda minus: ---
+3. Baris URL:, Tanggal:, Judul:, Penulis: di awal postingan bersifat opsional.
+4. Jalankan, misalnya:  crawler cari "mutasi ASN" --sumber inbox
+   (hanya postingan yang memuat kata kunci yang diambil; matikan dengan --opsi inbox.saring_kata_kunci=false)
+
+Contoh isi file x_asn.txt:
+
+URL: https://x.com/contoh/status/123
+Tanggal: 2026-10-20
+Sudah tiga bulan dimutasi tapi tunjangan belum cair juga.
+---
+Tanggal: 2026-10-19
+Mutasi mendadak tanpa pemberitahuan, keluarga harus pindah dalam seminggu.
+
+File .csv juga bisa, dengan kolom: teks, url, tanggal, judul, penulis, platform
+File yang namanya diawali garis bawah (seperti file ini) diabaikan.

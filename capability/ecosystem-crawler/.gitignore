@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+
+# Rahasia dan data sensitif (ADR-CRW-0002)
+.env
+data/
+hasil/
+inbox/*
+!inbox/_CARA_PAKAI.txt
+
+# Konfigurasi lokal (berisi path mesin sendiri)
+.mcp.json

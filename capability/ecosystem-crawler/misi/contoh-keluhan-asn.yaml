@@ -1,0 +1,36 @@
+# Preset misi (ADR-CRW-0006). Jalankan: crawler misi jalankan misi/contoh-keluhan-asn.yaml
+# Formatnya sama dengan masukan dari Mamet: type, context, payload, trace_id.
+type: crawler.misi.jalankan
+context:
+  owner_intent: cari keluhan ASN soal mutasi dan tunjangan 3 bulan terakhir
+  bahasa: [id]
+  wilayah: ID
+payload:
+  sumber: [rss_media, mediakonsumen, arctic_shift, bluesky, youtube]
+  kata_kunci: [ASN, PNS, tunjangan, mutasi]
+  kata_kunci_kecuali: [lowongan, formasi CPNS]
+  rentang_waktu:
+    dari: 2026-07-21
+    sampai: 2026-10-21
+  batas:
+    per_sumber: 50
+    total: 250
+  komentar:
+    ambil: true
+    kedalaman: 1
+  buka_identitas_penulis: false
+  opsi_sumber:
+    rss_media:
+      ambil_isi: true
+      maks_isi: 10
+    mediakonsumen:
+      tag: [bkn, pns, asn]
+    arctic_shift:
+      subreddit: [indonesia, finansial]
+      maks_utas_komentar: 5
+    bluesky:
+      kecualikan_penulis: ["*-poster.bsky.social"]
+    youtube:
+      # Aktif hanya bila YOUTUBE_API_KEY sudah diisi di .env.
+      video_per_kata_kunci: 2
+      komentar_per_video: 20
