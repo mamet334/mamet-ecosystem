@@ -831,6 +831,12 @@ satu di `airdropEngine.cjs:211` yang **benar-benar** utang; enam sisanya placeho
 > Menyalinnya = dua berkas yang HARUS menyimpang dijaga uji yang menuntut sama. Penyatuannya
 > sebentuk dengan usul ADR **M9**.
 >
+> **Koreksi 23 Okt:** galat saldo OpenRouter tampil berjudul "Batas biaya harian Anda sudah tercapai" — server
+> kini menerjemahkan 402 ke kalimat Indonesia yang memuat kata "plafon" (kata kunci cabang batas harian). Cabang
+> saldo mengenali kalimat server; "plafon" saja tak lagi berarti batas harian; uji membangkitkan kalimatnya dari
+> fungsi server yang asli ([log](../project-memory/changelog/2026-10-23-pesan-galat-saldo-bukan-batas-harian.md)).
+> Mametlite dibiarkan (keputusan Owner) — tak salah sebut, hanya jatuh ke judul umum.
+>
 > Bukti: `uji-pesan-galat-ecosystem.mjs` 5 bagian, **3 mutasi menggigit**, suite 95/95. Satu merah
 > pada jalan pertama bukan temuan — polanya cocok dengan **komentar** yang menjelaskan cacat lamanya
 > (kembaran `uji-komentar-tak-berbohong`); ujinya kini membuang komentar lebih dulu, `\r` sebelum `//`.

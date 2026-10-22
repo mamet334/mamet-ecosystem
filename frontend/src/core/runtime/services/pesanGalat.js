@@ -61,7 +61,7 @@
 //
 // Diuji di `uji/uji-pesan-galat-ecosystem.mjs`.
 
-export const VERSI_PESAN_GALAT_ECOSYSTEM = 'pesan-galat-ecosystem v1 (2026-10-08)';
+export const VERSI_PESAN_GALAT_ECOSYSTEM = 'pesan-galat-ecosystem v2 (2026-10-23)';
 
 /** Panjang teks teknis yang ikut ke gelembung. Badan galat server bisa berupa halaman HTML utuh. */
 export const BATAS_TEKNIS = 400;
@@ -172,7 +172,15 @@ function dariTeks(teknis) {
 
   // 402 — catatan Owner: saldo minus BUKAN berarti layanan mati; permintaan kecil kadang masih
   // dilayani. Jadi pesannya tidak boleh menyatakan tidak bisa dipakai sama sekali.
-  if (ada(teknis, '402', 'can only afford', 'insufficient credits', 'insufficient_quota', 'credits')) {
+  //
+  // v2 (23 Okt): server MENERJEMAHKAN 402 sebelum sampai ke sini (`pesanSaldoTakCukup`,
+  // reasoning_openrouter.ts) — "Saldo OpenRouter hanya cukup untuk 133 token …" tidak lagi memuat
+  // "402" maupun "can only afford". Kalimat itu memuat kata "plafon", dan dulu jatuh ke cabang batas
+  // biaya HARIAN di bawah: Owner disuruh menaikkan batas harian ($2,2, belum tercapai) padahal yang
+  // habis saldo OpenRouter. Penanda kalimat server kini ikut dikenali; uji memanggil fungsi server
+  // yang asli untuk kelima variannya, jadi kalimat server yang berubah ketahuan di sini.
+  if (ada(teknis, '402', 'can only afford', 'insufficient credits', 'insufficient_quota', 'credits',
+    'saldo openrouter', 'saldo tidak cukup', 'saldo penyedia')) {
     return {
       judul: 'Saldo penyedia tidak cukup untuk permintaan ini.',
       saran: 'Isi ulang saldo di penyedia Anda, atau coba pertanyaan yang lebih pendek — permintaan kecil kadang masih dilayani.',
@@ -184,7 +192,11 @@ function dariTeks(teknis) {
   }
 
   // Plafon biaya harian: dipasang Item 34 dan dijaga di server, jadi kalimatnya bisa sampai ke sini.
-  if (ada(teknis, 'plafon', 'batas harian', 'daily cap', 'daily limit')) {
+  // Kalimat server: "DAILY_CAP_EXCEEDED: … exceeded the daily limit of $X USD" (costTracker.ts).
+  // v2: kata "plafon" SAJA tidak lagi cukup — server juga memakainya untuk plafon TOKEN jawaban
+  // ("diulang dengan plafon sekecil itu", "Plafon token jawaban habis"). Yang dikenali hanya
+  // penanda yang memang berarti batas biaya harian.
+  if (ada(teknis, 'daily_cap', 'daily cap', 'daily limit', 'batas harian', 'batas biaya harian', 'plafon harian')) {
     return {
       judul: 'Batas biaya harian Anda sudah tercapai.',
       saran: 'Naikkan batasnya di Settings, atau lanjutkan besok saat hitungannya dimulai ulang.',

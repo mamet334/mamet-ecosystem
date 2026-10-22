@@ -27,7 +27,7 @@ const P = await import(
   pathToFileURL(`${AKAR}/frontend/src/core/runtime/services/pesanGalat.js`).href + '?v=' + Date.now()
 );
 
-console.log(`uji-pesan-galat-ecosystem v1 · modul: ${P.VERSI_PESAN_GALAT_ECOSYSTEM}`);
+console.log(`uji-pesan-galat-ecosystem v2 · modul: ${P.VERSI_PESAN_GALAT_ECOSYSTEM}`);
 
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
@@ -200,6 +200,32 @@ cek(/whitespace-pre-line/.test(RK), 'dan baris teknisnya benar-benar turun ke ba
 // tanpa penerjemah galat.
 cek(!existsSync(`${AKAR}/frontend/src/components/EngineerChat.jsx`),
   'EngineerChat.jsx (yatim, menulis err.message mentah) sudah dihapus — K6');
+
+// ── v2 (23 Okt): kalimat saldo dari SERVER tidak boleh jatuh ke "batas biaya harian" ───────────────
+// Live 23 Okt 01.29 WIB: "Saldo OpenRouter hanya cukup untuk 133 token … diulang dengan plafon sekecil itu"
+// tampil berjudul "Batas biaya harian Anda sudah tercapai. Naikkan batasnya di Settings" — batas harian Owner
+// $2,2 dan BELUM tercapai; yang habis saldo OpenRouter. Sebabnya kata "plafon". Kalimatnya dibangkitkan dari
+// fungsi SERVER yang asli (bukan salinan), jadi bila kalimat server berubah, uji ini yang lebih dulu tahu.
+console.log('\n-- v2: kalimat saldo dari server → saldo, bukan batas harian --');
+const S = await import(pathToFileURL(`${AKAR}/supabase/functions/agent-process/lib/adapters/reasoning_openrouter.ts`).href);
+const varianSaldo = [
+  ['plafon ulang di bawah lantai', S.pesanSaldoTakCukup('{"error":{"code":402,"message":"You requested up to 8192 tokens, but can only afford 133"}}', 8192)],
+  ['sudah diulang, tetap ditolak', S.pesanSaldoTakCukup('You requested up to 8192 tokens, but can only afford 444', 8192)],
+  ['prompt terlalu besar', S.pesanSaldoTakCukup('Prompt tokens limit exceeded: 14250 > 3621', 8192)],
+  ['dua permintaan serentak', S.pesanSaldoTakCukup('Insufficient credits for in-flight requests', 8192)],
+  ['402 tak terbaca', S.pesanSaldoTakCukup('Payment Required', 8192)],
+  ['teks persis log 23 Okt', "Saldo OpenRouter hanya cukup untuk 133 token jawaban, sedangkan jawaban yang layak butuh minimal 128. Permintaan TIDAK diulang dengan plafon sekecil itu — jawaban terpotong akan terlihat seperti model gagal, bukan seperti saldo habis. Isi ulang saldo."],
+];
+cek(varianSaldo.slice(0, 5).every(([, k]) => typeof k === 'string' && k.length > 20), 'kelima kalimat saldo dibangkitkan fungsi server', varianSaldo.map(([n, k]) => [n, String(k).slice(0, 60)]));
+cek(/plafon/i.test(varianSaldo[0][1]), 'kalimat server memang memuat kata "plafon" (penyebab salah judul dulu)');
+for (const [nama, kalimat] of varianSaldo) {
+  const h = P.pesanUntukPengguna(`Provider 'OpenRouterAdapter' failed: ${kalimat}`);
+  cek(/[Ss]aldo/.test(h.judul) && !/harian/i.test(`${h.judul} ${h.saran}`), `${nama} → judul saldo, TIDAK menyebut batas harian`, h.judul);
+}
+const harian = P.pesanUntukPengguna('DAILY_CAP_EXCEEDED: User 3841e124 has exceeded the daily limit of $2.2 USD.');
+cek(/harian/i.test(harian.judul), 'kalimat batas harian yang SUNGGUHAN dari server (costTracker) tetap dikenali', harian.judul);
+const terpotong = P.pesanUntukPengguna(S.pesanTerpotongPlafon(119));
+cek(!/harian/i.test(`${terpotong.judul} ${terpotong.saran}`), '"Plafon token jawaban habis" (plafon TOKEN) tidak dibaca sebagai batas harian', terpotong.judul);
 
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));
 process.exit(gagal === 0 ? 0 : 1);
