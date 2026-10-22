@@ -5,6 +5,7 @@ import { ringkasPembaruan, bentukVersi, warnaStatus } from '../core/runtime/serv
 import TombolUnduhDesktop from './TombolUnduhDesktop';
 import { angka } from '../core/runtime/services/formatAngka.js';
 import BagianTampilan from './BagianTampilan';
+import BagianKonektor from './BagianKonektor';
 
 // Workspace yang bisa punya override preferensi tool sendiri (lihat WorkspaceManager.js)
 const TOGGLEABLE_WORKSPACES = [
@@ -173,7 +174,7 @@ export default function Settings() {
   const adaPembaruan = !!window.electronAPI?.checkForUpdates;
 
   // Urutan & syaratnya SAMA dengan bagian di bawah: Pembaruan hanya di aplikasi terpasang, Unduh Desktop
-  // hanya di web — jadi yang tampil selalu delapan, dan tak ada tab yang membuka halaman kosong. Ikonnya
+  // hanya di web — jadi yang tampil selalu sepuluh, dan tak ada tab yang membuka halaman kosong. Ikonnya
   // diambil dari kepala bagian masing-masing (Identitas memakai `person`, bukan `logout` milik tombolnya).
   const BAGIAN_SETTINGS = [
     { id: 'model', label: 'Model AI', ikon: 'psychology', tampil: true },
@@ -184,6 +185,7 @@ export default function Settings() {
     { id: 'desktop', label: 'Aplikasi Desktop', ikon: 'download', tampil: !adaPembaruan },
     { id: 'alat', label: 'Alat & Kemampuan', ikon: 'tune', tampil: true },
     { id: 'registry', label: 'Tool Registry', ikon: 'extension', tampil: true },
+    { id: 'konektor', label: 'Konektor', ikon: 'lan', tampil: true }, // Item 129 — konektor MCP per workspace
     { id: 'tampilan', label: 'Tampilan', ikon: 'visibility', tampil: true }, // Item 128 — tema & latar
     { id: 'identitas', label: 'Identitas', ikon: 'person', tampil: true },
   ];
@@ -799,6 +801,11 @@ export default function Settings() {
               )}
             </div>
           </section>
+          )}
+
+          {/* Konektor — sakelar MCP per workspace, disimpan di perangkat (Item 129 Tahap C) */}
+          {bagianAktif === 'konektor' && (
+          <BagianKonektor />
           )}
 
           {/* Tampilan — tema & latar ruangan (Item 128 Tahap B) */}

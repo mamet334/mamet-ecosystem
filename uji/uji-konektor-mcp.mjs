@@ -16,7 +16,9 @@ const AKAR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(path.join(AKAR, 'frontend', 'package.json'));
 const K = require(path.join(AKAR, 'frontend', 'electron', 'konektorMcp.cjs'));
 
-console.log('uji-konektor-mcp v1');
+// v2 (23 Okt, Tahap C): sakelar Settings disimpan di perangkat (K7) & dipulihkan saat aplikasi dibuka; `katalog`
+// dibaca Mamet sendiri saat nyala (ringkasan akses untuk Settings); sakelar ditekan dua kali → satu proses.
+console.log('uji-konektor-mcp v2');
 const PY = path.join(AKAR, 'capability', 'ecosystem-crawler', '.venv', 'Scripts', 'python.exe');
 if (!existsSync(PY)) {
   console.log(`DILEWATI — ${path.relative(AKAR, PY)} tidak ada di mesin ini (.venv tidak masuk repo)`);
@@ -61,8 +63,11 @@ console.log('\n-- 3. server crawler sungguhan, per workspace --');
 const log = [];
 const m = K.buatPengelolaKonektor({ akarRepo: AKAR, versi: 'uji', log: (s) => log.push(s) });
 try {
-  const a = await m.nyalakan('ws-assistant', 'ecosystem-crawler');
+  const [a, a2] = await Promise.all([m.nyalakan('ws-assistant', 'ecosystem-crawler'), m.nyalakan('ws-assistant', 'ecosystem-crawler')]);
   cek(a.ok && a.alat.length === 6, `Assistant: nyala, ${a.alat?.length} alat`, a);
+  cek(a2.pid === a.pid, 'dinyalakan dua kali bersamaan (sakelar ditekan ganda) → tetap SATU proses', { a: a.pid, a2: a2.pid });
+  cek(a.ringkasan?.akses && typeof a.ringkasan.akses.patuhi_robots === 'boolean' && a.ringkasan.sumber >= 10,
+    `katalog dibaca Mamet saat nyala → ringkasan akses + ${a.ringkasan?.sumber} sumber (${a.ringkasan?.siap} siap)`, a.ringkasan);
   let st = m.status();
   const sAsis = st.find((x) => x.workspace === 'ws-assistant');
   const sEng = st.find((x) => x.workspace === 'ws-engineer');
@@ -99,11 +104,48 @@ try {
 console.log('\n-- 4. K2: panggil() tidak diekspos ke layar --');
 const preload = readFileSync(path.join(AKAR, 'frontend', 'electron', 'preload.cjs'), 'utf8');
 const main = readFileSync(path.join(AKAR, 'frontend', 'electron', 'main.cjs'), 'utf8');
-cek(/konektor:status/.test(preload) && /konektor:nyalakan/.test(preload) && /konektor:matikan/.test(preload),
-  'layar bisa melihat status, menyalakan, dan mematikan konektor');
+cek(/konektor:status/.test(preload) && /konektor:atur/.test(preload),
+  'layar bisa melihat status dan memakai sakelar Settings');
+cek(!/konektor:nyalakan|konektor:matikan/.test(preload),
+  'satu jalur saja dari layar: sakelar (atur) — menyala tanpa tersimpan tidak mungkin, setelan = kebenaran');
 cek(!/konektor:panggil/.test(preload) && !/ipcMain\.handle\('konektor:panggil'/.test(main) && !/\.panggil\(/.test(main),
   'tidak ada IPC ke tools/call — gerbang persetujuan Owner (Tahap D) belum ada, jadi jalurnya pun belum ada');
 cek(/matikanSemua/.test(main) && /will-quit/.test(main), 'proses konektor dimatikan saat aplikasi keluar');
+cek(/berkasSetelan: path\.join\(app\.getPath\('userData'\), 'konektor\.json'\)/.test(main) && /pengelolaKonektor\.pulihkan\(\)/.test(main),
+  'K7: setelan di userData perangkat & dipulihkan saat aplikasi siap');
+
+// ── 5. Setelan sakelar di perangkat (K7) ──────────────────────────────────────────────────────────────────────
+console.log('\n-- 5. sakelar Settings: disimpan di perangkat, dipulihkan saat dibuka --');
+const berkas = path.join(mkdtempSync(path.join(os.tmpdir(), 'konektor-setelan-')), 'konektor.json');
+const m1 = K.buatPengelolaKonektor({ akarRepo: AKAR, berkasSetelan: berkas });
+try {
+  const nyala = await m1.atur('ws-assistant', 'ecosystem-crawler', true);
+  const isiBerkas = JSON.parse(readFileSync(berkas, 'utf8'));
+  cek(nyala.ok && isiBerkas['ws-assistant']?.['ecosystem-crawler'] === true && !isiBerkas['ws-engineer'],
+    'sakelar Assistant → tersimpan hanya untuk Assistant, lalu menyala', isiBerkas);
+  const st1 = m1.status();
+  cek(st1.find((x) => x.workspace === 'ws-assistant').diaktifkan && !st1.find((x) => x.workspace === 'ws-engineer').diaktifkan,
+    'status membedakan "diaktifkan Owner" per workspace');
+  cek(!(await m1.atur('ws-assistant', 'ecosystem-crawler', 'ya')).ok, 'nilai sakelar selain true/false ditolak');
+} finally { await m1.matikanSemua(); }
+
+// "Aplikasi dibuka lagi": pengelola baru dengan berkas yang sama.
+const m2 = K.buatPengelolaKonektor({ akarRepo: AKAR, berkasSetelan: berkas });
+try {
+  const pulih = await m2.pulihkan();
+  const st2 = m2.status();
+  cek(pulih.length === 1 && pulih[0].ok && st2.find((x) => x.workspace === 'ws-assistant').status === 'nyala'
+    && st2.find((x) => x.workspace === 'ws-engineer').status === 'mati',
+  'dibuka lagi → yang dinyalakan Owner (Assistant) menyala sendiri; Engineer tetap mati', pulih);
+  const mati = await m2.atur('ws-assistant', 'ecosystem-crawler', false);
+  cek(mati.ok && mati.status === 'mati' && !JSON.parse(readFileSync(berkas, 'utf8'))['ws-assistant']?.['ecosystem-crawler'],
+    'sakelar dimatikan → terhapus dari setelan & proses berhenti');
+} finally { await m2.matikanSemua(); }
+
+writeFileSync(berkas, '{rusak');
+cek(JSON.stringify(K.buatPengelolaKonektor({ akarRepo: AKAR, berkasSetelan: berkas }).bacaSetelan()) === '{}', 'berkas setelan rusak → dianggap kosong, tidak membuat aplikasi gagal');
+cek(JSON.stringify(K.normalisasiSetelan({ 'ws-assistant': { 'ecosystem-crawler': 'true', lain: true }, 'ws-x': { 'ecosystem-crawler': true } })) === '{}',
+  'setelan hanya menerima workspace & konektor yang dikenal dengan nilai true');
 
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));
 process.exit(gagal === 0 ? 0 : 1);

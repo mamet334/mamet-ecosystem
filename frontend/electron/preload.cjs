@@ -48,14 +48,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // =============================================
 
   // =============================================
-  // KONEKTOR MCP (Item 129 Tahap B) — status, nyalakan, matikan per workspace (K3). Pemanggilan alat SENGAJA tidak
-  // ada di sini: K2 mewajibkan persetujuan Owner, dan gerbangnya ada di proses utama (Tahap D).
+  // KONEKTOR MCP (Item 129 Tahap B–C) — status & sakelar Settings per workspace (K3), disimpan di perangkat (K7).
+  // Pemanggilan alat SENGAJA tidak ada di sini: K2 mewajibkan persetujuan Owner, gerbangnya di proses utama (Tahap D).
   // =============================================
 
   konektor: {
     status: () => ipcRenderer.invoke('konektor:status'),
-    nyalakan: (workspace, konektor) => ipcRenderer.invoke('konektor:nyalakan', { workspace, konektor }),
-    matikan: (workspace, konektor) => ipcRenderer.invoke('konektor:matikan', { workspace, konektor }),
+    atur: (workspace, konektor, nyala) => ipcRenderer.invoke('konektor:atur', { workspace, konektor, nyala }),
   },
 
   engineer: {

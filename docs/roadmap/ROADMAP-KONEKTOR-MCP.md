@@ -7,7 +7,9 @@ per misi · kode crawler disalin ke repo dulu · Python dibundel di pemasang; Go
 (K11–K13 diputuskan).** **Tahap A ✅ 23 Okt** — crawler disalin ke `capability/ecosystem-crawler/` beserta `.env`
 & `.venv`, alamat lama dibersihkan ([log](../project-memory/changelog/2026-10-23-konektor-mcp-tahap-a-salin-crawler.md)).
 **Tahap B ✅ 23 Okt** — klien MCP di proses utama, per workspace, SDK resmi (K15)
-([log](../project-memory/changelog/2026-10-23-konektor-mcp-tahap-b-klien-mcp.md)). Berikutnya Tahap C; K14 menyusul.
+([log](../project-memory/changelog/2026-10-23-konektor-mcp-tahap-b-klien-mcp.md)). **Tahap C ✅ 23 Okt** — Settings ›
+Konektor, setelan di perangkat, terbukti di aplikasi desktop Owner
+([log](../project-memory/changelog/2026-10-23-konektor-mcp-tahap-c-settings.md)). Berikutnya Tahap D; K14 menyusul.
 **Aplikasi:** **Mamet Ecosystem** (`frontend/`, desktop Electron + web) — **bukan** Mametlite.
 **Arah:** Mamet sebagai **klien** MCP — memakai alat dari server MCP luar. Mamet **tidak** dibuka sebagai server MCP
 (arah itu tidak termasuk item ini).
@@ -170,7 +172,9 @@ dengan aturan `alatFolderJalan` (tanpa shell, lingkungan bersih, folder kerja te
 dimatikan atau aplikasi ditutup. Batas waktu per panggilan (misi crawler menunggu ≤ 110 s) dan batas ukuran hasil.
 Jembatan ke layar lewat `preload.cjs`. Pustaka: K15.
 
-**Tahap C — Settings › Konektor (K5, K7).** Tab baru: daftar konektor (crawler sebagai konektor bawaan), sakelar
+**Tahap C — Settings › Konektor (K5, K7).** ✅ **Selesai 23 Okt**
+([log](../project-memory/changelog/2026-10-23-konektor-mcp-tahap-c-settings.md)) — susunan ①–⑤ disetujui Owner dari
+pratinjau; dari layar hanya `status` & `atur` (sakelar tersimpan). Tab baru: daftar konektor (crawler sebagai konektor bawaan), sakelar
 **terpisah** untuk Assistant dan Engineer (K3), status kesehatan, dan keadaan akses crawler (`akses` dari `katalog`:
 robots.txt & stealth). Setelan disimpan **di perangkat** lewat proses utama — tidak ikut akun (K7). Versi web
 menampilkan "hanya tersedia di desktop".
@@ -219,5 +223,6 @@ Assistant, dialog muncul sekali, hasil terbaca, Engineer tetap tak terhubung (K3
 
 ## 8. Langkah berikutnya
 
-Tahap A ✅ → Tahap B ✅ → **Tahap C** (Settings › Konektor: sakelar per workspace, status, akses crawler; setelan di
-perangkat) → D → E, satu tahap satu kali kerja, masing-masing dengan bukti dan izin Owner sebelum lanjut.
+Tahap A ✅ → Tahap B ✅ → Tahap C ✅ → **Tahap D** (protokol ke model + gerbang persetujuan sekali per misi di proses
+utama; satu-satunya jalur `tools/call`) → E, satu tahap satu kali kerja, masing-masing dengan bukti dan izin Owner
+sebelum lanjut. Uji alur misi sungguhan di Tahap D butuh saldo OpenRouter yang cukup.

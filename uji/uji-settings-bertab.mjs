@@ -21,7 +21,7 @@ const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (kode) =>
   kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
-console.log('uji-settings-bertab v2');
+console.log('uji-settings-bertab v3');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -35,10 +35,11 @@ const S = tanpaKomentar(baca('frontend/src/components/Settings.jsx'));
 // v2 (Item 128, 20 Okt): bagian ke-10 "Tampilan" adalah komponen tersendiri (`<BagianTampilan />`, isinya <section>
 // di berkasnya) — Settings.jsx sudah panjang. Bagian dikenali dari baris `<section ` ATAU `<Bagian… />`; syaratnya sama:
 // baris tepat sebelumnya adalah syarat tab aktif.
-console.log('\n-- 1. sepuluh bagian, sepuluh syarat --');
+// v3 (Item 129, 23 Okt): bagian ke-11 "Konektor" = `<BagianKonektor />` (komponen sendiri, pola sama dengan Tampilan).
+console.log('\n-- 1. sebelas bagian, sebelas syarat --');
 const baris = S.split('\n');
 const iSection = baris.map((x, i) => (/^\s*(<section |<Bagian[A-Z]\w* \/>)/.test(x) ? i : -1)).filter((i) => i >= 0);
-cek(iSection.length === 10, `10 bagian: <section> atau <Bagian… /> (${iSection.length})`);
+cek(iSection.length === 11, `11 bagian: <section> atau <Bagian… /> (${iSection.length})`);
 const idBagian = iSection.map((i) => (baris[i - 1].match(/bagianAktif === '([a-z]+)' && \($/) || [])[1]);
 cek(idBagian.every(Boolean), 'baris tepat sebelum tiap <section> adalah syarat tab aktif', idBagian);
 cek(new Set(idBagian).size === idBagian.length, 'id bagian unik — tak ada dua bagian di tab yang sama', idBagian);
@@ -59,7 +60,7 @@ cek(/\{!adaPembaruan && bagianAktif === 'desktop' && \(/.test(S), 'bagian Unduh 
 const t = Object.fromEntries(daftar.map((d) => [d.id, d.tampil]));
 cek(t.pembaruan === 'adaPembaruan' && t.desktop === '!adaPembaruan', 'tab mengikuti syarat yang SAMA (tak ada tab kosong)', t);
 cek(Object.entries(t).filter(([k]) => k !== 'pembaruan' && k !== 'desktop').every(([, v]) => v === 'true'),
-  'tujuh tab lain selalu tampil');
+  'sembilan tab lain selalu tampil');
 
 // ── 4. Seluler ──────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 4. tab tidak menyusut di seluler --');
