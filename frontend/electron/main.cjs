@@ -1196,6 +1196,29 @@ ipcMain.handle('engineer:jalankan', async (_event, perintah) => {
   return hasil;
 });
 
+// KONEKTOR MCP (Item 129 Tahap B, 2026-10-23) — Mamet sebagai klien MCP; rincian di konektorMcp.cjs.
+// Satu proses server per (workspace, konektor) — keputusan Owner K3. Akar repo = dua tingkat di atas berkas ini
+// (`npm run desktop`); di aplikasi terpasang crawler belum ada di sana → status "tidak tersedia" sampai Tahap E.
+// Layar hanya bisa melihat status, menyalakan, dan mematikan. Pemanggilan alat (tools/call) BELUM punya jalur dari
+// layar: K2 mewajibkan persetujuan Owner, dan gerbangnya dibangun di proses ini pada Tahap D.
+const { buatPengelolaKonektor } = require('./konektorMcp.cjs');
+const pengelolaKonektor = buatPengelolaKonektor({
+  akarRepo: path.resolve(__dirname, '..', '..'),
+  versi: app.getVersion(),
+  log: (pesan) => console.log(pesan),
+});
+ipcMain.handle('konektor:status', () => pengelolaKonektor.status());
+ipcMain.handle('konektor:nyalakan', (_event, { workspace, konektor } = {}) => pengelolaKonektor.nyalakan(workspace, konektor));
+ipcMain.handle('konektor:matikan', (_event, { workspace, konektor } = {}) => pengelolaKonektor.matikan(workspace, konektor));
+// Server konektor adalah proses anak — tanpa ini ia tetap hidup sesudah Mamet ditutup.
+let konektorSudahDimatikan = false;
+app.on('will-quit', (event) => {
+  if (konektorSudahDimatikan) return;
+  event.preventDefault();
+  konektorSudahDimatikan = true;
+  pengelolaKonektor.matikanSemua().finally(() => app.quit());
+});
+
 // 4. Check for updates manually
 ipcMain.handle('check-for-updates', async () => {
   if (isDev) return { status: 'dev-mode', message: 'Auto-updater dinonaktifkan dalam mode development.' };

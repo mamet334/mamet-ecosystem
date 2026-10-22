@@ -47,6 +47,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Menggantikan runTerminalCommand (shell bebas) yang dihapus 2026-09-22.
   // =============================================
 
+  // =============================================
+  // KONEKTOR MCP (Item 129 Tahap B) — status, nyalakan, matikan per workspace (K3). Pemanggilan alat SENGAJA tidak
+  // ada di sini: K2 mewajibkan persetujuan Owner, dan gerbangnya ada di proses utama (Tahap D).
+  // =============================================
+
+  konektor: {
+    status: () => ipcRenderer.invoke('konektor:status'),
+    nyalakan: (workspace, konektor) => ipcRenderer.invoke('konektor:nyalakan', { workspace, konektor }),
+    matikan: (workspace, konektor) => ipcRenderer.invoke('konektor:matikan', { workspace, konektor }),
+  },
+
   engineer: {
     jalankan: (perintah) => ipcRenderer.invoke('engineer:jalankan', perintah),
     ujiKlaim: (permintaan) => ipcRenderer.invoke('engineer:uji-klaim', permintaan),

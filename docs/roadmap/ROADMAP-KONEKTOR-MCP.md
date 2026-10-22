@@ -6,7 +6,8 @@ semua alat menunggu persetujuan · per workspace · lokal & jarak jauh · diatur
 per misi · kode crawler disalin ke repo dulu · Python dibundel di pemasang; Google Drive ditunda). **Rancangan bertahap §6 ditulis & dikoreksi Owner 23 Okt
 (K11–K13 diputuskan).** **Tahap A ✅ 23 Okt** — crawler disalin ke `capability/ecosystem-crawler/` beserta `.env`
 & `.venv`, alamat lama dibersihkan ([log](../project-memory/changelog/2026-10-23-konektor-mcp-tahap-a-salin-crawler.md)).
-Berikutnya Tahap B (perlu K15); K14 menyusul.
+**Tahap B ✅ 23 Okt** — klien MCP di proses utama, per workspace, SDK resmi (K15)
+([log](../project-memory/changelog/2026-10-23-konektor-mcp-tahap-b-klien-mcp.md)). Berikutnya Tahap C; K14 menyusul.
 **Aplikasi:** **Mamet Ecosystem** (`frontend/`, desktop Electron + web) — **bukan** Mametlite.
 **Arah:** Mamet sebagai **klien** MCP — memakai alat dari server MCP luar. Mamet **tidak** dibuka sebagai server MCP
 (arah itu tidak termasuk item ini).
@@ -161,7 +162,9 @@ Catatan untuk Tahap E: `.venv` tidak bisa dibawa pemasang sendirian karena berga
 Pemasang perlu Python dasar + `site-packages` — keduanya juga bisa **disalin** dari laptop ini, tidak harus diunduh.
 Tampilan aplikasi belum berubah di tahap ini.
 
-**Tahap B — Klien MCP di proses utama.** Modul baru `electron/konektorMcp.cjs`: menjalankan server MCP lokal (stdio)
+**Tahap B — Klien MCP di proses utama.** ✅ **Selesai 23 Okt**
+([log](../project-memory/changelog/2026-10-23-konektor-mcp-tahap-b-klien-mcp.md)) — `panggil()` belum punya jalur dari
+layar; jalurnya datang bersama gerbang persetujuan di Tahap D. Modul baru `electron/konektorMcp.cjs`: menjalankan server MCP lokal (stdio)
 dengan aturan `alatFolderJalan` (tanpa shell, lingkungan bersih, folder kerja tetap), lalu `initialize` →
 `tools/list` → `tools/call`. Satu proses server per workspace yang menyalakannya (K3); dimatikan saat konektor
 dimatikan atau aplikasi ditutup. Batas waktu per panggilan (misi crawler menunggu ≤ 110 s) dan batas ukuran hasil.
@@ -206,15 +209,15 @@ Assistant, dialog muncul sekali, hasil terbaca, Engineer tetap tak terhubung (K3
 | ~~K11~~ | Letak kode crawler di repo Mamet | ✅ **`capability/ecosystem-crawler/`** di akar repo — sejajar `frontend/`, `backend/`, `mametlite/`; "capability" mengikuti istilah konstitusi |
 | ~~K12~~ | Sesudah disalin, di mana crawler dikembangkan | ✅ **di folder Mamet**; repo `ecosystem-crawler` **dibiarkan apa adanya** (tidak diarsipkan, tidak disentuh). Perubahan di Mamet tidak mengalir balik ke sana |
 | ~~K13~~ | Yang ikut disalin | ✅ **kode asli + `.env`** (garam pseudonim & kunci); data tangkapan tidak — gudang di Mamet mulai baru |
+| ~~K15~~ | Pustaka klien MCP | ✅ **SDK resmi `@modelcontextprotocol/sdk`** — diunduh dengan izin Owner 23 Okt (1.32.1) |
 
-**Masih terbuka (dibutuhkan mulai Tahap B dan E, bukan Tahap A):**
+**Masih terbuka (dibutuhkan di Tahap E):**
 
 | # | Pertanyaan | Usul |
 |---|---|---|
 | K14 | Browser stealth (±719 MB) | **tidak dibundel**; diunduh sekali saat tingkat stealth pertama kali dibutuhkan, dengan persetujuan Owner — pemasang tetap wajar untuk pembaruan otomatis; tanpa browser, halaman yang memblokir dilewati dan dicatat (perilaku crawler saat ini) |
-| K15 | Pustaka klien MCP | **SDK resmi `@modelcontextprotocol/sdk`** (dependensi baru, perlu izin unduh) — protokolnya berkembang, dan jalur jarak jauh (K4, OAuth) jauh lebih rumit bila ditulis sendiri |
 
 ## 8. Langkah berikutnya
 
-Tahap A ✅ → **Tahap B** (klien MCP di proses utama; perlu keputusan K15) → C → D → E, satu tahap satu kali kerja,
-masing-masing dengan bukti dan izin Owner sebelum lanjut.
+Tahap A ✅ → Tahap B ✅ → **Tahap C** (Settings › Konektor: sakelar per workspace, status, akses crawler; setelan di
+perangkat) → D → E, satu tahap satu kali kerja, masing-masing dengan bukti dan izin Owner sebelum lanjut.
