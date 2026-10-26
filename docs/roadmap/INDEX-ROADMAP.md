@@ -252,14 +252,15 @@ sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
 
 Versi di `package.json`: **4.3.0** (dinaikkan 26 Okt untuk mengirim **Item 129** konektor + crawler terbundel —
 [log](../project-memory/changelog/2026-10-26-rilis-4.3.0-crawler-terbundel.md); sebelumnya 4.2.16 untuk **E9**,
-8 Okt). Keadaan di platform, **diperiksa lewat API GitHub 8 Okt** — bukan disimpulkan dari dokumen ini; **v4.3.0
-belum diperiksa di platform**:
+8 Okt). Keadaan di platform, **diperiksa lewat API GitHub** (8 Okt; v4.3.0 pada 26 Okt) — bukan disimpulkan dari
+dokumen ini:
 
 | Rilis | Keadaan | Aset |
 |---|---|---|
 | **v4.2.14** | **TERBIT** 2026-10-06 22:36 UTC (`isDraft: false`) | `Mamet-AI-Setup-4.2.14.exe` |
 | **v4.2.15** | **TERBIT** `2026-10-08T14:04:59Z` — diterbitkan Owner 2 menit sesudah build; aplikasi menariknya sendiri 4 menit kemudian (cache updater, 189.543.735 byte) | `Mamet-AI-Setup-4.2.15.exe` |
 | **v4.2.16** | **TERBIT** `2026-10-08T15:38:13Z` (dibangun 15:36Z) — membawa **E9**; aplikasi menariknya sendiri **2 menit** kemudian dan **sudah terpasang** di mesin Owner | `Mamet-AI-Setup-4.2.16.exe` (189.544.694 byte) |
+| **v4.3.0** | **TERBIT** `2026-10-26T08:48:28Z`, **Latest** — membawa **Item 129** (konektor MCP + Python & crawler terbundel); build ke-3 berhasil sesudah 2 kegagalan build GitHub ([log](../project-memory/changelog/2026-10-26-rilis-4.3.0-crawler-terbundel.md)); penarikan otomatis di mesin Owner belum diperiksa | `Mamet-AI-Setup-4.3.0.exe` (261.724.914 byte) |
 
 > ⚠️ **KOREKSI 8 Okt, dan pelajarannya sama dengan T11.** Bagian ini sebelumnya berbunyi *"Tiga
 > muatan menunggu build"* untuk 4.2.14 — dan itu **sudah basi sejak 6 Okt 22:36**: rilisnya dibangun
