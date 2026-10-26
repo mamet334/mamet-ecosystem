@@ -55,6 +55,31 @@ export const lewatiPython = (r) => PYTHON_LEWATI.some((p) => p.test(r));
 export const lewatiPaket = (r) => PAKET_LEWATI.some((p) => p.test(r));
 export const lewatiKode = (r) => KODE_LEWATI.some((p) => p.test(r));
 
+/**
+ * Salin `asal` → `tujuan` dengan aturan buang `lewati(rel)` (rel huruf kecil, pemisah '/'). Penjalan SENDIRI, bukan
+ * fs.cpSync: di build GitHub 4.3.0 (Node 20) `filter` cpSync tidak diterapkan — bundel jadi 281 MB berisi Scripts,
+ * __pycache__, penggerak stealth — dan symlink `python3.exe` milik Python hostedtoolcache ikut tersalin sebagai symlink
+ * yang membuat 7-Zip pemasang gagal. Di sini hanya BERKAS & FOLDER BIASA yang disalin; symlink/junction dilewati dan
+ * dilaporkan (Python terbundel dijalankan lewat python.exe, tak butuh tautan). Hasil sama di setiap versi Node.
+ */
+export function salinTersaring(asal, tujuan, lewati) {
+  const tautan = [];
+  const jalan = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, e.name);
+      const r = rel(asal, p);
+      if (lewati(r)) continue;
+      const t = path.join(tujuan, path.relative(asal, p));
+      if (e.isSymbolicLink()) tautan.push(r);
+      else if (e.isDirectory()) { fs.mkdirSync(t, { recursive: true }); jalan(p); }
+      else if (e.isFile()) fs.copyFileSync(p, t);
+    }
+  };
+  fs.mkdirSync(tujuan, { recursive: true });
+  jalan(asal);
+  return { tautan };
+}
+
 function ukuranMB(dir) {
   let n = 0;
   for (const e of fs.readdirSync(dir, { withFileTypes: true, recursive: true })) {
@@ -139,9 +164,9 @@ print(json.dumps({"alat": alat, "sumber": len(kat["sumber"]), "siap": sum(1 for 
 }
 
 /**
- * Paket yang dibuang (PAKET_LEWATI) tapi masih ada di site-packages bundel — dibersihkan langsung, tidak hanya
- * mengandalkan `filter` fs.cpSync (rilis 4.3.0: build GitHub, Node 20, lolos membawa komponen stealth padahal di
- * laptop Owner, Node 24, tidak). Mengembalikan nama yang dibersihkan.
+ * Paket yang dibuang (PAKET_LEWATI) tapi masih ada di site-packages bundel — dibersihkan langsung. Penjaga kedua di
+ * belakang `salinTersaring` (rilis 4.3.0: `filter` fs.cpSync di Node 20 lolos membawa komponen stealth). Sesudah
+ * penjalan sendiri, daftar ini semestinya kosong; bila tidak, build mencatatnya. Mengembalikan nama yang dibersihkan.
  */
 export function bersihkanPaketLewati(spBundel) {
   const dibuang = fs.readdirSync(spBundel).filter((n) => lewatiPaket(n.toLowerCase()) || lewatiPaket(`${n.toLowerCase()}/`));
@@ -170,15 +195,16 @@ export function siapkan({ tujuan = TUJUAN, log = console.log } = {}) {
   const sitePackages = path.join(VENV, 'Lib', 'site-packages');
   fs.rmSync(tujuan, { recursive: true, force: true });
   log(`[crawler] Python dasar: ${dasar}`);
-  fs.cpSync(dasar, path.join(tujuan, 'python'), { recursive: true, filter: (p) => !lewatiPython(rel(dasar, p)) });
+  const tautan = salinTersaring(dasar, path.join(tujuan, 'python'), lewatiPython).tautan;
   const hilang = periksaPythonTerbundel(path.join(tujuan, 'python'));
   if (hilang.length) throw new Error(`Python dasar tidak lengkap untuk PC bersih — tidak ada: ${hilang.join(', ')} (di ${dasar})`);
   log('[crawler] paket crawler (tanpa penggerak stealth & pytest; pip ikut)');
-  fs.cpSync(sitePackages, path.join(tujuan, 'python', 'Lib', 'site-packages'), { recursive: true, filter: (p) => !lewatiPaket(rel(sitePackages, p)) });
+  tautan.push(...salinTersaring(sitePackages, path.join(tujuan, 'python', 'Lib', 'site-packages'), lewatiPaket).tautan);
   const tersisa = bersihkanPaketLewati(path.join(tujuan, 'python', 'Lib', 'site-packages'));
   if (tersisa.length) log(`[crawler] dibersihkan sesudah salin (lolos filter): ${tersisa.join(', ')}`);
   log('[crawler] kode crawler');
-  fs.cpSync(path.join(CRAWLER, 'crawler'), path.join(tujuan, 'crawler'), { recursive: true, filter: (p) => !lewatiKode(rel(CRAWLER, p)) });
+  tautan.push(...salinTersaring(path.join(CRAWLER, 'crawler'), path.join(tujuan, 'crawler'), lewatiKode).tautan);
+  if (tautan.length) log(`[crawler] tautan (symlink/junction) tidak disalin: ${tautan.join(', ')}`);
   // E2: versi Patchright DIKUNCI dari .venv pengembangan — versi yang terbukti dengan Scrapling crawler ini.
   const versiPatchright = fs.readdirSync(sitePackages).map((n) => n.match(/^patchright-(\d+\.\d+\.\d+)\.dist-info$/)?.[1]).find(Boolean);
   if (!versiPatchright) throw new Error('patchright tidak ada di .venv crawler — versi komponen stealth tak bisa dikunci');

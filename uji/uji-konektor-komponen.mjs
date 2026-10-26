@@ -10,7 +10,7 @@
 //   - bagian 5: runtime terbundel sungguhan memuat komponen.json yang cocok dengan isi site-packages-nya.
 
 import { createRequire } from 'node:module';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -21,7 +21,7 @@ const KK = require(path.join(AKAR, 'frontend', 'electron', 'komponenKonektor.cjs
 const K = require(path.join(AKAR, 'frontend', 'electron', 'konektorMcp.cjs'));
 const S = await import(pathToFileURL(path.join(AKAR, 'frontend', 'scripts', 'siapkan-crawler.mjs')).href);
 
-console.log('uji-konektor-komponen v2');
+console.log('uji-konektor-komponen v3');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 600)}` : ''}`);
@@ -161,6 +161,24 @@ const dibuang = S.bersihkanPaketLewati(spBundel).sort();
 cek(dibuang.join(',') === 'Patchright-1.64.1.dist-info,_pytest,patchright,playwright' && readdirSync(spBundel).sort().join(',') === 'mcp-2.3.0.dist-info,scrapling',
   'bersihkanPaketLewati: penggerak stealth & pytest dibuang (tak peka huruf besar), paket kerja tetap', { dibuang, sisa: readdirSync(spBundel) });
 cek(/bersihkanPaketLewati\(path\.join\(tujuan, 'python', 'Lib', 'site-packages'\)\)/.test(sumberSiap), 'siapkan membersihkan site-packages bundel sesudah salin');
+
+// Build GitHub 4.3.0 kedua: filter fs.cpSync (Node 20) tak diterapkan & symlink python3.exe ikut tersalin → 7-Zip
+// pemasang gagal. Penyiap kini memakai penjalan sendiri: aturan buang diterapkan di setiap tingkat, tautan dilewati.
+const asalSalin = sementara('salin-asal-');
+tulis(path.join(asalSalin, 'python.exe'), 'x');
+tulis(path.join(asalSalin, 'Scripts', 'pipx.exe'), 'x');
+tulis(path.join(asalSalin, 'Lib', 'os.py'), 'x');
+tulis(path.join(asalSalin, 'Lib', 'json', '__pycache__', 'a.pyc'), 'x');
+tulis(path.join(asalSalin, 'Lib', 'site-packages', 'pipx', 'x.py'), 'x');
+mkdirSync(path.join(asalSalin, 'sasaran-tautan'));
+symlinkSync(path.join(asalSalin, 'sasaran-tautan'), path.join(asalSalin, 'tautan'), 'junction');
+const tujuanSalin = path.join(sementara('salin-tujuan-'), 'python');
+const hs = S.salinTersaring(asalSalin, tujuanSalin, S.lewatiPython);
+const ada = (r) => existsSync(path.join(tujuanSalin, r));
+cek(ada('python.exe') && ada('Lib/os.py') && ada('sasaran-tautan'), 'salinTersaring: berkas & folder biasa tersalin');
+cek(!ada('Scripts') && !ada('Lib/site-packages') && !ada('Lib/json/__pycache__'), 'salinTersaring: aturan buang diterapkan di setiap tingkat (Scripts, site-packages global, __pycache__)');
+cek(!ada('tautan') && hs.tautan.join(',') === 'tautan', 'salinTersaring: symlink/junction TIDAK disalin & dilaporkan', hs);
+cek(!/fs\.cpSync\(/.test(sumberSiap), 'siapkan tidak lagi memakai fs.cpSync (filternya tak diterapkan di Node 20)');
 
 const CRAWLER = path.join(AKAR, 'capability', 'ecosystem-crawler');
 const kunciTeks = readFileSync(path.join(CRAWLER, 'requirements-bundel.txt'), 'utf8');
