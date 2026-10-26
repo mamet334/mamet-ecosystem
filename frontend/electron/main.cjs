@@ -1241,9 +1241,9 @@ ipcMain.handle('konektor:pasang-stealth', async () => {
     title: 'Mamet — komponen stealth crawler',
     message: 'Unduh komponen tingkat stealth Ecosystem Crawler?',
     detail: [
-      'Yang diunduh:',
-      '• paket Patchright (±40 MB) dari PyPI → %APPDATA%\\Mamet AI\\crawler\\stealth',
-      '• browser Chromium (±300 MB) dari server browser Playwright → %LOCALAPPDATA%\\ms-playwright — dilewati bila sudah ada di laptop ini',
+      'Yang diunduh (ruang disk sesudah terpasang, ±830 MB; unduhannya lebih kecil karena terkompresi):',
+      '• paket Patchright (±110 MB) dari PyPI → %APPDATA%\\Mamet AI\\crawler\\stealth',
+      '• browser Chromium + headless shell + ffmpeg (±720 MB) dari server browser Playwright → %LOCALAPPDATA%\\ms-playwright — dilewati bila sudah ada di laptop ini',
       '',
       'Gunanya: halaman publik yang memblokir crawler dicoba lagi dengan browser yang menyamarkan sidik jarinya (bila sakelar CRAWLER_STEALTH nyala). Tanpa komponen ini, halaman seperti itu dilewati dan dicatat.',
       'Pemasangan bisa makan beberapa menit; konektor yang menyala akan dimulai ulang.',
@@ -1255,6 +1255,15 @@ ipcMain.handle('konektor:pasang-stealth', async () => {
   });
   if (response !== 1) return { ok: false, ditolakOwner: true, alasan: 'dibatalkan Owner' };
   return pengelolaKonektor.pasangStealth();
+});
+// Tahap E3: Settings ⑦ "Yang terpasang di perangkat ini" + tombol "Buka folder". Layar mengirim KUNCI folder
+// (bawaan/data/stealth/browser); alamatnya disusun di proses ini dari daftar yang sama — bukan alamat dari layar.
+ipcMain.handle('konektor:komponen', (_event, { konektor } = {}) => pengelolaKonektor.komponen(konektor));
+ipcMain.handle('konektor:buka-folder', async (_event, { konektor, kunci } = {}) => {
+  const lokasi = pengelolaKonektor.lokasiFolder(konektor, kunci);
+  if (!lokasi) return { ok: false, alasan: 'folder tidak dikenal atau belum ada' };
+  const galat = await shell.openPath(lokasi); // '' berarti berhasil
+  return galat ? { ok: false, alasan: galat } : { ok: true };
 });
 app.whenReady().then(() => pengelolaKonektor.pulihkan().then((h) => {
   if (h.length) console.log(`[KONEKTOR] dipulihkan: ${h.map((x) => `${x.workspace}::${x.konektor}=${x.ok ? 'nyala' : x.alasan}`).join(', ')}`);

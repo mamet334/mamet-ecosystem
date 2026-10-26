@@ -23,6 +23,7 @@ const { execFile } = require('child_process');
 const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const { StdioClientTransport, getDefaultEnvironment } = require('@modelcontextprotocol/sdk/client/stdio.js');
 const stealth = require('./stealthKonektor.cjs');
+const komponenKonektor = require('./komponenKonektor.cjs');
 
 const WORKSPACE = Object.freeze(['ws-assistant', 'ws-engineer']);
 
@@ -316,6 +317,20 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbunde
     return sedangPasangStealth;
   }
 
+  // Settings ⑦ (Tahap E3): yang terpasang di perangkat untuk konektor `id` — lihat komponenKonektor.cjs. Terpisah dari
+  // status() karena menghitung ukuran folder (status dibaca layar tiap 3 detik).
+  const opsiKomponen = (id) => ({ runtimeTerbundel, folderData, folderRepo: akarRepo ? path.join(akarRepo, ...KONEKTOR[id].folder) : null });
+
+  async function komponen(id) {
+    if (!sahKonektor(id)) return tolak(`konektor tidak dikenal: ${id}`);
+    return { ok: true, ...(await komponenKonektor.bacaKomponen(opsiKomponen(id))) };
+  }
+
+  /** Alamat untuk tombol "Buka folder" — layar mengirim kunci, bukan alamat; null bila tak dikenal / tak ada. */
+  function lokasiFolder(id, kunci) {
+    return sahKonektor(id) ? komponenKonektor.lokasiFolder(kunci, opsiKomponen(id)) : null;
+  }
+
   /** Saat aplikasi dibuka: konektor yang dinyalakan Owner dinyalakan lagi. Gagal → tampil di status, tidak diulang. */
   async function pulihkan() {
     const setelan = bacaSetelan();
@@ -344,7 +359,7 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbunde
     }
   }
 
-  return { status, nyalakan, matikan, matikanSemua, panggil, atur, pulihkan, bacaSetelan, pasangStealth };
+  return { status, nyalakan, matikan, matikanSemua, panggil, atur, pulihkan, bacaSetelan, pasangStealth, komponen, lokasiFolder };
 }
 
 /** `misi_id` dari hasil jalankan_misi (selesai maupun masih berjalan, keduanya memuatnya). */

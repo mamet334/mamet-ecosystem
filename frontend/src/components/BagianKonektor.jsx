@@ -6,7 +6,7 @@ import Ikon from './Ikon';
  *
  *   ① tab sendiri · ② sakelar TERPISAH Assistant/Engineer (K3) · ③ cara crawler mengakses halaman, hanya ditampilkan
  *   (dibaca Mamet dari `katalog` saat konektor menyala; sakelarnya di `.env` crawler) · ④ konektor yang tak bisa
- *   dijalankan: sakelar mati, alasan ditampilkan · ⑤ versi web: konektor hanya di desktop · ⑥ komponen stealth (E2).
+ *   dijalankan: sakelar mati, alasan ditampilkan · ⑤ versi web: konektor hanya di desktop · ⑥ komponen stealth (E2) · ⑦ yang terpasang di perangkat ini (E3).
  *
  * Setelan disimpan proses utama di perangkat (K7, `konektor.json` di userData). Layar ini hanya membaca status dan
  * memakai sakelar — memanggil alat konektor tidak bisa dari sini (K2: gerbang persetujuan di proses utama, Tahap D).
@@ -90,6 +90,139 @@ export function BarisStealth({ stealth, sedang, hasil, onPasang }) {
   );
 }
 
+const teksMB = (mb) => {
+  if (typeof mb !== 'number') return '';
+  return mb < 1 ? ' — kurang dari 1 MB' : ` — ${mb.toLocaleString('id-ID')} MB`;
+};
+
+function TombolBukaFolder({ onBuka }) {
+  return (
+    <button
+      type="button"
+      onClick={onBuka}
+      className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-outline-variant text-[12px] text-on-surface-variant hover:text-on-surface transition-all active:scale-95"
+    >
+      <Ikon nama="folder_open" ukuran={16} />
+      Buka folder
+    </button>
+  );
+}
+
+function BarisTerpasang({ ikon, judul, keterangan, children }) {
+  return (
+    <div className="flex items-start gap-3 py-2.5 border-t border-outline-variant">
+      <Ikon nama={ikon} ukuran={18} className="shrink-0 mt-0.5 text-on-surface-variant" />
+      <div className="flex-1 min-w-0 flex flex-col gap-1">
+        <p className="text-sm text-on-surface">{judul}</p>
+        {keterangan && <p className="text-body-sm text-on-surface-variant">{keterangan}</p>}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Lokasi({ alamat, onBuka }) {
+  if (!alamat) return null;
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <code className="text-[12px] text-on-surface-variant break-all">{alamat}</code>
+      {onBuka && <TombolBukaFolder onBuka={onBuka} />}
+    </div>
+  );
+}
+
+/**
+ * ⑦ Yang terpasang di perangkat ini (Tahap E3, susunan disetujui Owner 26 Okt) — transparansi isi bundel & unduhan.
+ * Isi dari proses utama (`komponen.json` yang ditulis build + ukuran folder yang diukur saat dibuka). "Buka folder"
+ * mengirim KUNCI (bawaan/data/stealth/browser), bukan alamat.
+ */
+export function DaftarTerpasang({ komponen, onBuka }) {
+  const [bukaDaftar, setBukaDaftar] = useState(false);
+  if (!komponen) return null; // belum dibaca
+  if (!komponen.ok) {
+    return <p className="text-body-sm text-error mt-4">Daftar yang terpasang tidak bisa dibaca: {komponen.alasan || 'alasan tidak diketahui'}</p>;
+  }
+  const { bawaan, data, stealth: st } = komponen;
+  const paket = bawaan?.paket;
+  return (
+    <div className="mt-4">
+      <p className="text-sm font-semibold text-on-surface flex items-center gap-2 mb-1">
+        <Ikon nama="hard_drive" ukuran={18} className="text-on-surface-variant" />
+        Yang terpasang di perangkat ini
+      </p>
+
+      {komponen.mode === 'pengembangan' ? (
+        <>
+          <BarisTerpasang ikon="layers" judul="Mode pengembangan — memakai .venv repo" keterangan="npm run desktop: Python & paket crawler dari repo, bukan dari pemasang.">
+            <Lokasi alamat={bawaan?.lokasi} onBuka={() => onBuka('bawaan')} />
+          </BarisTerpasang>
+          <BarisTerpasang ikon="folder" judul="Data crawler" keterangan="Di folder crawler repo (hasil tangkapan, .env, inbox).">
+            <Lokasi alamat={data?.lokasi} onBuka={() => onBuka('data')} />
+          </BarisTerpasang>
+        </>
+      ) : (
+        <>
+          <BarisTerpasang
+            ikon="layers"
+            judul={`Bawaan pemasang${teksMB(bawaan?.mb)}`}
+            keterangan={paket
+              ? `Python ${bawaan.python || '?'} · ${bawaan.crawler?.nama || 'Ecosystem Crawler'} ${bawaan.crawler?.versi || ''} · ${paket.length} paket Python`
+              : 'Daftar isi tidak tersedia — pemasang ini dibangun sebelum daftarnya ada.'}
+          >
+            <Lokasi alamat={bawaan?.lokasi} onBuka={() => onBuka('bawaan')} />
+            {paket && (
+              <button
+                type="button"
+                onClick={() => setBukaDaftar((b) => !b)}
+                className="self-start flex items-center gap-1 text-[12px] text-primary hover:underline"
+              >
+                <Ikon nama="expand_more" ukuran={16} className={bukaDaftar ? 'rotate-180' : ''} />
+                {bukaDaftar ? 'Sembunyikan daftar' : `Lihat ${paket.length} paket`}
+              </button>
+            )}
+            {paket && bukaDaftar && (
+              <table className="w-full table-fixed text-[12px] text-on-surface-variant mt-1">
+                <thead>
+                  <tr className="text-left"><th className="font-normal pb-1 w-[45%]">Paket</th><th className="font-normal pb-1 w-[25%]">Versi</th><th className="font-normal pb-1">Lisensi</th></tr>
+                </thead>
+                <tbody>
+                  {paket.map((p) => (
+                    <tr key={p.nama} className="border-t border-outline-variant">
+                      <td className="py-0.5 pr-2 break-all text-on-surface">{p.nama}</td>
+                      <td className="py-0.5 pr-2 break-all">{p.versi}</td>
+                      <td className="py-0.5 break-words">{p.lisensi || 'tidak tercantum'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </BarisTerpasang>
+
+          <BarisTerpasang ikon="folder" judul={`Data crawler${teksMB(data?.mb)}`} keterangan="Hasil tangkapan, pengaturan crawler (.env), inbox.">
+            <Lokasi alamat={data?.lokasi} onBuka={() => onBuka('data')} />
+          </BarisTerpasang>
+
+          {st?.keadaan === 'terpasang' ? (
+            <BarisTerpasang
+              ikon="visibility_off"
+              judul={`Komponen stealth — terpasang${teksMB(st.mb)}`}
+              keterangan={`${(st.paket || 'patchright').replace('==', ' ')} · ${st.browser.map((b) => `${b.nama} ${b.versi || b.revisi}`).join(' · ')}`}
+            >
+              <Lokasi alamat={st.lokasiPaket} onBuka={() => onBuka('stealth')} />
+              <Lokasi alamat={st.akarBrowser} onBuka={() => onBuka('browser')} />
+              {st.browser.filter((b) => !b.ada).map((b) => (
+                <p key={b.nama} className="text-body-sm text-error">Browser {b.nama} (revisi {b.revisi}) tidak ditemukan di folder itu.</p>
+              ))}
+            </BarisTerpasang>
+          ) : (
+            <BarisTerpasang ikon="visibility_off" judul="Komponen stealth — belum terpasang" keterangan={`Bila dipasang: Patchright + Chromium, ±${st?.perkiraanMB || 830} MB.`} />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 function KotakAkses({ ringkasan }) {
   const akses = ringkasan?.akses;
   if (!akses) {
@@ -117,13 +250,41 @@ export default function BagianKonektor() {
   const [galat, setGalat] = useState({});   // `${ws}::${id}` → alasan gagal terakhir
   const [sedangStealth, setSedangStealth] = useState(false);
   const [hasilStealth, setHasilStealth] = useState(null);   // hasil pemasangan terakhir (untuk pesan gagal)
+  const [komponen, setKomponen] = useState({});              // id konektor → daftar yang terpasang (⑦)
+  const [galatBuka, setGalatBuka] = useState(null);
+
+  // ⑦ dibaca saat layar dibuka & sesudah pemasangan stealth — bukan tiap 3 detik (menghitung ukuran folder).
+  const segarkanKomponen = useCallback(async () => {
+    if (!api?.komponen) return;
+    const hasil = {};
+    for (const id of Object.keys(KETERANGAN)) {
+      try {
+        hasil[id] = await api.komponen(id);
+      } catch (e) {
+        // Tidak ditelan: alasannya tampil di bagian ⑦ ("tidak bisa dibaca: …"), bukan bagian yang hilang diam-diam.
+        hasil[id] = { ok: false, alasan: e.message };
+      }
+    }
+    setKomponen(hasil);
+  }, [api]);
+
+  const bukaFolder = async (id, kunci) => {
+    setGalatBuka(null);
+    try {
+      const h = await api.bukaFolder(id, kunci);
+      if (!h?.ok) setGalatBuka(h?.alasan || 'folder tidak bisa dibuka');
+    } catch (e) {
+      // Tidak ditelan: tampil di bawah kartu konektor (galatBuka).
+      setGalatBuka(e.message);
+    }
+  };
 
   const pasangStealth = async () => {
     setSedangStealth(true);
     setHasilStealth(null);
     try { setHasilStealth(await api.pasangStealth()); }
     catch (e) { setHasilStealth({ ok: false, langkah: 'IPC', alasan: e.message }); }
-    finally { setSedangStealth(false); segarkan(); }
+    finally { setSedangStealth(false); segarkan(); segarkanKomponen(); }
   };
 
   const segarkan = useCallback(async () => {
@@ -134,9 +295,10 @@ export default function BagianKonektor() {
   useEffect(() => {
     if (!api) return undefined;
     segarkan();
+    segarkanKomponen();
     const t = setInterval(segarkan, SELANG_SEGAR_MS); // status "berhenti sendiri" & ringkasan katalog muncul tanpa muat ulang
     return () => clearInterval(t);
-  }, [api, segarkan]);
+  }, [api, segarkan, segarkanKomponen]);
 
   const tekan = async (ws, id, nyala) => {
     const k = `${ws}::${id}`;
@@ -225,6 +387,8 @@ export default function BagianKonektor() {
               )}
             </>
           )}
+          <DaftarTerpasang komponen={komponen[k.id]} onBuka={(kunci) => bukaFolder(k.id, kunci)} />
+          {galatBuka && <p className="text-body-sm text-error mt-2">Folder tidak bisa dibuka: {galatBuka}</p>}
         </div>
       ))}
     </section>

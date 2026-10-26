@@ -58,6 +58,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     panggil: (workspace, konektor, alat, argumen) => ipcRenderer.invoke('konektor:panggil', { workspace, konektor, alat, argumen }),
     // Tahap E2: unduhan komponen stealth — proses utama meminta persetujuan Owner lebih dulu.
     pasangStealth: () => ipcRenderer.invoke('konektor:pasang-stealth'),
+    // Tahap E3: daftar yang terpasang + buka foldernya (kunci, bukan alamat).
+    komponen: (konektor) => ipcRenderer.invoke('konektor:komponen', { konektor }),
+    bukaFolder: (konektor, kunci) => ipcRenderer.invoke('konektor:buka-folder', { konektor, kunci }),
   },
 
   engineer: {

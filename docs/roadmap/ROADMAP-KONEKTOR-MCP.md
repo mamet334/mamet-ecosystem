@@ -15,7 +15,9 @@ OpenRouter** ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-d-
 **Tahap E ✅ 26 Okt** (bagian utama) — pemasang membawa Python + crawler (runtime 147 MB, terbukti dari hasil build),
 data di %APPDATA%; K14: stealth tidak dibundel ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-e-pemasang.md)).
 **E2 ✅ 26 Okt** — tombol pasang komponen stealth (Patchright terkunci + Chromium, atas izin Owner), terbukti tanpa
-unduhan ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-e2-stealth.md)).
+unduhan ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-e2-stealth.md)). **E3 ✅ 26 Okt** —
+"Yang terpasang di perangkat ini" + Buka folder; crawler tetap satu bundel, bukan diunduh dari repo crawler
+([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-e3-transparansi.md)).
 **Aplikasi:** **Mamet Ecosystem** (`frontend/`, desktop Electron + web) — **bukan** Mametlite.
 **Arah:** Mamet sebagai **klien** MCP — memakai alat dari server MCP luar. Mamet **tidak** dibuka sebagai server MCP
 (arah itu tidak termasuk item ini).
@@ -215,7 +217,12 @@ folder data saat pertama jalan (garam baru). **E2 ✅ 26 Okt**
 ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-e2-stealth.md)) — penyimpangan dari perkiraan ±900 MB:
 hanya **Patchright** yang dipasang (Scrapling 0.5 tidak memakai Playwright) + Chromium, ±340 MB, ke
 `%APPDATA%\Mamet AI\crawler\stealth\`. Sisa E2 yang belum dibuktikan: tombol Batal di dialog dilihat di layar, dan
-pemasangan sungguhan di aplikasi terpasang (build berikutnya + izin unduhan Owner). Rancangan semula: Skrip build menyiapkan Python 3.12 mandiri + dependensi crawler ke
+pemasangan sungguhan di aplikasi terpasang (build berikutnya + izin unduhan Owner). **E3 ✅ 26 Okt**
+([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-e3-transparansi.md)) — keputusan Owner: tetap satu
+bundel (bukan unduh dari repo `ecosystem-crawler`), stealth tetap saat dibutuhkan, isi terpasang transparan di
+Settings ⑦ (daftar dari `komponen.json` yang ditulis build). **Ditunda:** tombol "Hapus komponen stealth". **Sisa
+bukti:** "Buka folder" di Electron sungguhan; aplikasi terpasang di PC bersih (Windows Sandbox — Owner mengaktifkan
+fiturnya). Rancangan semula: Skrip build menyiapkan Python 3.12 mandiri + dependensi crawler ke
 `build/python/`, dibawa lewat `extraResources`. Saat jalan, server crawler dijalankan dari Python bawaan itu dengan
 `CRAWLER_ROOT` = `%APPDATA%\Mamet AI\crawler\` (folder program pemasang hanya-baca); `.env` ditempatkan di sana saat
 pertama dipasang. Browser stealth sesuai K14.
@@ -238,6 +245,6 @@ Assistant, dialog muncul sekali, hasil terbaca, Engineer tetap tak terhubung (K3
 
 ## 8. Langkah berikutnya
 
-Tahap A ✅ → B ✅ → C ✅ → D 🟡 (**uji live** sesudah saldo OpenRouter diisi) → E ✅ + E2 ✅ (pemasangan
-stealth sungguhan dibuktikan di aplikasi terpasang sesudah rilis berikutnya) → F menyusul. Rilis klien berikutnya (`npm run dist:publish`, dijalankan Owner) membawa konektor ke
+Tahap A ✅ → B ✅ → C ✅ → D 🟡 (**uji live** sesudah saldo OpenRouter diisi) → E ✅ + E2 ✅ + E3 ✅ (pemasangan
+stealth sungguhan & PC bersih dibuktikan sesudah rilis berikutnya / Windows Sandbox) → F menyusul. Rilis klien berikutnya (`npm run dist:publish`, dijalankan Owner) membawa konektor ke
 aplikasi terpasang; build butuh `.venv` crawler di laptop pembangun.

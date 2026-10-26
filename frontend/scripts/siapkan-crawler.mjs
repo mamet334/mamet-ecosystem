@@ -14,6 +14,8 @@
  *             Crawler memuat komponen stealth secara malas; bila tak ada, halaman yang memblokir dilewati & dicatat
  *             (crawler/kanal/web.py `_stealth`) — perilaku yang sama seperti sebelum Scrapling terpasang.
  *   crawler/  paket `crawler` (kode saja — tanpa tests, .env, data).
+ *   komponen.json   daftar isi bundel (Tahap E3, transparansi): versi Python & crawler, setiap paket + versi + lisensi
+ *             dari METADATA-nya — ditampilkan di Settings › Konektor ⑦. Ditulis sesudah bundel lulus uji.
  *
  * Saat aplikasi terpasang berjalan, proses utama menjalankan `python\python.exe -m crawler.wajah.mcp_server` dari
  * folder ini dengan CRAWLER_ROOT = %APPDATA%\Mamet AI\crawler (folder program pemasang tidak bisa ditulis).
@@ -59,6 +61,35 @@ function ukuranMB(dir) {
     if (e.isFile()) n += fs.statSync(path.join(e.parentPath ?? e.path, e.name)).size;
   }
   return Math.round(n / 1024 / 1024);
+}
+
+/**
+ * Lisensi dari METADATA paket (Tahap E3): License-Expression → License (bila satu baris pendek, bukan teks lisensi
+ * utuh) → Classifier "License :: …" terakhir → null ("tidak tercantum" di layar — tidak ditebak).
+ */
+export function lisensiDari(metadata) {
+  const kepala = String(metadata).split(/\r?\n\r?\n/)[0];
+  const ambil = (nama) => kepala.match(new RegExp(`^${nama}:[ \\t]*(.+)$`, 'mi'))?.[1]?.trim();
+  const ekspresi = ambil('License-Expression');
+  if (ekspresi) return ekspresi;
+  const lisensi = ambil('License');
+  const lanjut = new RegExp('^License:.*\\r?\\n[ \\t]+\\S', 'mi').test(kepala); // teks lisensi utuh berlanjut ke baris berikut
+  if (lisensi && lisensi.length <= 60 && !lanjut && !/^unknown$/i.test(lisensi)) return lisensi;
+  const klas = [...kepala.matchAll(/^Classifier:\s*License :: (.+)$/gmi)].map((m) => m[1].split('::').pop().trim()).pop();
+  return klas || null;
+}
+
+/** Daftar paket di site-packages bundel: [{ nama, versi, lisensi }] urut abjad — dari isi bundel itu sendiri. */
+export function daftarPaket(sitePackages) {
+  return fs.readdirSync(sitePackages).filter((n) => n.endsWith('.dist-info')).map((n) => {
+    const metadata = fs.readFileSync(path.join(sitePackages, n, 'METADATA'), 'utf8');
+    const kepala = metadata.split(/\r?\n\r?\n/)[0];
+    return {
+      nama: kepala.match(/^Name:\s*(.+)$/m)?.[1]?.trim() || n,
+      versi: kepala.match(/^Version:\s*(.+)$/m)?.[1]?.trim() || null,
+      lisensi: lisensiDari(metadata),
+    };
+  }).sort((a, b) => a.nama.toLowerCase().localeCompare(b.nama.toLowerCase()));
 }
 
 /** Folder Python dasar dari pyvenv.cfg `.venv` crawler. */
@@ -129,8 +160,16 @@ export function siapkan({ tujuan = TUJUAN, log = console.log } = {}) {
   if (j.alat.length !== 6 || j.sumber < 16) throw new Error(`hasil jabat tangan tak lengkap: ${JSON.stringify(j)}`);
   const s = ujiStealthTakTerbundel(tujuan);
   if (!s.tidakAda || !s.importError) throw new Error(`komponen stealth tak terduga: ${JSON.stringify(s)}`);
-  const hasil = { mb: ukuranMB(tujuan), alat: j.alat.length, sumber: j.sumber, siap: j.siap, stealthTerbundel: false };
-  log(`[crawler] siap: ${hasil.mb} MB · ${hasil.alat} alat · ${hasil.sumber} sumber (${hasil.siap} siap) · stealth tidak terbundel`);
+  // E3 (transparansi): daftar isi bundel untuk Settings › Konektor ⑦ — ditulis dari isi bundel itu sendiri, sesudah
+  // bundel lulus uji, supaya daftar tidak bisa berbeda dari yang benar-benar terpasang.
+  const paket = daftarPaket(path.join(tujuan, 'python', 'Lib', 'site-packages'));
+  const versiPython = fs.readFileSync(path.join(VENV, 'pyvenv.cfg'), 'utf8').match(/^version(?:_info)?\s*=\s*(.+)$/m)?.[1]?.trim() || null;
+  const versiCrawler = fs.readFileSync(path.join(CRAWLER, 'pyproject.toml'), 'utf8').match(/^version\s*=\s*"([^"]+)"/m)?.[1] || null;
+  fs.writeFileSync(path.join(tujuan, 'komponen.json'), JSON.stringify({
+    dibuat: new Date().toISOString(), python: versiPython, crawler: { nama: 'Ecosystem Crawler', versi: versiCrawler }, paket,
+  }, null, 2));
+  const hasil = { mb: ukuranMB(tujuan), alat: j.alat.length, sumber: j.sumber, siap: j.siap, paket: paket.length, stealthTerbundel: false };
+  log(`[crawler] siap: ${hasil.mb} MB · ${hasil.alat} alat · ${hasil.sumber} sumber (${hasil.siap} siap) · ${hasil.paket} paket · stealth tidak terbundel`);
   fs.rmSync(j.dataUji, { recursive: true, force: true });
   return hasil;
 }

@@ -1,0 +1,145 @@
+// UJI 2026-10-26 — "Yang terpasang di perangkat ini" (Item 129 Tahap E3): electron/komponenKonektor.cjs,
+// daftar isi bundel di scripts/siapkan-crawler.mjs, IPC konektor:komponen & konektor:buka-folder.
+//
+// Keputusan Owner: crawler tetap satu bundel, stealth tetap dipasang saat dibutuhkan (K14), semua yang terpasang
+// TRANSPARAN. Yang dijaga:
+//   - lisensi dibaca dari metadata paket, tidak ditebak (kosong → null → "tidak tercantum");
+//   - ukuran = folder yang benar-benar ada; data crawler TIDAK menghitung subfolder stealth dua kali;
+//   - revisi browser dibaca dari browsers.json Patchright, nama folder `<nama_>-<revisi>`;
+//   - "Buka folder" hanya membuka folder dari daftar (kunci, bukan alamat dari layar);
+//   - bagian 5: runtime terbundel sungguhan memuat komponen.json yang cocok dengan isi site-packages-nya.
+
+import { createRequire } from 'node:module';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const AKAR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const require = createRequire(path.join(AKAR, 'frontend', 'package.json'));
+const KK = require(path.join(AKAR, 'frontend', 'electron', 'komponenKonektor.cjs'));
+const K = require(path.join(AKAR, 'frontend', 'electron', 'konektorMcp.cjs'));
+const S = await import(pathToFileURL(path.join(AKAR, 'frontend', 'scripts', 'siapkan-crawler.mjs')).href);
+
+console.log('uji-konektor-komponen v1');
+let gagal = 0;
+const cek = (ok, pesan, rinci) => {
+  console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 600)}` : ''}`);
+  if (!ok) gagal++;
+};
+const sementara = (awal) => mkdtempSync(path.join(os.tmpdir(), awal));
+const tulis = (p, isi) => { mkdirSync(path.dirname(p), { recursive: true }); writeFileSync(p, isi); };
+const MB = (n) => Buffer.alloc(n * 1024 * 1024);
+
+// ── 1. Lisensi dari METADATA ────────────────────────────────────────────────────────────────
+console.log('\n-- 1. lisensi --');
+cek(S.lisensiDari('Name: a\nLicense: MIT\nLicense-Expression: Apache-2.0\n\nbadan') === 'Apache-2.0', 'License-Expression didahulukan');
+cek(S.lisensiDari('Name: a\nLicense: BSD-3-Clause\nClassifier: License :: OSI Approved :: MIT License\n') === 'BSD-3-Clause', 'License pendek dipakai sebelum Classifier');
+cek(S.lisensiDari('Name: a\nLicense: Copyright (c) 2020 Seseorang\n        Permission is hereby granted, free of charge\nClassifier: License :: OSI Approved :: MIT License\n') === 'MIT License',
+  'License berisi teks lisensi utuh (berlanjut) → Classifier');
+cek(S.lisensiDari('Name: a\nLicense: UNKNOWN\nClassifier: License :: OSI Approved :: BSD License\n') === 'BSD License', 'License UNKNOWN → Classifier');
+cek(S.lisensiDari('Name: a\nVersion: 1\n\nLicense: MIT di badan README\n') === null, 'tanpa lisensi di kepala → null (badan README tidak dibaca)');
+
+const sp = sementara('sp-komponen-');
+tulis(path.join(sp, 'zeta-1.0.dist-info', 'METADATA'), 'Name: zeta\nVersion: 1.0\nLicense-Expression: MIT\n');
+tulis(path.join(sp, 'Alpha-2.1.dist-info', 'METADATA'), 'Name: Alpha\nVersion: 2.1\n');
+tulis(path.join(sp, 'alpha', '__init__.py'), '');
+const dp = S.daftarPaket(sp);
+cek(dp.length === 2 && dp[0].nama === 'Alpha' && dp[1].nama === 'zeta', 'daftarPaket: hanya dist-info, urut abjad tanpa peduli huruf besar', dp);
+cek(dp[0].versi === '2.1' && dp[0].lisensi === null && dp[1].lisensi === 'MIT', 'daftarPaket: versi & lisensi (kosong tetap null)', dp);
+
+// ── 2. Mode pengembangan ────────────────────────────────────────────────────────────────────
+console.log('\n-- 2. pengembangan --');
+const repoCrawler = sementara('repo-crawler-');
+const dev = await KK.bacaKomponen({ folderRepo: repoCrawler });
+cek(dev.mode === 'pengembangan' && dev.bawaan.lokasi === path.join(repoCrawler, '.venv') && dev.stealth === null, 'npm run desktop → mode pengembangan, .venv repo, tanpa baris stealth', dev);
+cek(KK.lokasiFolder('stealth', { folderRepo: repoCrawler }) === null && KK.lokasiFolder('browser', { folderRepo: repoCrawler }) === null,
+  'pengembangan: folder stealth/browser tidak bisa dibuka (bukan milik pemasang)');
+
+// ── 3. Aplikasi terpasang, stealth terpasang ────────────────────────────────────────────────
+console.log('\n-- 3. terbundel --');
+const runtime = sementara('rt-komponen-');
+tulis(path.join(runtime, 'python', 'python.exe'), MB(2));
+tulis(path.join(runtime, 'komponen.json'), JSON.stringify({ python: '3.12.10', crawler: { nama: 'Ecosystem Crawler', versi: '0.1.0' }, paket: [{ nama: 'mcp', versi: '2.3.0', lisensi: 'MIT' }] }));
+const data = sementara('data-komponen-');
+tulis(path.join(data, '.env'), MB(1));
+const l = { akar: path.join(data, 'stealth'), paket: path.join(data, 'stealth', 'paket') };
+tulis(path.join(l.paket, 'patchright', 'driver', 'package', 'browsers.json'), JSON.stringify({ browsers: [
+  { name: 'chromium', revision: '1248', browserVersion: '156.0.8078.4' },
+  { name: 'chromium-headless-shell', revision: '1248', browserVersion: '156.0.8078.4' },
+  { name: 'firefox', revision: '1555' },
+  { name: 'ffmpeg', revision: '1013' },
+  { name: 'winldd', revision: '1007' },
+] }));
+tulis(path.join(l.paket, 'patchright', 'besar.bin'), MB(3));
+tulis(path.join(l.akar, 'terpasang.json'), JSON.stringify({ paket: 'patchright==1.64.1', browser: 'chromium', waktu: '2026-10-26T00:00:00.000Z' }));
+const lad = sementara('lad-komponen-');
+tulis(path.join(lad, 'ms-playwright', 'chromium-1248', 'chrome.exe'), MB(4));
+tulis(path.join(lad, 'ms-playwright', 'chromium_headless_shell-1248', 'shell.exe'), MB(2));
+tulis(path.join(lad, 'ms-playwright', 'ffmpeg-1013', 'ffmpeg.exe'), MB(1));
+const env = { LOCALAPPDATA: lad };
+
+const t = await KK.bacaKomponen({ runtimeTerbundel: runtime, folderData: data, env });
+cek(t.mode === 'terbundel' && t.bawaan.python === '3.12.10' && t.bawaan.paket?.[0]?.nama === 'mcp', 'bawaan: isi dari komponen.json', t.bawaan);
+cek(t.bawaan.mb === 2, 'bawaan: ukuran diukur dari folder runtime', t.bawaan.mb);
+cek(t.data.mb === 1, 'data: subfolder stealth TIDAK ikut dihitung (tak dihitung dua kali)', t.data);
+cek(t.stealth.keadaan === 'terpasang' && t.stealth.paket === 'patchright==1.64.1', 'stealth: versi dari penanda terpasang.json', t.stealth);
+const nama = t.stealth.browser.map((b) => b.nama);
+cek(nama.join(',') === 'chromium,chromium-headless-shell,ffmpeg,winldd', 'browser: yang dipasang `install chromium` saja (firefox tidak)', nama);
+cek(t.stealth.browser.find((b) => b.nama === 'chromium-headless-shell')?.ada === true, 'folder headless shell dikenali (chromium_headless_shell-1248)', t.stealth.browser);
+cek(t.stealth.browser.find((b) => b.nama === 'winldd')?.ada === false, 'browser yang tak ada di disk ditandai ada:false (layar menyebutnya)', t.stealth.browser);
+cek(t.stealth.mb === 3 + 4 + 2 + 1, 'stealth: ukuran = paket + browser yang benar-benar ada', t.stealth.mb);
+cek(KK.akarBrowser({ PLAYWRIGHT_BROWSERS_PATH: 'X:\\b', LOCALAPPDATA: lad }) === 'X:\\b', 'PLAYWRIGHT_BROWSERS_PATH didahulukan (sama dengan patchright install)');
+
+// ── 4. Keadaan lain ─────────────────────────────────────────────────────────────────────────
+console.log('\n-- 4. keadaan lain --');
+const runtimeLama = sementara('rt-lama-');
+const dataBaru = sementara('data-baru-');
+const lama = await KK.bacaKomponen({ runtimeTerbundel: runtimeLama, folderData: dataBaru, env });
+cek(lama.bawaan.paket === null && lama.bawaan.python === null, 'runtime tanpa komponen.json → daftar tidak tersedia (tidak dikarang)', lama.bawaan);
+cek(lama.stealth.keadaan === 'belum' && lama.stealth.perkiraanMB === KK.PERKIRAAN_STEALTH_MB && lama.stealth.browser === undefined, 'stealth belum → perkiraan saja, tanpa daftar browser', lama.stealth);
+cek(lama.data.mb === 0, 'folder data kosong → 0 MB', lama.data);
+const hilang = await KK.bacaKomponen({ runtimeTerbundel: runtimeLama, folderData: path.join(dataBaru, 'tidak-ada'), env });
+cek(hilang.data.mb === null, 'folder data belum ada → ukuran null (bukan 0 yang menyesatkan)', hilang.data);
+
+// ── 5. Buka folder: hanya kunci yang dikenal & folder yang ada ─────────────────────────────
+console.log('\n-- 5. buka folder --');
+const o = { runtimeTerbundel: runtime, folderData: data, env };
+cek(KK.lokasiFolder('bawaan', o) === runtime && KK.lokasiFolder('data', o) === data, 'bawaan & data → alamatnya');
+cek(KK.lokasiFolder('stealth', o) === l.akar && KK.lokasiFolder('browser', o) === path.join(lad, 'ms-playwright'), 'stealth & browser → alamatnya');
+cek(['C:\\Windows', '..', 'constructor', '__proto__', ''].every((k) => KK.lokasiFolder(k, o) === null), 'kunci asing / alamat mentah dari layar → ditolak');
+cek(KK.lokasiFolder('stealth', { ...o, folderData: dataBaru }) === null, 'folder yang belum ada → null (bukan membuka folder kosong)');
+
+// ── 6. Pengelola & sambungan ────────────────────────────────────────────────────────────────
+console.log('\n-- 6. sambungan --');
+const p = K.buatPengelolaKonektor({ akarRepo: AKAR, runtimeTerbundel: runtime, folderData: data });
+cek((await p.komponen('bukan-konektor')).ok === false, 'pengelola.komponen: konektor tak dikenal ditolak');
+cek(p.lokasiFolder('bukan-konektor', 'data') === null && p.lokasiFolder('ecosystem-crawler', 'data') === data, 'pengelola.lokasiFolder: lewat konektor yang dikenal');
+const main = readFileSync(path.join(AKAR, 'frontend', 'electron', 'main.cjs'), 'utf8');
+const pre = readFileSync(path.join(AKAR, 'frontend', 'electron', 'preload.cjs'), 'utf8');
+const blokBuka = main.slice(main.indexOf("'konektor:buka-folder'"), main.indexOf("'konektor:buka-folder'") + 500);
+cek(/\{\s*konektor,\s*kunci\s*\}/.test(blokBuka) && /lokasiFolder\(konektor, kunci\)/.test(blokBuka) && /shell\.openPath\(lokasi\)/.test(blokBuka),
+  'IPC buka-folder: menerima kunci, alamat disusun proses utama, dibuka shell.openPath', blokBuka.slice(0, 300));
+cek(/konektor:komponen/.test(main) && /komponen:\s*\(konektor\)/.test(pre) && /bukaFolder:\s*\(konektor, kunci\)/.test(pre), 'preload: komponen & bukaFolder');
+cek(!/±300 MB/.test(main) && /±830 MB/.test(main), 'dialog stealth menyebut ruang disk terukur (±830 MB), bukan "±300 MB"');
+const sk = readFileSync(path.join(AKAR, 'frontend', 'scripts', 'siapkan-crawler.mjs'), 'utf8');
+cek(sk.indexOf("'komponen.json'") > sk.indexOf('ujiJabatTangan(tujuan)'), 'komponen.json ditulis SESUDAH bundel lulus uji jabat tangan');
+
+// ── 7. Runtime terbundel sungguhan ──────────────────────────────────────────────────────────
+console.log('\n-- 7. runtime sungguhan --');
+const RT = path.join(AKAR, 'frontend', 'build', 'crawler-runtime');
+if (!existsSync(path.join(RT, 'komponen.json'))) {
+  console.log('DILEWATI bagian 7 — butuh build/crawler-runtime terbaru (npm run crawler:siapkan)');
+} else {
+  const m = JSON.parse(readFileSync(path.join(RT, 'komponen.json'), 'utf8'));
+  const distInfo = readdirSync(path.join(RT, 'python', 'Lib', 'site-packages')).filter((n) => n.endsWith('.dist-info'));
+  cek(m.paket.length === distInfo.length && m.paket.length > 50, `komponen.json memuat SETIAP paket bundel (${m.paket.length} = ${distInfo.length})`);
+  cek(m.paket.every((x) => x.nama && x.versi), 'setiap paket punya nama & versi');
+  cek(!m.paket.some((x) => /^(playwright|patchright|pytest)$/i.test(x.nama)), 'penggerak stealth & pytest tidak tercantum (memang tidak dibundel)');
+  cek(/^3\.\d+\.\d+$/.test(m.python) && m.crawler?.versi, 'versi Python & crawler tercatat', { python: m.python, crawler: m.crawler });
+  const nyata = await KK.bacaKomponen({ runtimeTerbundel: RT, folderData: sementara('data-nyata-') });
+  cek(nyata.bawaan.mb > 100 && nyata.bawaan.paket.length === m.paket.length, `ukuran bundel terukur: ${nyata.bawaan.mb} MB`, nyata.bawaan.mb);
+}
+
+console.log(`\n${gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`}`);
+process.exitCode = gagal === 0 ? 0 : 1;
