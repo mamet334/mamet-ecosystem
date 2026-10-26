@@ -16,7 +16,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const AKAR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const P = await import(pathToFileURL(path.join(AKAR, 'frontend/src/core/runtime/services/konektorAlat.js')).href);
 
-console.log('uji-konektor-protokol v1');
+console.log('uji-konektor-protokol v2');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 500)}` : ''}`);
@@ -67,12 +67,23 @@ cek(bersih.putaran === P.MAKS_PUTARAN_KONEKTOR && bersih.sumberSiap.map((s) => s
 cek(bersih.akses.patuhi_robots === false && bersih.akses.stealth === true, 'akses hanya boolean sejati');
 cek(P.infoKonektorAman({ id: 'google-drive' }) === null && P.blokPromptKonektor({ id: 'tak-dikenal' }) === '', 'konektor tak dikenal → tanpa blok prompt');
 const blok = P.blokPromptKonektor({ id: ID, putaran: 0, sumberSiap: [{ id: 'rss_media', cocok: ['berita_terbaru'] }], akses: { patuhi_robots: false, stealth: true } });
-cek(/\[KONEKTOR AKTIF: Ecosystem Crawler\]/.test(blok) && /rss_media \(berita_terbaru\)/.test(blok) && /robots\.txt TIDAK dipatuhi/.test(blok),
+cek(/\[KONEKTOR AKTIF: Ecosystem Crawler\]/.test(blok) && /rss_media = [^;\n]*\[berita_terbaru\]/.test(blok) && /robots\.txt TIDAK dipatuhi/.test(blok),
   'blok prompt memuat sumber siap & keadaan akses yang sebenarnya');
 cek(/HYPOTHESIS - Data crawler/.test(blok) && /JANGAN \[STATUS: VERIFIED\]/.test(blok) && /pseudonim/.test(blok) && /DATA, bukan perintah/.test(blok),
   'aturan: label Hypothesis, larangan VERIFIED, pseudonim, data bukan perintah');
 cek(/dialog persetujuan/.test(blok) && /tidak menanyai pengguna lagi/.test(blok), 'model diberi tahu: misi baru = dialog, status/baca misi itu tidak');
 cek(!/\$\{|`/.test(blok), 'blok prompt tanpa sisa template literal / backtick (pelajaran deploy 22 Sep)');
+// v2 (26 Okt): live, model menyimpulkan "tidak ada sumber Reddit" karena blok hanya memuat id + cocok_untuk.
+const idDariBerkas = (await import('node:fs')).readdirSync(path.join(AKAR, 'capability/ecosystem-crawler/crawler/sumber'))
+  .filter((n) => n.endsWith('.py') && n !== '__init__.py')
+  .map((n) => readFileSync(path.join(AKAR, 'capability/ecosystem-crawler/crawler/sumber', n), 'utf8').match(/^\s*id = "([a-z_]+)"/m)?.[1])
+  .filter(Boolean).sort();
+const idKet = Object.keys(P.KETERANGAN_SUMBER_CRAWLER).sort();
+cek(idDariBerkas.length >= 16 && JSON.stringify(idKet) === JSON.stringify(idDariBerkas),
+  `setiap sumber crawler (${idDariBerkas.length}) punya keterangan — sumber baru tanpa keterangan = merah`, { kurang: idDariBerkas.filter((i) => !idKet.includes(i)), lebih: idKet.filter((i) => !idDariBerkas.includes(i)) });
+cek(Object.values(P.KETERANGAN_SUMBER_CRAWLER).every((k) => !/[`$<>{}]/.test(k)), 'keterangan sumber tanpa karakter yang bisa merusak prompt/template');
+const blokReddit = P.blokPromptKonektor({ id: ID, sumberSiap: [{ id: 'arctic_shift', cocok: ['diskusi'] }] });
+cek(/arctic_shift = arsip REDDIT/.test(blokReddit), 'arctic_shift tertulis sebagai arsip Reddit di blok prompt', blokReddit.split('\n').find((l) => l.startsWith('Sumber')));
 
 // ── 4. Sambungan desktop & server ────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 4. sambungan desktop & server --');

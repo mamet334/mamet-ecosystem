@@ -197,7 +197,11 @@ export function pesanSaldoTakCukup(teks: string, diminta: number): string {
     return `Saldo OpenRouter tidak cukup untuk permintaan ini (402). Isi ulang saldo. Pesan asli: ${String(teks || '').slice(0, 200)}`;
   }
   if (plafon < MIN_TOKEN_LAYAK) {
-    return `Saldo OpenRouter hanya cukup untuk ${n} token jawaban, sedangkan jawaban yang layak butuh minimal ${MIN_TOKEN_LAYAK}. Permintaan TIDAK diulang dengan plafon sekecil itu — jawaban terpotong akan terlihat seperti model gagal, bukan seperti saldo habis. Isi ulang saldo.`;
+    // 26 Okt: kalimat lama ("cukup untuk 129, butuh minimal 128") terbaca kontradiktif — model sendiri menyebutnya
+    // begitu di nalarnya — karena langkah kelonggarannya tak disebut. Yang dibandingkan dengan lantai adalah PLAFON
+    // ULANG (kutipan × MARGIN_SALDO), jadi angka itu yang ditulis.
+    const kelonggaran = Math.round((1 - MARGIN_SALDO) * 100);
+    return `Saldo OpenRouter hanya cukup untuk ${n} token jawaban; sesudah kelonggaran ${kelonggaran}% plafon ulangnya ${plafon} token — di bawah minimal ${MIN_TOKEN_LAYAK} untuk jawaban yang layak. Permintaan TIDAK diulang dengan plafon sekecil itu — jawaban terpotong akan terlihat seperti model gagal, bukan seperti saldo habis. Isi ulang saldo.`;
   }
   // Sudah diulang dengan plafon berkelonggaran dan tetap gagal. Ini batas yang jujur: saldonya
   // memang terlalu tipis, bukan plafonnya yang salah pilih. Menurunkannya lagi hanya akan

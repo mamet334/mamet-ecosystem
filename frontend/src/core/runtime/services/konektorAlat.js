@@ -33,6 +33,30 @@ export const KONEKTOR_DIKENAL = Object.freeze({
 });
 
 /**
+ * Keterangan sumber crawler untuk blok prompt — ditulis DI SINI (dari tabel README crawler), bukan diambil dari server
+ * MCP, jadi tetap tanpa teks luar di prompt. Live 26 Okt: tanpa keterangan, model membaca "arctic_shift (diskusi,
+ * keluhan, …)" dan menyimpulkan "tidak ada sumber Reddit" — padahal arctic_shift adalah arsip Reddit.
+ */
+export const KETERANGAN_SUMBER_CRAWLER = Object.freeze({
+  google_news: 'judul berita Google News (isi lengkap lewat web)',
+  rss_media: 'berita terbaru Detik, CNN Indonesia, Antara',
+  turnbackhoax: 'cek fakta Mafindo (label SALAH/PENIPUAN)',
+  mediakonsumen: 'surat pembaca keluhan konsumen Indonesia',
+  openalex: 'karya ilmiah (abstrak, DOI, sitasi)',
+  arxiv: 'preprint sains',
+  stackexchange: 'tanya-jawab teknis',
+  wikipedia: 'ensiklopedi rujukan',
+  arctic_shift: 'arsip REDDIT — postingan & komentar per subreddit (opsi subreddit, bawaan r/indonesia)',
+  reddit: 'Reddit lewat API resmi (butuh kredensial)',
+  kaskus: 'thread Kaskus — hanya dari url_awal',
+  web: 'halaman web apa pun — hanya dari url_awal',
+  youtube: 'video & komentar YouTube',
+  playstore: 'ulasan aplikasi Google Play',
+  bluesky: 'postingan Bluesky',
+  inbox: 'salinan manual pengguna (Facebook Groups, X, TikTok, Quora, …)',
+});
+
+/**
  * Info konektor dari desktop → bentuk aman untuk server/prompt. Bukan konektor dikenal → null.
  * @returns {{id: string, putaran: number, sumberSiap: {id: string, cocok: string[]}[], akses: {patuhi_robots: boolean, stealth: boolean} | null} | null}
  */
@@ -147,7 +171,10 @@ export function blokPromptKonektor(info) {
   if (!k || k.id !== 'ecosystem-crawler') return '';
   const terakhir = k.putaran >= MAKS_PUTARAN_KONEKTOR;
   const sumber = k.sumberSiap.length
-    ? k.sumberSiap.map((s) => `${s.id}${s.cocok.length ? ` (${s.cocok.join(', ')})` : ''}`).join('; ')
+    ? k.sumberSiap.map((s) => {
+      const ket = KETERANGAN_SUMBER_CRAWLER[s.id];
+      return `${s.id}${ket ? ` = ${ket}` : ''}${s.cocok.length ? ` [${s.cocok.join(', ')}]` : ''}`;
+    }).join('; ')
     : '(daftar sumber tidak terbaca — sebutkan sumber yang Anda maksud, sistem akan menolak yang tidak dikenal)';
   const akses = k.akses
     ? `robots.txt ${k.akses.patuhi_robots ? 'DIPATUHI' : 'TIDAK dipatuhi'}; tingkat stealth ${k.akses.stealth ? 'NYALA' : 'MATI'} (sakelar Owner di .env crawler)`

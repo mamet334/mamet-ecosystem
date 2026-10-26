@@ -183,8 +183,10 @@ menampilkan "hanya tersedia di desktop".
 
 **Tahap D — Protokol ke model + persetujuan sekali per misi (K2, K8).** 🟡 **Kode & deploy selesai 26 Okt**
 ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-d-gerbang-protokol.md)) — rantai penuh terbukti
-tanpa model; batas putaran ditetapkan 6 (3 alat/putaran). **Sisa:** uji live di chat Assistant & Engineer (butuh
-saldo OpenRouter): dialog muncul sekali per misi, model memakai tag, label Hypothesis, catatan kaki dari gerbang.
+tanpa model; batas putaran ditetapkan 6 (3 alat/putaran). Uji live pertama 26 Okt: blok prompt sampai ke model
+(log `[Konektor] aktif … 14 sumber siap`); dua koreksi menyusul (keterangan sumber — `arctic_shift` = arsip Reddit;
+pesan saldo menyebut plafon ulang) — **perlu deploy lagi**. **Sisa:** uji misi live di chat Assistant & Engineer
+(butuh saldo OpenRouter): dialog muncul sekali per misi, model memakai tag, label Hypothesis, catatan kaki dari gerbang.
 - Saat konektor nyala di workspace itu, prompt memuat blok **KONEKTOR AKTIF** berisi daftar alat. `katalog` dibaca
   **oleh Mamet sendiri** saat konektor dinyalakan dan dimasukkan ke blok itu — isinya setelan crawler, bukan data
   luar — jadi model tidak perlu meminta `katalog` dan Owner tidak disodori persetujuan untuknya.

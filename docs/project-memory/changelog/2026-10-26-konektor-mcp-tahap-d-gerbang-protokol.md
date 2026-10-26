@@ -45,6 +45,22 @@ belum** — menunggu saldo OpenRouter.
 
 Enam mutasi menggigit (injeksi tag & penutup, K3 di tag, larangan VERIFIED, K3 di izin misi, dialog gagal).
 
+## Uji live pertama (26 Okt 13.14 WIB, saldo belum diisi) dan dua koreksi
+
+Log server: `[Konektor] aktif "ecosystem-crawler" · putaran alat 0 · 14 sumber siap` — blok prompt sampai ke model
+(v530); nalar model menyebut daftar sumbernya. Misi belum bisa dicoba: saldo hanya cukup 129 token. Nalar model
+menunjukkan dua kekurangan dari pihak kita:
+
+- **"Tidak ada sumber Reddit"** — blok prompt hanya memuat id + `cocok_untuk`, jadi model tak tahu `arctic_shift`
+  adalah arsip Reddit. Kini `KETERANGAN_SUMBER_CRAWLER` (ditulis di `konektorAlat.js` dari tabel README crawler,
+  bukan dari server MCP): `arctic_shift = arsip REDDIT …`. Uji menuntut setiap sumber di kode crawler punya
+  keterangan — sumber baru tanpa keterangan = merah.
+- **Pesan saldo tampak kontradiktif** ("cukup untuk 129, butuh minimal 128" — model sendiri menyebutnya begitu):
+  yang dibandingkan dengan lantai adalah plafon ULANG (129 × 0,9 = 116). Kalimat `pesanSaldoTakCukup` kini menyebut
+  kelonggaran 10% dan angka 116 (konstanta `MARGIN_SALDO` yang sama dengan perhitungannya).
+
+Keduanya perlu deploy `agent-process` lagi. Dua mutasi menggigit; suite 117/117.
+
 **Ditemukan di jalan:** `uji-pesan-galat-ecosystem` v2 (23 Okt) crash saat keluar di 7 dari 8 jalan —
 `process.exit()` sesudah mengimpor modul `.ts` (penghapus-tipe WebAssembly Node 24) → libuv
 `UV_HANDLE_CLOSING`, kode 127 sesudah "SEMUA LULUS". Merah palsu memulihkan patch yang benar di verifikasi Tahap 6;

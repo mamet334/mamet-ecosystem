@@ -218,6 +218,10 @@ const varianSaldo = [
 ];
 cek(varianSaldo.slice(0, 5).every(([, k]) => typeof k === 'string' && k.length > 20), 'kelima kalimat saldo dibangkitkan fungsi server', varianSaldo.map(([n, k]) => [n, String(k).slice(0, 60)]));
 cek(/plafon/i.test(varianSaldo[0][1]), 'kalimat server memang memuat kata "plafon" (penyebab salah judul dulu)');
+// 26 Okt: "cukup untuk 129, butuh minimal 128" terbaca kontradiktif (model sendiri menyebutnya begitu). Yang dibandingkan
+// dengan lantai adalah plafon ULANG (133 × 0,9 = 119); angka itu wajib tertulis.
+cek(/cukup untuk 133 token/.test(varianSaldo[0][1]) && /kelonggaran 10% plafon ulangnya 119 token/.test(varianSaldo[0][1]) && /di bawah minimal 128/.test(varianSaldo[0][1]),
+  'kalimat saldo menyebut plafon ulang (119) yang dibandingkan dengan minimal 128 — tidak lagi tampak kontradiktif', varianSaldo[0][1]);
 for (const [nama, kalimat] of varianSaldo) {
   const h = P.pesanUntukPengguna(`Provider 'OpenRouterAdapter' failed: ${kalimat}`);
   cek(/[Ss]aldo/.test(h.judul) && !/harian/i.test(`${h.judul} ${h.saran}`), `${nama} → judul saldo, TIDAK menyebut batas harian`, h.judul);
