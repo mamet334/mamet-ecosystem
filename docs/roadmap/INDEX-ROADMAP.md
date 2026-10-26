@@ -250,8 +250,9 @@ sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
 
 ## 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-10-01)
 
-Versi di `package.json`: **4.3.0** (dinaikkan 26 Okt untuk mengirim **Item 129** konektor + crawler terbundel —
-[log](../project-memory/changelog/2026-10-26-rilis-4.3.0-crawler-terbundel.md); sebelumnya 4.2.16 untuk **E9**,
+Versi di `package.json`: **4.3.1** (26 Okt: crawler cepat menyala di komputer lambat —
+[log](../project-memory/changelog/2026-10-26-rilis-4.3.1-crawler-cepat-menyala.md); 4.3.0 hari yang sama untuk
+**Item 129** — [log](../project-memory/changelog/2026-10-26-rilis-4.3.0-crawler-terbundel.md); 4.2.16 untuk **E9**,
 8 Okt). Keadaan di platform, **diperiksa lewat API GitHub** (8 Okt; v4.3.0 pada 26 Okt) — bukan disimpulkan dari
 dokumen ini:
 

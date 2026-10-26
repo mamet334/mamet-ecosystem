@@ -475,7 +475,7 @@ Validation..."`; perintah sebenarnya dikomentari di `:64`.
 
 | | Nilai | Catatan |
 |---|---|---|
-| `frontend/package.json:2` | **4.3.0** | otoritatif; memberi `electron-builder` & `app.getVersion()` (8 Okt: 4.2.14 → 4.2.15 untuk E8+C10b, lalu → 4.2.16 untuk E9; 26 Okt: → 4.3.0 untuk Item 129 konektor + crawler terbundel) |
+| `frontend/package.json:2` | **4.3.1** | otoritatif; memberi `electron-builder` & `app.getVersion()` (8 Okt: 4.2.14 → 4.2.15 untuk E8+C10b, lalu → 4.2.16 untuk E9; 26 Okt: → 4.3.0 untuk Item 129 konektor + crawler terbundel, → 4.3.1 crawler cepat menyala) |
 | `frontend/src/core/runtime/Kernel.js:63` | **3.0.0** | `identity.version` — **satu major tertinggal** |
 | `VITE_APP_VERSION` | **tak pernah didefinisikan** | dirujuk `lazyLoadWithRetry.js:18` |
 

@@ -14,6 +14,8 @@
  *             Crawler memuat komponen stealth secara malas; bila tak ada, halaman yang memblokir dilewati & dicatat
  *             (crawler/kanal/web.py `_stealth`) — perilaku yang sama seperti sebelum Scrapling terpasang.
  *   crawler/  paket `crawler` (kode saja — tanpa tests, .env, data).
+ *   __pycache__     bytecode setiap modul, dikompilasi saat build (4.3.1, `kompilasiBytecode`) — crawler menyala cepat
+ *             sejak pertama, termasuk di komputer lambat.
  *   komponen.json   daftar isi bundel (Tahap E3, transparansi): versi Python & crawler, setiap paket + versi + lisensi
  *             dari METADATA-nya — ditampilkan di Settings › Konektor ⑦. Ditulis sesudah bundel lulus uji.
  *
@@ -138,6 +140,35 @@ export function pythonDasar(venv = VENV) {
   return home;
 }
 
+/**
+ * Bytecode Python dikompilasi SAAT BUILD (rilis 4.3.1). Tanpanya — bundel tanpa __pycache__ + PYTHONDONTWRITEBYTECODE
+ * di aplikasi — setiap kali konektor menyala Python mengompilasi ulang ±750 modul: 3,9–8,9 s di laptop Owner, dan
+ * melewati batas 30 s di laptop 4 GB Windows 10 (gagal di percobaan pertama). Dengan cache: 1,2–1,3 s. Mode
+ * `unchecked-hash`: bundel tak pernah diubah sesudah dipasang (pembaruan = bundel baru), jadi pyc tidak divalidasi
+ * ke waktu berkas — waktu berkas dari pemasang tak bisa membatalkannya. +52 MB di disk, ±15 MB di pemasang.
+ */
+export function kompilasiBytecode(tujuan) {
+  const r = spawnSync(path.join(tujuan, 'python', 'python.exe'), ['-m', 'compileall', '-q', '-j', '0', '--invalidation-mode', 'unchecked-hash',
+    path.join(tujuan, 'python', 'Lib'), path.join(tujuan, 'crawler')], {
+    encoding: 'utf8', timeout: 900000, env: { SystemRoot: process.env.SystemRoot, TEMP: os.tmpdir(), TMP: os.tmpdir(), PYTHONUTF8: '1' },
+  });
+  if (r.status !== 0) throw new Error(`compileall gagal (kode ${r.status}): ${(r.stdout + r.stderr || r.error?.message || '').slice(-1500)}`);
+}
+
+/** Berkas .py di `dirs` yang TIDAK punya bytecode `__pycache__/<nama>.<tag>.pyc` (tag mis. cpython-312). */
+export function tanpaBytecode(dirs, tag) {
+  const hilang = [];
+  const jalan = (d) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) { if (e.name !== '__pycache__') jalan(p); }
+      else if (e.isFile() && e.name.endsWith('.py') && !fs.existsSync(path.join(d, '__pycache__', `${e.name.slice(0, -3)}.${tag}.pyc`))) hilang.push(p);
+    }
+  };
+  for (const d of dirs) jalan(d);
+  return hilang;
+}
+
 /** Jabat tangan MCP dengan Python salinan: initialize → tools/list → katalog. */
 function ujiJabatTangan(tujuan) {
   const dataUji = fs.mkdtempSync(path.join(os.tmpdir(), 'crawler-runtime-uji-'));
@@ -218,20 +249,29 @@ export function siapkan({ tujuan = TUJUAN, log = console.log } = {}) {
     'Daftar isi bundel ini: komponen.json — juga tampil di Settings > Konektor, "Yang terpasang di perangkat ini".',
   ].join('\r\n'));
 
+  // 4.3.1: bytecode dikompilasi di sini, SEBELUM uji — jabat tangan di bawah sudah memakai bundel ber-cache.
+  const versiPython = fs.readFileSync(path.join(VENV, 'pyvenv.cfg'), 'utf8').match(/^version(?:_info)?\s*=\s*(.+)$/m)?.[1]?.trim() || null;
+  const tag = `cpython-${(versiPython || '').split('.').slice(0, 2).join('')}`;
+  log(`[crawler] kompilasi bytecode (${tag})`);
+  kompilasiBytecode(tujuan);
+  const tanpa = tanpaBytecode([path.join(tujuan, 'python', 'Lib'), path.join(tujuan, 'crawler')], tag);
+  if (tanpa.length) throw new Error(`${tanpa.length} berkas .py tanpa bytecode ${tag}, mis. ${tanpa.slice(0, 5).join(', ')}`);
+
+  const mulai = Date.now();
   const j = ujiJabatTangan(tujuan);
+  const detikJabat = (Date.now() - mulai) / 1000;
   if (j.alat.length !== 6 || j.sumber < 16) throw new Error(`hasil jabat tangan tak lengkap: ${JSON.stringify(j)}`);
   const s = ujiStealthTakTerbundel(tujuan);
   if (!s.tidakAda || !s.importError) throw new Error(`komponen stealth tak terduga: ${JSON.stringify(s)}`);
   // E3 (transparansi): daftar isi bundel untuk Settings › Konektor ⑦ — ditulis dari isi bundel itu sendiri, sesudah
   // bundel lulus uji, supaya daftar tidak bisa berbeda dari yang benar-benar terpasang.
   const paket = daftarPaket(path.join(tujuan, 'python', 'Lib', 'site-packages'));
-  const versiPython = fs.readFileSync(path.join(VENV, 'pyvenv.cfg'), 'utf8').match(/^version(?:_info)?\s*=\s*(.+)$/m)?.[1]?.trim() || null;
   const versiCrawler = fs.readFileSync(path.join(CRAWLER, 'pyproject.toml'), 'utf8').match(/^version\s*=\s*"([^"]+)"/m)?.[1] || null;
   fs.writeFileSync(path.join(tujuan, 'komponen.json'), JSON.stringify({
     dibuat: new Date().toISOString(), python: versiPython, crawler: { nama: 'Ecosystem Crawler', versi: versiCrawler }, paket,
   }, null, 2));
-  const hasil = { mb: ukuranMB(tujuan), alat: j.alat.length, sumber: j.sumber, siap: j.siap, paket: paket.length, stealthTerbundel: false };
-  log(`[crawler] siap: ${hasil.mb} MB · ${hasil.alat} alat · ${hasil.sumber} sumber (${hasil.siap} siap) · ${hasil.paket} paket · stealth tidak terbundel`);
+  const hasil = { mb: ukuranMB(tujuan), alat: j.alat.length, sumber: j.sumber, siap: j.siap, paket: paket.length, detikJabat, stealthTerbundel: false };
+  log(`[crawler] siap: ${hasil.mb} MB · ${hasil.alat} alat · ${hasil.sumber} sumber (${hasil.siap} siap) · ${hasil.paket} paket · jabat tangan ${detikJabat.toFixed(1)} s · stealth tidak terbundel`);
   fs.rmSync(j.dataUji, { recursive: true, force: true });
   return hasil;
 }

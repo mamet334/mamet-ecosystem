@@ -37,7 +37,7 @@ export function kelompokkan(daftar) {
 }
 
 export function teksStatus(s, sedang) {
-  if (sedang) return { teks: 'menyalakan…', kelas: 'text-on-surface-variant' };
+  if (sedang) return { teks: 'menyalakan… (di komputer lambat bisa sampai semenit)', kelas: 'text-on-surface-variant' };
   if (s?.status === 'nyala') return { teks: '● menyala', kelas: 'text-primary' };
   if (s?.diaktifkan) return { teks: '● berhenti — matikan lalu nyalakan lagi', kelas: 'text-error' };
   return { teks: '○ mati', kelas: 'text-on-surface-variant' };

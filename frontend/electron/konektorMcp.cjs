@@ -51,7 +51,9 @@ const KONEKTOR = Object.freeze({
 });
 
 const BATAS = Object.freeze({
-  sambungMs: 30000,
+  // 4.3.1: 30 s terlalu ketat — laptop 4 GB Windows 10 (uji Owner 26 Okt) gagal di percobaan pertama, berhasil di
+  // kedua. Batas ini hanya untuk server yang benar-benar macet; menaikkannya tidak melonggarkan apa pun.
+  sambungMs: 90000,
   panggilBawaanMs: 60000,
   panggilMaksMs: 150000,      // jalankan_misi crawler menunggu ≤ 110 s di sisi server
   hasilHuruf: 60000,          // hasil alat yang lebih panjang dipotong — dibawa ke prompt, harus berbatas

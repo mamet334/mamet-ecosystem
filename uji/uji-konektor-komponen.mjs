@@ -21,7 +21,7 @@ const KK = require(path.join(AKAR, 'frontend', 'electron', 'komponenKonektor.cjs
 const K = require(path.join(AKAR, 'frontend', 'electron', 'konektorMcp.cjs'));
 const S = await import(pathToFileURL(path.join(AKAR, 'frontend', 'scripts', 'siapkan-crawler.mjs')).href);
 
-console.log('uji-konektor-komponen v4');
+console.log('uji-konektor-komponen v5');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 600)}` : ''}`);
@@ -219,6 +219,31 @@ if (existsSync(path.join(RT, 'komponen.json'))) {
   const st = JSON.parse(readFileSync(path.join(RT, 'stealth.json'), 'utf8'));
   cek(st.paket === `patchright==${kunci.get('patchright')}`, `versi stealth.json = versi patchright di daftar kunci (${st.paket})`);
   cek(S.periksaPythonTerbundel(path.join(RT, 'python')).length === 0, 'runtime terbundel sungguhan membawa python.exe, python3XX.dll, vcruntime140(_1).dll');
+}
+
+// ── 9. Menyala cepat di komputer lambat (rilis 4.3.1) ──────────────────────────────────────
+// Laptop 4 GB Windows 10 (uji Owner 26 Okt): "server tidak menjawab dalam 30 s" di percobaan pertama, berhasil di
+// kedua — bundel tanpa bytecode membuat Python mengompilasi ulang ±750 modul setiap kali menyala.
+console.log('\n-- 9. bytecode & batas tunggu --');
+const pyUji = sementara('bytecode-');
+tulis(path.join(pyUji, 'a.py'), '');
+tulis(path.join(pyUji, '__pycache__', 'a.cpython-312.pyc'), '');
+tulis(path.join(pyUji, 'sub', 'b.py'), '');
+tulis(path.join(pyUji, 'sub', '__pycache__', 'b.cpython-311.pyc'), '');
+const tb = S.tanpaBytecode([pyUji], 'cpython-312').map((p) => path.relative(pyUji, p));
+cek(tb.join(',') === path.join('sub', 'b.py'), 'tanpaBytecode: .py tanpa pyc bertag Python yang sama disebut (tag lain tak dihitung)', tb);
+cek(/kompilasiBytecode\(tujuan\);[\s\S]*?tanpaBytecode\([\s\S]*?throw[\s\S]*?ujiJabatTangan\(tujuan\)/.test(sumberSiap),
+  'siapkan: kompilasi → build GAGAL bila ada .py tanpa bytecode → baru uji jabat tangan (pada bundel ber-cache)');
+cek(/'--invalidation-mode', 'unchecked-hash'/.test(sumberSiap), 'bytecode mode unchecked-hash (waktu berkas dari pemasang tak membatalkannya)');
+cek(K.BATAS.sambungMs >= 90000, `batas tunggu server menyala ≥ 90 s (${K.BATAS.sambungMs / 1000} s)`);
+const jsx = readFileSync(path.join(AKAR, 'frontend', 'src', 'components', 'BagianKonektor.jsx'), 'utf8');
+cek(/menyalakan… \(di komputer lambat bisa sampai semenit\)/.test(jsx), 'layar memberi tahu bahwa menyala bisa lama di komputer lambat');
+if (existsSync(path.join(RT, 'komponen.json'))) {
+  const tanpaNyata = S.tanpaBytecode([path.join(RT, 'python', 'Lib'), path.join(RT, 'crawler')], 'cpython-312');
+  cek(tanpaNyata.length === 0, 'runtime sungguhan: setiap .py punya bytecode cpython-312', tanpaNyata.slice(0, 5));
+  const contoh = path.join(RT, 'crawler', 'wajah', '__pycache__', 'mcp_server.cpython-312.pyc');
+  const flags = existsSync(contoh) ? readFileSync(contoh).readUInt32LE(4) : null;
+  cek(flags === 1, 'pyc server crawler berbasis hash tanpa pemeriksaan sumber (PEP 552 flags = 1)', flags);
 }
 
 console.log(`\n${gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`}`);

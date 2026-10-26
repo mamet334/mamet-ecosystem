@@ -224,7 +224,10 @@ Sisa E2 yang belum dibuktikan: tombol Batal di dialog dilihat di layar, dan pema
 bundel (bukan unduh dari repo `ecosystem-crawler`), stealth tetap saat dibutuhkan, isi terpasang transparan di
 Settings ⑦ (daftar dari `komponen.json` yang ditulis build). **Ditunda:** tombol "Hapus komponen stealth".
 **Terbukti di 4.3.0 terpasang (laptop Owner):** konektor menyala dari runtime bawaan pemasang, ⑦ "Bawaan pemasang —
-179 MB · 83 paket". **Sisa bukti:** PC lain/bersih (uji di laptop 4 GB Windows 10 sedang berjalan). Rancangan semula: Skrip build menyiapkan Python 3.12 mandiri + dependensi crawler ke
+179 MB · 83 paket"; **PC lain tanpa Python** (laptop 4 GB Windows 10): menyala di percobaan kedua — percobaan
+pertama melewati batas 30 s karena bundel tanpa bytecode → 4.3.1 membawa bytecode & batas 90 s
+([log](../project-memory/changelog/2026-10-26-rilis-4.3.1-crawler-cepat-menyala.md)). **Sisa bukti:** laptop itu
+menyala di percobaan pertama dengan 4.3.1. Rancangan semula: Skrip build menyiapkan Python 3.12 mandiri + dependensi crawler ke
 `build/python/`, dibawa lewat `extraResources`. Saat jalan, server crawler dijalankan dari Python bawaan itu dengan
 `CRAWLER_ROOT` = `%APPDATA%\Mamet AI\crawler\` (yang terwujud: `%APPDATA%\ai-agent-frontend\crawler\`) (folder program pemasang hanya-baca); `.env` ditempatkan di sana saat
 pertama dipasang. Browser stealth sesuai K14.
