@@ -171,9 +171,9 @@ cek(['lib/json/__init__.py', 'python312.dll', 'vcruntime140.dll', 'dlls/_ssl.pyd
   'penyiap: pustaka standar & DLL Python ikut');
 cek(['lib/site-packages/numpy/x.py', 'lib/test/x.py', 'doc/x.chm', 'lib/tkinter/x.py', 'lib/json/__pycache__/x.pyc'].every((r) => S.lewatiPython(r)),
   'penyiap: site-packages GLOBAL laptop, tes, dokumentasi, tkinter, cache — tidak ikut (Python dasar 1,37 GB → pustaka standar saja)');
-cek(['playwright/driver/node.exe', 'patchright-1.0.dist-info/RECORD', 'pip/x.py', '_pytest/x.py', '__editable__.ecosystem_crawler-0.1.0.pth'].every((r) => S.lewatiPaket(r))
-  && ['scrapling/fetchers.py', 'curl_cffi/x.py', 'mcp/x.py', 'trafilatura/x.py', 'yt_dlp/x.py', 'pywin32.pth'].every((r) => !S.lewatiPaket(r)),
-  'penyiap: penggerak stealth (K14), pip, pytest, editable dibuang; paket kerja crawler ikut');
+cek(['playwright/driver/node.exe', 'patchright-1.0.dist-info/RECORD', '_pytest/x.py', '__editable__.ecosystem_crawler-0.1.0.pth'].every((r) => S.lewatiPaket(r))
+  && ['scrapling/fetchers.py', 'curl_cffi/x.py', 'mcp/x.py', 'trafilatura/x.py', 'yt_dlp/x.py', 'pywin32.pth', 'pip/__init__.py', 'greenlet/x.pyd', 'pyee/x.py'].every((r) => !S.lewatiPaket(r)),
+  'penyiap: penggerak stealth (K14), pytest, editable dibuang; paket kerja crawler ikut — termasuk pip, greenlet, pyee (E2: pemasangan stealth --no-deps)');
 const runtimeAsli = path.join(AKAR, 'frontend', 'build', 'crawler-runtime');
 if (existsSync(path.join(runtimeAsli, 'python', 'python.exe'))) {
   const mT = K.buatPengelolaKonektor({ akarRepo: AKAR, runtimeTerbundel: runtimeAsli, folderData });

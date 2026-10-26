@@ -1234,6 +1234,28 @@ const gerbangKonektor = buatGerbangKonektor({
 });
 ipcMain.handle('konektor:panggil', (_event, { workspace, konektor, alat, argumen } = {}) =>
   gerbangKonektor.panggil(workspace, konektor, alat, argumen));
+// Tahap E2 (K14): komponen tingkat stealth dipasang HANYA sesudah Owner menyetujui unduhannya di dialog ini.
+ipcMain.handle('konektor:pasang-stealth', async () => {
+  const { response } = await dialog.showMessageBox(mainWindow, {
+    type: 'question',
+    title: 'Mamet — komponen stealth crawler',
+    message: 'Unduh komponen tingkat stealth Ecosystem Crawler?',
+    detail: [
+      'Yang diunduh:',
+      '• paket Patchright (±40 MB) dari PyPI → %APPDATA%\\Mamet AI\\crawler\\stealth',
+      '• browser Chromium (±300 MB) dari server browser Playwright → %LOCALAPPDATA%\\ms-playwright — dilewati bila sudah ada di laptop ini',
+      '',
+      'Gunanya: halaman publik yang memblokir crawler dicoba lagi dengan browser yang menyamarkan sidik jarinya (bila sakelar CRAWLER_STEALTH nyala). Tanpa komponen ini, halaman seperti itu dilewati dan dicatat.',
+      'Pemasangan bisa makan beberapa menit; konektor yang menyala akan dimulai ulang.',
+    ].join('\n'),
+    buttons: ['Batal', 'Unduh & pasang'],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+  });
+  if (response !== 1) return { ok: false, ditolakOwner: true, alasan: 'dibatalkan Owner' };
+  return pengelolaKonektor.pasangStealth();
+});
 app.whenReady().then(() => pengelolaKonektor.pulihkan().then((h) => {
   if (h.length) console.log(`[KONEKTOR] dipulihkan: ${h.map((x) => `${x.workspace}::${x.konektor}=${x.ok ? 'nyala' : x.alasan}`).join(', ')}`);
 }));

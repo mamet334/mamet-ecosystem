@@ -6,7 +6,7 @@ import Ikon from './Ikon';
  *
  *   ① tab sendiri · ② sakelar TERPISAH Assistant/Engineer (K3) · ③ cara crawler mengakses halaman, hanya ditampilkan
  *   (dibaca Mamet dari `katalog` saat konektor menyala; sakelarnya di `.env` crawler) · ④ konektor yang tak bisa
- *   dijalankan: sakelar mati, alasan ditampilkan · ⑤ versi web: konektor hanya di desktop.
+ *   dijalankan: sakelar mati, alasan ditampilkan · ⑤ versi web: konektor hanya di desktop · ⑥ komponen stealth (E2).
  *
  * Setelan disimpan proses utama di perangkat (K7, `konektor.json` di userData). Layar ini hanya membaca status dan
  * memakai sakelar — memanggil alat konektor tidak bisa dari sini (K2: gerbang persetujuan di proses utama, Tahap D).
@@ -28,7 +28,7 @@ const SELANG_SEGAR_MS = 3000;
 export function kelompokkan(daftar) {
   const hasil = new Map();
   for (const s of daftar || []) {
-    const k = hasil.get(s.konektor) || { id: s.konektor, nama: s.nama, jenis: s.jenis, tersedia: s.tersedia, alasan: s.alasan, ws: {}, ringkasan: null };
+    const k = hasil.get(s.konektor) || { id: s.konektor, nama: s.nama, jenis: s.jenis, tersedia: s.tersedia, alasan: s.alasan, ws: {}, ringkasan: null, stealth: s.stealth || null };
     k.ws[s.workspace] = s;
     if (s.ringkasan && !k.ringkasan) k.ringkasan = s.ringkasan;
     hasil.set(s.konektor, k);
@@ -41,6 +41,53 @@ export function teksStatus(s, sedang) {
   if (s?.status === 'nyala') return { teks: '● menyala', kelas: 'text-primary' };
   if (s?.diaktifkan) return { teks: '● berhenti — matikan lalu nyalakan lagi', kelas: 'text-error' };
   return { teks: '○ mati', kelas: 'text-on-surface-variant' };
+}
+
+/**
+ * ⑥ Komponen tingkat stealth (Tahap E2, susunan disetujui Owner 26 Okt). Tidak tampil di `npm run desktop`
+ * (keadaan "pengembangan": stealth sudah ada di .venv). Pasang → proses utama meminta persetujuan unduhan dulu.
+ */
+export function BarisStealth({ stealth, sedang, hasil, onPasang }) {
+  if (!stealth || stealth.keadaan === 'pengembangan') return null;
+  if (sedang || stealth.sedangDipasang) {
+    return (
+      <p className="text-body-sm text-on-surface-variant flex items-center gap-2">
+        <Ikon nama="hourglass_top" ukuran={18} className="shrink-0" />
+        Memasang komponen stealth… (bisa beberapa menit)
+      </p>
+    );
+  }
+  if (stealth.keadaan === 'terpasang') {
+    return (
+      <p className="text-body-sm text-on-surface flex items-center gap-2">
+        <Ikon nama="check_circle" ukuran={18} className="shrink-0 text-primary" />
+        Komponen stealth terpasang{stealth.paket ? ` (${stealth.paket.replace('==', ' ')})` : ''}
+      </p>
+    );
+  }
+  const gagal = hasil && !hasil.ok && !hasil.ditolakOwner;
+  return (
+    <div className="flex items-center gap-3 flex-wrap">
+      {gagal ? (
+        <span className="text-body-sm text-error flex items-start gap-2 basis-full">
+          <Ikon nama="warning" ukuran={18} className="shrink-0" />
+          <span>Gagal di langkah &quot;{hasil.langkah}&quot;: {hasil.alasan}</span>
+        </span>
+      ) : (
+        <span className="text-body-sm text-on-surface-variant">
+          Komponen stealth belum terpasang — halaman yang memblokir dilewati.
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={onPasang}
+        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all active:scale-95 font-semibold text-sm border-outline-variant bg-surface-container-low text-on-surface-variant hover:text-on-surface"
+      >
+        <Ikon nama="download" ukuran={18} />
+        {gagal ? 'Coba lagi' : 'Pasang komponen stealth'}
+      </button>
+    </div>
+  );
 }
 
 function KotakAkses({ ringkasan }) {
@@ -68,6 +115,16 @@ export default function BagianKonektor() {
   const [daftar, setDaftar] = useState([]);
   const [sedang, setSedang] = useState({}); // `${ws}::${id}` → true selama sakelar diproses
   const [galat, setGalat] = useState({});   // `${ws}::${id}` → alasan gagal terakhir
+  const [sedangStealth, setSedangStealth] = useState(false);
+  const [hasilStealth, setHasilStealth] = useState(null);   // hasil pemasangan terakhir (untuk pesan gagal)
+
+  const pasangStealth = async () => {
+    setSedangStealth(true);
+    setHasilStealth(null);
+    try { setHasilStealth(await api.pasangStealth()); }
+    catch (e) { setHasilStealth({ ok: false, langkah: 'IPC', alasan: e.message }); }
+    finally { setSedangStealth(false); segarkan(); }
+  };
 
   const segarkan = useCallback(async () => {
     if (!api) return;
@@ -161,6 +218,11 @@ export default function BagianKonektor() {
               <div className="mt-4">
                 <KotakAkses ringkasan={k.ringkasan} />
               </div>
+              {k.stealth && k.stealth.keadaan !== 'pengembangan' && (
+                <div className="mt-3">
+                  <BarisStealth stealth={k.stealth} sedang={sedangStealth} hasil={hasilStealth} onPasang={pasangStealth} />
+                </div>
+              )}
             </>
           )}
         </div>

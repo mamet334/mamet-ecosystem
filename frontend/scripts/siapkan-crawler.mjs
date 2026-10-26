@@ -9,7 +9,8 @@
  *   python/   Python dasar yang dipakai `.venv` crawler (`pyvenv.cfg` → home), HANYA pustaka standar. Folder dasar di
  *             laptop Owner 1,37 GB karena `Lib\site-packages` globalnya — itu tidak ikut.
  *   python/Lib/site-packages/   paket crawler dari `.venv` (411 MB), TANPA penggerak browser stealth (`playwright`,
- *             `patchright`, 215 MB: tak berguna tanpa browsernya — K14) dan tanpa alat pengembang (pip, pytest).
+ *             `patchright`, 215 MB: tak berguna tanpa browsernya — K14) dan tanpa pytest. pip IKUT (Tahap E2: dipakai
+ *             memasang komponen stealth atas izin Owner); versi Patchright dikunci di `stealth.json`.
  *             Crawler memuat komponen stealth secara malas; bila tak ada, halaman yang memblokir dilewati & dicatat
  *             (crawler/kanal/web.py `_stealth`) — perilaku yang sama seperti sebelum Scrapling terpasang.
  *   crawler/  paket `crawler` (kode saja — tanpa tests, .env, data).
@@ -40,7 +41,8 @@ const PYTHON_LEWATI = [
 // Relatif terhadap site-packages crawler.
 const PAKET_LEWATI = [
   /^playwright(\/|$)/, /^playwright-[^/]*\.dist-info(\/|$)/, /^patchright(\/|$)/, /^patchright-[^/]*\.dist-info(\/|$)/,
-  /^pip(\/|$)/, /^pip-[^/]*\.dist-info(\/|$)/, /^_?pytest(\/|$)/, /^pytest-[^/]*\.dist-info(\/|$)/, /^py\.py$/,
+  // pip IKUT (E2): komponen stealth dipasang atas izin Owner dengan `python -m pip install --target …`.
+  /^_?pytest(\/|$)/, /^pytest-[^/]*\.dist-info(\/|$)/, /^py\.py$/,
   /^__editable__/, /^ecosystem_crawler-[^/]*\.dist-info(\/|$)/, /(^|\/)__pycache__(\/|$)/,
 ];
 // Relatif terhadap capability/ecosystem-crawler.
@@ -108,14 +110,19 @@ export function siapkan({ tujuan = TUJUAN, log = console.log } = {}) {
   fs.rmSync(tujuan, { recursive: true, force: true });
   log(`[crawler] Python dasar: ${dasar}`);
   fs.cpSync(dasar, path.join(tujuan, 'python'), { recursive: true, filter: (p) => !lewatiPython(rel(dasar, p)) });
-  log('[crawler] paket crawler (tanpa penggerak stealth, pip, pytest)');
+  log('[crawler] paket crawler (tanpa penggerak stealth & pytest; pip ikut)');
   fs.cpSync(sitePackages, path.join(tujuan, 'python', 'Lib', 'site-packages'), { recursive: true, filter: (p) => !lewatiPaket(rel(sitePackages, p)) });
   log('[crawler] kode crawler');
   fs.cpSync(path.join(CRAWLER, 'crawler'), path.join(tujuan, 'crawler'), { recursive: true, filter: (p) => !lewatiKode(rel(CRAWLER, p)) });
+  // E2: versi Patchright DIKUNCI dari .venv pengembangan — versi yang terbukti dengan Scrapling crawler ini.
+  const versiPatchright = fs.readdirSync(sitePackages).map((n) => n.match(/^patchright-(\d+\.\d+\.\d+)\.dist-info$/)?.[1]).find(Boolean);
+  if (!versiPatchright) throw new Error('patchright tidak ada di .venv crawler — versi komponen stealth tak bisa dikunci');
+  fs.writeFileSync(path.join(tujuan, 'stealth.json'), JSON.stringify({ paket: `patchright==${versiPatchright}`, browser: 'chromium' }, null, 2));
   fs.writeFileSync(path.join(tujuan, 'BACA.txt'), [
     'Runtime Ecosystem Crawler untuk Mamet AI (dibuat scripts/siapkan-crawler.mjs).',
     'Data, .env, dan hasil crawler ada di %APPDATA%\\Mamet AI\\crawler — bukan di sini.',
-    'Komponen stealth (playwright/patchright + browser) tidak dibundel (keputusan Owner K14).',
+    'Komponen stealth (Patchright + browser) tidak dibundel (keputusan Owner K14); dipasang atas izin Owner dari',
+    'Settings > Konektor ke %APPDATA%\\Mamet AI\\crawler\\stealth (versi terkunci di stealth.json).',
   ].join('\r\n'));
 
   const j = ujiJabatTangan(tujuan);

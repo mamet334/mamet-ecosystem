@@ -22,6 +22,7 @@ const path = require('path');
 const { execFile } = require('child_process');
 const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const { StdioClientTransport, getDefaultEnvironment } = require('@modelcontextprotocol/sdk/client/stdio.js');
+const stealth = require('./stealthKonektor.cjs');
 
 const WORKSPACE = Object.freeze(['ws-assistant', 'ws-engineer']);
 
@@ -35,6 +36,8 @@ const KONEKTOR = Object.freeze({
     terbundel: Object.freeze({ python: ['python', 'python.exe'] }), // relatif ke resources/crawler-runtime (Tahap E)
     // Folder yang crawler anggap wajib ada di CRAWLER_ROOT — di folder data baru belum ada (sumber inbox "belum siap").
     folderDataWajib: Object.freeze(['inbox']),
+    // Komponen tingkat stealth tidak dibundel (K14) — dipasang atas izin Owner (Tahap E2, stealthKonektor.cjs).
+    stealth: true,
     modul: 'crawler.wajah.mcp_server',                   // dijalankan `python -m` — paket dimuat dari folder kerja
     berkasModul: ['crawler', 'wajah', 'mcp_server.py'],
     // Dibaca MAMET SENDIRI saat konektor menyala (Tahap C, rancangan §6 D): isinya setelan crawler — sumber & sakelar
@@ -85,9 +88,13 @@ function peluncuran(akarRepo, id, { runtimeTerbundel = null, folderData = null }
     if (!fs.existsSync(path.join(runtimeTerbundel, ...k.berkasModul))) return tolak(`runtime konektor tidak lengkap di ${runtimeTerbundel}`);
     if (!fs.existsSync(python)) return tolak('Python konektor tidak ada di runtime terbundel');
     if (!folderData) return tolak('folder data konektor tidak diketahui');
+    // E2: komponen stealth yang SUDAH terpasang (penanda ada) dimuat lewat PYTHONPATH; belum → tanpa (crawler melewati
+    // halaman yang memblokir dan mencatatnya).
+    const st = k.stealth ? stealth.statusStealth({ terbundel: true, folderData }) : { keadaan: 'belum' };
     return {
       ok: true, command: python, args: ['-m', k.modul], cwd: runtimeTerbundel,
-      env: { ...lingkunganServer(), CRAWLER_ROOT: folderData }, folderData, terbundel: true,
+      env: { ...lingkunganServer(), CRAWLER_ROOT: folderData, ...(st.keadaan === 'terpasang' ? { PYTHONPATH: st.folderPaket } : {}) },
+      folderData, terbundel: true,
     };
   }
   if (!akarRepo) return tolak('akar repo tidak diketahui');
@@ -160,6 +167,7 @@ function ringkasKatalog(teks) {
  */
 function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbundel = null, folderData = null, versi = '0', log = () => {} }) {
   const sesi = new Map(); // `${ws}::${id}` → { client, transport, pid, alat, stderr, status, sejak, ringkasan }
+  let sedangPasangStealth = null; // janji pemasangan stealth yang berjalan — tombol ditekan dua kali tidak memasang dua kali
 
   const kunci = (ws, id) => `${ws}::${id}`;
   const luncurkan = (id) => peluncuran(akarRepo, id, { runtimeTerbundel, folderData });
@@ -197,6 +205,9 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbunde
         hasil.push({
           ...ringkas(ws, id), nama: KONEKTOR[id].nama, jenis: KONEKTOR[id].jenis,
           diaktifkan: setelan[ws]?.[id] === true, tersedia: p.ok, alasan: p.ok ? null : p.alasan,
+          stealth: KONEKTOR[id].stealth && p.ok
+            ? { ...stealth.statusStealth({ terbundel: p.terbundel, folderData }), sedangDipasang: sedangPasangStealth !== null, folderPaket: undefined }
+            : null,
         });
       }
     }
@@ -280,6 +291,31 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbunde
     return nyala ? nyalakan(ws, id) : matikan(ws, id);
   }
 
+  /**
+   * Pasang komponen stealth (Tahap E2). Persetujuan Owner diminta PEMANGGIL (dialog proses utama) sebelum ini.
+   * Sesudah berhasil, konektor yang sedang menyala dimulai ulang supaya langsung memuat paketnya.
+   * @param {{jalankan?: Function}} [opsi] penjalan proses tiruan untuk uji
+   */
+  function pasangStealth({ jalankan } = {}) {
+    if (sedangPasangStealth) return sedangPasangStealth;
+    sedangPasangStealth = (async () => {
+      if (!runtimeTerbundel) return tolak('komponen stealth hanya dipasang di aplikasi terpasang — di npm run desktop sudah ada di .venv');
+      const salinanProxy = Object.fromEntries(['HTTPS_PROXY', 'HTTP_PROXY', 'NO_PROXY', 'https_proxy', 'http_proxy', 'no_proxy']
+        .filter((k) => process.env[k]).map((k) => [k, process.env[k]]));
+      const h = await stealth.pasangStealth({
+        runtime: runtimeTerbundel, folderData, env: { ...lingkunganServer(), ...salinanProxy }, log, ...(jalankan ? { jalankan } : {}),
+      });
+      if (h.ok) {
+        for (const k of [...sesi.keys()]) {
+          const [ws, id] = k.split('::');
+          if (sesi.get(k)?.status === 'nyala' && KONEKTOR[id]?.stealth) { await matikan(ws, id); await nyalakan(ws, id); }
+        }
+      }
+      return h;
+    })().finally(() => { sedangPasangStealth = null; });
+    return sedangPasangStealth;
+  }
+
   /** Saat aplikasi dibuka: konektor yang dinyalakan Owner dinyalakan lagi. Gagal → tampil di status, tidak diulang. */
   async function pulihkan() {
     const setelan = bacaSetelan();
@@ -308,7 +344,7 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbunde
     }
   }
 
-  return { status, nyalakan, matikan, matikanSemua, panggil, atur, pulihkan, bacaSetelan };
+  return { status, nyalakan, matikan, matikanSemua, panggil, atur, pulihkan, bacaSetelan, pasangStealth };
 }
 
 /** `misi_id` dari hasil jalankan_misi (selesai maupun masih berjalan, keduanya memuatnya). */
