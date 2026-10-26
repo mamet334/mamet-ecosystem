@@ -21,7 +21,7 @@ const KK = require(path.join(AKAR, 'frontend', 'electron', 'komponenKonektor.cjs
 const K = require(path.join(AKAR, 'frontend', 'electron', 'konektorMcp.cjs'));
 const S = await import(pathToFileURL(path.join(AKAR, 'frontend', 'scripts', 'siapkan-crawler.mjs')).href);
 
-console.log('uji-konektor-komponen v3');
+console.log('uji-konektor-komponen v4');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 600)}` : ''}`);
@@ -122,6 +122,18 @@ cek(/\{\s*konektor,\s*kunci\s*\}/.test(blokBuka) && /lokasiFolder\(konektor, kun
   'IPC buka-folder: menerima kunci, alamat disusun proses utama, dibuka shell.openPath', blokBuka.slice(0, 300));
 cek(/konektor:komponen/.test(main) && /komponen:\s*\(konektor\)/.test(pre) && /bukaFolder:\s*\(konektor, kunci\)/.test(pre), 'preload: komponen & bukaFolder');
 cek(!/±300 MB/.test(main) && /±830 MB/.test(main), 'dialog stealth menyebut ruang disk terukur (±830 MB), bukan "±300 MB"');
+// Koreksi 26 Okt (terlihat di 4.3.0 terpasang): folder data = <userData>\crawler = %APPDATA%\ai-agent-frontend\crawler —
+// userData dinamai `name` package.json. Teks "%APPDATA%\Mamet AI\crawler" yang ditulis tangan salah; dialog kini
+// menyusun alamat dari folder sebenarnya.
+const namaPaket = JSON.parse(readFileSync(path.join(AKAR, 'frontend', 'package.json'), 'utf8')).name;
+cek(namaPaket === 'ai-agent-frontend', `nama paket = nama folder userData (${namaPaket}) — bila diganti, setelan pengguna pindah folder`);
+cek(/const FOLDER_DATA_CRAWLER = path\.join\(app\.getPath\('userData'\), 'crawler'\)/.test(main) && /folderData: FOLDER_DATA_CRAWLER/.test(main),
+  'folder data crawler = userData\\crawler, satu sumber untuk pengelola & dialog');
+const blokDialog = main.slice(main.indexOf("'konektor:pasang-stealth'"), main.indexOf("'konektor:pasang-stealth'") + 1500);
+cek(/path\.join\(FOLDER_DATA_CRAWLER, 'stealth'\)/.test(blokDialog) && /akarBrowser\(\)/.test(blokDialog), 'dialog stealth menyusun alamat dari folder sebenarnya');
+const kodeSalah = ['frontend/electron/main.cjs', 'frontend/electron/konektorMcp.cjs', 'frontend/electron/komponenKonektor.cjs', 'frontend/electron/stealthKonektor.cjs', 'frontend/scripts/siapkan-crawler.mjs']
+  .filter((f) => /Mamet AI\\{1,2}crawler/.test(readFileSync(path.join(AKAR, f), 'utf8')));
+cek(kodeSalah.length === 0, 'tak ada lagi alamat "%APPDATA%\\Mamet AI\\crawler" di kode konektor', kodeSalah);
 const sk = readFileSync(path.join(AKAR, 'frontend', 'scripts', 'siapkan-crawler.mjs'), 'utf8');
 cek(sk.indexOf("'komponen.json'") > sk.indexOf('ujiJabatTangan(tujuan)'), 'komponen.json ditulis SESUDAH bundel lulus uji jabat tangan');
 

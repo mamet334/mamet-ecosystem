@@ -43,3 +43,7 @@ folder data, pemilah berkas penyiap (yang wajib ikut & yang wajib dibuang). Empa
 Tombol "pasang komponen stealth" — unduhan ±900 MB (penggerak + browser) dengan izin Owner saat pertama dibutuhkan,
 disimpan di folder yang bisa ditulis. Sampai itu ada, crawler di aplikasi terpasang tetap jalan tanpa tingkat
 stealth.
+
+> **Koreksi 26 Okt (sesudah 4.3.0 terpasang):** folder data yang sebenarnya `%APPDATA%\ai-agent-frontend\crawler`, bukan
+> `%APPDATA%\Mamet AI\crawler` seperti tertulis di atas — `userData` Electron dinamai `name` package.json. Rincian:
+> [rilis 4.3.0](./2026-10-26-rilis-4.3.0-crawler-terbundel.md#koreksi-alamat-folder-data).

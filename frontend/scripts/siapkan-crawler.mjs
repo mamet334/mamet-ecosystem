@@ -18,7 +18,8 @@
  *             dari METADATA-nya — ditampilkan di Settings › Konektor ⑦. Ditulis sesudah bundel lulus uji.
  *
  * Saat aplikasi terpasang berjalan, proses utama menjalankan `python\python.exe -m crawler.wajah.mcp_server` dari
- * folder ini dengan CRAWLER_ROOT = %APPDATA%\Mamet AI\crawler (folder program pemasang tidak bisa ditulis).
+ * folder ini dengan CRAWLER_ROOT = <userData>\crawler = %APPDATA%\ai-agent-frontend\crawler (folder program pemasang
+ * tidak bisa ditulis; userData dinamai `name` package.json, bukan "Mamet AI").
  * Hasil akhir DIUJI di sini: jabat tangan MCP sungguhan dengan Python salinan, dari folder data sementara.
  */
 import fs from 'node:fs';
@@ -211,9 +212,10 @@ export function siapkan({ tujuan = TUJUAN, log = console.log } = {}) {
   fs.writeFileSync(path.join(tujuan, 'stealth.json'), JSON.stringify({ paket: `patchright==${versiPatchright}`, browser: 'chromium' }, null, 2));
   fs.writeFileSync(path.join(tujuan, 'BACA.txt'), [
     'Runtime Ecosystem Crawler untuk Mamet AI (dibuat scripts/siapkan-crawler.mjs).',
-    'Data, .env, dan hasil crawler ada di %APPDATA%\\Mamet AI\\crawler — bukan di sini.',
+    'Data, .env, dan hasil crawler ada di %APPDATA%\\ai-agent-frontend\\crawler — bukan di sini.',
     'Komponen stealth (Patchright + browser) tidak dibundel (keputusan Owner K14); dipasang atas izin Owner dari',
-    'Settings > Konektor ke %APPDATA%\\Mamet AI\\crawler\\stealth (versi terkunci di stealth.json).',
+    'Settings > Konektor ke %APPDATA%\\ai-agent-frontend\\crawler\\stealth (versi terkunci di stealth.json).',
+    'Daftar isi bundel ini: komponen.json — juga tampil di Settings > Konektor, "Yang terpasang di perangkat ini".',
   ].join('\r\n'));
 
   const j = ujiJabatTangan(tujuan);

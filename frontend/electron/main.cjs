@@ -1203,13 +1203,17 @@ ipcMain.handle('engineer:jalankan', async (_event, perintah) => {
 // gerbang persetujuan di proses ini (Tahap D): K2 — setiap alat menunggu persetujuan Owner; K8 — sekali per misi.
 // Setelan sakelar disimpan di perangkat (K7: tidak ikut akun) dan dinyalakan lagi saat aplikasi dibuka.
 const { buatPengelolaKonektor, buatGerbangKonektor } = require('./konektorMcp.cjs');
+const { akarBrowser } = require('./komponenKonektor.cjs');
+// Tahap E (K10): aplikasi terpasang menjalankan crawler dari runtime yang dibundel pemasang (extraResources), dengan
+// data crawler di <userData>\crawler — userData dinamai `name` package.json, jadi %APPDATA%\ai-agent-frontend\crawler
+// (BUKAN "Mamet AI": koreksi 26 Okt, terlihat di 4.3.0 terpasang). Teks untuk Owner memakai alamat ini, bukan tulisan
+// tangan. `npm run desktop` tetap memakai capability/ecosystem-crawler/.venv.
+const FOLDER_DATA_CRAWLER = path.join(app.getPath('userData'), 'crawler');
 const pengelolaKonektor = buatPengelolaKonektor({
   akarRepo: path.resolve(__dirname, '..', '..'),
   berkasSetelan: path.join(app.getPath('userData'), 'konektor.json'),
-  // Tahap E (K10): aplikasi terpasang menjalankan crawler dari runtime yang dibundel pemasang (extraResources), dengan
-  // data crawler di %APPDATA%\Mamet AI\crawler. `npm run desktop` tetap memakai capability/ecosystem-crawler/.venv.
   runtimeTerbundel: app.isPackaged ? path.join(process.resourcesPath, 'crawler-runtime') : null,
-  folderData: path.join(app.getPath('userData'), 'crawler'),
+  folderData: FOLDER_DATA_CRAWLER,
   versi: app.getVersion(),
   log: (pesan) => console.log(pesan),
 });
@@ -1242,8 +1246,8 @@ ipcMain.handle('konektor:pasang-stealth', async () => {
     message: 'Unduh komponen tingkat stealth Ecosystem Crawler?',
     detail: [
       'Yang diunduh (ruang disk sesudah terpasang, ±830 MB; unduhannya lebih kecil karena terkompresi):',
-      '• paket Patchright (±110 MB) dari PyPI → %APPDATA%\\Mamet AI\\crawler\\stealth',
-      '• browser Chromium + headless shell + ffmpeg (±720 MB) dari server browser Playwright → %LOCALAPPDATA%\\ms-playwright — dilewati bila sudah ada di laptop ini',
+      `• paket Patchright (±110 MB) dari PyPI → ${path.join(FOLDER_DATA_CRAWLER, 'stealth')}`,
+      `• browser Chromium + headless shell + ffmpeg (±720 MB) dari server browser Playwright → ${akarBrowser() || '%LOCALAPPDATA%\\ms-playwright'} — dilewati bila sudah ada di laptop ini`,
       '',
       'Gunanya: halaman publik yang memblokir crawler dicoba lagi dengan browser yang menyamarkan sidik jarinya (bila sakelar CRAWLER_STEALTH nyala). Tanpa komponen ini, halaman seperti itu dilewati dan dicatat.',
       'Pemasangan bisa makan beberapa menit; konektor yang menyala akan dimulai ulang.',

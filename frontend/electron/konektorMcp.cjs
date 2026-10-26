@@ -78,7 +78,7 @@ function sahKonektor(id) { return Object.prototype.hasOwnProperty.call(KONEKTOR,
  *   - `npm run desktop`: dari repo — `capability/ecosystem-crawler/.venv`; data crawler di folder itu sendiri.
  *   - aplikasi terpasang: dari runtime yang DIBUNDEL pemasang (`resources/crawler-runtime/{python, crawler}`, disiapkan
  *     `scripts/siapkan-crawler.mjs`); folder program tidak bisa ditulis, jadi data, `.env`, dan hasil crawler ada di
- *     `folderData` (%APPDATA%\Mamet AI\crawler) lewat CRAWLER_ROOT.
+ *     `folderData` (<userData>\crawler = %APPDATA%\ai-agent-frontend\crawler) lewat CRAWLER_ROOT.
  * `runtimeTerbundel` diisi proses utama hanya bila `app.isPackaged`.
  */
 function peluncuran(akarRepo, id, { runtimeTerbundel = null, folderData = null } = {}) {

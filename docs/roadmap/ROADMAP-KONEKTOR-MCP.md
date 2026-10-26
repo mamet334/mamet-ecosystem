@@ -215,16 +215,18 @@ bawah, dicatat: runtime disiapkan ke `frontend/build/crawler-runtime/` (bukan `b
 (`playwright`/`patchright`, 215 MB) ikut tidak dibundel bersama browsernya (K14). `.env` dibuat crawler sendiri di
 folder data saat pertama jalan (garam baru). **E2 ✅ 26 Okt**
 ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-e2-stealth.md)) — penyimpangan dari perkiraan ±900 MB:
-hanya **Patchright** yang dipasang (Scrapling 0.5 tidak memakai Playwright) + Chromium, ±340 MB, ke
-`%APPDATA%\Mamet AI\crawler\stealth\`. Sisa E2 yang belum dibuktikan: tombol Batal di dialog dilihat di layar, dan
-pemasangan sungguhan di aplikasi terpasang (build berikutnya + izin unduhan Owner). **E3 ✅ 26 Okt**
+hanya **Patchright** yang dipasang (Scrapling 0.5 tidak memakai Playwright) + Chromium, ±830 MB ruang disk, ke
+`%APPDATA%\ai-agent-frontend\crawler\stealth\` (**koreksi 26 Okt:** folder data = `userData` yang dinamai `name`
+package.json, bukan "Mamet AI" — terlihat di 4.3.0 terpasang; dialog kini menyusun alamat dari folder sebenarnya).
+Sisa E2 yang belum dibuktikan: tombol Batal di dialog dilihat di layar, dan pemasangan sungguhan di aplikasi terpasang
+(izin unduhan Owner). **E3 ✅ 26 Okt**
 ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-e3-transparansi.md)) — keputusan Owner: tetap satu
 bundel (bukan unduh dari repo `ecosystem-crawler`), stealth tetap saat dibutuhkan, isi terpasang transparan di
-Settings ⑦ (daftar dari `komponen.json` yang ditulis build). **Ditunda:** tombol "Hapus komponen stealth". **Sisa
-bukti:** "Buka folder" di Electron sungguhan; aplikasi terpasang di PC bersih (Windows Sandbox — Owner mengaktifkan
-fiturnya). Rancangan semula: Skrip build menyiapkan Python 3.12 mandiri + dependensi crawler ke
+Settings ⑦ (daftar dari `komponen.json` yang ditulis build). **Ditunda:** tombol "Hapus komponen stealth".
+**Terbukti di 4.3.0 terpasang (laptop Owner):** konektor menyala dari runtime bawaan pemasang, ⑦ "Bawaan pemasang —
+179 MB · 83 paket". **Sisa bukti:** PC lain/bersih (uji di laptop 4 GB Windows 10 sedang berjalan). Rancangan semula: Skrip build menyiapkan Python 3.12 mandiri + dependensi crawler ke
 `build/python/`, dibawa lewat `extraResources`. Saat jalan, server crawler dijalankan dari Python bawaan itu dengan
-`CRAWLER_ROOT` = `%APPDATA%\Mamet AI\crawler\` (folder program pemasang hanya-baca); `.env` ditempatkan di sana saat
+`CRAWLER_ROOT` = `%APPDATA%\Mamet AI\crawler\` (yang terwujud: `%APPDATA%\ai-agent-frontend\crawler\`) (folder program pemasang hanya-baca); `.env` ditempatkan di sana saat
 pertama dipasang. Browser stealth sesuai K14.
 
 **Tahap F — menyusul:** server MCP jarak jauh (K4 bagian HTTP) dan Google Drive (K6).

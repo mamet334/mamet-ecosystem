@@ -6,7 +6,8 @@
  *
  *   bawaan   runtime terbundel — isi dari `komponen.json` yang DITULIS OTOMATIS saat build (scripts/siapkan-crawler.mjs,
  *            dari isi bundel itu sendiri: Python, crawler, setiap paket + versi + lisensi); ukuran diukur di sini.
- *   data     %APPDATA%\Mamet AI\crawler — hasil, .env, inbox (tanpa subfolder stealth: dihitung di baris stealth).
+ *   data     <userData>\crawler (%APPDATA%\ai-agent-frontend\crawler) — hasil, .env, inbox (tanpa subfolder stealth:
+ *            dihitung di baris stealth).
  *   stealth  paket Patchright (penanda `terpasang.json`) + browser yang dipasang `patchright install chromium`; revisi
  *            dibaca dari `browsers.json` milik Patchright itu, bukan ditebak. Ukuran = folder yang benar-benar ada.
  *

@@ -48,3 +48,7 @@ Empat mutasi menggigit. `uji-konektor-mcp.mjs` disesuaikan (runtime membawa pip)
 - Tombol **Batal** di dialog (baris kembali ke "belum terpasang" tanpa pesan gagal) — dibaca dari kode, belum dilihat.
 - Pemasangan sungguhan di aplikasi terpasang (dialog asli + unduhan ±340 MB) — menunggu build pemasang berikutnya
   dan izin unduhan Owner.
+
+> **Koreksi 26 Okt (sesudah 4.3.0 terpasang):** folder data yang sebenarnya `%APPDATA%\ai-agent-frontend\crawler`, bukan
+> `%APPDATA%\Mamet AI\crawler` seperti tertulis di atas — `userData` Electron dinamai `name` package.json. Rincian:
+> [rilis 4.3.0](./2026-10-26-rilis-4.3.0-crawler-terbundel.md#koreksi-alamat-folder-data).
