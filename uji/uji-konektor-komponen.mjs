@@ -153,6 +153,15 @@ cek(S.periksaPythonTerbundel(pyKosong).join(',') === 'vcruntime140_1.dll', 'tanp
 const sumberSiap = readFileSync(path.join(AKAR, 'frontend', 'scripts', 'siapkan-crawler.mjs'), 'utf8');
 cek(/const hilang = periksaPythonTerbundel\(path\.join\(tujuan, 'python'\)\);\s*\n\s*if \(hilang\.length\) throw/.test(sumberSiap), 'siapkan memanggil pemeriksaan itu dan GAGAL bila ada yang hilang');
 
+// Build GitHub 4.3.0 (Node 20) lolos membawa komponen stealth meski filter salinan membuangnya di laptop (Node 24):
+// sesudah salin, paket yang dibuang dibersihkan langsung dari site-packages bundel.
+const spBundel = sementara('sp-bundel-');
+for (const n of ['patchright', 'Patchright-1.64.1.dist-info', 'playwright', '_pytest', 'scrapling', 'mcp-2.3.0.dist-info']) mkdirSync(path.join(spBundel, n));
+const dibuang = S.bersihkanPaketLewati(spBundel).sort();
+cek(dibuang.join(',') === 'Patchright-1.64.1.dist-info,_pytest,patchright,playwright' && readdirSync(spBundel).sort().join(',') === 'mcp-2.3.0.dist-info,scrapling',
+  'bersihkanPaketLewati: penggerak stealth & pytest dibuang (tak peka huruf besar), paket kerja tetap', { dibuang, sisa: readdirSync(spBundel) });
+cek(/bersihkanPaketLewati\(path\.join\(tujuan, 'python', 'Lib', 'site-packages'\)\)/.test(sumberSiap), 'siapkan membersihkan site-packages bundel sesudah salin');
+
 const CRAWLER = path.join(AKAR, 'capability', 'ecosystem-crawler');
 const kunciTeks = readFileSync(path.join(CRAWLER, 'requirements-bundel.txt'), 'utf8');
 const normal = (n) => n.toLowerCase().replace(/[-_.]+/g, '-');

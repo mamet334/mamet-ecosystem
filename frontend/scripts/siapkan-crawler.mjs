@@ -138,12 +138,30 @@ print(json.dumps({"alat": alat, "sumber": len(kat["sumber"]), "siap": sum(1 for 
   return { ...JSON.parse(r.stdout.trim().split('\n').pop()), dataUji };
 }
 
+/**
+ * Paket yang dibuang (PAKET_LEWATI) tapi masih ada di site-packages bundel — dibersihkan langsung, tidak hanya
+ * mengandalkan `filter` fs.cpSync (rilis 4.3.0: build GitHub, Node 20, lolos membawa komponen stealth padahal di
+ * laptop Owner, Node 24, tidak). Mengembalikan nama yang dibersihkan.
+ */
+export function bersihkanPaketLewati(spBundel) {
+  const dibuang = fs.readdirSync(spBundel).filter((n) => lewatiPaket(n.toLowerCase()) || lewatiPaket(`${n.toLowerCase()}/`));
+  for (const n of dibuang) fs.rmSync(path.join(spBundel, n), { recursive: true, force: true });
+  return dibuang;
+}
+
 /** Uji: komponen stealth memang tidak ada, dan ketiadaannya berupa ImportError (yang ditangani crawler). */
 function ujiStealthTakTerbundel(tujuan) {
-  const r = spawnSync(path.join(tujuan, 'python', 'python.exe'), ['-c', 'from scrapling.fetchers import StealthyFetcher'], {
-    encoding: 'utf8', cwd: tujuan, timeout: 60000, env: { SystemRoot: process.env.SystemRoot, PYTHONDONTWRITEBYTECODE: '1' },
-  });
-  return { tidakAda: r.status !== 0, importError: /ImportError|ModuleNotFoundError/.test(r.stderr || '') };
+  const python = path.join(tujuan, 'python', 'python.exe');
+  const env = { SystemRoot: process.env.SystemRoot, PYTHONDONTWRITEBYTECODE: '1' };
+  const r = spawnSync(python, ['-c', 'from scrapling.fetchers import StealthyFetcher'], { encoding: 'utf8', cwd: tujuan, timeout: 60000, env });
+  const hasil = { tidakAda: r.status !== 0, importError: /ImportError|ModuleNotFoundError/.test(r.stderr || '') };
+  if (!hasil.tidakAda) {
+    // Bila ternyata termuat: sebutkan DARI MANA, supaya galat build langsung menunjuk sebabnya.
+    const d = spawnSync(python, ['-c', "import importlib.util as u, sys; s = u.find_spec('patchright'); print(s and s.origin); print(sys.path)"],
+      { encoding: 'utf8', cwd: tujuan, timeout: 60000, env });
+    hasil.asal = `${d.stdout || ''}${d.stderr || ''}`.trim().slice(-1500);
+  }
+  return hasil;
 }
 
 export function siapkan({ tujuan = TUJUAN, log = console.log } = {}) {
@@ -157,6 +175,8 @@ export function siapkan({ tujuan = TUJUAN, log = console.log } = {}) {
   if (hilang.length) throw new Error(`Python dasar tidak lengkap untuk PC bersih — tidak ada: ${hilang.join(', ')} (di ${dasar})`);
   log('[crawler] paket crawler (tanpa penggerak stealth & pytest; pip ikut)');
   fs.cpSync(sitePackages, path.join(tujuan, 'python', 'Lib', 'site-packages'), { recursive: true, filter: (p) => !lewatiPaket(rel(sitePackages, p)) });
+  const tersisa = bersihkanPaketLewati(path.join(tujuan, 'python', 'Lib', 'site-packages'));
+  if (tersisa.length) log(`[crawler] dibersihkan sesudah salin (lolos filter): ${tersisa.join(', ')}`);
   log('[crawler] kode crawler');
   fs.cpSync(path.join(CRAWLER, 'crawler'), path.join(tujuan, 'crawler'), { recursive: true, filter: (p) => !lewatiKode(rel(CRAWLER, p)) });
   // E2: versi Patchright DIKUNCI dari .venv pengembangan — versi yang terbukti dengan Scrapling crawler ini.
