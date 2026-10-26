@@ -11,7 +11,10 @@ per misi · kode crawler disalin ke repo dulu · Python dibundel di pemasang; Go
 Konektor, setelan di perangkat, terbukti di aplikasi desktop Owner
 ([log](../project-memory/changelog/2026-10-23-konektor-mcp-tahap-c-settings.md)). **Tahap D 🟡 26 Okt** — gerbang
 persetujuan + protokol alat di chat; server ter-deploy (v530); terbukti tanpa model, **uji live menunggu saldo
-OpenRouter** ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-d-gerbang-protokol.md)). K14 menyusul.
+OpenRouter** ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-d-gerbang-protokol.md)); server kini v531.
+**Tahap E ✅ 26 Okt** (bagian utama) — pemasang membawa Python + crawler (runtime 147 MB, terbukti dari hasil build),
+data di %APPDATA%; K14: stealth tidak dibundel ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-e-pemasang.md)).
+Sisa: **E2** tombol pasang komponen stealth.
 **Aplikasi:** **Mamet Ecosystem** (`frontend/`, desktop Electron + web) — **bukan** Mametlite.
 **Arah:** Mamet sebagai **klien** MCP — memakai alat dari server MCP luar. Mamet **tidak** dibuka sebagai server MCP
 (arah itu tidak termasuk item ini).
@@ -202,7 +205,13 @@ pesan saldo menyebut plafon ulang) — **perlu deploy lagi**. **Sisa:** uji misi
 - Batas putaran alat konektor per pertanyaan mengikuti mekanisme `MAKS_PUTARAN` folder kerja (angkanya ditetapkan
   di Tahap D sesudah mengukur alur misi sungguhan).
 
-**Tahap E — Pemasang membawa Python (K10).** Skrip build menyiapkan Python 3.12 mandiri + dependensi crawler ke
+**Tahap E — Pemasang membawa Python (K10).** ✅ **Bagian utama selesai 26 Okt**
+([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-e-pemasang.md)) — penyimpangan dari rancangan di
+bawah, dicatat: runtime disiapkan ke `frontend/build/crawler-runtime/` (bukan `build/python/`) berisi `python/` +
+`crawler/`; Python **disalin** dari laptop (pustaka standar saja), bukan Python mandiri yang diunduh; penggerak stealth
+(`playwright`/`patchright`, 215 MB) ikut tidak dibundel bersama browsernya (K14). `.env` dibuat crawler sendiri di
+folder data saat pertama jalan (garam baru). **Sisa E2:** tombol "pasang komponen stealth" (unduhan ±900 MB dengan
+izin Owner, ke folder yang bisa ditulis). Rancangan semula: Skrip build menyiapkan Python 3.12 mandiri + dependensi crawler ke
 `build/python/`, dibawa lewat `extraResources`. Saat jalan, server crawler dijalankan dari Python bawaan itu dengan
 `CRAWLER_ROOT` = `%APPDATA%\Mamet AI\crawler\` (folder program pemasang hanya-baca); `.env` ditempatkan di sana saat
 pertama dipasang. Browser stealth sesuai K14.
@@ -221,14 +230,10 @@ Assistant, dialog muncul sekali, hasil terbaca, Engineer tetap tak terhubung (K3
 | ~~K12~~ | Sesudah disalin, di mana crawler dikembangkan | ✅ **di folder Mamet**; repo `ecosystem-crawler` **dibiarkan apa adanya** (tidak diarsipkan, tidak disentuh). Perubahan di Mamet tidak mengalir balik ke sana |
 | ~~K13~~ | Yang ikut disalin | ✅ **kode asli + `.env`** (garam pseudonim & kunci); data tangkapan tidak — gudang di Mamet mulai baru |
 | ~~K15~~ | Pustaka klien MCP | ✅ **SDK resmi `@modelcontextprotocol/sdk`** — diunduh dengan izin Owner 23 Okt (1.32.1) |
-
-**Masih terbuka (dibutuhkan di Tahap E):**
-
-| # | Pertanyaan | Usul |
-|---|---|---|
-| K14 | Browser stealth (±719 MB) | **tidak dibundel**; diunduh sekali saat tingkat stealth pertama kali dibutuhkan, dengan persetujuan Owner — pemasang tetap wajar untuk pembaruan otomatis; tanpa browser, halaman yang memblokir dilewati dan dicatat (perilaku crawler saat ini) |
+| ~~K14~~ | Browser stealth | ✅ **tidak dibundel** (keputusan Owner 26 Okt, sesuai usul) — termasuk penggeraknya (`playwright`/`patchright`); diunduh dengan izin saat pertama dibutuhkan (E2). Tanpanya halaman yang memblokir dilewati & dicatat |
 
 ## 8. Langkah berikutnya
 
-Tahap A ✅ → Tahap B ✅ → Tahap C ✅ → Tahap D 🟡 (**uji live** sesudah saldo OpenRouter diisi & `npm run desktop`
-dijalankan ulang) → E, satu tahap satu kali kerja, masing-masing dengan bukti dan izin Owner sebelum lanjut.
+Tahap A ✅ → B ✅ → C ✅ → D 🟡 (**uji live** sesudah saldo OpenRouter diisi) → E ✅ (sisa **E2** tombol pasang
+komponen stealth) → F menyusul. Rilis klien berikutnya (`npm run dist:publish`, dijalankan Owner) membawa konektor ke
+aplikasi terpasang; build butuh `.venv` crawler di laptop pembangun.

@@ -1,0 +1,133 @@
+/**
+ * Siapkan runtime Ecosystem Crawler untuk pemasang (Item 129 Tahap E, 2026-10-26).
+ *
+ *   npm run crawler:siapkan     →  frontend/build/crawler-runtime/{python, crawler}
+ *
+ * Keputusan Owner: K10 — Python ikut dibundel di pemasang; K14 — browser stealth TIDAK dibundel (diunduh dengan izin
+ * saat pertama dibutuhkan). Semua bahan DISALIN dari laptop ini, tidak diunduh:
+ *
+ *   python/   Python dasar yang dipakai `.venv` crawler (`pyvenv.cfg` → home), HANYA pustaka standar. Folder dasar di
+ *             laptop Owner 1,37 GB karena `Lib\site-packages` globalnya — itu tidak ikut.
+ *   python/Lib/site-packages/   paket crawler dari `.venv` (411 MB), TANPA penggerak browser stealth (`playwright`,
+ *             `patchright`, 215 MB: tak berguna tanpa browsernya — K14) dan tanpa alat pengembang (pip, pytest).
+ *             Crawler memuat komponen stealth secara malas; bila tak ada, halaman yang memblokir dilewati & dicatat
+ *             (crawler/kanal/web.py `_stealth`) — perilaku yang sama seperti sebelum Scrapling terpasang.
+ *   crawler/  paket `crawler` (kode saja — tanpa tests, .env, data).
+ *
+ * Saat aplikasi terpasang berjalan, proses utama menjalankan `python\python.exe -m crawler.wajah.mcp_server` dari
+ * folder ini dengan CRAWLER_ROOT = %APPDATA%\Mamet AI\crawler (folder program pemasang tidak bisa ditulis).
+ * Hasil akhir DIUJI di sini: jabat tangan MCP sungguhan dengan Python salinan, dari folder data sementara.
+ */
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+const FRONTEND = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const AKAR_REPO = path.resolve(FRONTEND, '..');
+const CRAWLER = path.join(AKAR_REPO, 'capability', 'ecosystem-crawler');
+const VENV = path.join(CRAWLER, '.venv');
+export const TUJUAN = path.join(FRONTEND, 'build', 'crawler-runtime');
+
+// Relatif terhadap folder Python dasar (huruf kecil, pemisah '/'). Lib/site-packages global TIDAK ikut.
+const PYTHON_LEWATI = [
+  /^lib\/site-packages(\/|$)/, /^lib\/test(\/|$)/, /^lib\/idlelib(\/|$)/, /^lib\/tkinter(\/|$)/, /^lib\/turtledemo(\/|$)/,
+  /^lib\/ensurepip(\/|$)/, /^lib\/lib2to3(\/|$)/, /^lib\/venv(\/|$)/, /^doc(\/|$)/, /^tcl(\/|$)/, /^include(\/|$)/,
+  /^libs(\/|$)/, /^scripts(\/|$)/, /^tools(\/|$)/, /^share(\/|$)/, /(^|\/)__pycache__(\/|$)/,
+  /^dlls\/(_tkinter\.pyd|tcl86t\.dll|tk86t\.dll)$/, /^news\.txt$/,
+];
+// Relatif terhadap site-packages crawler.
+const PAKET_LEWATI = [
+  /^playwright(\/|$)/, /^playwright-[^/]*\.dist-info(\/|$)/, /^patchright(\/|$)/, /^patchright-[^/]*\.dist-info(\/|$)/,
+  /^pip(\/|$)/, /^pip-[^/]*\.dist-info(\/|$)/, /^_?pytest(\/|$)/, /^pytest-[^/]*\.dist-info(\/|$)/, /^py\.py$/,
+  /^__editable__/, /^ecosystem_crawler-[^/]*\.dist-info(\/|$)/, /(^|\/)__pycache__(\/|$)/,
+];
+// Relatif terhadap capability/ecosystem-crawler.
+const KODE_LEWATI = [/(^|\/)__pycache__(\/|$)/, /\.pyc$/];
+
+const rel = (akar, p) => path.relative(akar, p).split(path.sep).join('/').toLowerCase();
+export const lewatiPython = (r) => PYTHON_LEWATI.some((p) => p.test(r));
+export const lewatiPaket = (r) => PAKET_LEWATI.some((p) => p.test(r));
+export const lewatiKode = (r) => KODE_LEWATI.some((p) => p.test(r));
+
+function ukuranMB(dir) {
+  let n = 0;
+  for (const e of fs.readdirSync(dir, { withFileTypes: true, recursive: true })) {
+    if (e.isFile()) n += fs.statSync(path.join(e.parentPath ?? e.path, e.name)).size;
+  }
+  return Math.round(n / 1024 / 1024);
+}
+
+/** Folder Python dasar dari pyvenv.cfg `.venv` crawler. */
+export function pythonDasar(venv = VENV) {
+  const cfg = fs.readFileSync(path.join(venv, 'pyvenv.cfg'), 'utf8');
+  const home = cfg.match(/^home\s*=\s*(.+)$/m)?.[1]?.trim();
+  if (!home || !fs.existsSync(path.join(home, 'python.exe'))) throw new Error(`Python dasar tidak ditemukan (pyvenv.cfg home = ${home})`);
+  return home;
+}
+
+/** Jabat tangan MCP dengan Python salinan: initialize → tools/list → katalog. */
+function ujiJabatTangan(tujuan) {
+  const dataUji = fs.mkdtempSync(path.join(os.tmpdir(), 'crawler-runtime-uji-'));
+  const skrip = String.raw`
+import json, subprocess, sys
+p = subprocess.Popen([sys.argv[1], "-m", "crawler.wajah.mcp_server"], cwd=sys.argv[2], stdin=subprocess.PIPE,
+                     stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, encoding="utf-8")
+def k(o): p.stdin.write(json.dumps(o) + "\n"); p.stdin.flush()
+def t(): return json.loads(p.stdout.readline())
+k({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"siapkan","version":"0"}}})
+t(); k({"jsonrpc":"2.0","method":"notifications/initialized"})
+k({"jsonrpc":"2.0","id":2,"method":"tools/list"}); alat = [x["name"] for x in t()["result"]["tools"]]
+k({"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"katalog","arguments":{}}})
+kat = json.loads(t()["result"]["content"][0]["text"])
+p.stdin.close(); p.wait(timeout=30)
+print(json.dumps({"alat": alat, "sumber": len(kat["sumber"]), "siap": sum(1 for s in kat["sumber"] if s["aktif"] and s["kesehatan"] == "siap"), "akses": kat["akses"]}))
+`;
+  const python = path.join(tujuan, 'python', 'python.exe');
+  const r = spawnSync(python, ['-c', skrip, python, tujuan], {
+    encoding: 'utf8', timeout: 120000,
+    env: { SystemRoot: process.env.SystemRoot, TEMP: os.tmpdir(), TMP: os.tmpdir(), PYTHONUTF8: '1', PYTHONDONTWRITEBYTECODE: '1', CRAWLER_ROOT: dataUji },
+  });
+  if (r.status !== 0) throw new Error(`jabat tangan gagal: ${(r.stderr || r.stdout || r.error?.message || '').slice(-800)}`);
+  return { ...JSON.parse(r.stdout.trim().split('\n').pop()), dataUji };
+}
+
+/** Uji: komponen stealth memang tidak ada, dan ketiadaannya berupa ImportError (yang ditangani crawler). */
+function ujiStealthTakTerbundel(tujuan) {
+  const r = spawnSync(path.join(tujuan, 'python', 'python.exe'), ['-c', 'from scrapling.fetchers import StealthyFetcher'], {
+    encoding: 'utf8', cwd: tujuan, timeout: 60000, env: { SystemRoot: process.env.SystemRoot, PYTHONDONTWRITEBYTECODE: '1' },
+  });
+  return { tidakAda: r.status !== 0, importError: /ImportError|ModuleNotFoundError/.test(r.stderr || '') };
+}
+
+export function siapkan({ tujuan = TUJUAN, log = console.log } = {}) {
+  if (!fs.existsSync(path.join(VENV, 'pyvenv.cfg'))) throw new Error(`.venv crawler tidak ada: ${VENV}`);
+  const dasar = pythonDasar();
+  const sitePackages = path.join(VENV, 'Lib', 'site-packages');
+  fs.rmSync(tujuan, { recursive: true, force: true });
+  log(`[crawler] Python dasar: ${dasar}`);
+  fs.cpSync(dasar, path.join(tujuan, 'python'), { recursive: true, filter: (p) => !lewatiPython(rel(dasar, p)) });
+  log('[crawler] paket crawler (tanpa penggerak stealth, pip, pytest)');
+  fs.cpSync(sitePackages, path.join(tujuan, 'python', 'Lib', 'site-packages'), { recursive: true, filter: (p) => !lewatiPaket(rel(sitePackages, p)) });
+  log('[crawler] kode crawler');
+  fs.cpSync(path.join(CRAWLER, 'crawler'), path.join(tujuan, 'crawler'), { recursive: true, filter: (p) => !lewatiKode(rel(CRAWLER, p)) });
+  fs.writeFileSync(path.join(tujuan, 'BACA.txt'), [
+    'Runtime Ecosystem Crawler untuk Mamet AI (dibuat scripts/siapkan-crawler.mjs).',
+    'Data, .env, dan hasil crawler ada di %APPDATA%\\Mamet AI\\crawler — bukan di sini.',
+    'Komponen stealth (playwright/patchright + browser) tidak dibundel (keputusan Owner K14).',
+  ].join('\r\n'));
+
+  const j = ujiJabatTangan(tujuan);
+  if (j.alat.length !== 6 || j.sumber < 16) throw new Error(`hasil jabat tangan tak lengkap: ${JSON.stringify(j)}`);
+  const s = ujiStealthTakTerbundel(tujuan);
+  if (!s.tidakAda || !s.importError) throw new Error(`komponen stealth tak terduga: ${JSON.stringify(s)}`);
+  const hasil = { mb: ukuranMB(tujuan), alat: j.alat.length, sumber: j.sumber, siap: j.siap, stealthTerbundel: false };
+  log(`[crawler] siap: ${hasil.mb} MB · ${hasil.alat} alat · ${hasil.sumber} sumber (${hasil.siap} siap) · stealth tidak terbundel`);
+  fs.rmSync(j.dataUji, { recursive: true, force: true });
+  return hasil;
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try { siapkan(); } catch (e) { console.error(`[crawler] GAGAL: ${e.message}`); process.exitCode = 1; }
+}

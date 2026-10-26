@@ -10,7 +10,7 @@ import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const AKAR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(path.join(AKAR, 'frontend', 'package.json'));
@@ -18,7 +18,7 @@ const K = require(path.join(AKAR, 'frontend', 'electron', 'konektorMcp.cjs'));
 
 // v2 (23 Okt, Tahap C): sakelar Settings disimpan di perangkat (K7) & dipulihkan saat aplikasi dibuka; `katalog`
 // dibaca Mamet sendiri saat nyala (ringkasan akses untuk Settings); sakelar ditekan dua kali → satu proses.
-console.log('uji-konektor-mcp v3');
+console.log('uji-konektor-mcp v4');
 const PY = path.join(AKAR, 'capability', 'ecosystem-crawler', '.venv', 'Scripts', 'python.exe');
 if (!existsSync(PY)) {
   console.log(`DILEWATI — ${path.relative(AKAR, PY)} tidak ada di mesin ini (.venv tidak masuk repo)`);
@@ -150,6 +150,42 @@ writeFileSync(berkas, '{rusak');
 cek(JSON.stringify(K.buatPengelolaKonektor({ akarRepo: AKAR, berkasSetelan: berkas }).bacaSetelan()) === '{}', 'berkas setelan rusak → dianggap kosong, tidak membuat aplikasi gagal');
 cek(JSON.stringify(K.normalisasiSetelan({ 'ws-assistant': { 'ecosystem-crawler': 'true', lain: true }, 'ws-x': { 'ecosystem-crawler': true } })) === '{}',
   'setelan hanya menerima workspace & konektor yang dikenal dengan nilai true');
+
+// ── 5b. Aplikasi terpasang (Tahap E, K10): runtime terbundel + data di folder yang bisa ditulis ───────────────
+console.log('\n-- 5b. mode terpasang: runtime terbundel, CRAWLER_ROOT di folder data --');
+const runtimePalsu = mkdtempSync(path.join(os.tmpdir(), 'runtime-palsu-'));
+mkdirSync(path.join(runtimePalsu, 'crawler', 'wajah'), { recursive: true });
+writeFileSync(path.join(runtimePalsu, 'crawler', 'wajah', 'mcp_server.py'), '');
+mkdirSync(path.join(runtimePalsu, 'python'), { recursive: true });
+writeFileSync(path.join(runtimePalsu, 'python', 'python.exe'), '');
+const folderData = path.join(os.tmpdir(), `data-crawler-${Date.now()}`);
+const pt2 = K.peluncuran(AKAR, 'ecosystem-crawler', { runtimeTerbundel: runtimePalsu, folderData });
+cek(pt2.ok && pt2.terbundel && pt2.command === path.join(runtimePalsu, 'python', 'python.exe') && pt2.cwd === runtimePalsu,
+  'terpasang: Python & kode dari runtime terbundel, bukan dari .venv repo', pt2);
+cek(pt2.env.CRAWLER_ROOT === folderData && !Object.keys(pt2.env).some((k) => /KEY|TOKEN|SECRET/i.test(k)),
+  'terpasang: CRAWLER_ROOT = folder data (bisa ditulis); lingkungan tetap tanpa rahasia', pt2.env.CRAWLER_ROOT);
+cek(!K.peluncuran(AKAR, 'ecosystem-crawler', { runtimeTerbundel: runtimePalsu }).ok, 'terpasang tanpa folder data → ditolak (crawler tak boleh menulis ke folder program)');
+cek(!K.peluncuran(AKAR, 'ecosystem-crawler', { runtimeTerbundel: path.join(runtimePalsu, 'tak-ada'), folderData }).ok, 'runtime terbundel tak lengkap → ditolak dengan alasan');
+const S = await import(pathToFileURL(path.join(AKAR, 'frontend', 'scripts', 'siapkan-crawler.mjs')).href);
+cek(['lib/json/__init__.py', 'python312.dll', 'vcruntime140.dll', 'dlls/_ssl.pyd', 'lib/encodings/utf_8.py'].every((r) => !S.lewatiPython(r)),
+  'penyiap: pustaka standar & DLL Python ikut');
+cek(['lib/site-packages/numpy/x.py', 'lib/test/x.py', 'doc/x.chm', 'lib/tkinter/x.py', 'lib/json/__pycache__/x.pyc'].every((r) => S.lewatiPython(r)),
+  'penyiap: site-packages GLOBAL laptop, tes, dokumentasi, tkinter, cache — tidak ikut (Python dasar 1,37 GB → pustaka standar saja)');
+cek(['playwright/driver/node.exe', 'patchright-1.0.dist-info/RECORD', 'pip/x.py', '_pytest/x.py', '__editable__.ecosystem_crawler-0.1.0.pth'].every((r) => S.lewatiPaket(r))
+  && ['scrapling/fetchers.py', 'curl_cffi/x.py', 'mcp/x.py', 'trafilatura/x.py', 'yt_dlp/x.py', 'pywin32.pth'].every((r) => !S.lewatiPaket(r)),
+  'penyiap: penggerak stealth (K14), pip, pytest, editable dibuang; paket kerja crawler ikut');
+const runtimeAsli = path.join(AKAR, 'frontend', 'build', 'crawler-runtime');
+if (existsSync(path.join(runtimeAsli, 'python', 'python.exe'))) {
+  const mT = K.buatPengelolaKonektor({ akarRepo: AKAR, runtimeTerbundel: runtimeAsli, folderData });
+  try {
+    const n = await mT.nyalakan('ws-assistant', 'ecosystem-crawler');
+    cek(n.ok && n.alat.length === 6 && existsSync(path.join(folderData, 'inbox')), `runtime terbundel SUNGGUHAN menyala (${n.alat.length} alat); folder inbox disiapkan di folder data`, n);
+    cek(n.ringkasan?.siap >= 14, `di folder data baru semua sumber yang bisa siap memang siap (${n.ringkasan?.siap}) — termasuk inbox`, n.ringkasan);
+    cek(existsSync(path.join(folderData, '.env')) && !existsSync(path.join(runtimeAsli, '.env')), 'crawler menulis .env (garam) ke folder data, tidak ke folder program');
+  } finally { await mT.matikanSemua(); }
+} else {
+  console.log('  (frontend/build/crawler-runtime belum disiapkan — `npm run crawler:siapkan`; bagian sungguhan dilewati)');
+}
 
 // ── 6. Gerbang persetujuan (Tahap D, K2/K8) — pengelola tiruan, dialog tiruan ─────────────────────────────────
 console.log('\n-- 6. gerbang: sekali per misi, per workspace --');

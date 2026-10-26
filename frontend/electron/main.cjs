@@ -1206,6 +1206,10 @@ const { buatPengelolaKonektor, buatGerbangKonektor } = require('./konektorMcp.cj
 const pengelolaKonektor = buatPengelolaKonektor({
   akarRepo: path.resolve(__dirname, '..', '..'),
   berkasSetelan: path.join(app.getPath('userData'), 'konektor.json'),
+  // Tahap E (K10): aplikasi terpasang menjalankan crawler dari runtime yang dibundel pemasang (extraResources), dengan
+  // data crawler di %APPDATA%\Mamet AI\crawler. `npm run desktop` tetap memakai capability/ecosystem-crawler/.venv.
+  runtimeTerbundel: app.isPackaged ? path.join(process.resourcesPath, 'crawler-runtime') : null,
+  folderData: path.join(app.getPath('userData'), 'crawler'),
   versi: app.getVersion(),
   log: (pesan) => console.log(pesan),
 });

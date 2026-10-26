@@ -8,13 +8,14 @@
     "build": "vite build",
     "ikon": "node scripts/perbarui-ikon.mjs",
     "huruf": "node scripts/perbarui-huruf.mjs",
+    "crawler:siapkan": "node scripts/siapkan-crawler.mjs",
     "preview": "vite preview",
     "electron:dev": "cross-env NODE_ENV=development electron .",
     "desktop": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && npm run electron:dev\"",
     "desktop:postbuild": "node -e \"const fs=require('fs'); let h=fs.readFileSync('dist/index.html','utf8'); h=h.replaceAll(' crossorigin',''); h=h.replace(/<meta http-equiv=.Content-Security-Policy.[^>]*>/,''); fs.writeFileSync('dist/index.html',h); console.log('Post-build (DESKTOP): crossorigin + CSP stripped from dist/index.html')\"",
-    "dist": "vite build && npm run desktop:postbuild && electron-builder --win",
-    "dist:portable": "vite build && npm run desktop:postbuild && electron-builder --win portable",
-    "dist:publish": "vite build && npm run desktop:postbuild && electron-builder --win --publish always"
+    "dist": "vite build && npm run desktop:postbuild && npm run crawler:siapkan && electron-builder --win",
+    "dist:portable": "vite build && npm run desktop:postbuild && npm run crawler:siapkan && electron-builder --win portable",
+    "dist:publish": "vite build && npm run desktop:postbuild && npm run crawler:siapkan && electron-builder --win --publish always"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -72,6 +73,12 @@
     ],
     "asarUnpack": [
       "electron/scripts/**"
+    ],
+    "extraResources": [
+      {
+        "from": "build/crawler-runtime",
+        "to": "crawler-runtime"
+      }
     ],
     "win": {
       "target": [

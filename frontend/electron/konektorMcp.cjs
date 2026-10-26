@@ -30,8 +30,11 @@ const KONEKTOR = Object.freeze({
   'ecosystem-crawler': Object.freeze({
     nama: 'Ecosystem Crawler',
     jenis: 'lokal',
-    folder: ['capability', 'ecosystem-crawler'],        // relatif ke akar repo (npm run desktop); pemasang: Tahap E
+    folder: ['capability', 'ecosystem-crawler'],        // relatif ke akar repo (npm run desktop)
     python: ['.venv', 'Scripts', 'python.exe'],          // Python milik konektor itu, bukan Python di PATH
+    terbundel: Object.freeze({ python: ['python', 'python.exe'] }), // relatif ke resources/crawler-runtime (Tahap E)
+    // Folder yang crawler anggap wajib ada di CRAWLER_ROOT — di folder data baru belum ada (sumber inbox "belum siap").
+    folderDataWajib: Object.freeze(['inbox']),
     modul: 'crawler.wajah.mcp_server',                   // dijalankan `python -m` — paket dimuat dari folder kerja
     berkasModul: ['crawler', 'wajah', 'mcp_server.py'],
     // Dibaca MAMET SENDIRI saat konektor menyala (Tahap C, rancangan §6 D): isinya setelan crawler — sumber & sakelar
@@ -66,15 +69,33 @@ function sahWorkspace(ws) { return WORKSPACE.includes(ws); }
 function sahKonektor(id) { return Object.prototype.hasOwnProperty.call(KONEKTOR, id); }
 
 /** Cara menjalankan konektor `id` — atau alasan kenapa tidak bisa. Tidak menjalankan apa pun. */
-function peluncuran(akarRepo, id) {
+/**
+ * Dua cara menjalankan konektor (Tahap E, K10):
+ *   - `npm run desktop`: dari repo — `capability/ecosystem-crawler/.venv`; data crawler di folder itu sendiri.
+ *   - aplikasi terpasang: dari runtime yang DIBUNDEL pemasang (`resources/crawler-runtime/{python, crawler}`, disiapkan
+ *     `scripts/siapkan-crawler.mjs`); folder program tidak bisa ditulis, jadi data, `.env`, dan hasil crawler ada di
+ *     `folderData` (%APPDATA%\Mamet AI\crawler) lewat CRAWLER_ROOT.
+ * `runtimeTerbundel` diisi proses utama hanya bila `app.isPackaged`.
+ */
+function peluncuran(akarRepo, id, { runtimeTerbundel = null, folderData = null } = {}) {
   if (!sahKonektor(id)) return tolak(`konektor tidak dikenal: ${id}`);
   const k = KONEKTOR[id];
+  if (runtimeTerbundel) {
+    const python = path.join(runtimeTerbundel, ...k.terbundel.python);
+    if (!fs.existsSync(path.join(runtimeTerbundel, ...k.berkasModul))) return tolak(`runtime konektor tidak lengkap di ${runtimeTerbundel}`);
+    if (!fs.existsSync(python)) return tolak('Python konektor tidak ada di runtime terbundel');
+    if (!folderData) return tolak('folder data konektor tidak diketahui');
+    return {
+      ok: true, command: python, args: ['-m', k.modul], cwd: runtimeTerbundel,
+      env: { ...lingkunganServer(), CRAWLER_ROOT: folderData }, folderData, terbundel: true,
+    };
+  }
   if (!akarRepo) return tolak('akar repo tidak diketahui');
   const folder = path.join(akarRepo, ...k.folder);
   const python = path.join(folder, ...k.python);
   if (!fs.existsSync(path.join(folder, ...k.berkasModul))) return tolak(`kode konektor tidak ada di ${folder}`);
   if (!fs.existsSync(python)) return tolak(`Python konektor tidak ada (${path.relative(akarRepo, python)})`);
-  return { ok: true, command: python, args: ['-m', k.modul], cwd: folder, env: lingkunganServer() };
+  return { ok: true, command: python, args: ['-m', k.modul], cwd: folder, env: lingkunganServer(), terbundel: false };
 }
 
 function matikanPohon(pid) {
@@ -134,12 +155,14 @@ function ringkasKatalog(teks) {
 /**
  * Pengelola sesi konektor. `akarRepo` = folder repo Mamet (di `npm run desktop`: dua tingkat di atas berkas ini).
  * `berkasSetelan` = JSON di perangkat (K7: setelan konektor tidak ikut akun) — mis. %APPDATA%\Mamet AI\konektor.json.
- * @param {{akarRepo: string, berkasSetelan?: string, versi?: string, log?: (pesan: string) => void}} opsi
+ * `runtimeTerbundel` & `folderData` (Tahap E): aplikasi terpasang — lihat `peluncuran`.
+ * @param {{akarRepo: string, berkasSetelan?: string, runtimeTerbundel?: string|null, folderData?: string|null, versi?: string, log?: (pesan: string) => void}} opsi
  */
-function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, versi = '0', log = () => {} }) {
+function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbundel = null, folderData = null, versi = '0', log = () => {} }) {
   const sesi = new Map(); // `${ws}::${id}` → { client, transport, pid, alat, stderr, status, sejak, ringkasan }
 
   const kunci = (ws, id) => `${ws}::${id}`;
+  const luncurkan = (id) => peluncuran(akarRepo, id, { runtimeTerbundel, folderData });
 
   function bacaSetelan() {
     if (!berkasSetelan) return {};
@@ -169,7 +192,7 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, versi = '0', lo
     const setelan = bacaSetelan();
     const hasil = [];
     for (const id of Object.keys(KONEKTOR)) {
-      const p = peluncuran(akarRepo, id);
+      const p = luncurkan(id);
       for (const ws of WORKSPACE) {
         hasil.push({
           ...ringkas(ws, id), nama: KONEKTOR[id].nama, jenis: KONEKTOR[id].jenis,
@@ -192,10 +215,16 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, versi = '0', lo
   }
 
   async function nyalakanSekali(ws, id) {
-    const p = peluncuran(akarRepo, id);
+    const p = luncurkan(id);
     if (!p.ok) return p;
     const k = kunci(ws, id);
     if (sesi.get(k)?.status === 'nyala') return { ok: true, ...ringkas(ws, id) };
+    if (p.folderData) {
+      // Aplikasi terpasang: folder data baru di %APPDATA% belum berisi folder yang crawler anggap wajib (mis. inbox —
+      // tanpa itu sumber inbox "belum siap"). Dibuat sekali; isinya tetap milik Owner.
+      try { for (const f of KONEKTOR[id].folderDataWajib || []) fs.mkdirSync(path.join(p.folderData, f), { recursive: true }); }
+      catch (e) { log(`[KONEKTOR] folder data ${p.folderData} tidak bisa disiapkan: ${e.message}`); }
+    }
 
     const transport = new StdioClientTransport({ command: p.command, args: p.args, cwd: p.cwd, env: p.env, stderr: 'pipe' });
     const catatan = { stderr: '' };
