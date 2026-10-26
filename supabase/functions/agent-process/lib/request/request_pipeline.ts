@@ -14,6 +14,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { konteksWaktuPengguna, zonaWaktuSah } from './waktu_pengguna.ts';
 import { bersihkanRiwayatDataTabel } from '../../../../../frontend/src/core/runtime/services/dataTabelAsnSaring.js';
 import { blokPromptFolder } from '../../../../../frontend/src/core/runtime/services/folderKerjaAlat.js';
+import { blokPromptKonektor } from '../../../../../frontend/src/core/runtime/services/konektorAlat.js';
 
 
 /**
@@ -440,6 +441,14 @@ Wajib ikuti struktur persis seperti contoh di atas!`;
   if (parsed.folderKerja) {
     ctx.request.agentIdentityPrompt += blokPromptFolder(parsed.folderKerja.nama, parsed.folderKerja.putaran);
     console.log(`[FolderKerja] aktif "${parsed.folderKerja.nama}" · putaran alat ${parsed.folderKerja.putaran}`);
+  }
+
+  // KONEKTOR (Item 129 Tahap D): desktop mengirim konektor yang MENYALA di workspace ini (per workspace, K3). Blok
+  // promptnya statis per konektor yang dikenal — deskripsi alat dari server MCP tidak masuk prompt. Alat dijalankan
+  // desktop lewat gerbang persetujuan di proses utama Electron (K2/K8), bukan di sini.
+  if (parsed.konektor) {
+    ctx.request.agentIdentityPrompt += blokPromptKonektor(parsed.konektor);
+    console.log(`[Konektor] aktif "${parsed.konektor.id}" · putaran alat ${parsed.konektor.putaran} · ${parsed.konektor.sumberSiap.length} sumber siap`);
   }
 
   // =============================================

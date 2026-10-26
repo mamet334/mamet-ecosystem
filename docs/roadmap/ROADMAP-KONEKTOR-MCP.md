@@ -9,7 +9,9 @@ per misi · kode crawler disalin ke repo dulu · Python dibundel di pemasang; Go
 **Tahap B ✅ 23 Okt** — klien MCP di proses utama, per workspace, SDK resmi (K15)
 ([log](../project-memory/changelog/2026-10-23-konektor-mcp-tahap-b-klien-mcp.md)). **Tahap C ✅ 23 Okt** — Settings ›
 Konektor, setelan di perangkat, terbukti di aplikasi desktop Owner
-([log](../project-memory/changelog/2026-10-23-konektor-mcp-tahap-c-settings.md)). Berikutnya Tahap D; K14 menyusul.
+([log](../project-memory/changelog/2026-10-23-konektor-mcp-tahap-c-settings.md)). **Tahap D 🟡 26 Okt** — gerbang
+persetujuan + protokol alat di chat; server ter-deploy (v530); terbukti tanpa model, **uji live menunggu saldo
+OpenRouter** ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-d-gerbang-protokol.md)). K14 menyusul.
 **Aplikasi:** **Mamet Ecosystem** (`frontend/`, desktop Electron + web) — **bukan** Mametlite.
 **Arah:** Mamet sebagai **klien** MCP — memakai alat dari server MCP luar. Mamet **tidak** dibuka sebagai server MCP
 (arah itu tidak termasuk item ini).
@@ -179,7 +181,10 @@ pratinjau; dari layar hanya `status` & `atur` (sakelar tersimpan). Tab baru: daf
 robots.txt & stealth). Setelan disimpan **di perangkat** lewat proses utama — tidak ikut akun (K7). Versi web
 menampilkan "hanya tersedia di desktop".
 
-**Tahap D — Protokol ke model + persetujuan sekali per misi (K2, K8).**
+**Tahap D — Protokol ke model + persetujuan sekali per misi (K2, K8).** 🟡 **Kode & deploy selesai 26 Okt**
+([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-d-gerbang-protokol.md)) — rantai penuh terbukti
+tanpa model; batas putaran ditetapkan 6 (3 alat/putaran). **Sisa:** uji live di chat Assistant & Engineer (butuh
+saldo OpenRouter): dialog muncul sekali per misi, model memakai tag, label Hypothesis, catatan kaki dari gerbang.
 - Saat konektor nyala di workspace itu, prompt memuat blok **KONEKTOR AKTIF** berisi daftar alat. `katalog` dibaca
   **oleh Mamet sendiri** saat konektor dinyalakan dan dimasukkan ke blok itu — isinya setelan crawler, bukan data
   luar — jadi model tidak perlu meminta `katalog` dan Owner tidak disodori persetujuan untuknya.
@@ -223,6 +228,5 @@ Assistant, dialog muncul sekali, hasil terbaca, Engineer tetap tak terhubung (K3
 
 ## 8. Langkah berikutnya
 
-Tahap A ✅ → Tahap B ✅ → Tahap C ✅ → **Tahap D** (protokol ke model + gerbang persetujuan sekali per misi di proses
-utama; satu-satunya jalur `tools/call`) → E, satu tahap satu kali kerja, masing-masing dengan bukti dan izin Owner
-sebelum lanjut. Uji alur misi sungguhan di Tahap D butuh saldo OpenRouter yang cukup.
+Tahap A ✅ → Tahap B ✅ → Tahap C ✅ → Tahap D 🟡 (**uji live** sesudah saldo OpenRouter diisi & `npm run desktop`
+dijalankan ulang) → E, satu tahap satu kali kerja, masing-masing dengan bukti dan izin Owner sebelum lanjut.

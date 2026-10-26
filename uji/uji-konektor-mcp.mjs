@@ -18,7 +18,7 @@ const K = require(path.join(AKAR, 'frontend', 'electron', 'konektorMcp.cjs'));
 
 // v2 (23 Okt, Tahap C): sakelar Settings disimpan di perangkat (K7) & dipulihkan saat aplikasi dibuka; `katalog`
 // dibaca Mamet sendiri saat nyala (ringkasan akses untuk Settings); sakelar ditekan dua kali → satu proses.
-console.log('uji-konektor-mcp v2');
+console.log('uji-konektor-mcp v3');
 const PY = path.join(AKAR, 'capability', 'ecosystem-crawler', '.venv', 'Scripts', 'python.exe');
 if (!existsSync(PY)) {
   console.log(`DILEWATI — ${path.relative(AKAR, PY)} tidak ada di mesin ini (.venv tidak masuk repo)`);
@@ -100,16 +100,20 @@ try {
   await m.matikanSemua();
 }
 
-// ── 4. K2: belum ada jalur dari layar ke tools/call ───────────────────────────────────────────────────────────
-console.log('\n-- 4. K2: panggil() tidak diekspos ke layar --');
+// ── 4. K2: jalur dari layar ke tools/call HANYA lewat gerbang ────────────────────────────────────────────────
+console.log('\n-- 4. K2: tools/call dari layar hanya lewat gerbang persetujuan --');
 const preload = readFileSync(path.join(AKAR, 'frontend', 'electron', 'preload.cjs'), 'utf8');
 const main = readFileSync(path.join(AKAR, 'frontend', 'electron', 'main.cjs'), 'utf8');
 cek(/konektor:status/.test(preload) && /konektor:atur/.test(preload),
   'layar bisa melihat status dan memakai sakelar Settings');
 cek(!/konektor:nyalakan|konektor:matikan/.test(preload),
   'satu jalur saja dari layar: sakelar (atur) — menyala tanpa tersimpan tidak mungkin, setelan = kebenaran');
-cek(!/konektor:panggil/.test(preload) && !/ipcMain\.handle\('konektor:panggil'/.test(main) && !/\.panggil\(/.test(main),
-  'tidak ada IPC ke tools/call — gerbang persetujuan Owner (Tahap D) belum ada, jadi jalurnya pun belum ada');
+// v3 (Tahap D): jalurnya kini ada — dan HANYA lewat gerbang. Pengelola tidak pernah dipanggil langsung dari IPC.
+const ipcPanggil = main.match(/ipcMain\.handle\('konektor:panggil'[\s\S]*?\n\s*[^\n]*\);/)?.[0] || '';
+cek(/gerbangKonektor\.panggil\(/.test(ipcPanggil), 'IPC konektor:panggil diteruskan ke gerbangKonektor.panggil', ipcPanggil);
+cek(!/pengelolaKonektor\.panggil\(/.test(main), 'proses utama tidak pernah memanggil pengelolaKonektor.panggil langsung (melewati gerbang)');
+cek(/mintaIzin: async[\s\S]{0,400}dialog\.showMessageBox\(mainWindow/.test(main) && /buttons: \['Tolak', 'Izinkan'\][\s\S]{0,80}cancelId: 0/.test(main),
+  'gerbang bertanya lewat dialog asli proses utama; tombol bawaan & Esc = Tolak');
 cek(/matikanSemua/.test(main) && /will-quit/.test(main), 'proses konektor dimatikan saat aplikasi keluar');
 cek(/berkasSetelan: path\.join\(app\.getPath\('userData'\), 'konektor\.json'\)/.test(main) && /pengelolaKonektor\.pulihkan\(\)/.test(main),
   'K7: setelan di userData perangkat & dipulihkan saat aplikasi siap');
@@ -146,6 +150,50 @@ writeFileSync(berkas, '{rusak');
 cek(JSON.stringify(K.buatPengelolaKonektor({ akarRepo: AKAR, berkasSetelan: berkas }).bacaSetelan()) === '{}', 'berkas setelan rusak → dianggap kosong, tidak membuat aplikasi gagal');
 cek(JSON.stringify(K.normalisasiSetelan({ 'ws-assistant': { 'ecosystem-crawler': 'true', lain: true }, 'ws-x': { 'ecosystem-crawler': true } })) === '{}',
   'setelan hanya menerima workspace & konektor yang dikenal dengan nilai true');
+
+// ── 6. Gerbang persetujuan (Tahap D, K2/K8) — pengelola tiruan, dialog tiruan ─────────────────────────────────
+console.log('\n-- 6. gerbang: sekali per misi, per workspace --');
+const dipanggil = [];
+let jawabDialog = true;
+const dialog = [];
+const pengelolaTiruan = {
+  status: () => [{ workspace: 'ws-assistant', konektor: 'ecosystem-crawler', ringkasan: { akses: { keterangan: 'robots.txt TIDAK dipatuhi' } } }],
+  panggil: async (ws, id, alat, argumen, opsi) => {
+    dipanggil.push({ ws, alat, argumen, opsi });
+    if (alat === 'jalankan_misi') return { ok: true, teks: JSON.stringify({ misi_id: 'MISIUJI0001', status: 'selesai', total: 12 }) };
+    return { ok: true, teks: '{"items":[]}' };
+  },
+};
+const g = K.buatGerbangKonektor({ pengelola: pengelolaTiruan, mintaIzin: async (d) => { dialog.push(d); return jawabDialog; } });
+const misi = { sumber: ['rss_media'], kata_kunci: ['BPJS'], owner_intent: 'cari keluhan BPJS', sejak: '30h' };
+const h1 = await g.panggil('ws-assistant', 'ecosystem-crawler', 'jalankan_misi', misi);
+cek(h1.ok && h1.misiId === 'MISIUJI0001' && dialog.length === 1, 'misi baru → SATU dialog, lalu misi_id dicatat', { h1, dialog: dialog.length });
+cek(/BPJS/.test(dialog[0].rincian) && /rss_media/.test(dialog[0].rincian) && /robots\.txt TIDAK dipatuhi/.test(dialog[0].rincian) && /penyedia model/.test(dialog[0].rincian),
+  'dialog menyebut sumber, kata kunci, cara akses, dan bahwa hasil terkirim ke penyedia model', dialog[0]);
+cek(dipanggil[0].opsi?.batasMs === 130000, 'jalankan_misi diberi batas 130 s (crawler menunggu ≤ 110 s)', dipanggil[0].opsi);
+await g.panggil('ws-assistant', 'ecosystem-crawler', 'status_misi', { misi_id: 'MISIUJI0001' });
+await g.panggil('ws-assistant', 'ecosystem-crawler', 'baca_tangkapan', { misi_id: 'MISIUJI0001', kursor: 0 });
+cek(dialog.length === 1, 'K8: status & baca untuk misi yang disetujui → TANPA dialog lagi', dialog.length);
+await g.panggil('ws-assistant', 'ecosystem-crawler', 'baca_tangkapan', { misi_id: 'MISILAIN0002' });
+cek(dialog.length === 2, 'baca misi LAIN (belum disetujui) → dialog', dialog.length);
+await g.panggil('ws-engineer', 'ecosystem-crawler', 'baca_tangkapan', { misi_id: 'MISIUJI0001' });
+cek(dialog.length === 3, 'K3: izin misi di Assistant tidak berlaku di Engineer → dialog', dialog.length);
+await g.panggil('ws-assistant', 'ecosystem-crawler', 'ekspor_misi', { misi_id: 'MISIUJI0001' });
+await g.panggil('ws-assistant', 'ecosystem-crawler', 'daftar_misi', {});
+cek(dialog.length === 5, 'ekspor_misi (menulis berkas) & daftar_misi → dialog setiap kali, walau misinya sudah disetujui', dialog.length);
+const nKatalog = dialog.length;
+await g.panggil('ws-assistant', 'ecosystem-crawler', 'katalog', {});
+cek(dialog.length === nKatalog, 'katalog (setelan capability, bukan data luar) → tanpa dialog');
+jawabDialog = false;
+const nSebelum = dipanggil.length;
+const tolak1 = await g.panggil('ws-assistant', 'ecosystem-crawler', 'jalankan_misi', { ...misi, kata_kunci: ['pinjol'] });
+cek(!tolak1.ok && tolak1.ditolakOwner && dipanggil.length === nSebelum, 'Owner menolak → alat TIDAK dijalankan, hasil "ditolak Owner"', tolak1);
+cek(!(await g.panggil('ws-lite', 'ecosystem-crawler', 'katalog', {})).ok && !(await g.panggil('ws-assistant', 'ecosystem-crawler', 'katalog', [1])).ok,
+  'workspace asing & argumen bukan objek ditolak sebelum apa pun');
+const gGalat = K.buatGerbangKonektor({ pengelola: pengelolaTiruan, mintaIzin: async () => { throw new Error('jendela tertutup'); } });
+cek((await gGalat.panggil('ws-assistant', 'ecosystem-crawler', 'jalankan_misi', misi)).ditolakOwner === true,
+  'dialog gagal tampil → dianggap DITOLAK, bukan diizinkan');
+cek(K.misiIdDari('{"misi_id":"x; rm -rf"}') === null && K.misiIdDari('bukan json') === null, 'misi_id aneh/bukan JSON tidak diberi izin otomatis');
 
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));
 process.exit(gagal === 0 ? 0 : 1);

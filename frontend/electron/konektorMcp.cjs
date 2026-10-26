@@ -10,9 +10,9 @@
  *     USERPROFILE, …) — kunci API di proses Electron TIDAK ikut. Lebih ketat dari `envBersih` (daftar hitam).
  *   - TANPA SHELL & ALAMAT ABSOLUT: program = `python.exe` di `.venv` konektor itu sendiri, dicek ada sebelum jalan;
  *     tidak dicari di PATH.
- *   - `panggil()` SENGAJA TIDAK diekspos ke layar di tahap ini. K2: setiap alat menunggu persetujuan Owner, dan
- *     gerbang itu harus di proses utama (layar tidak bisa dipercaya untuk bertanya sendiri). Gerbangnya dibangun di
- *     Tahap D; sampai saat itu belum ada jalur dari layar yang bisa memanggil alat konektor.
+ *   - `panggil()` pengelola TIDAK pernah diekspos ke layar. Jalan satu-satunya dari layar ke tools/call adalah
+ *     `buatGerbangKonektor` (Tahap D): K2 — setiap alat menunggu persetujuan Owner; K8 — sekali per misi. Gerbang
+ *     ada di proses utama karena layar tidak bisa dipercaya untuk bertanya sendiri.
  *
  * Murni (tanpa `electron`) supaya bisa diuji dengan node biasa — lihat `uji/uji-konektor-mcp.mjs`.
  */
@@ -37,6 +37,9 @@ const KONEKTOR = Object.freeze({
     // Dibaca MAMET SENDIRI saat konektor menyala (Tahap C, rancangan §6 D): isinya setelan crawler — sumber & sakelar
     // akses — bukan data luar, jadi tidak lewat persetujuan Owner dan tidak membuka jalur tools/call dari layar.
     bacaSaatNyala: 'katalog',
+    // Gerbang (Tahap D, K2/K8): misi baru → dialog; status & baca untuk misi yang SUDAH disetujui di workspace itu →
+    // tanpa dialog; alat lain → dialog setiap kali. `bebas` = setelan capability (bukan data luar).
+    kebijakan: Object.freeze({ bebas: ['katalog'], misiBaru: 'jalankan_misi', ikutMisi: ['status_misi', 'baca_tangkapan'] }),
   }),
 });
 
@@ -112,10 +115,13 @@ function ringkasKatalog(teks) {
   try {
     const k = JSON.parse(teks);
     const sumber = Array.isArray(k.sumber) ? k.sumber : [];
+    const siap = sumber.filter((s) => s.aktif && s.kesehatan === 'siap');
     return {
       akses: k.akses || null,
       sumber: sumber.length,
-      siap: sumber.filter((s) => s.aktif && s.kesehatan === 'siap').length,
+      siap: siap.length,
+      // Tahap D: daftar sumber siap untuk blok prompt (disaring lagi oleh konektorAlat.infoKonektorAman).
+      sumberSiap: siap.map((s) => ({ id: s.id, cocok: Array.isArray(s.cocok_untuk) ? s.cocok_untuk : [] })),
       versi: k.versi || null,
     };
   } catch {
@@ -276,6 +282,86 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, versi = '0', lo
   return { status, nyalakan, matikan, matikanSemua, panggil, atur, pulihkan, bacaSetelan };
 }
 
+/** `misi_id` dari hasil jalankan_misi (selesai maupun masih berjalan, keduanya memuatnya). */
+function misiIdDari(teks) {
+  try { const id = JSON.parse(teks)?.misi_id; return typeof id === 'string' && /^[A-Za-z0-9_-]{6,64}$/.test(id) ? id : null; }
+  catch {
+    // Hasil bukan JSON → tidak ada misi yang bisa diizinkan otomatis; status/baca tetap lewat dialog (aman ke arah tanya).
+    return null;
+  }
+}
+
+const LABEL_WS = { 'ws-assistant': 'Assistant', 'ws-engineer': 'Engineer' };
+
+/** Isi dialog persetujuan: apa persisnya yang akan dijalankan, dengan kata-kata Owner, bukan JSON mentah saja. */
+function susunDialog(ws, id, alat, argumen, ringkasan) {
+  const nama = KONEKTOR[id].nama;
+  const daftar = (v) => (Array.isArray(v) ? v.join(', ') : v ? String(v) : '—');
+  if (alat === KONEKTOR[id].kebijakan?.misiBaru) {
+    const a = argumen;
+    const baris = [
+      `Sumber: ${daftar(a.sumber)}`,
+      a.kata_kunci?.length ? `Kata kunci: ${daftar(a.kata_kunci)}` : null,
+      a.url_awal?.length ? `Link: ${daftar(a.url_awal)}` : null,
+      a.kata_kunci_kecuali?.length ? `Kecuali: ${daftar(a.kata_kunci_kecuali)}` : null,
+      `Rentang: ${a.sejak || 'tanpa batas awal'}${a.sampai ? ` s.d. ${a.sampai}` : ''}`,
+      `Batas: ${a.batas_per_sumber ?? 50} per sumber, ${a.batas_total ?? 300} total${a.ambil_komentar ? ', termasuk komentar' : ''}`,
+      a.owner_intent ? `Perintah Anda: "${String(a.owner_intent).slice(0, 200)}"` : null,
+      '',
+      ringkasan?.akses?.keterangan ? `Cara akses: ${ringkasan.akses.keterangan}` : null,
+      'Hasil tangkapan (penulis berpseudonim) akan dibaca model dan ikut terkirim ke penyedia model.',
+      'Persetujuan ini berlaku untuk misi ini saja: cek status & baca hasilnya tidak ditanyakan lagi.',
+    ].filter((b) => b !== null);
+    return { judul: `${nama} — jalankan misi baru? (${LABEL_WS[ws]})`, rincian: baris.join('\n') };
+  }
+  return {
+    judul: `${nama} — izinkan "${alat}"? (${LABEL_WS[ws]})`,
+    rincian: `Argumen: ${JSON.stringify(argumen).slice(0, 600)}${alat === 'ekspor_misi' ? '\n\nMenulis berkas hasil ke folder hasil/ crawler di laptop ini.' : ''}`,
+  };
+}
+
+/**
+ * GERBANG PERSETUJUAN (Item 129 Tahap D) — satu-satunya jalan dari layar ke tools/call.
+ * K2: setiap alat menunggu persetujuan Owner. K8: SEKALI per misi — `jalankan_misi` memunculkan dialog; sesudah
+ * disetujui, `status_misi` & `baca_tangkapan` untuk misi_id itu di workspace itu lewat tanpa dialog. Izin misi hidup
+ * selama aplikasi terbuka; workspace lain (K3) dan misi lain tetap ditanyakan.
+ * @param {{pengelola: ReturnType<typeof buatPengelolaKonektor>, mintaIzin: (d: {judul: string, rincian: string}) => Promise<boolean>, log?: Function}} opsi
+ */
+function buatGerbangKonektor({ pengelola, mintaIzin, log = () => {} }) {
+  const izinMisi = new Map(); // `${ws}::${id}` → Set<misi_id>
+
+  async function panggil(ws, id, alat, argumen = {}) {
+    if (!sahWorkspace(ws) || !sahKonektor(id)) return { ...tolak('workspace/konektor tidak dikenal'), alat };
+    if (!argumen || typeof argumen !== 'object' || Array.isArray(argumen)) return { ...tolak('argumen harus objek'), alat };
+    const kb = KONEKTOR[id].kebijakan || {};
+    const k = `${ws}::${id}`;
+    const disetujui = izinMisi.get(k) || new Set();
+    const bebas = (kb.bebas || []).includes(alat)
+      || ((kb.ikutMisi || []).includes(alat) && disetujui.has(String(argumen.misi_id || '')));
+    if (!bebas) {
+      const ringkasan = pengelola.status().find((s) => s.workspace === ws && s.konektor === id)?.ringkasan;
+      let setuju = false;
+      try { setuju = await mintaIzin(susunDialog(ws, id, alat, argumen, ringkasan)); }
+      catch (e) { log(`[KONEKTOR] dialog persetujuan gagal: ${e.message}`); }
+      if (!setuju) {
+        log(`[KONEKTOR] ${k} ${alat} DITOLAK OWNER`);
+        return { ok: false, ditolakOwner: true, alat, alasan: 'ditolak Owner di dialog persetujuan' };
+      }
+    }
+    // jalankan_misi menunggu ≤ 110 s di sisi crawler; batas panggilan diberi kelonggaran di atasnya.
+    const h = await pengelola.panggil(ws, id, alat, argumen, alat === kb.misiBaru ? { batasMs: 130000 } : undefined);
+    if (h.ok && alat === kb.misiBaru) {
+      const misiId = misiIdDari(h.teks);
+      if (misiId) { disetujui.add(misiId); izinMisi.set(k, disetujui); h.misiId = misiId; }
+    }
+    log(`[KONEKTOR] ${k} ${alat} → ${h.ok ? `OK${bebas ? ' (tanpa dialog)' : ''}` : h.alasan}`);
+    return { ...h, alat };
+  }
+
+  return { panggil, izinMisi: (ws, id) => [...(izinMisi.get(`${ws}::${id}`) || [])] };
+}
+
 module.exports = {
-  buatPengelolaKonektor, peluncuran, lingkunganServer, teksHasil, normalisasiSetelan, ringkasKatalog, KONEKTOR, WORKSPACE, BATAS,
+  buatPengelolaKonektor, buatGerbangKonektor, susunDialog, misiIdDari,
+  peluncuran, lingkunganServer, teksHasil, normalisasiSetelan, ringkasKatalog, KONEKTOR, WORKSPACE, BATAS,
 };

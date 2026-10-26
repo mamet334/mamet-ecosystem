@@ -228,4 +228,8 @@ const terpotong = P.pesanUntukPengguna(S.pesanTerpotongPlafon(119));
 cek(!/harian/i.test(`${terpotong.judul} ${terpotong.saran}`), '"Plafon token jawaban habis" (plafon TOKEN) tidak dibaca sebagai batas harian', terpotong.judul);
 
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));
-process.exit(gagal === 0 ? 0 : 1);
+// exitCode, BUKAN process.exit(): sejak v2 berkas ini mengimpor modul server .ts, yang di Node 24 diterjemahkan
+// penghapus-tipe berbasis WebAssembly. process.exit() memotong penutupan handle-nya dan libuv mati dengan
+// "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)" — kode 127 SESUDAH "SEMUA LULUS" (7 dari 8 jalan, 26 Okt).
+// Merah palsu begitu memulihkan patch yang benar di verifikasi Tahap 6. Biarkan Node keluar sendiri.
+process.exitCode = gagal === 0 ? 0 : 1;

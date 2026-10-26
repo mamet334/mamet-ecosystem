@@ -1199,10 +1199,10 @@ ipcMain.handle('engineer:jalankan', async (_event, perintah) => {
 // KONEKTOR MCP (Item 129 Tahap B, 2026-10-23) — Mamet sebagai klien MCP; rincian di konektorMcp.cjs.
 // Satu proses server per (workspace, konektor) — keputusan Owner K3. Akar repo = dua tingkat di atas berkas ini
 // (`npm run desktop`); di aplikasi terpasang crawler belum ada di sana → status "tidak tersedia" sampai Tahap E.
-// Layar hanya bisa melihat status dan memakai sakelar Settings (Tahap C). Pemanggilan alat (tools/call) BELUM punya
-// jalur dari layar: K2 mewajibkan persetujuan Owner, dan gerbangnya dibangun di proses ini pada Tahap D.
+// Layar melihat status dan memakai sakelar Settings (Tahap C). Pemanggilan alat (tools/call) dari layar HANYA lewat
+// gerbang persetujuan di proses ini (Tahap D): K2 — setiap alat menunggu persetujuan Owner; K8 — sekali per misi.
 // Setelan sakelar disimpan di perangkat (K7: tidak ikut akun) dan dinyalakan lagi saat aplikasi dibuka.
-const { buatPengelolaKonektor } = require('./konektorMcp.cjs');
+const { buatPengelolaKonektor, buatGerbangKonektor } = require('./konektorMcp.cjs');
 const pengelolaKonektor = buatPengelolaKonektor({
   akarRepo: path.resolve(__dirname, '..', '..'),
   berkasSetelan: path.join(app.getPath('userData'), 'konektor.json'),
@@ -1211,6 +1211,25 @@ const pengelolaKonektor = buatPengelolaKonektor({
 });
 ipcMain.handle('konektor:status', () => pengelolaKonektor.status());
 ipcMain.handle('konektor:atur', (_event, { workspace, konektor, nyala } = {}) => pengelolaKonektor.atur(workspace, konektor, nyala));
+const gerbangKonektor = buatGerbangKonektor({
+  pengelola: pengelolaKonektor,
+  log: (pesan) => console.log(pesan),
+  mintaIzin: async ({ judul, rincian }) => {
+    const { response } = await dialog.showMessageBox(mainWindow, {
+      type: 'question',
+      title: 'Mamet — konektor',
+      message: judul,
+      detail: rincian,
+      buttons: ['Tolak', 'Izinkan'],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    });
+    return response === 1;
+  },
+});
+ipcMain.handle('konektor:panggil', (_event, { workspace, konektor, alat, argumen } = {}) =>
+  gerbangKonektor.panggil(workspace, konektor, alat, argumen));
 app.whenReady().then(() => pengelolaKonektor.pulihkan().then((h) => {
   if (h.length) console.log(`[KONEKTOR] dipulihkan: ${h.map((x) => `${x.workspace}::${x.konektor}=${x.ok ? 'nyala' : x.alasan}`).join(', ')}`);
 }));

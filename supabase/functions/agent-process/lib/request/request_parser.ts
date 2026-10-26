@@ -1,4 +1,5 @@
 import { WorkspaceGuardian } from '../workspace_guardian.ts';
+import { infoKonektorAman } from '../../../../../frontend/src/core/runtime/services/konektorAlat.js';
 
 export async function parseRequestParams(req: Request, user: any) {
   let reqJson;
@@ -7,7 +8,7 @@ export async function parseRequestParams(req: Request, user: any) {
   } catch(e) {
     reqJson = {};
   }
-  let { message, tools, model, userId: _clientUserId, userName, file, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource: clientAppSource = 'assistant', workspaceTarget = 'AUTO', auditMode = 'OFF', mode: clientMode, provider, thinking, traceId: clientTraceId, requestId, clientTimezone, streamNalar, memoryEnabled, dataTabel, folderKerja, pemilihModel } = reqJson;
+  let { message, tools, model, userId: _clientUserId, userName, file, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource: clientAppSource = 'assistant', workspaceTarget = 'AUTO', auditMode = 'OFF', mode: clientMode, provider, thinking, traceId: clientTraceId, requestId, clientTimezone, streamNalar, memoryEnabled, dataTabel, folderKerja, konektor, pemilihModel } = reqJson;
   const traceId = clientTraceId || requestId || null;
   const mode = clientMode || 'ASSISTANT';
   console.log('[RequestParser] Mode diterima:', mode);
@@ -112,7 +113,10 @@ export async function parseRequestParams(req: Request, user: any) {
     dataTabel: dataTabel === true,
     // Folder kerja Assistant (Item 85 Tahap 1): hanya NAMA folder & nomor putaran alat — alamat lengkap tetap di
     // desktop. Disaring ulang di sini (teks pendek tanpa pemisah alamat), putaran dibatasi 0..4.
-    folderKerja: folderKerjaAman(folderKerja)
+    folderKerja: folderKerjaAman(folderKerja),
+    // Konektor (Item 129 Tahap D): hanya konektor yang dikenal protokol; id, putaran, sumber siap (id saja), sakelar
+    // akses (boolean). Disaring oleh modul protokol yang SAMA dengan desktop (konektorAlat.js).
+    konektor: infoKonektorAman(konektor)
   };
 }
 

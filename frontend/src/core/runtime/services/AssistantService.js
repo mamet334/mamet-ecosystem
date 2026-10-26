@@ -22,6 +22,7 @@ const AGENT_ENDPOINT = 'https://uuyzdjifhdfyyvpxsofu.supabase.co/functions/v1/ag
 import { supabase } from '../../../supabase.js';
 import { statusLaptop, kirimKeLaptop, sidikJari, cariDiCache, KUOTA_CACHE_MB } from './remoteConversionClient.js';
 import { ambilPermintaanAlat, susunPesanHasil, susunPesanKoreksi, namaFolderAman, buangKakiTiruan, peringatanKlaimTanpaAlat, peringatanKlaimEngineer, blokKodeKeMametCmd, MAKS_PUTARAN } from './folderKerjaAlat.js';
+import { ambilPermintaanKonektor, susunPesanHasilKonektor, catatanHasilKonektor, payloadKonektor, KONEKTOR_DIKENAL, MAKS_PUTARAN_KONEKTOR } from './konektorAlat.js';
 import { cekPerintahBerulang, petunjukHasilKosong, petunjukKeluaranTerpotong, petunjukGrepSebagian, peringatanTugasTakDiumumkan, adaPenandaPatch, buangPenandaPatch } from './engineer/ProsedurEngineer.js';
 import { peringatanKlaimTakTeruji } from './engineer/UjiKlaim.js';
 import { anggaranKonteks, pilihPesanKonteks, bacaMulaiDari } from './KonteksChat.js';
@@ -348,6 +349,23 @@ export class AssistantService {
     }
   }
 
+  /**
+   * Konektor yang menyala di workspace ini (Item 129 Tahap D) — dibaca dari PROSES UTAMA setiap pesan. Per workspace
+   * (K3): Assistant dan Engineer masing-masing hanya melihat sakelarnya sendiri. Hanya konektor yang dikenal protokol
+   * (`KONEKTOR_DIKENAL`). Server menerima info singkat saja: id, sumber yang siap, sakelar akses.
+   */
+  async _statusKonektor(workspaceId) {
+    if (typeof window === 'undefined' || !window.electronAPI?.konektor?.panggil) return null;
+    try {
+      const daftar = await window.electronAPI.konektor.status();
+      const s = (daftar || []).find((x) => x.workspace === workspaceId && x.status === 'nyala' && KONEKTOR_DIKENAL[x.konektor]);
+      if (!s) return null;
+      return { id: s.konektor, nama: s.nama, sumberSiap: s.ringkasan?.sumberSiap || [], akses: s.ringkasan?.akses || null };
+    } catch {
+      return null; // proses utama sibuk/galat → pesan ini berjalan tanpa konektor, sama seperti sakelar mati
+    }
+  }
+
   async processMessage({
     userMsg,
     history,
@@ -375,7 +393,11 @@ export class AssistantService {
     _folderDibaca = null,
     _folderDiubah = null,
     _folderByte = 0,
-    _folderKoreksi = false
+    _folderKoreksi = false,
+    // Konektor (Item 129 Tahap D) — diisi putaran alat konektor sendiri.
+    _konektorPutaran = 0,
+    _konektorPertanyaan = null,
+    _konektorCatatan = null
   }) {
     if (!userMsg || !token) {
       // Tanda TERSTRUKTUR, bukan teks tampilan: kalimat yang dibaca manusia disusun di satu tempat
@@ -394,6 +416,57 @@ export class AssistantService {
 
     // 1. Resolve mode
     const { resolvedMode, resolvedAppSource } = this.resolveMode(workspaceId);
+
+    // KONEKTOR (Item 129 Tahap D): pola sama dengan folder kerja di bawah. Pembungkus ini dipasang LEBIH DULU, jadi
+    // folder kerja (bila juga aktif) menyelesaikan tag-nya dulu lalu menyerahkan jawaban akhirnya ke sini. Alat
+    // dijalankan lewat GERBANG proses utama (dialog persetujuan, sekali per misi — K2/K8); yang dicatat di kaki jawaban
+    // berasal dari HASIL gerbang, bukan dari kata model.
+    const konektor = await this._statusKonektor(workspaceId);
+    const infoKonektor = konektor ? { ...konektor, putaran: _konektorPutaran, tingkat: null } : null;
+    if (konektor) {
+      const onDoneKonektor = onDone;
+      const pertanyaanKonektor = _konektorPertanyaan || userMsg;
+      const catatanKonektor = _konektorCatatan || [];
+      onDone = async (finalText, steps, jsonMetadata, extras = {}) => {
+        const { permintaan, galat, teksTanpaTag } = ambilPermintaanKonektor(finalText, konektor.id);
+        if (permintaan.length && _konektorPutaran < MAKS_PUTARAN_KONEKTOR) {
+          const putaran = _konektorPutaran + 1;
+          const hasil = [];
+          for (const p of permintaan) {
+            const label = {
+              jalankan_misi: '🛰️ menunggu persetujuan misi Anda (lihat dialog), lalu crawler bekerja (≤ 2 menit)',
+              status_misi: '⏳ memeriksa status misi',
+              baca_tangkapan: '📥 membaca hasil misi',
+              daftar_misi: '📋 menunggu izin Anda melihat daftar misi (lihat dialog)',
+              ekspor_misi: '💾 menunggu izin Anda mengekspor hasil (lihat dialog)',
+            }[p.alat] || `⚙️ ${p.alat}`;
+            onChunk?.(`${label}…`, `_${label}… (putaran konektor ${putaran}/${MAKS_PUTARAN_KONEKTOR})_`, steps || []);
+            let h;
+            try { h = await window.electronAPI.konektor.panggil(workspaceId, p.konektor, p.alat, p.argumen); }
+            catch (e) { h = { ok: false, alasan: `alat gagal: ${e.message || e}` }; }
+            h = { ...h, alat: p.alat, argumen: p.argumen };
+            catatanKonektor.push(catatanHasilKonektor(h));
+            hasil.push(h);
+          }
+          const pesanHasil = susunPesanHasilKonektor(hasil, { putaran, pertanyaanAsli: pertanyaanKonektor, galat });
+          return this.processMessage({
+            userMsg: pesanHasil,
+            history: [...(history || []), { role: 'model', content: finalText }, { role: 'user', content: pesanHasil }],
+            // `signal` ikut: Berhenti memutus putaran konektor berikutnya juga (lihat penjaga di awal processMessage).
+            workspaceId, userId, token, signal, attachedFile: null, workspaceManager, chatId,
+            onChunk, onDone: onDoneKonektor, onError, onNalar,
+            modelTierOverride: modelTierOverride || infoKonektor.tingkat || null,
+            _konektorPutaran: putaran, _konektorPertanyaan: pertanyaanKonektor, _konektorCatatan: catatanKonektor,
+          });
+        }
+        let teks = permintaan.length ? teksTanpaTag : finalText;
+        if (permintaan.length) teks += `\n\n_⚠️ Batas ${MAKS_PUTARAN_KONEKTOR} putaran alat konektor tercapai — sebagian permintaan alat tidak dijalankan._`;
+        if (catatanKonektor.length) {
+          teks += `\n\n---\n🛰️ _${konektor.nama} (dicatat dari proses utama, bukan dari kata model): ${catatanKonektor.join(' · ')}_`;
+        }
+        return onDoneKonektor?.(teks, steps, jsonMetadata, extras);
+      };
+    }
 
     // FOLDER KERJA (Item 85 Tahap 1): status dibaca dari PROSES UTAMA setiap pesan (bukan dari layar). Hanya
     // Assistant & hanya di Electron. Server menerima NAMA folder saja.
@@ -526,7 +599,7 @@ export class AssistantService {
     const classifier = this.serviceManager.has('RequestClassifierService')
       ? this.serviceManager.get('RequestClassifierService')
       : null;
-    const classifiedResult = _folderPutaran > 0
+    const classifiedResult = _folderPutaran > 0 || _konektorPutaran > 0
       ? { type: 'CONVERSATION', metadata: {} }
       : (classifier?.classify(userMsg, history, resolvedMode) || { type: 'CONVERSATION', metadata: {} });
     const requestType = classifiedResult.type;
@@ -538,7 +611,8 @@ export class AssistantService {
       attachedFile, workspaceManager, onChunk, onDone, onError, onNalar,
       resolvedMode, resolvedAppSource, modelTierOverride, chatId,
       _isPostHocWebRetry, _injectedKnowledgeContext,
-      _folderKerja: infoFolder
+      _folderKerja: infoFolder,
+      _konektor: infoKonektor
     };
 
     // ENGINEER TIDAK BOLEH PERNAH JATUH KE JALUR RINGAN (keputusan Owner, 2026-10-01).
@@ -801,7 +875,7 @@ export class AssistantService {
    */
   async _handleLookup({
     userMsg, history, workspaceId, userId, token, workspaceManager, signal = null,
-    resolvedMode, resolvedAppSource, onChunk, onDone, onError, _folderKerja = null
+    resolvedMode, resolvedAppSource, onChunk, onDone, onError, _folderKerja = null, _konektor = null
   }) {
     console.log('[AssistantService] PR#8 → _handleLookup (skip memory/semantic; dokumen dicari server bila RAG nyala)');
 
@@ -829,6 +903,7 @@ export class AssistantService {
       if (brainService) {
         const context = await brainService.getActiveBrainContext('KECIL');
         if (_folderKerja) _folderKerja.tingkat = 'KECIL'; // LOOKUP selalu Kecil → putaran lanjutan folder ikut Kecil
+        if (_konektor) _konektor.tingkat = 'KECIL';
         aiProvider = context.provider || 'gemini';
         formattedModel = context.model || '';
         aiKey = context.key || '';
@@ -862,6 +937,8 @@ export class AssistantService {
       dataTabel: dataTabelToolEnabled && !lookupLite ? true : undefined,
       // Folder kerja (Item 85 Tahap 1): NAMA saja — alamat lengkap tetap di proses utama desktop.
       folderKerja: _folderKerja || undefined,
+      // Konektor (Item 129 Tahap D): id, putaran, sumber siap, sakelar akses — disaring lagi di server.
+      konektor: payloadKonektor(_konektor),
       cache_hint: true,
       _request_type: 'LOOKUP'
     };
@@ -1132,12 +1209,13 @@ export class AssistantService {
     attachedFile, workspaceManager, resolvedMode, resolvedAppSource,
     onChunk, onDone, onError, onNalar, modelTierOverride = null,
     chatId = null,            // jendela konteks berdiri sendiri per percakapan (Tahap 3a)
-    _isPostHocWebRetry = false, _injectedKnowledgeContext = '', _folderKerja = null
+    _isPostHocWebRetry = false, _injectedKnowledgeContext = '', _folderKerja = null, _konektor = null
   }) {
     const isEngineerMode = resolvedMode === 'ENGINEER';
     // Putaran lanjutan folder kerja: pesannya = hasil alat (bisa puluhan KB) — RAG & Data Tabel tidak dijalankan ulang
-    // atasnya (embedding & perencana atas isi berkas tak berguna dan berbayar).
-    const folderLanjutan = (_folderKerja?.putaran || 0) > 0;
+    // atasnya (embedding & perencana atas isi berkas tak berguna dan berbayar). Konektor (Item 129): sama — data
+    // tangkapan crawler bukan pertanyaan.
+    const folderLanjutan = (_folderKerja?.putaran || 0) > 0 || (_konektor?.putaran || 0) > 0;
     const isLiteMode = resolvedMode === 'LITE';
 
     console.log(`[AssistantService] Mode check: workspace=${workspaceId}, resolvedMode=${resolvedMode}`);
@@ -1172,6 +1250,7 @@ export class AssistantService {
         const context = await brainService.getActiveBrainContext(selectedTier);
         // Folder kerja: tingkat putaran ini dicatat untuk dikunci di putaran lanjutan (lihat processMessage).
         if (_folderKerja && selectedTier) _folderKerja.tingkat = selectedTier;
+        if (_konektor && selectedTier) _konektor.tingkat = selectedTier;
         aiProvider = context.provider || 'gemini';
         formattedModel = context.model || '';
         aiKey = context.key || '';
@@ -1217,7 +1296,7 @@ export class AssistantService {
     // folder "[HASIL ALAT FOLDER]" (isi berkas!) BUKAN pertanyaan — tidak pernah dijadikan kueri Web (log: URL DuckDuckGo
     // memuat daftar berkas `git status`), RAG, maupun memori (memory_audit_log menyimpan 30 pesan hasil folder utuh, s.d.
     // 12 ribu huruf isi berkas). Pengetahuan putaran pertama tetap terbawa lewat riwayat percakapan.
-    const pesanHasilMesin = folderLanjutan || /^\s*\[(TERMINAL OUTPUT for: |HASIL ALAT FOLDER\])/.test(userMsg || '');
+    const pesanHasilMesin = folderLanjutan || /^\s*\[(TERMINAL OUTPUT for: |HASIL ALAT FOLDER\]|HASIL ALAT KONEKTOR\])/.test(userMsg || '');
     const memoryAktif = memoryToolEnabled && !pesanHasilMesin;
 
     // 4. Inject memory + semantic context
@@ -1370,6 +1449,8 @@ export class AssistantService {
       dataTabel: dataTabelToolEnabled && !isLiteMode && !isEngineerMode && !folderLanjutan ? true : undefined,
       // Folder kerja (Item 85 Tahap 1): NAMA saja — alamat lengkap tetap di proses utama desktop.
       folderKerja: _folderKerja || undefined,
+      // Konektor (Item 129 Tahap D): id, putaran, sumber siap, sakelar akses — disaring lagi di server.
+      konektor: payloadKonektor(_konektor),
       cache_hint: true,
       _token_meta: { estimated_before: tokensBefore, estimated_after: tokensAfter, saved: tokensSaved },
       _request_type: 'CONVERSATION'
@@ -1583,7 +1664,7 @@ export class AssistantService {
       /\b(saya tidak dapat memberikan informasi terbaru|tidak ditemukan di database.*tidak memiliki informasi|informasi.*tidak cukup.*\[STATUS:\s*INSUFFICIENT\])\b/i.test(finalText);
 
     // Pesan hasil mesin (isi berkas folder / keluaran terminal) tidak pernah dijadikan kueri web, termasuk lewat tawaran ini.
-    if (isInsufficient && !_isPostHocWebRetry && !isEngineerMode && !/^\s*\[(TERMINAL OUTPUT for: |HASIL ALAT FOLDER\])/.test(userMsg || '')) {
+    if (isInsufficient && !_isPostHocWebRetry && !isEngineerMode && !/^\s*\[(TERMINAL OUTPUT for: |HASIL ALAT FOLDER\]|HASIL ALAT KONEKTOR\])/.test(userMsg || '')) {
       const webService = this.serviceManager?.get('WebComparisonService');
       if (webService && typeof webService.requestConfirmation === 'function') {
         const traceId = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
