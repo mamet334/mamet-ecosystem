@@ -45,7 +45,9 @@ runtime lama tanpa `komponen.json`, folder yang belum ada, penolakan kunci asing
 penulisan `komponen.json`, dan runtime sungguhan. Tiga dari empat mutasi menggigit; yang lolos (hapus pemeriksaan
 kunci di `lokasiFolder`) adalah penjaga ganda — peta alamat hanya berisi empat kunci, hasil yang diuji tetap benar.
 
+- **Electron sungguhan** (Owner, sesudah `npm run desktop` dijalankan ulang): ⑦ tampil dalam mode pengembangan dengan
+  alamat `.venv` & folder crawler repo yang benar; ⑥ tersembunyi; menekan "Buka folder" membuka Explorer di folder itu.
+
 ## Belum dibuktikan
 
-- "Buka folder" di Electron sungguhan (`shell.openPath` membuka Explorer) — butuh `npm run desktop` dijalankan ulang.
 - Aplikasi terpasang di PC bersih (Windows Sandbox) — menunggu Owner mengaktifkan fitur itu.

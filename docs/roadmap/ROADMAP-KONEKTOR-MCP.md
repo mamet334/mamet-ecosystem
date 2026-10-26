@@ -246,5 +246,7 @@ Assistant, dialog muncul sekali, hasil terbaca, Engineer tetap tak terhubung (K3
 ## 8. Langkah berikutnya
 
 Tahap A ✅ → B ✅ → C ✅ → D 🟡 (**uji live** sesudah saldo OpenRouter diisi) → E ✅ + E2 ✅ + E3 ✅ (pemasangan
-stealth sungguhan & PC bersih dibuktikan sesudah rilis berikutnya / Windows Sandbox) → F menyusul. Rilis klien berikutnya (`npm run dist:publish`, dijalankan Owner) membawa konektor ke
-aplikasi terpasang; build butuh `.venv` crawler di laptop pembangun.
+stealth sungguhan & PC bersih dibuktikan sesudah rilis berikutnya / Windows Sandbox) → F menyusul. Rilis **4.3.0** (versi dinaikkan 26 Okt) membawa konektor ke aplikasi terpasang; build GitHub
+(`build.yml`) membangun `.venv` crawler sendiri dari `capability/ecosystem-crawler/requirements-bundel.txt` (86 paket
+terkunci, Python 3.12.10) — daftar itu wajib diperbarui bersama `.venv` pengembangan
+([log](../project-memory/changelog/2026-10-26-rilis-4.3.0-crawler-terbundel.md)).

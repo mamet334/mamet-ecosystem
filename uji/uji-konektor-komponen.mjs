@@ -21,7 +21,7 @@ const KK = require(path.join(AKAR, 'frontend', 'electron', 'komponenKonektor.cjs
 const K = require(path.join(AKAR, 'frontend', 'electron', 'konektorMcp.cjs'));
 const S = await import(pathToFileURL(path.join(AKAR, 'frontend', 'scripts', 'siapkan-crawler.mjs')).href);
 
-console.log('uji-konektor-komponen v1');
+console.log('uji-konektor-komponen v2');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 600)}` : ''}`);
@@ -139,6 +139,47 @@ if (!existsSync(path.join(RT, 'komponen.json'))) {
   cek(/^3\.\d+\.\d+$/.test(m.python) && m.crawler?.versi, 'versi Python & crawler tercatat', { python: m.python, crawler: m.crawler });
   const nyata = await KK.bacaKomponen({ runtimeTerbundel: RT, folderData: sementara('data-nyata-') });
   cek(nyata.bawaan.mb > 100 && nyata.bawaan.paket.length === m.paket.length, `ukuran bundel terukur: ${nyata.bawaan.mb} MB`, nyata.bawaan.mb);
+}
+
+// ── 8. Jalur build GitHub (rilis 4.3.0) ─────────────────────────────────────────────────────
+// Mesin build tak punya .venv (tidak di-commit): build.yml membangunnya dari requirements-bundel.txt. Yang dijaga:
+// daftar itu memuat setiap paket bundel dengan versi yang sama, Python di build.yml = Python .venv, dan Python
+// terbundel membawa pustaka C++-nya sendiri (PC bersih).
+console.log('\n-- 8. jalur build --');
+const pyKosong = sementara('py-terbundel-');
+cek(S.periksaPythonTerbundel(pyKosong).join(',') === 'python.exe,vcruntime140.dll,vcruntime140_1.dll,python3XX.dll', 'Python terbundel kosong → semua berkas wajib disebut hilang', S.periksaPythonTerbundel(pyKosong));
+for (const n of ['python.exe', 'python312.dll', 'VCRUNTIME140.dll']) writeFileSync(path.join(pyKosong, n), '');
+cek(S.periksaPythonTerbundel(pyKosong).join(',') === 'vcruntime140_1.dll', 'tanpa vcruntime140_1.dll → build ditolak (nama tak peka huruf besar)', S.periksaPythonTerbundel(pyKosong));
+const sumberSiap = readFileSync(path.join(AKAR, 'frontend', 'scripts', 'siapkan-crawler.mjs'), 'utf8');
+cek(/const hilang = periksaPythonTerbundel\(path\.join\(tujuan, 'python'\)\);\s*\n\s*if \(hilang\.length\) throw/.test(sumberSiap), 'siapkan memanggil pemeriksaan itu dan GAGAL bila ada yang hilang');
+
+const CRAWLER = path.join(AKAR, 'capability', 'ecosystem-crawler');
+const kunciTeks = readFileSync(path.join(CRAWLER, 'requirements-bundel.txt'), 'utf8');
+const normal = (n) => n.toLowerCase().replace(/[-_.]+/g, '-');
+const kunci = new Map(kunciTeks.split(/\r?\n/).filter((b) => b && !b.startsWith('#')).map((b) => {
+  const [n, v] = b.split('=='); return [normal(n), v];
+}));
+cek([...kunci.values()].every((v) => v && /^\S+$/.test(v)), `setiap baris requirements-bundel.txt berversi pasti (${kunci.size} paket)`);
+const yml = readFileSync(path.join(AKAR, '.github', 'workflows', 'build.yml'), 'utf8');
+cek(/--no-deps[^\n]*-r requirements-bundel\.txt/.test(yml) && /working-directory: \.\/capability\/ecosystem-crawler/.test(yml), 'build.yml memasang daftar terkunci dengan --no-deps di folder crawler');
+cek(yml.indexOf('requirements-bundel.txt') < yml.indexOf('npm run dist:publish'), '.venv dibangun SEBELUM npm run dist:publish');
+const pyYml = yml.match(/python-version: '([^']+)'/)?.[1];
+if (!existsSync(path.join(CRAWLER, '.venv', 'pyvenv.cfg'))) {
+  console.log('DILEWATI pencocokan .venv — .venv crawler tidak ada di mesin ini');
+} else {
+  const pyVenv = readFileSync(path.join(CRAWLER, '.venv', 'pyvenv.cfg'), 'utf8').match(/^version\s*=\s*(.+)$/m)?.[1]?.trim();
+  cek(pyYml === pyVenv, `Python build.yml = Python .venv (${pyYml} = ${pyVenv})`);
+  const sp = path.join(CRAWLER, '.venv', 'Lib', 'site-packages');
+  const beda = S.daftarPaket(sp).filter((p) => kunci.get(normal(p.nama)) !== p.versi).map((p) => `${p.nama} ${p.versi}≠${kunci.get(normal(p.nama))}`);
+  cek(beda.length === 0, 'setiap paket .venv tercantum di daftar kunci dengan versi yang sama', beda);
+}
+if (existsSync(path.join(RT, 'komponen.json'))) {
+  const m = JSON.parse(readFileSync(path.join(RT, 'komponen.json'), 'utf8'));
+  const takTerkunci = m.paket.filter((p) => kunci.get(normal(p.nama)) !== p.versi).map((p) => p.nama);
+  cek(takTerkunci.length === 0, 'setiap paket bundel ada di daftar kunci dengan versi yang sama', takTerkunci);
+  const st = JSON.parse(readFileSync(path.join(RT, 'stealth.json'), 'utf8'));
+  cek(st.paket === `patchright==${kunci.get('patchright')}`, `versi stealth.json = versi patchright di daftar kunci (${st.paket})`);
+  cek(S.periksaPythonTerbundel(path.join(RT, 'python')).length === 0, 'runtime terbundel sungguhan membawa python.exe, python3XX.dll, vcruntime140(_1).dll');
 }
 
 console.log(`\n${gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`}`);

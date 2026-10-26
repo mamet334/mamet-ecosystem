@@ -250,8 +250,10 @@ sekarang padahal kodenya sudah diperbaiki beberapa commit sesudahnya.
 
 ## 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-10-01)
 
-Versi di `package.json`: **4.2.16** (dinaikkan 8 Okt untuk mengirim **E9**; 4.2.15 dinaikkan hari yang
-sama). Keadaan di platform, **diperiksa lewat API GitHub 8 Okt** — bukan disimpulkan dari dokumen ini:
+Versi di `package.json`: **4.3.0** (dinaikkan 26 Okt untuk mengirim **Item 129** konektor + crawler terbundel —
+[log](../project-memory/changelog/2026-10-26-rilis-4.3.0-crawler-terbundel.md); sebelumnya 4.2.16 untuk **E9**,
+8 Okt). Keadaan di platform, **diperiksa lewat API GitHub 8 Okt** — bukan disimpulkan dari dokumen ini; **v4.3.0
+belum diperiksa di platform**:
 
 | Rilis | Keadaan | Aset |
 |---|---|---|

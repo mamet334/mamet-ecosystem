@@ -30,6 +30,20 @@ jobs:
         working-directory: ./frontend
         run: npm ci
 
+      # Item 129 (rilis 4.3.0): pemasang membawa Python + Ecosystem Crawler (npm run crawler:siapkan menyalinnya dari
+      # .venv crawler). .venv tidak di-commit (repo publik), jadi dibangun di sini dari daftar TERKUNCI — versi Python dan
+      # 86 paket persis sama dengan .venv yang sudah diuji di laptop Owner (--no-deps: tak ada paket yang diselesaikan ulang).
+      - name: 🐍 Setup Python (crawler terbundel)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.10'
+
+      - name: 🕷️ Siapkan .venv crawler dari daftar terkunci
+        working-directory: ./capability/ecosystem-crawler
+        run: |
+          python -m venv .venv
+          ./.venv/Scripts/python.exe -m pip install --no-deps --disable-pip-version-check --no-input -r requirements-bundel.txt
+
       - name: ⚙️ Inject Environment Variables
         working-directory: ./frontend
         run: |

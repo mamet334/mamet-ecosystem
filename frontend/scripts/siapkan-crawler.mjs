@@ -92,6 +92,18 @@ export function daftarPaket(sitePackages) {
   }).sort((a, b) => a.nama.toLowerCase().localeCompare(b.nama.toLowerCase()));
 }
 
+/**
+ * Berkas yang WAJIB ada di Python terbundel (rilis 4.3.0). Pustaka C++ `vcruntime140*.dll` dibawa Python dasar dari
+ * python.org; tanpanya python.exe tak jalan di PC yang belum pernah memasang Visual C++ Redistributable — dan cacat
+ * itu tak terlihat di laptop pembangun (DLL-nya ada di System32). Mengembalikan daftar yang HILANG.
+ */
+export function periksaPythonTerbundel(folderPython) {
+  const isi = fs.existsSync(folderPython) ? fs.readdirSync(folderPython).map((n) => n.toLowerCase()) : [];
+  const hilang = ['python.exe', 'vcruntime140.dll', 'vcruntime140_1.dll'].filter((n) => !isi.includes(n));
+  if (!isi.some((n) => /^python3\d+\.dll$/.test(n))) hilang.push('python3XX.dll');
+  return hilang;
+}
+
 /** Folder Python dasar dari pyvenv.cfg `.venv` crawler. */
 export function pythonDasar(venv = VENV) {
   const cfg = fs.readFileSync(path.join(venv, 'pyvenv.cfg'), 'utf8');
@@ -141,6 +153,8 @@ export function siapkan({ tujuan = TUJUAN, log = console.log } = {}) {
   fs.rmSync(tujuan, { recursive: true, force: true });
   log(`[crawler] Python dasar: ${dasar}`);
   fs.cpSync(dasar, path.join(tujuan, 'python'), { recursive: true, filter: (p) => !lewatiPython(rel(dasar, p)) });
+  const hilang = periksaPythonTerbundel(path.join(tujuan, 'python'));
+  if (hilang.length) throw new Error(`Python dasar tidak lengkap untuk PC bersih — tidak ada: ${hilang.join(', ')} (di ${dasar})`);
   log('[crawler] paket crawler (tanpa penggerak stealth & pytest; pip ikut)');
   fs.cpSync(sitePackages, path.join(tujuan, 'python', 'Lib', 'site-packages'), { recursive: true, filter: (p) => !lewatiPaket(rel(sitePackages, p)) });
   log('[crawler] kode crawler');
