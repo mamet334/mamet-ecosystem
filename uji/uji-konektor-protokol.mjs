@@ -6,17 +6,20 @@
 //   - hasil alat dibungkus penanda DATA; penanda penutup & tag alat palsu di dalam data dinetralkan (injeksi);
 //   - blok prompt statis: menyebut aturan Hypothesis, pseudonim, persetujuan per misi; info dari desktop disaring;
 //   - server & desktop memperlakukan "[HASIL ALAT KONEKTOR]" sebagai hasil mesin (tanpa RAG/web/memori);
-//   - rantai penuh TANPA model: tag → gerbang → crawler sungguhan (sumber inbox, lokal) → pesan hasil.
+//   - rantai penuh TANPA model: tag → gerbang → crawler sungguhan (sumber inbox, lokal) → pesan hasil — dengan akar data
+//     crawler di folder SEMENTARA; gudang.db repo (data Owner) dijaga tidak bertambah misi.
 
 import { createRequire } from 'node:module';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { berkasGudang, idMisi, potretGudang } from './gudangCrawler.mjs';
 
 const AKAR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const P = await import(pathToFileURL(path.join(AKAR, 'frontend/src/core/runtime/services/konektorAlat.js')).href);
 
-console.log('uji-konektor-protokol v2');
+console.log('uji-konektor-protokol v3');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 500)}` : ''}`);
@@ -107,7 +110,11 @@ if (!existsSync(PY)) {
 } else {
   const require = createRequire(path.join(AKAR, 'frontend', 'package.json'));
   const K = require(path.join(AKAR, 'frontend', 'electron', 'konektorMcp.cjs'));
-  const pengelola = K.buatPengelolaKonektor({ akarRepo: AKAR });
+  // v3 (27 Okt): misi uji dulu tertulis ke gudang.db crawler milik Owner (27 misi "uji rantai", 22–27 Okt) — mode
+  // pengembangan tanpa CRAWLER_ROOT memakai folder repo sebagai akar data. Kini akar data = folder sementara.
+  const dataUji = mkdtempSync(path.join(os.tmpdir(), 'crawler-uji-protokol-'));
+  const gudangRepo = potretGudang(path.join(AKAR, 'capability', 'ecosystem-crawler'));
+  const pengelola = K.buatPengelolaKonektor({ akarRepo: AKAR, folderDataPengembangan: dataUji });
   const dialog = [];
   const gerbang = K.buatGerbangKonektor({ pengelola, mintaIzin: async (d) => { dialog.push(d); return true; } });
   try {
@@ -124,6 +131,12 @@ if (!existsSync(PY)) {
   } finally {
     await pengelola.matikanSemua();
   }
+  // Dua arah: misi HARUS ada di gudang sementara (kalau tidak, penjaga di bawah lulus hanya karena misinya tak tercatat
+  // di mana pun), dan TIDAK BOLEH menambah baris di gudang repo.
+  const diSementara = idMisi(berkasGudang(dataUji));
+  cek(diSementara.length === 1, `misi uji tercatat di gudang SEMENTARA (${diSementara.length} misi di ${path.basename(dataUji)})`, diSementara);
+  const baru = gudangRepo.misiBaru();
+  cek(baru.length === 0, `gudang.db crawler repo tidak bertambah misi selama uji (${gudangRepo.jumlahSebelum} sebelum)`, baru);
 }
 
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));

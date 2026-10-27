@@ -201,8 +201,9 @@ memakai tag ✅ (4 putaran), catatan kaki dari gerbang ✅, misi sungguhan 30 ta
 (jawaban akhir 0 huruf — saldo tipis) dan uji yang sama di Engineer, sesudah saldo OpenRouter diisi. Temuan:
 kata kunci "OKU" lolos di "Fokus" → **✅ diperbaiki 27 Okt** dua sisi — crawler: kata ≤ 4 huruf & akronim = kata utuh;
 model: arahan menganalisis entitas & mendampingi akronim; server v532
-([log](../project-memory/changelog/2026-10-27-crawler-kata-kunci-pendek.md)). `uji-konektor-mcp` menulis misi uji ke
-data crawler pengembangan Owner → dikerjakan di sesi terpisah (worktree, belum digabung).
+([log](../project-memory/changelog/2026-10-27-crawler-kata-kunci-pendek.md)). Suite uji menulis misi uji ke data
+crawler pengembangan Owner → **✅ diperbaiki 27 Okt** (akar data sementara khusus uji, penjaga dua arah; 29 misi uji
+dibersihkan dengan cadangan — [log](../project-memory/changelog/2026-10-27-isolasi-data-uji-crawler.md)).
 - Saat konektor nyala di workspace itu, prompt memuat blok **KONEKTOR AKTIF** berisi daftar alat. `katalog` dibaca
   **oleh Mamet sendiri** saat konektor dinyalakan dan dimasukkan ke blok itu — isinya setelan crawler, bukan data
   luar — jadi model tidak perlu meminta `katalog` dan Owner tidak disodori persetujuan untuknya.

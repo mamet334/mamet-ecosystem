@@ -18,7 +18,9 @@ const K = require(path.join(AKAR, 'frontend', 'electron', 'konektorMcp.cjs'));
 
 // v2 (23 Okt, Tahap C): sakelar Settings disimpan di perangkat (K7) & dipulihkan saat aplikasi dibuka; `katalog`
 // dibaca Mamet sendiri saat nyala (ringkasan akses untuk Settings); sakelar ditekan dua kali → satu proses.
-console.log('uji-konektor-mcp v4');
+// v5 (27 Okt): crawler sungguhan memakai akar data SEMENTARA (`folderDataPengembangan`), bukan folder repo — data
+// `npm run desktop` Owner tidak disentuh uji. Bagian 1 menjaga bahwa tanpa opsi itu perilaku Owner tetap sama.
+console.log('uji-konektor-mcp v5');
 const PY = path.join(AKAR, 'capability', 'ecosystem-crawler', '.venv', 'Scripts', 'python.exe');
 if (!existsSync(PY)) {
   console.log(`DILEWATI — ${path.relative(AKAR, PY)} tidak ada di mesin ini (.venv tidak masuk repo)`);
@@ -46,6 +48,23 @@ const bocor = Object.keys(p.env).filter((k) => /KEY|TOKEN|SECRET|OPENROUTER|SUPA
 cek(bocor.length === 0, 'tak ada variabel rahasia di lingkungan server (MAMET_UJI_API_KEY ditanam di proses ini)', bocor);
 cek(!('MAMET_UJI_API_KEY' in p.env) && ('PATH' in p.env || 'Path' in p.env), 'lingkungan daftar putih: PATH ada, kunci tidak', Object.keys(p.env));
 cek(!K.peluncuran(AKAR, 'tak-dikenal').ok, 'konektor tak dikenal ditolak');
+// main.cjs SELALU mengirim folderData (%APPDATA%) — juga di npm run desktop. Bila mode pengembangan mulai memakainya,
+// data crawler Owner pindah diam-diam. Hanya folderDataPengembangan (khusus uji) yang memindahkan akar data.
+const pDesktop = K.peluncuran(AKAR, 'ecosystem-crawler', { folderData: path.join(os.tmpdir(), 'appdata-palsu') });
+cek(pDesktop.ok && !('CRAWLER_ROOT' in pDesktop.env) && pDesktop.cwd === p.cwd && !pDesktop.folderData,
+  'npm run desktop (folderData dikirim seperti main.cjs): tanpa CRAWLER_ROOT → data tetap di folder crawler repo', pDesktop);
+const akarUji = path.join(os.tmpdir(), 'crawler-uji-x');
+const pUji = K.peluncuran(AKAR, 'ecosystem-crawler', { folderDataPengembangan: akarUji });
+cek(pUji.ok && pUji.env.CRAWLER_ROOT === akarUji && pUji.folderData === akarUji && pUji.command === PY && pUji.cwd === p.cwd && !pUji.terbundel,
+  'uji: folderDataPengembangan → CRAWLER_ROOT folder sementara; Python & kode tetap dari repo', pUji);
+// Celah yang ditemukan saat pemeriksaan (27 Okt): jaminan di atas hanya pada `peluncuran`. Pengelola yang dibangun
+// PERSIS seperti main.cjs (folderData selalu dikirim, tanpa runtimeTerbundel) juga wajib tidak memindahkan akar data.
+// Diuji lewat rencanaPeluncuran — tanpa menjalankan crawler, jadi data Owner tidak tersentuh.
+const rencanaDesktop = K.buatPengelolaKonektor({ akarRepo: AKAR, folderData: path.join(os.tmpdir(), 'appdata-palsu') }).rencanaPeluncuran('ecosystem-crawler');
+cek(rencanaDesktop.ok && rencanaDesktop.akarData === null && rencanaDesktop.cwd === p.cwd && !rencanaDesktop.terbundel,
+  'pengelola seperti main.cjs (npm run desktop): akar data tetap folder crawler repo, bukan folderData', rencanaDesktop);
+const rencanaUji = K.buatPengelolaKonektor({ akarRepo: AKAR, folderDataPengembangan: akarUji }).rencanaPeluncuran('ecosystem-crawler');
+cek(rencanaUji.ok && rencanaUji.akarData === akarUji && !('env' in rencanaUji), 'pengelola uji: akar data sementara; rencana tidak membuka lingkungan', rencanaUji);
 const tanpaVenv = mkdtempSync(path.join(os.tmpdir(), 'konektor-'));
 mkdirSync(path.join(tanpaVenv, 'capability', 'ecosystem-crawler', 'crawler', 'wajah'), { recursive: true });
 writeFileSync(path.join(tanpaVenv, 'capability', 'ecosystem-crawler', 'crawler', 'wajah', 'mcp_server.py'), '');
@@ -61,7 +80,8 @@ cek(!K.teksHasil({ content: [{ type: 'text', text: 'pendek' }] }).terpotong, 'ha
 // ── 3. Server sungguhan: per workspace (K3) ───────────────────────────────────────────────────────────────────
 console.log('\n-- 3. server crawler sungguhan, per workspace --');
 const log = [];
-const m = K.buatPengelolaKonektor({ akarRepo: AKAR, versi: 'uji', log: (s) => log.push(s) });
+const dataUji = mkdtempSync(path.join(os.tmpdir(), 'crawler-uji-mcp-'));
+const m = K.buatPengelolaKonektor({ akarRepo: AKAR, folderDataPengembangan: dataUji, versi: 'uji', log: (s) => log.push(s) });
 try {
   const [a, a2] = await Promise.all([m.nyalakan('ws-assistant', 'ecosystem-crawler'), m.nyalakan('ws-assistant', 'ecosystem-crawler')]);
   cek(a.ok && a.alat.length === 6, `Assistant: nyala, ${a.alat?.length} alat`, a);
@@ -91,6 +111,9 @@ try {
   cek(!(await m.panggil('ws-assistant', 'ecosystem-crawler', 'katalog', {})).ok, 'Assistant yang dimatikan tidak bisa dipanggil');
   cek(!hidup(a.pid), `proses Assistant (pid ${a.pid}) benar-benar berhenti`);
   cek((await m.panggil('ws-engineer', 'ecosystem-crawler', 'katalog', {})).ok, 'Engineer tetap bisa dipanggil');
+  // katalog membuka gudang (skema) & menulis garam ke .env akar data — keduanya harus mendarat di folder sementara.
+  cek(existsSync(path.join(dataUji, 'data', 'gudang.db')) && existsSync(path.join(dataUji, '.env')) && existsSync(path.join(dataUji, 'inbox')),
+    'crawler sungguhan memakai akar data SEMENTARA (gudang.db, .env garam, inbox) — bukan folder crawler repo');
 
   await m.matikanSemua();
   await tunggu(800);
@@ -121,7 +144,7 @@ cek(/berkasSetelan: path\.join\(app\.getPath\('userData'\), 'konektor\.json'\)/.
 // ── 5. Setelan sakelar di perangkat (K7) ──────────────────────────────────────────────────────────────────────
 console.log('\n-- 5. sakelar Settings: disimpan di perangkat, dipulihkan saat dibuka --');
 const berkas = path.join(mkdtempSync(path.join(os.tmpdir(), 'konektor-setelan-')), 'konektor.json');
-const m1 = K.buatPengelolaKonektor({ akarRepo: AKAR, berkasSetelan: berkas });
+const m1 = K.buatPengelolaKonektor({ akarRepo: AKAR, berkasSetelan: berkas, folderDataPengembangan: dataUji });
 try {
   const nyala = await m1.atur('ws-assistant', 'ecosystem-crawler', true);
   const isiBerkas = JSON.parse(readFileSync(berkas, 'utf8'));
@@ -134,7 +157,7 @@ try {
 } finally { await m1.matikanSemua(); }
 
 // "Aplikasi dibuka lagi": pengelola baru dengan berkas yang sama.
-const m2 = K.buatPengelolaKonektor({ akarRepo: AKAR, berkasSetelan: berkas });
+const m2 = K.buatPengelolaKonektor({ akarRepo: AKAR, berkasSetelan: berkas, folderDataPengembangan: dataUji });
 try {
   const pulih = await m2.pulihkan();
   const st2 = m2.status();

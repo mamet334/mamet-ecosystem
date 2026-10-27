@@ -82,8 +82,14 @@ function sahKonektor(id) { return Object.prototype.hasOwnProperty.call(KONEKTOR,
  *     `scripts/siapkan-crawler.mjs`); folder program tidak bisa ditulis, jadi data, `.env`, dan hasil crawler ada di
  *     `folderData` (<userData>\crawler = %APPDATA%\ai-agent-frontend\crawler) lewat CRAWLER_ROOT.
  * `runtimeTerbundel` diisi proses utama hanya bila `app.isPackaged`.
+ *
+ * `folderDataPengembangan` — KHUSUS UJI, tidak pernah diisi `main.cjs`: di mode pengembangan, CRAWLER_ROOT ke folder ini
+ * (biasanya folder sementara). Tanpanya crawler memakai folder repo sebagai akar data, dan suite uji pernah menulis 27
+ * misi "uji rantai" ke `capability/ecosystem-crawler/data/gudang.db` milik Owner (temuan 27 Okt). Sengaja BUKAN
+ * `folderData`: proses utama selalu mengirim `folderData` (%APPDATA%), jadi menghormatinya di mode pengembangan akan
+ * memindahkan data `npm run desktop` Owner diam-diam.
  */
-function peluncuran(akarRepo, id, { runtimeTerbundel = null, folderData = null } = {}) {
+function peluncuran(akarRepo, id, { runtimeTerbundel = null, folderData = null, folderDataPengembangan = null } = {}) {
   if (!sahKonektor(id)) return tolak(`konektor tidak dikenal: ${id}`);
   const k = KONEKTOR[id];
   if (runtimeTerbundel) {
@@ -105,6 +111,12 @@ function peluncuran(akarRepo, id, { runtimeTerbundel = null, folderData = null }
   const python = path.join(folder, ...k.python);
   if (!fs.existsSync(path.join(folder, ...k.berkasModul))) return tolak(`kode konektor tidak ada di ${folder}`);
   if (!fs.existsSync(python)) return tolak(`Python konektor tidak ada (${path.relative(akarRepo, python)})`);
+  if (folderDataPengembangan) {
+    return {
+      ok: true, command: python, args: ['-m', k.modul], cwd: folder,
+      env: { ...lingkunganServer(), CRAWLER_ROOT: folderDataPengembangan }, folderData: folderDataPengembangan, terbundel: false,
+    };
+  }
   return { ok: true, command: python, args: ['-m', k.modul], cwd: folder, env: lingkunganServer(), terbundel: false };
 }
 
@@ -166,14 +178,15 @@ function ringkasKatalog(teks) {
  * Pengelola sesi konektor. `akarRepo` = folder repo Mamet (di `npm run desktop`: dua tingkat di atas berkas ini).
  * `berkasSetelan` = JSON di perangkat (K7: setelan konektor tidak ikut akun) — mis. %APPDATA%\Mamet AI\konektor.json.
  * `runtimeTerbundel` & `folderData` (Tahap E): aplikasi terpasang — lihat `peluncuran`.
- * @param {{akarRepo: string, berkasSetelan?: string, runtimeTerbundel?: string|null, folderData?: string|null, versi?: string, log?: (pesan: string) => void}} opsi
+ * `folderDataPengembangan`: khusus uji — akar data crawler sementara di mode pengembangan; lihat `peluncuran`.
+ * @param {{akarRepo: string, berkasSetelan?: string, runtimeTerbundel?: string|null, folderData?: string|null, folderDataPengembangan?: string|null, versi?: string, log?: (pesan: string) => void}} opsi
  */
-function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbundel = null, folderData = null, versi = '0', log = () => {} }) {
+function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbundel = null, folderData = null, folderDataPengembangan = null, versi = '0', log = () => {} }) {
   const sesi = new Map(); // `${ws}::${id}` → { client, transport, pid, alat, stderr, status, sejak, ringkasan }
   let sedangPasangStealth = null; // janji pemasangan stealth yang berjalan — tombol ditekan dua kali tidak memasang dua kali
 
   const kunci = (ws, id) => `${ws}::${id}`;
-  const luncurkan = (id) => peluncuran(akarRepo, id, { runtimeTerbundel, folderData });
+  const luncurkan = (id) => peluncuran(akarRepo, id, { runtimeTerbundel, folderData, folderDataPengembangan });
 
   function bacaSetelan() {
     if (!berkasSetelan) return {};
@@ -361,7 +374,19 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbunde
     }
   }
 
-  return { status, nyalakan, matikan, matikanSemua, panggil, atur, pulihkan, bacaSetelan, pasangStealth, komponen, lokasiFolder };
+  /**
+   * Rencana peluncuran konektor `id` TANPA menjalankannya: program, folder kerja, dan akar data (CRAWLER_ROOT; null =
+   * folder crawler repo). Untuk uji yang membuktikan jalur `main.cjs` (yang SELALU mengirim folderData) tidak
+   * memindahkan data `npm run desktop` — lihat folderDataPengembangan di `peluncuran`. Lingkungan lain tidak dibuka.
+   */
+  function rencanaPeluncuran(id) {
+    const p = luncurkan(id);
+    return p.ok
+      ? { ok: true, command: p.command, cwd: p.cwd, terbundel: p.terbundel, akarData: p.env?.CRAWLER_ROOT || null }
+      : p;
+  }
+
+  return { status, nyalakan, matikan, matikanSemua, panggil, atur, pulihkan, bacaSetelan, pasangStealth, komponen, lokasiFolder, rencanaPeluncuran };
 }
 
 /** `misi_id` dari hasil jalankan_misi (selesai maupun masih berjalan, keduanya memuatnya). */
