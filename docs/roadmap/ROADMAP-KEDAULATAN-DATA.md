@@ -76,8 +76,9 @@ skema lewat migrasi di repo, tidak mengunci fitur ke layanan khusus Supabase tan
       identik), RSUD 14, aktif 634 — [log](../project-memory/changelog/2026-09-22-uji-pulih-postgres-lokal.md).
 - **27 Okt (Item 126):** cadangan & skema pulih kini **15 tabel** — `cost_ledger` + `umpan_balik_jawaban` (penilaian
   👍/👎 dan biaya yang disambungkannya; bahan Data Flywheel) —
-  [log](../project-memory/changelog/2026-10-27-umpan-balik-jawaban.md#penilaian-ikut-dicadangkan-item-93). **Sisa:**
-  pemulihan sungguhan dengan berkas cadangan baru belum dijalankan.
+  [log](../project-memory/changelog/2026-10-27-umpan-balik-jawaban.md#penilaian-ikut-dicadangkan-item-93) —
+  ✅ **terbukti**: berkas nyata 61,7 MB → Postgres lokal **PULIH LENGKAP 15/15** dalam 26 dtk; penilaian tersambung ke
+  biayanya tanpa Supabase.
 
 ### Tahap 3 — (jangka panjang) Embedding lokal
 - [ ] Uji model 768-D lokal dengan set uji Kepbup 14 pertanyaan, di luar aplikasi, $0. Lolos 14/14 baru dirancang.

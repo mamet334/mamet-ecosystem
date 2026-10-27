@@ -24,6 +24,11 @@ python -c "import secrets;open(r'$P\sandi.txt','w').write(secrets.token_urlsafe(
 
 ## Setiap kali uji pulih
 
+Bila `$P\data` sudah tidak ada (klaster dihapus untuk menghemat ruang — keadaan 27 Okt), jalankan ulang langkah 3
+`initdb` saja: ia membaca `sandi.txt` yang masih ada; tak ada yang diunduh. Sesudah uji, klaster boleh dihapus lagi.
+Catatan: di PowerShell, `pg_ctl … start` bisa tidak mengembalikan kendali (proses Postgres mewarisi saluran keluaran)
+padahal server sudah siap — periksa dengan `pg_ctl -D "$P\data" status`.
+
 ```powershell
 & "$P\env\Library\bin\pg_ctl.exe" -D "$P\data" -l "$P\pg.log" -o "-p 55432 -c listen_addresses=127.0.0.1" -w start
 node scripts/kedaulatan/pulih-cadangan.mjs --berkas "<berkas cadangan>.json" --pg-bin "$P\env\Library\bin" --sandi-file "$P\sandi.txt"

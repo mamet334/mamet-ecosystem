@@ -79,8 +79,17 @@ Postgres lokal) akan kehilangan semua penilaian beserta sambungan biayanya. Kedu
   diperbarui (13 → 15 tabel).
 - `uji-cadangan-data.mjs` v2: keduanya ikut dicadangkan & cocok dengan hitungan; **setiap** tabel cadangan wajib punya
   definisi di skema pulih (penjaga umum, bukan hanya dua tabel ini). Dua mutasi menggigit.
-- Belum dijalankan: pemulihan sungguhan ke Postgres lokal (`D:\SLAMET\other\pg-lokal`) — butuh berkas cadangan baru &
-  menyalakan klaster lokal Owner.
+- **Terbukti dengan berkas cadangan nyata Owner** (`npm run desktop`, Research App › Cadangkan data, 02:09 UTC, 61,7 MB;
+  hanya jumlah baris yang dibaca — berkas berisi data pribadi): pemeriksaan aplikasi **SAH**, **15/15** tabel berkas =
+  database, `cost_ledger` 958, `umpan_balik_jawaban` 1, dan sambungan di dalam berkas utuh (1/1 penilaian menemukan
+  baris biayanya).
+- **Pemulihan ke Postgres lokal tanpa Supabase** (atas izin Owner): klaster `pg-lokal\data` ternyata sudah dihapus
+  sejak uji September → dibuat ulang sementara dengan `initdb` (membaca `sandi.txt` sendiri; tak ada unduhan), lalu
+  `pulih-cadangan.mjs` → **PULIH LENGKAP dalam 26 dtk, 15/15 tabel**, fts 3.480 potongan dibangun ulang. Gabungan di
+  database lokal: `umpan_balik_jawaban ⋈ cost_ledger` → +1 · `ws-assistant` · `deepseek-v4-flash` · `tier-auto` ·
+  3.845 token · $0,000512 — sama persis dengan live. Klaster dimatikan & folder `data` + log `initdb` dihapus lagi
+  (folder `pg-lokal` kembali seperti ditemukan; `pg.log` bertambah baris server hari ini). README pulih diperbarui:
+  cara membuat ulang klaster & catatan `pg_ctl start` di PowerShell.
 - Suite: satu kali `uji-konektor-stealth` merah (bagian 5 membuka example.com sungguhan lewat Chromium); tiga putaran
   berikutnya lulus, berkasnya tidak disentuh perubahan ini. Sebabnya tak terekam — keluaran suite tidak menyimpan
   rincian kegagalan.
