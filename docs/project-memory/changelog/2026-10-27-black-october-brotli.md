@@ -57,11 +57,14 @@ Per 27 Okt **belum ada Electron stabil** yang membawa Node ≥ 24.22.1 (42.11.18
 - **Live di `npm run desktop`** (Owner, 15:06; proses Electron mulai 15:04:29 — sesudah berkas diubah 14:18–14:19):
   "berita terbaru" → `_safeFetch` → IPC → Bing News RSS **5 hasil, 2.312 ms**; tak ada "IPC fetchWeb non-ok/exception"
   dan tak jatuh ke `proxy_fetch`. Jawaban terpotong `max_tokens=133` = saldo OpenRouter tipis, tak terkait.
+- **CI sesudah push** (`07b6dc8`, run 40477534855 Production Pipeline): validate-environment, build-frontend
+  (`npm ci` + build Vite), deploy-edge-functions (simulasi) — semua ✅. Log setup-node: `Resolved as '24.22.1'`,
+  `node: v24.22.1` — versi tertambal, bukan Node 24 lama dari cache runner.
 
 ## Batas yang diketahui
 
 - Aplikasi terpasang baru menerima ini lewat rilis berikutnya (4.3.2).
 - `build.yml` di Node 24 baru terbukti pada rilis berikutnya — sengaja tidak dipicu manual (memicunya = menerbitkan
-  rilis). `production-pipeline.yml` terbukti saat push ini.
+  rilis). `production-pipeline.yml` sudah terbukti (lihat Bukti).
 - Renderer sudah memakai jaringan Chromium sejak dulu (`webSecurity: false`, lihat `uji-cangkang-electron`) — tidak
   diubah.
