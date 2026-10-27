@@ -915,9 +915,13 @@ export class AssistantService {
     }
 
     // Payload minimal — tidak ada globalMemory atau semanticContext
+    // Item 126 (👍/👎): jalur ini dulu TIDAK mengirim traceId — baris cost_ledger-nya ber-trace_id kosong dan jawabannya
+    // tak bisa disambungkan ke umpan balik. Server memakai traceId klien apa adanya (request_parser.ts).
+    const traceId = crypto.randomUUID();
     const payload = {
       message: userMsg,
       mode: 'LOOKUP',              // flag ke Edge Function
+      traceId,
       // Item 126: jalur LOOKUP memaku tier 'KECIL' di kode (lihat getActiveBrainContext di atas) —
       // SISTEM yang memutuskan model murah untuk pertanyaan faktual pendek, bukan Owner.
       pemilihModel: 'tier-auto',
@@ -971,7 +975,7 @@ export class AssistantService {
     }
 
     // Reuse response handler yang sama dengan ConversationHandler
-    await this._handleResponseStream(response, { userMsg, isEngineerMode: false, workspaceManager, onChunk, onDone, onError, signal });
+    await this._handleResponseStream(response, { userMsg, isEngineerMode: false, workspaceManager, onChunk, onDone, onError, signal, traceId });
   }
 
   // =============================================
@@ -1077,9 +1081,11 @@ export class AssistantService {
 
         // Kirim ke Edge Function dengan payload minimal
         const { aiProvider, formattedModel, aiKey } = await this._resolveAIProvider();
+        const traceIdLangkah = crypto.randomUUID(); // Item 126: satu traceId per langkah (tiap langkah = satu panggilan model)
         const payload = {
           message: generatePrompt,
           mode: resolvedMode || 'STANDARD',
+          traceId: traceIdLangkah,
           // Item 126: skill memakai `_resolveAIProvider()` → `getActiveBrainContext()` TANPA tier,
           // yaitu model utama yang Owner set di Settings. Jadi pemilihnya Owner, bukan sistem.
           pemilihModel: 'owner-settings',
@@ -1122,7 +1128,8 @@ export class AssistantService {
           onChunk,
           onDone,
           onError,
-          signal
+          signal,
+          traceId: traceIdLangkah
         });
 
         skillContext.outputs.push({ step: i + 1, done: true });
@@ -1483,7 +1490,7 @@ export class AssistantService {
     await this._handleResponseStream(response, {
       userMsg, isEngineerMode, workspaceManager, onChunk, onDone, onError, userId,
       history, workspaceId, token, attachedFile, resolvedMode, resolvedAppSource,
-      _isPostHocWebRetry, onNalar, hybrid: payload.streamNalar === true, signal
+      _isPostHocWebRetry, onNalar, hybrid: payload.streamNalar === true, signal, traceId: requestTraceId
     });
   }
 
@@ -1548,7 +1555,8 @@ export class AssistantService {
   async _handleResponseStream(response, {
     userMsg, isEngineerMode, workspaceManager, onChunk, onDone, onError, userId,
     history, workspaceId, token, attachedFile, resolvedMode, resolvedAppSource,
-    _isPostHocWebRetry = false, onNalar, hybrid = false, signal = null
+    _isPostHocWebRetry = false, onNalar, hybrid = false, signal = null,
+    traceId = null, // Item 126: ID permintaan yang dikirim di payload — dibawa ke onDone supaya pesan jawaban menyimpannya (👍/👎)
   }) {
     const contentType = response.headers.get('content-type') || '';
 
@@ -1570,7 +1578,7 @@ export class AssistantService {
       const hasPatch = isEngineerMode && adaPenandaPatch(rawContent);
       const cleanContent = hasPatch ? buangPenandaPatch(rawContent) : rawContent;
 
-      onDone?.(cleanContent, jsonData.processingSteps || [], jsonData, { hasPatch, patchOriginalTask: hasPatch ? userMsg : undefined });
+      onDone?.(cleanContent, jsonData.processingSteps || [], jsonData, { hasPatch, patchOriginalTask: hasPatch ? userMsg : undefined, traceId });
 
       // MAEF Monitor TIDAK lagi dibuka otomatis di sini — dulu tiap respons AI memaksa panel
       // ini terbuka kembali walau Owner baru saja menutupnya (minimize jadi terasa tidak
@@ -1654,7 +1662,8 @@ export class AssistantService {
     // kosong supaya perilaku lama (dan pemeriksaan `metadata?.`) tidak berubah tanpa alasan.
     onDone?.(finalText, processingSteps, penyedia ? { penyedia } : null, {
       hasPatch,
-      patchOriginalTask: hasPatch ? userMsg : undefined
+      patchOriginalTask: hasPatch ? userMsg : undefined,
+      traceId,
     });
 
     // Post-Hoc Re-Evaluation (PR#9 Fase 3):

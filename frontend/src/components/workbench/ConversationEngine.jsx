@@ -20,6 +20,8 @@ import { ambilBlokPengetahuan, pengetahuanBaru, barisBrain1 } from '../../core/r
 import { anggaranKonteks, pilihPesanKonteks, meteranKonteks, bacaMulaiDari, simpanMulaiDari, pesanUntukDipadatkan, bolehPadatkan, bentukPesanRingkasan, tokenPesan, MIN_PESAN_PADATKAN, PATOK } from '../../core/runtime/services/KonteksChat.js';
 import { jejakSisipan } from '../../core/runtime/services/jejakSisipan.js';
 import { blokGalat } from '../../core/runtime/services/pesanGalat.js';
+import { simpanUmpanBalik, nilaiBerikutnya, bolehDinilai } from '../../core/runtime/services/umpanBalikJawaban.js';
+import TombolUmpanBalik from './TombolUmpanBalik.jsx';
 import { useKeadaanTersimpan, useRefTersimpan } from '../../core/runtime/hooks/useKeadaanTersimpan.js';
 import { penyimpanKeadaan } from '../../core/runtime/PenyimpanKeadaan.js';
 import TeksMarkdown, { KotakKode } from './TeksMarkdown.jsx';
@@ -181,6 +183,7 @@ export default function ConversationEngine({ sessionId }) {
   // layarnya dilepas lalu dipasang lagi, maka ref-nya ikut hidup di luar layar.
   const kendaliKirimRef = useRefTersimpan(kunciSesi, 'kendaliKirim', null);
   const [copiedIndex, setCopiedIndex] = useState(null);
+  const [galatUmpanBalik, setGalatUmpanBalik] = useState(null); // { idx, alasan } — 👍/👎 yang gagal tersimpan
   // currentChatId diinisialisasi null — ID chat di-restore via useEffect setelah
   // chatStorageKey tersedia (workspace diketahui). Ini mencegah tiga instance
   // chat membaca/menghapus kunci yang sama saat mount.
@@ -540,6 +543,28 @@ export default function ConversationEngine({ sessionId }) {
   // =============================================
   // COPY TO CLIPBOARD
   // =============================================
+  // 👍/👎 (Item 126 Fase 0): langsung tampil di layar, lalu disimpan ke umpan_balik_jawaban. Gagal → nilai dikembalikan
+  // dan alasannya ditampilkan di bawah kartu — umpan balik yang tak tersimpan tidak boleh terlihat tersimpan.
+  const nilaiJawaban = async (idx, tombol) => {
+    const pesan = messages[idx];
+    if (!bolehDinilai(pesan)) return;
+    const sebelum = pesan.umpanBalik || 0;
+    const nilai = nilaiBerikutnya(sebelum, tombol);
+    const ubah = (n) => setMessages((prev) => {
+      if (prev[idx]?.traceId !== pesan.traceId) return prev; // daftar pesan berubah sementara itu
+      const next = [...prev];
+      next[idx] = { ...next[idx], umpanBalik: n };
+      return next;
+    });
+    setGalatUmpanBalik(null);
+    ubah(nilai);
+    const h = await simpanUmpanBalik(supabase, { traceId: pesan.traceId, nilai, workspace: workspaceManager?.activeWorkspaceId || null });
+    if (!h.ok) {
+      ubah(sebelum);
+      setGalatUmpanBalik({ idx, alasan: h.alasan });
+    }
+  };
+
   const handleCopy = async (text, index) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -1395,11 +1420,11 @@ export default function ConversationEngine({ sessionId }) {
         },
 
         onDone: (finalText, steps, jsonMetadata, extras = {}) => {
-          const { hasPatch, patchOriginalTask } = extras;
+          const { hasPatch, patchOriginalTask, traceId } = extras;
           if (!diLayar()) {
             // Owner sedang membaca percakapan lain. Jawaban + pertanyaannya diselamatkan ke percakapan
             // asalnya; `isLoading` tetap dilepas supaya kotak kirim tidak terkunci selamanya.
-            simpanTerlantar({ content: finalText, steps, metadata: jsonMetadata, hasPatchProposal: hasPatch || false });
+            simpanTerlantar({ content: finalText, steps, metadata: jsonMetadata, hasPatchProposal: hasPatch || false, traceId });
             setIsLoading(false);
             return;
           }
@@ -1414,7 +1439,8 @@ export default function ConversationEngine({ sessionId }) {
                 lamaBerpikir: lamaBerpikirDari(finalText, next[next.length - 1]?.lamaBerpikir),
                 hasPatchProposal: hasPatch || false,
                 patchOriginalTask: hasPatch ? patchOriginalTask : undefined,
-                metadata: jsonMetadata
+                metadata: jsonMetadata,
+                traceId,
               };
               return next;
             });
@@ -1429,7 +1455,8 @@ export default function ConversationEngine({ sessionId }) {
               lamaRespons: Math.max(1, Math.round((Date.now() - waktuKirim) / 1000)),
               hasPatchProposal: hasPatch || false,
               patchOriginalTask: hasPatch ? patchOriginalTask : undefined,
-              metadata: jsonMetadata
+              metadata: jsonMetadata,
+              traceId,
             }]);
           }
           setIsLoading(false);
@@ -2378,6 +2405,15 @@ export default function ConversationEngine({ sessionId }) {
                           </button>
                           <span className="text-body-sm text-on-surface-variant italic">Reasoning Lock akan aktif sebelum eksekusi</span>
                         </div>
+                      )}
+
+                      {/* 👍/👎 (Item 126) — hanya jawaban model selesai yang membawa traceId (lihat TombolUmpanBalik.jsx). */}
+                      {bolehDinilai(m) && (
+                        <TombolUmpanBalik
+                          nilai={m.umpanBalik || 0}
+                          onNilai={(tombol) => nilaiJawaban(idx, tombol)}
+                          galat={galatUmpanBalik?.idx === idx ? galatUmpanBalik.alasan : null}
+                        />
                       )}
 
                       {/* Copy Button */}

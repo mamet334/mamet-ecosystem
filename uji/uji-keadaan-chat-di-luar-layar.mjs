@@ -48,6 +48,7 @@ const DAFTAR_LOKAL = {
   temuanTersimpan: 'SENGAJA dibaca ulang dari disk — suntingan tangan Owner harus terlihat',
   keutuhanTemuanRef: 'dibaca ulang bersama temuanTersimpan',
   laporanPatchTertunda: 'dibaca ulang dari catatan; duplikat dicegah patchId',
+  galatUmpanBalik: '👍/👎 gagal tersimpan: nilainya SUDAH dikembalikan di messages (yang bertahan) — layar kembali menampilkan tombol tak terpilih; teks galat sesaat boleh hilang (Item 126)',
 };
 
 const WAJIB_DI_LUAR = [

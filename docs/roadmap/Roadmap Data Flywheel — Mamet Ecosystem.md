@@ -276,7 +276,14 @@ tidak dikerjakan dua kali.
 - [ ] Tabel ramping `keputusan_router` **hanya untuk yang riwayat TIDAK bisa jawab**: kata kunci
       **mana** yang memicu, durasi, dan biaya per keputusan. Tanpa isi pesan
 - [ ] Nama kolom mengikuti konvensi OpenTelemetry GenAI
-- [ ] Tombol 👍/👎 di frontend, terhubung ke `trace_id`
+- [x] ~~Tombol 👍/👎 di frontend, terhubung ke `trace_id`~~ — **KODE SELESAI 27 Okt**
+      ([log](../project-memory/changelog/2026-10-27-umpan-balik-jawaban.md)): tabel `umpan_balik_jawaban` diterapkan &
+      diperiksa; `traceId` kini tersimpan di pesan jawaban dan dikirim juga oleh jalur LOOKUP & skill (dulu tidak);
+      tombol transparan sesuai tema. **⏳ Sisa bukti:** satu penilaian sungguhan tersambung ke `cost_ledger` (butuh
+      chat berhasil — saldo OpenRouter); aplikasi terpasang menunggu rilis berikutnya (versi ditunda Owner).
+      **Catatan ukur Gerbang 1:** permintaan gagal tidak masuk `cost_ledger`, hanya `agent_logs` (`PROVIDER_ERROR`) —
+      cakupan pencatatan dihitung dari keduanya. Per 27 Okt: 8/8 baris bertanda, tetapi baru ±6 permintaan berhasil
+      sejak 18 Okt (saldo) — gerbang belum bisa dinilai.
 - [ ] Retensi otomatis dan ringkasan agregat — **termasuk retrofit untuk `agent_logs` yang sudah
       15.030 baris**
 - [ ] Kegagalan telemetri dihitung dan dilaporkan ke SystemGovernorService

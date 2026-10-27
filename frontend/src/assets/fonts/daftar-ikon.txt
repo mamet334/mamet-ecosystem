@@ -89,6 +89,8 @@ speed
 table
 table_chart
 terminal
+thumb_down
+thumb_up
 toggle_off
 toggle_on
 token
