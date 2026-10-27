@@ -1,7 +1,8 @@
 # ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
 
 **Tipe Dokumen:** Daftar sisa pekerjaan (temuan audit yang belum punya dokumen roadmap sendiri)
-**Status:** ⏳ **T19 ditambahkan 20 Okt 2026** — fitur lupa & ganti kata sandi belum ada; ditunda Owner ke fase hardening.
+**Status:** 🟡 **T20 ditambahkan 27 Okt 2026** — "Black October": Brotli CVE-2026-111497; jalur terbuka ditutup, menunggu rilis.
+⏳ **T19 ditambahkan 20 Okt 2026** — fitur lupa & ganti kata sandi belum ada; ditunda Owner ke fase hardening.
 **T18 ditambahkan 19 Okt 2026** — 19 kelas Tailwind di komponen tak pernah dibuat (gaya yang tertulis tapi tak tampil).
 **T17 ditambahkan 19 Okt 2026** — penyimpanan otomatis chat melewatkan perubahan saat penyimpanan sebelumnya berjalan.
 **T16 ditambahkan 19 Okt 2026** — lima modul konsol uji menunjuk folder yang sudah tidak ada.
@@ -717,6 +718,24 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
 
 - **Status:** ⏳ tercatat, belum dirancang, belum diputuskan Owner. Tabel titik impornya juga ada di
   [changelog Item 126](../project-memory/changelog/2026-10-18-penanda-pemilih-model.md).
+
+## T20 — "Black October": Brotli CVE-2026-111497 di Node bawaan Electron & CI (2026-10-27)
+
+- **Temuan:** Node bawaan Electron 42.3.3 (24.15.0) dan Node 20 di CI rentan Brotli "Node2Shell" (tertambal di
+  24.22.1). Jalur terbuka: `net:fetchWeb` mengambil situs pihak ketiga dengan `fetch()` Node di proses utama.
+  Insiden lain pekan itu (LiteLLM, PHP2Shell, GitLab, eMudhra) tidak mengenai Mamet.
+- ✅ **Dikerjakan 27 Okt** ([changelog](../project-memory/changelog/2026-10-27-black-october-brotli.md)):
+  `net:fetchWeb` → `net.fetch` (Chromium 148 terbukti tertambal) + hanya http/https + tanpa cookie; CI → Node 24
+  `check-latest`. Terbukti live di `npm run desktop`.
+- **Sisa:**
+  1. **Rilis 4.3.2** — aplikasi terpasang masih memakai `fetch()` Node; rilis itu juga membuktikan `build.yml` di Node 24
+     (periksa log setup-node ≥ 24.22.1).
+  2. **Naikkan Electron** begitu ada rilis stabil yang membawa Node ≥ 24.22.1 (per 27 Okt belum ada). Sesudahnya
+     `fetch()` Node aman lagi, tetapi `net.fetch` + penjaganya tetap dipertahankan.
+  3. **Node laptop Owner** 24.15.0 → ≥ 24.22.1 — dilakukan Owner sendiri (unduhan & pemasangan).
+  4. *(usul, belum diputuskan)* `requirements-bundel.txt` crawler memakai `--require-hashes`: versi sudah dikunci dan
+     `--no-deps`, tetapi tanpa hash; npm sudah aman lewat `npm ci` + integrity di lockfile. Pelajaran dari LiteLLM.
+- **Status:** 🟡 jalur terbuka ditutup di kode; menunggu rilis.
 
 ## T19 — Fitur lupa kata sandi & ganti kata sandi belum ada (ketahuan saat Owner mencoba masuk akun lain, 2026-10-20)
 

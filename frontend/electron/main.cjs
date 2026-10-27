@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, protocol, session, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, net, protocol, session, shell } = require('electron');
 // MATIKAN AKSELERASI GPU SEAWAL MUNGKIN UNTUK MENCEGAH CRASH GPU
 app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('disable-gpu');
@@ -398,43 +398,10 @@ app.on('window-all-closed', function () {
 
 // ========== IPC HANDLERS ==========
 
-// 0a. Tier 3 Web Retrieval Fetcher (Node.js Network Layer — Bebas CORS & Header Restrictions)
-ipcMain.handle('net:fetchWeb', async (event, { url, options = {} }) => {
-  const headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-    'Accept': 'application/rss+xml, application/xml, text/xml, text/html, application/json;q=0.9,*/*;q=0.8',
-    'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-    ...(options.headers || {})
-  };
-
-  const controller = new AbortController();
-  const timeoutMs = options.timeoutMs || 8000;
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const response = await fetch(url, {
-      method: options.method || 'GET',
-      headers,
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
-
-    const text = await response.text();
-    return {
-      ok: response.ok,
-      status: response.status,
-      statusText: response.statusText,
-      data: text
-    };
-  } catch (err) {
-    clearTimeout(timeoutId);
-    return {
-      ok: false,
-      status: 0,
-      error: err.message
-    };
-  }
-});
+// 0a. Tier 3 Web Retrieval Fetcher (jaringan Chromium di proses utama — bebas CORS & batasan header).
+// Lewat `net.fetch`, BUKAN `fetch()` Node: Brotli Node bawaan Electron ini rentan CVE-2026-111497 — lihat ambilWeb.cjs.
+const { ambilWeb } = require('./ambilWeb.cjs');
+ipcMain.handle('net:fetchWeb', (event, permintaan) => ambilWeb(net.fetch, permintaan));
 
 // 0b. Konversi Word -> PDF (tool `word_to_pdf`)
 //

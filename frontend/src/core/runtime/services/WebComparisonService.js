@@ -331,7 +331,7 @@ export class WebComparisonService {
   }
 
   /**
-   * Safe Fetch: Menggunakan Electron IPC (Node.js Network Bridge) jika tersedia,
+   * Safe Fetch: Menggunakan Electron IPC (jaringan Chromium di proses utama, electron/ambilWeb.cjs) jika tersedia,
    * atau native fetch jika berjalan di browser/environment test CLI.
    * Ini menghindari masalah CORS dan header restriction (User-Agent/Referer) di Chromium.
    */

@@ -19,10 +19,14 @@ jobs:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
+      # Node 24 (2026-10-27): Node 20 sudah habis dukungan dan TIDAK akan menerima tambalan CVE-2026-111497 (Brotli,
+      # "Black October"); 24 juga versi laptop Owner. check-latest: tanpanya setup-node boleh memakai Node 24 yang
+      # tersimpan di runner — bisa lebih tua dari 24.22.1 yang tertambal.
       - name: ⚙️ Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
+          check-latest: true
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 

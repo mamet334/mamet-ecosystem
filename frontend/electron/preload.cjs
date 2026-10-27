@@ -111,7 +111,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // =============================================
-  // TIER 3 WEB RETRIEVAL FETCHER (Node.js Network Bridge)
+  // TIER 3 WEB RETRIEVAL FETCHER (jaringan Chromium di proses utama — electron/ambilWeb.cjs)
   // =============================================
   fetchWeb: (url, options) => ipcRenderer.invoke('net:fetchWeb', { url, options }),
 
