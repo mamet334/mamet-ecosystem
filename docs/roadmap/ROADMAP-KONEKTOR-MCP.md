@@ -10,8 +10,11 @@ per misi · kode crawler disalin ke repo dulu · Python dibundel di pemasang; Go
 ([log](../project-memory/changelog/2026-10-23-konektor-mcp-tahap-b-klien-mcp.md)). **Tahap C ✅ 23 Okt** — Settings ›
 Konektor, setelan di perangkat, terbukti di aplikasi desktop Owner
 ([log](../project-memory/changelog/2026-10-23-konektor-mcp-tahap-c-settings.md)). **Tahap D 🟡 26 Okt** — gerbang
-persetujuan + protokol alat di chat; server ter-deploy (v530); terbukti tanpa model, **uji live menunggu saldo
-OpenRouter** ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-d-gerbang-protokol.md)); server kini v531.
+persetujuan + protokol alat di chat; server ter-deploy (v530); terbukti tanpa model
+([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-d-gerbang-protokol.md)); server kini v531. **Uji
+live 27 Okt** (Assistant): dialog sekali per misi ✅, tag ✅ (4 putaran), catatan kaki gerbang ✅, 30 tangkapan nyata;
+label Hypothesis **belum bisa dinilai** — jawaban akhir 0 huruf karena saldo OpenRouter tipis
+([log](../project-memory/changelog/2026-10-27-konektor-mcp-tahap-d-uji-live.md)).
 **Tahap E ✅ 26 Okt** (bagian utama) — pemasang membawa Python + crawler (runtime 147 MB, terbukti dari hasil build),
 data di %APPDATA%; K14: stealth tidak dibundel ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-e-pemasang.md)).
 **E2 ✅ 26 Okt** — tombol pasang komponen stealth (Patchright terkunci + Chromium, atas izin Owner), terbukti tanpa
@@ -191,8 +194,13 @@ menampilkan "hanya tersedia di desktop".
 ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-d-gerbang-protokol.md)) — rantai penuh terbukti
 tanpa model; batas putaran ditetapkan 6 (3 alat/putaran). Uji live pertama 26 Okt: blok prompt sampai ke model
 (log `[Konektor] aktif … 14 sumber siap`); dua koreksi menyusul (keterangan sumber — `arctic_shift` = arsip Reddit;
-pesan saldo menyebut plafon ulang) — **perlu deploy lagi**. **Sisa:** uji misi live di chat Assistant & Engineer
-(butuh saldo OpenRouter): dialog muncul sekali per misi, model memakai tag, label Hypothesis, catatan kaki dari gerbang.
+pesan saldo menyebut plafon ulang) — sudah ter-deploy di v531 (06:23:25 UTC 26 Okt, 33 dtk sesudah commit `3153dba`;
+diperiksa di platform 27 Okt). **Uji misi live 27 Okt (Assistant)**
+([log](../project-memory/changelog/2026-10-27-konektor-mcp-tahap-d-uji-live.md)): dialog sekali per misi ✅, model
+memakai tag ✅ (4 putaran), catatan kaki dari gerbang ✅, misi sungguhan 30 tangkapan. **Sisa:** label Hypothesis
+(jawaban akhir 0 huruf — saldo tipis) dan uji yang sama di Engineer, sesudah saldo OpenRouter diisi. Temuan untuk
+dikerjakan terpisah: kata kunci "OKU" terlalu umum di `rss_media`; `uji-konektor-mcp` menulis misi uji ke data
+crawler pengembangan Owner.
 - Saat konektor nyala di workspace itu, prompt memuat blok **KONEKTOR AKTIF** berisi daftar alat. `katalog` dibaca
   **oleh Mamet sendiri** saat konektor dinyalakan dan dimasukkan ke blok itu — isinya setelan crawler, bukan data
   luar — jadi model tidak perlu meminta `katalog` dan Owner tidak disodori persetujuan untuknya.
@@ -250,7 +258,8 @@ Assistant, dialog muncul sekali, hasil terbaca, Engineer tetap tak terhubung (K3
 
 ## 8. Langkah berikutnya
 
-Tahap A ✅ → B ✅ → C ✅ → D 🟡 (**uji live** sesudah saldo OpenRouter diisi) → E ✅ + E2 ✅ + E3 ✅ (pemasangan
+Tahap A ✅ → B ✅ → C ✅ → D 🟡 (uji live 27 Okt: 3 dari 4 kriteria ✅; **label Hypothesis + bagian Engineer** sesudah
+saldo OpenRouter diisi) → E ✅ + E2 ✅ + E3 ✅ (pemasangan
 stealth sungguhan & PC bersih dibuktikan sesudah rilis berikutnya / Windows Sandbox) → F menyusul. Rilis **4.3.0** (versi dinaikkan 26 Okt) membawa konektor ke aplikasi terpasang; build GitHub
 (`build.yml`) membangun `.venv` crawler sendiri dari `capability/ecosystem-crawler/requirements-bundel.txt` (86 paket
 terkunci, Python 3.12.10) — daftar itu wajib diperbarui bersama `.venv` pengembangan
