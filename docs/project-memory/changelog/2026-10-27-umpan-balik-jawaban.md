@@ -51,7 +51,21 @@ tidak mengganggu".
   `uji-keadaan-chat-di-luar-layar` (`galatUmpanBalik` dicatat di `DAFTAR_LOKAL` beserta alasannya).
 - Suite **120/120**.
 
+## Terbukti live (`npm run desktop`, uji Owner 27 Okt)
+
+- **Penilaian sungguhan pertama tersambung ke biaya**: `umpan_balik_jawaban` +1 (`ws-assistant`, 01:39:39 UTC) →
+  `cost_ledger` lewat `trace_id`: `deepseek-v4-flash` · pemilih **`tier-auto`** · 3.845 token · **$0,000512** ·
+  `completed`. Satu jawaban berhasil kini punya harga — pembilang North Star yang sebelumnya tidak ada.
+- **Cacat ditemukan dari pemakaian, lalu diperbaiki**: pesan chat tersimpan membawa `traceId`, tetapi `umpanBalik` tetap
+  `null` — chat disimpan 01:39:27, 👍 ditekan 01:39:39, dan tidak disimpan ulang. Sebab: `kunciSimpan`
+  (`pemulihanChat.js`) hanya melihat id chat, jumlah pesan, dan pesan terakhir; 👍 pada pesan lama tidak mengubah
+  satu pun, jadi chat dianggap tak berubah. Dibuka ulang → jempol tampil tak terpilih padahal tabel mencatat +1.
+  Perbaikan: tanda penilaian (`<indeks><+|->`) ikut di kunci — kosong bila belum ada penilaian, jadi kunci chat tanpa
+  👍/👎 persis seperti dulu (`uji-pemulihan-chat-v6` tetap lulus). `uji-umpan-balik-jawaban` v2 bagian 4b; mutasi
+  (tanda dibuang dari kunci) menggigit.
+- **Sesudah perbaikan** (Owner tekan 👍, muat ulang, jempol tetap terpilih): tabel `updated_at` 01:47:53 — **tetap 1
+  baris** (upsert, bukan ganda); chat disimpan 01:47:54 dengan **`umpanBalik: 1`**. Suite 120/120.
+
 ## Belum dibuktikan
 
-- Satu penilaian sungguhan masuk tabel & tersambung ke `cost_ledger` — butuh satu chat berhasil (saldo OpenRouter).
 - Aplikasi terpasang: versi ditunda atas keputusan Owner — tombol sampai lewat rilis berikutnya.

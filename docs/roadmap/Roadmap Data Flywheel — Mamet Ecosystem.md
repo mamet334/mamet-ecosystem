@@ -279,8 +279,10 @@ tidak dikerjakan dua kali.
 - [x] ~~Tombol 👍/👎 di frontend, terhubung ke `trace_id`~~ — **KODE SELESAI 27 Okt**
       ([log](../project-memory/changelog/2026-10-27-umpan-balik-jawaban.md)): tabel `umpan_balik_jawaban` diterapkan &
       diperiksa; `traceId` kini tersimpan di pesan jawaban dan dikirim juga oleh jalur LOOKUP & skill (dulu tidak);
-      tombol transparan sesuai tema. **⏳ Sisa bukti:** satu penilaian sungguhan tersambung ke `cost_ledger` (butuh
-      chat berhasil — saldo OpenRouter); aplikasi terpasang menunggu rilis berikutnya (versi ditunda Owner).
+      tombol transparan sesuai tema. **✅ TERBUKTI LIVE 27 Okt**: penilaian pertama tersambung ke `cost_ledger`
+      (`tier-auto`, $0,000512); cacat "penilaian tak ikut tersimpan di chat" (`kunciSimpan`) ditemukan dari pemakaian
+      & diperbaiki, terbukti tetap terpilih sesudah muat ulang. Sisa: aplikasi terpasang menunggu rilis berikutnya
+      (versi ditunda Owner).
       **Catatan ukur Gerbang 1:** permintaan gagal tidak masuk `cost_ledger`, hanya `agent_logs` (`PROVIDER_ERROR`) —
       cakupan pencatatan dihitung dari keduanya. Per 27 Okt: 8/8 baris bertanda, tetapi baru ±6 permintaan berhasil
       sejak 18 Okt (saldo) — gerbang belum bisa dinilai.

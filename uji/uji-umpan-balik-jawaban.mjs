@@ -17,7 +17,7 @@ const AKAR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const U = await import(pathToFileURL(path.join(AKAR, 'frontend/src/core/runtime/services/umpanBalikJawaban.js')).href);
 const baca = (p) => readFileSync(path.join(AKAR, p), 'utf8');
 
-console.log('uji-umpan-balik-jawaban v1');
+console.log('uji-umpan-balik-jawaban v2');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 500)}` : ''}`);
@@ -113,6 +113,20 @@ const penangan = ce.slice(ce.indexOf('const nilaiJawaban = async'), ce.indexOf('
 cek(/if \(!h\.ok\) \{\s*\n\s*ubah\(sebelum\);\s*\n\s*setGalatUmpanBalik/.test(penangan), 'gagal simpan → nilai dikembalikan & alasan ditampilkan');
 cek(/Penilaian tidak tersimpan: \{galat\}/.test(blok), 'alasan gagal tampil di bawah kartu');
 cek(/thumb_up/.test(baca('frontend/src/assets/fonts/daftar-ikon.txt')) && /thumb_down/.test(baca('frontend/src/assets/fonts/daftar-ikon.txt')), 'thumb_up & thumb_down ada di subset font ikon');
+
+// ── 4b. Penilaian ikut tersimpan di chat (v2) ───────────────────────────────────────────────
+// Bukti live 27 Okt: tabel mencatat +1, tetapi pesan yang tersimpan `umpanBalik` null — kunciSimpan hanya melihat
+// jumlah pesan & pesan terakhir, jadi 👍 pada pesan lama tidak memicu simpan; chat dibuka ulang → jempol tak terpilih.
+console.log('\n-- 4b. tersimpan di chat --');
+const PC = await import(pathToFileURL(path.join(AKAR, 'frontend/src/components/workbench/pemulihanChat.js')).href);
+const percakapan = [{ role: 'user', content: 'hai' }, { ...jawaban }, { role: 'user', content: 'lagi' }, { role: 'model', content: 'ok', traceId: 't-2' }];
+const kunciAwal = PC.kunciSimpan({ chatId: 'c1', messages: percakapan });
+const dinilai = percakapan.map((m, i) => (i === 1 ? { ...m, umpanBalik: 1 } : m));
+cek(PC.kunciSimpan({ chatId: 'c1', messages: dinilai }) !== kunciAwal, '👍 pada pesan LAMA mengubah kunci simpan → chat disimpan ulang');
+const dibalik = percakapan.map((m, i) => (i === 1 ? { ...m, umpanBalik: -1 } : m));
+cek(PC.kunciSimpan({ chatId: 'c1', messages: dibalik }) !== PC.kunciSimpan({ chatId: 'c1', messages: dinilai }), '👍 → 👎 juga mengubah kunci');
+cek(PC.kunciSimpan({ chatId: 'c1', messages: percakapan.map((m) => ({ ...m, umpanBalik: 0 })) }) === kunciAwal, 'batal (0) = kunci seperti tanpa penilaian');
+cek(kunciAwal === 'c1_4_2_model', 'chat tanpa penilaian: bentuk kunci lama tidak berubah', kunciAwal);
 
 // ── 5. Migrasi ──────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 5. migrasi --');

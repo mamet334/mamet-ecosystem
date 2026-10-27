@@ -41,7 +41,11 @@ export function putusanPemulihan(hasil) {
 export function kunciSimpan({ chatId, messages }) {
   const daftar = Array.isArray(messages) ? messages : [];
   const terakhir = daftar[daftar.length - 1];
-  return `${chatId || 'new'}_${daftar.length}_${(terakhir?.content || '').length}_${terakhir?.role || ''}`;
+  // Item 126: 👍/👎 mengubah pesan LAMA tanpa mengubah jumlah atau pesan terakhir — tanpa tanda ini penilaian tidak
+  // pernah ikut tersimpan di chat (terbukti 27 Okt: tabel +1, pesan tersimpan `umpanBalik` null). Kosong bila belum ada
+  // penilaian, jadi kunci chat tanpa 👍/👎 tidak berubah.
+  const nilai = daftar.reduce((s, m, i) => (m?.umpanBalik ? `${s}${i}${m.umpanBalik > 0 ? '+' : '-'}` : s), '');
+  return `${chatId || 'new'}_${daftar.length}_${(terakhir?.content || '').length}_${terakhir?.role || ''}${nilai ? `_${nilai}` : ''}`;
 }
 
 export function bolehSimpanChat({ currentChatId, messages }) {
