@@ -20,10 +20,28 @@ def bersihkan(text: str | None) -> str:
     return _WS_RE.sub(" ", text).strip()
 
 
+def kata_kunci_pendek(k: str) -> bool:
+    """Kata kunci yang wajib cocok sebagai KATA UTUH: pendek (≤ 4 huruf, tanpa spasi) atau akronim (huruf besar semua).
+
+    Mamet 2026-10-27: misi "Ogan Komering Ulu" dengan kata kunci "OKU" menangkap 14 berita rss_media yang semuanya
+    salah — "OKU" ada di tengah "F-oku-s". Di gudang lama: "ASN" di "at-asn-ya", "Bat-asn-ya". Kata kunci yang lebih
+    panjang tetap dicari sebagai potongan teks supaya imbuhan tetap tertangkap ("korupsi" ⊂ "korupsinya", "banjir" ⊂
+    "kebanjiran", "side hustle" ⊂ "side hustles") — diukur pada 496 tangkapan: yang hilang hanya 16 kecocokan salah.
+    """
+    k = k.strip()
+    return (" " not in k and len(k) <= 4) or (k.isupper() and any(ch.isalpha() for ch in k))
+
+
+def _cocok(low: str, teks: str, k: str) -> bool:
+    if kata_kunci_pendek(k):
+        return re.search(r"(?<!\w)" + re.escape(k.strip()) + r"(?!\w)", teks, re.IGNORECASE) is not None
+    return k.lower() in low
+
+
 def kata_kunci_cocok(text: str, keywords: list[str]) -> list[str]:
-    """Kata kunci misi yang muncul di teks, tanpa membedakan huruf besar/kecil."""
+    """Kata kunci misi yang muncul di teks, tanpa membedakan huruf besar/kecil (kata pendek/akronim: kata utuh)."""
     low = text.lower()
-    return [k for k in keywords if k.lower() in low]
+    return [k for k in keywords if _cocok(low, text, k)]
 
 
 def ada_kata(text: str, keywords: list[str]) -> bool:

@@ -164,7 +164,8 @@ async def jalankan_misi(
     """Jalankan satu misi pengumpulan data.
 
     sumber: id dari `katalog`, mis. ["rss_media", "arctic_shift"]. Wajib dipilih eksplisit.
-    kata_kunci: frasa pencarian; frasa berisi spasi dicari persis.
+    kata_kunci: frasa pencarian; frasa berisi spasi dicari persis. Kata ≤ 4 huruf & akronim (huruf besar semua)
+        dicocokkan sebagai kata utuh; kata lain sebagai potongan teks (imbuhan ikut) — lihat inti/teks.py.
     url_awal: link langsung untuk sumber kaskus, web, dan youtube (hasil mesin pencari Anda).
     owner_intent: perintah asli Owner (disimpan sebagai jejak, tidak ditafsirkan).
     sejak / sampai: '30h' (hari), '12mg' (minggu), '6b' (bulan), atau 'YYYY-MM-DD'.

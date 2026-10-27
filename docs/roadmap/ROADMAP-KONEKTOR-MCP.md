@@ -198,9 +198,11 @@ pesan saldo menyebut plafon ulang) — sudah ter-deploy di v531 (06:23:25 UTC 26
 diperiksa di platform 27 Okt). **Uji misi live 27 Okt (Assistant)**
 ([log](../project-memory/changelog/2026-10-27-konektor-mcp-tahap-d-uji-live.md)): dialog sekali per misi ✅, model
 memakai tag ✅ (4 putaran), catatan kaki dari gerbang ✅, misi sungguhan 30 tangkapan. **Sisa:** label Hypothesis
-(jawaban akhir 0 huruf — saldo tipis) dan uji yang sama di Engineer, sesudah saldo OpenRouter diisi. Temuan untuk
-dikerjakan terpisah: kata kunci "OKU" terlalu umum di `rss_media`; `uji-konektor-mcp` menulis misi uji ke data
-crawler pengembangan Owner.
+(jawaban akhir 0 huruf — saldo tipis) dan uji yang sama di Engineer, sesudah saldo OpenRouter diisi. Temuan:
+kata kunci "OKU" lolos di "Fokus" → **✅ diperbaiki 27 Okt** dua sisi — crawler: kata ≤ 4 huruf & akronim = kata utuh;
+model: arahan menganalisis entitas & mendampingi akronim; server v532
+([log](../project-memory/changelog/2026-10-27-crawler-kata-kunci-pendek.md)). `uji-konektor-mcp` menulis misi uji ke
+data crawler pengembangan Owner → dikerjakan di sesi terpisah (worktree, belum digabung).
 - Saat konektor nyala di workspace itu, prompt memuat blok **KONEKTOR AKTIF** berisi daftar alat. `katalog` dibaca
   **oleh Mamet sendiri** saat konektor dinyalakan dan dimasukkan ke blok itu — isinya setelan crawler, bukan data
   luar — jadi model tidak perlu meminta `katalog` dan Owner tidak disodori persetujuan untuknya.
