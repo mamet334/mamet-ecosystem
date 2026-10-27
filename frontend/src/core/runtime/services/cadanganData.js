@@ -27,6 +27,10 @@ export const TABEL_CADANGAN = [
   { nama: 'engineering_tasks', halaman: 1000 },
   { nama: 'architecture_gaps', halaman: 1000 },
   { nama: 'verification_runs', halaman: 1000 },
+  // Item 126 (27 Okt): bahan Data Flywheel — catatan biaya per panggilan model (model, pemilih, token, biaya) dan
+  // penilaian 👍/👎 yang disambungkan kepadanya lewat trace_id. Tanpa keduanya, pemulihan kehilangan semua penilaian.
+  { nama: 'cost_ledger', halaman: 1000, catatan: 'per panggilan model; tanpa isi percakapan' },
+  { nama: 'umpan_balik_jawaban', halaman: 1000, catatan: 'penilaian 👍/👎 → cost_ledger lewat trace_id' },
 ];
 // Sengaja TIDAK ikut: agent_logs, evidence_audit_logs, verification_audit_logs (log, bukan data; agent_logs pernah
 // menyimpan kunci API — T7), tabel pemantauan (checks, incidents, monitors, service_heartbeat).

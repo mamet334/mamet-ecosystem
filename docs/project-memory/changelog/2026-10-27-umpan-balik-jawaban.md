@@ -66,6 +66,25 @@ tidak mengganggu".
 - **Sesudah perbaikan** (Owner tekan 👍, muat ulang, jempol tetap terpilih): tabel `updated_at` 01:47:53 — **tetap 1
   baris** (upsert, bukan ganda); chat disimpan 01:47:54 dengan **`umpanBalik: 1`**. Suite 120/120.
 
+## Penilaian ikut dicadangkan (Item 93)
+
+Owner ingin penilaian kelak dipakai sebagai bahan algoritma. Diperiksa: "Cadangkan data" hanya mencadangkan 13 tabel —
+**`umpan_balik_jawaban` dan `cost_ledger` tidak termasuk**, jadi pemulihan dari berkas cadangan (mis. pindah ke
+Postgres lokal) akan kehilangan semua penilaian beserta sambungan biayanya. Keduanya bisa dibaca sesi pengguna sendiri
+(RLS diperiksa: `cost_ledger_owner_select` `auth.uid()::text = user_id`; insert juga hanya milik sendiri).
+
+- `cadanganData.js`: `cost_ledger` & `umpan_balik_jawaban` ditambahkan ke `TABEL_CADANGAN` (15 tabel).
+- `scripts/kedaulatan/skema-pulih.sql`: definisi kedua tabel (kolom disalin dari `information_schema` database live) —
+  tanpanya `pulih-cadangan.mjs` gagal, karena ia mengisi lewat `jsonb_populate_record(null::public.<tabel>)`. README
+  diperbarui (13 → 15 tabel).
+- `uji-cadangan-data.mjs` v2: keduanya ikut dicadangkan & cocok dengan hitungan; **setiap** tabel cadangan wajib punya
+  definisi di skema pulih (penjaga umum, bukan hanya dua tabel ini). Dua mutasi menggigit.
+- Belum dijalankan: pemulihan sungguhan ke Postgres lokal (`D:\SLAMET\other\pg-lokal`) — butuh berkas cadangan baru &
+  menyalakan klaster lokal Owner.
+- Suite: satu kali `uji-konektor-stealth` merah (bagian 5 membuka example.com sungguhan lewat Chromium); tiga putaran
+  berikutnya lulus, berkasnya tidak disentuh perubahan ini. Sebabnya tak terekam — keluaran suite tidak menyimpan
+  rincian kegagalan.
+
 ## Belum dibuktikan
 
 - Aplikasi terpasang: versi ditunda atas keputusan Owner — tombol sampai lewat rilis berikutnya.

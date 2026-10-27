@@ -202,6 +202,37 @@ create table public.verification_runs (
   user_id uuid not null,
   primary key (id)
 );
+-- Item 126 (27 Okt): dua tabel Data Flywheel ikut dicadangkan — penilaian 👍/👎 + catatan biaya yang disambungkannya
+-- lewat trace_id. Kolom disalin dari information_schema database live. `auth.uid()` (bawaan user_id umpan balik)
+-- tidak ada di Postgres lokal tanpa skema auth — tak dipakai: pemulihan selalu membawa user_id dari berkas.
+create table public.cost_ledger (
+  id uuid default gen_random_uuid() not null,
+  created_at timestamp with time zone default now() not null,
+  user_id text not null,
+  trace_id text,
+  adapter text not null,
+  model text not null,
+  prompt_tokens integer default 0,
+  completion_tokens integer default 0,
+  total_tokens integer default 0,
+  estimated_cost_usd numeric(10,6) default 0,
+  caller_context text,
+  status text default 'completed'::text not null,
+  blocked_reason text,
+  pemilih_model text,
+  primary key (id)
+);
+create table public.umpan_balik_jawaban (
+  id uuid default gen_random_uuid() not null,
+  user_id uuid not null,
+  trace_id text not null,
+  nilai smallint not null check (nilai in (-1, 1)),
+  workspace text,
+  created_at timestamp with time zone default now() not null,
+  updated_at timestamp with time zone default now() not null,
+  primary key (id),
+  unique (user_id, trace_id)
+);
 
 -- Pencarian gabungan vektor + kata kunci (RRF k=60) — salinan persis fungsi live (Item 90 Tahap B).
 create or replace function public.match_documents_hybrid(query_embedding vector, query_words text[], match_threshold double precision, match_count integer, p_user_id uuid, p_space_id uuid default null::uuid, rrf_k integer default 60)

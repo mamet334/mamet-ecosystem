@@ -31,7 +31,8 @@ node scripts/kedaulatan/pulih-cadangan.mjs --berkas "<berkas cadangan>.json" --p
 ```
 
 `pulih-cadangan.mjs` **membuat ulang** database `mamet_pulih` (hanya di Postgres lokal yang disebut), memuat
-`skema-pulih.sql` (disalin dari Supabase: 13 tabel + `match_documents_hybrid`), memasukkan data, menambah kunci asing,
+`skema-pulih.sql` (disalin dari Supabase: 15 tabel — 13 semula + `cost_ledger` & `umpan_balik_jawaban` sejak 27 Okt,
+Item 126 — + `match_documents_hybrid`), memasukkan data, menambah kunci asing,
 lalu mencocokkan jumlah baris. Keluar dengan kode 0 hanya bila **PULIH LENGKAP**.
 
 ## Catatan

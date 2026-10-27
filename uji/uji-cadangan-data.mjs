@@ -1,7 +1,7 @@
 // UJI Item 93 Tahap 1 — cadanganData.js dengan supabase tiruan (paginasi, hitungan, pemeriksaan berkas).
 import { pathToFileURL } from 'node:url';
 const C = await import(pathToFileURL('D:/SLAMET/other/mamet os ecosystem/frontend/src/core/runtime/services/cadanganData.js').href + '?v=' + Date.now());
-console.log('uji-cadangan-data v1');
+console.log('uji-cadangan-data v2');
 let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}`); if (!ok) gagal++; };
 
 // Tiruan: tiap tabel punya N baris; range() menghormati batas; count exact; opsi "tambahSaatHitung" meniru baris baru.
@@ -58,6 +58,18 @@ const rusak = JSON.parse(teks); rusak.data.documents.pop();
 cek(!C.periksaBerkasCadangan(rusak).sah, 'isi berkurang terdeteksi');
 cek(!C.periksaBerkasCadangan({ format: 'lain' }).sah, 'bukan berkas cadangan ditolak');
 cek(C.namaBerkasCadangan(new Date('2026-09-22T01:05:00Z')) === 'mamet-cadangan-2026-09-22-01-05.json', 'nama berkas');
+
+// v2 (Item 126, 27 Okt): bahan Data Flywheel ikut dicadangkan, dan skema pemulihan lokal sanggup memuatnya —
+// pulih-cadangan.mjs mengisi lewat jsonb_populate_record(null::public.<tabel>), tabel tanpa definisi = pemulihan gagal.
+const { readFileSync } = await import('node:fs');
+const namaCadangan = C.TABEL_CADANGAN.map((t) => t.nama);
+cek(namaCadangan.includes('cost_ledger') && namaCadangan.includes('umpan_balik_jawaban'), 'cost_ledger & umpan_balik_jawaban ikut dicadangkan');
+const sbFw = tiruan({ ...jumlah, cost_ledger: 9, umpan_balik_jawaban: 1 });
+const fw = await C.buatCadangan(sbFw, { userId: 'u1' });
+cek(fw.ringkas.cocok && fw.berkas.data.cost_ledger.length === 9 && fw.berkas.data.umpan_balik_jawaban.length === 1, 'isi keduanya masuk berkas & cocok dengan hitungan');
+const skemaPulih = readFileSync('D:/SLAMET/other/mamet os ecosystem/scripts/kedaulatan/skema-pulih.sql', 'utf8');
+const tanpaSkema = namaCadangan.filter((n) => !new RegExp(`create table public\\.${n} \\(`).test(skemaPulih));
+cek(tanpaSkema.length === 0, `setiap tabel cadangan punya definisi di skema-pulih.sql${tanpaSkema.length ? ` (tidak ada: ${tanpaSkema.join(', ')})` : ''}`);
 
 console.log(`\n${gagal === 0 ? 'SEMUA LULUS' : gagal + ' GAGAL'}`);
 process.exit(gagal ? 1 : 0);
