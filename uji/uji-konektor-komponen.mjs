@@ -21,7 +21,7 @@ const KK = require(path.join(AKAR, 'frontend', 'electron', 'komponenKonektor.cjs
 const K = require(path.join(AKAR, 'frontend', 'electron', 'konektorMcp.cjs'));
 const S = await import(pathToFileURL(path.join(AKAR, 'frontend', 'scripts', 'siapkan-crawler.mjs')).href);
 
-console.log('uji-konektor-komponen v6');
+console.log('uji-konektor-komponen v7');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 600)}` : ''}`);
@@ -208,6 +208,12 @@ cek(tanpaHash.length === 0, 'setiap paket membawa hash sha256 (dan tak ada opsi 
 const yml = readFileSync(path.join(AKAR, '.github', 'workflows', 'build.yml'), 'utf8');
 cek(/--no-deps[^\n]*-r requirements-bundel\.txt/.test(yml) && /working-directory: \.\/capability\/ecosystem-crawler/.test(yml), 'build.yml memasang daftar terkunci dengan --no-deps di folder crawler');
 cek(/--require-hashes[^\n]*-r requirements-bundel\.txt/.test(yml), 'build.yml memasang dengan --require-hashes — berkas yang isinya beda dari hash ditolak');
+// 28 Okt: `paths: frontend/package.json` memicu build pada perubahan APA PUN di berkas itu (ganti versi Electron →
+// build rilis 4.3.2 kedua, dibatalkan tangan). Build hanya boleh jalan bila job periksa-versi menyatakan versi naik.
+cek(/\n  build:\n    needs: periksa-versi\n    if: needs\.periksa-versi\.outputs\.naik == 'true'\n/.test(yml.replace(/\r\n/g, '\n')),
+  'build.yml: job build menunggu periksa-versi dan hanya jalan bila versi naik');
+cek(/::error::[^\n]*\n\s*exit 1/.test(yml) && !/naik=true[^\n]*\n[^\n]*\n\s*fi\n\s*git fetch/.test(yml),
+  'build.yml: versi sebelum push tak terbaca → merah & berhenti, bukan dianggap naik');
 cek(yml.indexOf('requirements-bundel.txt') < yml.indexOf('npm run dist:publish'), '.venv dibangun SEBELUM npm run dist:publish');
 const pyYml = yml.match(/python-version: '([^']+)'/)?.[1];
 if (!existsSync(path.join(CRAWLER, '.venv', 'pyvenv.cfg'))) {
