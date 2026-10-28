@@ -53,7 +53,16 @@ Perbaikan kedua ini di luar persetujuan awal — **ditanyakan dulu, Owner menyet
   kosong. Gaya jawaban bisa sedikit berubah — prompt sintesis memuat aturan format sendiri ("jangan format laporan",
   "sertakan gambar"); prompt langsung memakai aturan sistem biasa.
 
+## Deploy (diperiksa di platform)
+
+Owner men-deploy `agent-process` 28 Okt (percobaan pertama tak terjadi: perintah tertempel dua kali →
+`--no-verify-jwtsupabase` ditolak CLI). API Supabase: versi **533 → 534**, ACTIVE, `verify_jwt` **tetap `false`**,
+sidik isi `2e5ad9…` → `24f1d7…`; fungsi lain tidak berubah.
+**Isi yang ter-deploy** (`get_edge_function`, versi 534) diperiksa: `intent_router.ts` memuat jalur aman
+("jalur aman: dijawab langsung tanpa sub-agent"), `let rencanaGagal = false;`, `} else if (!rencanaGagal) {`, dan tetap
+mengimpor `kataKunciAksi`; `synthesis_handler.ts` memuat `const tanpaHasilSubAgen = …`, `|| tanpaHasilSubAgen) {`, dan
+"Tak ada sub-agent yang bekerja".
+
 ## Menunggu
 
-- Deploy `agent-process` oleh Owner → periksa versi (533 → 534) & isi di platform.
 - Bukti live di chat (saldo): langkah "jalur aman" / "↩️ Tak ada sub-agent yang bekerja".

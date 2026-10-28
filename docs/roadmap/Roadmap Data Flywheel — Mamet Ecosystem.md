@@ -337,7 +337,7 @@ pembersihan kueri pencarian (keduanya kode), diukur dengan mode bayangan SQL.
       riwayat 6/6 kegagalan router diikuti Coordinator yang juga gagal → kini jalur aman (jawab langsung); "memutuskan"
       tak lagi ditulis sesudah gagal. **Ikut ketahuan & diperbaiki (disetujui Owner):** 66 dari 80 sintesis
       "multi-agen" berjalan dengan nol sub-agent → cabang dipilih menurut ada-tidaknya hasil sub-agent. Mutasi 4/4 +
-      5/5; suite 125/125. **⏳ menunggu deploy `agent-process`** + bukti live (saldo).
+      5/5; suite 125/125. **✅ Ter-deploy 28 Okt — v534** (isi diperiksa lewat API). Sisa: bukti live (saldo).
 - [ ] Sebagian kecil pesan disisihkan sebagai pembanding (held-out)
 - [ ] Owner menyetujui aturan baru sebelum aktif
 
