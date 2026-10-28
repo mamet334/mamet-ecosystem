@@ -5,7 +5,7 @@
 **Status:** ACCEPTED
 **Tanggal:** 2026-07-23
 **Penulis:** Mamet Engineering — Audit Forensik 2026-07-23
-**Audit Reference:** `changelog/2026-07-23/SUMMARY.md`, `AUDIT-01` s/d `AUDIT-05`
+**Audit Reference:** `changelog/2026-07-23-AUDIT-SUMMARY.md`, `AUDIT-01` s/d `AUDIT-05`
 **Supersedes:** Bagian CHECK 002 dari ADR-0010 (tetap valid untuk bagian lainnya)
 **Berlaku untuk:**
 - `supabase/functions/agent-process/lib/verification/verification_engine.ts`
@@ -217,12 +217,12 @@ WHERE json_extract(log, '$.event') = 'CHECK_002_FORMAT_COMPLIANCE_FAIL';
 
 ## 8. Related Documents
 
-- `changelog/2026-07-23/SUMMARY.md` — Master summary audit forensik
-- `changelog/2026-07-23/AUDIT-01-runtime-evidence.md` — Lokasi "Verification Failed"
-- `changelog/2026-07-23/AUDIT-02-runtime-gap.md` — 5 data gap yang teridentifikasi
-- `changelog/2026-07-23/AUDIT-03-single-instrumentation-point.md` — Desain titik logging optimal
-- `changelog/2026-07-23/AUDIT-04-payload-lifecycle.md` — Trace transformasi payload
-- `changelog/2026-07-23/AUDIT-05-verification-architecture.md` — Analisis double source of truth
+- `changelog/2026-07-23-AUDIT-SUMMARY.md` — Master summary audit forensik
+- `changelog/2026-07-23-AUDIT-01-runtime-evidence.md` — Lokasi "Verification Failed"
+- `changelog/2026-07-23-AUDIT-02-runtime-gap.md` — 5 data gap yang teridentifikasi
+- `changelog/2026-07-23-AUDIT-03-single-instrumentation-point.md` — Desain titik logging optimal
+- `changelog/2026-07-23-AUDIT-04-payload-lifecycle.md` — Trace transformasi payload
+- `changelog/2026-07-23-AUDIT-05-verification-architecture.md` — Analisis double source of truth
 - `constitution/13_VERIFICATION_ENGINE_SPEC.md` — Specification yang menjadi acuan
 - `constitution/21 Engineer Capability.md` — Definisi kapabilitas Engineer
 - ADR-0010 — Verification Engine Hard Gate Specification (tetap berlaku untuk bagian lain)

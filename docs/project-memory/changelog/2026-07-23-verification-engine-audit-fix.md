@@ -3,7 +3,7 @@
 **Type:** Bug Fix + Architecture Fix
 **Severity:** Critical (ENGINEER mode selalu gagal)
 **ADR:** ADR-0012
-**Audit Reference:** `changelog/2026-07-23/SUMMARY.md`
+**Audit Reference:** `changelog/2026-07-23-AUDIT-SUMMARY.md`
 
 ---
 
@@ -11,7 +11,7 @@
 
 ENGINEER workspace secara konsisten mengembalikan `"Verification Failed"` pada setiap request.
 
-Root cause: Arsitektur double source of truth + broken prompt-parser contract. Selengkapnya di `changelog/2026-07-23/SUMMARY.md`.
+Root cause: Arsitektur double source of truth + broken prompt-parser contract. Selengkapnya di `changelog/2026-07-23-AUDIT-SUMMARY.md`.
 
 ---
 

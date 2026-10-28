@@ -24,7 +24,7 @@ AUDIT-01 (Runtime Evidence)
            └─→ AUDIT-03 (Single Instrumentation Point) — butuh titik optimal
                   └─→ AUDIT-04 (Payload Lifecycle) — butuh trace transformasi
                          └─→ AUDIT-05 (Verification Architecture) — butuh analisis arsitektur
-                                └─→ SUMMARY.md — kompilasi semua temuan
+                                └─→ 2026-07-23-AUDIT-SUMMARY.md — kompilasi semua temuan
 ```
 
 ---
@@ -228,12 +228,12 @@ synthesis_handler.ts:63
 
 | File | Content |
 |------|---------|
-| `AUDIT-01-runtime-evidence.md` | Lokasi pasti "Verification Failed", kondisi trigger, nilai variabel |
-| `AUDIT-02-runtime-gap.md` | Identifikasi 5 data gaps antara LLM output dan verifikasi |
-| `AUDIT-03-single-instrumentation-point.md` | Desain titik optimal di `synthesis_handler.ts:40-43` |
-| `AUDIT-04-payload-lifecycle.md` | Trace transformasi lengkap dari confidence engine ke verification |
-| `AUDIT-05-verification-architecture.md` | Analisis double source of truth dan arsitektur |
-| `SUMMARY.md` | Master summary ini |
+| `2026-07-23-AUDIT-01-runtime-evidence.md` | Lokasi pasti "Verification Failed", kondisi trigger, nilai variabel |
+| `2026-07-23-AUDIT-02-runtime-gap.md` | Identifikasi 5 data gaps antara LLM output dan verifikasi |
+| `2026-07-23-AUDIT-03-single-instrumentation-point.md` | Desain titik optimal di `synthesis_handler.ts:40-43` |
+| `2026-07-23-AUDIT-04-payload-lifecycle.md` | Trace transformasi lengkap dari confidence engine ke verification |
+| `2026-07-23-AUDIT-05-verification-architecture.md` | Analisis double source of truth dan arsitektur |
+| `2026-07-23-AUDIT-SUMMARY.md` | Master summary ini |
 
 ---
 
