@@ -1,7 +1,7 @@
 # ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
 
 **Tipe Dokumen:** Daftar sisa pekerjaan (temuan audit yang belum punya dokumen roadmap sendiri)
-**Status:** 🟡 **T20 ditambahkan 27 Okt 2026** — "Black October": Brotli CVE-2026-111497; jalur terbuka ditutup, menunggu rilis.
+**Status:** 🟡 **T20 ditambahkan 27 Okt 2026** — "Black October": Brotli CVE-2026-111497; jalur terbuka ditutup (aplikasi 27 Okt, bundel crawler 28 Okt), menunggu rilis 4.3.2.
 ⏳ **T19 ditambahkan 20 Okt 2026** — fitur lupa & ganti kata sandi belum ada; ditunda Owner ke fase hardening.
 **T18 ditambahkan 19 Okt 2026** — 19 kelas Tailwind di komponen tak pernah dibuat (gaya yang tertulis tapi tak tampil).
 **T17 ditambahkan 19 Okt 2026** — penyimpanan otomatis chat melewatkan perubahan saat penyimpanan sebelumnya berjalan.
@@ -727,15 +727,18 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
 - ✅ **Dikerjakan 27 Okt** ([changelog](../project-memory/changelog/2026-10-27-black-october-brotli.md)):
   `net:fetchWeb` → `net.fetch` (Chromium 148 terbukti tertambal) + hanya http/https + tanpa cookie; CI → Node 24
   `check-latest`. Terbukti live di `npm run desktop`.
+- ✅ **Bagian 2, 28 Okt** ([changelog](../project-memory/changelog/2026-10-28-rilis-4.3.2-black-october.md)): bundel
+  crawler juga terkena — `curl_cffi` 0.16.3 membawa `brotli/1.2.0` (→ 0.17.0, brotli 1.2.1) dan `certifi` memuat akar
+  eMudhra (→ 2026.10.23); kunci bundel kini ber-hash (`scripts/kunci_bundel.py`, `--require-hashes`) — butir 4 lama.
 - **Sisa:**
-  1. **Rilis 4.3.2** — aplikasi terpasang masih memakai `fetch()` Node; rilis itu juga membuktikan `build.yml` di Node 24
-     (periksa log setup-node ≥ 24.22.1).
+  1. **Rilis 4.3.2** (versi dinaikkan 28 Okt) — build GitHub: periksa setup-node ≥ 24.22.1, pip menerima semua hash,
+     `brotli/1.2.1` di bundel, waktu jabat tangan CI (4.3.1: 1,1 s); lalu Publish oleh Owner.
   2. **Naikkan Electron** begitu ada rilis stabil yang membawa Node ≥ 24.22.1 (per 27 Okt belum ada). Sesudahnya
      `fetch()` Node aman lagi, tetapi `net.fetch` + penjaganya tetap dipertahankan.
   3. **Node laptop Owner** 24.15.0 → ≥ 24.22.1 — dilakukan Owner sendiri (unduhan & pemasangan).
-  4. *(usul, belum diputuskan)* `requirements-bundel.txt` crawler memakai `--require-hashes`: versi sudah dikunci dan
-     `--no-deps`, tetapi tanpa hash; npm sudah aman lewat `npm ci` + integrity di lockfile. Pelajaran dari LiteLLM.
-- **Status:** 🟡 jalur terbuka ditutup di kode; menunggu rilis.
+  4. **Electron 42 habis dukungan 20 Okt** (jadwal resmi) — tak menerima tambalan keamanan lagi. Naik ke 45 (M156) =
+     tiga versi mayor; usul (diskusi 28 Okt, belum diputuskan): rilis tersendiri (4.4.0) dengan uji cangkang/sandbox/konektor/pemasang.
+- **Status:** 🟡 jalur terbuka ditutup di kode (aplikasi & crawler); menunggu rilis 4.3.2.
 
 ## T19 — Fitur lupa kata sandi & ganti kata sandi belum ada (ketahuan saat Owner mencoba masuk akun lain, 2026-10-20)
 

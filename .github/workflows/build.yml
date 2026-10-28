@@ -37,6 +37,8 @@ jobs:
       # Item 129 (rilis 4.3.0): pemasang membawa Python + Ecosystem Crawler (npm run crawler:siapkan menyalinnya dari
       # .venv crawler). .venv tidak di-commit (repo publik), jadi dibangun di sini dari daftar TERKUNCI — versi Python dan
       # 86 paket persis sama dengan .venv yang sudah diuji di laptop Owner (--no-deps: tak ada paket yang diselesaikan ulang).
+      # --require-hashes (T20, 2026-10-28): berkas yang isinya beda dari hash di daftar ditolak — versi palsu/tertukar
+      # di indeks tidak bisa lolos walau nomor versinya sama. Daftar ditulis scripts/kunci_bundel.py, bukan tangan.
       - name: 🐍 Setup Python (crawler terbundel)
         uses: actions/setup-python@v5
         with:
@@ -46,7 +48,7 @@ jobs:
         working-directory: ./capability/ecosystem-crawler
         run: |
           python -m venv .venv
-          ./.venv/Scripts/python.exe -m pip install --no-deps --disable-pip-version-check --no-input -r requirements-bundel.txt
+          ./.venv/Scripts/python.exe -m pip install --no-deps --require-hashes --disable-pip-version-check --no-input -r requirements-bundel.txt
 
       - name: ⚙️ Inject Environment Variables
         working-directory: ./frontend

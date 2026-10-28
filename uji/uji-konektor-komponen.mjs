@@ -21,7 +21,7 @@ const KK = require(path.join(AKAR, 'frontend', 'electron', 'komponenKonektor.cjs
 const K = require(path.join(AKAR, 'frontend', 'electron', 'konektorMcp.cjs'));
 const S = await import(pathToFileURL(path.join(AKAR, 'frontend', 'scripts', 'siapkan-crawler.mjs')).href);
 
-console.log('uji-konektor-komponen v5');
+console.log('uji-konektor-komponen v6');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 600)}` : ''}`);
@@ -193,14 +193,21 @@ cek(!ada('tautan') && hs.tautan.join(',') === 'tautan', 'salinTersaring: symlink
 cek(!/fs\.cpSync\(/.test(sumberSiap), 'siapkan tidak lagi memakai fs.cpSync (filternya tak diterapkan di Node 20)');
 
 const CRAWLER = path.join(AKAR, 'capability', 'ecosystem-crawler');
+// Format ber-hash (T20, 2026-10-28, ditulis scripts/kunci_bundel.py): "nama==versi \" lalu baris "--hash=sha256:…".
 const kunciTeks = readFileSync(path.join(CRAWLER, 'requirements-bundel.txt'), 'utf8');
 const normal = (n) => n.toLowerCase().replace(/[-_.]+/g, '-');
-const kunci = new Map(kunciTeks.split(/\r?\n/).filter((b) => b && !b.startsWith('#')).map((b) => {
-  const [n, v] = b.split('=='); return [normal(n), v];
-}));
-cek([...kunci.values()].every((v) => v && /^\S+$/.test(v)), `setiap baris requirements-bundel.txt berversi pasti (${kunci.size} paket)`);
+const entri = kunciTeks.replace(/\\\r?\n\s*/g, ' ').split(/\r?\n/).filter((b) => b.trim() && !b.startsWith('#')).map((b) => {
+  const [spes, ...sisa] = b.trim().split(/\s+/);
+  const [n, v] = spes.split('==');
+  return { n: normal(n), v, hash: sisa.filter((s) => /^--hash=sha256:[0-9a-f]{64}$/.test(s)), lain: sisa.filter((s) => !/^--hash=/.test(s)) };
+});
+const kunci = new Map(entri.map((e) => [e.n, e.v]));
+cek(entri.length > 50 && entri.every((e) => e.v && /^\S+$/.test(e.v)), `setiap baris requirements-bundel.txt berversi pasti (${kunci.size} paket)`);
+const tanpaHash = entri.filter((e) => e.hash.length === 0 || e.lain.length > 0).map((e) => e.n);
+cek(tanpaHash.length === 0, 'setiap paket membawa hash sha256 (dan tak ada opsi lain yang terselip di barisnya)', tanpaHash);
 const yml = readFileSync(path.join(AKAR, '.github', 'workflows', 'build.yml'), 'utf8');
 cek(/--no-deps[^\n]*-r requirements-bundel\.txt/.test(yml) && /working-directory: \.\/capability\/ecosystem-crawler/.test(yml), 'build.yml memasang daftar terkunci dengan --no-deps di folder crawler');
+cek(/--require-hashes[^\n]*-r requirements-bundel\.txt/.test(yml), 'build.yml memasang dengan --require-hashes — berkas yang isinya beda dari hash ditolak');
 cek(yml.indexOf('requirements-bundel.txt') < yml.indexOf('npm run dist:publish'), '.venv dibangun SEBELUM npm run dist:publish');
 const pyYml = yml.match(/python-version: '([^']+)'/)?.[1];
 if (!existsSync(path.join(CRAWLER, '.venv', 'pyvenv.cfg'))) {

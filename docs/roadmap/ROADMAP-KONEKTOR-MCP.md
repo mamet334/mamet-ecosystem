@@ -265,5 +265,6 @@ Tahap A ✅ → B ✅ → C ✅ → D 🟡 (uji live 27 Okt: 3 dari 4 kriteria �
 saldo OpenRouter diisi) → E ✅ + E2 ✅ + E3 ✅ (pemasangan
 stealth sungguhan & PC bersih dibuktikan sesudah rilis berikutnya / Windows Sandbox) → F menyusul. Rilis **4.3.0** (versi dinaikkan 26 Okt) membawa konektor ke aplikasi terpasang; build GitHub
 (`build.yml`) membangun `.venv` crawler sendiri dari `capability/ecosystem-crawler/requirements-bundel.txt` (86 paket
-terkunci, Python 3.12.10) — daftar itu wajib diperbarui bersama `.venv` pengembangan
+terkunci, Python 3.12.10; sejak 4.3.2 ber-hash + `--require-hashes`) — daftar itu wajib diperbarui bersama `.venv`
+pengembangan lewat `scripts/kunci_bundel.py`, bukan disunting tangan
 ([log](../project-memory/changelog/2026-10-26-rilis-4.3.0-crawler-terbundel.md)).
