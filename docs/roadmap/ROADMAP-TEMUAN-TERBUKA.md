@@ -718,8 +718,9 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
 
 - **Status:** 🟡 **arah diputuskan & prasyarat terbukti 28 Okt** (ADR-0021 #6): modul bersama di folder netral
   **`shared/`** — modul pertama `shared/kueri_pencarian.js` dimuat Deno 2.2.7 (server) dan Vite (build & server dev)
-  lewat impor relatif biasa, tanpa perkakas tambahan
-  ([log](../project-memory/changelog/2026-10-28-modul-bersama-kueri.md)). **Sisa:** 7 titik impor server ke
+  lewat impor relatif biasa, tanpa perkakas tambahan, **dan ikut ter-deploy ke server Supabase (v535)**
+  ([log](../project-memory/changelog/2026-10-28-modul-bersama-kueri.md)). Paket deploy v535 terukur: 97 berkas, 5 dari
+  `frontend/` + 1 dari `shared/`. **Sisa:** 7 titik impor server ke
   `frontend/src` (tabel di [changelog Item 126](../project-memory/changelog/2026-10-18-penanda-pemilih-model.md))
   dipindah ke `shared/` satu per satu dengan pola yang sama — belum dikerjakan.
 

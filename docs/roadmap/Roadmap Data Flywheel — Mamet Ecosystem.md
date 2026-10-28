@@ -334,7 +334,8 @@ pembersihan kueri pencarian (keduanya kode), diukur dengan mode bayangan SQL.
       bersama (keputusan ADR #6, prasyarat T15), bukan aturan baru. **✅ KODE SELESAI 28 Okt**
       ([log](../project-memory/changelog/2026-10-28-modul-bersama-kueri.md)): `shared/kueri_pencarian.js`, terbukti
       dimuat Deno & Vite; Tier 3 klien mencari dengan kata kunci + baris "🔍 Dicari (web): …"; mutasi 6/6; suite
-      126/126. Server perlu deploy (perilaku sama); aplikasi terpasang lewat rilis 4.4.0.
+      126/126. **✅ Ter-deploy v535** (`shared/` ikut terbawa ke server — diperiksa lewat API); aplikasi terpasang
+      lewat rilis 4.4.0.
 - [x] ~~**Kegagalan router berhenti jatuh ke jalur mahal** — tentukan default yang aman saat
       klasifikasi gagal (temuan 4)~~ — **KODE SELESAI 28 Okt** ([log](../project-memory/changelog/2026-10-28-router-jalur-aman.md)):
       riwayat 6/6 kegagalan router diikuti Coordinator yang juga gagal → kini jalur aman (jawab langsung); "memutuskan"

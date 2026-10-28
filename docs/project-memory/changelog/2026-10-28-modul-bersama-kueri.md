@@ -49,8 +49,17 @@ Contoh: *"tolong carikan berita terbaru tentang banjir di Baturaja"* → dicari 
 
 - `npm run desktop`: sudah aktif (Vite memuat ulang sendiri) — baris "🔍 Dicari (web)" tampil pada chat berikutnya yang
   memakai pencarian web.
-- Server: perilaku `pencarian_berita.ts` sama (hanya cara impor) — tetap **perlu deploy** agar server = repo.
+- Server: **ter-deploy 28 Okt — v535** (lihat di bawah); perilaku `pencarian_berita.ts` sama (hanya cara impor).
 - Aplikasi terpasang: rilis 4.4.0.
+
+## Deploy — bukti terakhir prasyarat T15 (diperiksa di platform)
+
+API Supabase: `agent-process` **534 → 535**, ACTIVE, `verify_jwt` **tetap `false`**, sidik isi `24f1d7…` → `17b162…`;
+fungsi lain tidak berubah. Isi paket (`get_edge_function`): **`shared/kueri_pencarian.js` ikut ter-deploy** (memuat
+`export function ringkasKueri`); `pencarian_berita.ts` mengimpornya dan tak lagi memuat salinan sendiri. Paket 97 berkas;
+6 di luar `supabase/functions/` — **5 dari `frontend/`** (impor T15 lama) + **1 dari `shared/`**. Jadi Supabase CLI
+membawa folder netral persis seperti membawa berkas `frontend/` selama ini: arah ADR-0021 #6 terbukti di Deno lokal,
+Vite (build & server dev), dan server Supabase sungguhan.
 
 ## Sisa / arah
 
