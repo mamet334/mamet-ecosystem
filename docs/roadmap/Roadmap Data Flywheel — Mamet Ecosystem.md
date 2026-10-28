@@ -332,8 +332,12 @@ pembersihan kueri pencarian (keduanya kode), diukur dengan mode bayangan SQL.
       pertanyaan lanjutan (Item 67), `kataKunciPencarian()` (RAG), dan `ringkasKueri()` (kata kunci berita) **sudah
       ada**; yang masih mengirim pesan mentah hanya web Tier 3 di klien → pakai ulang `ringkasKueri()` lewat modul
       bersama (keputusan ADR #6, prasyarat T15), bukan aturan baru.
-- [ ] **Kegagalan router berhenti jatuh ke jalur mahal** — tentukan default yang aman saat
-      klasifikasi gagal (temuan 4)
+- [x] ~~**Kegagalan router berhenti jatuh ke jalur mahal** — tentukan default yang aman saat
+      klasifikasi gagal (temuan 4)~~ — **KODE SELESAI 28 Okt** ([log](../project-memory/changelog/2026-10-28-router-jalur-aman.md)):
+      riwayat 6/6 kegagalan router diikuti Coordinator yang juga gagal → kini jalur aman (jawab langsung); "memutuskan"
+      tak lagi ditulis sesudah gagal. **Ikut ketahuan & diperbaiki (disetujui Owner):** 66 dari 80 sintesis
+      "multi-agen" berjalan dengan nol sub-agent → cabang dipilih menurut ada-tidaknya hasil sub-agent. Mutasi 4/4 +
+      5/5; suite 125/125. **⏳ menunggu deploy `agent-process`** + bukti live (saldo).
 - [ ] Sebagian kecil pesan disisihkan sebagai pembanding (held-out)
 - [ ] Owner menyetujui aturan baru sebelum aktif
 

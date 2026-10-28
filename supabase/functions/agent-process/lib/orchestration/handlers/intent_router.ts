@@ -40,8 +40,14 @@ export const IntentRouterHandler = {
         } catch (err) {
           // Jangan ditelan diam-diam. Sebelum Item 38, kegagalan di sini hanya muncul di
           // konsol server — Owner tidak punya cara tahu bahwa Intent Router praktis mati.
-          console.warn("Intent router error, mengabaikan intent check:", err);
-          ctx.state.processingSteps.push(`⚠️ Intent Router gagal, dilewati (jawaban tetap jalan): ${String((err as any)?.message || err).substring(0, 120)}`);
+          //
+          // JALUR AMAN (Item 126 Fase 1, 2026-10-28): dulu isChatBiasa tetap false → Coordinator dipanggil. Riwayat
+          // chat: 6 dari 6 kegagalan router diikuti Coordinator yang JUGA gagal (model & kunci sama) dan 0 sub-agent
+          // jalan — satu panggilan gagal yang hanya membuang waktu sebelum jawaban langsung yang sama. Kini langsung
+          // dijawab tanpa sub-agent; jalurnya disebut di langkah proses.
+          console.warn("Intent router error, jalur aman (jawab langsung):", err);
+          isChatBiasa = true;
+          ctx.state.processingSteps.push(`⚠️ Intent Router gagal (${String((err as any)?.message || err).substring(0, 120)}) → jalur aman: dijawab langsung tanpa sub-agent`);
         }
       }
     } 
@@ -56,6 +62,7 @@ export const IntentRouterHandler = {
         coordinatorSystemPrompt += (ctx.request.guardianPromptDirective || '');
 
         let planText = '[]';
+        let rencanaGagal = false;
         maef.requestTransition('ORCHESTRATION', 'Starting Execution Planning');
         ctx.state.processingSteps.push('🤖 Kepala Agent (Coordinator): Merencanakan strategi...');
         try {
@@ -65,6 +72,7 @@ export const IntentRouterHandler = {
           // di log server. Tanpa ini sistem tampak "memutuskan tidak butuh sub-agent",
           // padahal sebenarnya tidak pernah sempat memutuskan apa pun.
           console.error("Coordinator LLM Error:", err);
+          rencanaGagal = true;
           ctx.state.processingSteps.push(`⚠️ Coordinator gagal merencanakan, lanjut tanpa sub-agent: ${String((err as any)?.message || err).substring(0, 120)}`);
         }
 
@@ -89,7 +97,9 @@ export const IntentRouterHandler = {
             ctx.state.processingSteps.push(`📋 Rencana: ${plan.length} sub-agent akan ditugaskan → ${plan.map((p: any) => p.subagent).join(', ')}`);
         } else if (contractValidation.status === "REJECTED") {
             ctx.state.processingSteps.push(`❌ [Execution Contract] Skema ditolak: ${contractValidation.reason_code}`);
-        } else {
+        } else if (!rencanaGagal) {
+            // "Tidak ada" ≠ "gagal": sesudah Coordinator gagal, baris "memutuskan" dulu tetap ditulis (6 dari 6 di
+            // riwayat) — padahal ia tak pernah sempat memutuskan. Kegagalannya sudah tercatat di atas.
             ctx.state.processingSteps.push('📋 Coordinator memutuskan tidak ada sub-agent yang diperlukan');
         }
     }

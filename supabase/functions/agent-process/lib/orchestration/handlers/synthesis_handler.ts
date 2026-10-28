@@ -90,11 +90,21 @@ export const SynthesisHandler = {
     }
     let replyMessage = 'Gagal memproses jawaban.';
 
+    // Cabang dipilih menurut ADA-TIDAKNYA HASIL SUB-AGENT, bukan menurut "fase orkestrasi dijalankan" (Item 126 Fase 1,
+    // 2026-10-28). Riwayat chat: 66 dari 80 sintesis "multi-agen" berjalan dengan NOL sub-agent (Coordinator memutuskan
+    // [] atau gagal) — model diberi "Anda telah menugaskan beberapa sub-agent… Riwayat pekerjaan sub-agent:" yang
+    // kosong: klaim palsu yang memancing model mengarang tindakan. `subagentRuns` hanya terisi bila Execution Planner
+    // benar-benar menjalankan sub-agent (core_engine.ts) — sub-agent yang jalan lalu gagal tetap lewat cabang multi-agen.
+    const tanpaHasilSubAgen = !Array.isArray(subagentRuns) || subagentRuns.length === 0;
+    if (!lanjutan && !isChatBiasa && maef.shouldExecutePhase('ORCHESTRATION') && tanpaHasilSubAgen) {
+        ctx.state.processingSteps.push('↩️ Tak ada sub-agent yang bekerja → dijawab langsung (bukan sintesis multi-agen)');
+    }
+
     if (lanjutan) {
         // Riset/sub-agent tidak diulang: bahan dan jawaban sejauh ini diambil dari metadata pesan yang terpotong.
         ctx.state.processingSteps.push('⏩ Melanjutkan jawaban yang terpotong — Coordinator & sub-agent tidak dijalankan ulang');
         replyMessage = await jawabanAkhir(susunPromptLanjutan(lanjutan), fullSystemContext, lanjutan.riwayat, rctx, true);
-    } else if (isChatBiasa || !maef.shouldExecutePhase('ORCHESTRATION')) {
+    } else if (isChatBiasa || !maef.shouldExecutePhase('ORCHESTRATION') || tanpaHasilSubAgen) {
         ctx.state.processingSteps.push('✍️ Menghubungi Model AI untuk menjawab langsung...');
         
         if (stream && !extractedImage) {
