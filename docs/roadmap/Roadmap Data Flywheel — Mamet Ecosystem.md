@@ -310,9 +310,27 @@ pembersihan kueri pencarian (keduanya kode), diukur dengan mode bayangan SQL.
 
 - [x] ~~Analisis baseline: persentase jalur mahal dan kata kunci pemicu terbanyak~~ — **sudah
       dikerjakan 18 Okt dari riwayat** (lihat Kondisi saat ini, temuan 1 & 2)
-- [ ] **Ganti pencocokan substring menjadi kata utuh**, dan buang kata tanya dari daftar
-- [ ] **Uji di mode bayangan terhadap 465 pesan lama lewat SQL** — tanpa deploy, tanpa menunggu:
-      hitung berapa pesan berpindah jalur. Mode bayangan yang gratis dan instan
+- [x] ~~**Ganti pencocokan substring menjadi kata utuh**, dan buang kata tanya dari daftar~~ — **KODE SELESAI 28 Okt**
+      ([log](../project-memory/changelog/2026-10-28-router-kata-utuh.md)): `kata_kunci_router.ts`, bentuk kata kerja
+      perintah eksplisit, pemicu ditampilkan; bayangan 285 → 235, 0 tangkapan baru; mutasi 6/6. **⏳ menunggu deploy
+      `agent-process`** + bukti live (saldo).
+- [x] ~~**Uji di mode bayangan lewat SQL**~~ — **✅ 28 Okt**, atas **482** pesan Owner (hanya agregat dihitung di
+      database; nol isi keluar). Sekarang **285 (59%)** tersangkut daftar, **41** hanya karena kata tanya (18 Okt:
+      279/465, 39). Varian: kata utuh 229 (**56 pindah**), awal kata 239 (tetap tertipu "**send**iri"), kata + imbuhan
+      235 (**50 pindah**). Salah picu terbesar (potongan → kata utuh): `cto` 36 → 0, `send` 27 → 0 ("sendiri"), `api`
+      37 → 16 ("tapi"/"rapi"), `kapan` 23 → 3 ("kelengkapan"), `yt` 16 → 0 ("python"). Kata utuh melewatkan bentuk
+      berimbuhan yang sah (`baca` 43 → 27, `cari` 34 → 22); varian imbuhan menangkapnya lagi, tetapi juga pasif
+      "**di**temukan". **Rancangan:** kata utuh sebagai dasar; imbuhan hanya untuk kata kerja perintah tanpa awalan
+      pasif `di-`; kata tanya dibuang; `cto`/`send`/`yt` dibenahi.
+      **Koreksi efek:** pesan yang "pindah" tidak langsung dijawab — ia ke **LLM pengklasifikasi** (jalur kata kunci
+      memanggil Coordinator; jumlah panggilan nyaris sama). Efek utamanya **ketepatan** (tak ada sub-agent dipicu
+      "tapi"/"sendiri"), **bukan kecepatan** → target Gerbang 2 "latensi turun ≥ 30%" perlu ditinjau ulang dengan data.
+      **Kueri pencarian** (pesan yang sama): kata pengisi hanya **23 (5%)**, median 7 → 7 kata sesudah dibersihkan;
+      kata waktu 29 (6%); merujuk percakapan **46 (10%)**; > 40 kata **75 (16%)** — pembersihan dengan kode membantu
+      sedikit. **Peta graf 28 Okt** ([ADR-0021](../adr/ADR-0021-kapan-llm-dipakai-di-depan.md) §1.2): penulis ulang
+      pertanyaan lanjutan (Item 67), `kataKunciPencarian()` (RAG), dan `ringkasKueri()` (kata kunci berita) **sudah
+      ada**; yang masih mengirim pesan mentah hanya web Tier 3 di klien → pakai ulang `ringkasKueri()` lewat modul
+      bersama (keputusan ADR #6, prasyarat T15), bukan aturan baru.
 - [ ] **Kegagalan router berhenti jatuh ke jalur mahal** — tentukan default yang aman saat
       klasifikasi gagal (temuan 4)
 - [ ] Sebagian kecil pesan disisihkan sebagai pembanding (held-out)
@@ -320,6 +338,7 @@ pembersihan kueri pencarian (keduanya kode), diukur dengan mode bayangan SQL.
 
 Gerbang 2: **latensi pesan salah-rute turun ≥ 30%**, kegagalan router tidak lagi menempuh jalur
 mahal, dan tidak ada guardrail yang memburuk. **Biaya tidak dipakai sebagai gerbang di fase ini.**
+*(28 Okt: target latensi diragukan oleh mode bayangan — lihat di atas; ditinjau ulang sesudah ada pesan live.)*
 
 ### Fase 2: Evaluasi otomatis
 

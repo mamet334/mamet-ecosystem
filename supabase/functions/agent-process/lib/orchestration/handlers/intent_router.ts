@@ -1,6 +1,7 @@
 import { runCoordinatorLLM } from '../../llm_orchestrator.ts';
 import { executeResponsePipeline } from '../../coordinator/parser_pipeline.ts';
 import { getPluginPromptList } from '../../../plugins/registry.ts';
+import { kataKunciAksi } from '../kata_kunci_router.ts';
 
 export const IntentRouterHandler = {
   async handle(ctx: any, rctx: any, maef: any): Promise<any> {
@@ -18,27 +19,13 @@ export const IntentRouterHandler = {
     ctx.state.processingSteps.push('🔍 Menganalisis permintaan user...');
     
     {
-      const actionKeywords = [
-        "jadwal", "cron", "otomatis", "remind", "ingatkan",
-        "cari", "temukan", "search", "google", "internet", "web",
-        "siapa", "mengapa", "bagaimana", "kapan", "dimana", "apakah",
-        "berita", "motogp", "cuaca", "saham", "info", "terkini", "terbaru", "prediksi",
-        "kurs", "harga", "nilai", "hitung", "matematika", "jumlah",
-        "kode", "coding", "program", "javascript", "python", "html", "css", "buatkan", "tuliskan",
-        "excel", "pdf", "file", "dokumen", "baca", "ringkas", "rangkum",
-        "youtube", "yt", "video", "transkrip", "link", "url", "http",
-        "slack", "discord", "telegram", "api", "webhook", "post", "send", "kirim",
-        "login", "masuk", "sign in", "scrape", "credential", "username", "password", "sesi",
-        "workspace", "folder", "analisis file", "periksa file", "scan folder", "baca file", "isi folder", "struktur folder",
-        "ingat", "ingatlah", "catat", "nama saya", "panggil saya", "saya suka", "favorit saya", "saya alergi", "kebiasaan saya", "informasi penting",
-        "debat", "rapat", "diskusikan", "direksi", "ceo", "cfo", "cto", "board of directors", "keputusan bisnis",
-        "shopee", "affiliate", "afiliate", "promosi", "produk", "jual", "komisi"
-      ];
-      const containsActionKeyword = actionKeywords.some(kw => ctx.request.lowerMsg.includes(kw));
+      // Kata utuh + bentuk kata kerja perintah, tanpa kata tanya — alasannya & angka mode bayangannya di
+      // kata_kunci_router.ts (Item 126 Fase 1). Kata kunci yang memicu ikut ditampilkan (ADR-0021: terlihat).
+      const pemicu = kataKunciAksi(ctx.request.lowerMsg);
 
-      if (containsActionKeyword) {
+      if (pemicu) {
         isChatBiasa = false;
-        ctx.state.processingSteps.push('🎯 Intent Router: Mendeteksi kata kunci aksi → Butuh Sub-Agent');
+        ctx.state.processingSteps.push(`🎯 Intent Router: kata kunci aksi "${pemicu}" → Butuh Sub-Agent`);
       } else {
         try {
           ctx.state.processingSteps.push('🧠 Intent Router: Mengklasifikasi jenis permintaan...');

@@ -32,6 +32,14 @@ LLM sudah bekerja **di depan** alur di beberapa tempat, masing-masing dengan ala
 | Konektor MCP (Item 129) | **memutuskan** kapan memanggil crawler & **menyusun kata kunci** misi | dialog gerbang Owner (K8), `MAKS_PUTARAN` 6, catatan kaki dari gerbang (bukan dari teks model) |
 | Engineer | lingkaran agen (baca → usulkan patch) | izin Owner untuk menulis, uji dijalankan sesudah patch (Tahap 6) |
 | Hakim bayangan | menilai jawaban per kalimat | membayangi saja, tidak mengubah label (keputusan Owner 28 Sep) |
+| Penulis ulang pertanyaan lanjutan RAG (`rag/query_rewrite.ts`, Item 67) | menulis ulang pesan yang merujuk percakapan ("lanjutkan, apa kendalanya?") menjadi pertanyaan mandiri | hanya bila pencarian pertama kosong; pesan mandiri dikembalikan apa adanya; **sudah tampil satu baris** "🔁 [RAG] Pertanyaan lanjutan ditulis ulang: …" |
+
+Ditambah dua aturan **kode** (bukan LLM) yang sudah ada: `ringkasKueri()` (`web/pencarian_berita.ts`, 15 Sep) —
+kalimat perintah → kata kunci untuk mesin berita, terukur 0 → 5–8 hasil Bing, tetapi **hanya** dipakai sub-agent
+`researcher`/`deep_research`; dan `kataKunciPencarian()` (`KnowledgeService.js`, Item 90) — kata pengisi dibuang untuk
+pencarian kata RAG. Peta ini diambil dari graf graphify 28 Okt (`graphify update .`, 0 node mati, kode 484/484) —
+**ditemukan sesudah draf pertama ADR ini**, dan mengecilkan pekerjaan §7: yang tersisa mengirim pesan mentah ke mesin
+pencari hanyalah web Tier 3 di klien.
 
 Jadi "LLM hanya di akhir" sudah tidak bisa dipegang kaku. Pemicu ADR ini: **kualitas pencarian.** Pencarian web Tier 3
 dan RAG memakai pesan Owner **mentah** sebagai kueri (`AssistantService.js:1340` `retrieve(userMsg)` →
@@ -133,9 +141,9 @@ Owner Sovereignty (gerbang) · Verification Engine · Item 126 (penanda pemilih 
 | Pekerjaan | Hasil tangga | Perlu saldo? |
 |---|---|---|
 | Router: kata kunci substring → kata utuh, buang kata tanya | kode | tidak |
-| Kueri pencarian: buang kata pengisi, konteks tanggal untuk "terbaru" | kode | tidak |
-| Ukur keduanya dengan mode bayangan SQL atas pesan lama (hanya agregat; nol isi keluar — T12) | langkah 4 | tidak |
-| Kueri yang merujuk percakapan → LLM mengusulkan, ditampilkan; menumpang panggilan router/Coordinator yang sudah ada | langkah 2–3 | ya (uji) |
+| Kueri web Tier 3 di klien: **pakai ulang `ringkasKueri()`** lewat modul bersama (keputusan #6), bukan daftar kata pengisi baru; konteks tanggal untuk "terbaru" — sekaligus menyatukan dua pendeteksi kata waktu yang kembar (`RetrievalOrchestrator.isTemporalQuery`, `RetrievalStrategyService.isTemporalOrRecencyQuery`) | kode | tidak |
+| Ukur dengan mode bayangan SQL atas pesan lama (hanya agregat; nol isi keluar — T12) — **✅ 28 Okt**, hasil di roadmap Item 126 | langkah 4 | tidak |
+| Kueri web yang merujuk percakapan → pakai ulang penulis ulang Item 67 (sudah tampil satu baris), bukan membuat yang baru | langkah 2–3 | ya (uji) |
 | Rencana Coordinator ditampilkan ke Owner | §2.3 terlihat | tidak |
 
 ## 8. Keputusan Owner (2026-10-28)
@@ -146,6 +154,8 @@ Owner Sovereignty (gerbang) · Verification Engine · Item 126 (penanda pemilih 
 | 2 | Seberapa rinci "terlihat" | **Satu baris** di langkah proses |
 | 3 | Makna bercabang | **Tanya Owner** |
 | 4 | Status akhir | **ADR saja** — `constitution/25` #5 tidak diubah; ADR ini penafsirannya |
+| 5 | Penulis ulang Item 67 memakai model tetap `deepseek/deepseek-v4-flash-0731`, bukan model pilihan Owner | **Pengecualian yang dicatat** — tugasnya sempit (satu pertanyaan mandiri), murah (±$0,00002–0,00004), sudah diukur (1,6–2,7 dtk), dibayar kunci pengguna, dan terlihat. Usulan LLM-di-depan **baru** tetap mengikuti keputusan #1 |
+| 6 | Tempat aturan peringkas kueri (`ringkasKueri()`) agar dipakai juga web Tier 3 di klien | **Modul bersama di tempat netral**, diimpor server & klien — bukan disalin (arah T15). Prasyarat: dibuktikan dulu bahwa jalur impor itu dimuat Deno (edge function) **dan** Vite (klien) tanpa perkakas tambahan |
 
 Latar tiap pertanyaan (dipertahankan sebagai jejak):
 
