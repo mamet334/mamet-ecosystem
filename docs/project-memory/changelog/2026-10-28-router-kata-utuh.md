@@ -46,9 +46,17 @@ Pesan yang pindah tidak langsung dijawab: ia ke LLM pengklasifikasi (jalur kata 
 panggilan nyaris sama). Manfaatnya **ketepatan** — tak ada sub-agent dipicu "tapi"/"sendiri"/"python" — **bukan
 kecepatan**. Target Gerbang 2 "latensi turun ≥ 30%" ditandai perlu ditinjau ulang.
 
+## Deploy (diperiksa di platform, bukan dari keluaran deploy)
+
+Owner men-deploy `agent-process` 28 Okt. API Supabase (`list_edge_functions`): versi **532 → 533**, status ACTIVE,
+`verify_jwt` **tetap `false`**, sidik isi `ezbr_sha256` `e6cd15…` → `2e5ad9…`; fungsi lain tidak berubah.
+**Isi yang ter-deploy** (`get_edge_function`, versi 533) diperiksa, bukan hanya nomornya:
+`lib/orchestration/kata_kunci_router.ts` ada (memuat `export function kataKunciAksi` dan bentuk `'mengirim'`; daftar
+`KATA_KUNCI_AKSI` tanpa `'apakah'`); `handlers/intent_router.ts` mengimpor `kataKunciAksi` dan memakai
+`const pemicu = kataKunciAksi(ctx.request.lowerMsg)`; `actionKeywords` (pencocokan potongan lama) **tidak ada lagi**.
+
 ## Menunggu
 
-- Deploy `agent-process` oleh Owner → periksa versi di platform.
 - Bukti live (kata pemicu tampil di langkah proses chat) — butuh satu chat sungguhan (saldo OpenRouter).
 - Sisa Fase 1: kegagalan router berhenti jatuh ke jalur mahal (temuan 4); peringkas kueri web Tier 3 lewat modul
   bersama (ADR-0021 #6, prasyarat T15).

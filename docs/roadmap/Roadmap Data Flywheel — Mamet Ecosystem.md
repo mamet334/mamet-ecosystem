@@ -312,8 +312,9 @@ pembersihan kueri pencarian (keduanya kode), diukur dengan mode bayangan SQL.
       dikerjakan 18 Okt dari riwayat** (lihat Kondisi saat ini, temuan 1 & 2)
 - [x] ~~**Ganti pencocokan substring menjadi kata utuh**, dan buang kata tanya dari daftar~~ — **KODE SELESAI 28 Okt**
       ([log](../project-memory/changelog/2026-10-28-router-kata-utuh.md)): `kata_kunci_router.ts`, bentuk kata kerja
-      perintah eksplisit, pemicu ditampilkan; bayangan 285 → 235, 0 tangkapan baru; mutasi 6/6. **⏳ menunggu deploy
-      `agent-process`** + bukti live (saldo).
+      perintah eksplisit, pemicu ditampilkan; bayangan 285 → 235, 0 tangkapan baru; mutasi 6/6. **✅ Ter-deploy 28 Okt —
+      v533** (isi diperiksa lewat API: modul baru ada, `actionKeywords` hilang, `verify_jwt` tetap false). Sisa: bukti
+      live di chat (saldo).
 - [x] ~~**Uji di mode bayangan lewat SQL**~~ — **✅ 28 Okt**, atas **482** pesan Owner (hanya agregat dihitung di
       database; nol isi keluar). Sekarang **285 (59%)** tersangkut daftar, **41** hanya karena kata tanya (18 Okt:
       279/465, 39). Varian: kata utuh 229 (**56 pindah**), awal kata 239 (tetap tertipu "**send**iri"), kata + imbuhan
