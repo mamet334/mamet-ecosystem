@@ -52,7 +52,7 @@
     "autoprefixer": "^10.4.16",
     "concurrently": "^10.0.3",
     "cross-env": "^10.1.0",
-    "electron": "^42.3.3",
+    "electron": "^45.1.0",
     "electron-builder": "^25.1.8",
     "javascript-obfuscator": "^4.2.2",
     "postcss": "^8.4.31",

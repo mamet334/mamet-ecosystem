@@ -7,6 +7,10 @@
 // yang membawanya. Jalur ini mengambil situs & RSS PIHAK KETIGA di PROSES UTAMA (akses penuh ke komputer),
 // jadi situs jahat atau yang diretas cukup untuk memicunya.
 //
+// 28 Okt: Electron naik ke 45.1.0 (Node 24.22.1 — tertambal; Chromium 156). `fetch()` Node kini aman lagi, tetapi
+// jalur ini TETAP lewat `net.fetch`: satu dekoder (Chromium) untuk semua lalu lintas web, dan dua penjaga di bawah
+// tidak bergantung pada versi Node. Jangan kembalikan ke `fetch()` Node.
+//
 // `net.fetch` memakai tumpukan jaringan Chromium, yang membawa brotli sendiri. Chromium 148.0.7778.218 (bawaan
 // Electron 42.3.3) memuat brotli `cfa184a` (2026-03-18), yang SUDAH berisi perbaikannya: `0ed4268` "Detect and
 // report invalid stream earlier" (2026-02-27) — patch yang sama yang dirilis brotli v1.2.1 untuk CVE ini
@@ -16,8 +20,8 @@
 // - Hanya http/https. `net.fetch` juga melayani `file:` dan protokol kustom (`mamet://`) — `fetch()` Node tidak.
 //   Tanpa pembatasan ini, renderer bisa membaca berkas lokal lewat saluran yang dulu hanya untuk web.
 // - `credentials: 'omit'`: `fetch()` Node tidak pernah mengirim cookie/autentikasi sesi; ini menjaganya tetap begitu.
-//   Wajib, bukan hiasan: tanpa opsi ini `net.fetch` di Electron 42 MENGIRIM cookie sesi bawaan (terbukti di
-//   uji/uji-ambil-web.mjs bagian 3, walau dokumentasi tipenya menyiratkan cookie tidak ikut).
+//   Wajib, bukan hiasan: tanpa opsi ini `net.fetch` MENGIRIM cookie sesi bawaan — terbukti di Electron 42 dan
+//   45.1.0 (uji/uji-ambil-web.mjs bagian 3, mutasi), walau dokumentasi tipenya menyiratkan cookie tidak ikut.
 // - Proksi sistem kini dihormati (Chromium membacanya; `fetch()` Node tidak).
 
 const SKEMA_BOLEH = new Set(['http:', 'https:']);

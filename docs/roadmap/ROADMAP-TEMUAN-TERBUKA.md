@@ -733,12 +733,12 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
 - **Sisa:**
   1. ✅ **Rilis 4.3.2 TERBIT 28 Okt** (`2026-10-28T01:22:59Z`, Latest) — build: Node 24.22.1, 86/86 paket ber-hash,
      jabat tangan 1,5 s. Sisa kecil: penarikan otomatis di aplikasi terpasang belum diperiksa.
-  2. **Naikkan Electron** begitu ada rilis stabil yang membawa Node ≥ 24.22.1 (per 27 Okt belum ada). Sesudahnya
-     `fetch()` Node aman lagi, tetapi `net.fetch` + penjaganya tetap dipertahankan.
+  2. 🟡 **Electron 42.3.3 → 45.1.0 di repo, 28 Okt** (Node 24.22.1, Chromium 156; 42 habis dukungan 20 Okt) —
+     [changelog](../project-memory/changelog/2026-10-28-electron-45.md): suite 122/122, aplikasi hasil kemas menyala
+     (Kernel PHASE 10, 0 error), uji Owner 4/6. **Sisa:** chat & PDF diuji sesudah saldo OpenRouter diisi → versi
+     4.4.0 → build → Publish. `net.fetch` + penjaganya tetap dipertahankan walau Node kini tertambal.
   3. **Node laptop Owner** 24.15.0 → ≥ 24.22.1 — dilakukan Owner sendiri (unduhan & pemasangan).
-  4. **Electron 42 habis dukungan 20 Okt** (jadwal resmi) — tak menerima tambalan keamanan lagi. Naik ke 45 (M156) =
-     tiga versi mayor; usul (diskusi 28 Okt, belum diputuskan): rilis tersendiri (4.4.0) dengan uji cangkang/sandbox/konektor/pemasang.
-- **Status:** 🟡 jalur terbuka ditutup dan **terbit di 4.3.2**; sisa butir 2–4 (Electron, Node laptop Owner).
+- **Status:** 🟡 jalur terbuka ditutup dan **terbit di 4.3.2**; Electron 45 di repo menunggu rilis 4.4.0; Node laptop Owner.
 
 ## T19 — Fitur lupa kata sandi & ganti kata sandi belum ada (ketahuan saat Owner mencoba masuk akun lain, 2026-10-20)
 

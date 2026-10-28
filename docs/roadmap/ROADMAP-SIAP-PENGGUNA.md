@@ -792,7 +792,8 @@ bukan sensus** — dan `:40-41` sudah menyatakannya: *"95 bukan 95 bug."*
 Yang perlu dicatat terpisah:
 
 - **`electron-builder ^25.1.8` lawan `electron ^42.3.3`** — jarak **17 major** antara pembangun dan
-  runtime-nya.
+  runtime-nya. *(28 Okt: electron kini ^45.1.0 — T20; `electron-builder` 25.1.8 terbukti mengemasnya,
+  aplikasi `--dir` menyala.)*
 - **`xlsx` dari URL tarball CDN**, bukan rentang registry → `npm ci` bergantung pada
   `cdn.sheetjs.com` tetap terjangkau. Ini risiko build, bukan risiko kode.
 - `deno-bin`, `puppeteer` + 3 plugin, `ghost-cursor` sebagai dependency **runtime** paket renderer
