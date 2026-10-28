@@ -229,6 +229,9 @@ folder data saat pertama jalan (garam baru). **E2 ✅ 26 Okt**
 hanya **Patchright** yang dipasang (Scrapling 0.5 tidak memakai Playwright) + Chromium, ±830 MB ruang disk, ke
 `%APPDATA%\ai-agent-frontend\crawler\stealth\` (**koreksi 26 Okt:** folder data = `userData` yang dinamai `name`
 package.json, bukan "Mamet AI" — terlihat di 4.3.0 terpasang; dialog kini menyusun alamat dari folder sebenarnya).
+**28 Okt:** pemasangan bisa gagal karena antivirus masih memegang berkas baru saat folder paket dipindah (`EPERM`, 2
+dari 6 jalan uji) — dulu melempar mentah & meninggalkan folder sementara; kini diulang sampai 10 s lalu gagal bersih
+([log](../project-memory/changelog/2026-10-28-uji-stealth-dan-vite.md)), menunggu rilis berikutnya.
 Sisa E2 yang belum dibuktikan: tombol Batal di dialog dilihat di layar, dan pemasangan sungguhan di aplikasi terpasang
 (izin unduhan Owner). **E3 ✅ 26 Okt**
 ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-e3-transparansi.md)) — keputusan Owner: tetap satu

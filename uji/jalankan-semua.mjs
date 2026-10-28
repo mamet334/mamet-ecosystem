@@ -37,6 +37,13 @@
  * hijau walau kode aslinya berubah. Ia tidak dihapus — untuk logika di dalam komponen React ia kadang
  * satu-satunya cara — tetapi tidak boleh dihitung sebagai bukti keselamatan patch. Penandanya satu baris
  * di dalam berkas: "UJI-CERMIN:" diikuti alasannya.
+ *
+ * BATAS PER BERKAS (28 Oktober 2026). Berkas yang menjalankan proses berat sungguhan (Python, Chromium) menyatakan
+ * batasnya SENDIRI dengan baris komentar di awal baris: "// BATAS-UJI-DETIK: <angka>" diikuti alasan terukurnya
+ * (paling tinggi 600). Bukan menaikkan batas semua berkas: berkas lain tetap 120 detik, dan setiap batas khusus masuk
+ * laporan (`batasKhusus`) supaya tak ada yang memperlonggar diam-diam. Berkas itu membaca angka yang sama
+ * (`batasBerkas`) dan memasang tenggat per langkah DI BAWAHNYA — bila lambat, ia sendiri yang menyebut langkahnya,
+ * bukan dibunuh tanpa keterangan.
  */
 
 import { spawn } from 'node:child_process';
@@ -46,8 +53,13 @@ import { fileURLToPath } from 'node:url';
 
 const FOLDER_UJI = path.dirname(fileURLToPath(import.meta.url));
 const AKAR_REPO = path.resolve(FOLDER_UJI, '..');
-const BATAS_MS = 120000;          // satu berkas uji; rata-rata 619 ms, yang terlama sekitar 10 detik
+// Batas bawaan SATU berkas uji. Terukur 28 Okt 2026 (122 berkas, suite 129–204 s): ±110 berkas di bawah 2 s; yang
+// terlama uji-crawler 25–36 s, uji-konektor-mcp 26–27 s, uji-konektor-stealth 19 s. uji-konektor-stealth — satu-satunya
+// yang meluncurkan Chromium sungguhan — dua kali dibunuh batas ini (26–27 & 28 Okt); lihat BATAS PER BERKAS di atas.
+export const BATAS_MS = 120000;
+const BATAS_TERTINGGI_MS = 600000;
 const PENANDA_CERMIN = /UJI-CERMIN:/;
+const PENANDA_BATAS = /^\/\/ BATAS-UJI-DETIK: (\d+)/m;
 
 /** Berkas uji baris perintah di folder ini. Berkas ini sendiri tidak ikut — namanya tidak diawali "uji-". */
 export function daftarBerkasUji(folder = FOLDER_UJI) {
@@ -79,12 +91,22 @@ export function ujiCermin(nama, folder = FOLDER_UJI) {
   catch { return false; }
 }
 
-function jalankanSatu(nama) {
+/** Batas (ms) satu berkas uji: yang ia nyatakan sendiri lewat PENANDA_BATAS, atau BATAS_MS. */
+export function batasBerkas(nama, folder = FOLDER_UJI) {
+  try {
+    const m = readFileSync(path.join(folder, nama), 'utf8').match(PENANDA_BATAS);
+    if (m && Number(m[1]) > 0) return Math.min(Number(m[1]) * 1000, BATAS_TERTINGGI_MS);
+  } catch { /* berkas tak terbaca → batas bawaan; kegagalannya tampak saat dijalankan */ }
+  return BATAS_MS;
+}
+
+/** Jalankan satu berkas uji. `folder`/`batasMs` hanya diganti oleh uji penjalan ini sendiri (uji-verifikasi-tahap6). */
+export function jalankanSatu(nama, { folder = FOLDER_UJI, batasMs = batasBerkas(nama, folder) } = {}) {
   return new Promise((selesai) => {
     const mulai = Date.now();
     let anak;
     try {
-      anak = spawn(process.execPath, [path.join(FOLDER_UJI, nama)], { cwd: AKAR_REPO, stdio: ['ignore', 'pipe', 'pipe'] });
+      anak = spawn(process.execPath, [path.join(folder, nama)], { cwd: AKAR_REPO, stdio: ['ignore', 'pipe', 'pipe'] });
     } catch (e) {
       return selesai({ nama, golongan: 'GAGAL', ms: 0, barisTerakhir: `gagal memulai: ${e.message}`, keluaran: String(e.message) });
     }
@@ -97,7 +119,9 @@ function jalankanSatu(nama) {
     anak.stderr.on('data', (d) => { galatKeluaran = batasi(galatKeluaran + d); });
 
     let habisWaktu = false;
-    const jam = setTimeout(() => { habisWaktu = true; anak.kill(); }, BATAS_MS);
+    // anak.kill() cukup: di Windows libuv memasukkan proses anak ke job object yang mematikan seluruh keturunannya
+    // (Python, Chromium) begitu node ini mati — dibuktikan uji-verifikasi-tahap6 (28 Okt 2026).
+    const jam = setTimeout(() => { habisWaktu = true; anak.kill(); }, batasMs);
 
     anak.on('error', (e) => {
       clearTimeout(jam);
@@ -111,7 +135,7 @@ function jalankanSatu(nama) {
         nama,
         golongan: golongkan({ kodeKeluar, barisTerakhir, habisWaktu }),
         ms: Date.now() - mulai,
-        barisTerakhir: habisWaktu ? `habis waktu ${BATAS_MS / 1000} detik` : (barisTerakhir || '(tanpa keluaran)'),
+        barisTerakhir: habisWaktu ? `habis waktu ${batasMs / 1000} detik` : (barisTerakhir || '(tanpa keluaran)'),
         // Keluaran disimpan untuk yang gagal — inilah yang dilaporkan APA ADANYA, bukan
         // diringkas jadi "2 masalah kritis" (constitution/28 PRINSIP DASAR a).
         keluaran: `${keluaran.slice(-3000)}${galatKeluaran ? `\n[stderr]\n${galatKeluaran.slice(-1000)}` : ''}`,
@@ -148,6 +172,8 @@ async function utama() {
     // Berapa dari berkas uji ini hanya menguji cermin — angka ini masuk laporan supaya "semua hijau"
     // tidak pernah berarti lebih daripada yang sungguh dibuktikan.
     cermin: hasil.filter((h) => h.cermin).map((h) => h.nama),
+    // Berkas yang menyatakan batas sendiri — terlihat, bukan kelonggaran diam-diam.
+    batasKhusus: daftar.filter((n) => batasBerkas(n) !== BATAS_MS).map((nama) => ({ nama, detik: batasBerkas(nama) / 1000 })),
   };
   const teks = JSON.stringify(ringkas);
   if (keluar) writeFileSync(keluar, teks, 'utf8');

@@ -8,12 +8,14 @@
 // Lapis ketiga ada karena dua kali dalam satu hari (24 September) uji lulus sementara fiturnya rusak:
 // yang diperiksa hanya "fungsinya benar", bukan "fungsinya dipanggil".
 
-import { pathToFileURL } from 'node:url';
-import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import os from 'node:os';
 import path from 'node:path';
 
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
+// Relatif terhadap berkas ini (dulu dipaku ke checkout utama — di worktree ia menguji penjalan milik checkout lain).
+const AKAR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..').replace(/\\/g, '/');
 const ENG = `${AKAR}/frontend/src/core/runtime/services/engineer/`;
 const V = await import(pathToFileURL(ENG + 'VerifikasiPatch.js').href + '?v=' + Date.now());
 const PA = await import(pathToFileURL(ENG + 'PatchApplier.js').href + '?v=' + Date.now());
@@ -65,6 +67,44 @@ try {
   cek(/1 GAGAL/.test(h.gagal[0].keluaran || ''), 'keluarannya ikut dibawa apa adanya, bukan diringkas', h.gagal[0]);
 } finally {
   if (existsSync(berkasPalsu)) unlinkSync(berkasPalsu);
+}
+
+// BATAS PER BERKAS (28 Okt 2026): uji-konektor-stealth dua kali dibunuh batas 120 s bersama. Berkas yang menjalankan
+// proses berat menyatakan batasnya sendiri; yang lain tetap 120 s.
+cek(R.BATAS_MS === 120000 && R.batasBerkas('uji-pagar-immutable.mjs') === 120000, 'tanpa penanda → batas bawaan 120 s');
+cek(R.batasBerkas('uji-konektor-stealth.mjs') === 300000, 'uji-konektor-stealth menyatakan batasnya sendiri: 300 s');
+{
+  const f = mkdtempSync(path.join(os.tmpdir(), 'uji-batas-'));
+  try {
+    const tulis = (nama, isi) => writeFileSync(path.join(f, nama), isi, 'utf8');
+    tulis('uji-a.mjs', ['// BATAS-UJI-DETIK: 9000', '// alasan terukur'].join('\n'));
+    tulis('uji-b.mjs', ["const s = '// BATAS-UJI-DETIK: 500';"].join('\n'));
+    cek(R.batasBerkas('uji-a.mjs', f) === 600000, 'batas yang dinyatakan dipangkas ke 600 s — tak ada berkas yang boleh menunggu tanpa ujung');
+    cek(R.batasBerkas('uji-b.mjs', f) === 120000, 'penanda hanya berlaku sebagai komentar di awal baris, bukan teks di dalam kode');
+
+    // Cucu proses (Python/Chromium pada uji sungguhan) ikut mati saat batas lewat. Bukan karena penjalan membunuh
+    // pohonnya — anak.kill() saja sudah cukup karena job object libuv; cek ini menjaga sifat itu, bukan kode kita.
+    const pidCucu = path.join(f, 'pid-cucu.txt');
+    tulis('uji-macet.mjs', [
+      "import { spawn } from 'node:child_process';",
+      "import { writeFileSync } from 'node:fs';",
+      "const c = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 60000)'], { stdio: 'ignore' });",
+      `writeFileSync(${JSON.stringify(pidCucu)}, String(c.pid));`,
+      "console.log('macet');",
+      'setTimeout(() => {}, 60000);',
+    ].join('\n'));
+    const h = await R.jalankanSatu('uji-macet.mjs', { folder: f, batasMs: 1500 });
+    const pid = Number(readFileSync(pidCucu, 'utf8'));
+    const hidup = () => { try { process.kill(pid, 0); return true; } catch { return false; } };
+    for (let i = 0; i < 30 && hidup(); i++) await new Promise((r) => setTimeout(r, 100));
+    const masihHidup = hidup();
+    if (masihHidup) process.kill(pid);
+    cek(h.golongan === 'GAGAL' && /habis waktu 1\.5 detik/.test(h.barisTerakhir) && /macet/.test(h.keluaran),
+      'habis waktu → GAGAL, menyebut batasnya, dan keluaran sampai saat itu ikut dilaporkan', h);
+    cek(!masihHidup, 'habis waktu → cucu prosesnya ikut dimatikan, tidak tertinggal memakan mesin', { pid });
+  } finally {
+    rmSync(f, { recursive: true, force: true });
+  }
 }
 
 // ── 2. PUTUSAN ───────────────────────────────────────────────────────────────────────────────

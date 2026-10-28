@@ -11,8 +11,9 @@
  *   2. `python -m patchright install chromium` — browser ke %LOCALAPPDATA%\ms-playwright (lokasi bawaan; bila sudah
  *      ada di laptop itu, tidak diunduh ulang).
  *   3. UJI: `from scrapling.fetchers import StealthyFetcher` dengan paket baru di PYTHONPATH.
- *   Ketiganya berhasil → folder sementara diganti nama menjadi `paket` dan penanda `terpasang.json` ditulis. Gagal di
- *   langkah mana pun → folder sementara dihapus, penanda tidak ditulis, alasan dikembalikan apa adanya.
+ *   Ketiganya berhasil → folder sementara diganti nama menjadi `paket` (kunci sesaat Windows diulang, lihat
+ *   pindahkanFolder) dan penanda `terpasang.json` ditulis. Gagal di langkah mana pun, termasuk pemindahan itu →
+ *   folder sementara dihapus, penanda tidak ditulis, alasan dikembalikan apa adanya.
  *
  * Murni (tanpa `electron`); penjalan proses bisa diganti tiruan — lihat `uji/uji-konektor-stealth.mjs`.
  */
@@ -77,6 +78,27 @@ function jalankanProses(program, argumen, { cwd, env, batasMs }) {
   });
 }
 
+// Kunci SESAAT Windows: antivirus/pengindeks masih memegang berkas yang baru dibuat sesaat sesudah proses terakhir
+// selesai, sehingga rename folder ditolak (terukur 28 Okt di uji bagian 5: EPERM 2 dari 6 jalan; beberapa detik
+// kemudian rename yang sama berhasil). pip mengulang os.replace di Windows untuk sebab yang sama.
+const KUNCI_SESAAT = new Set(['EPERM', 'EACCES', 'EBUSY']);
+
+/** Ganti `tujuan` dengan `asal`; kunci sesaat diulang sampai `batasMs`. Mengembalikan kode galat, atau null bila berhasil. */
+async function pindahkanFolder(asal, tujuan, { batasMs = 10000, jedaMs = 250 } = {}) {
+  const mulai = Date.now();
+  for (;;) {
+    try {
+      fs.rmSync(tujuan, { recursive: true, force: true });
+      fs.renameSync(asal, tujuan);
+      return null;
+    } catch (e) {
+      // Tidak ditelan: kodenya dikembalikan, dan pasangStealth melaporkannya sebagai alasan langkah "pindah".
+      if (!KUNCI_SESAAT.has(e.code) || Date.now() - mulai >= batasMs) return e.code || e.message;
+      await new Promise((r) => setTimeout(r, jedaMs));
+    }
+  }
+}
+
 /**
  * Pasang komponen stealth. Persetujuan Owner sudah diminta pemanggil (dialog di proses utama).
  * @param {{runtime: string, folderData: string, env: Record<string,string>, jalankan?: Function, log?: Function, sekarang?: () => number}} p
@@ -108,12 +130,16 @@ async function pasangStealth({ runtime, folderData, env, jalankan = jalankanPros
       return { ok: false, langkah: nama, alasan, keluaran: String(h.keluaran || '').slice(-1500) };
     }
   }
-  fs.rmSync(l.paket, { recursive: true, force: true });
-  fs.renameSync(sementara, l.paket);
+  const galatPindah = await pindahkanFolder(sementara, l.paket);
+  if (galatPindah) {
+    fs.rmSync(sementara, { recursive: true, force: true, maxRetries: 3 });
+    log(`[STEALTH] GAGAL memindah folder paket: ${galatPindah}`);
+    return { ok: false, langkah: 'pindah', alasan: `folder paket tidak bisa dipindah (${galatPindah})` };
+  }
   const penanda = { paket: spek.paket, browser: spek.browser, waktu: new Date(sekarang()).toISOString() };
   fs.writeFileSync(l.penanda, JSON.stringify(penanda, null, 2), 'utf8');
   log(`[STEALTH] terpasang: ${spek.paket} + ${spek.browser}`);
   return { ok: true, ...penanda };
 }
 
-module.exports = { pasangStealth, statusStealth, spesifikasiStealth, lokasiStealth, jalankanProses, BATAS_MS };
+module.exports = { pasangStealth, statusStealth, spesifikasiStealth, lokasiStealth, jalankanProses, pindahkanFolder, BATAS_MS };

@@ -5,17 +5,27 @@
 //   - urutan & argumen langkah persis (paket terkunci, --target folder sementara, --no-deps, PYTHONPATH);
 //   - crawler terpasang memuat paket lewat PYTHONPATH hanya bila terpasang;
 //   - dialog persetujuan proses utama SEBELUM pemasangan;
-//   - bagian 5: pemasangan nyata TANPA unduhan — langkah pip diganti salinan Patchright dari .venv, langkah browser
+//   - bagian 5: pemasangan nyata TANPA unduhan — langkah pip diganti tautan-keras Patchright dari .venv, langkah browser
 //     dan uji ASLI (Chromium 1248 sudah ada di laptop, jadi `patchright install` tidak mengunduh), lalu crawler dari
-//     runtime terbundel benar-benar membuka halaman lewat StealthyFetcher.
+//     runtime terbundel benar-benar membuka halaman lewat StealthyFetcher — halaman dari server HTTP lokal uji ini.
+//
+// BATAS-UJI-DETIK di bawah (dibaca uji/jalankan-semua.mjs). Terukur 2026-10-28 dengan halaman LOKAL (internet sudah
+// tak ikut): StealthyFetcher meluncurkan Chromium dengan profil baru setiap kali — 14,6 s saat mesin tenang, 58–96 s
+// saat mesin berat; Chromium mentah sekali 39 s hanya untuk meluncur. Itulah subjek yang diuji, jadi tak dibuang;
+// 120 s bawaan tidak cukup untuk ekornya. Tenggat tiap langkah dipasang di bawah batas ini (bagian 5).
+// BATAS-UJI-DETIK: 300
 
 import { createRequire } from 'node:module';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync, existsSync, linkSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync,
+} from 'node:fs';
+import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { batasBerkas } from './jalankan-semua.mjs';
 
+const MULAI = Date.now();
 const AKAR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(path.join(AKAR, 'frontend', 'package.json'));
 const S = require(path.join(AKAR, 'frontend', 'electron', 'stealthKonektor.cjs'));
@@ -27,7 +37,9 @@ const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 600)}` : ''}`);
   if (!ok) gagal++;
 };
-const sementara = (awal) => mkdtempSync(path.join(os.tmpdir(), awal));
+// Semua folder sementara dihapus di akhir — sebelum 28 Okt tidak pernah, dan bagian 5 meninggalkan 109 MB per jalan.
+const SISA = [];
+const sementara = (awal, induk = os.tmpdir()) => { const d = mkdtempSync(path.join(induk, awal)); SISA.push(d); return d; };
 
 /** Runtime palsu: python.exe kosong + stealth.json + kode crawler minimal. */
 function runtimePalsu({ spek = true } = {}) {
@@ -89,6 +101,33 @@ for (const [langkah, hasilGagal, pola] of [
   cek(!g.ok && g.langkah === langkah && pola.test(g.alasan) && sisa.length === 0 && S.statusStealth({ terbundel: true, folderData: d }).keadaan === 'belum',
     `gagal di langkah ${langkah} → tak ada penanda, tak ada sisa folder, alasan apa adanya`, { g, sisa });
 }
+// Kunci sesaat Windows saat folder sementara dipindah jadi `paket` (terukur 28 Okt di bagian 5: EPERM 2 dari 6 jalan).
+// Sebelumnya renameSync MELEMPAR — pemanggil menerima pengecualian mentah dan folder sementara tertinggal.
+{
+  const fsCjs = require('fs');
+  const renameAsli = fsCjs.renameSync;
+  const galat = (code) => Object.assign(new Error(code), { code });
+  try {
+    let tolak = 2;
+    fsCjs.renameSync = (...a) => { if (tolak-- > 0) throw galat('EPERM'); return renameAsli(...a); };
+    const d = sementara('data-st-');
+    const k = await S.pasangStealth({ runtime: rt, folderData: d, env: {}, jalankan: tiruan(), sekarang: () => 3000 });
+    cek(k.ok && tolak < 0 && S.statusStealth({ terbundel: true, folderData: d }).keadaan === 'terpasang',
+      'rename ditolak EPERM dua kali (berkas masih dipegang antivirus) → diulang, tetap terpasang', { k, tolak });
+    fsCjs.renameSync = () => { throw galat('EXDEV'); };
+    const d2 = sementara('data-st-');
+    const k2 = await S.pasangStealth({ runtime: rt, folderData: d2, env: {}, jalankan: tiruan(), sekarang: () => 4000 });
+    const sisa2 = readdirSync(path.join(d2, 'stealth'));
+    cek(!k2.ok && k2.langkah === 'pindah' && /EXDEV/.test(k2.alasan) && sisa2.length === 0,
+      'rename gagal yang bukan kunci sesaat → tidak melempar; gagal bersih tanpa sisa folder & tanpa penanda', { k2, sisa2 });
+    fsCjs.renameSync = () => { throw galat('EPERM'); };
+    const a = Date.now();
+    const kode = await S.pindahkanFolder(sementara('d-'), path.join(sementara('d-'), 'x'), { batasMs: 300, jedaMs: 50 });
+    cek(kode === 'EPERM' && Date.now() - a < 2000, 'kunci yang tak kunjung lepas → menyerah di batasnya, tidak menunggu selamanya', { kode, ms: Date.now() - a });
+  } finally {
+    fsCjs.renameSync = renameAsli;
+  }
+}
 cek((await S.pasangStealth({ runtime: runtimePalsu({ spek: false }), folderData: sementara('d-'), env: {}, jalankan: tiruan() })).langkah === 'persiapan',
   'runtime tanpa stealth.json (dibangun sebelum E2) → ditolak sebelum mengunduh apa pun');
 
@@ -118,39 +157,95 @@ cek(/PyPI/.test(ipc) && /MB/.test(ipc) && /ms-playwright/.test(ipc), 'dialog men
 const pre = readFileSync(path.join(AKAR, 'frontend', 'electron', 'preload.cjs'), 'utf8');
 cek(/pasangStealth: \(\) => ipcRenderer\.invoke\('konektor:pasang-stealth'\)/.test(pre), 'layar memanggil lewat IPC (tanpa argumen — layar tak bisa memilih paket/versi)');
 
-// ── 5. Nyata tanpa unduhan ───────────────────────────────────────────────────────────────────────────────────
-console.log('\n-- 5. pemasangan nyata tanpa unduhan (Chromium 1248 sudah ada) --');
+// ── 5. Nyata tanpa unduhan & tanpa internet ──────────────────────────────────────────────────────────────────
+// Diukur 2026-10-28 — 35 s bila sendirian, sekali 207 s, dan dua kali dibunuh batas 120 s jalankan-semua:
+//   - paket Patchright 109 MB (93 MB-nya driver node.exe) DISALIN ke TEMP ≈ 3 s, lalu Defender memindai node.exe
+//     salinan baru itu saat pertama dijalankan ≈ 5–7 s; folder itu tak pernah dihapus (80 sisa, ±8,7 GB);
+//   - halaman diambil dari https://example.com — internet sungguhan, 15–26 s, berayun bersama jaringan.
+// Kini: paket DITAUT-KERAS dari .venv ke `.tmp/` repo (satu volume; isinya byte yang sama, jadi sama sahnya dengan
+// salinan — beda volume → jatuh ke salinan; node.exe tertaut jalan dalam 60 ms, salinan baru 5–10 s), halaman dilayani
+// server HTTP lokal yang MENCATAT permintaan yang datang (bukti Chromium sungguh membukanya), dan tiap langkah
+// bertenggat di bawah BATAS-UJI-DETIK: bila lambat, uji ini yang menyebut langkahnya, bukan dibunuh tanpa keterangan.
+console.log('\n-- 5. pemasangan nyata tanpa unduhan & tanpa internet (Chromium 1248 sudah ada) --');
 const RT = path.join(AKAR, 'frontend', 'build', 'crawler-runtime');
 const venvPatchright = path.join(AKAR, 'capability', 'ecosystem-crawler', '.venv', 'Lib', 'site-packages', 'patchright');
 const browserAda = existsSync(path.join(process.env.LOCALAPPDATA || '', 'ms-playwright', 'chromium-1248'));
+const detik = (ms) => `${(ms / 1000).toFixed(1)} s`;
 if (!existsSync(path.join(RT, 'stealth.json')) || !existsSync(venvPatchright) || !browserAda) {
   console.log('DILEWATI bagian 5 — butuh build/crawler-runtime (npm run crawler:siapkan), .venv crawler, dan Chromium 1248 di laptop');
 } else {
-  const dataN = sementara('data-nyata-');
+  const TENGGAT = MULAI + batasBerkas(path.basename(fileURLToPath(import.meta.url))) - 15000;
+  const sisaMs = () => Math.max(1, TENGGAT - Date.now());
+  const folderTmp = path.join(AKAR, '.tmp');
+  mkdirSync(folderTmp, { recursive: true });
+  // Sisa jalan yang dibunuh sebelum sempat membersihkan diri; yang lebih muda dari sejam mungkin jalan lain yang sedang berlangsung.
+  for (const n of readdirSync(folderTmp).filter((x) => x.startsWith('uji-stealth-'))) {
+    const d = path.join(folderTmp, n);
+    try { if (Date.now() - statSync(d).mtimeMs > 3600000) rmSync(d, { recursive: true, force: true }); } catch { /* masih dipakai */ }
+  }
+  const dataN = sementara('uji-stealth-', folderTmp);
+  let tautan = 0;
+  let salinan = 0;
+  const tautkan = (asal, tujuan) => {
+    if (statSync(asal).isDirectory()) {
+      mkdirSync(tujuan, { recursive: true });
+      for (const n of readdirSync(asal)) tautkan(path.join(asal, n), path.join(tujuan, n));
+    } else {
+      try { linkSync(asal, tujuan); tautan++; } catch { copyFileSync(asal, tujuan); salinan++; }
+    }
+  };
   const jalankanNyata = async (program, argumen, opsi) => {
-    if (argumen.includes('pip')) {  // ganti unduhan PyPI dengan salinan dari .venv — versi sama (1.64.1)
+    const a = Date.now();
+    const nama = argumen.includes('pip') ? 'pip' : argumen.includes('install') ? 'browser' : 'uji';
+    let h;
+    if (nama === 'pip') {  // ganti unduhan PyPI dengan tautan dari .venv — versi sama (1.64.1)
       const t = argumen[argumen.indexOf('--target') + 1];
       for (const n of readdirSync(path.dirname(venvPatchright)).filter((x) => /^patchright(-1\.64\.1\.dist-info)?$/.test(x))) {
-        cpSync(path.join(path.dirname(venvPatchright), n), path.join(t, n), { recursive: true });
+        tautkan(path.join(path.dirname(venvPatchright), n), path.join(t, n));
       }
-      return { kode: 0, keluaran: 'disalin dari .venv (tanpa unduhan)', habis: false };
+      h = { kode: 0, keluaran: `dari .venv tanpa unduhan: ${tautan} tautan, ${salinan} salinan`, habis: false };
+    } else {
+      h = await S.jalankanProses(program, argumen, { ...opsi, batasMs: Math.min(opsi.batasMs, sisaMs()) });
     }
-    return S.jalankanProses(program, argumen, opsi);
+    console.log(`       langkah ${nama}: ${detik(Date.now() - a)}${h.habis ? ' — HABIS TENGGAT UJI' : ''} (${h.keluaran.trim().slice(-80)})`);
+    return h;
   };
-  const env = { ...K.lingkunganServer() };
-  const hn = await S.pasangStealth({ runtime: RT, folderData: dataN, env, jalankan: jalankanNyata });
-  cek(hn.ok, `langkah browser & uji ASLI berhasil di runtime terbundel`, hn);
-  const p = K.peluncuran(AKAR, 'ecosystem-crawler', { runtimeTerbundel: RT, folderData: dataN });
-  const ambil = spawnSync(p.command, ['-c', [
-    'from crawler.kanal.web import AksesWeb',
-    'from crawler import konfig',
-    'a = AksesWeb(konfig.USER_AGENT)',
-    'html, tingkat, url = a._stealth("https://example.com")',
-    'print("TINGKAT", tingkat, "JUDUL", "Example Domain" in html)',
-  ].join('\n')], { cwd: p.cwd, env: p.env, encoding: 'utf8', timeout: 240000 });
-  cek(/TINGKAT 3 JUDUL True/.test(ambil.stdout || ''), 'crawler dari runtime terbundel membuka halaman lewat TINGKAT 3 (stealth) dengan paket terpasang',
-    { keluar: ambil.status, ekor: `${ambil.stdout}${ambil.stderr}`.slice(-500) });
+
+  const TANDA = `stealth-uji-${process.pid}-${Date.now()}`;
+  const masuk = [];
+  const server = http.createServer((req, res) => {
+    masuk.push({ url: req.url, ua: String(req.headers['user-agent'] || '') });
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    res.end(`<!doctype html><html><head><title>${TANDA}</title></head><body><h1>${TANDA}</h1></body></html>`);
+  });
+  await new Promise((siap) => server.listen(0, '127.0.0.1', siap));
+  const alamat = `http://127.0.0.1:${server.address().port}/halaman`;
+  try {
+    const hn = await S.pasangStealth({ runtime: RT, folderData: dataN, env: { ...K.lingkunganServer() }, jalankan: jalankanNyata });
+    cek(hn.ok, `langkah browser & uji ASLI berhasil di runtime terbundel`, hn);
+    const p = K.peluncuran(AKAR, 'ecosystem-crawler', { runtimeTerbundel: RT, folderData: dataN });
+    const a = Date.now();
+    // Asinkron (bukan spawnSync): server di atas harus bisa menjawab selagi Python menunggu.
+    const ambil = await S.jalankanProses(p.command, ['-c', [
+      'from crawler.kanal.web import AksesWeb',
+      'from crawler import konfig',
+      'a = AksesWeb(konfig.USER_AGENT, proxy="")',  // server lokal: jangan lewat CRAWLER_PROXY .env
+      `html, tingkat, url = a._stealth(${JSON.stringify(alamat)})`,
+      `print("TINGKAT", tingkat, "TANDA", ${JSON.stringify(TANDA)} in html)`,
+    ].join('\n')], { cwd: p.cwd, env: p.env, batasMs: sisaMs() });
+    console.log(`       langkah ambil halaman: ${detik(Date.now() - a)}${ambil.habis ? ' — HABIS TENGGAT UJI' : ''}`);
+    cek(/TINGKAT 3 TANDA True/.test(ambil.keluaran), 'crawler dari runtime terbundel membuka halaman lewat TINGKAT 3 (stealth) dengan paket terpasang',
+      { kode: ambil.kode, habis: ambil.habis, ekor: ambil.keluaran.slice(-500) });
+    const halaman = masuk.filter((m) => m.url === '/halaman');
+    cek(halaman.length >= 1 && halaman.every((m) => /Chrome\//.test(m.ua)), 'server lokal sungguh didatangi Chromium — halaman bukan dari tempat lain', masuk);
+  } finally {
+    server.close();
+  }
 }
 
+for (const d of SISA) {
+  try { rmSync(d, { recursive: true, force: true, maxRetries: 3 }); } catch (e) { console.log(`PERINGATAN folder sementara tak terhapus: ${d} (${e.code})`); }
+}
+console.log(`\n(${detik(Date.now() - MULAI)})`);
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));
 process.exitCode = gagal === 0 ? 0 : 1;

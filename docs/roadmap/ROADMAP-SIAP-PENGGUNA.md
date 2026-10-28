@@ -355,6 +355,12 @@ Taruhan CRLF nyata, bukan teoretis: berkas LF membuat `PatchGenerator` cari-gant
 
 ### J3b — ⚠️ Prasyarat J3 yang baru ketahuan: ada satu uji yang GOYAH, dan ia akan meracuni CI
 
+> **28 Okt — uji goyah KEDUA ditemukan & dipatok:** `uji-konektor-stealth.mjs` dibunuh batas 120 s penjalan saat mesin
+> berat (salin 109 MB + pindai Defender + internet + peluncuran Chromium 0,14–39 s). Kini tautan-keras, server lokal,
+> tenggat per langkah, dan **batas per berkas yang dinyatakan terbuka** (`// BATAS-UJI-DETIK`, tampil di `batasKhusus`);
+> suite 123/123 dua kali ([log](../project-memory/changelog/2026-10-28-uji-stealth-dan-vite.md)). Mekanisme batas per
+> berkas itu juga berguna untuk J3 (CI). Flake `uji-alat-folder-jalan.cjs` di bawah **belum** dipatok.
+
 Ditemukan saat menjalankan suite untuk memverifikasi perubahan dokumen roadmap ini sendiri
 (2026-10-07). **86/87 lulus; `uji-alat-folder-jalan.cjs` GAGAL.**
 
