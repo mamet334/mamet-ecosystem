@@ -1335,6 +1335,9 @@ export class AssistantService {
     // dipanggil hanya untuk Web (Tier 3). Selama RAG menyala, panduan Tier 2 ("tidak ada dokumen
     // lokal") juga dilewati karena hanya server yang tahu apakah dokumen ditemukan.
     // PRIVASI: pesan hasil mesin (lihat pesanHasilMesin di atas) tidak dicari ke web sama sekali.
+    // Langkah proses dari KLIEN (ADR-0021 §2.3, 2026-10-28): kueri web yang benar-benar dipakai tampil satu baris di awal
+    // daftar langkah — sebelum langkah server — dan ikut tersimpan di metadata pesan.
+    const langkahKlien = [];
     if (!knowledgeContext && retrievalOrchestrator && !isLiteMode && webSearchToolEnabled && !lanjutanTerpotong && !pesanHasilMesin) {
       try {
         const retrievalResult = await retrievalOrchestrator.retrieve(userMsg, {
@@ -1349,6 +1352,10 @@ export class AssistantService {
         if (retrievalResult && retrievalResult.formattedContext) {
           knowledgeContext = retrievalResult.formattedContext;
           console.log(`[AssistantService] PR#9 RetrievalOrchestrator: Tier ${retrievalResult.tier}, strategy=${retrievalResult.strategy}, sufficiency=${retrievalResult.sufficiency}`);
+        }
+        if (retrievalResult?.kueriDicari) {
+          const hasilWeb = retrievalResult.status === 'SUCCESS' ? `${retrievalResult.chunks?.length || 0} hasil` : (retrievalResult.status || 'gagal');
+          langkahKlien.push(`🔍 Dicari (web): "${retrievalResult.kueriDicari}" → ${hasilWeb}`);
         }
       } catch (err) {
         console.warn('[AssistantService] RetrievalOrchestrator query error (fallback):', err.message);
@@ -1490,7 +1497,8 @@ export class AssistantService {
     await this._handleResponseStream(response, {
       userMsg, isEngineerMode, workspaceManager, onChunk, onDone, onError, userId,
       history, workspaceId, token, attachedFile, resolvedMode, resolvedAppSource,
-      _isPostHocWebRetry, onNalar, hybrid: payload.streamNalar === true, signal, traceId: requestTraceId
+      _isPostHocWebRetry, onNalar, hybrid: payload.streamNalar === true, signal, traceId: requestTraceId,
+      langkahAwal: langkahKlien
     });
   }
 
@@ -1557,6 +1565,7 @@ export class AssistantService {
     history, workspaceId, token, attachedFile, resolvedMode, resolvedAppSource,
     _isPostHocWebRetry = false, onNalar, hybrid = false, signal = null,
     traceId = null, // Item 126: ID permintaan yang dikirim di payload — dibawa ke onDone supaya pesan jawaban menyimpannya (👍/👎)
+    langkahAwal = [], // langkah proses dari klien (mis. "🔍 Dicari (web): …") — ditaruh sebelum langkah server
   }) {
     const contentType = response.headers.get('content-type') || '';
 
@@ -1578,7 +1587,7 @@ export class AssistantService {
       const hasPatch = isEngineerMode && adaPenandaPatch(rawContent);
       const cleanContent = hasPatch ? buangPenandaPatch(rawContent) : rawContent;
 
-      onDone?.(cleanContent, jsonData.processingSteps || [], jsonData, { hasPatch, patchOriginalTask: hasPatch ? userMsg : undefined, traceId });
+      onDone?.(cleanContent, [...langkahAwal, ...(jsonData.processingSteps || [])], jsonData, { hasPatch, patchOriginalTask: hasPatch ? userMsg : undefined, traceId });
 
       // MAEF Monitor TIDAK lagi dibuka otomatis di sini — dulu tiap respons AI memaksa panel
       // ini terbuka kembali walau Owner baru saja menutupnya (minimize jadi terasa tidak
@@ -1605,7 +1614,7 @@ export class AssistantService {
 
     let done = false;
     let aiResponseText = '';
-    let processingSteps = [];
+    let processingSteps = [...langkahAwal];
     let buffer = '';
     // T14: nama penyedia hulu tiba sebagai bingkai tersendiri di akhir aliran (stream_handler.ts).
     // Disimpan di metadata pesan supaya kaitan "gaya jawaban ↔ penyedia" bisa diperiksa surut —

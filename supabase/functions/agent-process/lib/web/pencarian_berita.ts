@@ -8,6 +8,8 @@
 // berisi menu situs — tidak muat anggaran 12 detik sub-agent. Tautan Google News (redirect JS) dan MSN (isi dimuat
 // JavaScript) tidak bisa dibaca dengan cara ini, jadi dilewati; hasilnya tetap dipakai sebagai cuplikan.
 
+import { ringkasKueri } from '../../../../../shared/kueri_pencarian.js';
+
 export type HasilBerita = {
   title: string;
   link: string;
@@ -89,21 +91,9 @@ export function uraiRss(xml: string, penyedia: string, maks = 8): HasilBerita[] 
   return hasil;
 }
 
-/**
- * Tugas dari Coordinator sering berupa kalimat perintah; RSS lebih cocok dengan kata kunci. Uji live 2026-09-15:
- * "Cari informasi dan susun laporan tentang 3 perusahaan AI terbesar pada tahun 2026" → Bing 0 hasil, sedangkan
- * "3 perusahaan AI terbesar 2026" → 5–8 hasil.
- */
-export function ringkasKueri(q: string): string {
-  return q
-    .replace(/[“”"'`?!.,:;()\[\]]/g, ' ')
-    .replace(/\b(tolong|mohon|lakukan|carikan|cari|temukan|riset|risetkan|telusuri|susun|susunkan|buat|buatkan|laporan|analisis|analisa|mendalam|lengkap|detail|informasi|info|data|berita|tentang|mengenai|terkait|seputar|apa|siapa|saja|dan|yang|pada|tahun|untuk|dengan|secara|di|ke|dari)\b/gi, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .split(' ')
-    .slice(0, 8)
-    .join(' ');
-}
+// Tugas dari Coordinator sering berupa kalimat perintah; RSS lebih cocok dengan kata kunci → `ringkasKueri`, yang
+// sejak 28 Okt 2026 tinggal di modul bersama `shared/kueri_pencarian.js` (ADR-0021 #6) karena web Tier 3 di klien
+// memakai aturan yang sama.
 
 /**
  * Cari berita. Kembali pada percobaan pertama yang memberi hasil. `catatan` berisi status HTTP, jumlah hasil, dan

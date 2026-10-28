@@ -716,8 +716,12 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
   impor lintas batas. Yang perlu dibuktikan lebih dulu: jalur impor seperti itu benar-benar dimuat
   Deno (edge function) **dan** Vite (klien) tanpa perkakas tambahan.
 
-- **Status:** ⏳ tercatat, belum dirancang, belum diputuskan Owner. Tabel titik impornya juga ada di
-  [changelog Item 126](../project-memory/changelog/2026-10-18-penanda-pemilih-model.md).
+- **Status:** 🟡 **arah diputuskan & prasyarat terbukti 28 Okt** (ADR-0021 #6): modul bersama di folder netral
+  **`shared/`** — modul pertama `shared/kueri_pencarian.js` dimuat Deno 2.2.7 (server) dan Vite (build & server dev)
+  lewat impor relatif biasa, tanpa perkakas tambahan
+  ([log](../project-memory/changelog/2026-10-28-modul-bersama-kueri.md)). **Sisa:** 7 titik impor server ke
+  `frontend/src` (tabel di [changelog Item 126](../project-memory/changelog/2026-10-18-penanda-pemilih-model.md))
+  dipindah ke `shared/` satu per satu dengan pola yang sama — belum dikerjakan.
 
 ## T20 — "Black October": Brotli CVE-2026-111497 di Node bawaan Electron & CI (2026-10-27)
 

@@ -37,7 +37,8 @@ export default defineConfig({
     port: 5173,
     // tools/ ada di root repo, di luar frontend/. ToolRegistryService membundelnya lewat
     // import.meta.glob untuk versi web; tanpa izin ini server dev menolak menyajikannya.
-    fs: { allow: ['.', '../tools'] },
+    // shared/ (28 Okt 2026, ADR-0021 #6): modul bersama klien & server, mis. shared/kueri_pencarian.js.
+    fs: { allow: ['.', '../tools', '../shared'] },
     // Hasil build tidak diawasi (28 Okt 2026). Tanpa ini Vite mengawasi seluruh frontend/, termasuk release/
     // (aplikasi hasil kemas, ±12.800 berkas) dan build/ (runtime crawler terbundel, ±12.700 berkas, ditulis ulang
     // tiap `npm run crawler:siapkan`) — terukur: server dev diam memakan 160% satu inti, 497 menit CPU dalam ±5,5 jam.

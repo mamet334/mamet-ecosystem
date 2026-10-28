@@ -19,6 +19,8 @@
  */
 
 import { supabase } from '../../../supabase.js';
+// Modul bersama klien & server (ADR-0021 #6): aturan yang sama dipakai sub-agent researcher di agent-process.
+import { ringkasKueri } from '../../../../../shared/kueri_pencarian.js';
 
 export const WEB_SEARCH_TIMEOUT_MS = 8000; // 8 detik batas waktu standar
 export const WEB_SUFFICIENCY_SCORE = 0.7; // Skor kecukupan bila web comparison berhasil
@@ -227,11 +229,22 @@ export class WebComparisonService {
 
     const startTime = Date.now();
 
+    // KUERI = kata kunci, bukan pesan mentah (Item 126 Fase 1, ADR-0021 #6, 2026-10-28). Dulu pesan Owner dikirim
+    // utuh ke Bing/Google News; server sudah membuktikan kalimat perintah → 0 hasil, kata kunci → 5–8 (15 Sep). Urutan
+    // sama dengan server: kata kunci dulu, kalimat asli bila kosong. Kueri yang benar-benar dipakai dikembalikan
+    // (`kueriDicari`) supaya tampil satu baris di langkah proses (ADR-0021 §2.3).
+    const kueriRingkas = ringkasKueri(query);
+    let kueriDicari = kueriRingkas.length >= 2 ? kueriRingkas : query.trim();
+
     try {
-      console.log(`[WebComparisonService] 🌐 Menjalankan pencarian web (Timeout: ${timeoutMs}ms) untuk: "${query.substring(0, 60)}..."`);
-      
+      console.log(`[WebComparisonService] 🌐 Menjalankan pencarian web (Timeout: ${timeoutMs}ms) untuk: "${kueriDicari.substring(0, 60)}"`);
+
       const isTemporal = Boolean(options.isTemporal);
-      const rawResults = await this._executeFetch(query, abortController.signal, { isTemporal });
+      let rawResults = await this._executeFetch(kueriDicari, abortController.signal, { isTemporal });
+      if ((!rawResults || rawResults.length === 0) && kueriDicari !== query.trim() && !abortController.signal.aborted) {
+        kueriDicari = query.trim();
+        rawResults = await this._executeFetch(kueriDicari, abortController.signal, { isTemporal });
+      }
       clearTimeout(timeoutId);
 
       const durationMs = Date.now() - startTime;
@@ -257,6 +270,7 @@ export class WebComparisonService {
           isFallback: true,
           status: 'FAILED',
           timeoutMs,
+          kueriDicari,
           error: 'Pencarian web tidak mengembalikan hasil yang relevan.',
           fallbackDisclaimer: '⚠️ Pencarian web tidak menemukan referensi tambahan yang cocok. Menggunakan pengetahuan internal model.'
         };
@@ -293,7 +307,8 @@ export class WebComparisonService {
         isFallback: false,
         status: 'SUCCESS',
         timeoutMs,
-        durationMs
+        durationMs,
+        kueriDicari
       };
     } catch (err) {
       clearTimeout(timeoutId);
@@ -322,6 +337,7 @@ export class WebComparisonService {
         isFallback: true,
         status,
         timeoutMs,
+        kueriDicari,
         error: isTimeout ? `Waktu tunggu pencarian web habis (Timeout ${timeoutMs}ms)` : err.message,
         fallbackDisclaimer: isTimeout
           ? `⚠️ Waktu tunggu pencarian web habis (Timeout ${timeoutMs / 1000}s). Sistem tidak memaksakan data web yang belum selesai. Menjawab dari Tier 1 & Tier 2.`

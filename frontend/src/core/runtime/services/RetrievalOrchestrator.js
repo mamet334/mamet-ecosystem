@@ -206,7 +206,8 @@ export class RetrievalOrchestrator {
             isFallback: true,
             status: tier3Result.status,
             error: tier3Result.error,
-            fallbackDisclaimer: tier3Result.fallbackDisclaimer
+            fallbackDisclaimer: tier3Result.fallbackDisclaimer,
+            kueriDicari: tier3Result.kueriDicari
           };
         }
       } catch (tier3Err) {

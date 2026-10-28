@@ -141,7 +141,7 @@ Owner Sovereignty (gerbang) · Verification Engine · Item 126 (penanda pemilih 
 | Pekerjaan | Hasil tangga | Perlu saldo? |
 |---|---|---|
 | Router: kata kunci substring → kata utuh, buang kata tanya | kode | tidak |
-| Kueri web Tier 3 di klien: **pakai ulang `ringkasKueri()`** lewat modul bersama (keputusan #6), bukan daftar kata pengisi baru; konteks tanggal untuk "terbaru" — sekaligus menyatukan dua pendeteksi kata waktu yang kembar (`RetrievalOrchestrator.isTemporalQuery`, `RetrievalStrategyService.isTemporalOrRecencyQuery`) | kode | tidak |
+| Kueri web Tier 3 di klien: **pakai ulang `ringkasKueri()`** lewat modul bersama (keputusan #6), bukan daftar kata pengisi baru — **✅ 28 Okt** `shared/kueri_pencarian.js` (dimuat Deno & Vite, terbukti; [log](../project-memory/changelog/2026-10-28-modul-bersama-kueri.md)) + baris "🔍 Dicari (web): …". Belum: konteks tanggal untuk "terbaru" & menyatukan dua pendeteksi kata waktu yang kembar (`RetrievalOrchestrator.isTemporalQuery`, `RetrievalStrategyService.isTemporalOrRecencyQuery`) | kode | tidak |
 | Ukur dengan mode bayangan SQL atas pesan lama (hanya agregat; nol isi keluar — T12) — **✅ 28 Okt**, hasil di roadmap Item 126 | langkah 4 | tidak |
 | Kueri web yang merujuk percakapan → pakai ulang penulis ulang Item 67 (sudah tampil satu baris), bukan membuat yang baru | langkah 2–3 | ya (uji) |
 | Rencana Coordinator ditampilkan ke Owner | §2.3 terlihat | tidak |

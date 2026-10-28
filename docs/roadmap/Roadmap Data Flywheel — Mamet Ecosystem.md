@@ -331,7 +331,10 @@ pembersihan kueri pencarian (keduanya kode), diukur dengan mode bayangan SQL.
       sedikit. **Peta graf 28 Okt** ([ADR-0021](../adr/ADR-0021-kapan-llm-dipakai-di-depan.md) §1.2): penulis ulang
       pertanyaan lanjutan (Item 67), `kataKunciPencarian()` (RAG), dan `ringkasKueri()` (kata kunci berita) **sudah
       ada**; yang masih mengirim pesan mentah hanya web Tier 3 di klien → pakai ulang `ringkasKueri()` lewat modul
-      bersama (keputusan ADR #6, prasyarat T15), bukan aturan baru.
+      bersama (keputusan ADR #6, prasyarat T15), bukan aturan baru. **✅ KODE SELESAI 28 Okt**
+      ([log](../project-memory/changelog/2026-10-28-modul-bersama-kueri.md)): `shared/kueri_pencarian.js`, terbukti
+      dimuat Deno & Vite; Tier 3 klien mencari dengan kata kunci + baris "🔍 Dicari (web): …"; mutasi 6/6; suite
+      126/126. Server perlu deploy (perilaku sama); aplikasi terpasang lewat rilis 4.4.0.
 - [x] ~~**Kegagalan router berhenti jatuh ke jalur mahal** — tentukan default yang aman saat
       klasifikasi gagal (temuan 4)~~ — **KODE SELESAI 28 Okt** ([log](../project-memory/changelog/2026-10-28-router-jalur-aman.md)):
       riwayat 6/6 kegagalan router diikuti Coordinator yang juga gagal → kini jalur aman (jawab langsung); "memutuskan"
