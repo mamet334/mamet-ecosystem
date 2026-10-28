@@ -300,6 +300,11 @@ pencatatan ≥ 99%, dan nol isi percakapan tersimpan.
 
 ### Fase 1: Router berbasis bukti
 
+**Acuan keputusan (28 Okt): [ADR-0021](../adr/ADR-0021-kapan-llm-dipakai-di-depan.md)** — LLM di depan alur hanya
+*mengusulkan*; tangga: bisa dikode → kode; butuh makna → LLM mengusulkan (model pilihan Owner, satu baris
+"🔍 Dicari: …"); makna bercabang → tanya Owner; ukur dulu. Penerapan pertamanya ada di fase ini: router kata utuh +
+pembersihan kueri pencarian (keduanya kode), diukur dengan mode bayangan SQL.
+
 **Tujuan fase ini diubah di Revisi 1: latensi dan keandalan, bukan biaya.** Biayanya memang hanya
 2,6%; menjanjikan penghematan di sini berarti menjanjikan sesuatu yang datanya sudah membantah.
 
