@@ -4,7 +4,7 @@ import ErrorBoundary from './components/workbench/ErrorBoundary'
 import EngineerApprovalDialog from './components/workbench/EngineerApprovalDialog'
 import LampLogin from './components/LampLogin'
 import { kernel } from './core/runtime/Kernel'
-import { supabase } from './supabase'
+import { supabase, jenisTautanAwal } from './supabase'
 import { penyimpanKeadaan } from './core/runtime/PenyimpanKeadaan'
 import { temaService } from './core/runtime/services/TemaService'
 import './App.css'
@@ -12,6 +12,9 @@ import './App.css'
 export default function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
+  // T19 (29 Okt 2026): tautan pemulihan dari email langsung membuat sesi — tanpa penahan ini pengguna masuk ke desktop
+  // tanpa pernah diminta kata sandi baru. Dibaca dari alamat awal (supabase.js) DAN dari peristiwa PASSWORD_RECOVERY.
+  const [pemulihan, setPemulihan] = useState(jenisTautanAwal === 'pemulihan')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -19,7 +22,8 @@ export default function App() {
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') setPemulihan(true)
       setSession(session)
     })
 
@@ -66,11 +70,16 @@ export default function App() {
 
   // Layar masuk SELALU memakai ruangannya sendiri, apa pun tema pilihan (Item 128): pembungkus ini mengembalikan
   // variabel tema & warna dasar ke Ruangan kayu untuk LampLogin dan isinya (mis. TombolUnduhDesktop). LampLogin.jsx
-  // sendiri tidak disentuh.
-  if (!session) {
+  // sendiri tidak disentuh — kecuali T19 (29 Okt, izin Owner): mode "lupa" & "kata sandi baru" di panel yang sama.
+  if (!session || pemulihan) {
     return (
       <div data-tema="ruangan-kayu" data-dasar="gelap" className="contents">
-        <LampLogin onLoginSuccess={() => { }} />
+        <LampLogin
+          onLoginSuccess={() => { }}
+          modeAwal={pemulihan ? 'sandiBaru' : jenisTautanAwal === 'kedaluwarsa' ? 'lupa' : 'akun'}
+          adaSesi={Boolean(session)}
+          onSandiBaruSelesai={() => setPemulihan(false)}
+        />
       </div>
     )
   }

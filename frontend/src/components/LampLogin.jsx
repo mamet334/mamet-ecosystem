@@ -2,16 +2,68 @@ import React, { useState } from 'react';
 import { supabase } from '../supabase';
 import Ikon from './Ikon';
 import TombolUnduhDesktop from './TombolUnduhDesktop';
+import {
+  PANJANG_MINIMAL_SANDI, PESAN_TAUTAN_TERKIRIM, alamatKembaliPemulihan, periksaSandiBaru, pesanGalatSandi,
+} from '../../../shared/kata_sandi.js';
 
-export default function LampLogin({ onLoginSuccess }) {
+// Tautan pemulihan dari email harus membuka halaman WEB — aplikasi desktop (mamet://) tak bisa dibuka dari email.
+const WEB_ECOSYSTEM = 'https://mamet-ecosystem.vercel.app/';
+
+/**
+ * `modeAwal` (T19, 29 Okt 2026): 'akun' = masuk/daftar seperti dulu · 'lupa' = minta tautan pemulihan ·
+ * 'sandiBaru' = dibuka dari tautan pemulihan (App.jsx). Mode selain 'akun' menyalakan lampu sejak awal supaya panelnya
+ * langsung terlihat.
+ */
+export default function LampLogin({ onLoginSuccess, modeAwal = 'akun', adaSesi = false, onSandiBaruSelesai }) {
   // State lampu dan login
-  const [lampOn, setLampOn] = useState(false);
+  const [lampOn, setLampOn] = useState(modeAwal !== 'akun');
+  const [mode, setMode] = useState(modeAwal);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [ulangPassword, setUlangPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState(
+    modeAwal === 'lupa' ? 'Tautan pemulihan sudah tidak berlaku. Minta tautan baru di bawah.' : null,
+  );
+  const [info, setInfo] = useState(null);
   const [isSignUp, setIsSignUp] = useState(false);
+
+  const keMode = (m) => { setMode(m); setError(null); setInfo(null); setPassword(''); setUlangPassword(''); };
+
+  const handleLupa = async (e) => {
+    e.preventDefault();
+    setLoading(true); setError(null); setInfo(null);
+    try {
+      const { error: galat } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: alamatKembaliPemulihan(window.location, WEB_ECOSYSTEM),
+      });
+      if (galat) throw galat;
+      setInfo(PESAN_TAUTAN_TERKIRIM);
+    } catch (err) {
+      const p = pesanGalatSandi(err);
+      setError(`${p.judul} ${p.saran}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSandiBaru = async (e) => {
+    e.preventDefault();
+    const salah = periksaSandiBaru(password, ulangPassword);
+    if (salah) { setError(salah); return; }
+    setLoading(true); setError(null);
+    try {
+      const { error: galat } = await supabase.auth.updateUser({ password });
+      if (galat) throw galat;
+      onSandiBaruSelesai?.();
+    } catch (err) {
+      const p = pesanGalatSandi(err);
+      setError(`${p.judul} ${p.saran}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -296,12 +348,112 @@ export default function LampLogin({ onLoginSuccess }) {
 
           <div className="relative z-10 text-center">
             <h1 className="font-bold tracking-[-.03em] text-[#fff8ec] drop-shadow-[0_2px_15px_rgba(0,0,0,.45)]" style={{ fontSize: 'clamp(18px, 1.8vw, 30px)' }}>
-              {isSignUp ? 'Buat Akun' : 'Welcome Back'}
+              {mode === 'lupa' ? 'Lupa Kata Sandi' : mode === 'sandiBaru' ? 'Kata Sandi Baru' : isSignUp ? 'Buat Akun' : 'Welcome Back'}
             </h1>
             <p className="mt-2 mb-[8%] text-[rgba(255,236,207,.68)]" style={{ fontSize: 'clamp(12px, 1vw, 15px)' }}>
-              {isSignUp ? 'Daftar untuk memulai ruang kerja Anda' : 'Masuk ke ruang kerja pribadi Anda'}
+              {mode === 'lupa' ? 'Kami kirim tautan ke email Anda untuk membuat kata sandi baru'
+                : mode === 'sandiBaru' ? 'Buat kata sandi baru untuk akun Anda'
+                : isSignUp ? 'Daftar untuk memulai ruang kerja Anda' : 'Masuk ke ruang kerja pribadi Anda'}
             </p>
 
+            {/* T19 (29 Okt 2026): lupa kata sandi — isian email → tautan pemulihan. Pesan sesudahnya sama untuk email
+                terdaftar maupun tidak (PESAN_TAUTAN_TERKIRIM), supaya formulir ini tak bisa dipakai mengecek akun. */}
+            {mode === 'lupa' && (
+              <form className="space-y-4" onSubmit={handleLupa}>
+                <div className="space-y-2">
+                  <label className="block text-left text-[13px] text-[rgba(255,238,211,.86)]" htmlFor="email-lupa">Email</label>
+                  <input
+                    id="email-lupa"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="w-full h-[48px] px-[16px] rounded-[12px] outline-none border border-[rgba(255,214,145,.24)] text-[14px] shadow-[inset_0_1px_5px_rgba(0,0,0,.25)] focus:border-[rgba(255,205,107,.68)] focus:shadow-[0_0_0_3px_rgba(255,190,70,.08),inset_0_1px_5px_rgba(0,0,0,.25)] transition-all"
+                    placeholder="nama@email.com"
+                    style={{ backgroundColor: 'rgba(5,5,5,.25)', color: '#fff5e6' }}
+                  />
+                </div>
+                {error && (
+                  <div className="flex items-center gap-2 p-3 bg-red-900/30 border border-red-500 rounded-lg text-red-400 text-sm text-left">
+                    <Ikon nama="error" ukuran={20} className="flex-shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
+                {info && (
+                  <div role="status" className="flex items-start gap-2 p-3 rounded-lg border border-[rgba(255,214,145,.30)] bg-[rgba(255,214,145,.08)] text-[rgba(255,238,211,.92)] text-sm text-left">
+                    <Ikon nama="check_circle" ukuran={20} className="flex-shrink-0 text-[#e4b84f]" />
+                    <span>{info}</span>
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-[48px] border-0 rounded-[11px] cursor-pointer text-[14px] font-bold tracking-[.02em] text-[#1b1105] bg-gradient-to-br from-[#d9ad51] to-[#f0ca6d] shadow-[0_8px_22px_rgba(0,0,0,.28),inset_0_1px_0_rgba(255,255,255,.30)] transition-all hover:brightness-110 hover:shadow-[0_10px_28px_rgba(0,0,0,.34),0_0_20px_rgba(239,190,83,.12)] active:translate-y-[2px] disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+                >
+                  {loading ? (<><Ikon nama="progress_activity" ukuran={20} className="animate-spin" /> Memproses...</>) : 'KIRIM TAUTAN'}
+                </button>
+                <p className="text-center mt-3 text-[13px] text-[rgba(255,236,207,.68)]">
+                  Ingat kata sandi?{' '}
+                  <button type="button" onClick={() => keMode('akun')} className="text-[#e4b84f] hover:text-[#ffe29a] transition-colors underline">Masuk</button>
+                </p>
+              </form>
+            )}
+
+            {/* T19: dibuka dari tautan pemulihan (App.jsx menahan desktop sampai kata sandi baru disimpan). */}
+            {mode === 'sandiBaru' && (
+              <form className="space-y-4" onSubmit={handleSandiBaru}>
+                {!adaSesi ? (
+                  <div className="flex items-center gap-2 p-3 bg-red-900/30 border border-red-500 rounded-lg text-red-400 text-sm text-left">
+                    <Ikon nama="error" ukuran={20} className="flex-shrink-0" />
+                    <span>Tautan pemulihan sudah tidak berlaku.</span>
+                  </div>
+                ) : (
+                  <>
+                    {[['sandi-baru', 'Kata sandi baru', password, setPassword], ['sandi-ulang', 'Ulangi kata sandi baru', ulangPassword, setUlangPassword]].map(([id, label, nilai, ubah]) => (
+                      <div key={id} className="space-y-2">
+                        <label className="block text-left text-[13px] text-[rgba(255,238,211,.86)]" htmlFor={id}>{label}</label>
+                        <input
+                          id={id}
+                          type={showPassword ? 'text' : 'password'}
+                          value={nilai}
+                          onChange={(e) => ubah(e.target.value)}
+                          required
+                          minLength={PANJANG_MINIMAL_SANDI}
+                          autoComplete="new-password"
+                          className="w-full h-[48px] px-[16px] rounded-[12px] outline-none border border-[rgba(255,214,145,.24)] text-[14px] shadow-[inset_0_1px_5px_rgba(0,0,0,.25)] focus:border-[rgba(255,205,107,.68)] focus:shadow-[0_0_0_3px_rgba(255,190,70,.08),inset_0_1px_5px_rgba(0,0,0,.25)] transition-all"
+                          placeholder={`minimal ${PANJANG_MINIMAL_SANDI} karakter`}
+                          style={{ backgroundColor: 'rgba(5,5,5,.25)', color: '#fff5e6' }}
+                        />
+                      </div>
+                    ))}
+                    <label className="flex items-center gap-2 text-left text-[13px] text-[rgba(255,236,207,.68)] cursor-pointer">
+                      <input type="checkbox" checked={showPassword} onChange={() => setShowPassword(!showPassword)} /> Tampilkan kata sandi
+                    </label>
+                  </>
+                )}
+                {error && (
+                  <div className="flex items-center gap-2 p-3 bg-red-900/30 border border-red-500 rounded-lg text-red-400 text-sm text-left">
+                    <Ikon nama="error" ukuran={20} className="flex-shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
+                {adaSesi ? (
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-[48px] border-0 rounded-[11px] cursor-pointer text-[14px] font-bold tracking-[.02em] text-[#1b1105] bg-gradient-to-br from-[#d9ad51] to-[#f0ca6d] shadow-[0_8px_22px_rgba(0,0,0,.28),inset_0_1px_0_rgba(255,255,255,.30)] transition-all hover:brightness-110 hover:shadow-[0_10px_28px_rgba(0,0,0,.34),0_0_20px_rgba(239,190,83,.12)] active:translate-y-[2px] disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+                  >
+                    {loading ? (<><Ikon nama="progress_activity" ukuran={20} className="animate-spin" /> Memproses...</>) : 'SIMPAN KATA SANDI'}
+                  </button>
+                ) : (
+                  <p className="text-center mt-3 text-[13px] text-[rgba(255,236,207,.68)]">
+                    <button type="button" onClick={() => keMode('lupa')} className="text-[#e4b84f] hover:text-[#ffe29a] transition-colors underline">Minta tautan baru</button>
+                  </p>
+                )}
+              </form>
+            )}
+
+            {mode === 'akun' && (
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div className="space-y-2">
                 <label className="block text-left text-[13px] text-[rgba(255,238,211,.86)]" htmlFor="email">Email</label>
@@ -323,7 +475,7 @@ export default function LampLogin({ onLoginSuccess }) {
                 <div className="flex justify-between items-center">
                   <label className="block text-left text-[13px] text-[rgba(255,238,211,.86)]" htmlFor="password">Password</label>
                   {!isSignUp && (
-                    <a className="text-[13px] text-[#e4b84f] hover:text-[#ffe29a] transition-colors" href="#">Lupa kata sandi?</a>
+                    <button type="button" onClick={() => keMode('lupa')} className="text-[13px] text-[#e4b84f] hover:text-[#ffe29a] transition-colors">Lupa kata sandi?</button>
                   )}
                 </div>
                 <div className="relative">
@@ -391,6 +543,7 @@ export default function LampLogin({ onLoginSuccess }) {
                 <p className="text-[11px] text-[rgba(255,236,207,.45)] mt-1.5">Untuk Windows · tidak perlu masuk dulu</p>
               </div>
             </form>
+            )}
           </div>
         </div>
       </div>

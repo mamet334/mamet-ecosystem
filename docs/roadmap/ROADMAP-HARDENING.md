@@ -17,7 +17,7 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 | K1 | RAG menemukan & menjawab benar | ⏳ | 1 |
 | K2 | RAG jujur saat gagal | ⏳ | 1 |
 | K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ (ulang sebelum rilis) | 1 |
-| K4 | Mametlite layak bagi orang awam | ⏳ | 2 |
+| K4 | Mametlite layak bagi orang awam | ⏳ (T19 kode ✅) | 2 (Supabase + uji email; isolasi dua akun) |
 | K5 | Keamanan | ⏳ | 3 |
 | K6 | Data aman & bisa dipulihkan | ✅ (ulang sebelum rilis) | 1 |
 | K7 | Stabil & sampai ke aplikasi terpasang | ⏳ | 2 |
@@ -40,7 +40,9 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 
 ### K4 — Mametlite layak bagi orang awam
 - ✅ RAG Mametlite live (U8a), tampilan HP (Item 125 M3).
-- ⏳ **T19** lupa kata sandi & ganti kata sandi ([temuan](./ROADMAP-TEMUAN-TERBUKA.md)).
+- ✅ **T19 kode** lupa & ganti kata sandi di Ecosystem + Mametlite ([log](../project-memory/changelog/2026-10-29-t19-lupa-ganti-kata-sandi.md)).
+- ⏳👤 Supabase: Redirect URLs (`mamet-ecosystem.vercel.app/**`, `mametlite.vercel.app/**`, `localhost:5173/**`) & **SMTP sendiri**
+  (email bawaan hanya ke anggota tim) → uji "Lupa kata sandi?" dengan email sungguhan.
 - ⏳ **Isolasi data antar-pengguna** diuji dengan dua akun (chat, dokumen, memori).
 
 ### K5 — Keamanan

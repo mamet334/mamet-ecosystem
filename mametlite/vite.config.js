@@ -27,6 +27,7 @@ export default defineConfig({
     tailwindcss(),
     react()
   ],
-  server: { headers: HEADER },
+  // shared/ (T19, 29 Okt 2026): aturan kata sandi bersama dengan Mamet Ecosystem (shared/kata_sandi.js).
+  server: { headers: HEADER, fs: { allow: ['.', '../shared'] } },
   preview: { headers: HEADER },
 })

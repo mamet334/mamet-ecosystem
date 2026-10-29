@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Upload, Send, User, Bot, Loader2, LogOut, Globe, BookOpen, Lock, Plus, MessageSquare, Trash2, Copy, Check, Settings, KeyRound, Menu, X } from 'lucide-react';
-import { supabase } from './lib/supabase';
+import { supabase, jenisTautanAwal } from './lib/supabase';
+import { FormLupaSandi, FormSandiBaru, FormGantiSandi } from './lib/KataSandi';
 import { callAgentSimple, parseSSEStream } from './lib/callAgentSimple';
 import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from './lib/documentTextExtractor';
 import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN, OCR_SERENTAK } from './lib/pdfOcrService';
@@ -89,6 +90,10 @@ function App() {
   // berpengaruh, karena bilah sisinya menetap di sana.
   const [laciTerbuka, setLaciTerbuka] = useState(false);
   const [galatMasuk, setGalatMasuk] = useState(null);
+  // T19 (29 Okt 2026): tautan pemulihan dari email langsung membuat sesi — tanpa penahan ini pengguna masuk tanpa
+  // pernah diminta kata sandi baru. Dibaca dari alamat awal (lib/supabase.js) DAN peristiwa PASSWORD_RECOVERY.
+  const [pemulihan, setPemulihan] = useState(jenisTautanAwal === 'pemulihan');
+  const [modeMasuk, setModeMasuk] = useState(jenisTautanAwal === 'kedaluwarsa' ? 'lupa' : 'masuk');
   const [kunciTerpasang, setKunciTerpasang] = useState(() => bacaKunci().length > 0);
   const [isianKunci, setIsianKunci] = useState('');
 
@@ -180,7 +185,8 @@ function App() {
       if (session) fetchDocuments(session.user.id);
       setAuthLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') setPemulihan(true);
       setSession(session);
       if (session) fetchDocuments(session.user.id);
     });
@@ -510,13 +516,20 @@ function App() {
 
   if (authLoading) return <div className="h-dvh bg-slate-900 flex items-center justify-center"><Loader2 className="w-8 h-8 text-emerald-500 animate-spin" /></div>;
 
-  if (!session) {
+  if (!session || pemulihan) {
     return (
       <div className="flex h-dvh bg-slate-900 text-slate-200 items-center justify-center">
         <div className="w-full max-w-md bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-xl">
           <div className="flex items-center justify-center gap-2 text-emerald-400 font-bold text-2xl mb-8">
             <Search className="w-8 h-8" /> Mamet Lite
           </div>
+          {/* T19 (29 Okt 2026): kata sandi baru (dari tautan email) · lupa kata sandi · masuk seperti dulu. */}
+          {pemulihan ? (
+            <FormSandiBaru adaSesi={Boolean(session)} onSelesai={() => setPemulihan(false)}
+              onMintaBaru={() => { setPemulihan(false); setModeMasuk('lupa'); }} />
+          ) : modeMasuk === 'lupa' ? (
+            <FormLupaSandi kedaluwarsa={jenisTautanAwal === 'kedaluwarsa'} onKembali={() => setModeMasuk('masuk')} />
+          ) : (
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-400 mb-1">Email ASN / Admin</label>
@@ -536,7 +549,12 @@ function App() {
             <button type="submit" disabled={authLoading} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 mt-4 transition-all disabled:opacity-60">
               {authLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />} Masuk ke Sistem
             </button>
+            <button type="button" onClick={() => { setModeMasuk('lupa'); setGalatMasuk(null); }}
+              className="w-full text-sm text-slate-400 hover:text-emerald-400 transition-colors">
+              Lupa kata sandi?
+            </button>
           </form>
+          )}
           <div className="mt-8 text-center text-xs text-slate-500">Created by <span className="font-semibold text-slate-400">mametdev@tm</span></div>
         </div>
       </div>
@@ -636,6 +654,8 @@ function App() {
                 {kunciTerpasang ? 'terpasang' : 'belum ada'}
               </span>
             </div>
+            {/* T19 (29 Okt 2026, ADR-0022 K4): ganti kata sandi akun yang sedang masuk. */}
+            <FormGantiSandi email={session.user.email} />
           </div>
         )}
 

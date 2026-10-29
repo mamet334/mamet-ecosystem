@@ -6,6 +6,7 @@ import TombolUnduhDesktop from './TombolUnduhDesktop';
 import { angka } from '../core/runtime/services/formatAngka.js';
 import BagianTampilan from './BagianTampilan';
 import BagianKonektor from './BagianKonektor';
+import GantiKataSandi from './GantiKataSandi';
 
 // Workspace yang bisa punya override preferensi tool sendiri (lihat WorkspaceManager.js)
 const TOGGLEABLE_WORKSPACES = [
@@ -834,6 +835,8 @@ export default function Settings() {
                   </button>
                 </div>
              </div>
+             {/* T19 (29 Okt 2026, ADR-0022 K4): ganti kata sandi untuk akun yang sedang masuk. */}
+             <GantiKataSandi />
           </section>
           )}
 

@@ -749,7 +749,7 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
   3. **Node laptop Owner** 24.15.0 → ≥ 24.22.1 — dilakukan Owner sendiri (unduhan & pemasangan).
 - **Status:** 🟡 jalur terbuka ditutup dan **terbit di 4.3.2**; Electron 45 di repo menunggu rilis 4.4.0; Node laptop Owner.
 
-## T19 — Fitur lupa kata sandi & ganti kata sandi belum ada (ketahuan saat Owner mencoba masuk akun lain, 2026-10-20)
+## T19 — ✅ (kode) Fitur lupa kata sandi & ganti kata sandi belum ada (ketahuan saat Owner mencoba masuk akun lain, 2026-10-20)
 
 - **Temuan:** di layar masuk `LampLogin.jsx` ada tulisan "Lupa kata sandi?", tetapi hanya tautan kosong (`href="#"`).
   Tak ada alur pemulihan (`resetPasswordForEmail`, peristiwa `PASSWORD_RECOVERY`, layar kata sandi baru) di Ecosystem
@@ -762,7 +762,7 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
   tautan pemulihan; (2) layar "buat kata sandi baru" saat tautan dibuka; (3) "ganti kata sandi" di Settings › Identitas.
   Perlu: izin menyentuh `LampLogin.jsx`; keputusan Ecosystem saja atau juga Mametlite; Site URL / Redirect URLs dan
   SMTP di Supabase.
-- **Status:** ⏳ ditunda ke fase hardening.
+- **Status:** ✅ **KODE SELESAI 29 Okt** (Ecosystem + Mametlite, izin Owner menyentuh LampLogin; [log](../project-memory/changelog/2026-10-29-t19-lupa-ganti-kata-sandi.md)). ⏳ Owner: Redirect URLs & SMTP di Supabase, lalu uji email sungguhan.
 
 ## T18 — 19 kelas Tailwind di komponen tak pernah dibuat — gaya yang tertulis tapi tak tampil (ketahuan saat pemeriksaan "error tersembunyi" Item 127, 2026-10-19)
 
