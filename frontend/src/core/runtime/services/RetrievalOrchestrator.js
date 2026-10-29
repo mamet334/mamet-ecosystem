@@ -262,7 +262,9 @@ export class RetrievalOrchestrator {
       } else if (sourceType === 'encyclopedia' || c.isStaticEncyclopedia) {
         header = `--- Konteks ${i + 1} [Sumber: Ensiklopedia Statis — ${c.source_url || 'Wikipedia'} (Informasi ensiklopedis statis, BUKAN berita real-time), akurasi tidak terverifikasi] ---`;
       } else if (sourceType === 'web') {
-        header = `--- Konteks ${i + 1} [Sumber: Berita Web — ${c.source_url || 'Web Search'}, akurasi tidak terverifikasi] ---`;
+        // Tanggal terbit ikut ke model (29 Okt 2026): tanpanya berita lama terbaca sebagai "terbaru" — WebComparisonService.
+        const terbit = c.terbit ? `terbit ${c.terbit}` : 'tanggal terbit tidak diketahui';
+        header = `--- Konteks ${i + 1} [Sumber: Berita Web — ${c.source_url || 'Web Search'}, ${terbit}, akurasi tidak terverifikasi] ---`;
       }
 
       return `${header}\n${c.content}`;

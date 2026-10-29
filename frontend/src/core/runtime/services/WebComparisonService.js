@@ -25,6 +25,21 @@ import { ringkasKueri } from '../../../../../shared/kueri_pencarian.js';
 export const WEB_SEARCH_TIMEOUT_MS = 8000; // 8 detik batas waktu standar
 export const WEB_SUFFICIENCY_SCORE = 0.7; // Skor kecukupan bila web comparison berhasil
 
+/**
+ * `<pubDate>` RSS ("Tue, 28 Oct 2026 07:15:00 GMT") → "2026-10-28" menurut jam lokal; null bila tak terbaca.
+ *
+ * Kenapa (ADR-0021 §7, 29 Okt 2026): dulu tanggal terbit dibuang di sini, sehingga model — yang tahu tanggal hari ini
+ * (`waktu_pengguna.ts`) — menerima berita berumur 6 tahun sebagai jawaban "terbaru" tanpa bisa membedakannya (uji live
+ * "terbaru OKU": 2 dari 8 hasil Bing berumur >2.100 hari). Mengubah KUERI tidak menolong: urut-tanggal, jendela 7 hari,
+ * dan "Oktober 2026" masing-masing merusak relevansi pada topik yang berbeda. Tanggal ditunjukkan; model yang menilai.
+ */
+function tanggalTerbit(pubDate) {
+  const t = Date.parse(pubDate || '');
+  if (!Number.isFinite(t)) return null;
+  const d = new Date(t);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export class WebComparisonService {
   constructor(serviceManager) {
     this.serviceManager = serviceManager;
@@ -283,6 +298,7 @@ export class WebComparisonService {
         source_type: item.source_type || 'web',
         isStaticEncyclopedia: Boolean(item.isStaticEncyclopedia),
         source_url: item.link || item.url || 'https://web-search-engine.net',
+        terbit: tanggalTerbit(item.tanggal),
         similarity: item.isStaticEncyclopedia ? 0.6 : 0.75,
         retrieved_at: timestamp
       }));
@@ -589,11 +605,14 @@ export class WebComparisonService {
         .replace(/\s+/g, ' ')
         .trim();
 
+      const tanggal = (itemXml.match(/<pubDate>([\s\S]*?)<\/pubDate>/i)?.[1] || '').trim();
+
       if (title && link) {
         results.push({
           title,
           link,
-          snippet: snippet || title
+          snippet: snippet || title,
+          tanggal
         });
       }
     }

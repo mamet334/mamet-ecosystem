@@ -28,7 +28,9 @@ cukup (atau sebaliknya), tanpa ada yang tahu.
 - Bundel `agent-process` (esbuild) dan `vite build` berhasil; nol karakter kendali.
 - **Suite penuh 127/127** (90,1 s).
 
-## Menunggu
+## Deploy — diperiksa di platform
 
-- Deploy `agent-process` oleh Owner (`shared/RetrievalStrategyService.js` berubah) → periksa isi paket di platform:
-  `RetrievalStrategyService.js` mengimpor `./kueri_pencarian.js`. Perilaku server tidak berubah.
+Owner men-deploy `agent-process` 29 Okt. API Supabase: versi **536 → 537**, ACTIVE, `verify_jwt` tetap `false`, 97
+berkas; 0 dari `frontend/`, 6 dari `shared/`. `shared/RetrievalStrategyService.js` mengimpor `./kueri_pencarian.js` dan
+`isTemporalOrRecencyQuery` memanggil `adalahKueriWaktu(query)`; kedua berkas **sama persis** dengan repo (setelah CRLF →
+LF); pola kata waktu hanya ada di **1** berkas paket. Perilaku server tidak berubah.

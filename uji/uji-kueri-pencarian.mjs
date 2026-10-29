@@ -20,7 +20,7 @@ const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const baca = (p) => readFileSync(join(AKAR, p), 'utf8');
 const { ringkasKueri } = await import(pathToFileURL(join(AKAR, 'shared/kueri_pencarian.js')).href);
 
-console.log('uji-kueri-pencarian v2');
+console.log('uji-kueri-pencarian v3');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 400)}` : ''}`);
@@ -169,6 +169,23 @@ for (const d of ['frontend/src', 'shared', 'supabase/functions']) {
   jelajahPola(join(AKAR, d));
 }
 cek(salinanPola.length === 1 && salinanPola[0] === 'shared/kueri_pencarian.js', 'pola kata waktu hanya di shared/kueri_pencarian.js (tak ada salinan)', salinanPola);
+
+// ── 7. Tanggal terbit sampai ke model (29 Okt) ────────────────────────────────────────────────────
+// Dulu `<pubDate>` dibuang di parser klien: model (yang tahu tanggal hari ini) menerima berita 6 tahun lalu sebagai
+// "terbaru" (live "terbaru OKU": 2 dari 8 hasil Bing > 2.100 hari). Yang diuji: parser → potongan → teks konteks model.
+console.log('\n-- Tanggal terbit hasil web --');
+const RSS = '<rss><channel><item><title>Banjir OKU</title><link>https://contoh.id/x</link><description>d</description>'
+  + '<pubDate>Tue, 28 Oct 2026 12:00:00 GMT</pubDate></item><item><title>Tanpa tanggal</title><link>https://contoh.id/y</link>'
+  + '<description>d</description></item></channel></rss>';
+const urai = new WebComparisonService({ has: () => false, get: () => null })._parseRssResults(RSS);
+cek(urai.length === 2 && urai[0].tanggal === 'Tue, 28 Oct 2026 12:00:00 GMT' && urai[1].tanggal === '', 'parser RSS klien menyimpan <pubDate>', urai);
+x = await cari('berita banjir OKU', () => urai);
+const [cA, cB] = x.r.chunks || [];
+cek(cA?.terbit === '2026-10-28' && cB?.terbit === null, 'potongan web membawa terbit (YYYY-MM-DD lokal); tak terbaca → null', x.r.chunks);
+const konteks = ro.formatAsContext(x.r.chunks || []);
+cek(konteks.includes('Berita Web — https://contoh.id/x, terbit 2026-10-28, akurasi tidak terverifikasi')
+  && konteks.includes('Berita Web — https://contoh.id/y, tanggal terbit tidak diketahui, akurasi'), 'teks konteks yang dibaca model memuat tanggal terbit (atau "tidak diketahui")', konteks);
+cek(x.dikirim.length === 1 && x.dikirim[0] === ringkasKueri('berita banjir OKU'), 'kueri TIDAK diubah oleh kata waktu (urut tanggal/jendela 7 hari/bulan diukur merusak relevansi)', x.dikirim);
 
 console.log(gagal === 0 ? '\nSEMUA LULUS' : `\n${gagal} GAGAL`);
 process.exit(gagal === 0 ? 0 : 1);
