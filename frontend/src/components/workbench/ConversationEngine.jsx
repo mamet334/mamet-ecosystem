@@ -26,6 +26,7 @@ import { useKeadaanTersimpan, useRefTersimpan } from '../../core/runtime/hooks/u
 import { penyimpanKeadaan } from '../../core/runtime/PenyimpanKeadaan.js';
 import TeksMarkdown, { KotakKode } from './TeksMarkdown.jsx';
 import { jejakUntukMonitor } from '../widgets/jejakMonitor.js';
+import { langkahPenting } from './langkahPenting.js';
 
 // =============================================
 // HELPER: Parse thinking/answer dari respons AI
@@ -2074,6 +2075,14 @@ export default function ConversationEngine({ sessionId }) {
                         Riwayat: tanpa kotak (19 Okt, gambar rujukan) → bingkai hampir hitam 80% (20 Okt pagi) → ini. */}
                     <div className={`relative group ${m.role === 'user' ? 'max-w-[85%] lg:max-w-[75%]' : 'w-full'} ${m.role === 'user' ? 'rounded-2xl px-4 py-3 bg-primary-container/20 border border-primary/30 min-w-0 [overflow-wrap:anywhere]' : 'glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant overflow-hidden min-w-0'}`}>
                       <div className="text-body-base leading-relaxed">
+                        {/* Langkah penting — kueri yang dicari & rencana Coordinator, baris tipis tanpa lipat di atas blok
+                            Berpikir (ADR-0021 §2.3; Varian B pilihan Owner 29 Okt 2026, langkahPenting.js). Dulu gelembung tak
+                            menggambar langkah proses sama sekali; sisanya tetap di panel Monitor. */}
+                        {m.role !== 'user' && langkahPenting(m.steps).length > 0 && (
+                          <div className="mb-3 text-body-sm text-on-surface-variant leading-relaxed [overflow-wrap:anywhere]">
+                            {langkahPenting(m.steps).map((baris, i) => <div key={i}>{baris}</div>)}
+                          </div>
+                        )}
                         {/* Nalar AI — blok lipat di atas jawaban (gaya DeepSeek), terbuka secara bawaan demi transparansi */}
                         {parsed.thinking && (
                           <details open className="mb-3 group/nalar">

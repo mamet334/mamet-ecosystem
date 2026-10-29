@@ -344,7 +344,8 @@ pembersihan kueri pencarian (keduanya kode), diukur dengan mode bayangan SQL.
       mutasi 7/7; **ter-deploy v538** ([log](../project-memory/changelog/2026-10-29-kata-pengisi-dan-rss-bersama.md)).
       **✅ 29 Okt** rencana Coordinator (tugas) & kata kunci researcher tampil; langkah klien sampai ke panel Monitor —
       ketahuan gelembung chat tak pernah menggambar langkah proses ([log](../project-memory/changelog/2026-10-29-langkah-terlihat-monitor.md));
-      **ter-deploy v539**. Sisa: tampil di gelembung chat (pratinjau dulu).
+      **ter-deploy v539**. **✅ 29 Okt** baris "🔍 Dicari"/"📋 Rencana" tampil di gelembung jawaban (Varian B pilihan
+      Owner; [log](../project-memory/changelog/2026-10-29-langkah-di-gelembung.md)) — sisa: dilihat di chat sungguhan.
 - [x] ~~**Kegagalan router berhenti jatuh ke jalur mahal** — tentukan default yang aman saat
       klasifikasi gagal (temuan 4)~~ — **KODE SELESAI 28 Okt** ([log](../project-memory/changelog/2026-10-28-router-jalur-aman.md)):
       riwayat 6/6 kegagalan router diikuti Coordinator yang juga gagal → kini jalur aman (jawab langsung); "memutuskan"

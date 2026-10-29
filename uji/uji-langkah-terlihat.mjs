@@ -49,7 +49,7 @@ const bundel = async (masuk, nama) => {
   return import(pathToFileURL(join(dir, nama)).href);
 };
 
-console.log('uji-langkah-terlihat v1');
+console.log('uji-langkah-terlihat v2');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 400)}` : ''}`);
@@ -106,6 +106,29 @@ cek(/preInjectedData\.logs \|\| preInjectedData/.test(W) && /activeTrace\.proces
 const CE = baca('frontend/src/components/workbench/ConversationEngine.jsx');
 cek(/const jejak = jejakUntukMonitor\(steps, jsonMetadata\);[\s\S]{0,120}injectWidgetData\('widget:maef-monitor', jejak\)/.test(CE)
   && !/logs: jsonMetadata/.test(CE), 'ConversationEngine mengirim jejakUntukMonitor(steps, jsonMetadata) — bukan jsonMetadata mentah');
+
+// ── 5. Gelembung jawaban: baris penting tampil langsung (Varian B, pilihan Owner 29 Okt) ─────────
+const { langkahPenting } = await import(pathToFileURL(join(AKAR, 'frontend/src/components/workbench/langkahPenting.js')).href);
+const LANGKAH = [KLIEN, '🔍 Menganalisis permintaan user...', '🤖 Kepala Agent (Coordinator): Merencanakan strategi...', SERVER,
+  '🚀 Eksekusi [Tier 1]: Sub-Agent "researcher"', '🔍 Dicari (berita, researcher): "x" → Bing News', '✅ [Tier 1] "researcher" selesai'];
+const penting = langkahPenting(LANGKAH);
+cek(penting.join('|') === `${KLIEN}|${SERVER}|🔍 Dicari (berita, researcher): "x" → Bing News`,
+  'hanya "🔍 Dicari" & "📋 Rencana" — "🔍 Menganalisis…" dan langkah teknis lain tetap di panel Monitor', penting);
+cek(langkahPenting(undefined).length === 0 && langkahPenting([null, 3, '📋 Rencana: 1']).length === 1, 'pesan tanpa langkah / isi bukan teks → aman');
+const iLangkah = CE.indexOf("{m.role !== 'user' && langkahPenting(m.steps).length > 0 && (");
+const iNalar = CE.indexOf('{parsed.thinking && (');
+cek(iLangkah > 0 && iNalar > iLangkah && iNalar - iLangkah < 900, 'ConversationEngine menggambar baris penting tepat DI ATAS blok Berpikir, hanya untuk jawaban (bukan pesan pengguna)');
+const kelasLangkah = (CE.slice(iLangkah, iNalar).match(/<div className="([^"]+)">/) || [])[1] || '';
+cek(kelasLangkah === 'mb-3 text-body-sm text-on-surface-variant leading-relaxed [overflow-wrap:anywhere]', 'gaya baris tipis = gaya isi blok Berpikir (tanpa lipat, tanpa garis)', kelasLangkah);
+// Kelasnya DIKOMPILASI dengan Tailwind sungguhan — kelas di luar skala dibuang diam-diam (pelajaran 19 Okt).
+const { createRequire } = await import('node:module');
+const reqFE = createRequire(join(AKAR, 'frontend', 'package.json'));
+const postcss = reqFE('postcss'), tailwind = reqFE('tailwindcss'), loadConfig = reqFE('tailwindcss/loadConfig');
+const escTW = reqFE('tailwindcss/lib/util/escapeClassName').default;
+const { css: cssLangkah } = await postcss([tailwind({ ...loadConfig(join(AKAR, 'frontend', 'tailwind.config.js')),
+  content: [{ raw: `<div className="${kelasLangkah}">`, extension: 'jsx' }] })]).process('@tailwind utilities;', { from: undefined });
+const takDibuat = kelasLangkah.split(/\s+/).filter((k) => k && !cssLangkah.includes('.' + escTW(k) + ' ') && !cssLangkah.includes('.' + escTW(k) + '{'));
+cek(kelasLangkah && takDibuat.length === 0, `${kelasLangkah.split(/\s+/).length} kelas baris langkah benar-benar dibuat Tailwind`, takDibuat);
 
 console.log(gagal === 0 ? '\nSEMUA LULUS' : `\n${gagal} GAGAL`);
 process.exit(gagal === 0 ? 0 : 1);
