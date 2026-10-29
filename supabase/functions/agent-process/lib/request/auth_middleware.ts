@@ -13,7 +13,7 @@ export async function handleAuth(req: Request, supabaseUrl: string, supabaseAnon
   const authSupabase = createClient(supabaseUrl, supabaseAnonKey);
   const { data: { user }, error: authError } = await authSupabase.auth.getUser(token);
 
-  console.log('[AuthMiddleware] User dari Supabase:', JSON.stringify(user));
+  // K5 (30 Okt 2026): hanya ID. Dulu seluruh objek pengguna (email, metadata akun) ditulis ke log di setiap permintaan.
   console.log('[AuthMiddleware] User ID:', user?.id);
 
   if (authError || !user || !user.id) {

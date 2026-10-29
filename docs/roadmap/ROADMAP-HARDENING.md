@@ -18,7 +18,7 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 | K2 | RAG jujur saat gagal | ⏳ | 1 |
 | K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ (ulang sebelum rilis) | 1 |
 | K4 | Mametlite layak bagi orang awam | ⏳ (T19 ✅ live, isolasi ✅ kode) | 1 (uji nyata dua akun) |
-| K5 | Keamanan | ⏳ | 5 |
+| K5 | Keamanan | ⏳ | 3 |
 | K6 | Data aman & bisa dipulihkan | ✅ (ulang sebelum rilis) | 1 |
 | K7 | Stabil & sampai ke aplikasi terpasang | ⏳ | 2 |
 
@@ -54,8 +54,8 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
   `ai-agent-project-2a9h.vercel.app/*` menunjuk deployment Vercel yang sudah tidak ada — diganti/dihapus Owner.
 - ⏳ **Hak bawaan 39 tabel** bagi `anon`/`authenticated` + fungsi yatim (Item 125 Fase C — [roadmap](./ROADMAP-SIAP-PENGGUNA.md)).
 - ⏳ **T1** daftar izin sub-agent di server.
-- ⏳ **`proxy_fetch` terbuka tanpa token** (terbukti live 29 Okt; pemanggil hanya web Tier 3 yang bertoken — bukan crawler).
-- ⏳ **Log autentikasi menulis seluruh objek pengguna** (email & metadata) — cukup ID.
+- ✅ **`proxy_fetch` wajib token + hanya alamat publik; log autentikasi hanya ID** — ter-deploy v540 30 Okt, live tanpa token → 401
+  ([log](../project-memory/changelog/2026-10-30-k5-proxy-fetch-log-email.md)).
 - ⏳👤 **Ganti kunci API** yang pernah bocor (T7) & token Apify (T1).
 
 ### K6 — Data aman & bisa dipulihkan

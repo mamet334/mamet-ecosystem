@@ -7,6 +7,7 @@ import { pingHeartbeat } from './lib/adapters/heartbeat.ts';
 import { handleEmbedRequest } from './lib/request/embed_endpoint.ts';
 import { handleJudgeConflictRequest } from './lib/request/judge_endpoint.ts';
 import { handlePadatkanRequest } from './lib/request/padatkan_endpoint.ts';
+import { handleProxyFetchRequest } from './lib/request/proxy_fetch_endpoint.ts';
 
 // PRIORITY 2: ENVIRONMENT VALIDATION (STARTUP)
 const REQUIRED_ENV_VARS = [
@@ -112,47 +113,11 @@ serve(async (req) => {
         // Sama alasannya: di luar penelan galat, dan memeriksa JWT sendiri.
         const padatkanResponse = await handlePadatkanRequest(req, parsedBody, corsHeaders);
         if (padatkanResponse) return padatkanResponse;
-      }
 
-      try {
-        const body = parsedBody || {};
-        if (body?.action === 'proxy_fetch' && body?.url) {
-          const targetUrl = body.url;
-          console.log(`[ProxyFetch] Server-side fetching external URL: ${targetUrl}`);
-          try {
-            const fetchRes = await fetch(targetUrl, {
-              signal: AbortSignal.timeout(12000),
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-              }
-            });
-            const content = await fetchRes.text();
-            const isOk = fetchRes.ok || (content.includes('<item>') || content.includes('<rss') || content.includes('<feed'));
-            console.log(`[ProxyFetch] Fetch done: status=${fetchRes.status}, length=${content.length}, isOk=${isOk}`);
-            return new Response(JSON.stringify({
-              ok: isOk,
-              status: isOk ? 200 : fetchRes.status,
-              data: content
-            }), {
-              status: 200,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
-
-          } catch (fetchErr: any) {
-            console.error('[ProxyFetch] Error:', fetchErr.message);
-            return new Response(JSON.stringify({
-              ok: false,
-              status: 500,
-              error: fetchErr.message
-            }), {
-              status: 200,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
-          }
-
-        }
-      } catch (_) {
-        // Bukan JSON body atau bukan proxy_fetch, lanjutkan ke pipeline normal
+        // PROXY FETCH (web Tier 3 versi web). K5 30 Okt 2026: dulu di sini, SEBELUM pemeriksaan token apa pun —
+        // proksi terbuka untuk seluruh internet. Kini memeriksa JWT sendiri + hanya alamat http/https publik.
+        const proxyResponse = await handleProxyFetchRequest(req, parsedBody, corsHeaders);
+        if (proxyResponse) return proxyResponse;
       }
     }
 
