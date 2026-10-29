@@ -286,8 +286,11 @@ tidak dikerjakan dua kali.
       **Catatan ukur Gerbang 1:** permintaan gagal tidak masuk `cost_ledger`, hanya `agent_logs` (`PROVIDER_ERROR`) —
       cakupan pencatatan dihitung dari keduanya. Per 27 Okt: 8/8 baris bertanda, tetapi baru ±6 permintaan berhasil
       sejak 18 Okt (saldo) — gerbang belum bisa dinilai.
-- [ ] Retensi otomatis dan ringkasan agregat — **termasuk retrofit untuk `agent_logs` yang sudah
-      15.030 baris**
+- [x] ~~Retensi otomatis dan ringkasan agregat — termasuk retrofit untuk `agent_logs`~~ — **✅ 29 Okt** (keputusan
+      Owner: 90 hari, diringkas dulu): `agent_logs_ringkasan` (hitungan saja) + `ringkas_dan_hapus_agent_logs()` + jadwal
+      harian; retrofit 14.257 baris (89% badai Juni) diringkas jadi 30 kelompok; DB 69 → 59 MB
+      ([log](../project-memory/changelog/2026-10-29-retensi-agent-logs.md)). Tabel log lain (`verification_audit_logs`,
+      `evidence_audit_logs`, `memory_audit_logs`) belum diberi retensi.
 - [ ] Kegagalan telemetri dihitung dan dilaporkan ke SystemGovernorService
 - [x] ~~Segarkan graphify~~ — **✅ SELESAI 18 Okt** dengan `graphify . --update --code-only`
       (nol kunci API, nol token). Terbukti dengan angka, bukan dengan "sudah dijalankan": node mati
