@@ -45,6 +45,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 
 | Dokumen | Status | Cakupan |
 |---|---|---|
+| [`ROADMAP-HARDENING.md`](./ROADMAP-HARDENING.md) | 📝 **ADR-0022** | fase hardening: K1–K7 garis dasar, daftar kerja, daftar Parkir |
 | [`ROADMAP-KONEKTOR-MCP.md`](./ROADMAP-KONEKTOR-MCP.md) | 📋 **Item 129** (terdaftar 22 Okt) | Mamet Ecosystem sebagai klien MCP — alat dari server MCP luar untuk Engineer/Assistant; batas "tetap di laptop vs keluar" |
 | [`ROADMAP-TAMPILAN-MENU-GAME.md`](./ROADMAP-TAMPILAN-MENU-GAME.md) | ✅ **Item 127** (sisa dipindah ke Item 128) | tampilan menu game berlatar ruangan `LampLogin` + satu halaman pada satu waktu + kerangka standar aplikasi asisten; desain sendiri, **tidak** memakai Face Mamet; layar masuk tidak diubah |
 | [`Roadmap Data Flywheel — Mamet Ecosystem.md`](./Roadmap%20Data%20Flywheel%20%E2%80%94%20Mamet%20Ecosystem.md) | 📝 **Item 126** (Revisi 1, 18 Okt) | sistem yang makin pintar (bukan modelnya): catat → nilai → distilasi → Owner Gate → ukur. **Revisi 1 membalik tuasnya**: biaya didominasi pilihan model Owner (74,3%), bukan routing (2,6%) |

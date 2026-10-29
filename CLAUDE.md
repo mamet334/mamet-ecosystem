@@ -25,6 +25,9 @@ Titik masuk status pekerjaan: `docs/roadmap/INDEX-ROADMAP.md`.
    bundel `supabase/functions/agent-process/index.ts` dengan esbuild untuk memastikan tidak ada galat sintaks.
 4. Klaim tentang platform (fungsi ter-deploy, rilis terbit, fungsi terhapus) dibuktikan **di platformnya**, bukan dari
    repo.
+5. **Fase hardening (ADR-0022):** temuan baru yang tidak menyentuh K1–K7, keamanan, atau kehilangan data masuk
+   **Parkir** di `docs/roadmap/ROADMAP-HARDENING.md` — bukan utang, jangan ditawarkan sebagai "sisa". Laporan ditutup
+   dengan **status K1–K7**, bukan "sisa roadmap".
 
 ## Struktur kode
 
