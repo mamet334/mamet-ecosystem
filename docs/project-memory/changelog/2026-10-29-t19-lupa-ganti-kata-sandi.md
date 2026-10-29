@@ -39,6 +39,16 @@ Mametlite dipakai orang awam — K4.
 - `uji-catch-diam` hijau (catch di `GantiKataSandi` mencatat ke konsol), suite **130/130**; `vite build` kedua aplikasi
   berhasil; nol karakter kendali.
 
+## Deploy web — pelajaran pengaturan Vercel
+
+- `mamet-ecosystem.vercel.app` (commit `c2d47d3`): **READY**.
+- `mametlite.vercel.app`: build **ERROR** — `Could not resolve '../../../shared/kata_sandi.js'`. Proyek Vercel `mametlite`
+  (Root Directory `mametlite`) **tidak** menyertakan berkas di luar folder akar; kesimpulan "aman" sebelumnya diambil dari
+  proyek **lain** (`mamet-ecosystem`) yang pengaturannya berbeda — seharusnya proyek yang bersangkutan sendiri yang
+  diperiksa. Produksi tak terganggu (Vercel tidak menukar produksi dengan build gagal; tetap `596c094`). Redeploy
+  deployment yang sama juga gagal. Owner menyalakan *Settings → Build and Deployment → Root Directory → "Include files
+  outside the root directory in the Build Step"* (29 Okt); deploy baru dipicu commit ini.
+
 ## Menunggu Owner
 
 - **Supabase Dashboard:** Authentication → URL Configuration → Redirect URLs: `https://mamet-ecosystem.vercel.app/**`,
