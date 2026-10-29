@@ -30,6 +30,12 @@ export const VERSI_RIWAYAT = 'riwayat-lokal v1 (2026-10-08)';
 
 export const KUNCI_RIWAYAT = 'mametlite_conversations';
 
+/**
+ * Kunci riwayat milik SATU akun (K4 ADR-0022, 29 Okt 2026): `mametlite_conversations:<id-akun>`. Tanpa akun = kunci lama
+ * bersama (hanya untuk uji lama & pemindahan data lama — lihat `dataPerAkun.js`).
+ */
+export const kunciRiwayat = (pengguna) => (pengguna ? `${KUNCI_RIWAYAT}:${pengguna}` : KUNCI_RIWAYAT);
+
 const SAPAAN =
   'Halo! Saya **Mamet Lite**. Anda bisa mencari data di database internal (RAG), atau mengaktifkan fitur pencarian Web di bawah.';
 
@@ -74,7 +80,7 @@ export function sahkanRiwayat(nilai) {
  *   simpanannya ada tetapi tidak bisa dipakai. `null` berarti wajar (kosong, atau terbaca utuh) —
  *   dan "kosong" tidak pernah dilaporkan sebagai masalah.
  */
-export function bacaRiwayat(simpanan) {
+export function bacaRiwayat(simpanan, pengguna) {
   const s = ambilSimpanan(simpanan);
   if (!s) {
     return {
@@ -86,7 +92,7 @@ export function bacaRiwayat(simpanan) {
 
   let mentah;
   try {
-    mentah = s.getItem(KUNCI_RIWAYAT);
+    mentah = s.getItem(kunciRiwayat(pengguna));
   } catch {
     return {
       riwayat: riwayatBaru(),
@@ -127,12 +133,12 @@ export function bacaRiwayat(simpanan) {
  * @returns {{ok: boolean, masalah: string|null}} Kuota penuh dibedakan dari kegagalan lain, karena
  *   hanya kuota yang punya tindakan jelas bagi pengguna: hapus percakapan lama.
  */
-export function simpanRiwayat(riwayat, simpanan) {
+export function simpanRiwayat(riwayat, simpanan, pengguna) {
   const s = ambilSimpanan(simpanan);
   if (!s) return { ok: false, masalah: null }; // sudah diberitahukan saat membaca; jangan ulangi tiap simpan
 
   try {
-    s.setItem(KUNCI_RIWAYAT, JSON.stringify(riwayat));
+    s.setItem(kunciRiwayat(pengguna), JSON.stringify(riwayat));
     return { ok: true, masalah: null };
   } catch (e) {
     const penuh =
@@ -149,11 +155,11 @@ export function simpanRiwayat(riwayat, simpanan) {
 }
 
 /** Hapus HANYA kunci riwayat — bukan kunci lain (mis. kunci OpenRouter pengguna). */
-export function hapusRiwayat(simpanan) {
+export function hapusRiwayat(simpanan, pengguna) {
   const s = ambilSimpanan(simpanan);
   if (!s) return false;
   try {
-    s.removeItem(KUNCI_RIWAYAT);
+    s.removeItem(kunciRiwayat(pengguna));
     return true;
   } catch {
     return false;

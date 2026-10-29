@@ -17,8 +17,8 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 | K1 | RAG menemukan & menjawab benar | ⏳ | 1 |
 | K2 | RAG jujur saat gagal | ⏳ | 1 |
 | K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ (ulang sebelum rilis) | 1 |
-| K4 | Mametlite layak bagi orang awam | ⏳ (T19 ✅ live) | 1 (isolasi dua akun) |
-| K5 | Keamanan | ⏳ | 3 |
+| K4 | Mametlite layak bagi orang awam | ⏳ (T19 ✅ live, isolasi ✅ kode) | 1 (uji nyata dua akun) |
+| K5 | Keamanan | ⏳ | 5 |
 | K6 | Data aman & bisa dipulihkan | ✅ (ulang sebelum rilis) | 1 |
 | K7 | Stabil & sampai ke aplikasi terpasang | ⏳ | 2 |
 
@@ -44,7 +44,9 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - ✅ **T19 terbukti live 29 Okt** (Mametlite: email → tautan → kata sandi baru `PUT /user` 200 → masuk di HP & laptop; Site URL &
   Redirect URLs dibereskan Owner). Belum diuji live: ganti kata sandi bagi yang sudah masuk. Pertimbangkan SMTP sendiri bila
   pengguna Mametlite bertambah (batas kirim email bawaan).
-- ⏳ **Isolasi data antar-pengguna** diuji dengan dua akun (chat, dokumen, memori).
+- ✅ **Isolasi data antar-akun diuji 29 Okt** ([log](../project-memory/changelog/2026-10-29-k4-isolasi-dua-akun.md)): database (RLS baca/tulis,
+  fungsi SECURITY DEFINER) ✅, server (`agent-process`, `rag-process`) ✅; **peramban Mametlite bocor** (riwayat & kunci
+  OpenRouter satu kunci untuk semua akun) → **diperbaiki** (data per akun, pilihan a). ⏳ uji nyata Owner dua akun di satu peramban.
 
 ### K5 — Keamanan
 - ✅ RLS "baca semua" ditutup (Item 93); rahasia tak masuk `agent_logs` (T7).
@@ -52,6 +54,8 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
   `ai-agent-project-2a9h.vercel.app/*` menunjuk deployment Vercel yang sudah tidak ada — diganti/dihapus Owner.
 - ⏳ **Hak bawaan 39 tabel** bagi `anon`/`authenticated` + fungsi yatim (Item 125 Fase C — [roadmap](./ROADMAP-SIAP-PENGGUNA.md)).
 - ⏳ **T1** daftar izin sub-agent di server.
+- ⏳ **`proxy_fetch` terbuka tanpa token** (terbukti live 29 Okt; pemanggil hanya web Tier 3 yang bertoken — bukan crawler).
+- ⏳ **Log autentikasi menulis seluruh objek pengguna** (email & metadata) — cukup ID.
 - ⏳👤 **Ganti kunci API** yang pernah bocor (T7) & token Apify (T1).
 
 ### K6 — Data aman & bisa dipulihkan

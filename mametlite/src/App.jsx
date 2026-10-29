@@ -8,6 +8,7 @@ import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN
 import { pisahLabel, warnaLabel, teksSalinan } from './lib/labelRamah';
 import TeksKaya from './lib/TeksKaya';
 import { bacaRiwayat, simpanRiwayat, riwayatBaru } from './lib/riwayatLokal';
+import { bacaKunciByok, kunciByok, pindahkanDataLama } from './lib/dataPerAkun';
 import { pesanUntukPengguna, pesanGalatMasuk } from './lib/pesanGalat';
 
 // Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
@@ -16,8 +17,8 @@ const POTONGAN_PERLU_KONFIRMASI = 150; // ±105 ribu huruf ≈ $0,006 (potongan 
 // Kunci OpenRouter pengguna. Mametlite MEMBACA localStorage 'x-byok-openrouter' di tiga tempat (chat,
 // unggah, OCR) tetapi dulu tak punya tempat mengisinya — pesan galatnya menyuruh "buka Pengaturan"
 // yang tidak ada, jadi chat & unggah selalu ditolak server dengan NO_API_KEY (U8 Item 90, 2026-09-21).
-const KUNCI_OPENROUTER = 'x-byok-openrouter';
-const bacaKunci = () => (localStorage.getItem(KUNCI_OPENROUTER) || '').trim();
+// K4 (29 Okt 2026): kunci & riwayat kini PER AKUN (lib/dataPerAkun.js) — dulu satu kunci untuk semua akun, jadi di
+// komputer bersama orang kedua memakai kunci & melihat riwayat orang pertama.
 
 // Teks model dirender oleh `lib/TeksKaya.jsx` sebagai elemen React — BUKAN string HTML yang
 // disuntikkan. Sampai 7 Okt 2026 berkas ini membangun HTML lalu memakai `dangerouslySetInnerHTML`,
@@ -94,7 +95,7 @@ function App() {
   // pernah diminta kata sandi baru. Dibaca dari alamat awal (lib/supabase.js) DAN peristiwa PASSWORD_RECOVERY.
   const [pemulihan, setPemulihan] = useState(jenisTautanAwal === 'pemulihan');
   const [modeMasuk, setModeMasuk] = useState(jenisTautanAwal === 'kedaluwarsa' ? 'lupa' : 'masuk');
-  const [kunciTerpasang, setKunciTerpasang] = useState(() => bacaKunci().length > 0);
+  const [kunciTerpasang, setKunciTerpasang] = useState(false);
   const [isianKunci, setIsianKunci] = useState('');
 
   // Riwayat chat — satu pintu di `lib/riwayatLokal.js` (M2, 2026-10-08).
@@ -103,10 +104,29 @@ function App() {
   // satu nilai rusak = layar putih, dan karena nilai buruknya tetap tersimpan, layar putih itu kembali
   // setiap muat ulang. Sekarang pembacaannya selalu memulangkan riwayat yang sah DAN menyebutkan
   // masalahnya bila ada — "tidak bisa dibaca" tidak boleh terlihat sama dengan "tidak ada".
-  const [awalRiwayat] = useState(bacaRiwayat);
-  const [conversations, setConversations] = useState(awalRiwayat.riwayat);
-  const [masalahRiwayat, setMasalahRiwayat] = useState(awalRiwayat.masalah);
-  const [currentConvId, setCurrentConvId] = useState(() => awalRiwayat.riwayat[0]?.id || 1);
+  //
+  // K4 (29 Okt 2026): riwayat dimuat PER AKUN saat akun diketahui/berganti (efek di bawah), bukan sekali saat halaman
+  // dibuka. `pemilikRiwayatRef` = akun pemilik riwayat yang sedang tampil; penyimpanan menulis HANYA ke kunci pemilik
+  // itu — tanpanya, di sela pergantian akun, riwayat akun A bisa tertulis ke kunci akun B.
+  const [conversations, setConversations] = useState(riwayatBaru);
+  const [masalahRiwayat, setMasalahRiwayat] = useState(null);
+  const [currentConvId, setCurrentConvId] = useState(1);
+  const pemilikRiwayatRef = useRef(null);
+  const idAkun = session?.user?.id ?? null;
+  const bacaKunci = () => bacaKunciByok('openrouter', idAkun);
+
+  useEffect(() => {
+    if (!idAkun) {
+      pemilikRiwayatRef.current = null;
+      const baru = riwayatBaru();
+      setConversations(baru); setCurrentConvId(baru[0].id); setMasalahRiwayat(null); setKunciTerpasang(false);
+      return;
+    }
+    const { riwayat, masalah } = bacaRiwayat(undefined, idAkun);
+    pemilikRiwayatRef.current = idAkun;
+    setConversations(riwayat); setCurrentConvId(riwayat[0]?.id || 1); setMasalahRiwayat(masalah);
+    setKunciTerpasang(bacaKunciByok('openrouter', idAkun).length > 0);
+  }, [idAkun]);
 
   const currentConversation = conversations.find(c => c.id === currentConvId) || conversations[0];
   const messages = currentConversation?.messages || [];
@@ -115,8 +135,10 @@ function App() {
   // dipanggil per potongan arus), jadi satu jawaban RAG panjang menulis ratusan kali dan mendekati
   // batas ±5 MB dengan cepat. Sekarang penulisannya menunggu arusnya tenang 500 ms.
   useEffect(() => {
+    const pemilik = pemilikRiwayatRef.current;
+    if (!pemilik) return;
     const tunda = setTimeout(() => {
-      const { masalah } = simpanRiwayat(conversations);
+      const { masalah } = simpanRiwayat(conversations, undefined, pemilik);
       if (masalah) setMasalahRiwayat(masalah);
     }, 500);
     return () => clearTimeout(tunda);
@@ -126,7 +148,8 @@ function App() {
   // disimpan sekali lagi saat halaman ditinggalkan. `pagehide` dipakai, bukan `beforeunload`: di
   // Safari iOS `beforeunload` sering tidak menyala sama sekali, dan penggunanya ada di HP.
   useEffect(() => {
-    const simpanSekarang = () => simpanRiwayat(conversations);
+    const pemilik = pemilikRiwayatRef.current;
+    const simpanSekarang = () => { if (pemilik) simpanRiwayat(conversations, undefined, pemilik); };
     window.addEventListener('pagehide', simpanSekarang);
     return () => window.removeEventListener('pagehide', simpanSekarang);
   }, [conversations]);
@@ -181,6 +204,9 @@ function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
+      // K4 (29 Okt 2026, pilihan a Owner): data kunci-bersama lama → akun yang sedang masuk; tanpa sesi → dihapus.
+      // SEBELUM setSession, supaya efek pemuat riwayat langsung membaca kunci per akun yang sudah terisi.
+      pindahkanDataLama(undefined, session?.user?.id ?? null);
       setSession(session);
       if (session) fetchDocuments(session.user.id);
       setAuthLoading(false);
@@ -257,7 +283,7 @@ function App() {
     // Periksa kunci SEBELUM apa pun dihapus: alur "timpa dokumen" di bawah menghapus
     // dokumen lama lebih dulu, jadi unggahan yang pasti gagal karena tanpa kunci akan
     // ikut menghilangkan dokumen lama.
-    if (!(localStorage.getItem('x-byok-openrouter') || '').trim()) {
+    if (!bacaKunci()) {
       alert('Unggah dokumen ke RAG memakai kunci OpenRouter Anda sendiri. Pasang kunci di Pengaturan (ikon gerigi di kiri atas), lalu coba lagi.');
       setPanelPengaturan(true);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -295,7 +321,7 @@ function App() {
       // sama seperti gerbang konfirmasi Tier 3 Web Search). Kunci OpenRouter sudah dipastikan ada
       // di pemeriksaan awal fungsi ini.
       if (hasil.halamanBertabelTerdeteksi?.length) {
-        const kunciOcr = (localStorage.getItem('x-byok-openrouter') || '').replace(/[^\x00-\x7F]/g, '').trim();
+        const kunciOcr = bacaKunci().replace(/[^\x00-\x7F]/g, '');
         const jumlah = hasil.halamanBertabelTerdeteksi.length;
         const lanjutOcr = window.confirm(
           `"${file.name}": ${jumlah} halaman tampak berupa tabel yang mungkin rusak dibaca pdf.js.\n\n` +
@@ -345,7 +371,7 @@ function App() {
 
       // Embedding dibayar pengguna dengan kunci OpenRouter-nya sendiri (Item 63) — kunci
       // yang sama dengan yang dipakai chat.
-      const openRouterKey = (localStorage.getItem('x-byok-openrouter') || '').replace(/[^\x00-\x7F]/g, '').trim();
+      const openRouterKey = bacaKunci().replace(/[^\x00-\x7F]/g, '');
       const { error } = await supabase.functions.invoke('rag-process', {
         body: { title: file.name, text: hasil.teks, userId: session.user.id },
         headers: openRouterKey ? { 'x-byok-openrouter': openRouterKey } : {}
@@ -386,7 +412,8 @@ function App() {
     // tak terlihat, dan header HTTP menolaknya (jalur yang sama dipakai unggah & OCR).
     const bersih = isianKunci.replace(/[^\x00-\x7F]/g, '').trim();
     if (!bersih) { alert('Kunci masih kosong.'); return; }
-    localStorage.setItem(KUNCI_OPENROUTER, bersih);
+    if (!idAkun) return;
+    localStorage.setItem(kunciByok('openrouter', idAkun), bersih);
     setKunciTerpasang(true);
     setIsianKunci('');
     setPanelPengaturan(false);
@@ -394,7 +421,7 @@ function App() {
 
   const hapusKunci = () => {
     if (!confirm('Hapus kunci OpenRouter dari perangkat ini? Chat dan unggah dokumen akan berhenti bekerja sampai kunci dipasang lagi.')) return;
-    localStorage.removeItem(KUNCI_OPENROUTER);
+    if (idAkun) localStorage.removeItem(kunciByok('openrouter', idAkun));
     setKunciTerpasang(false);
   };
 
@@ -444,10 +471,11 @@ function App() {
 
       // Kumpulkan BYOK keys dari localStorage
       const byokKeys = {
-        'x-byok-gemini': localStorage.getItem('x-byok-gemini') || '',
-        'x-byok-groq': localStorage.getItem('x-byok-groq') || '',
-        'x-byok-openai': localStorage.getItem('x-byok-openai') || '',
-        'x-byok-openrouter': localStorage.getItem('x-byok-openrouter') || ''
+        // K4: kunci milik AKUN INI saja (lib/dataPerAkun.js), bukan kunci bersama peramban.
+        'x-byok-gemini': bacaKunciByok('gemini', idAkun),
+        'x-byok-groq': bacaKunciByok('groq', idAkun),
+        'x-byok-openai': bacaKunciByok('openai', idAkun),
+        'x-byok-openrouter': bacaKunciByok('openrouter', idAkun)
       };
 
       // Panggil agent backend dengan fungsi simple
