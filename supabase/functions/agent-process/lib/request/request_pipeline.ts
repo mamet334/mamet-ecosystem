@@ -12,9 +12,9 @@ import { generateEmbedding, EMBEDDING_DIMENSIONS, kalimatSebabEmbedding, type Je
 import { rapikanRiwayat } from './history_compressor.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { konteksWaktuPengguna, zonaWaktuSah } from './waktu_pengguna.ts';
-import { bersihkanRiwayatDataTabel } from '../../../../../frontend/src/core/runtime/services/dataTabelAsnSaring.js';
-import { blokPromptFolder } from '../../../../../frontend/src/core/runtime/services/folderKerjaAlat.js';
-import { blokPromptKonektor } from '../../../../../frontend/src/core/runtime/services/konektorAlat.js';
+import { bersihkanRiwayatDataTabel } from '../../../../../shared/dataTabelAsnSaring.js';
+import { blokPromptFolder } from '../../../../../shared/folderKerjaAlat.js';
+import { blokPromptKonektor } from '../../../../../shared/konektorAlat.js';
 
 
 /**

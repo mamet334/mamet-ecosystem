@@ -11,7 +11,7 @@ const akar = 'D:/SLAMET/other/mamet os ecosystem';
 const keluar = path.join(os.tmpdir(), 'uji-label-sumber.mjs');
 execFileSync(process.execPath, [path.join(akar, 'frontend/node_modules/esbuild/bin/esbuild'), path.join(akar, 'supabase/functions/agent-process/lib/verification/label_sumber.ts'), '--bundle', '--format=esm', '--platform=neutral', `--outfile=${keluar}`, '--log-level=error']);
 const L = await import(pathToFileURL(keluar).href + '?v=' + Date.now());
-const F = await import(pathToFileURL(path.join(akar, 'frontend/src/core/runtime/services/folderKerjaAlat.js')).href + '?v=' + Date.now());
+const F = await import(pathToFileURL(path.join(akar, 'shared/folderKerjaAlat.js')).href + '?v=' + Date.now());
 const A = require(path.join(akar, 'frontend/electron/alatFolder.cjs'));
 console.log('uji-folder-label v2');
 let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}`); if (!ok) gagal++; };

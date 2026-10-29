@@ -1,4 +1,4 @@
-// UJI 2026-10-23 — protokol alat konektor di chat (Item 129 Tahap D): frontend/src/core/runtime/services/konektorAlat.js
+// UJI 2026-10-23 — protokol alat konektor di chat (Item 129 Tahap D): shared/konektorAlat.js
 // dan sambungannya di desktop (AssistantService) & server (agent-process).
 //
 // Yang dijaga:
@@ -17,7 +17,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { berkasGudang, idMisi, potretGudang } from './gudangCrawler.mjs';
 
 const AKAR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const P = await import(pathToFileURL(path.join(AKAR, 'frontend/src/core/runtime/services/konektorAlat.js')).href);
+const P = await import(pathToFileURL(path.join(AKAR, 'shared/konektorAlat.js')).href);
 
 console.log('uji-konektor-protokol v3');
 let gagal = 0;

@@ -7,7 +7,7 @@ const require = createRequire(new URL('../frontend/package.json', import.meta.ur
 const XLSX = require('xlsx');
 const base = 'D:/SLAMET/other/mamet os ecosystem/frontend/src/core/runtime/services/';
 const M = await import(pathToFileURL(base + 'dataTabelAsn.js').href + '?v=' + Date.now());
-const S = await import(pathToFileURL(base + 'dataTabelAsnSaring.js').href + '?v=' + Date.now());
+const S = await import(pathToFileURL('D:/SLAMET/other/mamet os ecosystem/shared/dataTabelAsnSaring.js').href + '?v=' + Date.now());
 
 let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}`); if (!ok) gagal++; };
 const baca = (rel, opd) => {

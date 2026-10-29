@@ -4,8 +4,9 @@
  * Kenapa folder netral `shared/` (ADR-0021 keputusan #6, 2026-10-28): aturan yang sama dipakai dua sisi. Menyalinnya
  * berarti dua salinan yang suatu hari menyimpang diam-diam; menaruhnya di `frontend/src` lalu diimpor server adalah
  * pola T15 (mengubah berkas klien diam-diam mengubah perilaku server). Di sini pemiliknya jelas: bukan klien, bukan
- * server. Keduanya memuatnya lewat impor relatif biasa — Deno sudah memuat berkas .js di luar folder fungsinya (9 titik
- * impor ke frontend/src), Vite lewat `server.fs.allow`. Uji: uji/uji-kueri-pencarian.mjs.
+ * server. Keduanya memuatnya lewat impor relatif biasa — Deno memuat berkas .js di luar folder fungsinya (dulu 9 titik
+ * impor ke frontend/src; sejak 29 Okt kelima modul itu pindah ke shared/ juga — T15), Vite lewat `server.fs.allow`.
+ * Uji: uji/uji-kueri-pencarian.mjs, uji/uji-shared-t15.mjs.
  */
 
 /**

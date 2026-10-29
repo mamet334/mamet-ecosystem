@@ -720,9 +720,12 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
   **`shared/`** — modul pertama `shared/kueri_pencarian.js` dimuat Deno 2.2.7 (server) dan Vite (build & server dev)
   lewat impor relatif biasa, tanpa perkakas tambahan, **dan ikut ter-deploy ke server Supabase (v535)**
   ([log](../project-memory/changelog/2026-10-28-modul-bersama-kueri.md)). Paket deploy v535 terukur: 97 berkas, 5 dari
-  `frontend/` + 1 dari `shared/`. **Sisa:** 7 titik impor server ke
-  `frontend/src` (tabel di [changelog Item 126](../project-memory/changelog/2026-10-18-penanda-pemilih-model.md))
-  dipindah ke `shared/` satu per satu dengan pola yang sama — belum dikerjakan.
+  `frontend/` + 1 dari `shared/`.
+- ✅ **KODE SELESAI 29 Okt** ([log](../project-memory/changelog/2026-10-29-t15-shared.md)): kelima modul (`folderKerjaAlat`,
+  `konektorAlat`, `dataTabelAsnSaring`, `KnowledgeService`, `RetrievalStrategyService`) dipindah ke `shared/` dengan
+  `git mv`; 0 dari 99 berkas server mengimpor `frontend/`; bundel server 6 modul `shared/`, 0 `frontend/`; penjaga
+  `uji/uji-shared-t15.mjs` (mutasi 4/4); suite 127/127. **⏳ menunggu deploy `agent-process`** → isi paket diperiksa
+  (diharapkan 0 `frontend/`, 6 `shared/`).
 
 ## T20 — "Black October": Brotli CVE-2026-111497 di Node bawaan Electron & CI (2026-10-27)
 

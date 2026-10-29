@@ -15,8 +15,8 @@ import { getActiveConflictsCount } from '../../verification/verification_service
 import { eventBus } from '../../event/event_bus.ts';
 import { runLLM } from '../../llm_orchestrator.ts';
 
-import { KnowledgeService } from '../../../../../../frontend/src/core/runtime/services/KnowledgeService.js';
-import { RetrievalStrategyService } from '../../../../../../frontend/src/core/runtime/services/RetrievalStrategyService.js';
+import { KnowledgeService } from '../../../../../../shared/KnowledgeService.js';
+import { RetrievalStrategyService } from '../../../../../../shared/RetrievalStrategyService.js';
 
 // [PR#6 TOKEN EFFICIENCY] Web Search Summarization Guard
 // Membatasi total chars web search yang masuk ke context utama.

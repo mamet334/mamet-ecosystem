@@ -71,7 +71,7 @@ const jalan = async (teks, deps = izinkan) => {
   cek(h.ditolakOwner && /MENGUNDUH/.test(dialog[0]?.rincian || ''), 'profil Assistant: npm install sampai dialog (🌐), bukan ditolak aturan');
 
   // 2b. Peringatan klaim Engineer (pemeriksa layar, murni)
-  const F = await import(require('url').pathToFileURL(path.join(__dirname, '../frontend/src/core/runtime/services/folderKerjaAlat.js')).href);
+  const F = await import(require('url').pathToFileURL(path.join(__dirname, '../shared/folderKerjaAlat.js')).href);
   const keluaranAsli = '[TERMINAL OUTPUT for: npm test]\nuji-lulus\n\nKode keluar 0 (0,4 s).';
   cek(F.peringatanKlaimEngineer('Test sudah saya jalankan, hasilnya lulus semua.', 'jalankan test dong') !== null, 'klaim "sudah saya jalankan" tanpa keluaran terminal → peringatan');
   cek(F.peringatanKlaimEngineer('Test sudah saya jalankan, hasilnya lulus semua.', keluaranAsli) === null, 'klaim yang menjawab keluaran terminal asli → tanpa peringatan');

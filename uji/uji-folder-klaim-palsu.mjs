@@ -1,7 +1,7 @@
 // UJI Item 85 Tahap 3 — klaim menjalankan/mengubah tanpa catatan proses utama (kasus live "jalankan app.py lagi") +
 // catatan kaki tiruan yang berbagi bagian dengan catatan pemeriksa label server.
 import { pathToFileURL } from 'node:url';
-const F = await import(pathToFileURL('D:/SLAMET/other/mamet os ecosystem/frontend/src/core/runtime/services/folderKerjaAlat.js').href + '?v=' + Date.now());
+const F = await import(pathToFileURL('D:/SLAMET/other/mamet os ecosystem/shared/folderKerjaAlat.js').href + '?v=' + Date.now());
 console.log('uji-folder-klaim-palsu v2'); // v2: putaran koreksi
 let gagal = 0; const cek = (ok, pesan, rinci) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n      → ${JSON.stringify(rinci)}` : ''}`); if (!ok) gagal++; };
 const kosong = { jalan: false, ubah: false };

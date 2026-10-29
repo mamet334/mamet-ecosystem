@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 
 const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
-const F = await import(pathToFileURL(AKAR + '/frontend/src/core/runtime/services/folderKerjaAlat.js').href + '?v=' + Date.now());
+const F = await import(pathToFileURL(AKAR + '/shared/folderKerjaAlat.js').href + '?v=' + Date.now());
 
 // label_sumber.ts (TypeScript) → JS lewat esbuild: yang diuji berkas server yang asli.
 const { build } = await import(new URL('frontend/node_modules/esbuild/lib/main.js', new URL('../', import.meta.url)).href); // esbuild ada di frontend/node_modules; dirujuk lewat ALAMAT, bukan nama paket, karena berkas uji ini kini di akar repo (di luar frontend/) — lihat uji/README.md

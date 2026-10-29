@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { RuntimeContext } from '../runtime_context.ts';
 import { RagDocument, FormattedRagContext, RoutingDecision } from './types.ts';
-import { kataKunciPencarian } from '../../../../../frontend/src/core/runtime/services/KnowledgeService.js';
+import { kataKunciPencarian } from '../../../../../shared/KnowledgeService.js';
 import { gabungkan, MAKS_POTONGAN_JUDUL, kataKunciJudul } from './cari_judul.ts';
 
 export const searchDocuments = async (

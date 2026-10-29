@@ -13,7 +13,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const AKAR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const P = await import(pathToFileURL(path.join(AKAR, 'frontend/src/core/runtime/services/konektorAlat.js')).href);
+const P = await import(pathToFileURL(path.join(AKAR, 'shared/konektorAlat.js')).href);
 
 console.log('uji-konektor-kata-kunci v1');
 let gagal = 0;

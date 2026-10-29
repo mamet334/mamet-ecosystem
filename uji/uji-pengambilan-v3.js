@@ -93,7 +93,7 @@ export async function uji({ ulang = 1, hanya = null, rpc = 'vektor' } = {}) {
   const set = await (await fetch(`${DIR}/set-uji-pengambilan.json?t=${Date.now()}`)).json();
 
   console.log(`[UJI-AMBIL] versi skrip 3 — RPC: ${rpc === 'hybrid' ? 'match_documents_hybrid' : 'match_documents'}`);
-  const { kataKunciPencarian } = await import('/src/core/runtime/services/KnowledgeService.js');
+  const { kataKunciPencarian } = await import('/@fs/D:/SLAMET/other/mamet%20os%20ecosystem/shared/KnowledgeService.js');
   const putaran = [];
   for (let u = 0; u < ulang; u++) {
     const hasil = await satuPutaran({ set, governor, supabase, userId: session.user.id, hanya, rpc, kataKunci: kataKunciPencarian });

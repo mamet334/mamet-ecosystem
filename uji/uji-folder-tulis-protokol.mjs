@@ -1,6 +1,6 @@
 // UJI Item 85 Tahap 2 — protokol alat TULIS (folderKerjaAlat.js): tag tulis, hasil berhasil/ditolak Owner, blok prompt.
 import { pathToFileURL } from 'node:url';
-const F = await import(pathToFileURL('D:/SLAMET/other/mamet os ecosystem/frontend/src/core/runtime/services/folderKerjaAlat.js').href + '?v=' + Date.now());
+const F = await import(pathToFileURL('D:/SLAMET/other/mamet os ecosystem/shared/folderKerjaAlat.js').href + '?v=' + Date.now());
 console.log('uji-folder-tulis-protokol v3'); // v2: Tahap 3 (folder_run sah) · v3: laporan tulis kini sumber label (isi = baris hasil saja)
 let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}`); if (!ok) gagal++; };
 

@@ -1,5 +1,5 @@
 import { WorkspaceGuardian } from '../workspace_guardian.ts';
-import { infoKonektorAman } from '../../../../../frontend/src/core/runtime/services/konektorAlat.js';
+import { infoKonektorAman } from '../../../../../shared/konektorAlat.js';
 
 export async function parseRequestParams(req: Request, user: any) {
   let reqJson;

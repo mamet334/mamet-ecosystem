@@ -1,6 +1,6 @@
 // UJI Item 85 Tahap 3 — buangKakiTiruan: catatan kaki "dicatat dari proses utama" buatan model dibuang (kasus live).
 import { pathToFileURL } from 'node:url';
-const F = await import(pathToFileURL('D:/SLAMET/other/mamet os ecosystem/frontend/src/core/runtime/services/folderKerjaAlat.js').href + '?v=' + Date.now());
+const F = await import(pathToFileURL('D:/SLAMET/other/mamet os ecosystem/shared/folderKerjaAlat.js').href + '?v=' + Date.now());
 console.log('uji-folder-kaki-tiruan v1');
 let gagal = 0; const cek = (ok, pesan, rinci) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n      → ${JSON.stringify(rinci)}` : ''}`); if (!ok) gagal++; };
 

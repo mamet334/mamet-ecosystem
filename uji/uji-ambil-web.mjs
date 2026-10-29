@@ -23,7 +23,7 @@ const require = createRequire(path.join(AKAR, 'frontend', 'package.json'));
 const BERKAS_MODUL = path.join(AKAR, 'frontend', 'electron', 'ambilWeb.cjs');
 const { ambilWeb } = require(BERKAS_MODUL);
 
-console.log('uji-ambil-web v1');
+console.log('uji-ambil-web v2');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 600)}` : ''}`);
@@ -144,10 +144,13 @@ app.disableHardwareAcceleration();
 const { ambilWeb } = require(modul);
 app.whenReady().then(async () => {
   const h = {};
+  // Batas 30 s untuk permintaan yang TIDAK menguji waktu (29 Okt): bawaan 8 s sekali membatalkan permintaan br ke server
+  // lokal saat suite berat (340 s) — merah palsu. Batas waktu sendiri diuji terpisah lewat /lambat (300 ms) di bawah.
+  const LONGGAR = { timeoutMs: 30000 };
   try {
-    h.br = await ambilWeb(net.fetch, { url: asal + '/br' });
+    h.br = await ambilWeb(net.fetch, { url: asal + '/br', options: LONGGAR });
     await session.defaultSession.cookies.set({ url: asal, name: 'sesi', value: 'RAHASIA' });
-    h.tanpaCookie = await ambilWeb(net.fetch, { url: asal + '/tanpa-cookie' });
+    h.tanpaCookie = await ambilWeb(net.fetch, { url: asal + '/tanpa-cookie', options: LONGGAR });
     const kontrolCookie = await net.fetch(asal + '/kontrol-cookie', { credentials: 'include' });
     h.kontrolCookie = kontrolCookie.status;
     const urlBerkas = require('url').pathToFileURL(berkasRahasia).href;

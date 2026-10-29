@@ -12,7 +12,7 @@ const bundel = (masuk, nama) => {
   return import(pathToFileURL(keluar).href);
 };
 const L = await bundel('supabase/functions/agent-process/lib/verification/label_sumber.ts', 'uji-label');
-const F = await import(pathToFileURL(path.join(akar, 'frontend/src/core/runtime/services/folderKerjaAlat.js')).href + '?v=' + Date.now());
+const F = await import(pathToFileURL(path.join(akar, 'shared/folderKerjaAlat.js')).href + '?v=' + Date.now());
 console.log('uji-folder-label-tindakan v1');
 let gagal = 0; const cek = (ok, pesan, rinci) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n      → ${JSON.stringify(rinci).slice(0, 400)}` : ''}`); if (!ok) gagal++; };
 const periksa = (jawaban, pesan) => { const s = F.sumberDariHasilAlat(pesan); return L.periksaLabelSumber(jawaban, s.judul, s.isi); };

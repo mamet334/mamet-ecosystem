@@ -5,7 +5,7 @@ import { persistTelemetryLog } from '../../verification/verification_service.ts'
 import { eventBus } from '../../event/event_bus.ts';
 import { koreksiLabel } from '../../verification/label_sumber.ts';
 import { jalankanHakimBayangan } from '../../verification/hakim_bayangan.ts';
-import { sumberDariHasilAlat, sumberDariKeluaranTerminal } from '../../../../../../frontend/src/core/runtime/services/folderKerjaAlat.js';
+import { sumberDariHasilAlat, sumberDariKeluaranTerminal } from '../../../../../../shared/folderKerjaAlat.js';
 import { tutupJawabanDataTabel } from '../../data_tabel/data_tabel.ts';
 import { sisipkanNalar } from '../../adapters/reasoning_openrouter.ts';
 import { CATATAN_TERPOTONG, susunBahanLanjutan, susunPromptLanjutan, tenggatJawaban } from '../../streaming/batas_waktu.ts';

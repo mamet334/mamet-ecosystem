@@ -56,7 +56,9 @@ const cek = (ok, pesan, rinci) => {
 };
 
 // ── Pemindaian ──────────────────────────────────────────────────────────────────────────────
-const DIR = ['frontend/src', 'supabase/functions', 'frontend/electron'];
+// shared/ (29 Okt, T15): modul bersama klien & server — tanpa ini kelima modul yang dipindah dari frontend/src lepas dari
+// penjagaan diam-diam (patokan mencatat 1 → pemindai melihat 0, bukan karena kodenya membaik).
+const DIR = ['frontend/src', 'supabase/functions', 'frontend/electron', 'shared'];
 
 /** Blok catch dianggap BERSUARA bila ia mencatat, melempar, atau menaikkan galat ke pemanggil. */
 const BERSUARA = /console\.(log|warn|error|info)|logger|catatGalat|setError|setFileError|setDirError|throw|reject|captureException/;

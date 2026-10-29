@@ -1,6 +1,6 @@
 // UJI Item 85 Tahap 3 — protokol folder_run (folderKerjaAlat.js): tag, hasil, sumber label, blok prompt.
 import { pathToFileURL } from 'node:url';
-const F = await import(pathToFileURL('D:/SLAMET/other/mamet os ecosystem/frontend/src/core/runtime/services/folderKerjaAlat.js').href + '?v=' + Date.now());
+const F = await import(pathToFileURL('D:/SLAMET/other/mamet os ecosystem/shared/folderKerjaAlat.js').href + '?v=' + Date.now());
 console.log('uji-folder-jalan-protokol v3'); // v2: perintah = judul sumber · v3: blok ```json diterima
 let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}`); if (!ok) gagal++; };
 

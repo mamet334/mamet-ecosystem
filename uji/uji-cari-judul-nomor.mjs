@@ -53,7 +53,7 @@ const muat = async (sumber, nama, loader) => {
 
 try {
   const CJ = await muat('supabase/functions/agent-process/lib/rag/cari_judul.ts', 'cj.mjs', 'ts');
-  const KS = await muat('frontend/src/core/runtime/services/KnowledgeService.js', 'ks.mjs', 'js');
+  const KS = await muat('shared/KnowledgeService.js', 'ks.mjs', 'js');
   const { kataKunciJudul, LEBAR_PADDING } = CJ;
   const { kataKunciPencarian } = KS;
   const judul = (q) => kataKunciJudul(q, kataKunciPencarian(q));

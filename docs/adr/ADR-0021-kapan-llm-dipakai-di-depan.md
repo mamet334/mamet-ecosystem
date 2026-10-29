@@ -128,7 +128,7 @@ Dijawab berurutan untuk setiap titik di mana LLM ingin ditaruh di depan alur:
 - `supabase/functions/agent-process/lib/orchestration/handlers/intent_router.ts` (router & Coordinator)
 - `frontend/src/core/runtime/services/RetrievalOrchestrator.js`, `WebComparisonService.js`, `AssistantService.js`
   (kueri RAG & web Tier 3)
-- `frontend/src/core/runtime/services/konektorAlat.js` (sudah sesuai — jadi contoh acuan)
+- `shared/konektorAlat.js` (sudah sesuai — jadi contoh acuan; dipindah dari `frontend/src` 29 Okt, T15)
 - Roadmap Item 126 Fase 1 (router berbasis bukti) dan Item 90 (pengambilan potongan RAG)
 
 ## 6. Related Components

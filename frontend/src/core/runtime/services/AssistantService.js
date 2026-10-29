@@ -21,8 +21,8 @@ const AGENT_ENDPOINT = 'https://uuyzdjifhdfyyvpxsofu.supabase.co/functions/v1/ag
 
 import { supabase } from '../../../supabase.js';
 import { statusLaptop, kirimKeLaptop, sidikJari, cariDiCache, KUOTA_CACHE_MB } from './remoteConversionClient.js';
-import { ambilPermintaanAlat, susunPesanHasil, susunPesanKoreksi, namaFolderAman, buangKakiTiruan, peringatanKlaimTanpaAlat, peringatanKlaimEngineer, blokKodeKeMametCmd, MAKS_PUTARAN } from './folderKerjaAlat.js';
-import { ambilPermintaanKonektor, susunPesanHasilKonektor, catatanHasilKonektor, payloadKonektor, KONEKTOR_DIKENAL, MAKS_PUTARAN_KONEKTOR } from './konektorAlat.js';
+import { ambilPermintaanAlat, susunPesanHasil, susunPesanKoreksi, namaFolderAman, buangKakiTiruan, peringatanKlaimTanpaAlat, peringatanKlaimEngineer, blokKodeKeMametCmd, MAKS_PUTARAN } from '../../../../../shared/folderKerjaAlat.js';
+import { ambilPermintaanKonektor, susunPesanHasilKonektor, catatanHasilKonektor, payloadKonektor, KONEKTOR_DIKENAL, MAKS_PUTARAN_KONEKTOR } from '../../../../../shared/konektorAlat.js';
 import { cekPerintahBerulang, petunjukHasilKosong, petunjukKeluaranTerpotong, petunjukGrepSebagian, peringatanTugasTakDiumumkan, adaPenandaPatch, buangPenandaPatch } from './engineer/ProsedurEngineer.js';
 import { peringatanKlaimTakTeruji } from './engineer/UjiKlaim.js';
 import { anggaranKonteks, pilihPesanKonteks, bacaMulaiDari } from './KonteksChat.js';

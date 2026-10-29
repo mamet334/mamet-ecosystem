@@ -48,7 +48,7 @@
 - **Gejala / Fakta:** Query pencarian kata kunci (*keyword search*) mengalami error parsing (400 Bad Request) saat input user mengandung karakter tanda kutip (contoh: `"OK"`, `it's`, atau teks dengan koma).
 - **Akar Masalah:** String input user digabung langsung ke filter PostgREST tanpa sanitasi karakter khusus parser (`"`, `'`, `,`, `(`, `)`, `%`, `_`, `\`).
 - **Remediasi yang Diterapkan:**
-  1. Menambahkan sanitasi karakter khusus pada `frontend/src/core/runtime/services/KnowledgeService.js:115`.
+  1. Menambahkan sanitasi karakter khusus pada `shared/KnowledgeService.js:115` (dulu `frontend/src/core/runtime/services/`, dipindah 29 Okt — T15).
   2. Menambahkan sanitasi keywords dan fallback query pada `frontend/src/core/runtime/services/MemoryService.js:66, 84`.
   3. Menambahkan sanitasi pada `frontend/src/components/memory/MemoryApp.jsx:24`.
   4. Menambahkan sanitasi pada `supabase/functions/agent-process/memory_write_worker.ts:90`.

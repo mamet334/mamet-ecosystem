@@ -5,7 +5,7 @@ import { LABEL_VERIFIED, LABEL_HIPOTESIS } from '../verification/label_sumber.ts
 import {
   normalkanRencana, saringPegawai, susunTeksUntukModel, susunLampiran, uraiRencana, susunJudulHasil,
   samarkanNipKarangan, KELOMPOK, BIDANG, OPERATOR, KELOMPOKKAN,
-} from '../../../../../frontend/src/core/runtime/services/dataTabelAsnSaring.js';
+} from '../../../../../shared/dataTabelAsnSaring.js';
 
 /**
  * Penutup jawaban non-stream saat data tabel dijalankan — dikerjakan KODE, karena uji live 2026-09-21 membuktikan
