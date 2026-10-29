@@ -678,7 +678,7 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
   satu chat Ecosystem**. Penyedianya belum ditampilkan di layar (Owner memutuskan "simpan", bukan
   "tampilkan") — menampilkannya kemudian tinggal membaca `metadata.penyedia`, tanpa perubahan server.
 
-## T15 — Server `agent-process` mengimpor kode klien dari `frontend/src` (ketahuan saat deploy Item 126, 2026-10-18)
+## T15 — ✅ Server `agent-process` mengimpor kode klien dari `frontend/src` (ketahuan saat deploy Item 126, 2026-10-18)
 
 - **Temuan:** **7 titik impor di 5 berkas** `supabase/functions/agent-process` menjangkau
   `frontend/src/core/runtime/services/`, menarik **4 modul klien ke dalam edge function**:
@@ -716,7 +716,7 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
   impor lintas batas. Yang perlu dibuktikan lebih dulu: jalur impor seperti itu benar-benar dimuat
   Deno (edge function) **dan** Vite (klien) tanpa perkakas tambahan.
 
-- **Status:** 🟡 **arah diputuskan & prasyarat terbukti 28 Okt** (ADR-0021 #6): modul bersama di folder netral
+- **Riwayat status:** 🟡 **arah diputuskan & prasyarat terbukti 28 Okt** (ADR-0021 #6): modul bersama di folder netral
   **`shared/`** — modul pertama `shared/kueri_pencarian.js` dimuat Deno 2.2.7 (server) dan Vite (build & server dev)
   lewat impor relatif biasa, tanpa perkakas tambahan, **dan ikut ter-deploy ke server Supabase (v535)**
   ([log](../project-memory/changelog/2026-10-28-modul-bersama-kueri.md)). Paket deploy v535 terukur: 97 berkas, 5 dari
@@ -724,8 +724,9 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
 - ✅ **KODE SELESAI 29 Okt** ([log](../project-memory/changelog/2026-10-29-t15-shared.md)): kelima modul (`folderKerjaAlat`,
   `konektorAlat`, `dataTabelAsnSaring`, `KnowledgeService`, `RetrievalStrategyService`) dipindah ke `shared/` dengan
   `git mv`; 0 dari 99 berkas server mengimpor `frontend/`; bundel server 6 modul `shared/`, 0 `frontend/`; penjaga
-  `uji/uji-shared-t15.mjs` (mutasi 4/4); suite 127/127. **⏳ menunggu deploy `agent-process`** → isi paket diperiksa
-  (diharapkan 0 `frontend/`, 6 `shared/`).
+  `uji/uji-shared-t15.mjs` (mutasi 4/4); suite 127/127. **✅ TERTUTUP DI SERVER — v536 29 Okt** (isi paket lewat API:
+  0 berkas `frontend/` [v535: 5], 6 `shared/`, 0 baris impor ke `frontend/src`).
+- **Status:** ✅ **SELESAI 29 Okt.** Penjaga: `uji/uji-shared-t15.mjs` merah bila server kembali mengimpor `frontend/`.
 
 ## T20 — "Black October": Brotli CVE-2026-111497 di Node bawaan Electron & CI (2026-10-27)
 
