@@ -49,7 +49,36 @@ Mametlite dipakai orang awam — K4.
   deployment yang sama juga gagal. Owner menyalakan *Settings → Build and Deployment → Root Directory → "Include files
   outside the root directory in the Build Step"* (29 Okt); deploy baru dipicu commit ini.
 
-## Menunggu Owner
+Deploy baru (`794b290`): **kedua situs READY**; bundel produksi `mametlite.vercel.app` & `mamet-ecosystem.vercel.app`
+memuat "Lupa kata sandi" & `PASSWORD_RECOVERY` (diperiksa dengan curl atas `index-*.js`).
+
+## Bukti live (Owner, akun Mametlite, 29 Okt) — dua ujung
+
+Log autentikasi Supabase (`auth_logs`/`auth_audit_logs`, WIB):
+
+| Waktu | Kejadian |
+|---|---|
+| 21.29 | Permintaan pertama → email terkirim → tautan dipakai, tetapi diarahkan ke **Site URL lama `otak-box-ai-navy.vercel.app` (404 DEPLOYMENT_NOT_FOUND)** — `mametlite.vercel.app` belum ada di Redirect URLs, jadi Supabase memakai Site URL |
+| 21.34–21.38 | Owner mengubah pengaturan: Site URL → `https://mamet-ecosystem.vercel.app`; Redirect URLs `mametlite.vercel.app/**`, `mamet-ecosystem.vercel.app/**`, `localhost:5173/**` |
+| 21.38.38 | Permintaan kedua dari mametlite.vercel.app → email terkirim |
+| 21.38.51 | Tautan **email lama** (yang sudah terpakai; Gmail menumpuk email bersubjek sama dalam satu percakapan) diklik → "One-time token not found" → Site URL → aplikasi menampilkan "tautan tidak berlaku" + mode lupa — **perilaku yang benar** |
+| 21.39.32 | Permintaan berulang → 429 "only request this after 4 seconds" → pesan "Terlalu sering meminta" |
+| 21.46.10 | Tautan email terbaru → token diterima → **mametlite.vercel.app** layar "Kata sandi baru" |
+| 21.46.30 | **`PUT /user` 200** dari mametlite.vercel.app — kata sandi baru tersimpan |
+| 21.47.31 | Masuk berhasil dengan kata sandi baru — Owner: bisa masuk dari HP & laptop |
+
+**Keamanan (K5), dibereskan Owner di Supabase:** Site URL lama dan Redirect URL `ai-agent-project-2a9h.vercel.app/*` sama-sama
+menunjuk deployment Vercel yang **sudah mati** (404 DEPLOYMENT_NOT_FOUND) — alamat mati di daftar yang dipercaya menerima
+token. Site URL diganti; alamat mati dihapus.
+
+**Belum diuji live:** ganti kata sandi bagi yang sudah masuk (Settings › Identitas / panel Pengaturan Mametlite).
+
+## Sisa (bukan tindakan wajib)
+
+- Email bawaan Supabase terkirim ke akun yang diuji; untuk banyak pengguna Mametlite tetap pertimbangkan **SMTP sendiri**
+  (email bawaan punya batas kirim yang sangat kecil).
+
+## Menunggu Owner (sudah dikerjakan — dicatat untuk riwayat)
 
 - **Supabase Dashboard:** Authentication → URL Configuration → Redirect URLs: `https://mamet-ecosystem.vercel.app/**`,
   `https://mametlite.vercel.app/**`, `http://localhost:5173/**`; Authentication → SMTP: SMTP sendiri — email bawaan

@@ -17,7 +17,7 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 | K1 | RAG menemukan & menjawab benar | ⏳ | 1 |
 | K2 | RAG jujur saat gagal | ⏳ | 1 |
 | K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ (ulang sebelum rilis) | 1 |
-| K4 | Mametlite layak bagi orang awam | ⏳ (T19 kode ✅) | 2 (Supabase + uji email; isolasi dua akun) |
+| K4 | Mametlite layak bagi orang awam | ⏳ (T19 ✅ live) | 1 (isolasi dua akun) |
 | K5 | Keamanan | ⏳ | 3 |
 | K6 | Data aman & bisa dipulihkan | ✅ (ulang sebelum rilis) | 1 |
 | K7 | Stabil & sampai ke aplikasi terpasang | ⏳ | 2 |
@@ -41,12 +41,15 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 ### K4 — Mametlite layak bagi orang awam
 - ✅ RAG Mametlite live (U8a), tampilan HP (Item 125 M3).
 - ✅ **T19 kode** lupa & ganti kata sandi di Ecosystem + Mametlite ([log](../project-memory/changelog/2026-10-29-t19-lupa-ganti-kata-sandi.md)).
-- ⏳👤 Supabase: Redirect URLs (`mamet-ecosystem.vercel.app/**`, `mametlite.vercel.app/**`, `localhost:5173/**`) & **SMTP sendiri**
-  (email bawaan hanya ke anggota tim) → uji "Lupa kata sandi?" dengan email sungguhan.
+- ✅ **T19 terbukti live 29 Okt** (Mametlite: email → tautan → kata sandi baru `PUT /user` 200 → masuk di HP & laptop; Site URL &
+  Redirect URLs dibereskan Owner). Belum diuji live: ganti kata sandi bagi yang sudah masuk. Pertimbangkan SMTP sendiri bila
+  pengguna Mametlite bertambah (batas kirim email bawaan).
 - ⏳ **Isolasi data antar-pengguna** diuji dengan dua akun (chat, dokumen, memori).
 
 ### K5 — Keamanan
 - ✅ RLS "baca semua" ditutup (Item 93); rahasia tak masuk `agent_logs` (T7).
+- ✅ **Alamat mati di pengaturan masuk Supabase** (29 Okt): Site URL `otak-box-ai-navy.vercel.app` & Redirect URL
+  `ai-agent-project-2a9h.vercel.app/*` menunjuk deployment Vercel yang sudah tidak ada — diganti/dihapus Owner.
 - ⏳ **Hak bawaan 39 tabel** bagi `anon`/`authenticated` + fungsi yatim (Item 125 Fase C — [roadmap](./ROADMAP-SIAP-PENGGUNA.md)).
 - ⏳ **T1** daftar izin sub-agent di server.
 - ⏳👤 **Ganti kunci API** yang pernah bocor (T7) & token Apify (T1).
