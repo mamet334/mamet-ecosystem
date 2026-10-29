@@ -1,10 +1,13 @@
-// UJI PENGAMBILAN POTONGAN v4 (Item 88 set buku penuh, 2026-09-21) — opsi { set: 'set-uji-buku-penuh.json' } memilih berkas set.
+// UJI PENGAMBILAN POTONGAN v5 (T16, 2026-10-29) — dipindah dari `frontend/node_modules/.uji-rag/` (hilang sejak 24 Sep) ke
+// `uji/`: data dibaca dari `uji/data-lokal/` dan KnowledgeService dari `shared/`, keduanya RELATIF terhadap berkas ini
+// (import.meta.url), tidak lagi jalur mati. Server dev mengizinkan `../uji` (vite.config). Gantikan v1–v4.
+// v4 (Item 88 set buku penuh, 2026-09-21) — opsi { set: 'set-uji-buku-penuh.json' } memilih berkas set.
 // v3 (Item 90 Tahap B, 2026-09-17) — opsi { rpc: 'hybrid' } memanggil match_documents_hybrid
 // (kata kunci dari kataKunciPencarian di KnowledgeService.js = aturan server). Default tetap match_documents.
 // Asal: Tahap A — alat ukur pencarian dokumen, bukan mutu jawaban.
 //
 // Pemakaian — dari konsol DevTools `npm run desktop` (mode dev), sudah login:
-//   await (await import('/@fs/D:/SLAMET/other/mamet os ecosystem/frontend/node_modules/.uji-rag/uji-pengambilan-v4.js')).uji({ rpc: 'hybrid', set: 'set-uji-buku-penuh.json' })
+//   await (await import('/@fs/D:/SLAMET/other/mamet os ecosystem/uji/uji-pengambilan-v5.js')).uji({ rpc: 'hybrid', set: 'set-uji-buku-penuh.json' })
 // Opsi: .uji({ ulang: 2 })   → putaran kedua membandingkan peringkat & skor (bukti hasil bisa diulang)
 //       .uji({ hanya: ['KEP-01'] })
 //
@@ -17,7 +20,7 @@
 //  4. Kontrol: cosine lokal (vektor pertanyaan × embedding tersimpan potongan ke-1) harus = skor RPC.
 // Biaya: 16 embedding pendek per putaran (< $0,001). Hasil: tabel konsol + berkas `uji-pengambilan-<waktu>.json`.
 
-const DIR = '/@fs/D:/SLAMET/other/mamet os ecosystem/frontend/node_modules/.uji-rag';
+const DIR = new URL('./data-lokal', import.meta.url).href; // uji/data-lokal/ — diabaikan git (NIP & nama pegawai)
 const AMBIL_SERVER = 8;
 const AMBANG_SERVER = 0.55;
 
@@ -93,8 +96,8 @@ export async function uji({ ulang = 1, hanya = null, rpc = 'vektor', set: namaSe
   if (!session) throw new Error('Belum login.');
   const set = await (await fetch(`${DIR}/${namaSet}?t=${Date.now()}`)).json();
 
-  console.log(`[UJI-AMBIL] versi skrip 4 — set: ${namaSet} — RPC: ${rpc === 'hybrid' ? 'match_documents_hybrid' : 'match_documents'}`);
-  const { kataKunciPencarian } = await import('/@fs/D:/SLAMET/other/mamet%20os%20ecosystem/shared/KnowledgeService.js');
+  console.log(`[UJI-AMBIL] versi skrip 5 — set: ${namaSet} — RPC: ${rpc === 'hybrid' ? 'match_documents_hybrid' : 'match_documents'}`);
+  const { kataKunciPencarian } = await import(new URL('../shared/KnowledgeService.js', import.meta.url).href);
   const putaran = [];
   for (let u = 0; u < ulang; u++) {
     const hasil = await satuPutaran({ set, governor, supabase, userId: session.user.id, hanya, rpc, kataKunci: kataKunciPencarian });

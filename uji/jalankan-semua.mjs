@@ -26,7 +26,7 @@
  *   (a) stdout dan stderr digabung. Lima berkas dinyatakan gagal hanya karena node menulis peringatan
  *       MODULE_TYPELESS_PACKAGE_JSON ke stderr SESUDAH baris kesimpulan. Putusan kini dibaca dari
  *       stdout saja; stderr tetap disimpan untuk laporan, tidak pernah untuk memutuskan.
- *   (b) berkas ".js" ikut dijalankan. `uji-pengambilan*.js` dan `uji-konteks-potongan.js` bukan berkas
+ *   (b) berkas ".js" ikut dijalankan. `uji-pengambilan-v5.js` dan `uji-konteks-potongan-v2.js` bukan berkas
  *       uji baris perintah — ia modul yang diimpor dari konsol DevTools aplikasi yang sedang berjalan,
  *       jadi dijalankan node ia diam saja dan tampak gagal. Hanya .mjs/.cjs yang dijalankan, sama dengan
  *       lingkaran shell di README. Tetapi berkas .js TIDAK disembunyikan: ia masuk daftar `takDijalankan`

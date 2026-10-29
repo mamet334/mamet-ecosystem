@@ -45,7 +45,7 @@ cek(daftar.length >= 50, `seluruh berkas uji ditemukan (${daftar.length})`);
 cek(!daftar.includes('jalankan-semua.mjs'), 'penjalan tidak menjalankan dirinya sendiri');
 cek(!daftar.some((n) => n.endsWith('.js')), 'berkas uji-*.js TIDAK dijalankan (modul konsol DevTools, bukan uji baris perintah)');
 const takJalan = R.daftarTakDijalankan().map((x) => x.nama);
-cek(takJalan.includes('uji-pengambilan.js'),
+cek(takJalan.includes('uji-pengambilan-v5.js'),
   'tetapi ia DILAPORKAN, tidak disembunyikan — pengecualian diam adalah cara uji merah tak ketahuan 4 hari', takJalan);
 
 // Prasyarat roadmap: uji cermin ditandai, bukan dihapus.

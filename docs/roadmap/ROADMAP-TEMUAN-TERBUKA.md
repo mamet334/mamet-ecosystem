@@ -801,7 +801,7 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
   dari yang baru disimpan. Uji: penyimpanan lambat + perubahan di tengahnya → tersimpan tanpa perubahan ketiga.
 - **Status:** ✅ **SELESAI 29 Okt** ([log](../project-memory/changelog/2026-10-29-t17-simpan-berurutan.md)) — `simpanBerurutan.js`: permintaan selama penyimpanan berjalan dicatat lalu pengamat dijalankan ulang; tanda dipasang seketika (dua penyimpanan tak lagi bisa bersamaan); gagal tanpa perubahan tak diulang. Uji `uji/uji-simpan-berurutan.mjs` (mutasi 5/5).
 
-## T16 — Lima modul konsol uji menunjuk folder yang sudah tidak ada (ketahuan saat Item 127 Tahap 0, 2026-10-19)
+## T16 — ✅ Lima modul konsol uji menunjuk folder yang sudah tidak ada (ketahuan saat Item 127 Tahap 0, 2026-10-19)
 
 - **Temuan:** `uji-pengambilan.js`, `-v2`, `-v3`, `-v4`, dan `uji-konteks-potongan.js` (modul konsol DevTools,
   tidak dijalankan `jalankan-semua.mjs`) masih mengimpor dan mengambil data dari
@@ -817,7 +817,7 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
   `uji/data-lokal/` memuat NIP & nama pegawai, jadi membukanya ke server dev harus dipertimbangkan; atau
   (b) pensiunkan modul yang set ujinya sudah tidak sah lagi (set lama 13 pertanyaan dinyatakan tidak sah,
   dibangun ulang di Item 90 Tahap A) dan pertahankan hanya yang masih dipakai.
-- **Status:** ⏳ tercatat, belum diputuskan.
+- **Status:** ✅ **SELESAI 29 Okt** (pilihan 1 Owner; [log](../project-memory/changelog/2026-10-29-t16-modul-konsol-uji.md)) — 3 duplikat dihapus; `uji-pengambilan-v5.js` & `uji-konteks-potongan-v2.js` membaca `uji/data-lokal/` relatif terhadap berkasnya; `fs.allow` + `../uji` (server dev hanya localhost). Premis pilihan (b) keliru: set yang dipakai adalah set Item 90 yang sah.
 
 ## T9 — Sub-agent `knowledge_manager` rusak & ikut dipanggil Coordinator (asal Item 92 Tahap 3, 2026-09-21)
 

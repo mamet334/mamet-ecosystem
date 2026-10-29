@@ -38,7 +38,9 @@ export default defineConfig({
     // tools/ ada di root repo, di luar frontend/. ToolRegistryService membundelnya lewat
     // import.meta.glob untuk versi web; tanpa izin ini server dev menolak menyajikannya.
     // shared/ (28 Okt 2026, ADR-0021 #6): modul bersama klien & server, mis. shared/kueri_pencarian.js.
-    fs: { allow: ['.', '../tools', '../shared'] },
+    // uji/ (T16, 29 Okt 2026): modul konsol uji-pengambilan-v5.js & uji-konteks-potongan-v2.js + datanya di uji/data-lokal/
+    // (NIP & nama pegawai, diabaikan git). Server dev hanya mendengarkan localhost (tanpa `host`), jadi tak terjangkau jaringan.
+    fs: { allow: ['.', '../tools', '../shared', '../uji'] },
     // Hasil build tidak diawasi (28 Okt 2026). Tanpa ini Vite mengawasi seluruh frontend/, termasuk release/
     // (aplikasi hasil kemas, ±12.800 berkas) dan build/ (runtime crawler terbundel, ±12.700 berkas, ditulis ulang
     // tiap `npm run crawler:siapkan`) — terukur: server dev diam memakan 160% satu inti, 497 menit CPU dalam ±5,5 jam.
