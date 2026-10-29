@@ -18,7 +18,7 @@ import { join, resolve, relative, dirname } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 
 const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const MODUL = ['folderKerjaAlat', 'konektorAlat', 'dataTabelAsnSaring', 'KnowledgeService', 'RetrievalStrategyService', 'kueri_pencarian'];
+const MODUL = ['folderKerjaAlat', 'konektorAlat', 'dataTabelAsnSaring', 'KnowledgeService', 'RetrievalStrategyService', 'kueri_pencarian', 'teks_rss'];
 
 console.log('uji-shared-t15 v2');
 let gagal = 0;

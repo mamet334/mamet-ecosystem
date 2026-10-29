@@ -10,18 +10,31 @@
  */
 
 /**
+ * "soal" yang berarti "tentang" — yaitu TIDAK didahului kata yang menjadikannya benda (contoh/latihan/kunci … soal) dan
+ * bukan bagian dari "soal-soal". Lookbehind panjang-berubah didukung V8 (Vite/Electron) dan Deno.
+ */
+const SOAL_SEBAGAI_TENTANG = /(?<!\b(?:contoh|latihan|kumpulan|bank|kunci|pembahasan|jawaban|lembar|paket|naskah|kisi-kisi|buat|buatkan|membuat|jawab|kerjakan|mengerjakan)\s+)(?<!-)\bsoal\b(?!-)/gi;
+
+/**
  * Kalimat perintah → kata kunci untuk mesin berita (RSS). Dipindahkan APA ADANYA dari
  * `agent-process/lib/web/pencarian_berita.ts` (15 Sep 2026, sub-agent researcher/deep_research):
  * uji live — "Cari informasi dan susun laporan tentang 3 perusahaan AI terbesar pada tahun 2026" → Bing 0 hasil,
  * sedangkan "3 perusahaan AI terbesar 2026" → 5–8 hasil. Sejak 28 Okt juga dipakai web Tier 3 di klien, yang
  * sebelumnya mengirim pesan Owner mentah-mentah.
+ *
+ * 29 Okt 2026 — dua tambahan, keduanya diukur live di Bing: contoh ADR-0021 sendiri ("tolong carikan berita terbaru soal
+ * OKU dong") menyisakan "terbaru soal OKU dong" → **0** hasil, sedangkan "terbaru OKU" → 8.
+ *  - partikel `dong|deh|sih|nih` dibuang ("terbaru OKU dong" → 1 hasil: aktor Ma Dong Seok);
+ *  - "soal" dibuang HANYA bila berarti "tentang" ("soal banjir Baturaja" 3 hasil melenceng vs "banjir Baturaja" 9).
+ *    Didahului kata benda (`SOAL_SEBAGAI_BENDA`) ia isi kueri: "contoh soal CPNS" → tanpa "soal" jadi surat lamaran.
  * @param {string} q
  * @returns {string} paling banyak 8 kata; '' bila semua kata terbuang
  */
 export function ringkasKueri(q) {
   return String(q || '')
     .replace(/[“”"'`?!.,:;()\[\]]/g, ' ')
-    .replace(/\b(tolong|mohon|lakukan|carikan|cari|temukan|riset|risetkan|telusuri|susun|susunkan|buat|buatkan|laporan|analisis|analisa|mendalam|lengkap|detail|informasi|info|data|berita|tentang|mengenai|terkait|seputar|apa|siapa|saja|dan|yang|pada|tahun|untuk|dengan|secara|di|ke|dari)\b/gi, ' ')
+    .replace(SOAL_SEBAGAI_TENTANG, ' ')
+    .replace(/\b(tolong|mohon|lakukan|carikan|cari|temukan|riset|risetkan|telusuri|susun|susunkan|buat|buatkan|laporan|analisis|analisa|mendalam|lengkap|detail|informasi|info|data|berita|tentang|mengenai|terkait|seputar|apa|siapa|saja|dan|yang|pada|tahun|untuk|dengan|secara|di|ke|dari|dong|deh|sih|nih)\b/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .split(' ')

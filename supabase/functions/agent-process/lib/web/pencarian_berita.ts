@@ -9,6 +9,9 @@
 // JavaScript) tidak bisa dibaca dengan cara ini, jadi dilewati; hasilnya tetap dipakai sebagai cuplikan.
 
 import { ringkasKueri } from '../../../../../shared/kueri_pencarian.js';
+// Pembersih teks RSS — sejak 29 Okt 2026 satu salinan bersama dengan web Tier 3 klien (dulu klien punya pengurai sendiri
+// yang meneruskan tautan pengalih Bing sebagai URL sumber).
+import { entitas, tanpaTag, urlAsliBing } from '../../../../../shared/teks_rss.js';
 
 export type HasilBerita = {
   title: string;
@@ -44,34 +47,8 @@ function sinyalBerbatas(batasMs: number, induk?: AbortSignal) {
   return { signal: ctrl.signal, lepas: () => clearTimeout(t) };
 }
 
-function entitas(s: string): string {
-  return s
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&#(\d+);/g, (_m, n) => String.fromCharCode(Number(n)))
-    .replace(/&amp;/g, '&');
-}
-
-// Deskripsi Google News berisi HTML yang dikodekan dua kali (&amp;nbsp;), jadi &nbsp; bisa tersisa setelah entitas().
-const tanpaTag = (s: string) => s.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-
 export function domainDariUrl(url: string): string {
   try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; }
-}
-
-/** Tautan Bing RSS berupa bing.com/news/apiclick.aspx?...&url=<asli>; ambil URL situs aslinya. */
-export function urlAsliBing(link: string): string {
-  try {
-    const u = new URL(link);
-    if (u.hostname.endsWith('bing.com') && u.pathname.toLowerCase().includes('apiclick')) {
-      return u.searchParams.get('url') || link;
-    }
-  } catch { /* bukan URL, kembalikan apa adanya */ }
-  return link;
 }
 
 export function uraiRss(xml: string, penyedia: string, maks = 8): HasilBerita[] {

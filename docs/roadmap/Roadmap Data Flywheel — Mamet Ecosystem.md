@@ -339,8 +339,9 @@ pembersihan kueri pencarian (keduanya kode), diukur dengan mode bayangan SQL.
       `adalahKueriWaktu()` di modul yang sama — perilaku tak berubah; mutasi 3/3; suite 127/127
       ([log](../project-memory/changelog/2026-10-29-satu-pendeteksi-kata-waktu.md)); **ter-deploy v537** (isi paket diperiksa lewat API).
       **✅ 29 Okt** tanggal terbit hasil web sampai ke model; kueri "terbaru" sengaja tidak diubah (3 cara diukur, semuanya
-      merusak relevansi) ([log](../project-memory/changelog/2026-10-29-tanggal-terbit-web.md)). Sisa: "soal"/"dong" tak
-      dibuang `ringkasKueri` (contoh ADR → 0 hasil; perlu deploy) & URL pengalih Bing di klien.
+      merusak relevansi) ([log](../project-memory/changelog/2026-10-29-tanggal-terbit-web.md)). **✅ 29 Okt** partikel dong/deh/sih/nih &
+      "soal" (= tentang) dibuang; pembersih RSS bersama `shared/teks_rss.js` — contoh ADR 0 → 5 hasil, URL situs asli;
+      mutasi 7/7; **ter-deploy v538** ([log](../project-memory/changelog/2026-10-29-kata-pengisi-dan-rss-bersama.md)).
 - [x] ~~**Kegagalan router berhenti jatuh ke jalur mahal** — tentukan default yang aman saat
       klasifikasi gagal (temuan 4)~~ — **KODE SELESAI 28 Okt** ([log](../project-memory/changelog/2026-10-28-router-jalur-aman.md)):
       riwayat 6/6 kegagalan router diikuti Coordinator yang juga gagal → kini jalur aman (jawab langsung); "memutuskan"

@@ -20,7 +20,7 @@ const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const baca = (p) => readFileSync(join(AKAR, p), 'utf8');
 const { ringkasKueri } = await import(pathToFileURL(join(AKAR, 'shared/kueri_pencarian.js')).href);
 
-console.log('uji-kueri-pencarian v3');
+console.log('uji-kueri-pencarian v4');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 400)}` : ''}`);
@@ -59,14 +59,27 @@ cek(existsSync(resolve(AKAR, 'supabase/functions/agent-process/lib/web', '../../
 // ── 3. Deno sungguhan ──────────────────────────────────────────────────────────────────────────
 console.log('\n-- Deno (server) --');
 const deno = join(AKAR, 'frontend/node_modules/deno-bin/bin/deno.exe');
+// Contoh RSS meniru dua mesin: Bing (tautan pengalih apiclick, entitas di judul) & Google News (deskripsi = HTML dikodekan).
+// Diurai server (Deno, uraiRss) di sini dan klien (WebComparisonService) di bagian 8 — hasilnya harus sama.
+const RSS_BERITA = '<rss><channel>'
+  + '<item><title>Harga &quot;Beras&quot; Naik</title>'
+  + '<link>http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;aid=&amp;tid=ab12&amp;url=https%3a%2f%2fcontoh.id%2fberas&amp;c=9</link>'
+  + '<description>Bulog &amp; Mentan</description><pubDate>Tue, 28 Oct 2026 12:00:00 GMT</pubDate></item>'
+  + '<item><title>Banjir OKU - Kompas</title><link>https://news.google.com/rss/articles/abc</link>'
+  + '<description>&lt;a href="https://news.google.com/x"&gt;Banjir OKU&lt;/a&gt;&amp;nbsp;&amp;nbsp;&lt;font color="#6f6f6f"&gt;Kompas&lt;/font&gt;</description>'
+  + '<pubDate>Mon, 27 Oct 2026 12:00:00 GMT</pubDate></item></channel></rss>';
+let hasilDeno = null;
 if (!existsSync(deno)) {
   console.log('(bagian Deno dilewati: deno.exe tidak ada di frontend/node_modules)');
 } else {
-  const r = spawnSync(deno, ['run', '--no-remote', '--no-config', '--no-lock', '--quiet', `--allow-read=${AKAR}`, join(AKAR, 'uji/bantu-deno-kueri.ts'), AKAR.replace(/\\/g, '/')], { encoding: 'utf8', timeout: 60000 });
+  const r = spawnSync(deno, ['run', '--no-remote', '--no-config', '--no-lock', '--quiet', `--allow-read=${AKAR}`, join(AKAR, 'uji/bantu-deno-kueri.ts'), AKAR.replace(/\\/g, '/'), RSS_BERITA], { encoding: 'utf8', timeout: 60000 });
   let h = null;
   try { h = JSON.parse(r.stdout.trim().split('\n').pop()); } catch { /* dilaporkan di bawah */ }
+  hasilDeno = h;
   cek(h && h.permintaanPertama === '3 perusahaan AI terbesar 2026' && h.permintaanPertama === h.aturanBersama,
     `Deno ${h?.deno || '?'} memuat pencarian_berita.ts → shared/; permintaan pertama ke Bing memakai aturan bersama`, h || (r.stderr || r.stdout).slice(-400));
+  cek(h?.kueriAdr === 'terbaru OKU', 'Deno: aturan "soal"/partikel (lookbehind) jalan di server — contoh ADR-0021 → "terbaru OKU"', h?.kueriAdr);
+  cek(h?.urai?.[0]?.link === 'https://contoh.id/beras', 'Deno: server mengurai tautan pengalih Bing lewat shared/teks_rss.js', h?.urai);
 }
 
 // ── 4. Tier 3 klien sungguhan ──────────────────────────────────────────────────────────────────
@@ -186,6 +199,52 @@ const konteks = ro.formatAsContext(x.r.chunks || []);
 cek(konteks.includes('Berita Web — https://contoh.id/x, terbit 2026-10-28, akurasi tidak terverifikasi')
   && konteks.includes('Berita Web — https://contoh.id/y, tanggal terbit tidak diketahui, akurasi'), 'teks konteks yang dibaca model memuat tanggal terbit (atau "tidak diketahui")', konteks);
 cek(x.dikirim.length === 1 && x.dikirim[0] === ringkasKueri('berita banjir OKU'), 'kueri TIDAK diubah oleh kata waktu (urut tanggal/jendela 7 hari/bulan diukur merusak relevansi)', x.dikirim);
+
+// ── 8. Kata pengisi percakapan & pembersih RSS bersama (29 Okt) ───────────────────────────────────
+// Ketahuan dari uji live bagian 7: contoh ADR-0021 sendiri → 0 hasil ("soal", "dong" tersisa), dan URL sumber di klien
+// = tautan pengalih Bing. Live: "terbaru OKU dong" → 1 hasil (Ma Dong Seok); "soal banjir Baturaja" 3 melenceng vs 9;
+// tetapi "contoh soal CPNS" tanpa "soal" → surat lamaran — maka "soal" dibuang hanya bila berarti "tentang".
+console.log('\n-- Kata pengisi percakapan & pembersih RSS bersama --');
+const RINGKAS = [
+  ['tolong carikan berita terbaru soal OKU dong', 'terbaru OKU'],
+  ['info soal banjir Baturaja dong', 'banjir Baturaja'],
+  ['gimana soal harga beras sih', 'gimana harga beras'],
+  ['Soal OKU nih', 'OKU'],
+  ['harga cabai deh', 'harga cabai'],
+  ['buatkan contoh soal CPNS 2026', 'contoh soal CPNS 2026'],
+  ['kunci jawaban soal UTBK', 'kunci jawaban soal UTBK'],
+  ['latihan soal-soal matematika kelas 6', 'latihan soal-soal matematika kelas 6'],
+  ['kisi-kisi soal ujian', 'kisi-kisi soal ujian'],
+];
+const salahRingkas = RINGKAS.filter(([a, b]) => ringkasKueri(a) !== b).map(([a, b]) => ({ a, harap: b, dapat: ringkasKueri(a) }));
+cek(salahRingkas.length === 0, `${RINGKAS.length} contoh: partikel dibuang; "soal" dibuang hanya bila berarti "tentang"`, salahRingkas);
+
+const definisiRss = [];
+for (const d of ['frontend/src', 'shared', 'supabase/functions']) {
+  const jelajahRss = (folder) => {
+    for (const n of readdirSync(folder)) {
+      if (n === 'node_modules') continue;
+      const p = join(folder, n);
+      if (statSync(p).isDirectory()) jelajahRss(p);
+      else if (/\.(js|jsx|ts)$/.test(n) && /function (entitas|urlAsliBing|tanpaTag)\b|const tanpaTag =/.test(readFileSync(p, 'utf8'))) definisiRss.push(relative(AKAR, p).replace(/\\/g, '/'));
+    }
+  };
+  jelajahRss(join(AKAR, d));
+}
+cek(definisiRss.length === 1 && definisiRss[0] === 'shared/teks_rss.js', 'entitas/tanpaTag/urlAsliBing didefinisikan di SATU tempat: shared/teks_rss.js', definisiRss);
+const imporRss = /import \{ entitas, tanpaTag, urlAsliBing \} from '\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/shared\/teks_rss\.js'/;
+cek(imporRss.test(baca('supabase/functions/agent-process/lib/web/pencarian_berita.ts')) && imporRss.test(baca('frontend/src/core/runtime/services/WebComparisonService.js')),
+  'server (pencarian_berita.ts) & klien (WebComparisonService.js) mengimpor pembersih RSS dari shared/');
+
+const uraiKlien = new WebComparisonService({ has: () => false, get: () => null })._parseRssResults(RSS_BERITA);
+cek(uraiKlien[0]?.link === 'https://contoh.id/beras', 'klien: URL sumber = alamat situs, bukan tautan pengalih Bing', uraiKlien[0]?.link);
+cek(uraiKlien[0]?.title === 'Harga "Beras" Naik' && uraiKlien[0]?.snippet === 'Bulog & Mentan', 'klien: entitas di judul & cuplikan terurai', uraiKlien[0]);
+cek(uraiKlien[1]?.snippet === 'Banjir OKU Kompas', 'klien: HTML terkode di deskripsi Google News tak ikut ke cuplikan', uraiKlien[1]?.snippet);
+if (hasilDeno?.urai) {
+  const medan = ['title', 'link', 'snippet', 'tanggal'];
+  const bedaUrai = uraiKlien.flatMap((k, i) => medan.filter((m) => k[m] !== hasilDeno.urai[i]?.[m]).map((m) => ({ i, m, klien: k[m], server: hasilDeno.urai[i]?.[m] })));
+  cek(uraiKlien.length === hasilDeno.urai.length && bedaUrai.length === 0, 'klien & server (Deno) mengurai RSS yang sama dengan hasil yang sama', bedaUrai);
+}
 
 console.log(gagal === 0 ? '\nSEMUA LULUS' : `\n${gagal} GAGAL`);
 process.exit(gagal === 0 ? 0 : 1);

@@ -21,6 +21,8 @@
 import { supabase } from '../../../supabase.js';
 // Modul bersama klien & server (ADR-0021 #6): aturan yang sama dipakai sub-agent researcher di agent-process.
 import { ringkasKueri } from '../../../../../shared/kueri_pencarian.js';
+// Pembersih teks RSS bersama server (29 Okt 2026): URL asli dari tautan pengalih Bing, entitas sebelum tag.
+import { entitas, tanpaTag, urlAsliBing } from '../../../../../shared/teks_rss.js';
 
 export const WEB_SEARCH_TIMEOUT_MS = 8000; // 8 detik batas waktu standar
 export const WEB_SUFFICIENCY_SCORE = 0.7; // Skor kecukupan bila web comparison berhasil
@@ -590,22 +592,13 @@ export class WebComparisonService {
 
     while ((match = itemRegex.exec(xml)) !== null && results.length < 5) {
       const itemXml = match[1];
-      const rawTitle = itemXml.match(/<title>([\s\S]*?)<\/title>/i)?.[1] || '';
-      const title = rawTitle.replace(/<!\[CDATA\[(.*?)\]\]>/g, '$1').trim();
-
-      const link = (itemXml.match(/<link>([\s\S]*?)<\/link>/i)?.[1] || '').trim();
-      const rawDesc = itemXml.match(/<description>([\s\S]*?)<\/description>/i)?.[1] || '';
-      const snippet = rawDesc
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/&quot;/g, '"')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-      const tanggal = (itemXml.match(/<pubDate>([\s\S]*?)<\/pubDate>/i)?.[1] || '').trim();
+      // Urutan sama dengan server (`uraiRss`): entitas DULU, baru tag dibuang — deskripsi Google News berisi HTML yang
+      // dikodekan; dulu tag dibuang lebih dulu sehingga "<a href=…>" hasil penguraian ikut ke cuplikan.
+      const ambil = (re) => entitas(itemXml.match(re)?.[1] || '');
+      const title = tanpaTag(ambil(/<title>([\s\S]*?)<\/title>/i));
+      const link = urlAsliBing(ambil(/<link>([\s\S]*?)<\/link>/i).trim());
+      const snippet = tanpaTag(ambil(/<description>([\s\S]*?)<\/description>/i));
+      const tanggal = ambil(/<pubDate>([\s\S]*?)<\/pubDate>/i).trim();
 
       if (title && link) {
         results.push({
