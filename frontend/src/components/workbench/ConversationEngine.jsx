@@ -25,6 +25,7 @@ import TombolUmpanBalik from './TombolUmpanBalik.jsx';
 import { useKeadaanTersimpan, useRefTersimpan } from '../../core/runtime/hooks/useKeadaanTersimpan.js';
 import { penyimpanKeadaan } from '../../core/runtime/PenyimpanKeadaan.js';
 import TeksMarkdown, { KotakKode } from './TeksMarkdown.jsx';
+import { jejakUntukMonitor } from '../widgets/jejakMonitor.js';
 
 // =============================================
 // HELPER: Parse thinking/answer dari respons AI
@@ -1465,11 +1466,11 @@ export default function ConversationEngine({ sessionId }) {
           // sehingga panel yang baru saja ditutup Owner terbuka lagi sendiri. Panel sekarang
           // dibuka/ditutup manual lewat tombol "Monitor" (handleToggleMaefMonitor), dan saat
           // dibuka akan langsung menampilkan trace terakhir dari getWidgetData().
-          if (jsonMetadata && workspaceManager?.injectWidgetData) {
-            workspaceManager.injectWidgetData('widget:maef-monitor', {
-              focusStep: 'execution',
-              logs: jsonMetadata
-            });
+          // Isinya langkah GABUNGAN klien + server (jejakMonitor.js, 29 Okt 2026) — dulu `jsonMetadata` saja, sehingga
+          // baris klien "🔍 Dicari (web)" tak tampil dan jalur mengalir tak mengirim langkah apa pun.
+          const jejak = jejakUntukMonitor(steps, jsonMetadata);
+          if (jejak && workspaceManager?.injectWidgetData) {
+            workspaceManager.injectWidgetData('widget:maef-monitor', jejak);
           }
         },
 

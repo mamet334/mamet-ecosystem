@@ -2,6 +2,7 @@ import { runCoordinatorLLM } from '../../llm_orchestrator.ts';
 import { executeResponsePipeline } from '../../coordinator/parser_pipeline.ts';
 import { getPluginPromptList } from '../../../plugins/registry.ts';
 import { kataKunciAksi } from '../kata_kunci_router.ts';
+import { barisRencana } from '../langkah_terlihat.ts';
 
 export const IntentRouterHandler = {
   async handle(ctx: any, rctx: any, maef: any): Promise<any> {
@@ -94,7 +95,8 @@ export const IntentRouterHandler = {
         }
 
         if (plan.length > 0) {
-            ctx.state.processingSteps.push(`📋 Rencana: ${plan.length} sub-agent akan ditugaskan → ${plan.map((p: any) => p.subagent).join(', ')}`);
+            // Tugas hasil tulisan ulang Coordinator ikut tampil (ADR-0021 §2.3) — dulu hanya nama sub-agent.
+            ctx.state.processingSteps.push(barisRencana(plan));
         } else if (contractValidation.status === "REJECTED") {
             ctx.state.processingSteps.push(`❌ [Execution Contract] Skema ditolak: ${contractValidation.reason_code}`);
         } else if (!rencanaGagal) {

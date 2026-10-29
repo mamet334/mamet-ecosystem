@@ -28,6 +28,9 @@ sisi lewat **modul bersama di tempat netral** — bukan disalin, bukan diimpor s
   metadata pesan.
 - **`vite.config.js`**: `server.fs.allow` + `'../shared'`.
 
+> **Koreksi 29 Okt:** baris "🔍 Dicari (web)" ternyata **tidak tampil di layar mana pun** — gelembung chat tak menggambar
+> langkah proses dan panel Monitor hanya menerima langkah server. Diperbaiki ([log](./2026-10-29-langkah-terlihat-monitor.md)).
+
 Contoh: *"tolong carikan berita terbaru tentang banjir di Baturaja"* → dicari **"terbaru banjir Baturaja"**.
 
 ## Bukti

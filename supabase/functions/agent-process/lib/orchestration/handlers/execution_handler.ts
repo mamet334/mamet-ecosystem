@@ -1,6 +1,7 @@
 import { getPluginByName } from '../../../plugins/registry.ts';
 import { eventBus } from '../../event/event_bus.ts';
 import { CapabilityRegistry } from '../../adapters/adapter_registry.ts';
+import { barisDicariSubagent } from '../langkah_terlihat.ts';
 
 export const ExecutionPlannerHandler = {
   async execute(plan: any[], ctx: any, rctx: any, maef: any, initialAccumulatedContext: string, initialModel: string): Promise<{ accumulatedContext: string, subagentRuns: any[] }> {
@@ -81,6 +82,9 @@ export const ExecutionPlannerHandler = {
                        
                        const res = event.payload;
                        if (res.status === 'COMPLETED') {
+                           // Kata kunci yang BENAR-BENAR dikirim researcher/deep_research ke mesin berita (ADR-0021 §2.3).
+                           const dicari = barisDicariSubagent(subagent, res.subagentToolExec);
+                           if (dicari) ctx.state.processingSteps.push(dicari);
                            const outputPreview = (res.subagentResText || '').substring(0, 80).replace(/\n/g, ' ');
                            ctx.state.processingSteps.push(`✅ [Tier ${tierIdx+1}] "${subagent}" selesai (${res.durationMs}ms)${res.subagentSources?.length > 0 ? ` → ${res.subagentSources.length} sumber referensi` : ''} → "${outputPreview}..."`);
                        } else if (res.status === 'FAIL_NOT_FOUND') {
