@@ -786,7 +786,7 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
   kelas mati baru langsung merah. LampLogin menunggu K5.
 - **Status:** ⏳ tercatat, belum diputuskan.
 
-## T17 — Penyimpanan otomatis chat melewatkan perubahan yang datang saat penyimpanan sebelumnya masih berjalan (ketahuan saat Item 127 Tahap 1, 2026-10-19)
+## T17 — ✅ Penyimpanan otomatis chat melewatkan perubahan yang datang saat penyimpanan sebelumnya masih berjalan (ketahuan saat Item 127 Tahap 1, 2026-10-19)
 
 - **Temuan:** di penyimpanan otomatis `ConversationEngine.jsx` (kini pengamat `simpanOtomatis` di
   `PenyimpanKeadaan`), timer yang berbunyi saat penyimpanan sebelumnya **masih berjalan** langsung keluar —
@@ -799,7 +799,7 @@ Sesudah diskusi: **mode bayangan dulu, hakim per kalimat.**
   keduanya membuat regresi tak bisa dibedakan dari perbaikan. Perilaku lama dipertahankan persis.
 - **Arah:** saat penyimpanan selesai, jalankan ulang pengamat bila `kunciSimpan` keadaan sekarang berbeda
   dari yang baru disimpan. Uji: penyimpanan lambat + perubahan di tengahnya → tersimpan tanpa perubahan ketiga.
-- **Status:** ⏳ tercatat, belum diputuskan.
+- **Status:** ✅ **SELESAI 29 Okt** ([log](../project-memory/changelog/2026-10-29-t17-simpan-berurutan.md)) — `simpanBerurutan.js`: permintaan selama penyimpanan berjalan dicatat lalu pengamat dijalankan ulang; tanda dipasang seketika (dua penyimpanan tak lagi bisa bersamaan); gagal tanpa perubahan tak diulang. Uji `uji/uji-simpan-berurutan.mjs` (mutasi 5/5).
 
 ## T16 — Lima modul konsol uji menunjuk folder yang sudah tidak ada (ketahuan saat Item 127 Tahap 0, 2026-10-19)
 

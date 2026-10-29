@@ -58,7 +58,7 @@ const WAJIB_DI_LUAR = [
 ];
 const REF_WAJIB_DI_LUAR = [
   'kendaliKirimRef', 'percakapanSeqRef', 'lastSavedKeyRef', 'isSavingRef', 'pemulihanGagalRef', 'osStateRef',
-  'timerSimpanRef', 'cmdOtomatisRef', 'klaimDiprosesRef', 'temuanDiprosesRef', 'chatTierRef',
+  'timerSimpanRef', 'cmdOtomatisRef', 'klaimDiprosesRef', 'temuanDiprosesRef', 'chatTierRef', 'simpanTertundaRef',
 ];
 
 // ── 1. Setiap useState lokal tercatat ───────────────────────────────────────────────────────────

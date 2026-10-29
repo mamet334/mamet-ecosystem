@@ -27,6 +27,7 @@ import { penyimpanKeadaan } from '../../core/runtime/PenyimpanKeadaan.js';
 import TeksMarkdown, { KotakKode } from './TeksMarkdown.jsx';
 import { jejakUntukMonitor } from '../widgets/jejakMonitor.js';
 import { langkahPenting } from './langkahPenting.js';
+import { simpanBerurutan } from './simpanBerurutan.js';
 
 // =============================================
 // HELPER: Parse thinking/answer dari respons AI
@@ -300,6 +301,8 @@ export default function ConversationEngine({ sessionId }) {
   // pernah disimpan dan menulis ulang barisnya (updated_at naik, chat melompat ke puncak riwayat).
   const lastSavedKeyRef = useRefTersimpan(kunciSesi, 'lastSavedKey', '');
   const isSavingRef = useRefTersimpan(kunciSesi, 'isSaving', false);
+  // T17: ada permintaan simpan yang datang selama penyimpanan sebelumnya berjalan — dijalankan sesudahnya (simpanBerurutan.js).
+  const simpanTertundaRef = useRefTersimpan(kunciSesi, 'simpanTertunda', false);
   // Pemulihan riwayat gagal karena gangguan (bukan karena chatnya hilang): penunjuk chat lama dipertahankan
   // supaya riwayatnya tidak "dilupakan" aplikasi, dan chat lama tidak ditimpa pesan baru.
   const pemulihanGagalRef = useRefTersimpan(kunciSesi, 'pemulihanGagal', false);
@@ -318,7 +321,8 @@ export default function ConversationEngine({ sessionId }) {
   // database. Kini ia PENGAMAT di PenyimpanKeadaan: jalan setiap kali salah satu dari empat keadaan di bawah
   // berubah, dengan atau tanpa layar.
   //
-  // Isi logikanya SENGAJA tidak diubah satu penjaga pun — termasuk jeda 1 detik dan pembatalan timer
+  // Saat dipindah, isi logikanya SENGAJA tidak diubah satu penjaga pun (satu-satunya perubahan sesudahnya: T17, 29 Okt —
+  // permintaan yang datang selama penyimpanan berjalan tak lagi dibuang, lihat simpanBerurutan.js) — termasuk jeda 1 detik dan pembatalan timer
   // setiap ada perubahan (dulu dikerjakan cleanup efek; kini di awal tiap jalan). Nilai dibaca dari
   // penyimpan dengan NAMA YANG SAMA supaya badan fungsinya tetap terbaca seperti efek lamanya.
   //
@@ -327,7 +331,7 @@ export default function ConversationEngine({ sessionId }) {
   // (`lupakanSemua`, App.jsx).
   useEffect(() => {
     const p = penyimpanKeadaan;
-    p.amati(kunciSesi, 'simpanOtomatis', ['messages', 'currentChatId', 'isLoading', 'initialRestoreDone'], () => {
+    const simpanOtomatis = () => {
       const messages = p.baca(kunciSesi, 'messages');
       const currentChatId = p.baca(kunciSesi, 'currentChatId');
       const isLoading = p.baca(kunciSesi, 'isLoading');
@@ -359,24 +363,21 @@ export default function ConversationEngine({ sessionId }) {
         return;
       }
 
-      timerSimpanRef.current = setTimeout(async () => {
+      timerSimpanRef.current = setTimeout(() => {
         timerSimpanRef.current = null;
-        if (isSavingRef.current) return;
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user?.id) return;
-        const assistantService = getAssistantService();
-        if (!assistantService) return;
-
-         isSavingRef.current = true;
-        try {
+        // T17 (29 Okt 2026): dulu `if (isSavingRef.current) return;` membuang permintaan ini tanpa menjadwal ulang, dan
+        // tanda baru dipasang sesudah `await getSession()`. simpanBerurutan memasang tanda seketika dan menjalankan
+        // ulang pengamat ini bila ada permintaan yang datang selama penyimpanan berjalan.
+        simpanBerurutan(isSavingRef, simpanTertundaRef, async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session?.user?.id) return;
+          const assistantService = getAssistantService();
+          if (!assistantService) return;
           // [FIX: Cross-workspace leak] Jangan simpan chat jika workspace belum diketahui —
           // fallback ke 'ws-assistant' akan menyebabkan chat Engineer/Lite tersimpan
           // dengan workspace_type yang salah di database.
           const currentWsId = osStateRef.current?.workspaceId;
-          if (!currentWsId) {
-            isSavingRef.current = false;
-            return;
-          }
+          if (!currentWsId) return;
           await assistantService.saveChatToDB({
             messages,
             chatId: currentChatId,
@@ -390,11 +391,10 @@ export default function ConversationEngine({ sessionId }) {
             }
           });
           lastSavedKeyRef.current = saveKey;
-        } finally {
-          isSavingRef.current = false;
-        }
+        }, simpanOtomatis);
       }, 1000);
-    });
+    };
+    p.amati(kunciSesi, 'simpanOtomatis', ['messages', 'currentChatId', 'isLoading', 'initialRestoreDone'], simpanOtomatis);
   }, [kunciSesi]);
 
   // =============================================

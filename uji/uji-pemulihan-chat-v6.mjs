@@ -73,7 +73,10 @@ cek(/lastSavedKeyRef\.current = kunciSimpan/.test(src.slice(iPulih, iPulih + 500
 // Penjaga balapan (live TUGAS-02 putaran 1, 2026-09-23 09:29): penyimpanan & laporan patch harus MENUNGGU
 // pemulihan riwayat selesai — kalau tidak, chat ditimpa satu pesan saja dan percakapan lengkap hilang.
 const iSimpan = src.indexOf('PERSISTENSI: Auto-save messages');
-const badanSimpan = src.slice(iSimpan, iSimpan + 4500);
+// Sampai akhir efek pendaftarnya (`}, [kunciSesi]);`), bukan angka tetap: sejak T17 (29 Okt) pengamatnya fungsi bernama
+// yang didaftarkan di BAWAH badannya, sehingga pendaftaran jatuh di luar jendela 4500 huruf lama.
+const akhirSimpan = src.indexOf('}, [kunciSesi]);', iSimpan);
+const badanSimpan = src.slice(iSimpan, akhirSimpan > iSimpan ? akhirSimpan + 16 : iSimpan + 4500);
 cek(/if \(!initialRestoreDone\) return;/.test(badanSimpan),
   'autosave menunggu pemulihan selesai (chat tidak ditimpa satu pesan)');
 // v6 (2026-10-19, Item 127 Tahap 1): penyimpanan otomatis kini PENGAMAT di PenyimpanKeadaan, bukan
