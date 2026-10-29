@@ -2,6 +2,7 @@
 
 **Untuk siapa:** AI coding (bukan Engineer — Engineer memakai `INIT.md`). Baca dokumen ini utuh lebih dulu,
 lalu buka **hanya** dokumen yang ditunjuk.
+**Aturan kerja praktis AI coding** (git, urutan deploy → catat → push, uji, privasi): [`CLAUDE.md`](../../CLAUDE.md) di akar repo.
 **Update terakhir:** 2026-10-29 (T15 kode selesai — 5 modul ke `shared/`; ADR-0021 diterima — kapan LLM dipakai di depan; Electron 45.1.0 di repo, rilis 4.4.0 menunggu uji chat & PDF; versi 4.3.2 — paket "Black October"; T20 "Black October" Brotli 🟡; Item 129 Tahap E ✅ pemasang + E2 ✅ tombol stealth + E3 ✅ transparansi; Tahap D 🟡 kode + deploy v531; 2026-10-23 Tahap A–C ✅; pesan galat saldo ≠ batas harian (E8); 2026-10-22 Item 129 terdaftar; sebelumnya 2026-10-20: baris Item 127 diringkas kembali ke status + tautan sesuai §0; T18 ditambahkan;
 riwayat detail lama: [`INDEX-ROADMAP-ARSIP-2026-09-17.md`](./INDEX-ROADMAP-ARSIP-2026-09-17.md))
 
