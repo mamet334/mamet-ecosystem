@@ -20,7 +20,7 @@ const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const baca = (p) => readFileSync(join(AKAR, p), 'utf8');
 const { ringkasKueri } = await import(pathToFileURL(join(AKAR, 'shared/kueri_pencarian.js')).href);
 
-console.log('uji-kueri-pencarian v1');
+console.log('uji-kueri-pencarian v2');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 400)}` : ''}`);
@@ -117,6 +117,58 @@ cek(/let processingSteps = \[\.\.\.langkahAwal\];/.test(AS) && /onDone\?\.\(clea
 const RO = baca('frontend/src/core/runtime/services/RetrievalOrchestrator.js');
 cek(/kueriDicari: tier3Result\.kueriDicari/.test(RO), 'RetrievalOrchestrator meneruskan kueriDicari juga saat web gagal');
 cek(/allow: \[[^\]]*'\.\.\/shared'/.test(baca('frontend/vite.config.js')), "vite.config.js: server.fs.allow memuat '../shared'");
+
+// ── 6. Kata waktu: satu aturan untuk klien & server (29 Okt) ──────────────────────────────────
+// Dulu dua salinan identik: RetrievalOrchestrator.isTemporalQuery (klien) & RetrievalStrategyService.isTemporalOrRecencyQuery
+// (server). Pola LAMA disalin ke sini sebagai pembanding: penyatuan tak boleh mengubah satu jawaban pun.
+console.log('\n-- kata waktu (adalahKueriWaktu) --');
+const { adalahKueriWaktu } = await import(pathToFileURL(join(AKAR, 'shared/kueri_pencarian.js')).href);
+const POLA_LAMA = /\b(terbaru|terkini|hari ini|minggu ini|bulan ini|tahun ini|sekarang|saat ini|berita|update|teranyar|latest|recent|currently|current|today|this week|this month|news)\b/i;
+const CONTOH = [
+  'berita terbaru hari ini', 'apa kabar?', 'harga beras sekarang', 'Update terkini MotoGP', 'What is the LATEST news today',
+  'jelaskan Kepbup OKU 2025', 'updated policy', 'beritahu saya caranya', 'minggu ini ada rapat?', 'tahun ini vs tahun lalu',
+  'currently reading', 'recently', 'saat ini juga', 'teranyar', '', 'kode program terbaru', 'pemberitaan media',
+];
+const beda = CONTOH.filter((t) => adalahKueriWaktu(t) !== POLA_LAMA.test(t));
+cek(beda.length === 0, `${CONTOH.length} contoh: hasil sama persis dengan pola lama (perilaku tak berubah)`, beda);
+// SETIAP kata pola lama diuji SENDIRIAN dalam kalimat — tanpa ini kata yang hilang dari aturan bersama tak ketahuan
+// bila contohnya kebetulan memuat kata waktu lain (mutasi "berita" dihapus sempat lolos, 29 Okt).
+const KATA_LAMA = POLA_LAMA.source.match(/\(([^)]+)\)/)[1].split('|');
+const kataHilang = KATA_LAMA.filter((k) => !adalahKueriWaktu(`tolong cek ${k} soal Baturaja`));
+cek(KATA_LAMA.length === 19 && kataHilang.length === 0, `tiap ${KATA_LAMA.length} kata waktu lama tetap terdeteksi sendirian`, kataHilang);
+cek(adalahKueriWaktu('berita terbaru') === true && adalahKueriWaktu('jelaskan Kepbup OKU') === false
+  && adalahKueriWaktu(undefined) === false && adalahKueriWaktu(42) === false, 'contoh pokok & masukan bukan teks');
+const { RetrievalStrategyService } = await import(pathToFileURL(join(AKAR, 'shared/RetrievalStrategyService.js')).href);
+const rss = new RetrievalStrategyService();
+cek(CONTOH.every((t) => rss.isTemporalOrRecencyQuery(t) === adalahKueriWaktu(t)), 'server: RetrievalStrategyService.isTemporalOrRecencyQuery = adalahKueriWaktu');
+const hasilRO = await esbuild.build({
+  entryPoints: [join(AKAR, 'frontend/src/core/runtime/services/RetrievalOrchestrator.js')],
+  bundle: true, format: 'esm', platform: 'neutral', write: false, logLevel: 'silent',
+  plugins: [{
+    name: 'tiruan',
+    setup(b) {
+      b.onResolve({ filter: /supabase\.js$/ }, (a) => ({ path: a.path, namespace: 'tiruan' }));
+      b.onLoad({ filter: /.*/, namespace: 'tiruan' }, () => ({ contents: 'export const supabase = null;', loader: 'js' }));
+    },
+  }],
+});
+writeFileSync(join(dir, 'ro.mjs'), hasilRO.outputFiles[0].text);
+const { RetrievalOrchestrator } = await import(pathToFileURL(join(dir, 'ro.mjs')).href);
+const ro = new RetrievalOrchestrator({ has: () => false, get: () => null });
+cek(CONTOH.every((t) => ro.isTemporalQuery(t) === adalahKueriWaktu(t)), 'klien: RetrievalOrchestrator.isTemporalQuery = adalahKueriWaktu');
+const salinanPola = [];
+for (const d of ['frontend/src', 'shared', 'supabase/functions']) {
+  const jelajahPola = (folder) => {
+    for (const n of readdirSync(folder)) {
+      if (n === 'node_modules') continue;
+      const p = join(folder, n);
+      if (statSync(p).isDirectory()) jelajahPola(p);
+      else if (/\.(js|jsx|ts)$/.test(n) && readFileSync(p, 'utf8').includes('teranyar|latest|recent|currently')) salinanPola.push(relative(AKAR, p).replace(/\\/g, '/'));
+    }
+  };
+  jelajahPola(join(AKAR, d));
+}
+cek(salinanPola.length === 1 && salinanPola[0] === 'shared/kueri_pencarian.js', 'pola kata waktu hanya di shared/kueri_pencarian.js (tak ada salinan)', salinanPola);
 
 console.log(gagal === 0 ? '\nSEMUA LULUS' : `\n${gagal} GAGAL`);
 process.exit(gagal === 0 ? 0 : 1);

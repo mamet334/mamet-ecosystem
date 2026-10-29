@@ -13,6 +13,8 @@
 
 import { InternalKnowledgeFallbackService } from './InternalKnowledgeFallbackService.js';
 import { WebComparisonService } from './WebComparisonService.js';
+// Aturan "pesan menuntut info terkini" — satu salinan bersama klien & server (29 Okt 2026).
+import { adalahKueriWaktu } from '../../../../../shared/kueri_pencarian.js';
 
 export class RetrievalOrchestrator {
   constructor(serviceManager) {
@@ -52,9 +54,7 @@ export class RetrievalOrchestrator {
    * @returns {boolean}
    */
   isTemporalQuery(query) {
-    if (!query || typeof query !== 'string') return false;
-    const TEMPORAL_REGEX = /\b(terbaru|terkini|hari ini|minggu ini|bulan ini|tahun ini|sekarang|saat ini|berita|update|teranyar|latest|recent|currently|current|today|this week|this month|news)\b/i;
-    return TEMPORAL_REGEX.test(query);
+    return adalahKueriWaktu(query);
   }
 
   /**

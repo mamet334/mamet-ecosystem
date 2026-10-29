@@ -28,3 +28,18 @@ export function ringkasKueri(q) {
     .slice(0, 8)
     .join(' ');
 }
+
+/**
+ * Pesan menuntut informasi TERKINI (berita, "terbaru", "hari ini", …)? Satu aturan untuk klien & server (29 Okt 2026).
+ *
+ * Dulu ada DUA salinan identik huruf demi huruf: `RetrievalOrchestrator.isTemporalQuery()` (klien — memicu web Tier 3 &
+ * menyaring memori di AssistantService) dan `RetrievalStrategyService.isTemporalOrRecencyQuery()` (server —
+ * context_builder). Pola di bawah disalin PERSIS dari keduanya: penyatuan ini tak mengubah perilaku, hanya menutup risiko
+ * dua salinan menyimpang diam-diam. Kedua metode lama tetap ada dan kini memanggil fungsi ini.
+ * @param {string} teks
+ * @returns {boolean}
+ */
+export function adalahKueriWaktu(teks) {
+  if (!teks || typeof teks !== 'string') return false;
+  return /\b(terbaru|terkini|hari ini|minggu ini|bulan ini|tahun ini|sekarang|saat ini|berita|update|teranyar|latest|recent|currently|current|today|this week|this month|news)\b/i.test(teks);
+}

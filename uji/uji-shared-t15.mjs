@@ -20,7 +20,7 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const MODUL = ['folderKerjaAlat', 'konektorAlat', 'dataTabelAsnSaring', 'KnowledgeService', 'RetrievalStrategyService', 'kueri_pencarian'];
 
-console.log('uji-shared-t15 v1');
+console.log('uji-shared-t15 v2');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 500)}` : ''}`);
@@ -70,11 +70,15 @@ const pemakaiKlien = new Set(keShared.filter((p) => p.startsWith('frontend/')));
 cek(pemakaiServer.size >= 7 && pemakaiKlien.size >= 2, `dipakai dua sisi: ${pemakaiServer.size} berkas server, ${pemakaiKlien.size} berkas klien`, { server: [...pemakaiServer], klien: [...pemakaiKlien] });
 
 // ── 4. Modul shared/ murni ─────────────────────────────────────────────────────────────────────
+// Boleh mengimpor SESAMA shared/ (29 Okt: RetrievalStrategyService → kueri_pencarian, satu aturan kata waktu); tak boleh
+// menjangkau ke luar — paket npm, frontend/, supabase/ — karena itu pintu belakang yang mengembalikan T15.
 console.log('\n-- murni --');
-for (const b of daftarBerkas(join(AKAR, 'shared'), /\.(js|ts|mjs)$/)) {
+const folderShared = join(AKAR, 'shared');
+for (const b of daftarBerkas(folderShared, /\.(js|ts|mjs)$/)) {
   const isi = readFileSync(b, 'utf8');
   const impor = [...isi.matchAll(IMPOR)].map((m) => m[1]).concat([...isi.matchAll(/require\(\s*['"]([^'"]+)['"]/g)].map((m) => m[1]));
-  cek(impor.length === 0, `${rel(b)} tanpa impor`, impor);
+  const keLuar = impor.filter((s) => !s.startsWith('./') || !resolve(dirname(b), s).startsWith(folderShared) || !existsSync(resolve(dirname(b), s)));
+  cek(keLuar.length === 0, `${rel(b)} tanpa impor ke luar shared/${impor.length ? ` (${impor.length} impor sesama shared/)` : ''}`, keLuar);
 }
 
 // ── 5. Bundel server membawa shared/, bukan frontend/ ─────────────────────────────────────────

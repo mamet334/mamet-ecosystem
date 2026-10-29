@@ -17,6 +17,9 @@
  * Integrasi: Kernel Phase 3 → AssistantService.processMessage()
  */
 
+// Aturan "pesan menuntut info terkini" — satu salinan bersama klien & server (29 Okt 2026).
+import { adalahKueriWaktu } from './kueri_pencarian.js';
+
 // Threshold: jika >60% top-K chunk berasal dari 1 dokumen → Kasus A
 const CASE_A_DOMINANCE_THRESHOLD = 0.6;
 
@@ -47,9 +50,7 @@ export class RetrievalStrategyService {
    * @returns {boolean}
    */
   isTemporalOrRecencyQuery(query) {
-    if (!query || typeof query !== 'string') return false;
-    const TEMPORAL_RECENCY_REGEX = /\b(terbaru|terkini|hari ini|minggu ini|bulan ini|tahun ini|sekarang|saat ini|berita|update|teranyar|latest|recent|currently|current|today|this week|this month|news)\b/i;
-    return TEMPORAL_RECENCY_REGEX.test(query);
+    return adalahKueriWaktu(query);
   }
 
   /**
