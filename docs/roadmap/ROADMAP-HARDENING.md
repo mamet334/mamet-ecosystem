@@ -10,7 +10,7 @@ Lainnya → **Parkir** (bukan utang). Fitur baru boleh jalan, asal uji yang menj
 
 Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter · 👤 tindakan Owner
 
-## Status K1–K7 (29 Okt 2026)
+## Status K1–K7 (30 Okt 2026)
 
 | # | Kriteria | Status | Sisa |
 |---|---|---|---|
@@ -18,7 +18,7 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 | K2 | RAG jujur saat gagal | ⏳ | 1 |
 | K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ (ulang sebelum rilis) | 1 |
 | K4 | Mametlite layak bagi orang awam | ⏳ (T19 ✅ live, isolasi ✅ kode) | 1 (uji nyata dua akun) |
-| K5 | Keamanan | ⏳ | 3 |
+| K5 | Keamanan | ⏳ | 2 |
 | K6 | Data aman & bisa dipulihkan | ✅ (ulang sebelum rilis) | 1 |
 | K7 | Stabil & sampai ke aplikasi terpasang | ⏳ | 2 |
 
@@ -52,7 +52,9 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - ✅ RLS "baca semua" ditutup (Item 93); rahasia tak masuk `agent_logs` (T7).
 - ✅ **Alamat mati di pengaturan masuk Supabase** (29 Okt): Site URL `otak-box-ai-navy.vercel.app` & Redirect URL
   `ai-agent-project-2a9h.vercel.app/*` menunjuk deployment Vercel yang sudah tidak ada — diganti/dihapus Owner.
-- ⏳ **Hak bawaan 39 tabel** bagi `anon`/`authenticated` + fungsi yatim (Item 125 Fase C — [roadmap](./ROADMAP-SIAP-PENGGUNA.md)).
+- ✅ **Hak tabel dipangkas** (30 Okt): `anon` 0 hak; `authenticated` 54 hak di 27 tabel = persis yang dipakai klien;
+  `TRUNCATE` dkk. 0; 9 fungsi tanpa pemanggil klien → service_role. Dijaga `uji-hak-tabel-k5`; Cadangkan data 15/15
+  sesudahnya ([log](../project-memory/changelog/2026-10-30-k5-hak-tabel.md)).
 - ⏳ **T1** daftar izin sub-agent di server.
 - ✅ **`proxy_fetch` wajib token + hanya alamat publik; log autentikasi hanya ID** — ter-deploy v540 30 Okt, live tanpa token → 401
   ([log](../project-memory/changelog/2026-10-30-k5-proxy-fetch-log-email.md)).
@@ -75,6 +77,7 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - Item 129 Tahap D (label Hypothesis & Engineer)
 - Item 92 koreksi pemetaan Data Tabel
 - Item 88 BUKU-10 · Item 90 U4, U6, U7 · Item 93 Tahap 3–4
+- `npm run dev` Mametlite layar kosong — CSP `script-src 'self'` memblokir preamble React inline Vite (build tak terdampak)
 - T18 kelas Tailwind tak dibuat · retensi tabel log lain (`verification_audit_logs`, `evidence_audit_logs`, `memory_audit_logs`)
 - Graf Home diperkaya & `graf-bercahaya`
 - Engineer: T10 Tahap 2–3, Engineer Mandiri Tahap 1 & 4

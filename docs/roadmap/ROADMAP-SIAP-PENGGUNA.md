@@ -593,6 +593,11 @@ kelalaian — dan supaya baris advisor itu tidak dikejar berulang kali.
 
 ## 4. Hak 39 tabel — artefak prasyarat T11, sekarang lengkap
 
+> ✅ **DITERAPKAN 30 Okt 2026** (K5, ADR-0022) — migrasi `20261030000000_k5_hak_tabel_minimum.sql`: anon 0 hak,
+> authenticated 54 hak di 27 tabel, dijaga `uji/uji-hak-tabel-k5.mjs` terhadap kode klien
+> ([log](../project-memory/changelog/2026-10-30-k5-hak-tabel.md)). Analisis di bawah adalah keadaan 7 Okt; ukuran ulang
+> 30 Okt menemukan `cost_ledger` kini dibaca "Cadangkan data" (Item 126) dan 6 view yang ikut dicabut.
+
 > `ROADMAP-TEMUAN-TERBUKA.md` T11 menyisakan ini sebagai ⏳ dengan syarat eksplisit: *"Perlu daftar
 > pemakai per tabel lebih dulu — jangan dicabut buta."* **Bagian ini memenuhi syarat itu.**
 
