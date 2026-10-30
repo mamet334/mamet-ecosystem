@@ -268,6 +268,7 @@ dokumen ini:
 | **v4.3.0** | **TERBIT** `2026-10-26T08:48:28Z`, **Latest** — membawa **Item 129** (konektor MCP + Python & crawler terbundel); build ke-3 berhasil sesudah 2 kegagalan build GitHub ([log](../project-memory/changelog/2026-10-26-rilis-4.3.0-crawler-terbundel.md)); penarikan otomatis di mesin Owner belum diperiksa | `Mamet-AI-Setup-4.3.0.exe` (261.724.914 byte) |
 | **v4.3.1** | **TERBIT** `2026-10-27T01:04:19Z` — crawler cepat menyala (bytecode, batas 90 s); jabat tangan build GitHub 1,1 s ([log](../project-memory/changelog/2026-10-26-rilis-4.3.1-crawler-cepat-menyala.md)) | `Mamet-AI-Setup-4.3.1.exe` (283.414.050 byte) |
 | **v4.3.2** | **TERBIT** `2026-10-28T01:22:59Z`, **Latest** (diperiksa lewat API + `latest.yml`) — paket keamanan "Black October" (T20) + 👍/👎 + kata kunci crawler; build: Node 24.22.1, 86/86 paket ber-hash, jabat tangan 1,5 s ([log](../project-memory/changelog/2026-10-28-rilis-4.3.2-black-october.md)) | `Mamet-AI-Setup-4.3.2.exe` (283.531.234 byte) |
+| **v4.4.0** | **TERBIT** `2026-10-30T15:06:29Z`, **Latest** (diperiksa lewat API + `latest.yml`) — Electron 45.1.0 + hasil fase hardening sisi klien (ADR-0022; bukan garis dasar 5.0.0); build: Node 24.22.2 ([log](../project-memory/changelog/2026-10-30-rilis-4.4.0-hardening.md)) | `Mamet-AI-Setup-4.4.0.exe` (294.576.315 byte) |
 
 > ⚠️ **KOREKSI 8 Okt, dan pelajarannya sama dengan T11.** Bagian ini sebelumnya berbunyi *"Tiga
 > muatan menunggu build"* untuk 4.2.14 — dan itu **sudah basi sejak 6 Okt 22:36**: rilisnya dibangun
