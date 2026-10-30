@@ -79,7 +79,10 @@ cek(ctxR.state.processingSteps.some((l) => l === '📋 Rencana: 1 sub-agent akan
 // ── 3. execution_handler sungguhan ────────────────────────────────────────────────────────────
 const { ExecutionPlannerHandler } = await bundel('supabase/functions/agent-process/lib/orchestration/handlers/execution_handler.ts', 'eh.mjs');
 globalThis.__tiruan.exec = (sub) => (sub === 'researcher' ? { name: 'web_news_search', args: { kueri: 'pemenang MotoGP 2026', penyedia: 'Bing News' } } : null);
-const ctxE = { request: { finalMessage: 'cari pemenang motogp' }, state: { processingSteps: [] }, auth: { userId: 'u' } };
+// T1 (30 Okt 2026): execution_handler kini menjalankan hanya sub-agent yang DIMINTA di `tools` (izin_subagent.ts) dan
+// membaca `MAMET_PEMILIK_IDS` dari Deno.env — keduanya disediakan di sini seperti di server.
+globalThis.Deno ??= { env: { get: () => undefined } };
+const ctxE = { request: { finalMessage: 'cari pemenang motogp', tools: ['web_search', 'cron_manager'] }, state: { processingSteps: [] }, auth: { userId: 'u' } };
 await ExecutionPlannerHandler.execute([{ subagent: 'researcher', task: 'Cari pemenang MotoGP 2026' }, { subagent: 'cron_manager', task: 'jadwalkan' }],
   ctxE, { keys: {}, env: {}, tasks: { traceId: 't' } }, maef, '', 'm');
 const L = ctxE.state.processingSteps;

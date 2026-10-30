@@ -1,7 +1,6 @@
-import { getPluginByName } from '../../../plugins/registry.ts';
 import { eventBus } from '../../event/event_bus.ts';
-import { CapabilityRegistry } from '../../adapters/adapter_registry.ts';
 import { barisDicariSubagent } from '../langkah_terlihat.ts';
+import { adalahPemilik, alasanTolakSubagent } from '../izin_subagent.ts';
 
 export const ExecutionPlannerHandler = {
   async execute(plan: any[], ctx: any, rctx: any, maef: any, initialAccumulatedContext: string, initialModel: string): Promise<{ accumulatedContext: string, subagentRuns: any[] }> {
@@ -10,6 +9,21 @@ export const ExecutionPlannerHandler = {
     let model = initialModel;
 
     if (!plan || plan.length === 0) {
+        return { accumulatedContext, subagentRuns };
+    }
+
+    // T1 (K5): izin diperiksa DI SINI — satu-satunya pemancar `Tool.Requested`, jadi satu-satunya jalan ke
+    // `plugin.execute`. Aturan & alasannya di izin_subagent.ts.
+    const pemilik = adalahPemilik(ctx.auth?.userId, Deno.env.get('MAMET_PEMILIK_IDS'));
+    plan = plan.filter((p: any) => {
+        const alasan = alasanTolakSubagent(p?.subagent, { tools: ctx.request?.tools, appSource: ctx.auth?.appSource, pemilik });
+        if (alasan) {
+            console.warn(`[IzinSubagent] ⛔ "${String(p?.subagent).slice(0, 40)}" ditolak: ${alasan}`);
+            ctx.state.processingSteps.push(`⛔ Sub-agent "${String(p?.subagent).slice(0, 40)}" tidak dijalankan: ${alasan}`);
+        }
+        return !alasan;
+    });
+    if (plan.length === 0) {
         return { accumulatedContext, subagentRuns };
     }
 
@@ -72,7 +86,8 @@ export const ExecutionPlannerHandler = {
                   GROQ_API_KEY: rctx.keys.groq, 
                   OPENAI_API_KEY: rctx.keys.openAI, 
                   OPENROUTER_API_KEY: rctx.keys.openRouter, 
-                  APIFY_API_TOKEN: rctx.env.apifyApiToken, 
+                  // Token Apify server = biaya Owner → hanya diteruskan untuk akun pemilik (TM-003).
+                  APIFY_API_TOKEN: pemilik ? rctx.env.apifyApiToken : '',
                   allGeminiKeys: rctx.keys.allGemini 
                };
 

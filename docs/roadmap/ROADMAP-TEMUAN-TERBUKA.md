@@ -27,6 +27,12 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
 
 ## T1 — Jalur Lite: `web_search` & `rag_search` tanpa aturan izin per-tool (asal Item 33, 2026-09-09)
 
+> ✅ **DIKERJAKAN 30 Okt 2026, ter-deploy v541** (K5, ADR-0022 — [log](../project-memory/changelog/2026-10-30-k5-t1-izin-subagent.md)):
+> `lib/orchestration/izin_subagent.ts` di server — sub-agent hanya jalan bila diminta `tools`; Mametlite hanya
+> `researcher`/`deep_research`; `youtube_analyst` + token Apify hanya akun di `MAMET_PEMILIK_IDS`. Beda dari arah
+> 21 Sep: sub-agent lain (`communicator`, `scraper`, …) **tetap tersedia** atas keputusan Owner 30 Okt, dipagari alamat
+> (`lib/web/alamat_publik.ts`). Catatan: `tools` kosong ternyata sudah berarti "tanpa sub-agent" (`intent_router.ts`).
+
 - **Temuan:** `agent-process` `lib/request/policy_middleware.ts` hanya punya aturan spesifik untuk
   `cron_manager` (`canUseAutomation`) dan `knowledge_manager` (`canWriteKnowledge`) — aturan `file_analyzer`
   ikut terhapus bersama jalur desktop lama (Item 85). `web_search`/`rag_search` lolos selama

@@ -1,4 +1,9 @@
 import * as cheerio from 'https://esm.sh/cheerio@1.0.0-rc.12';
+import { alamatBolehDiambil, ambilAman } from '../lib/web/alamat_publik.ts';
+
+// K5 (30 Okt 2026): setiap URL dari tugas (buatan model, dari pesan siapa pun yang punya akun) diperiksa
+// `alamatBolehDiambil`, dan pengalihan diikuti lewat `ambilAman` — dulu `redirect: 'follow'` tanpa pagar (TM-005).
+const PESAN_ALAMAT_DITOLAK = 'Alamat tidak diizinkan: hanya http/https ke alamat publik.';
 
 /**
  * === MAMET SUB-AGENT: ADVANCED WEB SCRAPER ===
@@ -13,6 +18,7 @@ import * as cheerio from 'https://esm.sh/cheerio@1.0.0-rc.12';
 
 // === HELPER: Scrape via Jina Reader (Anti-Cloudflare/JS) ===
 async function scrapeViaJina(url: string): Promise<{ success: boolean; content: string }> {
+  if (!alamatBolehDiambil(url)) return { success: false, content: PESAN_ALAMAT_DITOLAK };
   try {
     const res = await fetch(`https://r.jina.ai/${url}`, {
       headers: {
@@ -39,7 +45,7 @@ async function scrapeDirectFetch(url: string, cookies?: string): Promise<{ succe
     };
     if (cookies) headers['Cookie'] = cookies;
 
-    const res = await fetch(url, { headers, redirect: 'follow' });
+    const res = await ambilAman(url, { headers });
     if (!res.ok) return { success: false, content: `Direct fetch gagal (HTTP ${res.status})` };
     
     const html = await res.text();
@@ -104,11 +110,10 @@ async function scrapeDirectFetch(url: string, cookies?: string): Promise<{ succe
 async function loginAndScrape(loginUrl: string, targetUrl: string, credentials: { username: string; password: string; usernameField?: string; passwordField?: string }): Promise<{ success: boolean; content: string }> {
   try {
     // Step 1: Kunjungi halaman login untuk mendapatkan token CSRF dan cookies
-    const loginPageRes = await fetch(loginUrl, {
+    const loginPageRes = await ambilAman(loginUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       },
-      redirect: 'follow'
     });
     
     const loginPageHtml = await loginPageRes.text();
@@ -140,7 +145,7 @@ async function loginAndScrape(loginUrl: string, targetUrl: string, credentials: 
     const absoluteFormAction = formAction.startsWith('http') ? formAction : new URL(formAction, loginUrl).href;
 
     // Step 2: Submit form login
-    const loginRes = await fetch(absoluteFormAction, {
+    const loginRes = await ambilAman(absoluteFormAction, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -149,7 +154,6 @@ async function loginAndScrape(loginUrl: string, targetUrl: string, credentials: 
         'Referer': loginUrl
       },
       body: formData.toString(),
-      redirect: 'follow'
     });
 
     // Ambil cookies baru setelah login (session cookies)

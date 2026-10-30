@@ -1,4 +1,8 @@
 import { handleAuth } from './auth_middleware.ts';
+import { alamatBolehDiambil, ambilAman, AlamatDitolakError } from '../web/alamat_publik.ts';
+
+// Pagar alamat pindah ke modul bersama (30 Okt 2026) — dipakai juga `communicator` & `scraper`.
+export { alamatBolehDiambil };
 
 /**
  * PROXY FETCH — `{ action: 'proxy_fetch', url }`: server mengambilkan RSS/halaman untuk web Tier 3 di versi web
@@ -12,19 +16,6 @@ import { handleAuth } from './auth_middleware.ts';
  */
 
 const BATAS_MS = 12000;
-
-/** Alamat boleh diambil server? Hanya http/https ke host publik. Tidak memeriksa DNS (host bernama tetap boleh). */
-export function alamatBolehDiambil(url: unknown): boolean {
-  let u: URL;
-  try { u = new URL(String(url)); } catch { return false; /* bukan URL sah → ditolak (penolakannya dicatat pemanggil) */ }
-  if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
-  const h = u.hostname.toLowerCase().replace(/^\[|\]$/g, '');
-  if (h === 'localhost' || h.endsWith('.localhost') || h === '0.0.0.0' || h === '::' || h === '::1') return false;
-  if (/^(127|10)\./.test(h) || /^192\.168\./.test(h) || /^169\.254\./.test(h)) return false;
-  if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return false;
-  if (/^(fc|fd|fe80)/.test(h) && h.includes(':')) return false;
-  return true;
-}
 
 const jawab = (isi: unknown, corsHeaders: HeadersInit) =>
   new Response(JSON.stringify(isi), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -55,15 +46,22 @@ export async function handleProxyFetchRequest(
 
   console.log(`[ProxyFetch] Server-side fetching external URL: ${targetUrl}`);
   try {
-    const fetchRes = await fetchFn(targetUrl, {
+    // ambilAman: tujuan setiap pengalihan ikut diperiksa (dulu `fetch` mengikutinya tanpa cek).
+    const fetchRes = await ambilAman(targetUrl, {
       signal: AbortSignal.timeout(BATAS_MS),
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-    });
+    }, fetchFn);
     const content = await fetchRes.text();
     const isOk = fetchRes.ok || (content.includes('<item>') || content.includes('<rss') || content.includes('<feed'));
     console.log(`[ProxyFetch] Fetch done: status=${fetchRes.status}, length=${content.length}, isOk=${isOk}`);
     return jawab({ ok: isOk, status: isOk ? 200 : fetchRes.status, data: content }, corsHeaders);
   } catch (fetchErr: any) {
+    if (fetchErr instanceof AlamatDitolakError) {
+      console.warn(`[ProxyFetch] ⛔ Pengalihan ke alamat terlarang ditolak: ${fetchErr.alamat.slice(0, 120)}`);
+      return new Response(JSON.stringify({ ok: false, status: 400, error: 'Alamat tidak diizinkan.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     console.error('[ProxyFetch] Error:', fetchErr.message);
     return jawab({ ok: false, status: 500, error: fetchErr.message }, corsHeaders);
   }

@@ -55,7 +55,11 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - ✅ **Hak tabel dipangkas** (30 Okt): `anon` 0 hak; `authenticated` 54 hak di 27 tabel = persis yang dipakai klien;
   `TRUNCATE` dkk. 0; 9 fungsi tanpa pemanggil klien → service_role. Dijaga `uji-hak-tabel-k5`; Cadangkan data 15/15
   sesudahnya ([log](../project-memory/changelog/2026-10-30-k5-hak-tabel.md)).
-- ⏳ **T1** daftar izin sub-agent di server.
+- ✅ **T1 izin sub-agent di server** (30 Okt, v541): sub-agent hanya jalan bila diminta `tools`; Mametlite hanya riset;
+  `youtube_analyst` + token Apify hanya akun pemilik (`MAMET_PEMILIK_IDS`, belum diisi → tertutup); pagar alamat di setiap
+  pengalihan untuk `proxy_fetch`/`communicator`/`scraper` ([log](../project-memory/changelog/2026-10-30-k5-t1-izin-subagent.md)).
+- ⏳ **Batas volume `rag-process` per pengguna** (model ancaman TM-004): pendaftaran akun terbuka → akun asing bisa
+  memenuhi kuota DB 500 MB.
 - ✅ **`proxy_fetch` wajib token + hanya alamat publik; log autentikasi hanya ID** — ter-deploy v540 30 Okt, live tanpa token → 401
   ([log](../project-memory/changelog/2026-10-30-k5-proxy-fetch-log-email.md)).
 - ⏳👤 **Ganti kunci API** yang pernah bocor (T7) & token Apify (T1).
@@ -77,6 +81,9 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - Item 129 Tahap D (label Hypothesis & Engineer)
 - Item 92 koreksi pemetaan Data Tabel
 - Item 88 BUKU-10 · Item 90 U4, U6, U7 · Item 93 Tahap 3–4
+- Kode mati (graphify 30 Okt): `supabase/functions/test-suite/` (rusak sintaks, tak ter-deploy),
+  `agent-process/lib/maef/engineering_lifecycle.ts` (1 baris "MOVED"), `agent-process/plugins/memory_manager.ts` (tak terdaftar)
+- `.gitignore` akar tidak memuat `hasil/` padahal CLAUDE.md melarang meng-commit-nya
 - `npm run dev` Mametlite layar kosong — CSP `script-src 'self'` memblokir preamble React inline Vite (build tak terdampak)
 - T18 kelas Tailwind tak dibuat · retensi tabel log lain (`verification_audit_logs`, `evidence_audit_logs`, `memory_audit_logs`)
 - Graf Home diperkaya & `graf-bercahaya`

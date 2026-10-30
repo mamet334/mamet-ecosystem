@@ -3,7 +3,7 @@ import { YoutubeTranscript } from 'https://esm.sh/youtube-transcript@1.2.1';
 export default {
   name: 'youtube_analyst',
   description: 'Mengekstrak teks subtitle (Closed Captions) dari video YouTube berdasarkan URL, lalu merangkum isi videonya secara mendetail.',
-  execute: async ({ task, runLLM }) => {
+  execute: async ({ task, runLLM, env }) => {
     try {
       // 1. Ekstrak URL YouTube dari teks tugas menggunakan Regex
       const urlRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
@@ -31,7 +31,8 @@ export default {
           transcriptText = transcript.map(t => t.text).join(' ');
         } catch (err) {
           console.log("youtube-transcript failed, trying Apify fallback...", err.message);
-          const apifyToken = Deno.env.get("APIFY_API_TOKEN");
+          // Dari env eksekusi, BUKAN Deno.env: execution_handler hanya mengisinya untuk akun pemilik (K5, TM-003).
+          const apifyToken = env?.APIFY_API_TOKEN;
           
           if (apifyToken) {
             try {
