@@ -38,11 +38,13 @@ const esbuild = await import(pathToFileURL(join(AKAR, 'frontend/node_modules/esb
 const dir = mkdtempSync(join(tmpdir(), 'uji-komposisi-'));
 try {
   // Modul ASLI dijalankan; ketiga impornya ditukar tiruan karena tak satu pun dipakai fungsi ini.
-  writeFileSync(join(dir, 'stub.mjs'), 'export const eventBus={emit(){},subscribe(){}};export const CapabilityRegistry={};export const RuntimeContext={};');
+  // pesanSemuaPenyediaGagal ikut ditiru (impor ke-4 sejak 30 Okt 2026, K4) — juga tak dipakai fungsi ini.
+  writeFileSync(join(dir, 'stub.mjs'), 'export const eventBus={emit(){},subscribe(){}};export const CapabilityRegistry={};export const RuntimeContext={};export const pesanSemuaPenyediaGagal=()=>"";');
   let src = baca('supabase/functions/agent-process/lib/llm_orchestrator.ts')
     .replace("'./runtime_context.ts'", "'./stub.mjs'")
     .replace("'./event/event_bus.ts'", "'./stub.mjs'")
-    .replace("'./adapters/adapter_registry.ts'", "'./stub.mjs'");
+    .replace("'./adapters/adapter_registry.ts'", "'./stub.mjs'")
+    .replace("'./streaming/pesan_gagal_stream.ts'", "'./stub.mjs'");
   const { code } = await esbuild.transform(src, { loader: 'ts', format: 'esm' });
   writeFileSync(join(dir, 'o.mjs'), code);
   const { catatKomposisiPrompt } = await import(pathToFileURL(join(dir, 'o.mjs')).href);

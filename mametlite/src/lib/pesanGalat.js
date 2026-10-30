@@ -67,7 +67,10 @@ export function pesanUntukPengguna(galat) {
 
   // 402 — saldo. Catatan Owner: saldo minus TIDAK berarti layanan mati; sebagian permintaan kecil
   // masih dilayani, jadi pesannya tidak boleh bilang "tidak bisa dipakai sama sekali".
-  if (ada(teknis, '402', 'can only afford', 'insufficient credits', 'quota', 'credits')) {
+  // K4 (30 Okt 2026): kalimat saldo server (`pesanSaldoTakCukup`, reasoning_openrouter.ts) berbahasa Indonesia dan tak
+  // memuat "402" maupun "can only afford" — penandanya disamakan dengan pesanGalat.js Ecosystem v2 (23 Okt).
+  if (ada(teknis, '402', 'can only afford', 'insufficient credits', 'quota', 'credits',
+    'saldo openrouter', 'saldo tidak cukup', 'saldo penyedia')) {
     return {
       judul: 'Saldo OpenRouter Anda tidak cukup untuk permintaan ini.',
       saran: 'Isi ulang saldo di openrouter.ai, atau coba pertanyaan yang lebih pendek — permintaan kecil kadang masih bisa dilayani.',

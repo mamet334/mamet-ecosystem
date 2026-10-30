@@ -103,7 +103,10 @@ export const getStreamResponse = (promptText: string, systemPromptText = '', cha
         // === LABEL VERIFIED HARUS MENGUTIP SUMBER (Item 71) ===
         // Teks yang sudah terkirim tidak bisa ditarik kembali, jadi koreksinya DITAMBAHKAN di akhir —
         // pembaca tetap tahu label itu tidak sah. Jalur non-stream menggantinya langsung.
-        try {
+        // K4 (30 Okt 2026): semua penyedia gagal → isi stream adalah PESAN KEGAGALAN (llm_orchestrator), bukan jawaban
+        // model. Dulu ia ikut diberi label HYPOTHESIS + "model tidak menulis label" bila ada dokumen dilampirkan.
+        const semuaGagal = Boolean((rctx as any)?.semuaPenyediaGagal);
+        if (!semuaGagal) try {
           const cek = periksaLabelSumber(fullLLMResponse, safeMeta.judulDokumen || [], isiDokumen);
           if (cek.dikoreksi) {
             // Label dibaca dari hasil, tidak lagi dipaku ke HYPOTHESIS: sejak T13 penurunannya bisa
@@ -116,7 +119,7 @@ export const getStreamResponse = (promptText: string, systemPromptText = '', cha
           console.error('[LABEL] gagal memeriksa label:', labelErr);
         }
         // K2/U8b: RAG turun ke pencocokan kata → catatan sistem (sama dengan jalur non-stream).
-        if (catatanRag) enqueueStr(`\n\n${catatanRag}\n`);
+        if (catatanRag && !semuaGagal) enqueueStr(`\n\n${catatanRag}\n`);
 
         // === T14: NAMA PENYEDIA HULU IKUT KE METADATA PESAN ===
         // Satu nama model di OpenRouter dilayani banyak penyedia (terukur: 8 penyedia untuk

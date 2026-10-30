@@ -1,6 +1,7 @@
 import { RuntimeContext } from './runtime_context.ts';
 import { eventBus } from './event/event_bus.ts';
 import { CapabilityRegistry } from './adapters/adapter_registry.ts';
+import { pesanSemuaPenyediaGagal } from './streaming/pesan_gagal_stream.ts';
 
 // API Key state moved to Adapters
 
@@ -378,11 +379,14 @@ export const runStreamLLM = async function*(promptText: string, systemPromptText
            return;
        }
        lastError += ` [${adapter.name}]: ${msg};`;
-       yield `\n\n*(Fallback Note: ${adapter.name} failed, cascading...)*\n\n`;
+       // K4 (30 Okt 2026): dulu "*(Fallback Note: … failed, cascading...)*" ikut ditulis ke ISI jawaban — teks teknis
+       // bagi pengguna awam, juga saat penyedia berikutnya berhasil. Kini hanya di log (console.warn di atas).
      }
   }
 
-  yield `\n\n**Semua AI Provider sedang limit atau gangguan.**\nDetail error: ${lastError}`;
+  // Penanda untuk stream_handler: jawaban ini pesan kegagalan, bukan jawaban model — jangan diberi label/catatan RAG.
+  (rctx as any).semuaPenyediaGagal = true;
+  yield `\n\n${pesanSemuaPenyediaGagal(lastError)}`;
 };
 
 // --- OTAK KHUSUS KEPALA AGENT (HEMAT KUOTA) + ANTI-LIMIT ---
