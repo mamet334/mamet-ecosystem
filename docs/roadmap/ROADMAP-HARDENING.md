@@ -79,8 +79,9 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - ✅ Suite 129/129; galat dalam bahasa manusia (Item 125 M4).
 - ✅ **Uji goyah J3b dipatok** (30 Okt): asersi dipecah tiga + satu percobaan ulang bila Python belum menyala; tetap gagal
   bila pohon proses tak dimatikan ([log](../project-memory/changelog/2026-10-30-k5-batas-rag-j3b-u8b.md)). Suite 136/136.
-- ⏳💳👤 **Rilis** yang membawa semua perubahan — chat & PDF di Electron 45 diuji; Node 24 & `icacls` di laptop Owner.
-  Rilis garis dasar diberi nomor **5.0.0**.
+- ⏳ **Rilis 4.4.0** (30 Okt, keputusan Owner): Electron 45 + hasil hardening sisi klien; versi dinaikkan, menunggu
+  build GitHub & Publish Owner ([log](../project-memory/changelog/2026-10-30-rilis-4.4.0-hardening.md)).
+- ⏳💳👤 **Rilis garis dasar 5.0.0** — hanya bila K1–K7 semuanya ✅.
 
 ## Parkir (bukan utang — Owner boleh mengambil kapan saja)
 
