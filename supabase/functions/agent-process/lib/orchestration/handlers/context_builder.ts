@@ -190,6 +190,8 @@ export const ContextBuilderHandler = {
                 ? 'vektor yang dipakai ulang tak sesuai dimensi'
                 : kalimatSebabEmbedding(jejakVektor);
             console.log(`[RAG] Mode: ${ctx.policy.mode} — vektor tidak tersedia (${sebabTurun}${gagalDiHulu ? ', sudah gagal di hulu — TIDAK diulang' : ''}), cadangan pencocokan kata (KnowledgeService).`);
+            // K2/U8b: sebabnya ikut ke jawaban sebagai "Catatan sistem" (synthesis_handler / stream_handler).
+            ctx.state.ragTurunKeKata = sebabTurun;
             ctx.state.processingSteps.push(
                 `⚠️ [RAG TURUN KE PENCOCOKAN KATA] Pencarian makna tidak jalan: ${sebabTurun}. ` +
                 `Dokumen yang pertanyaannya tak memuat kata dari judulnya bisa TIDAK ditemukan — ` +

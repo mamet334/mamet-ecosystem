@@ -9,7 +9,8 @@ export const corsHeaders = {
 
 export const getStreamResponse = (promptText: string, systemPromptText = '', chatHistory: any[] = [], metaData: any = {}, rctx: RuntimeContext) => {
   // isiDokumen (isi potongan RAG, bisa puluhan KB) hanya untuk memeriksa label — JANGAN ikut ke header X-Agent-Metadata.
-  const { isiDokumen = [], ...metaTanpaIsi } = metaData || {};
+  // catatanRag (K2/U8b) ditulis ke isi jawaban di akhir stream — tak perlu ikut header.
+  const { isiDokumen = [], catatanRag = '', ...metaTanpaIsi } = metaData || {};
   const safeMeta = { ...metaTanpaIsi };
   if (safeMeta.subagentRuns) safeMeta.subagentRuns = safeMeta.subagentRuns.map((r: any) => ({ ...r, output: '[Omitted to save header space]' }));
 
@@ -114,6 +115,8 @@ export const getStreamResponse = (promptText: string, systemPromptText = '', cha
         } catch (labelErr) {
           console.error('[LABEL] gagal memeriksa label:', labelErr);
         }
+        // K2/U8b: RAG turun ke pencocokan kata → catatan sistem (sama dengan jalur non-stream).
+        if (catatanRag) enqueueStr(`\n\n${catatanRag}\n`);
 
         // === T14: NAMA PENYEDIA HULU IKUT KE METADATA PESAN ===
         // Satu nama model di OpenRouter dilayani banyak penyedia (terukur: 8 penyedia untuk

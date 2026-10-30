@@ -3,7 +3,7 @@ import { executeResponsePipeline } from '../../coordinator/parser_pipeline.ts';
 import { VerificationEngine } from '../../verification/verification_engine.ts';
 import { persistTelemetryLog } from '../../verification/verification_service.ts';
 import { eventBus } from '../../event/event_bus.ts';
-import { koreksiLabel } from '../../verification/label_sumber.ts';
+import { koreksiLabel, catatanRagTurun } from '../../verification/label_sumber.ts';
 import { jalankanHakimBayangan } from '../../verification/hakim_bayangan.ts';
 import { sumberDariHasilAlat, sumberDariKeluaranTerminal } from '../../../../../../shared/folderKerjaAlat.js';
 import { tutupJawabanDataTabel } from '../../data_tabel/data_tabel.ts';
@@ -62,6 +62,8 @@ export const SynthesisHandler = {
     const isiDokumen: string[] = (ctx.state.ragArray || [])
       .map((r: any) => r.contentWithId || r.content)
       .filter((t: any) => typeof t === 'string' && t.trim());
+    // K2/U8b: RAG turun ke pencocokan kata → satu baris catatan sistem di akhir jawaban (kosong bila tidak turun).
+    const catatanRag = catatanRagTurun(ctx.state.ragTurunKeKata);
     // Folder kerja (Item 85 Tahap 1): berkas yang TERBUKTI dibaca alat (pesan hasil alat kini + riwayat) ikut menjadi
     // sumber sah — tanpa ini jawaban dari isi berkas nyata selalu diturunkan ("tidak mengutip dokumen"). Pemeriksaan
     // tetap sama: nama berkas harus disebut di baris Sumber, angka jawaban harus ada di isi berkas/daftar.
@@ -124,7 +126,8 @@ export const SynthesisHandler = {
               routingDecision, 
               contractValidation,
               judulDokumen,
-              isiDokumen // dikeluarkan lagi di stream_handler sebelum metadata jadi header
+              isiDokumen, // dikeluarkan lagi di stream_handler sebelum metadata jadi header
+              catatanRag
             },
             snapshot: maef.getSnapshot() 
           };
@@ -325,9 +328,10 @@ export const SynthesisHandler = {
                 // Tanpa dua data ini pemeriksa label di stream_handler mengira tidak ada dokumen dan
                 // menurunkan SETIAP VERIFIED (Mametlite, 2026-09-21: "dokumen dilampirkan: 0" walau 7 potongan).
                 judulDokumen,
-                isiDokumen
-              }, 
-              snapshot: maef.getSnapshot() 
+                isiDokumen,
+                catatanRag
+              },
+              snapshot: maef.getSnapshot()
             };
           }
           replyMessage = await jawabanAkhir(synthesisPrompt, fullSystemContext, history, rctx);
@@ -351,9 +355,10 @@ export const SynthesisHandler = {
                 // Tanpa dua data ini pemeriksa label di stream_handler mengira tidak ada dokumen dan
                 // menurunkan SETIAP VERIFIED (Mametlite, 2026-09-21: "dokumen dilampirkan: 0" walau 7 potongan).
                 judulDokumen,
-                isiDokumen
-              }, 
-              snapshot: maef.getSnapshot() 
+                isiDokumen,
+                catatanRag
+              },
+              snapshot: maef.getSnapshot()
             };
           }
           replyMessage = await jawabanAkhir(ctx.request.finalMessage, fullSystemContext, history, rctx);
@@ -381,6 +386,7 @@ export const SynthesisHandler = {
     // Label VERIFIED hanya boleh bertahan bila jawaban mengutip dokumen yang dilampirkan (Item 71).
     const sebelumLabel = replyMessage;
     replyMessage = koreksiLabel(replyMessage, judulDokumen, requestMode, isiDokumen);
+    if (catatanRag) replyMessage = `${replyMessage}\n\n${catatanRag}`;
 
     // HAKIM BAYANGAN (T13, 2026-09-28) — menilai per kalimat, TIDAK mengubah apa pun. Letaknya di sini,
     // sesudah `koreksiLabel`, supaya ia menilai jawaban yang sama dengan yang dilihat Owner dan supaya

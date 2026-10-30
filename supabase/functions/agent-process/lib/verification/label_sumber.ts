@@ -52,6 +52,18 @@ export const LABEL_PARSIAL = '[STATUS: PARTIAL - Sebagian Bersandar Dokumen]';
 export const CATATAN_KOREKSI = '_Catatan sistem: label VERIFIED diturunkan — jawaban ini tidak mengutip dokumen yang tersedia._';
 export const CATATAN_TANPA_LABEL = '_Catatan sistem: model tidak menulis label status — jawaban ini belum diverifikasi sistem terhadap dokumen yang tersedia._';
 
+/**
+ * RAG turun ke pencocokan kata (K2/U8b, ADR-0022, 30 Okt 2026). Sejak 2 Okt penurunannya hanya tampil di langkah
+ * proses — Mametlite tidak menampilkan langkah proses, jadi pengguna awam tidak pernah tahu. Satu baris "Catatan
+ * sistem" di akhir jawaban tampil di kotak label Mametlite (`labelRamah.js` POLA_CATATAN) dan di Ecosystem.
+ * Satu baris saja (pola catatan per baris); `_` dibuang dari sebab supaya cetak miringnya tak pecah.
+ */
+export function catatanRagTurun(sebab: unknown): string {
+  if (!sebab) return '';
+  const s = String(sebab).replace(/[\r\n_]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
+  return `_Catatan sistem: pencarian makna dokumen tidak jalan (${s}) — dokumen dicari lewat pencocokan kata, jadi sumber yang sebenarnya ada bisa terlewat._`;
+}
+
 const rapikan = (s: string) => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 
 /** Judul dianggap disebut bila 30 huruf pertamanya (setelah dirapikan) muncul di baris Sumber. */

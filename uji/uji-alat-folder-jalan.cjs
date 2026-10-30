@@ -95,9 +95,28 @@ const jalan = (p, deps = izinkan) => jalankanAlatJalan(akar, { alat: 'folder_run
   cek(h.ok && h.terpotong && h.keluaran.length === 20 * 1024 && h.byteKeluaran > 50000, 'keluaran dipotong 20 KB, ukuran asli dilaporkan', { terpotong: h.terpotong, pj: h.keluaran?.length, byte: h.byteKeluaran });
 
   // 10. Batas waktu mematikan SELURUH pohon (cucu memegang pipa: tanpa taskkill /T "close" tak pernah datang)
-  let t0 = Date.now();
-  h = await jalan({ program: 'python', argumen: ['-c', "import subprocess, sys, time; subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)']); print('mulai', flush=True); time.sleep(60)"], waktu: 3 });
-  cek(h.ok && h.habisWaktu && h.keluaran.includes('mulai') && Date.now() - t0 < 15000, `habis waktu 3 s → pohon proses dimatikan (${Date.now() - t0} ms)`, h);
+  //
+  // J3b (Item 125 Fase C, dipatok 30 Okt 2026): asersi lama menggabungkan empat syarat dan sekali gagal di suite penuh
+  // (7 Okt, 3.661 ms) — bukan karena lambat (toleransi 15 s), melainkan hampir pasti karena 'mulai' belum tercetak:
+  // Node menyerahkan semua data stdout sebelum 'close', dan skrip tak mungkin selesai sendiri (sleep 60), jadi yang
+  // runtuh adalah Python + Popen cucunya yang belum sempat menyala dalam 3 s saat mesin sibuk. Tak tereproduksi dalam
+  // percobaan terkendali, jadi ini penalaran, bukan bukti. Perbaikannya TIDAK melebarkan toleransi: tanpa 'mulai'
+  // prasyarat uji (cucu sudah ada sebelum batas waktu) belum terpenuhi — dicoba ulang SEKALI dengan batas 8 s.
+  // Pematian pohonnya sendiri (close datang ≤ batas + 12 s) diperiksa pada percobaan yang prasyaratnya terpenuhi.
+  const SKRIP_CUCU = "import subprocess, sys, time; subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)']); print('mulai', flush=True); time.sleep(60)";
+  const percobaan = [];
+  for (const waktu of [3, 8]) {
+    const t0 = Date.now();
+    h = await jalan({ program: 'python', argumen: ['-c', SKRIP_CUCU], waktu });
+    percobaan.push({ waktu, ms: Date.now() - t0, ok: h.ok, habisWaktu: h.habisWaktu, mulai: !!h.keluaran?.includes('mulai'), h });
+    if (!h.ok || h.keluaran?.includes('mulai')) break;
+  }
+  const akhir = percobaan[percobaan.length - 1];
+  const ringkas = percobaan.map(({ h: _h, ...p }) => p);
+  cek(akhir.ok && akhir.habisWaktu, `batas waktu ${akhir.waktu} s → dilaporkan habisWaktu`, ringkas);
+  cek(akhir.mulai, `cucu sudah berjalan sebelum batas waktu (prasyarat; ${percobaan.length} percobaan)`, ringkas);
+  cek(akhir.ms < akhir.waktu * 1000 + 12000, `pohon proses dimatikan — close datang ${akhir.ms} ms (≤ batas + 12 s)`, ringkas);
+  let t0;
 
   // 11. Satu perintah pada satu waktu (kunci dipasang sebelum dialog)
   t0 = Date.now();

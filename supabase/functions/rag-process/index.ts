@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { chunkText, embedLewatOpenRouter, EmbedGagal } from '../agent-process/lib/vector_utils.ts'
+import { tolakKarenaVolume } from './batas_volume.ts'
 
 /**
  * rag-process — memotong dokumen, memvektorkan, dan menyimpannya ke RAG.
@@ -126,6 +127,23 @@ serve(async (req) => {
     totalPotongan = chunks.length;
     if (chunks.length === 0) {
       return jawab({ error: `Dokumen "${title}" kosong atau tidak memiliki teks yang bisa dibaca.`, code: 'EMPTY_DOCUMENT' }, 400);
+    }
+
+    // 5b. Batas volume (K5, TM-004) — sebelum dokumen dibuat & sebelum embedding: penolakan tanpa biaya.
+    //     Hitungan tak terbaca → DITOLAK dengan pesan jelas, bukan diloloskan diam-diam (K2: jujur saat gagal).
+    const [milik, semua] = await Promise.all([
+      supabase.from('document_chunks').select('id, documents!inner(user_id)', { count: 'exact', head: true })
+        .eq('documents.user_id', userId),
+      supabase.from('document_chunks').select('id', { count: 'exact', head: true }),
+    ]);
+    if (milik.error || semua.error || typeof milik.count !== 'number' || typeof semua.count !== 'number') {
+      console.error(`[rag-process] Hitungan volume gagal: ${milik.error?.message || semua.error?.message || 'count kosong'}`);
+      return jawab({ error: 'Kapasitas penyimpanan dokumen tidak bisa diperiksa saat ini. Coba lagi sebentar lagi.', code: 'KUOTA_TAK_TERBACA' }, 503);
+    }
+    const tolakVolume = tolakKarenaVolume({ baru: chunks.length, milikAkun: milik.count, total: semua.count });
+    if (tolakVolume) {
+      console.warn(`[rag-process] ⛔ ${tolakVolume.code}: akun ${milik.count} + ${chunks.length} baru, total ${semua.count}`);
+      return jawab(tolakVolume, 413);
     }
 
     // 6. Dokumen induk.

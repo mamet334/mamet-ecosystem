@@ -355,6 +355,10 @@ Taruhan CRLF nyata, bukan teoretis: berkas LF membuat `PatchGenerator` cari-gant
 
 ### J3b — ⚠️ Prasyarat J3 yang baru ketahuan: ada satu uji yang GOYAH, dan ia akan meracuni CI
 
+> ✅ **Flake `uji-alat-folder-jalan.cjs` DIPATOK 30 Okt 2026** ([log](../project-memory/changelog/2026-10-30-k5-batas-rag-j3b-u8b.md)):
+> asersi dipecah tiga sesuai arah di bawah; tanpa `'mulai'` (Python + cucu belum menyala dalam 3 s) dicoba ulang sekali
+> dengan batas 8 s — toleransi 15 s tidak dilebarkan. Penyebabnya dinalar dari kode, tetap tak tereproduksi.
+
 > **28 Okt — uji goyah KEDUA ditemukan & dipatok:** `uji-konektor-stealth.mjs` dibunuh batas 120 s penjalan saat mesin
 > berat (salin 109 MB + pindai Defender + internet + peluncuran Chromium 0,14–39 s). Kini tautan-keras, server lokal,
 > tenggat per langkah, dan **batas per berkas yang dinyatakan terbuka** (`// BATAS-UJI-DETIK`, tampil di `batasKhusus`);

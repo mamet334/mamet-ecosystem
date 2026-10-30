@@ -18,9 +18,9 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 | K2 | RAG jujur saat gagal | ⏳ | 1 |
 | K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ (ulang sebelum rilis) | 1 |
 | K4 | Mametlite layak bagi orang awam | ⏳ (T19 ✅ live, isolasi ✅ kode) | 1 (uji nyata dua akun) |
-| K5 | Keamanan | ⏳ | 2 |
+| K5 | Keamanan | ⏳ | 1 (👤 ganti kunci) |
 | K6 | Data aman & bisa dipulihkan | ✅ (ulang sebelum rilis) | 1 |
-| K7 | Stabil & sampai ke aplikasi terpasang | ⏳ | 2 |
+| K7 | Stabil & sampai ke aplikasi terpasang | ⏳ | 1 (rilis 💳👤) |
 
 ## Daftar kerja
 
@@ -31,8 +31,10 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 
 ### K2 — RAG jujur saat gagal
 - ✅ RAG turun bersuara (2 Okt).
-- ⏳ **U8b** (Item 90): jalur tanpa kunci OpenRouter (cadangan pencocokan kata) terbukti live — atau dinyatakan tak ada
-  dan pengguna diberi tahu dengan jelas.
+- ⏳💳 **U8b** (Item 90): cadangan pencocokan kata saat embedding gagal. ✅ **Pengguna kini diberi tahu di jawaban**
+  (30 Okt, v542): satu baris "Catatan sistem" tampil di kotak label Mametlite & Ecosystem — dulu hanya di langkah proses
+  yang tak ditampilkan Mametlite ([log](../project-memory/changelog/2026-10-30-k5-batas-rag-j3b-u8b.md)). Sisa: bukti
+  live (0 dari 278 pesan RAG pernah turun) — butuh chat yang menjawab sementara embedding gagal.
 
 ### K3 — Data tabel ASN
 - ✅ Tanya-jawab live **5/5 VERIFIED**, NIP tidak ke model (Item 92).
@@ -58,8 +60,8 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - ✅ **T1 izin sub-agent di server** (30 Okt, v541): sub-agent hanya jalan bila diminta `tools`; Mametlite hanya riset;
   `youtube_analyst` + token Apify hanya akun pemilik (`MAMET_PEMILIK_IDS`, belum diisi → tertutup); pagar alamat di setiap
   pengalihan untuk `proxy_fetch`/`communicator`/`scraper` ([log](../project-memory/changelog/2026-10-30-k5-t1-izin-subagent.md)).
-- ⏳ **Batas volume `rag-process` per pengguna** (model ancaman TM-004): pendaftaran akun terbuka → akun asing bisa
-  memenuhi kuota DB 500 MB.
+- ✅ **Batas volume `rag-process`** (30 Okt, v77, TM-004): per akun 10.000 potongan, total 45.000 — diperiksa sebelum
+  embedding; unggahan live Owner sesudah deploy berhasil ([log](../project-memory/changelog/2026-10-30-k5-batas-rag-j3b-u8b.md)).
 - ✅ **`proxy_fetch` wajib token + hanya alamat publik; log autentikasi hanya ID** — ter-deploy v540 30 Okt, live tanpa token → 401
   ([log](../project-memory/changelog/2026-10-30-k5-proxy-fetch-log-email.md)).
 - ⏳👤 **Ganti kunci API** yang pernah bocor (T7) & token Apify (T1).
@@ -70,7 +72,8 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 
 ### K7 — Stabil & sampai ke aplikasi terpasang
 - ✅ Suite 129/129; galat dalam bahasa manusia (Item 125 M4).
-- ⏳ **Uji goyah J3b** (Item 125 Fase C).
+- ✅ **Uji goyah J3b dipatok** (30 Okt): asersi dipecah tiga + satu percobaan ulang bila Python belum menyala; tetap gagal
+  bila pohon proses tak dimatikan ([log](../project-memory/changelog/2026-10-30-k5-batas-rag-j3b-u8b.md)). Suite 136/136.
 - ⏳💳👤 **Rilis** yang membawa semua perubahan — chat & PDF di Electron 45 diuji; Node 24 & `icacls` di laptop Owner.
   Rilis garis dasar diberi nomor **5.0.0**.
 
@@ -83,6 +86,8 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - Item 88 BUKU-10 · Item 90 U4, U6, U7 · Item 93 Tahap 3–4
 - Kode mati (graphify 30 Okt): `supabase/functions/test-suite/` (rusak sintaks, tak ter-deploy),
   `agent-process/lib/maef/engineering_lifecycle.ts` (1 baris "MOVED"), `agent-process/plugins/memory_manager.ts` (tak terdaftar)
+- Metadata chat menyimpan `[SYSTEM CONTEXT FINAL] fullSystemContext=…` (termasuk teks potongan dokumen) di langkah proses
+  ±300 pesan — membengkakkan baris `chats` & berkas cadangan (milik pengguna sendiri, RLS; bukan kebocoran)
 - `.gitignore` akar tidak memuat `hasil/` padahal CLAUDE.md melarang meng-commit-nya
 - `npm run dev` Mametlite layar kosong — CSP `script-src 'self'` memblokir preamble React inline Vite (build tak terdampak)
 - T18 kelas Tailwind tak dibuat · retensi tabel log lain (`verification_audit_logs`, `evidence_audit_logs`, `memory_audit_logs`)
