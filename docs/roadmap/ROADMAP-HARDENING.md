@@ -17,7 +17,7 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 | K1 | RAG menemukan & menjawab benar | ⏳ | 1 |
 | K2 | RAG jujur saat gagal | ⏳ | 1 |
 | K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ (ulang sebelum rilis) | 1 |
-| K4 | Mametlite layak bagi orang awam | ⏳ (T19 ✅ live, isolasi ✅ kode) | 1 (uji nyata dua akun) |
+| K4 | Mametlite layak bagi orang awam | ⏳ (T19 ✅ live, isolasi dua akun ✅ live) | 2 (pesan saldo teknis · 👤 ganti sandi live) |
 | K5 | Keamanan | ⏳ | 1 (👤 ganti kunci) |
 | K6 | Data aman & bisa dipulihkan | ✅ (ulang sebelum rilis) | 1 |
 | K7 | Stabil & sampai ke aplikasi terpasang | ⏳ | 1 (rilis 💳👤) |
@@ -48,7 +48,11 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
   pengguna Mametlite bertambah (batas kirim email bawaan).
 - ✅ **Isolasi data antar-akun diuji 29 Okt** ([log](../project-memory/changelog/2026-10-29-k4-isolasi-dua-akun.md)): database (RLS baca/tulis,
   fungsi SECURITY DEFINER) ✅, server (`agent-process`, `rag-process`) ✅; **peramban Mametlite bocor** (riwayat & kunci
-  OpenRouter satu kunci untuk semua akun) → **diperbaiki** (data per akun, pilihan a). ⏳ uji nyata Owner dua akun di satu peramban.
+  OpenRouter satu kunci untuk semua akun) → **diperbaiki** (data per akun, pilihan a). ✅ **Uji nyata Owner 30 Okt** di
+  mametlite.vercel.app: akun B tak melihat kunci, riwayat, maupun dokumen akun A ([log](../project-memory/changelog/2026-10-29-k4-isolasi-dua-akun.md)).
+- ⏳ **Pesan saldo habis terlalu teknis di Mametlite** (30 Okt): galat saldo OpenRouter sampai sebagai teks jawaban
+  ("Fallback Note: OpenRouterAdapter failed…", "plafon ulangnya 26 token"), jadi penerjemah pesan M4 tak menyentuhnya.
+- ⏳👤 Uji live ganti kata sandi bagi yang sudah masuk.
 
 ### K5 — Keamanan
 - ✅ RLS "baca semua" ditutup (Item 93); rahasia tak masuk `agent_logs` (T7).

@@ -55,3 +55,13 @@ Akun (ID dipotong): A `3841e124` (Owner — 217 chat, 228 dokumen, 1.313 baris A
 - **`auth_middleware.ts` menulis seluruh objek pengguna ke log** (`JSON.stringify(user)`: email & metadata) tiap permintaan.
 
 Uji nyata Owner sesudah Vercel ter-deploy: satu peramban — masuk akun A, kirim chat, keluar, masuk akun B → riwayat A tak muncul.
+
+## Uji nyata Owner — 30 Okt 2026 (mametlite.vercel.app, satu Chrome) ✅
+
+- Bundel live (`index-C3JF1Dre.js`) diperiksa memuat kunci & riwayat per akun serta pemindahan data lama.
+- Akun A: kunci terpasang, riwayat & dokumen sendiri; chat sampai ke server (ditolak karena saldo). Keluar → akun B:
+  **"Kunci OpenRouter belum dipasang"**, kirim ditahan di klien, riwayat & daftar dokumen B sendiri — milik A tak terlihat.
+- Gejala awal ("kunci sudah terpasang di akun lain") berasal dari sesi lama yang menyimpan kunci sebelum K4 di peramban
+  itu — bukan cacat kode; Owner menyatakan tidak perlu perbaikan.
+- **Temuan (K4, daftar kerja):** galat saldo OpenRouter sampai ke Mametlite sebagai TEKS JAWABAN ("Fallback Note:
+  OpenRouterAdapter failed, cascading…", "plafon ulangnya 26 token") — penerjemah pesan M4 tidak menyentuhnya karena bukan galat.
