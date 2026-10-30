@@ -107,4 +107,7 @@ for (const [nama, kalimat] of [
 }
 
 tulis(gagal === 0 ? '\nSEMUA LULUS' : `\n${gagal} GAGAL`);
-process.exit(gagal === 0 ? 0 : 1);
+// exitCode, BUKAN process.exit() (31 Okt 2026): stream Response stream_handler masih menutup handle-nya; keluar paksa
+// di saat itu sesekali menjatuhkan Node di Windows (libuv `UV_HANDLE_CLOSING`, async.c:76) SESUDAH semua asersi lulus —
+// uji goyah di suite penuh. Node keluar sendiri begitu handle tertutup.
+process.exitCode = gagal === 0 ? 0 : 1;

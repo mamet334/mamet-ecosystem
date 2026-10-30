@@ -33,6 +33,10 @@ cek(K.jenisTautanAuth('#error=access_denied&error_code=otp_expired&error_descrip
 cek(K.jenisTautanAuth('#access_token=abc&type=signup') === null && K.jenisTautanAuth('') === null && K.jenisTautanAuth(undefined) === null,
   'tautan lain (daftar) / tanpa hash → bukan pemulihan');
 cek(K.jenisTautanAuth('', '?type=recovery') === 'pemulihan', 'type=recovery di query juga dikenali');
+// 31 Okt 2026: undangan dashboard Supabase — tanpa ini yang diundang masuk tanpa pernah membuat kata sandi.
+cek(K.jenisTautanAuth('#access_token=abc&expires_in=3600&refresh_token=x&token_type=bearer&type=invite') === 'pemulihan',
+  'tautan undangan Supabase (#…&type=invite) → layar buat kata sandi');
+cek(K.jenisTautanAuth('#access_token=abc&type=magiclink') === null, 'tautan masuk sekali klik (magiclink) → bukan layar kata sandi');
 cek(K.alamatKembaliPemulihan({ protocol: 'https:', origin: 'https://mametlite.vercel.app' }, 'X') === 'https://mametlite.vercel.app/'
   && K.alamatKembaliPemulihan({ protocol: 'mamet:', origin: 'null' }, 'https://mamet-ecosystem.vercel.app/') === 'https://mamet-ecosystem.vercel.app/',
   'tautan email membuka halaman web: asal halaman bila web, versi web bila desktop (mamet://)');

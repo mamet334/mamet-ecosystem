@@ -53,6 +53,11 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - ✅ **Pesan saldo habis manusiawi** (30 Okt, v543): kegagalan semua penyedia di jalur stream kini "⚠️ Saldo OpenRouter
   Anda tidak cukup … isi ulang di openrouter.ai" + teks teknis kecil; tanpa "Fallback Note" & tanpa label HYPOTHESIS
   palsu — terbukti live di Mametlite ([log](../project-memory/changelog/2026-10-30-k4-pesan-saldo-stream.md)).
+- ✅ **Akun baru langsung punya ruang inti (CORE)** (31 Okt): dulu tak ada yang membuatnya → pengguna Mametlite baru gagal
+  mengunggah dokumen ("Core space belum di-setup"); pemicu di `auth.users` + isi ulang, CORE 3/3
+  ([log](../project-memory/changelog/2026-10-31-k4-ruang-inti-akun-baru.md)).
+- ✅ **Tautan undangan Supabase membuka layar buat kata sandi** (31 Okt, kode): akun didaftarkan Owner lewat "Send invitation";
+  dulu yang diundang masuk tanpa pernah membuat kata sandi. ⏳👤 uji live dengan undangan sungguhan sesudah Mametlite terbit.
 - ⏳👤 Uji live ganti kata sandi bagi yang sudah masuk.
 
 ### K5 — Keamanan

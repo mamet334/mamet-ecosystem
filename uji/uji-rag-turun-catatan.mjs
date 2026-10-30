@@ -89,4 +89,6 @@ cek(iKoreksi > 0 && SH.indexOf('if (catatanRag) replyMessage = `${replyMessage}\
   'non-stream: catatan ditambahkan SESUDAH koreksi label (tak ikut dinilai pemeriksa label)');
 
 tulis(gagal === 0 ? '\nSEMUA LULUS' : `\n${gagal} GAGAL`);
-process.exit(gagal === 0 ? 0 : 1);
+// exitCode, bukan process.exit(): stream Response stream_handler masih menutup handle-nya — keluar paksa sesekali
+// menjatuhkan Node di Windows (libuv UV_HANDLE_CLOSING) sesudah semua asersi lulus (lihat uji-pesan-gagal-stream).
+process.exitCode = gagal === 0 ? 0 : 1;

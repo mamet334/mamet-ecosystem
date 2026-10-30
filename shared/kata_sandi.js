@@ -20,6 +20,10 @@ export const PESAN_TAUTAN_TERKIRIM =
  * Jenis tautan otentikasi yang sedang dibuka, dari `location.hash` / `location.search` — dibaca SEBELUM klien Supabase
  * membersihkan alamat. Supabase (alur implicit) mengembalikan `#access_token=…&type=recovery`; tautan basi kembali
  * dengan `#error=…&error_code=otp_expired&error_description=…`.
+ *
+ * Undangan (`type=invite`, 31 Okt 2026): Owner mendaftarkan akun lewat "Send invitation" di dashboard Supabase. Tanpa
+ * ini orang yang diundang masuk lewat tautan TANPA pernah membuat kata sandi — dan tak bisa masuk lagi begitu sesinya
+ * habis. Diperlakukan sama dengan pemulihan: layar "Buat kata sandi baru untuk akun Anda".
  * @param {string} [hash] @param {string} [search]
  * @returns {'pemulihan'|'kedaluwarsa'|null}
  */
@@ -31,7 +35,7 @@ export function jenisTautanAuth(hash = '', search = '') {
   if (kodeGalat === 'otp_expired' || (ambil('error') && /expired|invalid/i.test(ambil('error_description') || ''))) {
     return 'kedaluwarsa';
   }
-  if (ambil('type') === 'recovery') return 'pemulihan';
+  if (ambil('type') === 'recovery' || ambil('type') === 'invite') return 'pemulihan';
   return null;
 }
 
