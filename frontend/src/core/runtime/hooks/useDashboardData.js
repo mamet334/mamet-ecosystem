@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../../../supabase';
 import { fetchExecutionTrace } from '../services/ExecutionTraceService';
-import { susunGrafHome, nilaiLampu, statusRealtime, KOLOM_LOG_AGEN, bentukLogAgen } from './grafHome.js';
+import { susunGrafHome, nilaiLampu, statusRealtime, KOLOM_LOG_AGEN, bentukLogAgen, PUSAT } from './grafHome.js';
 
 const EXEC_TRACE_MAX = 40;
 
@@ -19,7 +19,8 @@ export default function useDashboardData() {
     embedding: 'UNKNOWN',
     verification: 'UNKNOWN',
     provider: 'UNKNOWN',
-    agentProcess: 'UNKNOWN'
+    agentProcess: 'UNKNOWN',
+    electron: 'UNKNOWN'
   });
   // Nilai TERKINI untuk dibaca di luar render (efek pengambil & laporan Realtime) — state `vitals` di efek itu basi.
   const vitalsRef = useRef(vitals);
@@ -315,6 +316,7 @@ export default function useDashboardData() {
           heartbeat: heartbeatData,
           suksesTerakhir: apiUsages[0]?.created_at,
           galatPenyediaTerakhir: agentLogs.find(l => l.event_type === 'PROVIDER_ERROR')?.created_at,
+          desktop: typeof window !== 'undefined' && !!window.electronAPI,
         });
 
         const normalizeHealthStatus = (raw) => {
@@ -395,19 +397,9 @@ export default function useDashboardData() {
               const hasFailed = timeline.some(e => (e.status || '').toLowerCase() === 'failed');
 
               if (hasTimeout || hasFailed) {
-                const agentNodeId = 'cat-agent';
-                const execNodeId = 'cat-execution';
-                const nodesToActivate = new Set(['core-maef', agentNodeId, execNodeId]);
-                const linksToActivate = new Set();
-
-                links.forEach(l => {
-                  const sId = l.source.id || l.source;
-                  const tId = l.target.id || l.target;
-                  if (tId === 'core-maef' && (sId === agentNodeId || sId === execNodeId)) {
-                    linksToActivate.add(`${sId}->${tId}`);
-                  }
-                });
-
+                // Jejak terakhir gagal → sorot jalur pesan di antara kedua belahan (Tahap C; dulu cluster Agent/Execution).
+                const nodesToActivate = new Set([PUSAT.desktop, PUSAT.server]);
+                const linksToActivate = new Set([`${PUSAT.desktop}->${PUSAT.server}`]);
                 setActivePath({ nodes: nodesToActivate, links: linksToActivate });
               }
             }

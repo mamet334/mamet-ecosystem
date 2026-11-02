@@ -2,7 +2,8 @@
 
 **Status:** 📝 berjalan — Tahap 0 ✅ (pratinjau disetujui 2 Nov), **Tahap A ✅** (2 Nov, dicek Owner di desktop —
 [log](../project-memory/changelog/2026-11-02-graf-home-tahap-a.md)), **Tahap B ✅** (2 Nov, dicek Owner —
-[log](../project-memory/changelog/2026-11-02-graf-home-tahap-b.md)); berikutnya **Tahap C**.
+[log](../project-memory/changelog/2026-11-02-graf-home-tahap-b.md)), **Tahap C ✅** (2 Nov, dicek Owner; Konstitusi 23
+direvisi — [log](../project-memory/changelog/2026-11-02-graf-home-tahap-c.md)); berikutnya **Tahap D**.
 **Kedudukan:** butir **Parkir** fase hardening ([ADR-0022](../adr/ADR-0022-mamet-cukup-dan-fase-hardening.md)) yang
 diambil Owner — boleh dikerjakan kapan saja (mis. selagi K1/K2 menunggu saldo), asal uji yang menjaga K1–K7 tetap hijau.
 **Kode:** `frontend/src/components/dashboard/ActivityGraph.jsx`, `HomeDashboard.jsx`,
@@ -84,7 +85,7 @@ Graf Home menggambarkan **apa yang tersimpan**, bukan **bagaimana Mamet bekerja*
 | **0** | **Pratinjau** (gambar/mockup statis) susunan dua belahan + lingkar + fondasi + lapisan Kemampuan + ekor; disetujui Owner sebelum kode aplikasi disentuh | ✅ 2 Nov |
 | **A** | Tampilan Home: Directory & Menu tertutup di awal; label cluster tak menumpuk; lencana Directory benar. Ikut: celah K5 tooltip ber-HTML ditutup; penyusun graf dipindah ke `grafHome.js` (dapat diuji) | ✅ 2 Nov |
 | **B** | Gratis & lampu jujur: buang `ping`, kueri hemat (tanpa `select('*')`), lampu dari heartbeat/`api_usage`/`PROVIDER_ERROR`, Realtime dari langganan, Embedding UNKNOWN jujur; vitals basi & UNKNOWN merah dibetulkan | ✅ 2 Nov |
-| **C** | Ubah Konstitusi 23 (pusat, lapisan); pusat MAMET dua belahan + penyambung; lingkar 1; fondasi luar | 📋 |
+| **C** | Ubah Konstitusi 23 (pusat, lapisan); pusat MAMET dua belahan + penyambung; lingkar 1; fondasi luar. Ikut: data = ekor kemampuan, label kerangka dilukis terakhir, `tataPas` menyisakan pita legenda | ✅ 2 Nov |
 | **D** | Lapisan Kemampuan (tombol): alat chat dari ToolRegistry, alat folder dari `shared/folderKerjaAlat.js`, MCP berekor (preload baca-saja), sub-agent dari daftar resmi baru di `shared/` (mulai dari `plugins/registry.ts` & `izin_subagent.ts`) | 📋 |
 | **E** | Percakapan berekor pesan: RPC/view hitungan + migrasi grant; ekor dimuat saat klik; garis pesan → alat dari penanda pemakaian | 📋 |
 
@@ -106,8 +107,11 @@ esbuild sebelum meminta deploy, catat & push sekali (CLAUDE.md). Tahap E butuh m
 
 ## 6. Sisa / catatan
 
-- ~~Vitals basi di graf~~ ✅ Tahap B. `documents` tak punya kolom `metadata` → semua dokumen jatuh ke satu sub-cluster
-  `docs` (ditata ulang di Tahap C).
+- ~~Vitals basi di graf~~ ✅ Tahap B. ~~Sub-cluster `docs`~~ ✅ Tahap C (dokumen = ekor RAG Dokumen).
+- **Untuk Tahap D:** Data Tabel ASN berdiri tanpa ekor (tak ada tabel yang mencatat pemakaiannya per akun) — garisnya
+  akan datang dari alat `data_tabel` di lapisan Kemampuan. `RUANG_ATAS` 150 px tetap (legenda satu baris di 1046 px);
+  bila legenda membungkus ke dua baris di layar sempit, nilainya perlu diukur dari elemen legenda.
+- Belahan yang digeser Owner tetap di tempat barunya sampai muat ulang (perilaku bawaan force-graph untuk simpul berpaku).
 - **Panel: LLM CALLS selalu 100** (ditemukan Owner 2 Nov) — menghitung baris kueri `api_usage` yang dibatasi `limit(100)`,
   jadi angkanya tak bermakna. Butuh hitungan di DB (sekalian RPC Tahap E) atau dibuang.
 - Hitungan potongan per dokumen masih menarik hingga 5.000 baris `document_id` (±3.600 kini) — pindah ke hitungan di DB

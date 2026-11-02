@@ -3,7 +3,8 @@
 // chat 131 Assistant / 84 Engineer / 4 Lite, 229 dokumen ber-potongan, 10 memori tanpa relasi.
 //
 // Setelan meniru `force-graph` 1.x + ActivityGraph: forceLink (jarak 30) + forceManyBody (-30) + forceCenter,
-// alphaDecay 0.02, velocityDecay 0.3, ±900 detak (cooldownTime 15 dtk ≈ 60 fps), lalu zoomToFit(padding 50).
+// alphaDecay 0.02, velocityDecay 0.3, ±900 detak (cooldownTime 15 dtk ≈ 60 fps), lalu `tataPas` (padding 50 + pita atas
+// RUANG_ATAS — pengganti zoomToFit sejak Tahap C). Koordinat label = piksel layar mutlak.
 // Label kategori digambar 12px di layar (`ActivityGraph` nodeCanvasObject), simpul lain hanya bila skala ≥ ambang
 // (`ambangLabel`: bawaan = AMBANG_LABEL_DATA dari grafHome.js, yang juga dipakai ActivityGraph; 0,75 = setelan lama).
 
@@ -12,7 +13,7 @@ import { join } from 'node:path';
 
 const AKAR = fileURLToPath(new URL('../..', import.meta.url));
 const d3 = await import(pathToFileURL(join(AKAR, 'frontend/node_modules/d3-force-3d/src/index.js')).href);
-const { susunGrafHome, AMBANG_LABEL_DATA } = await import(pathToFileURL(join(AKAR, 'frontend/src/core/runtime/hooks/grafHome.js')).href);
+const { susunGrafHome, AMBANG_LABEL_DATA, tataPas } = await import(pathToFileURL(join(AKAR, 'frontend/src/core/runtime/hooks/grafHome.js')).href);
 
 export const SEBARAN_OWNER = Object.freeze({ assistant: 131, engineer: 84, lite: 4, dokumen: 229, memori: 10 });
 export const LAYAR_OWNER = Object.freeze({ lebar: 1046, tinggi: 690 }); // 1366×768 dikurangi panel kanan & bilah
@@ -37,7 +38,7 @@ const lebarTeks = (s) => [...s].reduce((n, c) => n + (c >= 'A' && c <= 'Z' ? 8.4
 
 /**
  * @param {(sim: object, links: Array) => void} [pasangGaya] — mis. `pasangGayaGraf` dari grafHome.js; kosong = setelan lama.
- * @returns {{ skala: number, label: Array, tumpang: Array<[string,string]> }}
+ * @returns {{ skala: number, label: Array, tumpang: Array<[string,string]>, simpul: Array, garis: Array }}
  */
 export function simulasikan({ pasangGaya, benih = 1, layar = LAYAR_OWNER, detak = 900, sebaran = SEBARAN_OWNER, ambangLabel = AMBANG_LABEL_DATA } = {}) {
   const asli = Math.random;
@@ -55,13 +56,19 @@ export function simulasikan({ pasangGaya, benih = 1, layar = LAYAR_OWNER, detak 
     const r = (n) => Math.sqrt(Math.max(0, n.val || 1));
     const xs = nodes.map((n) => [n.x - r(n), n.x + r(n)]).flat(), ys = nodes.map((n) => [n.y - r(n), n.y + r(n)]).flat();
     const bx = [Math.min(...xs), Math.max(...xs)], by = [Math.min(...ys), Math.max(...ys)];
-    const k = Math.min((layar.lebar - 100) / (bx[1] - bx[0]), (layar.tinggi - 100) / (by[1] - by[0]));
+    // Kamera = tataPas (pengganti zoomToFit di HomeDashboard, Tahap C): pita atas untuk judul & legenda disisakan.
+    const kamera = tataPas({ bbox: { x: bx, y: by }, lebar: layar.lebar, tinggi: layar.tinggi });
+    const k = kamera.k;
+    const keLayar = (gx, gy) => [(gx - kamera.x) * k + layar.lebar / 2, (gy - kamera.y) * k + layar.tinggi / 2];
+    // Titik teratas simpul mana pun di layar (px) — harus di bawah pita legenda.
+    const atasSimpul = Math.min(...nodes.map((n) => keLayar(n.x, n.y - r(n))[1]));
 
     const label = nodes.filter((n) => n.name && (n.isCategory || n.group === 'core' || k >= ambangLabel)).map((n) => {
       const kategori = n.isCategory || n.group === 'core';
       const teks = n.name.length > (kategori ? 26 : 18) ? n.name.slice(0, kategori ? 26 : 18) + '…' : n.name;
       const lebar = lebarTeks(teks) * (kategori ? 1 : 9.5 / 12), tinggi = kategori ? 14 : 11;
-      const x = n.x * k, y = (n.y + Math.min(n.val || 5, 8)) * k + 2.5;
+      const [x, yPusat] = keLayar(n.x, n.y + Math.min(n.val || 5, 8));
+      const y = yPusat + 2.5;
       return { id: n.id, teks, kotak: [x - lebar / 2, y, x + lebar / 2, y + tinggi] };
     });
     const tumpang = [];
@@ -69,7 +76,7 @@ export function simulasikan({ pasangGaya, benih = 1, layar = LAYAR_OWNER, detak 
       const a = label[i].kotak, b = label[j].kotak;
       if (a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]) tumpang.push([label[i].teks, label[j].teks]);
     }
-    return { skala: k, label, tumpang };
+    return { skala: k, label, tumpang, simpul: nodes, garis: links, atasSimpul };
   } finally {
     Math.random = asli;
   }

@@ -24,8 +24,10 @@ const baca = (p) => readFileSync(join(AKAR, p), 'utf8');
 console.log('uji-graf-home-tahap-a v1');
 
 // ── 1. Label kategori tak menumpuk (simulasi) ───────────────────────────────────────────────────
+// Pembanding = setelan bawaan force-graph pada susunan YANG SAMA (sejak Tahap C: dua belahan; dulu 7 pasang di bintang
+// SUPABASE KERNEL). Membuktikan simulasi memang bisa melihat tumpang — bukan selalu 0.
 const lama = simulasikan({ ambangLabel: 0.75 });
-cek(lama.tumpang.length >= 5, `pembanding: setelan lama memang menumpuk di layar Owner (${lama.tumpang.length} pasang, skala ${lama.skala.toFixed(3)})`);
+cek(lama.tumpang.length >= 3, `pembanding: setelan bawaan memang menumpuk di layar Owner (${lama.tumpang.length} pasang, skala ${lama.skala.toFixed(3)})`);
 const kasus = [
   ['layar Owner 1366×768', {}],
   ['layar 1920×1080', { layar: { lebar: 1600, tinggi: 980 } }],
@@ -40,7 +42,17 @@ for (const [nama, opsi] of kasus) {
     `${nama}: 0 label bertumpuk, hanya label kategori saat dibuka (${h.label.length} label, skala ${h.skala.toFixed(3)})`, h.tumpang.slice(0, 4));
 }
 const owner = simulasikan({ pasangGaya: pasangGayaGraf });
-cek(owner.skala > lama.skala * 2.5, `graf tak lagi mengecil demi simpul yang terlempar (skala ${lama.skala.toFixed(3)} → ${owner.skala.toFixed(3)})`);
+cek(owner.skala > lama.skala * 1.1, `tata letak lebih lega daripada setelan bawaan (skala ${lama.skala.toFixed(3)} → ${owner.skala.toFixed(3)})`);
+
+// Gravitasi dipasang & lebih kuat bagi simpul yang tak bertambat (sejak Tahap C semua data bertambat pada kemampuannya,
+// jadi dijaga langsung pada gaya yang dipasang — bukan lewat simulasi).
+const gaya = {};
+const simPalsu = { force: (nama, f) => { if (f === undefined) return null; gaya[nama] = f; return simPalsu; } };
+pasangGayaGraf(simPalsu, [{ source: 'a', target: 'b' }]);
+const uji = [{ id: 'a', x: 100, y: 0, vx: 0, vy: 0 }, { id: 'yatim', x: 100, y: 0, vx: 0, vy: 0 }];
+gaya.gravitasi?.initialize?.(uji); gaya.gravitasi?.(1);
+cek(typeof gaya.gravitasi === 'function' && uji[0].vx === -2 && Math.abs(uji[1].vx + 12) < 1e-9,
+  'pasangGayaGraf memasang gravitasi: 0,02 bagi yang bertambat, 0,12 bagi yang tak bertambat', uji.map((n) => n.vx));
 
 // ── 2. Gravitasi: menarik ke pusat, lebih kuat bagi yang tak bertambat ──────────────────────────
 const g = gayaGravitasi((n) => n.k);

@@ -31,6 +31,7 @@ export default function ActivityGraph({
   dimensions,
   fgRef,
   getNodeColor,
+  warnaLampu,
   activePath,
   handleNodeClick,
   onNodeDrag,
@@ -228,8 +229,8 @@ export default function ActivityGraph({
               if (activePath.links.has(`${sourceId}->${targetId}`)) return '#00ffcc';
               return `rgba(${warnaKanvasRef.current.putihRgb}, 0.02)`;
             }
-            // Garis layanan ikut warna simpulnya yang TERKINI (Item 130 Tahap B) — bukan warna saat graf disusun.
-            if (link.isPipelineLink && typeof link.source === 'object') return getNodeColor(link.source);
+            // Garis berlampu (jalur pesan, fondasi → belahan) ikut status TERKINI (Item 130 Tahap B–C).
+            if (link.statusKeys && warnaLampu) return warnaLampu(link.statusKeys);
             return link.color || `rgba(${warnaKanvasRef.current.putihRgb}, 0.35)`;
           }}
           linkWidth={(link) => {
@@ -301,7 +302,8 @@ export default function ActivityGraph({
           <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#22c55e] shadow-[0_0_6px_rgba(34,197,94,0.6)]"></div> Memory</div>
           <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#a855f7] shadow-[0_0_6px_rgba(168,85,247,0.6)]"></div> RAG Docs</div>
           <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#eab308] shadow-[0_0_6px_rgba(234,179,8,0.6)]"></div> Conversations</div>
-          <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)]"></div> Core / Infra</div>
+          <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#38bdf8] shadow-[0_0_6px_rgba(56,189,248,0.6)]"></div> Kemampuan</div>
+          <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.8)]"></div> MAMET / Fondasi</div>
           <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#ef4444] animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div> Conflict</div>
           <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full border-2 border-[#38bdf8] animate-pulse shadow-[0_0_8px_rgba(56,189,248,0.8)]"></div> Berpijar: Simpul Aktif Percakapan (Live Thought)</div>
         </div>

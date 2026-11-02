@@ -1,8 +1,7 @@
 /**
- * grafHome.js — penyusun simpul & garis graf Home (Item 130 Tahap A, 2 Nov 2026).
- *
- * Dipindah APA ADANYA dari `useDashboardData.js` (dulu tertanam di dalam hook, tak bisa diuji tanpa peramban &
- * Supabase). Murni: menerima baris yang sudah diambil, memulangkan `{ nodes, links, stats }`.
+ * grafHome.js — penyusun simpul & garis graf Home (Item 130; Tahap A memindahkannya dari `useDashboardData.js` supaya
+ * bisa diuji tanpa peramban & Supabase; Tahap C menyusunnya ulang menurut Konstitusi 23 revisi 2 Nov 2026).
+ * Murni: menerima baris yang sudah diambil, memulangkan `{ nodes, links, stats }`.
  */
 
 /**
@@ -14,8 +13,8 @@ export function simpulDirektori(nodes) {
   return (nodes || []).filter((n) => GRUP_DATA.includes(n.group));
 }
 
-const KELAS = { core: 'pusat', category: 'kategori', subcategory: 'sub', pipeline: 'layanan' };
-const kelasSimpul = (n) => KELAS[n?.group] || (n?.isCategory ? 'sub' : 'data');
+const KELAS = { pusat: 'pusat', kemampuan: 'kemampuan', fondasi: 'fondasi' };
+const kelasSimpul = (n) => KELAS[n?.group] || 'data';
 
 /**
  * Tata letak graf Home (Item 130 Tahap A). Diukur 2 Nov dengan mesin yang sama (`uji/lib/simulasiGrafHome.mjs`, sebaran
@@ -25,19 +24,76 @@ const kelasSimpul = (n) => KELAS[n?.group] || (n?.isCategory ? 'sub' : 'data');
  * kategori di tengah berdesakan. Maka: gravitasi lembut ke pusat (lebih kuat bagi yang tak bertambat) + jarak & tolakan
  * lebih lega bagi kategori.
  *
+ * Tahap C (susunan dua belahan): kedua belahan dipaku ±60 → label "MAMET · DESKTOP"/"SERVER" saling tindih di semua
+ * keadaan; ±140 + fondasi 320 → 0 tindih, tetapi fondasi (323) lebih DEKAT ke pusat daripada kemampuan (438). Dengan
+ * gaya cincin (kemampuan 200, fondasi 480): fondasi 448 vs kemampuan 264, 0 tindih di 6 keadaan, layar Owner skala
+ * 0,856 (setelan bawaan pada susunan yang sama: 4 tindih, skala 0,488).
+ * Lalu pita atas legenda disisakan (`tataPas`) → ruang tegak berkurang, "Data Tabel ASN" (tanpa ekor data, hanya bergaris
+ * ke Desktop) menindih label "MAMET · DESKTOP". Jari cincin 240/260 & tolakan belahan −1200 tak menolong; garis
+ * kemampuan–pusat 150 → 230 menolong: 0 tindih di 6 keadaan, layar Owner skala 0,737. Kini setiap data adalah ekor kemampuannya, jadi gravitasi "tak bertambat" jarang terpakai — tetap dijaga
+ * untuk data yang kehilangan pemakainya.
+ *
  * @param {{ force: Function }} sim simulasi d3-force — di peramban `{ force: fg.d3Force }` (ref ForceGraph2D)
  * @param {Array} links garis graf — "tertambat" dihitung dari DATA, bukan dari simulasi: force-graph memasang datanya
  *   secara asinkron, jadi saat efek React berjalan gaya `link` bisa masih memegang garis lama.
  */
 export function pasangGayaGraf(sim, links) {
-  const jarak = { 'kategori-pusat': 150, 'layanan-pusat': 110, 'layanan-kategori': 80, 'sub-kategori': 70 };
-  const tolak = { pusat: -400, kategori: -700, sub: -150, layanan: -80, data: -18 };
+  // Tahap C: lingkar 1 (kemampuan) dekat pusat, fondasi di lingkar luar, data menempel pada kemampuannya.
+  const jarak = { 'kemampuan-pusat': 230, 'fondasi-pusat': 320 };
+  const tolak = { pusat: -400, kemampuan: -700, fondasi: -500, data: -18 };
   const kunci = (l) => `${kelasSimpul(l.source)}-${kelasSimpul(l.target)}`;
   sim.force('link')?.distance((l) => jarak[kunci(l)] ?? 28);
   sim.force('charge')?.strength((n) => tolak[kelasSimpul(n)] ?? -18);
   const tertambat = new Set();
   (links || []).forEach((l) => { tertambat.add(l.source?.id ?? l.source); tertambat.add(l.target?.id ?? l.target); });
   sim.force('gravitasi', gayaGravitasi((n) => (tertambat.has(n.id) ? 0.02 : 0.12)));
+  // Lingkar (Konstitusi 23): tanpa ini kemampuan — didorong awan datanya (RAG ±229 dokumen) — terlempar LEBIH jauh dari
+  // fondasi (diukur: kemampuan 438, fondasi 323). Pegas saja tak menjaga urutan lingkar.
+  const cincin = { kemampuan: JARI_KEMAMPUAN, fondasi: JARI_FONDASI };
+  sim.force('cincin', gayaCincin((n) => cincin[kelasSimpul(n)] ?? null, 0.3));
+}
+
+/**
+ * Tinggi pita judul + legenda di atas kanvas (ActivityGraph: top-8 + judul 38px + subjudul + legenda satu baris ≈ 132px,
+ * ditambah sela). `zoomToFit` force-graph hanya mengenal satu padding di keempat sisi, jadi graf yang kini lebih besar
+ * (Tahap C) masuk ke bawah legenda — awan Chat menimpa "Kemampuan · MAMET / Fondasi" (tangkapan layar Owner 2 Nov).
+ */
+export const RUANG_ATAS = 150;
+
+/**
+ * Pengganti `zoomToFit` yang menyisakan pita atas: graf dimuat ke wilayah [padding, lebar−padding] × [atas, tinggi−padding].
+ * Rumus layar force-graph: layar = (graf − pusatKamera) × k + ukuran/2.
+ * @returns {{ x: number, y: number, k: number }} titik graf untuk `centerAt` dan skala untuk `zoom`
+ */
+export function tataPas({ bbox, lebar, tinggi, padding = 50, atas = RUANG_ATAS }) {
+  const bw = Math.max(1e-6, bbox.x[1] - bbox.x[0]), bh = Math.max(1e-6, bbox.y[1] - bbox.y[0]);
+  const k = Math.max(1e-12, Math.min((lebar - padding * 2) / bw, (tinggi - atas - padding) / bh));
+  const tengahLayarY = (atas + tinggi - padding) / 2;
+  return {
+    x: (bbox.x[0] + bbox.x[1]) / 2,
+    y: (bbox.y[0] + bbox.y[1]) / 2 - (tengahLayarY - tinggi / 2) / k,
+    k,
+  };
+}
+
+export const JARI_KEMAMPUAN = 200;
+export const JARI_FONDASI = 480;
+
+/** Tarikan ke jari-jari tertentu — rumus `forceRadial` d3 (v += (r − d)/d × posisi × kekuatan × alpha); null = tak ditarik. */
+export function gayaCincin(jari, kekuatan) {
+  let simpul = [];
+  const gaya = (alpha) => {
+    for (const n of simpul) {
+      const r = jari(n);
+      if (r === null || r === undefined) continue;
+      const x = n.x || 1e-6, y = n.y || 0, d = Math.hypot(x, y);
+      const k = ((r - d) / d) * kekuatan * alpha;
+      n.vx += x * k;
+      n.vy += y * k;
+    }
+  };
+  gaya.initialize = (n) => { simpul = n || []; };
+  return gaya;
 }
 
 /** Tarikan lembut ke titik (0,0) — rumus `forceX(0)`/`forceY(0)` d3, tanpa mengimpor d3 (bukan dependensi langsung). */
@@ -76,6 +132,15 @@ export function warnaStatus(status) {
   return { HEALTHY: '#22c55e', DEGRADED: '#eab308', DOWN: '#ef4444' }[status] || '#94a3b8';
 }
 
+/**
+ * Lampu gabungan (fondasi, jalur pesan) = status TERBURUK yang diketahui. UNKNOWN tidak menggelapkan yang diketahui
+ * (OpenRouter: penyedia DEGRADED + embedding UNKNOWN → DEGRADED); UNKNOWN hanya bila tak satu pun diketahui.
+ */
+export function statusGabungan(kunci, vitals) {
+  const ada = (kunci || []).map((k) => vitals?.[k]);
+  return ['DOWN', 'DEGRADED', 'HEALTHY'].find((s) => ada.includes(s)) || 'UNKNOWN';
+}
+
 const JENDELA_EDGE_MS = 7 * 24 * 3600e3;
 const JENDELA_PENYEDIA_MS = 30 * 24 * 3600e3;
 const waktu = (t) => new Date(t).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -95,8 +160,12 @@ const waktu = (t) => new Date(t).toLocaleString('id-ID', { day: 'numeric', month
  *
  * @returns {{ status: Record<string,string>, keterangan: Record<string,string> }}
  */
-export function nilaiLampu({ heartbeat, suksesTerakhir, galatPenyediaTerakhir, sekarang = Date.now() } = {}) {
+export function nilaiLampu({ heartbeat, suksesTerakhir, galatPenyediaTerakhir, desktop = false, sekarang = Date.now() } = {}) {
   const status = {}, keterangan = {};
+
+  // Tahap C — fondasi Electron: ada `window.electronAPI` (preload) = Home sedang berjalan di aplikasi desktop.
+  status.electron = desktop ? 'HEALTHY' : 'UNKNOWN';
+  keterangan.electron = desktop ? 'berjalan di aplikasi desktop' : 'versi web — konektor MCP & alat folder hanya di desktop';
   const hb = heartbeat?.last_heartbeat_at ? new Date(heartbeat.last_heartbeat_at).getTime() : null;
 
   if (!hb) { status.agentProcess = 'UNKNOWN'; keterangan.agentProcess = 'belum ada catatan permintaan'; }
@@ -157,169 +226,56 @@ export function safeLink(links, nodes, source, target, extra = {}) {
   links.push({ source, target, ...extra });
 }
 
-export function susunGrafHome({ memories, documents, chats, docChunkCounts, vitals }) {
+/**
+ * Susunan graf Home — Item 130 Tahap C (Konstitusi 23 revisi 2 Nov 2026). Dulu bintang ke satu pusat "SUPABASE KERNEL"
+ * dengan 5 cluster, 12 sub-cluster label kosong, dan 11 simpul layanan. Kini:
+ *
+ *   pusat      MAMET dua belahan (Desktop / Server), disambung "jalur pesan" (lampunya = permintaan terakhir)
+ *   lingkar 1  kemampuan inti, bergaris ke belahan tempat KODENYA berjalan
+ *   ekor       data → kemampuan pemakainya (dokumen → RAG, memori → Memori, percakapan → Chat/Engineer)
+ *   fondasi    Supabase, OpenRouter, Electron — lampu gabungan dari vitals
+ *
+ * Arah garis = data → kemampuan → belahan → (desktop → server): sorotan jalur (HomeDashboard) menelusuri arah ini.
+ */
+export const PUSAT = Object.freeze({ desktop: 'mamet-desktop', server: 'mamet-server' });
+
+export const KEMAMPUAN = Object.freeze([
+  { id: 'kem-chat', name: 'Chat', belahan: ['desktop', 'server'] },
+  { id: 'kem-rag', name: 'RAG Dokumen', belahan: ['server'] },
+  { id: 'kem-tabel', name: 'Data Tabel ASN', belahan: ['desktop'] },
+  { id: 'kem-engineer', name: 'Engineer', belahan: ['desktop', 'server'] },
+  { id: 'kem-memori', name: 'Memori', belahan: ['server'] },
+]);
+
+export const FONDASI = Object.freeze([
+  { id: 'fon-supabase', name: 'Supabase', statusKeys: ['supabase', 'auth', 'storage', 'realtime', 'edge', 'memory', 'rag'], belahan: ['desktop', 'server'] },
+  { id: 'fon-openrouter', name: 'OpenRouter', statusKeys: ['provider', 'embedding'], belahan: ['server'] },
+  { id: 'fon-electron', name: 'Electron', statusKeys: ['electron'], belahan: ['desktop'] },
+]);
+
+/** Percakapan Engineer (juga nama lama `OWNER`/`ws-owner`) → Engineer; selebihnya (Assistant, Lite, Agent Forge) → Chat. */
+export function kemampuanPercakapan(workspaceType) {
+  const w = String(workspaceType || '').toLowerCase().replace(/^ws-/, '');
+  return w === 'engineer' || w === 'owner' ? 'kem-engineer' : 'kem-chat';
+}
+
+export function susunGrafHome({ memories, documents, chats, docChunkCounts, vitals = {} }) {
   const nodes = [];
   const links = [];
 
-  // Helper to determine health color
-  const getHealthColor = (relations) => {
-    if (relations === 0) return '#ef4444';
-    if (relations < 3) return '#eab308';
-    return '#22c55e';
-  };
+  // ── Pusat: dua belahan, posisi dipaku ──────────────────────────────────────────────────────────
+  nodes.push({ id: PUSAT.desktop, name: 'MAMET · DESKTOP', type: 'Belahan', group: 'pusat', val: 30, color: '#ffffff', isCategory: true, fx: -140, fy: 0 });
+  nodes.push({ id: PUSAT.server, name: 'MAMET · SERVER', type: 'Belahan', group: 'pusat', val: 30, color: '#ffffff', isCategory: true, fx: 140, fy: 0 });
 
-  const mapLegacyName = (name) => {
-    if (!name) return 'General';
-    let n = name.toLowerCase();
-    
-    // Remove legacy 'ws-' prefix
-    if (n.startsWith('ws-')) n = n.substring(3);
-    
-    // Map to the 3 canonical roles
-    if (n === 'owner') return 'engineer';
-    if (n === 'agent-forge' || n === 'asisten' || n === 'assistant') return 'assistant';
-    if (n === 'lite') return 'lite';
-    
-    return n;
-  };
+  // ── Lingkar 1 & fondasi ────────────────────────────────────────────────────────────────────────
+  KEMAMPUAN.forEach((k) => nodes.push({ id: k.id, name: k.name, type: 'Kemampuan', group: 'kemampuan', val: 20, color: '#38bdf8', isCategory: true }));
+  FONDASI.forEach((f) => {
+    const status = statusGabungan(f.statusKeys, vitals);
+    nodes.push({ id: f.id, name: f.name, type: 'Fondasi', group: 'fondasi', val: 14, color: warnaStatus(status), statusKeys: f.statusKeys, isCategory: true, status });
+  });
 
-  // ====================================================================
-  // PHASE 1: Register ALL possible subcluster IDs upfront
-  // This prevents "node not found: subcat-agent-engineer" because we
-  // pre-compute all possible workspace_type mappings from chats data.
-  // ====================================================================
-
-  // Collect ALL possible subcluster IDs from data before building graph
-  const allPossibleSubclusterIds = new Set();
-
-  // Static subclusters
-  const staticSubclusterDefs = [
-    { id: 'subcat-mem-rag', name: 'RAG Memory', parent: 'cat-memory' },
-    { id: 'subcat-mem-user', name: 'User Memory', parent: 'cat-memory' },
-    { id: 'subcat-mem-vector', name: 'Vector DB', parent: 'cat-memory' },
-    { id: 'subcat-agent-sub', name: 'Sub Agents', parent: 'cat-agent' },
-    { id: 'subcat-agent-tools', name: 'Tools', parent: 'cat-agent' },
-    { id: 'subcat-agent-skills', name: 'Skills', parent: 'cat-agent' },
-    { id: 'subcat-exec-trace', name: 'Trace Pipeline', parent: 'cat-execution' },
-    { id: 'subcat-exec-verify', name: 'Verification', parent: 'cat-execution' },
-    { id: 'subcat-exec-audit', name: 'Audit', parent: 'cat-execution' },
-    { id: 'subcat-know-docs', name: 'Documents', parent: 'cat-knowledge' },
-    { id: 'subcat-know-embed', name: 'Embedding', parent: 'cat-knowledge' },
-    { id: 'subcat-know-pgvector', name: 'pgvector', parent: 'cat-knowledge' },
-  ];
-
-  staticSubclusterDefs.forEach(sc => allPossibleSubclusterIds.add(sc.id));
-
-  // Pre-compute all possible memory subcluster IDs from actual memory data
+  // ── Data (bentuk & ukuran sama dengan sebelum Tahap C) ─────────────────────────────────────────
   memories.forEach(m => {
-    const type = mapLegacyName(m.metadata?.type || m.metadata?.category || 'User');
-    allPossibleSubclusterIds.add(`subcat-mem-${type.toLowerCase()}`);
-  });
-
-  // Pre-compute all possible document subcluster IDs from actual doc data
-  documents.forEach(d => {
-    const type = mapLegacyName(d.metadata?.file_type || d.metadata?.type || 'Docs');
-    allPossibleSubclusterIds.add(`subcat-know-${type.toLowerCase()}`);
-  });
-
-  // Pre-compute all possible chat subcluster IDs from actual chat data
-  // THIS PREVENTS the "subcat-agent-engineer" error!
-  chats.forEach(c => {
-    const type = mapLegacyName(c.workspace_type || 'Sub');
-    allPossibleSubclusterIds.add(`subcat-agent-${type.toLowerCase()}`);
-  });
-
-  // Build a lookup of all subcluster definitions
-  const allSubclusterDefs = new Map();
-
-  // Add static ones first
-  staticSubclusterDefs.forEach(sc => {
-    allSubclusterDefs.set(sc.id, sc);
-  });
-
-  // Helper to register (with definition)
-  const ensureSubclusterDef = (id, name, parent) => {
-    if (!allSubclusterDefs.has(id)) {
-      allSubclusterDefs.set(id, { id, name: name.toUpperCase(), type: 'Subcluster', group: 'subcategory', val: 15, isCategory: true, parent });
-    }
-  };
-
-  // Add definitions for all pre-computed IDs
-  allPossibleSubclusterIds.forEach(id => {
-    if (!allSubclusterDefs.has(id)) {
-      // Infer parent from ID pattern
-      let parent = 'cat-memory';
-      let label = id;
-      if (id.startsWith('subcat-mem-')) { parent = 'cat-memory'; label = id.replace('subcat-mem-', '') + ' Memory'; }
-      else if (id.startsWith('subcat-agent-')) { parent = 'cat-agent'; label = id.replace('subcat-agent-', '') + ' Agents'; }
-      else if (id.startsWith('subcat-exec-')) { parent = 'cat-execution'; label = id.replace('subcat-exec-', '') + ' Pipeline'; }
-      else if (id.startsWith('subcat-know-')) { parent = 'cat-knowledge'; label = id.replace('subcat-know-', '') + ' Knowledge'; }
-      ensureSubclusterDef(id, label, parent);
-    }
-  });
-
-  // ====================================================================
-  // PHASE 2: Build nodes — ALL nodes are created BEFORE any links
-  // ====================================================================
-
-  // 2a. Central Node (Constitution 23: Central node is Supabase / MAEF Kernel)
-  nodes.push({ id: 'core-maef', name: 'SUPABASE KERNEL', type: 'Core', group: 'core', val: 50, color: '#ffffff', isCategory: true, fx: 0, fy: 0 });
-
-  // 2b. Primary Clusters (Constitution 23 Semantic Clustering)
-  const primaryClusters = [
-    { id: 'cat-memory', name: 'Memory Cluster', color: '#16a34a' },
-    { id: 'cat-agent', name: 'Agent Cluster', color: '#ca8a04' },
-    { id: 'cat-execution', name: 'Execution Cluster', color: '#0284c7' },
-    { id: 'cat-knowledge', name: 'Knowledge Cluster', color: '#9333ea' },
-    { id: 'cat-telemetry', name: 'Activity / Telemetry Cluster', color: '#38bdf8' }
-  ];
-
-  primaryClusters.forEach(cluster => {
-    nodes.push({ id: cluster.id, name: cluster.name, type: 'Category', group: 'category', color: cluster.color, val: 26, isCategory: true });
-  });
-
-  // 2c. All Subclusters (static + dynamic pre-computed)
-  allSubclusterDefs.forEach(def => {
-    nodes.push({ ...def });
-  });
-
-  // 2d. Pipeline Services
-  const pipelineServices = [
-    { id: 'pipe-supabase',     name: 'Supabase (DB/Auth)',   statusKey: 'supabase' },
-    { id: 'pipe-auth',         name: 'Auth',                 statusKey: 'auth' },
-    { id: 'pipe-realtime',     name: 'Realtime',             statusKey: 'realtime' },
-    { id: 'pipe-storage',      name: 'Storage',              statusKey: 'storage' },
-    { id: 'pipe-edge',         name: 'Edge Function',        statusKey: 'edge' },
-    { id: 'pipe-memory',       name: 'Memory Service',       statusKey: 'memory' },
-    { id: 'pipe-rag',          name: 'RAG Service',          statusKey: 'rag' },
-    { id: 'pipe-embedding',    name: 'Embedding',            statusKey: 'embedding' },
-    { id: 'pipe-verification', name: 'Verification Engine',  statusKey: 'verification' },
-    { id: 'pipe-provider',     name: 'LLM Provider',         statusKey: 'provider' },
-    { id: 'pipe-agent',        name: 'Agent Process',        statusKey: 'agentProcess' },
-  ];
-
-  pipelineServices.forEach(service => {
-    const status = vitals[service.statusKey] || 'UNKNOWN';
-    const color = warnaStatus(status);
-
-    nodes.push({
-      id: service.id,
-      name: service.name,
-      type: 'Pipeline Service',
-      group: 'pipeline',
-      statusKey: service.statusKey,   // warna dibaca ulang dari vitals TERKINI saat digambar (HomeDashboard)
-      val: 12,
-      isCategory: false,
-      status,
-      color,
-      data: { status }
-    });
-  });
-
-  // 2e. Data Nodes — memories (Constitution 23: Green, or Red for conflicts)
-  memories.forEach(m => {
-    const type = mapLegacyName(m.metadata?.type || m.metadata?.category || 'User');
-    const subcatId = `subcat-mem-${type.toLowerCase()}`;
     const hits = m.memory_hits || 0;
     const causalLinks = m.causal_links || [];
     let relationsCount = causalLinks.length;
@@ -327,11 +283,7 @@ export function susunGrafHome({ memories, documents, chats, docChunkCounts, vita
     const sourceDocId = m.metadata?.document_id;
     if (sourceChatId) relationsCount++;
     if (sourceDocId) relationsCount++;
-
     const isConflict = m.status === 'CONFLICT_PENDING_REVIEW' || m.metadata?.status === 'CONFLICT_PENDING_REVIEW';
-    // Constitution 23: Green for memory, Red for conflicts
-    const memColor = isConflict ? '#ef4444' : '#22c55e';
-
     nodes.push({
       id: `mem-${m.id}`,
       name: m.summary || 'Memory',
@@ -339,15 +291,12 @@ export function susunGrafHome({ memories, documents, chats, docChunkCounts, vita
       group: 'memory',
       isConflict,
       val: isConflict ? 14 : Math.max(3, Math.min(25, 3 + hits * 2)),
-      color: memColor,
+      color: isConflict ? '#ef4444' : '#22c55e',
       data: { created: m.created_at, used: hits, relations: relationsCount, status: m.status, metadata: m.metadata || {} }
     });
   });
 
-  // 2f. Data Nodes — documents (Constitution 23: Purple for RAG)
   documents.forEach(d => {
-    const type = mapLegacyName(d.metadata?.file_type || d.metadata?.type || 'Docs');
-    const subcatId = `subcat-know-${type.toLowerCase()}`;
     const chunkCount = docChunkCounts[d.id] || 0;
     nodes.push({
       id: `doc-${d.id}`,
@@ -355,106 +304,56 @@ export function susunGrafHome({ memories, documents, chats, docChunkCounts, vita
       type: 'Document',
       group: 'rag',
       val: Math.max(3, Math.min(25, 3 + chunkCount * 0.5)),
-      color: '#a855f7', // Constitution 23: Purple for RAG Knowledge
+      color: '#a855f7',
       data: { created: d.created_at, used: 'N/A', relations: chunkCount, metadata: d.metadata || {} }
     });
   });
 
-  // 2g. Data Nodes — chats (Constitution 23: Yellow for Conversations)
   chats.forEach(c => {
-    const type = mapLegacyName(c.workspace_type || 'Sub');
-    const subcatId = `subcat-agent-${type.toLowerCase()}`;
     nodes.push({
       id: `chat-${c.id}`,
       name: c.title || 'Chat',
       type: 'Conversation',
       group: 'chat',
       val: 8,
-      color: '#eab308', // Constitution 23: Yellow for Conversation
+      color: '#eab308',
       data: { created: c.created_at, used: 1, source: c.workspace_type, relations: 1 }
     });
   });
 
-  // ====================================================================
-  // PHASE 3: Build links — ALL nodes exist, so safeLink will never skip
-  // ====================================================================
+  // ── Garis ──────────────────────────────────────────────────────────────────────────────────────
+  // Jalur pesan: lampunya = permintaan terakhir agent-process (nilaiLampu).
+  safeLink(links, nodes, PUSAT.desktop, PUSAT.server, { statusKeys: ['agentProcess'], jalurPesan: true, width: 3 });
+  KEMAMPUAN.forEach((k) => k.belahan.forEach((b) => safeLink(links, nodes, k.id, PUSAT[b])));
+  FONDASI.forEach((f) => f.belahan.forEach((b) => safeLink(links, nodes, f.id, PUSAT[b], { statusKeys: f.statusKeys })));
 
-  // 3a. Primary Cluster → Core
-  primaryClusters.forEach(cluster => {
-    safeLink(links, nodes, cluster.id, 'core-maef');
-  });
-
-  // 3b. Subcluster → Parent
-  allSubclusterDefs.forEach(def => {
-    safeLink(links, nodes, def.id, def.parent);
-  });
-
-  // 3c. Pipeline Services → Core + Telemetry
-  pipelineServices.forEach(service => {
-    const status = vitals[service.statusKey] || 'UNKNOWN';
-    const linkColor = warnaStatus(status);   // dulu UNKNOWN → merah, sama dengan DOWN
-    const linkWidth = (status === 'HEALTHY') ? 2 : 0.8;
-    safeLink(links, nodes, service.id, 'core-maef', { color: linkColor, width: linkWidth, isPipelineLink: true });
-    safeLink(links, nodes, service.id, 'cat-telemetry');
-  });
-
-  // 3d. Memory → Subcluster + causal links
   memories.forEach(m => {
-    const type = mapLegacyName(m.metadata?.type || m.metadata?.category || 'User');
-    const subcatId = `subcat-mem-${type.toLowerCase()}`;
-    const hits = m.memory_hits || 0;
-    const causalLinks = m.causal_links || [];
-    let relationsCount = causalLinks.length;
+    // Memori SELALU ekor dari Memori — dulu memori tanpa relasi dibiarkan melayang (10 dari 10 milik Owner).
+    safeLink(links, nodes, `mem-${m.id}`, 'kem-memori');
+    (m.causal_links || []).forEach(targetId => safeLink(links, nodes, `mem-${targetId}`, `mem-${m.id}`));
     const sourceChatId = m.metadata?.chat_id || m.metadata?.source_id;
     const sourceDocId = m.metadata?.document_id;
-    if (sourceChatId) relationsCount++;
-    if (sourceDocId) relationsCount++;
-
-    if (relationsCount > 0) {
-      safeLink(links, nodes, `mem-${m.id}`, subcatId);
-    }
-
-    causalLinks.forEach(targetId => {
-      safeLink(links, nodes, `mem-${targetId}`, `mem-${m.id}`);
-    });
-    if (sourceChatId && chats.some(c => c.id === sourceChatId)) {
-      safeLink(links, nodes, `chat-${sourceChatId}`, `mem-${m.id}`);
-    }
-    if (sourceDocId && documents.some(d => d.id === sourceDocId)) {
-      safeLink(links, nodes, `doc-${sourceDocId}`, `mem-${m.id}`);
-    }
+    if (sourceChatId && chats.some(c => c.id === sourceChatId)) safeLink(links, nodes, `chat-${sourceChatId}`, `mem-${m.id}`);
+    if (sourceDocId && documents.some(d => d.id === sourceDocId)) safeLink(links, nodes, `doc-${sourceDocId}`, `mem-${m.id}`);
   });
+  documents.forEach(d => safeLink(links, nodes, `doc-${d.id}`, 'kem-rag'));
+  chats.forEach(c => safeLink(links, nodes, `chat-${c.id}`, kemampuanPercakapan(c.workspace_type)));
 
-  // 3e. Document → Subcluster
-  documents.forEach(d => {
-    const type = mapLegacyName(d.metadata?.file_type || d.metadata?.type || 'Docs');
-    const subcatId = `subcat-know-${type.toLowerCase()}`;
-    const chunkCount = docChunkCounts[d.id] || 0;
-    if (chunkCount > 0) {
-      safeLink(links, nodes, `doc-${d.id}`, subcatId);
-    }
-  });
+  // Kerangka (pusat, kemampuan, fondasi) PALING AKHIR: force-graph melukis simpul menurut urutan daftar, dan label
+  // digambar bersama simpulnya — dulu ratusan titik data dilukis SESUDAH label kemampuan dan menimbunnya
+  // ("RAG Dokume●", tangkapan layar Owner 2 Nov). Urutan stabil: urutan di dalam tiap golongan tidak berubah.
+  nodes.sort((a, b) => (a.isCategory ? 1 : 0) - (b.isCategory ? 1 : 0));
 
-  // 3f. Chat → Subcluster
-  chats.forEach(c => {
-    const type = mapLegacyName(c.workspace_type || 'Sub');
-    const subcatId = `subcat-agent-${type.toLowerCase()}`;
-    safeLink(links, nodes, `chat-${c.id}`, subcatId);
-  });
-
-  // ---- STATS ----
+  // ── Statistik (definisi tidak berubah) ─────────────────────────────────────────────────────────
   const orphanCount = nodes.filter(n => !n.isCategory && n.data && n.data.relations === 0).length;
   const totalDataNodes = nodes.filter(n => !n.isCategory && n.data).length;
-  const connectedCount = totalDataNodes - orphanCount;
-  const memoryConflicts = memories.filter(m => m.status === 'CONFLICT_PENDING_REVIEW').length;
-
   const stats = {
     memories: memories.length,
     documents: documents.length,
     chats: chats.length,
     orphans: orphanCount,
-    connected: connectedCount,
-    memoryConflicts
+    connected: totalDataNodes - orphanCount,
+    memoryConflicts: memories.filter(m => m.status === 'CONFLICT_PENDING_REVIEW').length
   };
 
   return { nodes, links, stats };

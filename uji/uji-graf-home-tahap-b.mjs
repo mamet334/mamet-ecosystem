@@ -55,13 +55,17 @@ cek(G.statusRealtime('SUBSCRIBED') === 'HEALTHY' && G.statusRealtime('CHANNEL_ER
   && G.statusRealtime('CLOSED') === 'UNKNOWN', 'status Realtime dari callback langganan');
 
 // ── 3. Graf disusun dengan vitals yang diberikan ────────────────────────────────────────────────
-const vitals = { supabase: 'HEALTHY', provider: 'DEGRADED', realtime: 'UNKNOWN', agentProcess: 'DOWN' };
+// Sejak Tahap C lampu ada di FONDASI (gabungan) & jalur pesan — bukan 11 simpul layanan.
+const vitals = { supabase: 'HEALTHY', realtime: 'UNKNOWN', provider: 'DEGRADED', embedding: 'UNKNOWN', agentProcess: 'DOWN', electron: 'UNKNOWN' };
 const { nodes, links } = G.susunGrafHome({ ...barisTiruan(), vitals });
-const layanan = Object.fromEntries(nodes.filter((n) => n.group === 'pipeline').map((n) => [n.statusKey, n]));
-cek(layanan.supabase?.color === '#22c55e' && layanan.provider?.color === '#eab308' && layanan.agentProcess?.color === '#ef4444' && layanan.realtime?.color === '#94a3b8',
-  'simpul layanan berwarna sesuai vitals & membawa statusKey', Object.fromEntries(Object.entries(layanan).map(([k, n]) => [k, n.color])));
-const garisRealtime = links.find((l) => l.isPipelineLink && l.source === 'pipe-realtime');
-cek(garisRealtime?.color === '#94a3b8', 'garis layanan UNKNOWN abu-abu (dulu merah)', garisRealtime);
+const fon = Object.fromEntries(nodes.filter((n) => n.group === 'fondasi').map((n) => [n.id, n]));
+cek(fon['fon-supabase']?.color === '#22c55e' && fon['fon-openrouter']?.color === '#eab308' && fon['fon-electron']?.color === '#94a3b8'
+  && Array.isArray(fon['fon-supabase']?.statusKeys), 'simpul fondasi berwarna dari vitals & membawa statusKeys (UNKNOWN tak menggelapkan yang diketahui)',
+  Object.fromEntries(Object.entries(fon).map(([k, n]) => [k, n.color])));
+cek(G.statusGabungan(['realtime', 'embedding'], vitals) === 'UNKNOWN' && G.statusGabungan(['supabase', 'agentProcess'], vitals) === 'DOWN',
+  'statusGabungan: semua UNKNOWN → UNKNOWN; yang terburuk menang');
+const jalur = links.find((l) => l.jalurPesan);
+cek(JSON.stringify(jalur?.statusKeys) === '["agentProcess"]', 'jalur pesan berlampu = permintaan terakhir agent-process', jalur);
 
 // ── 4. agent_logs dipangkas, bentuk lama utuh ───────────────────────────────────────────────────
 const logs = G.bentukLogAgen([{ event_type: 'PROVIDER_ERROR', provider: 'openrouter', created_at: 'x', latency_ms: 12, trace_id: 't1', traceId: null, execution_time_ms: null, duration_ms: null }]);
@@ -84,8 +88,9 @@ const H = kode('frontend/src/core/runtime/hooks/useDashboardData.js');
 cek(/susunGrafHome\(\{[^}]*vitals: vitalsBaru \}\)/.test(H) && /setVitals\(vitalsBaru\)/.test(H), 'graf & panel memakai vitals TERKINI yang sama');
 cek(/nilaiLampu\(\{/.test(H) && /select\(KOLOM_LOG_AGEN\)/.test(H) && /from\('api_usage'\)\.select\('created_at'\)/.test(H), 'hook memakai nilaiLampu, KOLOM_LOG_AGEN, api_usage seperlunya');
 const HD = kode('frontend/src/components/dashboard/HomeDashboard.jsx');
-cek(/laporRealtime\(status\)/.test(HD) && /warnaStatus\(vitals\[node\.statusKey\]\)/.test(HD), 'Realtime dilaporkan dari langganan; warna simpul layanan dari vitals terkini');
-cek(/isPipelineLink && typeof link\.source === 'object'\) return getNodeColor\(link\.source\)/.test(kode('frontend/src/components/dashboard/ActivityGraph.jsx')), 'garis layanan ikut warna simpul terkini');
+cek(/laporRealtime\(status\)/.test(HD) && /node\.statusKeys \? warnaLampu\(node\.statusKeys\)/.test(HD) && /warnaStatus\(statusGabungan\(kunci, vitals\)\)/.test(HD),
+  'Realtime dilaporkan dari langganan; warna simpul berlampu dari vitals terkini');
+cek(/link\.statusKeys && warnaLampu\) return warnaLampu\(link\.statusKeys\)/.test(kode('frontend/src/components/dashboard/ActivityGraph.jsx')), 'garis berlampu ikut status terkini');
 cek(/title=\{keteranganLampu\[key\]/.test(kode('frontend/src/components/dashboard/ObservabilityPanel.jsx')), 'alasan lampu tampil saat disorot di panel');
 
 console.log(gagal === 0 ? '\nSEMUA LULUS' : `\n${gagal} GAGAL`);

@@ -141,7 +141,9 @@ for (const r of DIKECUALIKAN) {
 // → 6 (Item 128 Tahap D1): putih/hitam & rona status kini variabel warna dasar; hex komponen diganti variabel. Sisa 6
 // SENGAJA: 5 titik legenda graf Home (warna makna konstitusi 23 — tak ikut tema) + 1 di Login.jsx (kode mati, K6).
 // → 5 (20 Okt): Login.jsx dihapus (K6). Sisa 5 = titik legenda graf, sengaja.
-const GARIS_WARNA_TETAP = 5;
+// → 6 (2 Nov, Item 130 Tahap C): titik legenda "Kemampuan" — Biru menjadi warna makna Konstitusi 23 (revisi 2 Nov) untuk
+// simpul kemampuan; golongan yang sama dengan 5 titik lainnya. Sisa 6 = titik legenda graf, sengaja.
+const GARIS_WARNA_TETAP = 6;
 const GARIS_DASAR = {
   // tokenMaterial DIPENSIUNKAN (20 Okt, v5): 568 → 581 selama Item 127 — tiap kenaikan disengaja & tercatat di
   // riwayat berkas ini. Sejak Item 128 token palet adalah mekanisme tema; yang dijaga kini warna yang tak ikut tema.
@@ -151,7 +153,8 @@ const GARIS_DASAR = {
   aksenPelangi: 242,
   gerakDekoratif: 48, // 51 → 50 (20 Okt): cabang desktop Sidebar.jsx (titik berdenyut di avatar) dihapus — keputusan Owner
   kacaBlur: 15,
-  glowRgba: 18, // 26 → 18 (20 Okt): pendar status Observability kini variabel warna dasar (Item 128 Tahap D1)
+  glowRgba: 19, // 26 → 18 (20 Okt): pendar status Observability kini variabel warna dasar (Item 128 Tahap D1)
+  // 18 → 19 (2 Nov, Item 130 Tahap C): pendar titik legenda "Kemampuan", sama dengan 5 titik legenda graf lainnya.
   gradien: 5, // 6 → 5 (19 Okt): gradien area kotak ketik chat dibuang — jadi pita gelap di atas dinding ruangan
   // 26 → 3 (20 Okt): satu set ikon — keputusan Owner "pakai yang terbaru". Sisa 3 = kode mati K6 (Login.jsx,
   // EngineerChat.jsx, ActivityBar.jsx, tak diimpor mana pun); turun ke 0 saat K6 dihapus.

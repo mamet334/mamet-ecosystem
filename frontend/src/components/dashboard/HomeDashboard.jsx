@@ -5,7 +5,7 @@ import NodeInspector from './NodeInspector';
 import ObservabilityPanel from './ObservabilityPanel';
 import { supabase } from '../../supabase';
 import { kernel } from '../../core/runtime/Kernel';
-import { pasangGayaGraf, warnaStatus } from '../../core/runtime/hooks/grafHome.js';
+import { pasangGayaGraf, warnaStatus, statusGabungan, PUSAT, tataPas } from '../../core/runtime/hooks/grafHome.js';
 
 const FALLBACK_COLOR = '#475569';
 
@@ -63,7 +63,8 @@ export default function HomeDashboard() {
       if (!graphDataRef.current) return;
       const { nodes, links } = graphDataRef.current;
 
-      const activeNodes = new Set(['core-maef']);
+      // Jalur menelusuri arah garis data → kemampuan → belahan; kedua belahan MAMET selalu ikut menyala (Tahap C).
+      const activeNodes = new Set([PUSAT.desktop, PUSAT.server]);
       const activeLinks = new Set();
 
       const targetNode = nodes.find(n => n.id === nodeId);
@@ -139,6 +140,9 @@ export default function HomeDashboard() {
   }, []);
 
   // --- GRAPH COLORING FUNCTIONS (Constitution 23 Semantic Palette) ---
+  // Lampu gabungan simpul fondasi & garis berlampu (jalur pesan, fondasi → belahan) dari vitals terkini.
+  const warnaLampu = (kunci) => warnaStatus(statusGabungan(kunci, vitals));
+
   const getNodeColor = (node) => {
     if (!node) return FALLBACK_COLOR;
 
@@ -147,8 +151,8 @@ export default function HomeDashboard() {
       return '#ef4444';
     }
 
-    // Simpul layanan: warna dari status TERKINI (mis. Realtime yang terlapor sesudah graf disusun), bukan saat disusun.
-    let baseColor = node.group === 'pipeline' && node.statusKey ? warnaStatus(vitals[node.statusKey]) : node.color;
+    // Simpul berlampu (fondasi): warna dari status TERKINI (mis. Realtime yang terlapor sesudah graf disusun).
+    let baseColor = node.statusKeys ? warnaLampu(node.statusKeys) : node.color;
 
     if (!baseColor) {
       switch (node.group) {
@@ -192,10 +196,15 @@ export default function HomeDashboard() {
     }
   };
 
+  // Dulu `zoomToFit(400, 50)` — padding sama di keempat sisi, graf masuk ke bawah judul & legenda. Kini pita atas
+  // disisakan (grafHome.js tataPas, Item 130 Tahap C).
   const handleEngineStop = () => {
-    if (fgRef.current) {
-      fgRef.current.zoomToFit(400, 50);
-    }
+    const fg = fgRef.current;
+    const bbox = fg?.getGraphBbox?.();
+    if (!fg || !bbox) return;
+    const { x, y, k } = tataPas({ bbox, lebar: dimensions.width, tinggi: dimensions.height });
+    fg.centerAt(x, y, 400);
+    fg.zoom(k, 400);
   };
 
   return (
@@ -207,6 +216,7 @@ export default function HomeDashboard() {
           dimensions={dimensions}
           fgRef={fgRef}
           getNodeColor={getNodeColor}
+          warnaLampu={warnaLampu}
           activePath={activePath}
           handleNodeClick={handleNodeClick}
           onNodeDrag={handleNodeDrag}
