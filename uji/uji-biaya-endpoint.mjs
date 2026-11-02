@@ -15,8 +15,12 @@
 //   3. dengan model yang BENAR-BENAR dipakai (`modelUsed`), bukan yang diminta — nama salah = tarif salah,
 //   4. SEBELUM pemeriksaan mutu yang bisa menolak hasilnya (uangnya sudah keluar),
 //   5. dan tugas latarnya ditunggu di jalur berhasil MAUPUN gagal.
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { readFileSync } from 'node:fs';
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem/supabase/functions/agent-process/';
+const AKAR = AKAR_REPO + '/supabase/functions/agent-process/';
 console.log('uji-biaya-endpoint v1');
 
 let gagal = 0;
@@ -75,7 +79,7 @@ cek(/actualCostUsd === 'number'/.test(badan) && /totalCost = actualCostUsd/.test
 cek(/if \(isStream\) return;/.test(badan), 'logger memang diam saat isStream — penjelasan kenapa isStream=false wajib');
 
 // ---------- pembaca anggaran ----------
-const AS = readFileSync('D:/SLAMET/other/mamet os ecosystem/frontend/src/core/runtime/services/AssistantService.js', 'utf8');
+const AS = readFileSync(AKAR_REPO + '/frontend/src/core/runtime/services/AssistantService.js', 'utf8');
 const blokBahan = AS.slice(AS.indexOf('async bahanAnggaranKonteks('), AS.indexOf('async bahanAnggaranKonteks(') + 1800);
 cek(/from\('api_usage'\)/.test(blokBahan) && !/cost_ledger/.test(blokBahan),
   'anggaran jendela konteks dihitung dari api_usage saja — cost_ledger tidak dibaca, jadi api_usage wajib benar');

@@ -126,5 +126,10 @@ Akibatnya bukan sekadar diff yang berisik: `PatchGenerator` mencocokkan teks pad
 sehingga berkas ber-LF membuat cari-ganti **gagal mencocokkan satu pun baris** (kegagalan live
 24 September, dijaga `uji-patch-crlf.mjs`).
 
-`--periksa` hanya melaporkan dan keluar dengan kode 1 bila ada yang belum CRLF — bisa dipakai sebagai
-penjaga. `--semua` memindai seluruh berkas terlacak, bukan hanya yang berubah.
+`--periksa` hanya melaporkan dan keluar dengan kode 1 bila ada yang belum CRLF. `--semua` memindai seluruh
+berkas terlacak, bukan hanya yang berubah.
+
+**Bukan gerbang CI (keputusan Owner J3c, pilihan B — 2 Nov 2026).** Diukur 7 Okt: 785 berkas terlacak tidak
+CRLF di direktori kerja, jadi pemeriksa ini akan merah sejak commit pertama walau tak ada kode yang rusak. Akhir
+baris tidak memengaruhi cara Mamet berjalan; yang memang bergantung padanya — cari-ganti `PatchGenerator` — dijaga
+`uji-patch-crlf.mjs`, yang ikut berjalan di gerbang. Alat ini tetap ada untuk dipakai tangan.

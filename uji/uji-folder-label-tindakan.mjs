@@ -1,10 +1,14 @@
 // UJI Item 85 Tahap 3 — label laporan tindakan folder kerja: pemeriksa label SERVER asli (label_sumber.ts, dibundel
 // esbuild) + sumberDariHasilAlat, dengan pesan hasil alat seperti live (edit+run, git 128, Tolak) + kontrak BLOK 6.
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import os from 'node:os';
 import path from 'node:path';
-const akar = 'D:/SLAMET/other/mamet os ecosystem';
+const akar = AKAR_REPO;
 const esbuild = path.join(akar, 'frontend/node_modules/esbuild/bin/esbuild');
 const bundel = (masuk, nama) => {
   const keluar = path.join(os.tmpdir(), `${nama}-${Date.now()}.mjs`);

@@ -16,10 +16,14 @@
 //
 // Keduanya berakhir sama: konteks yang paling tidak boleh hilang justru yang pertama dikorbankan.
 
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
 import { readFileSync } from 'node:fs';
 
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
+const AKAR = AKAR_REPO;
 const K = await import(pathToFileURL(`${AKAR}/frontend/src/core/runtime/services/KonteksChat.js`).href + '?v=' + Date.now());
 
 console.log('uji-sisipan-dipatok v1');

@@ -10,9 +10,13 @@
 // Isinya identik dan sah, hanya bungkusnya beda. `Object.entries` melihat kunci "files" yang nilainya array,
 // bukan objek ber-__mode, lalu MELEWATINYA DIAM-DIAM. Pesan gagalnya jatuh ke `patch.description`, yang
 // kebetulan berisi kalimat perintah Owner — jadi Owner melihat perintahnya sendiri sebagai "alasan".
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
 import { readFileSync } from 'node:fs';
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem/';
+const AKAR = AKAR_REPO + '/';
 const P = await import(pathToFileURL(AKAR + 'frontend/src/core/runtime/services/engineer/PatchGenerator.js').href + '?v=' + Date.now());
 console.log('uji-bentuk-patch v1');
 

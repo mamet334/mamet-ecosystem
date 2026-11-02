@@ -1,5 +1,9 @@
 // UJI Item 85 Tahap 1 — label VERIFIED untuk jawaban dari berkas folder kerja: pemeriksa label SERVER asli
 // (label_sumber.ts, dibundel esbuild) + sumberDariHasilAlat, dengan hasil alat NYATA dari folder engine.
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
@@ -7,7 +11,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 const require = createRequire(import.meta.url);
-const akar = 'D:/SLAMET/other/mamet os ecosystem';
+const akar = AKAR_REPO;
 const keluar = path.join(os.tmpdir(), 'uji-label-sumber.mjs');
 execFileSync(process.execPath, [path.join(akar, 'frontend/node_modules/esbuild/bin/esbuild'), path.join(akar, 'supabase/functions/agent-process/lib/verification/label_sumber.ts'), '--bundle', '--format=esm', '--platform=neutral', `--outfile=${keluar}`, '--log-level=error']);
 const L = await import(pathToFileURL(keluar).href + '?v=' + Date.now());

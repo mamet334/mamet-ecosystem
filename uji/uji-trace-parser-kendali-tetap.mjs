@@ -1,10 +1,14 @@
 // UJI 2026-09-23 — trace_parser.ts: ID di BARIS PERTAMA tidak boleh menghabiskan seluruh jawaban.
 // Bahan uji = teks live yang diblokir HARD GATE 2026-09-23 01:53 (CHECK_001 "Response text is empty").
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
-const SRC = 'D:/SLAMET/other/mamet os ecosystem/supabase/functions/agent-process/lib/coordinator/trace_parser.ts';
+const SRC = AKAR_REPO + '/supabase/functions/agent-process/lib/coordinator/trace_parser.ts';
 
 // Keluaran sementara ditaruh di folder sementara SISTEM, bukan di dalam `node_modules` (8 Okt 2026).
 //
@@ -60,10 +64,10 @@ cek(extractSourceTrace('Halo, apa kabar?').sourceTrace === undefined, 'jawaban t
 // memuat perbaikannya, gejalanya tidak muncul, dan uji kendali ini GAGAL tanpa ada yang rusak. `abcdced` adalah
 // commit TEPAT SEBELUM perbaikan trace_parser — jangan diganti ke HEAD lagi.
 const REVISI_SEBELUM_PERBAIKAN = 'abcdced';
-const { execSync } = await import('node:child_process');
-const lamaTs = execSync(`git show ${REVISI_SEBELUM_PERBAIKAN}:supabase/functions/agent-process/lib/coordinator/trace_parser.ts`, {
-  cwd: 'D:/SLAMET/other/mamet os ecosystem', encoding: 'utf8', maxBuffer: 1 << 20,
-});
+// J3 (2 Nov 2026): isi revisi itu DISIMPAN di uji/kendali-revisi/ — abcdced tak terhubung ke cabang mana pun, jadi
+// `git show` hanya berhasil di laptop Owner, tidak di clone (CI GitHub). Isinya byte-sama dengan `git show` dulu.
+const { readFileSync: bacaKendali } = await import('node:fs');
+const lamaTs = bacaKendali(new URL(`./kendali-revisi/trace_parser-${REVISI_SEBELUM_PERBAIKAN}.ts.txt`, import.meta.url), 'utf8');
 const TMP_LAMA = TMP.replace('_trace_parser', '_trace_parser_lama');
 writeFileSync(TMP_LAMA + '.ts', lamaTs);
 const buildLama = await build({ entryPoints: [TMP_LAMA + '.ts'], bundle: false, write: false, format: 'esm', loader: { '.ts': 'ts' } });

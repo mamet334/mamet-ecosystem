@@ -3,11 +3,15 @@
 // Beda dengan "Bersihkan": pesan lama diringkas jadi SATU pesan yang TETAP DIKIRIM, lalu batas konteks
 // digeser ke pesan ringkasan itu. Yang diuji di sini: pembantu murni di KonteksChat.js, pembantu murni
 // di padatkan_endpoint.ts (lewat esbuild, berkas server yang asli), dan pemasangannya di jalur nyata.
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem/';
+const AKAR = AKAR_REPO + '/';
 const K = await import(pathToFileURL(AKAR + 'frontend/src/core/runtime/services/KonteksChat.js').href + '?v=' + Date.now());
 
 const SRC = AKAR + 'supabase/functions/agent-process/lib/request/padatkan_endpoint.ts';

@@ -4,12 +4,16 @@
 // ringkasan, label usulan, dan — yang terpenting — TIGA PAGAR yang membuat mode ini "bayangan".
 // Mutu vonis hakimnya sendiri tidak bisa diuji di sini; itu yang dijawab data mode bayangan nanti.
 
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
+const AKAR = AKAR_REPO;
 const SRC = AKAR + '/supabase/functions/agent-process/lib/verification/hakim_bayangan.ts';
 const { build } = await import(pathToFileURL(AKAR + '/frontend/node_modules/esbuild/lib/main.js').href);
 

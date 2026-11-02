@@ -1,6 +1,10 @@
 // UJI Item 85 Tahap 3 — buangKakiTiruan: catatan kaki "dicatat dari proses utama" buatan model dibuang (kasus live).
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
-const F = await import(pathToFileURL('D:/SLAMET/other/mamet os ecosystem/shared/folderKerjaAlat.js').href + '?v=' + Date.now());
+const F = await import(pathToFileURL(AKAR_REPO + '/shared/folderKerjaAlat.js').href + '?v=' + Date.now());
 console.log('uji-folder-kaki-tiruan v1');
 let gagal = 0; const cek = (ok, pesan, rinci) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n      → ${JSON.stringify(rinci)}` : ''}`); if (!ok) gagal++; };
 

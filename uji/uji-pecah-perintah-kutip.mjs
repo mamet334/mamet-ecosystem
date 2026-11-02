@@ -1,8 +1,12 @@
 // UJI 2026-09-23 — pecahPerintah: penyambung shell diperiksa HANYA di luar tanda kutip.
 // Bahan uji = perintah live yang ditolak 2026-09-23 (deepseek-v4-pro, TUGAS-04 lanjutan).
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { createRequire } from 'node:module';
-const require = createRequire('D:/SLAMET/other/mamet os ecosystem/frontend/');
-const { pecahPerintah } = require('D:/SLAMET/other/mamet os ecosystem/frontend/electron/alatFolderJalan.cjs');
+const require = createRequire(AKAR_REPO + '/frontend/');
+const { pecahPerintah } = require(AKAR_REPO + '/frontend/electron/alatFolderJalan.cjs');
 console.log('uji-pecah-perintah-kutip v2');
 
 let gagal = 0;

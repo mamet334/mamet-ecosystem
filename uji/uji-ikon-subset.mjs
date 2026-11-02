@@ -15,10 +15,14 @@
 // Dua uji sebelumnya (uji-konteks-chat, uji-padatkan-konteks) memeriksa ikon TERTENTU di layar
 // tertentu. Yang ini memeriksa SELURUH src sekaligus, jadi ikon baru di layar mana pun ikut terjaga.
 
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem/frontend/src';
+const AKAR = AKAR_REPO + '/frontend/src';
 
 // v2 (20 Okt) — satu set ikon (Item 128, keputusan Owner): lucide-react diganti komponen <Ikon nama="…">
 // (components/Ikon.jsx) dan ikon aplikasi kini dibaca dari metadata system.json. Keduanya ikut diperiksa, dan

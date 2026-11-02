@@ -1,10 +1,14 @@
 // UJI 2026-09-23 — pemulihanChat.js + penjaga urutan effect di ConversationEngine.jsx.
 // Sebab yang diuji: setelah muat ulang, penunjuk chat dihapus sebelum dibaca, dan semua kegagalan baca
 // dianggap "chat hilang". Bukti live: batch LevelDB seq 5433 & 5473 menghapus kunci ketiga workspace.
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
 import { readFileSync } from 'node:fs';
 
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem/frontend/src/components/workbench/';
+const AKAR = AKAR_REPO + '/frontend/src/components/workbench/';
 const P = await import(pathToFileURL(AKAR + 'pemulihanChat.js').href + '?v=' + Date.now());
 console.log('uji-pemulihan-chat v6');
 

@@ -1,7 +1,11 @@
 // UJI 2026-09-23 (TUGAS-03) — pagar CORE IMMUTABLE benar-benar menggigit di PatchApplier,
 // bukan hanya "model sopan menolak". Memanggil modul yang dipakai aplikasi, dengan deps tiruan.
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem/frontend/src/core/runtime/services/engineer/';
+const AKAR = AKAR_REPO + '/frontend/src/core/runtime/services/engineer/';
 const CG = await import(pathToFileURL(AKAR + 'CapabilityGuard.js').href + '?v=' + Date.now());
 const PA = await import(pathToFileURL(AKAR + 'PatchApplier.js').href + '?v=' + Date.now());
 console.log('uji-pagar-immutable v1');

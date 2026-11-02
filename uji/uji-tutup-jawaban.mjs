@@ -1,4 +1,8 @@
 // UJI tutupJawabanDataTabel (server, Item 92 Tahap 3) — dibundel esbuild dengan pengganti impor URL Supabase.
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 const { build } = await import(new URL('frontend/node_modules/esbuild/lib/main.js', new URL('../', import.meta.url)).href); // esbuild ada di frontend/node_modules; dirujuk lewat ALAMAT karena berkas uji ini di akar repo
 import { pathToFileURL } from 'node:url';
 import { join } from 'node:path';
@@ -22,7 +26,7 @@ mkdirSync(DIR_SEMENTARA, { recursive: true });
 
 const keluar = join(DIR_SEMENTARA, '_tutup.bundle.mjs');
 await build({
-  entryPoints: ['D:/SLAMET/other/mamet os ecosystem/supabase/functions/agent-process/lib/data_tabel/data_tabel.ts'],
+  entryPoints: [AKAR_REPO + '/supabase/functions/agent-process/lib/data_tabel/data_tabel.ts'],
   bundle: true, format: 'esm', platform: 'node', outfile: keluar, logLevel: 'error',
   plugins: [{ name: 'stub-url', setup(b) { b.onResolve({ filter: /^https:\/\// }, () => ({ path: 'stub', namespace: 'stub' })); b.onLoad({ filter: /.*/, namespace: 'stub' }, () => ({ contents: 'export const createClient = () => ({});' })); } }],
 });

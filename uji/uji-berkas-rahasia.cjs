@@ -8,11 +8,14 @@
 // Dijalankan terhadap FOLDER SUNGGUHAN berisi .env dan .env.example, lewat jalankanAlat() yang sama
 // dipakai proses utama — bukan tiruan logikanya.
 
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = require('node:path').resolve(__dirname, '..').replace(/\\/g, '/');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
+const AKAR = AKAR_REPO;
 const R = require(path.join(AKAR, 'frontend/electron/berkasRahasia.cjs'));
 const A = require(path.join(AKAR, 'frontend/electron/alatFolder.cjs'));
 

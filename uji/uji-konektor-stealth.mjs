@@ -140,7 +140,13 @@ cek(pSudah.env.PYTHONPATH === path.join(dataB, 'stealth', 'paket'), 'terpasang �
 const mDev = K.buatPengelolaKonektor({ akarRepo: AKAR });
 cek(!(await mDev.pasangStealth()).ok, 'npm run desktop → pasangStealth ditolak (stealth sudah di .venv)');
 const sDev = mDev.status().find((x) => x.konektor === 'ecosystem-crawler');
-cek(sDev.stealth?.keadaan === 'pengembangan' && sDev.stealth.folderPaket === undefined, 'status membawa keadaan stealth, tanpa alamat folder', sDev.stealth);
+// J3 (2 Nov 2026): mesin tanpa .venv crawler (CI GitHub) tak menemukan konektornya, jadi tak ada keadaan stealth
+// untuk dibaca — yang tetap dijaga di sana: status TIDAK membocorkan alamat folder.
+if (existsSync(path.join(AKAR, 'capability', 'ecosystem-crawler', '.venv'))) {
+  cek(sDev.stealth?.keadaan === 'pengembangan' && sDev.stealth.folderPaket === undefined, 'status membawa keadaan stealth, tanpa alamat folder', sDev.stealth);
+} else {
+  cek(!sDev?.stealth || sDev.stealth.folderPaket === undefined, 'tanpa .venv crawler: status tak membawa alamat folder', sDev?.stealth);
+}
 const mT = K.buatPengelolaKonektor({ akarRepo: AKAR, runtimeTerbundel: rt, folderData: sementara('d-') });
 let nTiruan = 0;
 const tiruanLambat = async (...a) => { nTiruan++; await new Promise((r) => setTimeout(r, 30)); return tiruan()(...a); };

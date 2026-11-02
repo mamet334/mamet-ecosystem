@@ -1,12 +1,16 @@
 // UJI Item 92 Tahap 1 — modul dataTabelAsn.js vs 53 xlsx rekonsiliasi (kriteria roadmap §5 Tahap 1 + kunci Tahap 3).
 // Jalankan: node "frontend/node_modules/.uji-rag/uji-data-tabel-asn.mjs"
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 const require = createRequire(new URL('../frontend/package.json', import.meta.url));
 const XLSX = require('xlsx');
-const M = await import(pathToFileURL('D:/SLAMET/other/mamet os ecosystem/frontend/src/core/runtime/services/dataTabelAsn.js').href);
+const M = await import(pathToFileURL(AKAR_REPO + '/frontend/src/core/runtime/services/dataTabelAsn.js').href);
 
 const AKAR = 'D:/REKONSIALISASI 2026';
 const berkas = [];

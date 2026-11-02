@@ -8,10 +8,14 @@
 // checkout-nya, dan `PatchGenerator` yang mencocokkan teks pada salinan kerja ber-CRLF gagal mencocokkan
 // satu pun baris (kegagalan live 24 September, dijaga `uji-patch-crlf.mjs`).
 
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
 import { readFileSync } from 'node:fs';
 
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
+const AKAR = AKAR_REPO;
 const S = await import(pathToFileURL(`${AKAR}/scripts/samakan-crlf.mjs`).href + '?v=' + Date.now());
 
 console.log('uji-samakan-crlf v1');

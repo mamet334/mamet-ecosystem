@@ -14,8 +14,12 @@
 //   (b) Laporan ditempel SEKALI lalu dilupakan. Pemulihan/sinkronisasi berikutnya mengganti seluruh
 //       daftar pesan dengan salinan database yang belum memuatnya. Spanduk checkpoint selamat karena
 //       ia state terpisah — itu sebabnya gejalanya tampak ganjil.
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { readFileSync } from 'node:fs';
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem/';
+const AKAR = AKAR_REPO + '/';
 console.log('uji-laporan-patch-bertahan v2');
 
 let gagal = 0;

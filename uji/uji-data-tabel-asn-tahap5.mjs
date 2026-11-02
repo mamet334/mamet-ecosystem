@@ -1,12 +1,16 @@
 // UJI Item 92 Tahap 5 — PDF pindaian: hasil OCR nyata 10 PDF (ocr-tahap5/*.md, di luar git) → adaptor → pembaca,
 // dibandingkan dengan xlsx pasangannya. Keluaran tanpa nama/NIP.
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 const require = createRequire(new URL('../frontend/package.json', import.meta.url));
 const XLSX = require('xlsx');
-const akar = 'D:/SLAMET/other/mamet os ecosystem/frontend/src/core/runtime/services/';
+const akar = AKAR_REPO + '/frontend/src/core/runtime/services/';
 const v = '?v=' + Date.now();
 const M = await import(pathToFileURL(akar + 'dataTabelAsn.js').href + v);
 const O = await import(pathToFileURL(akar + 'dataTabelAsnOcr.js').href + v);
@@ -15,6 +19,12 @@ console.log('uji-data-tabel-asn-tahap5 v1');
 let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}`); if (!ok) gagal++; };
 
 const DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'data-lokal', 'ocr-tahap5')  // data berisi NIP — di luar git, lihat README;
+// J3 (2 Nov 2026): data pegawai sungguhan (OCR + Excel rekonsiliasi) hanya ada di laptop Owner — tanpa keduanya uji ini
+// DILEWATI dengan jujur (penjalan menghitungnya terpisah), bukan jatuh ENOENT di mesin lain (CI GitHub).
+if (!fs.existsSync(DIR) || !fs.existsSync('D:/REKONSIALISASI 2026')) {
+  console.log('DILEWATI — butuh uji/data-lokal/ocr-tahap5 & D:/REKONSIALISASI 2026 (data berisi NIP, sengaja di luar git)');
+  process.exit(0);
+}
 const baca = (awal) => fs.readdirSync(DIR).filter((f) => f.startsWith(awal) || f.includes(awal))
   .map((f) => O.bacaOcrAsn(f.replace(/^.* __ /, '').replace(/\.md$/, '.pdf'), O.pisahHalamanOcr(fs.readFileSync(path.join(DIR, f), 'utf8'))));
 const orangDari = (hs) => hs.flatMap((h) => h.sheets.flatMap((s) => s.orang));

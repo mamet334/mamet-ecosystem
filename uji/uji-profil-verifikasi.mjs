@@ -2,9 +2,13 @@
 // Live TUGAS-04 08:26: laporan analisis 6.237 huruf diblokir HARD GATE
 // "CHECK_P02_VALID_JSON_PATCH_FORMAT: Invalid JSON patch: No JSON object found" — Owner hanya menerima
 // "Verification Failed". Sebabnya pola longgar /"\s*:\s*"/ menganggap kutipan kode sebagai patch JSON.
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { readFileSync } from 'node:fs';
 
-const SRC = 'D:/SLAMET/other/mamet os ecosystem/supabase/functions/agent-process/lib/orchestration/handlers/synthesis_handler.ts';
+const SRC = AKAR_REPO + '/supabase/functions/agent-process/lib/orchestration/handlers/synthesis_handler.ts';
 const src = readFileSync(SRC, 'utf8');
 console.log('uji-profil-verifikasi v1');
 

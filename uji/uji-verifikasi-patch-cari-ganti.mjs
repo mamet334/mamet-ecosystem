@@ -1,10 +1,14 @@
 // UJI T10 (2026-09-22) — pemeriksa server PATCH_ENGINEERING menerima patch cari-ganti (bentuk PatchGenerator.js).
 // Teks jawaban model PERSIS dari log live yang dulu diblokir "must be a string, got object".
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import os from 'node:os';
 import path from 'node:path';
-const akar = 'D:/SLAMET/other/mamet os ecosystem';
+const akar = AKAR_REPO;
 const keluar = path.join(os.tmpdir(), `uji-ve-${Date.now()}.mjs`);
 execFileSync(process.execPath, [path.join(akar, 'frontend/node_modules/esbuild/bin/esbuild'),
   path.join(akar, 'supabase/functions/agent-process/lib/verification/verification_engine.ts'),

@@ -1,7 +1,11 @@
 // UJI Item 85 Tahap 3 — klaim menjalankan/mengubah tanpa catatan proses utama (kasus live "jalankan app.py lagi") +
 // catatan kaki tiruan yang berbagi bagian dengan catatan pemeriksa label server.
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
-const F = await import(pathToFileURL('D:/SLAMET/other/mamet os ecosystem/shared/folderKerjaAlat.js').href + '?v=' + Date.now());
+const F = await import(pathToFileURL(AKAR_REPO + '/shared/folderKerjaAlat.js').href + '?v=' + Date.now());
 console.log('uji-folder-klaim-palsu v2'); // v2: putaran koreksi
 let gagal = 0; const cek = (ok, pesan, rinci) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n      → ${JSON.stringify(rinci)}` : ''}`); if (!ok) gagal++; };
 const kosong = { jalan: false, ubah: false };

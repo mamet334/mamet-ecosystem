@@ -4,9 +4,13 @@
 // murah berjendela sempit anggarannya melampaui jendela model — permintaan ditolak OpenRouter.
 // Angka jendela di bawah diambil dari katalog resmi OpenRouter /api/v1/models pada 24 September 2026
 // dan sudah ditulis ke kolom `model_pricing.context_length`.
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem/frontend/src/';
+const AKAR = AKAR_REPO + '/frontend/src/';
 const K = await import(pathToFileURL(AKAR + 'core/runtime/services/KonteksChat.js').href + '?v=' + Date.now());
 console.log('uji-jendela-model v1');
 

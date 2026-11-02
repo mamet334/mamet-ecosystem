@@ -1,8 +1,11 @@
 // UJI Item 85 Tahap 1 — alat baca folder kerja (alatFolder.cjs) dengan folder, berkas, & junction NYATA di %TEMP%.
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = require('node:path').resolve(__dirname, '..').replace(/\\/g, '/');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const A = require('D:/SLAMET/other/mamet os ecosystem/frontend/electron/alatFolder.cjs');
+const A = require(AKAR_REPO + '/frontend/electron/alatFolder.cjs');
 console.log('uji-alat-folder v2'); // v2: pemeriksaan "baca saja" dengan potret isi folder
 let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}`); if (!ok) gagal++; };
 

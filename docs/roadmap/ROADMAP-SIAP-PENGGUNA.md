@@ -340,6 +340,12 @@ Polanya juga sudah ada dan benar di dua tempat: `uji-chimera-verifier-nyata.mjs:
 
 ### J3 — Nol uji di CI, dan rilis bisa terbit dengan semuanya merah
 
+> ✅ **Kode selesai 2 Nov 2026** ([log](../project-memory/changelog/2026-11-02-j3-gerbang-uji.md)): `.github/workflows/uji.yml`
+> menjalankan suite penuh (Windows, Node 24, Python 3.12) pada setiap push & PR ke main; `build.yml` membangun &
+> menerbitkan rilis hanya sesudah job `uji` lulus. Prasyarat: 68 berkas uji tak lagi memaku alamat laptop, 3 uji
+> membaca revisi lama dari `uji/kendali-revisi/`, 2 uji DILEWATI jujur tanpa data lokal. **J3c: pilihan B Owner** —
+> pemeriksa CRLF tidak ikut gerbang. Bukti di GitHub (run pertama & PR dengan uji sengaja merah) dicatat di log.
+
 `grep jalankan-semua` di `.github/` → **nol**. `build.yml` berjalan: checkout → setup-node →
 `npm ci` → suntik env → `npm run dist:publish`. **Tanpa uji, tanpa lint, tanpa typecheck.**
 
@@ -930,8 +936,8 @@ Gerbang izin Owner di antara fase. Tiap langkah satu commit sendiri.
 | **J1** | 69 berkas uji pakai pola `uji-cari-judul.mjs:21-23` | **salin repo ke path lain → hasil sama** (mustahil lulus hari ini) | — |
 | **J2** | 5 uji ASN diberi penjaga `existsSync` → DILEWATI | jalankan di mesin tanpa `D:/REKONSIALISASI 2026` | — |
 | **J3b** | Patok flake `uji-alat-folder-jalan.cjs:100` — **prasyarat J3** | asersi dipisah tiga; suite penuh hijau berulang kali | — |
-| **J3c** | Putuskan nasib 785 berkas CRLF — **prasyarat J3** | `samakan-crlf --semua --periksa` keluar 0, atau klaimnya dicabut | ⏳ **keputusan** |
-| **J3** | Suite + CRLF + lint jadi gerbang CI sebelum `dist:publish` | **PR dengan satu uji sengaja merah → CI menolak** | — |
+| **J3c** | Putuskan nasib 785 berkas CRLF — **prasyarat J3** | `samakan-crlf --semua --periksa` keluar 0, atau klaimnya dicabut | ✅ **pilihan B** (2 Nov): pemeriksa CRLF tidak jadi gerbang; aturan dicabut dari `uji/README.md` |
+| **J3** | Suite + CRLF + lint jadi gerbang CI sebelum `dist:publish` | **PR dengan satu uji sengaja merah → CI menolak** | 🟡 kode ✅ 2 Nov (`uji.yml` + `build.yml` butuh `uji`); bukti GitHub menunggu push |
 | **J4** | Pindaian rahasia diperluas ke `.github/` | masukkan ulang kunci ke `build.yml` → CI menangkap | — |
 | **J5** | Kunci anon → `secrets` | `git grep` di `.github/` → nol JWT literal | — |
 | **J6** | Pemicu rilis berbasis isi, bukan path. **BOBOTNYA NAIK 8 Okt, tetapi bukan sejauh yang saya tulis mula-mula.** Yang **terbukti**: 4.2.15 sampai ke mesin Owner lewat pembaruan **otomatis** (cache updater memuat `installer.exe` 189.543.735 byte) — **4 menit sesudah Owner menekan Publish** (`published_at 14:04:59Z`). Jadi satu bump dependency → build → **satu tombol** dari terkirim. Klaim saya sebelumnya ("draf pun terkirim, Publish bukan gerbang") **dicabut**: pengukurannya diambil sesudah rilisnya terbit. Belum terukur bersih apakah draf saja cukup — lihat item 96 | ubah satu dependency → **tidak** memicu publish | — |

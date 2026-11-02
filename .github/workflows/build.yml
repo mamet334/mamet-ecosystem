@@ -44,8 +44,15 @@ jobs:
             echo "versi $lama -> $baru — build & rilis"; echo "naik=true" >> "$GITHUB_OUTPUT"
           fi
 
-  build:
+  # J3 (2 Nov 2026): gerbang uji — workflow uji.yml yang sama dengan push/PR, dipanggil hanya bila versi naik.
+  uji:
     needs: periksa-versi
+    if: needs.periksa-versi.outputs.naik == 'true'
+    uses: ./.github/workflows/uji.yml
+
+  build:
+    # J3 (2 Nov 2026): rilis hanya dibangun & diterbitkan bila suite uji LULUS — dulu rilis bisa terbit dengan uji merah.
+    needs: [periksa-versi, uji]
     if: needs.periksa-versi.outputs.naik == 'true'
     runs-on: windows-latest # Kita gunakan environment Windows karena Anda nge-build .exe
 

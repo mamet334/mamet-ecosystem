@@ -8,8 +8,12 @@
 // Jadi pemeriksa itu memblokir berkas yang memuat dirinya sendiri, selamanya, untuk perubahan apa pun.
 //
 // Patch yang sedang ditolak hanya mengubah satu komentar.
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { readFileSync } from 'node:fs';
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem/';
+const AKAR = AKAR_REPO + '/';
 console.log('uji-verifikasi-penambahan v1');
 
 let gagal = 0;

@@ -17,10 +17,14 @@
 // Uji ini sebagian besar berisi percobaan MENEMBUS garis itu. Pelonggaran izin yang hanya diuji
 // dengan contoh yang seharusnya lolos bukan uji keamanan, itu hanya uji keberuntungan.
 
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
+const AKAR = AKAR_REPO;
 const require = createRequire(`${AKAR}/frontend/`);
 const { tanpaPersetujuan, PROFIL, pecahPerintah } = require(`${AKAR}/frontend/electron/alatFolderJalan.cjs`);
 

@@ -1,9 +1,13 @@
 // UJI 2026-09-23 — dialog izin menandai skrip sebaris yang MENULIS, dan menampilkan isinya utuh.
 // Keputusan Owner: skrip sebaris TIDAK dilarang (melarangnya memblokir pekerjaan sah dan mudah dilewati);
 // pengamannya = dialog izin yang memberi tahu apa yang tampak dilakukan skrip itu.
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { createRequire } from 'node:module';
-const require = createRequire('D:/SLAMET/other/mamet os ecosystem/frontend/');
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
+const require = createRequire(AKAR_REPO + '/frontend/');
+const AKAR = AKAR_REPO;
 const { jalankanAlatJalan, pecahPerintah, PROFIL } = require(AKAR + '/frontend/electron/alatFolderJalan.cjs');
 console.log('uji-peringatan-skrip v1');
 

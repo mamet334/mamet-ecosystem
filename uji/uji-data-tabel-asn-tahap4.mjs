@@ -1,11 +1,15 @@
 // UJI Item 92 Tahap 4 — laporan kejanggalan per OPD, 53 berkas disimpan berurutan (versi lama digantikan).
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 const require = createRequire(new URL('../frontend/package.json', import.meta.url));
 const XLSX = require('xlsx');
-const akar = 'D:/SLAMET/other/mamet os ecosystem/frontend/src/core/runtime/services/';
+const akar = AKAR_REPO + '/frontend/src/core/runtime/services/';
 const M = await import(pathToFileURL(akar + 'dataTabelAsn.js').href + '?v=' + Date.now());
 const J = await import(pathToFileURL(akar + 'dataTabelAsnJanggal.js').href + '?v=' + Date.now());
 console.log('uji-data-tabel-asn-tahap4 v2'); // v2: kolom "Baris" (Excel / hal. PDF)

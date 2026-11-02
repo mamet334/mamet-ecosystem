@@ -1,6 +1,10 @@
 // UJI Item 93 Tahap 1 — cadanganData.js dengan supabase tiruan (paginasi, hitungan, pemeriksaan berkas).
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
-const C = await import(pathToFileURL('D:/SLAMET/other/mamet os ecosystem/frontend/src/core/runtime/services/cadanganData.js').href + '?v=' + Date.now());
+const C = await import(pathToFileURL(AKAR_REPO + '/frontend/src/core/runtime/services/cadanganData.js').href + '?v=' + Date.now());
 console.log('uji-cadangan-data v2');
 let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}`); if (!ok) gagal++; };
 
@@ -67,7 +71,7 @@ cek(namaCadangan.includes('cost_ledger') && namaCadangan.includes('umpan_balik_j
 const sbFw = tiruan({ ...jumlah, cost_ledger: 9, umpan_balik_jawaban: 1 });
 const fw = await C.buatCadangan(sbFw, { userId: 'u1' });
 cek(fw.ringkas.cocok && fw.berkas.data.cost_ledger.length === 9 && fw.berkas.data.umpan_balik_jawaban.length === 1, 'isi keduanya masuk berkas & cocok dengan hitungan');
-const skemaPulih = readFileSync('D:/SLAMET/other/mamet os ecosystem/scripts/kedaulatan/skema-pulih.sql', 'utf8');
+const skemaPulih = readFileSync(AKAR_REPO + '/scripts/kedaulatan/skema-pulih.sql', 'utf8');
 const tanpaSkema = namaCadangan.filter((n) => !new RegExp(`create table public\\.${n} \\(`).test(skemaPulih));
 cek(tanpaSkema.length === 0, `setiap tabel cadangan punya definisi di skema-pulih.sql${tanpaSkema.length ? ` (tidak ada: ${tanpaSkema.join(', ')})` : ''}`);
 

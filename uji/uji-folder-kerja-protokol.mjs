@@ -1,6 +1,10 @@
 // UJI Item 85 Tahap 1 — protokol alat folder (folderKerjaAlat.js): baca tag, susun hasil, blok prompt.
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
-const F = await import(pathToFileURL('D:/SLAMET/other/mamet os ecosystem/shared/folderKerjaAlat.js').href + '?v=' + Date.now());
+const F = await import(pathToFileURL(AKAR_REPO + '/shared/folderKerjaAlat.js').href + '?v=' + Date.now());
 console.log('uji-folder-kerja-protokol v4'); // v2: pembatas <<<ISI BERKAS>>> · v3: Tahap 2 (alat tulis sah) · v4: Tahap 3 (folder_run sah)
 let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}`); if (!ok) gagal++; };
 

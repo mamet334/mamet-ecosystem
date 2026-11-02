@@ -17,7 +17,7 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 | K1 | RAG menemukan & menjawab benar | ⏳ | 1 |
 | K2 | RAG jujur saat gagal | ⏳ | 1 |
 | K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ (ulang sebelum rilis) | 1 |
-| K4 | Mametlite layak bagi orang awam | ⏳ (T19 ✅ live, isolasi dua akun ✅ live) | 1 (👤 ganti sandi live) |
+| K4 | Mametlite layak bagi orang awam | ✅ (T19, isolasi dua akun, CORE, undangan, ganti sandi — live) | — |
 | K5 | Keamanan | ⏳ | 1 (👤 ganti kunci) |
 | K6 | Data aman & bisa dipulihkan | ✅ (ulang sebelum rilis) | 1 |
 | K7 | Stabil & sampai ke aplikasi terpasang | ⏳ | 1 (rilis 💳👤) |
@@ -59,7 +59,8 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - ✅ **Tautan undangan Supabase membuka layar buat kata sandi** (31 Okt, kode): akun didaftarkan Owner lewat "Send invitation";
   dulu yang diundang masuk tanpa pernah membuat kata sandi. ✅ **Terbukti live 31 Okt**: akun undangan membuat sandi, masuk, dan
   langsung punya CORE.
-- ⏳👤 Uji live ganti kata sandi bagi yang sudah masuk.
+- ✅ **Ganti kata sandi saat sudah masuk terbukti live** (2 Nov, Owner): sandi diganti dari Pengaturan, lalu masuk dengan
+  sandi baru berhasil (database: masuk 01:03 UTC; log audit Auth tak terbaca dari alat yang ada).
 
 ### K5 — Keamanan
 - ✅ RLS "baca semua" ditutup (Item 93); rahasia tak masuk `agent_logs` (T7).
@@ -89,6 +90,9 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - ✅ Suite 129/129; galat dalam bahasa manusia (Item 125 M4).
 - ✅ **Uji goyah J3b dipatok** (30 Okt): asersi dipecah tiga + satu percobaan ulang bila Python belum menyala; tetap gagal
   bila pohon proses tak dimatikan ([log](../project-memory/changelog/2026-10-30-k5-batas-rag-j3b-u8b.md)). Suite 136/136.
+- 🟡 **J3 gerbang uji** (2 Nov): suite penuh jalan di GitHub pada push/PR, rilis hanya terbit sesudah uji lulus; suite tak
+  lagi bergantung pada laptop Owner; J3c pilihan B (CRLF bukan gerbang). Kode ✅ 140/140, bukti GitHub menunggu push
+  ([log](../project-memory/changelog/2026-11-02-j3-gerbang-uji.md)).
 - ✅ **Rilis 4.4.0 TERBIT** (30 Okt 15:06Z, Latest): Electron 45 + hasil hardening sisi klien; build GitHub hijau,
   `latest.yml` cocok dengan aset ([log](../project-memory/changelog/2026-10-30-rilis-4.4.0-hardening.md)).
 - ⏳💳👤 **Rilis garis dasar 5.0.0** — hanya bila K1–K7 semuanya ✅.

@@ -1,0 +1,72 @@
+name: Uji Mamet (gerbang)
+
+# J3 (Item 125 Fase C, 2 Nov 2026): suite uji menjadi GERBANG. Dulu tak ada satu uji pun yang dijalankan di GitHub —
+# rilis bisa terbit dengan uji merah. Kini suite penuh berjalan pada setiap push & PR ke main, dan build.yml
+# memanggil workflow ini sebelum membangun & menerbitkan rilis (job `build` butuh `uji` lulus).
+#
+# Prasyarat yang dibereskan lebih dulu: 68 berkas uji memaku alamat laptop Owner (kini dihitung dari letak berkas),
+# 3 uji membaca commit yang tak ada di GitHub (kini berkas pembanding uji/kendali-revisi/), 2 uji bergantung pada data
+# lokal (kini DILEWATI dengan jujur bila datanya tak ada). Pemeriksa akhir baris (CRLF) SENGAJA tidak ikut —
+# keputusan Owner J3c pilihan B: akhir baris tak memengaruhi cara Mamet berjalan.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  suite:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          check-latest: true
+          cache: 'npm'
+          cache-dependency-path: |
+            frontend/package-lock.json
+            mametlite/package-lock.json
+
+      # uji-alat-folder-jalan & uji-engineer-jalankan menjalankan `python` sungguhan (batas waktu, pohon proses).
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.10'
+
+      - name: 📦 Pasang dependensi frontend
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: 📦 Pasang dependensi Mametlite
+        working-directory: ./mametlite
+        run: npm ci
+
+      # jalankan-semua keluar 1 bila ada yang GAGAL; DILEWATI (data lokal / .venv crawler tak ada di sini) tidak
+      # menggagalkan, tetapi tercantum di ringkasan supaya tak ada pengecualian diam-diam.
+      - name: 🧪 Jalankan suite uji
+        shell: bash
+        run: |
+          node uji/jalankan-semua.mjs --keluar=hasil-uji.json > /dev/null 2>&1; kode=$?
+          node -e "
+            const d = JSON.parse(require('fs').readFileSync('hasil-uji.json', 'utf8').split('\n')[0]);
+            console.log('total ' + d.total + ' · lulus ' + d.lulus + ' · dilewati ' + d.dilewati.length + ' · gagal ' + d.gagal.length);
+            for (const x of d.dilewati) console.log('  DILEWATI ' + (x.nama || x));
+            for (const g of d.gagal) console.log('::error title=' + g.nama + '::' + String(g.barisTerakhir).slice(0, 200));
+          "
+          exit $kode
+
+      - name: 📄 Simpan hasil uji
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hasil-uji
+          path: hasil-uji.json
+          if-no-files-found: ignore

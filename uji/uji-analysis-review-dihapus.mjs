@@ -10,9 +10,13 @@
 // bertetangga dengan kode mati itu, tetapi ketiganya dipakai jalur MODIFY_CODE yang hidup. Bagian
 // "MASIH HIDUP" di bawah menjaga justru itu.
 
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { readFileSync } from 'node:fs';
 
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
+const AKAR = AKAR_REPO;
 const baca = (p) => readFileSync(`${AKAR}/${p}`, 'utf8');
 
 console.log('uji-analysis-review-dihapus v1');

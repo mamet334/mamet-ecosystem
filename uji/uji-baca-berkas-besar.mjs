@@ -12,11 +12,15 @@
 //   3. TERPASANG — petunjuknya benar-benar dipanggil di jalur perintah AssistantService,
 //      dan kedua perintah itu benar-benar diizinkan profil Engineer.
 
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
+const AKAR = AKAR_REPO;
 const P = await import(pathToFileURL(AKAR + '/frontend/src/core/runtime/services/engineer/ProsedurEngineer.js').href + '?v=' + Date.now());
 
 console.log('uji-baca-berkas-besar v1');

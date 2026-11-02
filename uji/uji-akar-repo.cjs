@@ -7,11 +7,14 @@
 //   1. wajib ada `.git`  — tanpa riwayat, checkpoint & rollback kehilangan artinya;
 //   2. tolak folder instalasi — uninstall menghapusnya beserta seluruh riwayat git di dalamnya.
 
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = require('node:path').resolve(__dirname, '..').replace(/\\/g, '/');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
+const AKAR = AKAR_REPO;
 const R = require(path.join(AKAR, 'frontend/electron/akarRepo.cjs'));
 
 console.log('uji-akar-repo v1');

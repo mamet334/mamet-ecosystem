@@ -210,7 +210,8 @@ cek(/--no-deps[^\n]*-r requirements-bundel\.txt/.test(yml) && /working-directory
 cek(/--require-hashes[^\n]*-r requirements-bundel\.txt/.test(yml), 'build.yml memasang dengan --require-hashes — berkas yang isinya beda dari hash ditolak');
 // 28 Okt: `paths: frontend/package.json` memicu build pada perubahan APA PUN di berkas itu (ganti versi Electron →
 // build rilis 4.3.2 kedua, dibatalkan tangan). Build hanya boleh jalan bila job periksa-versi menyatakan versi naik.
-cek(/\n  build:\n    needs: periksa-versi\n    if: needs\.periksa-versi\.outputs\.naik == 'true'\n/.test(yml.replace(/\r\n/g, '\n')),
+// 2 Nov (J3): job build juga menunggu `uji` (gerbang suite) — `needs` kini daftar, dan ada baris komentar di atasnya.
+cek(/\n  build:\n(?: {4}#[^\n]*\n)* {4}needs: \[periksa-versi(?:, [a-z-]+)*\]\n {4}if: needs\.periksa-versi\.outputs\.naik == 'true'\n/.test(yml.replace(/\r\n/g, '\n')),
   'build.yml: job build menunggu periksa-versi dan hanya jalan bila versi naik');
 cek(/::error::[^\n]*\n\s*exit 1/.test(yml) && !/naik=true[^\n]*\n[^\n]*\n\s*fi\n\s*git fetch/.test(yml),
   'build.yml: versi sebelum push tak terbaca → merah & berhenti, bukan dianggap naik');

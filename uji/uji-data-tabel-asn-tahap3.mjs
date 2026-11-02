@@ -1,13 +1,17 @@
 // UJI Item 92 Tahap 3 (logika saring murni) — rencana → saring → teks model (tanpa NIP) + lampiran (dengan NIP).
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 const require = createRequire(new URL('../frontend/package.json', import.meta.url));
 const XLSX = require('xlsx');
-const base = 'D:/SLAMET/other/mamet os ecosystem/frontend/src/core/runtime/services/';
+const base = AKAR_REPO + '/frontend/src/core/runtime/services/';
 const M = await import(pathToFileURL(base + 'dataTabelAsn.js').href + '?v=' + Date.now());
-const S = await import(pathToFileURL('D:/SLAMET/other/mamet os ecosystem/shared/dataTabelAsnSaring.js').href + '?v=' + Date.now());
+const S = await import(pathToFileURL(AKAR_REPO + '/shared/dataTabelAsnSaring.js').href + '?v=' + Date.now());
 
 let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}`); if (!ok) gagal++; };
 const baca = (rel, opd) => {

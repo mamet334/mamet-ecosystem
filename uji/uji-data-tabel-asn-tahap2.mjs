@@ -1,4 +1,8 @@
 // UJI Item 92 Tahap 2 (logika murni) — nama OPD, bentuk simpan, dugaan versi dengan 53 berkas disimpan berurutan.
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 console.log('uji-data-tabel-asn-tahap2 v2');
 import fs from 'node:fs';
 import path from 'node:path';
@@ -6,7 +10,7 @@ import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 const require = createRequire(new URL('../frontend/package.json', import.meta.url));
 const XLSX = require('xlsx');
-const M = await import(pathToFileURL('D:/SLAMET/other/mamet os ecosystem/frontend/src/core/runtime/services/dataTabelAsn.js').href + '?v=' + Date.now());
+const M = await import(pathToFileURL(AKAR_REPO + '/frontend/src/core/runtime/services/dataTabelAsn.js').href + '?v=' + Date.now());
 
 const AKAR = 'D:/REKONSIALISASI 2026';
 const berkas = [];

@@ -1,9 +1,12 @@
 // UJI Item 85 Tahap 2 — alat tulis folder kerja (alatFolderTulis.cjs) dengan folder & junction NYATA di %TEMP%.
 // Izin & Recycle Bin DITIRU: izin mengikuti skenario (setuju/tolak), "Recycle Bin" = folder sampah di luar akar.
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = require('node:path').resolve(__dirname, '..').replace(/\\/g, '/');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const T = require('D:/SLAMET/other/mamet os ecosystem/frontend/electron/alatFolderTulis.cjs');
+const T = require(AKAR_REPO + '/frontend/electron/alatFolderTulis.cjs');
 console.log('uji-alat-folder-tulis v1');
 let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}`); if (!ok) gagal++; };
 

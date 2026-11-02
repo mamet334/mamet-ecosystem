@@ -1,12 +1,16 @@
 // UJI 2026-09-23 — keluaran perintah Engineer diakui sebagai sumber label.
 // Sebab: live TUGAS-02 & TUGAS-04, jawaban yang seluruhnya dibangun dari isi berkas nyata (lewat perintah yang
 // Owner setujui) diturunkan ke HYPOTHESIS dengan alasan "tidak mengutip dokumen".
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
+const AKAR = AKAR_REPO;
 const F = await import(pathToFileURL(AKAR + '/shared/folderKerjaAlat.js').href + '?v=' + Date.now());
 
 // label_sumber.ts (TypeScript) → JS lewat esbuild: yang diuji berkas server yang asli.

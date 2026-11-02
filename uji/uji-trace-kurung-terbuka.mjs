@@ -9,11 +9,15 @@
 // PatchGenerator meminta model menulis patch sebagai JSON TELANJANG, TANPA pagar — jadi aturan pagar tidak
 // pernah menyentuh kasus ini. Diukur ulang terhadap parser ber-aturan-pagar: sisa 113 huruf, {=3 }=0 —
 // cocok dengan log live. Aturan pagar tetap benar untuk kasusnya sendiri, tapi ia BUKAN perbaikan ini.
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem/';
+const AKAR = AKAR_REPO + '/';
 const SRC = AKAR + 'supabase/functions/agent-process/lib/coordinator/trace_parser.ts';
 
 // Keluaran sementara ditaruh di folder sementara SISTEM, bukan di dalam `node_modules` (8 Okt 2026).
@@ -95,10 +99,10 @@ cek(r.sourceTrace === undefined, 'HARGA YANG DISADARI: prosa berkurung tak seimb
 // ---------- UJI KENDALI: versi sebelum perbaikan harus MENUNJUKKAN gejalanya ----------
 // Revisi dipaku, bukan HEAD.
 const REVISI_SEBELUM = 'd548881';
-const { execSync } = await import('node:child_process');
-const lamaTs = execSync(`git show ${REVISI_SEBELUM}:supabase/functions/agent-process/lib/coordinator/trace_parser.ts`, {
-  cwd: AKAR, encoding: 'utf8', maxBuffer: 1 << 20,
-});
+// J3 (2 Nov 2026): isi revisi itu DISIMPAN di uji/kendali-revisi/ — d548881 tak terhubung ke cabang mana pun, jadi
+// `git show` hanya berhasil di laptop Owner, tidak di clone (CI GitHub). Isinya byte-sama dengan `git show` dulu.
+const { readFileSync: bacaKendali } = await import('node:fs');
+const lamaTs = bacaKendali(new URL(`./kendali-revisi/trace_parser-${REVISI_SEBELUM}.ts.txt`, import.meta.url), 'utf8');
 const TMP_LAMA = TMP.replace('_trace_kurung', '_trace_kurung_lama');
 writeFileSync(TMP_LAMA + '.ts', lamaTs);
 const bl = await build({ entryPoints: [TMP_LAMA + '.ts'], bundle: false, write: false, format: 'esm', loader: { '.ts': 'ts' } });

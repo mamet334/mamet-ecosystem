@@ -3,8 +3,12 @@
 // Yang dijanjikan roadmap dan harus dibuktikan di sini:
 //   "temuan yang sama tidak dilaporkan dua kali; setelah Owner menutup satu temuan, Engineer tidak
 //    mengangkatnya lagi tanpa bukti baru."
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem/frontend/src/core/runtime/services/engineer/';
+const AKAR = AKAR_REPO + '/frontend/src/core/runtime/services/engineer/';
 const T = await import(pathToFileURL(AKAR + 'IngatanTemuan.js').href + '?v=' + Date.now());
 console.log('uji-ingatan-temuan v1');
 

@@ -1,8 +1,12 @@
 // UJI 2026-09-23 — jendela konteks per percakapan (Tahap 3a).
 // Keputusan Owner: pesan lama TETAP TERLIHAT (hanya berhenti dikirim), anggaran mengikuti batas biaya di Settings,
 // berlaku di Assistant & Engineer, berdiri sendiri per percakapan.
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem/frontend/src/core/runtime/services/';
+const AKAR = AKAR_REPO + '/frontend/src/core/runtime/services/';
 const K = await import(pathToFileURL(AKAR + 'KonteksChat.js').href + '?v=' + Date.now());
 console.log('uji-konteks-chat v5');
 
@@ -71,12 +75,12 @@ cek(K.bacaMulaiDari('chat-engineer', ls) === 0, 'batas bisa dilepas kembali');
 
 // ---------- terpasang di jalur yang dipakai ----------
 const { readFileSync } = await import('node:fs');
-const AS = readFileSync('D:/SLAMET/other/mamet os ecosystem/frontend/src/core/runtime/services/AssistantService.js', 'utf8');
+const AS = readFileSync(AKAR_REPO + '/frontend/src/core/runtime/services/AssistantService.js', 'utf8');
 cek(!/history\.slice\(isLiteMode \? -5 : -10\)/.test(AS), 'jalur kirim TIDAK lagi memotong 10 pesan terakhir');
 cek(/history: konteks\.dikirim/.test(AS), 'jalur kirim memakai pilihan beranggaran');
 cek(/bacaMulaiDari\(chatId\)/.test(AS), 'batas "Bersihkan konteks" per percakapan dipakai saat mengirim');
 cek(/bahanAnggaranKonteks/.test(AS) && /daily_budget_cap_usd/.test(AS), 'anggaran diambil dari batas biaya harian di Settings');
-const CE = readFileSync('D:/SLAMET/other/mamet os ecosystem/frontend/src/components/workbench/ConversationEngine.jsx', 'utf8');
+const CE = readFileSync(AKAR_REPO + '/frontend/src/components/workbench/ConversationEngine.jsx', 'utf8');
 cek(/chatId: currentChatId/.test(CE), 'layar mengirim id percakapan ke layanan');
 cek(/meteranKonteks\(/.test(CE) && /konteksInfo/.test(CE), 'meteran terpasang di layar');
 cek(/simpanMulaiDari\(currentChatId, messages\.length\)/.test(CE), 'tombol bersihkan menyimpan batas, bukan menghapus pesan');
@@ -90,7 +94,7 @@ cek(iHandle > 0 && /chatId = null/.test(AS.slice(iHandle, iHandle + 420)), '_han
 // (b) meteran tampil "19 / 1 (100%)": anggaranKonteks mengembalikan `token`, meteranKonteks menunggu `anggaranToken`.
 cek(/anggaranToken: ang\.token/.test(CE), 'anggaran dipetakan ke nama yang dipakai meteran (bukan 1)');
 // (c) ikon tampil sebagai teks "DATA_USAGE": font ikon hanya memuat subset dari daftar-ikon.txt.
-const daftarIkon = readFileSync('D:/SLAMET/other/mamet os ecosystem/frontend/src/assets/fonts/daftar-ikon.txt', 'utf8');
+const daftarIkon = readFileSync(AKAR_REPO + '/frontend/src/assets/fonts/daftar-ikon.txt', 'utf8');
 const iTombol = CE.indexOf('METERAN JENDELA KONTEKS');
 for (const ikon of (CE.slice(iTombol, iTombol + 1600).match(/\{konteksInfo\.dilewati > 0 \? '([a-z_]+)' : '([a-z_]+)'\}/) || []).slice(1)) {
   cek(new RegExp('^' + ikon + '$', 'm').test(daftarIkon), `ikon "${ikon}" ada di subset font (kalau tidak, tampil sebagai teks)`);

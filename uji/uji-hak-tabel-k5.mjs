@@ -10,10 +10,14 @@
 // Perilaku sungguhannya (baca 25 tabel, tulis 9 jalur, RPC, penolakan TRUNCATE/anon) dibuktikan di database dengan
 // peniruan peran authenticated/anon di dalam transaksi yang dibatalkan — lihat changelog 2026-10-30-k5-hak-tabel.
 
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
+const AKAR = AKAR_REPO;
 const MIGRASI = join(AKAR, 'supabase/migrations/20261030000000_k5_hak_tabel_minimum.sql');
 const FOLDER_KLIEN = ['frontend/src', 'frontend/electron', 'mametlite/src', 'tools'];
 

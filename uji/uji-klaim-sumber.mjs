@@ -10,12 +10,16 @@
 // Modul yang diuji adalah berkas server yang ASLI (TypeScript → esbuild), bukan salinannya —
 // aturan "jangan menguji cermin", uji/README.md butir 2.
 
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { writeFileSync, mkdirSync } from 'node:fs';
 
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
+const AKAR = AKAR_REPO;
 const { build } = await import(new URL('frontend/node_modules/esbuild/lib/main.js', new URL('../', import.meta.url)).href);
 
 // Keluaran sementara ditaruh di folder sementara SISTEM, bukan di dalam `node_modules` (8 Okt 2026).
@@ -202,9 +206,10 @@ const jawabanPenuh = [
 // dan uji ini sempat mengalaminya sebelum baris ini ditulis. 8dd5e3b = commit T13 (dokumen saja),
 // versi TERAKHIR sebelum penilaian per-klaim ada.
 const REVISI_SEBELUM = '8dd5e3b';
-const { execFileSync } = await import('node:child_process');
-const sumberLama = execFileSync('git', ['show', `${REVISI_SEBELUM}:supabase/functions/agent-process/lib/verification/label_sumber.ts`],
-  { cwd: AKAR, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 });
+// J3 (2 Nov 2026): isi revisi itu DISIMPAN di uji/kendali-revisi/ — 8dd5e3b tak terhubung ke cabang mana pun, jadi
+// `git show` hanya berhasil di laptop Owner, tidak di clone (CI GitHub). Isinya byte-sama dengan `git show` dulu.
+const { readFileSync: bacaKendali } = await import('node:fs');
+const sumberLama = bacaKendali(new URL(`./kendali-revisi/label_sumber-${REVISI_SEBELUM}.ts.txt`, import.meta.url), 'utf8');
 const TS_LAMA = `${TMP_DIR}/_label_sumber_${REVISI_SEBELUM}.ts`;
 writeFileSync(TS_LAMA, sumberLama);
 const keluarLama = await build({ entryPoints: [TS_LAMA], bundle: true, platform: 'neutral', write: false, format: 'esm', loader: { '.ts': 'ts' } });

@@ -24,9 +24,13 @@
 // Jadi yang dijamin uji ini hanya: kalimat kacamata kuda sudah tidak ada, dan penggantinya ada.
 // Bahwa model benar-benar MENENGOK hanya bisa dibuktikan live — lihat INDEX §5b.
 
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { readFileSync } from 'node:fs';
 
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
+const AKAR = AKAR_REPO;
 const S = readFileSync(`${AKAR}/supabase/functions/agent-process/lib/verification/universal_contract.ts`, 'utf8').replace(/\r\n/g, '\n');
 // Komentar dibuang: berkas ini menjelaskan kalimat lama untuk menerangkan kenapa ia dibuang, dan
 // uji yang membaca kutipan itu sebagai "masih dipakai" akan merah palsu (jebakan 28 Sep & 1 Okt).

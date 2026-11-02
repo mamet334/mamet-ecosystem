@@ -19,9 +19,13 @@
 // tidak boleh bocor ke server". Keputusan itu yang membuat pemangkas server buta. Penandanya kini
 // ikut, dan uji ini menjaga KEDUA sisinya supaya tidak ada lagi yang memutusnya sendirian.
 
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
 
-const AKAR = 'D:/SLAMET/other/mamet os ecosystem';
+const AKAR = AKAR_REPO;
 const imp = (p) => import(pathToFileURL(`${AKAR}/${p}`).href + '?v=' + Date.now());
 
 const K = await imp('frontend/src/core/runtime/services/KonteksChat.js');

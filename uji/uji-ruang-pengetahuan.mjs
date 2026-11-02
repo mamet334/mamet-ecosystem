@@ -1,6 +1,10 @@
 // UJI workspace Research App (2026-09-21) — logika murni + lapisan DB dengan supabase tiruan.
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
-const M = await import(pathToFileURL('D:/SLAMET/other/mamet os ecosystem/frontend/src/core/runtime/services/ruangPengetahuan.js').href + '?v=' + Date.now());
+const M = await import(pathToFileURL(AKAR_REPO + '/frontend/src/core/runtime/services/ruangPengetahuan.js').href + '?v=' + Date.now());
 console.log('uji-ruang-pengetahuan v1');
 let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}`); if (!ok) gagal++; };
 

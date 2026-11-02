@@ -1,6 +1,10 @@
 // UJI T10 (2026-09-22) — CatatanPatch.js: laporan patch setelah muat ulang dibaca dari DISK, bukan klaim.
+import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
+// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
+// berjalan di mesin lain (CI GitHub, worktree).
+const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
-const C = await import(pathToFileURL('D:/SLAMET/other/mamet os ecosystem/frontend/src/core/runtime/services/engineer/CatatanPatch.js').href + '?v=' + Date.now());
+const C = await import(pathToFileURL(AKAR_REPO + '/frontend/src/core/runtime/services/engineer/CatatanPatch.js').href + '?v=' + Date.now());
 console.log('uji-catatan-patch v1');
 let gagal = 0; const cek = (ok, pesan, rinci) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n      → ${JSON.stringify(rinci).slice(0, 300)}` : ''}`); if (!ok) gagal++; };
 const ls = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
