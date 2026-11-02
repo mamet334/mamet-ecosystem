@@ -105,12 +105,11 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - Item 129 Tahap D (label Hypothesis & Engineer)
 - Item 92 koreksi pemetaan Data Tabel
 - Item 88 BUKU-10 · Item 90 U4, U6, U7 · Item 93 Tahap 3–4
-- Kode mati (graphify 30 Okt): `supabase/functions/test-suite/` (rusak sintaks, tak ter-deploy),
-  `agent-process/lib/maef/engineering_lifecycle.ts` (1 baris "MOVED"), `agent-process/plugins/memory_manager.ts` (tak terdaftar)
+- ✅ **Dibereskan 2 Nov:** kode mati (`test-suite/`, `maef/engineering_lifecycle.ts`, `plugins/memory_manager.ts`),
+  12 baris sampah uji `api_usage`, `.gitignore` untuk `.venv`/`data`/`hasil`
+  ([log](../project-memory/changelog/2026-11-02-bersih-bersih-parkir.md))
 - Metadata chat menyimpan `[SYSTEM CONTEXT FINAL] fullSystemContext=…` (termasuk teks potongan dokumen) di langkah proses
   ±300 pesan — membengkakkan baris `chats` & berkas cadangan (milik pengguna sendiri, RLS; bukan kebocoran)
-- `api_usage` 12 baris milik ID uji palsu Juni (`99999999-…`, `11111111-2222-…` dari `test-suite`) — sampah uji, bukan data pribadi
-- `.gitignore` akar tidak memuat `hasil/` padahal CLAUDE.md melarang meng-commit-nya
 - `npm run dev` Mametlite layar kosong — CSP `script-src 'self'` memblokir preamble React inline Vite (build tak terdampak)
 - T18 kelas Tailwind tak dibuat · retensi tabel log lain (`verification_audit_logs`, `evidence_audit_logs`, `memory_audit_logs`)
 - Graf Home diperkaya & `graf-bercahaya`

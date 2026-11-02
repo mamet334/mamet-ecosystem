@@ -60,3 +60,10 @@ uji/data-lokal/
 # manusia dan tidak menambah apa pun ke sejarah repo. Berkasnya TETAP ADA di disk — yang berhenti
 # hanyalah pelacakannya. Keadaan graf dicatat sebagai ANGKA di dokumen roadmap, bukan sebagai blob.
 graphify-out/
+
+# CLAUDE.md: jangan pernah meng-commit `.venv`, `data/`, atau `hasil/` — dulu hanya dijaga ingatan (Parkir 31 Okt: `hasil/`
+# di akar TIDAK diabaikan, ketahuan saat laporan model ancaman nyaris tersimpan di sana). `.gitignore` crawler sudah
+# menjaga miliknya sendiri. `data/` dipatok ke akar supaya folder kode bernama data tak ikut terabaikan.
+.venv/
+/data/
+hasil/

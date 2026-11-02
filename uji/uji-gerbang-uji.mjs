@@ -46,5 +46,16 @@ const revisiLepas = berkasUji.filter((n) => barisKode(readFileSync(join(AKAR, 'u
   .some((b) => /git show \$?\{?[A-Z_]*\}?[0-9a-f]{0,40}:/.test(b) && !/git show HEAD:/.test(b) && !/MAMET_CMD/.test(b)));
 cek(revisiLepas.length === 0, 'tak ada uji yang membaca revisi lama lewat `git show <hash>` (pakai uji/kendali-revisi/)', revisiLepas);
 
+// ── 3. Folder terlarang tak bisa ter-commit (CLAUDE.md: .env, .venv, data/, hasil/) ─────────────
+// Parkir 31 Okt → dibereskan 2 Nov: `.venv`, `data/`, `hasil/` di akar dulu TIDAK diabaikan git — hanya dijaga ingatan.
+const { execFileSync } = await import('node:child_process');
+const diabaikan = (p) => { try { execFileSync('git', ['check-ignore', '-q', p], { cwd: AKAR, stdio: 'ignore' }); return true; } catch { return false; } };
+const harus = ['.env', '.venv/x', 'data/x', 'hasil/x', 'uji/hasil/x'];
+cek(harus.every(diabaikan), 'git mengabaikan .env, .venv/, data/ (akar), hasil/ (di mana pun)', harus.filter((p) => !diabaikan(p)));
+cek(!diabaikan('frontend/src/data/x'), 'folder kode bernama data/ di bawah src tetap terlacak (data/ dipatok ke akar)');
+const terlacak = execFileSync('git', ['ls-files'], { cwd: AKAR, encoding: 'utf8' }).split('\n')
+  .filter((f) => /(^|\/)(\.venv|hasil)\//.test(f) || /^data\//.test(f) || /(^|\/)\.env$/.test(f));
+cek(terlacak.length === 0, 'tak ada berkas terlacak di .env/.venv/data/hasil', terlacak.slice(0, 5));
+
 console.log(gagal === 0 ? '\nSEMUA LULUS' : `\n${gagal} GAGAL`);
 process.exit(gagal === 0 ? 0 : 1);
