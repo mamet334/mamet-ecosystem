@@ -228,6 +228,8 @@ export default function ActivityGraph({
               if (activePath.links.has(`${sourceId}->${targetId}`)) return '#00ffcc';
               return `rgba(${warnaKanvasRef.current.putihRgb}, 0.02)`;
             }
+            // Garis layanan ikut warna simpulnya yang TERKINI (Item 130 Tahap B) — bukan warna saat graf disusun.
+            if (link.isPipelineLink && typeof link.source === 'object') return getNodeColor(link.source);
             return link.color || `rgba(${warnaKanvasRef.current.putihRgb}, 0.35)`;
           }}
           linkWidth={(link) => {

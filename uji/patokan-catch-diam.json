@@ -1,7 +1,7 @@
 {
   "catatan": "Patokan catch DIAM per berkas. HANYA BOLEH TURUN. Perbarui dengan: node uji/uji-catch-diam.mjs --perbarui",
-  "diperbarui": "2026-10-08",
-  "total": 92,
+  "diperbarui": "2026-11-02",
+  "total": 91,
   "berkas": {
     "frontend/src/components/dashboard/ActivityGraph.jsx": 1,
     "frontend/src/components/explorer/FileExplorer.jsx": 1,
@@ -16,7 +16,7 @@
     "frontend/src/components/workbench/MemoryContextPanel.jsx": 1,
     "frontend/src/core/runtime/DiscoveryManager.js": 1,
     "frontend/src/core/runtime/EventBus.js": 1,
-    "frontend/src/core/runtime/hooks/useDashboardData.js": 2,
+    "frontend/src/core/runtime/hooks/useDashboardData.js": 1,
     "frontend/src/core/runtime/Kernel.js": 1,
     "frontend/src/core/runtime/services/AssistantService.js": 6,
     "frontend/src/core/runtime/services/BrainService.js": 2,
@@ -26,8 +26,6 @@
     "frontend/src/core/runtime/services/engineer/PatchGenerator.js": 5,
     "frontend/src/core/runtime/services/engineer/StaticCodeAnalyzer.js": 1,
     "frontend/src/core/runtime/services/engineer/UsulanPatch.js": 1,
-    "shared/folderKerjaAlat.js": 1,
-    "shared/KnowledgeService.js": 1,
     "frontend/src/core/runtime/services/KonteksChat.js": 1,
     "frontend/src/core/runtime/services/MemoryGovernorService.js": 2,
     "frontend/src/core/runtime/services/ruangPengetahuan.js": 1,
@@ -49,6 +47,8 @@
     "frontend/electron/alatFolderTulis.cjs": 2,
     "frontend/electron/indeksKonstitusi.cjs": 1,
     "frontend/electron/main.cjs": 10,
-    "frontend/electron/preload.cjs": 1
+    "frontend/electron/preload.cjs": 1,
+    "shared/folderKerjaAlat.js": 1,
+    "shared/KnowledgeService.js": 1
   }
 }

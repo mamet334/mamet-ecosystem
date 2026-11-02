@@ -5,6 +5,7 @@ export default function ObservabilityPanel({
   executionTrace,
   observability,
   vitals,
+  keteranganLampu = {},
   stats,
   lastCheckTime,
   serviceManager
@@ -245,7 +246,8 @@ export default function ObservabilityPanel({
 
           <div className="space-y-2 text-[12px] font-mono tracking-widest text-slate-300 border-t border-white/5 pt-4">
             {Object.entries(vitals).map(([key, val]) => (
-              <div key={key} className="flex items-center gap-2">
+              // Alasan lampu (Item 130 Tahap B) tampil saat disorot — atribut `title` = teks, bukan HTML.
+              <div key={key} className="flex items-center gap-2" title={keteranganLampu[key] || undefined}>
                 <span className={
                   val === 'DOWN' ? 'text-red-400'
                   : val === 'DEGRADED' ? 'text-yellow-400'

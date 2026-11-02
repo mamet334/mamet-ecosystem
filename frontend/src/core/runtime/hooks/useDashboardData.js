@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../../../supabase';
 import { fetchExecutionTrace } from '../services/ExecutionTraceService';
-import { susunGrafHome } from './grafHome.js';
+import { susunGrafHome, nilaiLampu, statusRealtime, KOLOM_LOG_AGEN, bentukLogAgen } from './grafHome.js';
 
 const EXEC_TRACE_MAX = 40;
 
@@ -21,6 +21,15 @@ export default function useDashboardData() {
     provider: 'UNKNOWN',
     agentProcess: 'UNKNOWN'
   });
+  // Nilai TERKINI untuk dibaca di luar render (efek pengambil & laporan Realtime) — state `vitals` di efek itu basi.
+  const vitalsRef = useRef(vitals);
+  // Alasan tiap lampu (mis. "permintaan terakhir gagal · 30 Okt 18.25") — ditampilkan saat lampunya disorot.
+  const [keteranganLampu, setKeteranganLampu] = useState({});
+  // Dipanggil HomeDashboard dari callback `channel.subscribe` — Realtime dinilai dari langganan yang memang dipakai.
+  const laporRealtime = useCallback((s) => {
+    vitalsRef.current = { ...vitalsRef.current, realtime: statusRealtime(s) };
+    setVitals(vitalsRef.current);
+  }, []);
   const [selectedNode, setSelectedNode] = useState(null);
   const [activePath, setActivePath] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -62,9 +71,10 @@ export default function useDashboardData() {
         let memQuery = supabase.from('user_memories').select('id, summary, created_at, memory_hits, metadata, status').limit(500);
         let docQuery = supabase.from('documents').select('id, title, created_at').limit(500);
         let chatQuery = supabase.from('chats').select('id, title, workspace_type, created_at').limit(500);
+        // Hanya `document_id` — yang dipakai hanyalah hitungan potongan per dokumen (Item 130 Tahap B: kolom seperlunya).
         let chunkQuery = currentUserId
-          ? supabase.from('document_chunks').select('id, document_id, documents!inner(user_id)').eq('documents.user_id', currentUserId).limit(5000)
-          : supabase.from('document_chunks').select('id, document_id').limit(5000);
+          ? supabase.from('document_chunks').select('document_id, documents!inner(user_id)').eq('documents.user_id', currentUserId).limit(5000)
+          : supabase.from('document_chunks').select('document_id').limit(5000);
 
         if (currentUserId) {
           memQuery = memQuery.eq('user_id', currentUserId);
@@ -92,17 +102,19 @@ export default function useDashboardData() {
         });
 
         // ---- Observability telemetry (0 LLM Tokens, Zero-Cost DB read) ----
+        // Item 130 Tahap B (syarat GRATIS): tanpa `select('*')` — hanya kolom yang dibaca di bawah. `agent_logs` tak lagi
+        // membawa `message` & `metadata` utuh: hanya 5 nilai metadata yang dipakai (latensi & trace id).
         const [logsRes, checksRes, incidentsRes, verRes, agentLogsRes, apiUsageRes] = await Promise.all([
-          supabase.from('ai_system_logs').select('*').order('created_at', { ascending: false }).limit(100),
+          supabase.from('ai_system_logs').select('created_at, llm_call_count, model_used, latency_ms, memory_fetch_count, memory_write_count, error_flag, cost_alert_flag').order('created_at', { ascending: false }).limit(100),
           supabase.from('checks').select('status_code,response_time_ms,checked_at').order('checked_at', { ascending: false }).limit(100),
           supabase.from('incidents').select('status,started_at,resolved_at').order('started_at', { ascending: false }).limit(100),
           supabase.from('verification_audit_logs').select('decision,status,failures,execution_time_ms,timestamp').order('timestamp', { ascending: false }).limit(100),
-          supabase.from('agent_logs').select('*').order('created_at', { ascending: false }).limit(100),
-          supabase.from('api_usage').select('*').order('created_at', { ascending: false }).limit(100)
+          supabase.from('agent_logs').select(KOLOM_LOG_AGEN).order('created_at', { ascending: false }).limit(100),
+          supabase.from('api_usage').select('created_at').order('created_at', { ascending: false }).limit(100)
         ]);
 
         const logs = logsRes.data || [];
-        const agentLogs = agentLogsRes.data || [];
+        const agentLogs = bentukLogAgen(agentLogsRes.data);
         const apiUsages = apiUsageRes.data || [];
         const checks = checksRes.data || [];
         const verificationItems = verRes.data || [];
@@ -298,34 +310,12 @@ export default function useDashboardData() {
           .eq('service_name', 'agent-process')
           .maybeSingle();
 
-        let edgeStatus = '🟡';
-        try {
-          const edgeRes = await supabase.functions.invoke('ping');
-          if (edgeRes.error && edgeRes.error.message.includes('fetch')) edgeStatus = '🔴';
-          else edgeStatus = '🟢';
-        } catch (e) {
-          edgeStatus = '🔴';
-        }
-
-        let agentProcessHealth = 'UNKNOWN';
-        if (heartbeatData) {
-          const now = new Date();
-          const heartbeatTs = heartbeatData.last_heartbeat_at;
-          const lastBeat = heartbeatTs ? new Date(heartbeatTs) : null;
-          const diffMinutes = lastBeat ? (now - lastBeat) / (1000 * 60) : Number.POSITIVE_INFINITY;
-
-          if (heartbeatData.status === 'DOWN') {
-            agentProcessHealth = 'DOWN';
-          } else if (diffMinutes <= 15) {
-            agentProcessHealth = 'HEALTHY';
-          } else if (edgeStatus === '🟢') {
-            agentProcessHealth = 'HEALTHY';
-          } else {
-            agentProcessHealth = 'DEGRADED';
-          }
-        } else if (edgeStatus === '🟢') {
-          agentProcessHealth = 'HEALTHY';
-        }
+        // Lampu dari sinyal yang SUDAH ada (Item 130 Tahap B) — tanpa `functions.invoke('ping')`. Aturannya: grafHome.js nilaiLampu.
+        const lampu = nilaiLampu({
+          heartbeat: heartbeatData,
+          suksesTerakhir: apiUsages[0]?.created_at,
+          galatPenyediaTerakhir: agentLogs.find(l => l.event_type === 'PROVIDER_ERROR')?.created_at,
+        });
 
         const normalizeHealthStatus = (raw) => {
           if (!raw) return 'UNKNOWN';
@@ -337,13 +327,6 @@ export default function useDashboardData() {
           return 'UNKNOWN';
         };
 
-        const recentProviderErrors = logs.filter(l => l.error_flag && isRecent(l.created_at));
-        const providerHealthRaw = recentProviderErrors.length > 0
-          ? 'DEGRADED'
-          : (logs.some(l => l.provider || l.model || l.provider_name) || agentLogs.some(l => l.provider))
-            ? 'HEALTHY'
-            : 'HEALTHY';
-
         const verificationHealthRaw = recentVerificationFail > 0
           ? 'DEGRADED'
           : recentVerificationWarn > 0
@@ -352,24 +335,26 @@ export default function useDashboardData() {
               ? 'HEALTHY'
               : 'UNKNOWN';
 
-        setVitals(v => ({
-          ...v,
+        // Satu objek TERKINI untuk panel DAN graf. Dulu graf menerima `vitals` dari state awal (efek berjalan sekali,
+        // sebelum setVitals) → 11 simpul layanan selalu abu-abu bergaris merah, apa pun keadaannya.
+        const vitalsBaru = {
+          ...vitalsRef.current,
           supabase: normalizeHealthStatus((memRes.error || docRes.error) ? 'DOWN' : 'HEALTHY'),
           auth: normalizeHealthStatus(authRes.error ? 'DOWN' : 'HEALTHY'),
           storage: normalizeHealthStatus(storageRes.error ? 'DOWN' : 'HEALTHY'),
-          edge: normalizeHealthStatus(edgeStatus),
           memory: normalizeHealthStatus(memRes.error ? 'DOWN' : 'HEALTHY'),
           rag: normalizeHealthStatus(docRes.error ? 'DOWN' : 'HEALTHY'),
-          embedding: normalizeHealthStatus((chunks && chunks.length > 0) ? 'HEALTHY' : (chunkRes.error ? 'DOWN' : 'DEGRADED')),
           verification: normalizeHealthStatus(verificationHealthRaw),
-          provider: normalizeHealthStatus(providerHealthRaw),
-          agentProcess: agentProcessHealth
-        }));
+          ...lampu.status,
+        };
+        vitalsRef.current = vitalsBaru;
+        setVitals(vitalsBaru);
+        setKeteranganLampu(lampu.keterangan);
 
         setLastCheckTime(new Date().toLocaleTimeString('id-ID', { hour12: false }));
 
         // Susunan graf = modul murni `grafHome.js` (Item 130 Tahap A) — bisa diuji tanpa peramban.
-        const { nodes, links, stats: statistik } = susunGrafHome({ memories, documents, chats, docChunkCounts, vitals });
+        const { nodes, links, stats: statistik } = susunGrafHome({ memories, documents, chats, docChunkCounts, vitals: vitalsBaru });
         setStats(statistik);
 
         // ---- Execution Trace ----
@@ -452,6 +437,8 @@ export default function useDashboardData() {
     graphData,
     stats,
     vitals,
+    keteranganLampu,
+    laporRealtime,
     selectedNode,
     setSelectedNode,
     activePath,

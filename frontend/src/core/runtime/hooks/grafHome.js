@@ -71,6 +71,74 @@ export function labelTooltipAman(node) {
   return String(node?.name ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 }
 
+/** Warna lampu layanan. UNKNOWN = abu-abu ("tak ada sinyal"), BUKAN merah — merah hanya untuk bukti kegagalan. */
+export function warnaStatus(status) {
+  return { HEALTHY: '#22c55e', DEGRADED: '#eab308', DOWN: '#ef4444' }[status] || '#94a3b8';
+}
+
+const JENDELA_EDGE_MS = 7 * 24 * 3600e3;
+const JENDELA_PENYEDIA_MS = 30 * 24 * 3600e3;
+const waktu = (t) => new Date(t).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+/**
+ * Lampu yang dulu menebak (Item 130 Tahap B, 2 Nov 2026) — dinilai dari sinyal yang SUDAH ada di basis data, tanpa
+ * memanggil apa pun (dulu `functions.invoke('ping')` setiap buka Home):
+ *
+ * - `heartbeat` (`service_heartbeat`, ditulis agent-process SETIAP selesai melayani permintaan: HEALTHY/DOWN). DOWN
+ *   berarti "permintaan terakhir gagal" — fungsinya hidup (dialah yang menulis baris itu). Dulu dibaca sebagai DOWN =
+ *   mati → "SYSTEM STATUS: DOWN" sejak 30 Okt, padahal penyebabnya saldo penyedia.
+ * - `suksesTerakhir` = panggilan model berhasil terakhir milik akun ini (`api_usage`, RLS milik sendiri).
+ * - `galatPenyediaTerakhir` = `PROVIDER_ERROR` terakhir milik akun ini (`agent_logs`). Dulu penyedia dibaca dari
+ *   `ai_system_logs` yang 0 baris → selalu hijau.
+ * - Embedding: TIDAK tercatat di `api_usage` (0 baris model embedding, diukur 2 Nov) → tak ada sinyal jujur → UNKNOWN.
+ *   Dulu hijau hanya karena potongan dokumen lama ada.
+ *
+ * @returns {{ status: Record<string,string>, keterangan: Record<string,string> }}
+ */
+export function nilaiLampu({ heartbeat, suksesTerakhir, galatPenyediaTerakhir, sekarang = Date.now() } = {}) {
+  const status = {}, keterangan = {};
+  const hb = heartbeat?.last_heartbeat_at ? new Date(heartbeat.last_heartbeat_at).getTime() : null;
+
+  if (!hb) { status.agentProcess = 'UNKNOWN'; keterangan.agentProcess = 'belum ada catatan permintaan'; }
+  else if (heartbeat.status === 'HEALTHY') { status.agentProcess = 'HEALTHY'; keterangan.agentProcess = `permintaan terakhir berhasil · ${waktu(hb)}`; }
+  else { status.agentProcess = 'DEGRADED'; keterangan.agentProcess = `permintaan terakhir gagal · ${waktu(hb)} (fungsi menjawab; penyebab biasanya penyedia/saldo)`; }
+
+  if (hb && sekarang - hb <= JENDELA_EDGE_MS) { status.edge = 'HEALTHY'; keterangan.edge = `agent-process menjawab · ${waktu(hb)}`; }
+  else { status.edge = 'UNKNOWN'; keterangan.edge = 'tak ada permintaan 7 hari terakhir'; }
+
+  const s = suksesTerakhir ? new Date(suksesTerakhir).getTime() : null;
+  const g = galatPenyediaTerakhir ? new Date(galatPenyediaTerakhir).getTime() : null;
+  const baru = (t) => t !== null && sekarang - t <= JENDELA_PENYEDIA_MS;
+  if (!baru(s) && !baru(g)) { status.provider = 'UNKNOWN'; keterangan.provider = 'tak ada panggilan model 30 hari terakhir'; }
+  else if (baru(g) && (s === null || g > s)) {
+    status.provider = 'DEGRADED';
+    keterangan.provider = `gagal terakhir · ${waktu(g)}${s !== null ? ` · berhasil terakhir · ${waktu(s)}` : ''}`;
+  } else { status.provider = 'HEALTHY'; keterangan.provider = `berhasil terakhir · ${waktu(s)}`; }
+
+  status.embedding = 'UNKNOWN';
+  keterangan.embedding = 'tak ada sinyal — panggilan embedding tidak tercatat';
+  return { status, keterangan };
+}
+
+/**
+ * `agent_logs` untuk Home: tanpa `message` & `metadata` utuh (dulu `select('*')`, ±29 kB per buka Home, 11 kB dari
+ * metadata) — hanya 5 nilai metadata yang dibaca (latensi & trace id), diambil di basis data lewat jalur JSON.
+ */
+export const KOLOM_LOG_AGEN = 'event_type, provider, created_at, latency_ms:metadata->latency_ms, '
+  + 'execution_time_ms:metadata->execution_time_ms, duration_ms:metadata->duration_ms, '
+  + 'trace_id:metadata->>trace_id, traceId:metadata->>traceId';
+
+/** Memulihkan bentuk lama (`l.metadata?.latency_ms`, `l.metadata?.trace_id`) supaya pembaca di hook tak berubah. */
+export function bentukLogAgen(baris) {
+  return (baris || []).map(({ latency_ms, execution_time_ms, duration_ms, trace_id, traceId, ...l }) =>
+    ({ ...l, metadata: { latency_ms, execution_time_ms, duration_ms, trace_id, traceId } }));
+}
+
+/** Status Realtime dari callback `channel.subscribe` — gratis, langganan yang memang dipakai Home. */
+export function statusRealtime(s) {
+  return { SUBSCRIBED: 'HEALTHY', TIMED_OUT: 'DEGRADED', CHANNEL_ERROR: 'DOWN', CLOSED: 'UNKNOWN' }[s] || 'UNKNOWN';
+}
+
 /**
  * Safely push a link only if both source and target nodes exist.
  * Prevents "node not found" / "Cannot create property 'vx' on string" errors.
@@ -232,16 +300,14 @@ export function susunGrafHome({ memories, documents, chats, docChunkCounts, vita
 
   pipelineServices.forEach(service => {
     const status = vitals[service.statusKey] || 'UNKNOWN';
-    let color = '#94a3b8';
-    if (status === 'HEALTHY') color = '#22c55e';
-    else if (status === 'DEGRADED') color = '#eab308';
-    else if (status === 'DOWN') color = '#ef4444';
+    const color = warnaStatus(status);
 
     nodes.push({
       id: service.id,
       name: service.name,
       type: 'Pipeline Service',
       group: 'pipeline',
+      statusKey: service.statusKey,   // warna dibaca ulang dari vitals TERKINI saat digambar (HomeDashboard)
       val: 12,
       isCategory: false,
       status,
@@ -326,7 +392,7 @@ export function susunGrafHome({ memories, documents, chats, docChunkCounts, vita
   // 3c. Pipeline Services → Core + Telemetry
   pipelineServices.forEach(service => {
     const status = vitals[service.statusKey] || 'UNKNOWN';
-    const linkColor = (status === 'HEALTHY') ? '#22c55e' : (status === 'DEGRADED' ? '#eab308' : '#ef4444');
+    const linkColor = warnaStatus(status);   // dulu UNKNOWN → merah, sama dengan DOWN
     const linkWidth = (status === 'HEALTHY') ? 2 : 0.8;
     safeLink(links, nodes, service.id, 'core-maef', { color: linkColor, width: linkWidth, isPipelineLink: true });
     safeLink(links, nodes, service.id, 'cat-telemetry');

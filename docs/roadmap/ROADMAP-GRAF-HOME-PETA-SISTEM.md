@@ -1,7 +1,8 @@
 # ROADMAP-GRAF-HOME-PETA-SISTEM — Item 130: Graf Home menjadi peta sistem Mamet
 
 **Status:** 📝 berjalan — Tahap 0 ✅ (pratinjau disetujui 2 Nov), **Tahap A ✅** (2 Nov, dicek Owner di desktop —
-[log](../project-memory/changelog/2026-11-02-graf-home-tahap-a.md)); berikutnya **Tahap B**.
+[log](../project-memory/changelog/2026-11-02-graf-home-tahap-a.md)), **Tahap B ✅** (2 Nov, dicek Owner —
+[log](../project-memory/changelog/2026-11-02-graf-home-tahap-b.md)); berikutnya **Tahap C**.
 **Kedudukan:** butir **Parkir** fase hardening ([ADR-0022](../adr/ADR-0022-mamet-cukup-dan-fase-hardening.md)) yang
 diambil Owner — boleh dikerjakan kapan saja (mis. selagi K1/K2 menunggu saldo), asal uji yang menjaga K1–K7 tetap hijau.
 **Kode:** `frontend/src/components/dashboard/ActivityGraph.jsx`, `HomeDashboard.jsx`,
@@ -82,7 +83,7 @@ Graf Home menggambarkan **apa yang tersimpan**, bukan **bagaimana Mamet bekerja*
 |---|---|---|
 | **0** | **Pratinjau** (gambar/mockup statis) susunan dua belahan + lingkar + fondasi + lapisan Kemampuan + ekor; disetujui Owner sebelum kode aplikasi disentuh | ✅ 2 Nov |
 | **A** | Tampilan Home: Directory & Menu tertutup di awal; label cluster tak menumpuk; lencana Directory benar. Ikut: celah K5 tooltip ber-HTML ditutup; penyusun graf dipindah ke `grafHome.js` (dapat diuji) | ✅ 2 Nov |
-| **B** | Gratis & lampu jujur: buang `ping`, kueri hemat (tanpa `select('*')`, hitungan di DB), status agent-process & penyedia dari `agent_logs`, Realtime/Embedding jujur atau dibuang | 📋 |
+| **B** | Gratis & lampu jujur: buang `ping`, kueri hemat (tanpa `select('*')`), lampu dari heartbeat/`api_usage`/`PROVIDER_ERROR`, Realtime dari langganan, Embedding UNKNOWN jujur; vitals basi & UNKNOWN merah dibetulkan | ✅ 2 Nov |
 | **C** | Ubah Konstitusi 23 (pusat, lapisan); pusat MAMET dua belahan + penyambung; lingkar 1; fondasi luar | 📋 |
 | **D** | Lapisan Kemampuan (tombol): alat chat dari ToolRegistry, alat folder dari `shared/folderKerjaAlat.js`, MCP berekor (preload baca-saja), sub-agent dari daftar resmi baru di `shared/` (mulai dari `plugins/registry.ts` & `izin_subagent.ts`) | 📋 |
 | **E** | Percakapan berekor pesan: RPC/view hitungan + migrasi grant; ekor dimuat saat klik; garis pesan → alat dari penanda pemakaian | 📋 |
@@ -105,9 +106,14 @@ esbuild sebelum meminta deploy, catat & push sekali (CLAUDE.md). Tahap E butuh m
 
 ## 6. Sisa / catatan
 
-- **Untuk Tahap B (ditemukan di Tahap A):** warna simpul layanan memakai `vitals` dari state SEBELUM `setVitals` —
-  `susunGrafHome` menerima objek awal (semua UNKNOWN), jadi 11 simpul layanan selalu abu-abu dengan garis merah ke pusat,
-  apa pun keadaan sebenarnya. `documents` tak punya kolom `metadata` → semua dokumen jatuh ke satu sub-cluster `docs`.
+- ~~Vitals basi di graf~~ ✅ Tahap B. `documents` tak punya kolom `metadata` → semua dokumen jatuh ke satu sub-cluster
+  `docs` (ditata ulang di Tahap C).
+- **Panel: LLM CALLS selalu 100** (ditemukan Owner 2 Nov) — menghitung baris kueri `api_usage` yang dibatasi `limit(100)`,
+  jadi angkanya tak bermakna. Butuh hitungan di DB (sekalian RPC Tahap E) atau dibuang.
+- Hitungan potongan per dokumen masih menarik hingga 5.000 baris `document_id` (±3.600 kini) — pindah ke hitungan di DB
+  bersama RPC hitungan pesan Tahap E (butuh migrasi + grant K5).
+- Embedding UNKNOWN permanen sampai ada sinyal: `rag-process`/embedding tidak mencatat ke `api_usage` (pertimbangkan di
+  Item 126 Fase 0 telemetri).
 - Ambang nama simpul data `AMBANG_LABEL_DATA = 2` tetap (bukan relatif terhadap skala pas): layar 4K bisa melewatinya
   saat dibuka — belum diukur.
 - Simulasi tata letak (`uji/lib/simulasiGrafHome.mjs`) dipakai lagi di Tahap C untuk susunan dua belahan.

@@ -5,7 +5,7 @@ import NodeInspector from './NodeInspector';
 import ObservabilityPanel from './ObservabilityPanel';
 import { supabase } from '../../supabase';
 import { kernel } from '../../core/runtime/Kernel';
-import { pasangGayaGraf } from '../../core/runtime/hooks/grafHome.js';
+import { pasangGayaGraf, warnaStatus } from '../../core/runtime/hooks/grafHome.js';
 
 const FALLBACK_COLOR = '#475569';
 
@@ -14,6 +14,8 @@ export default function HomeDashboard() {
     graphData,
     stats,
     vitals,
+    keteranganLampu,
+    laporRealtime,
     selectedNode,
     setSelectedNode,
     activePath,
@@ -107,7 +109,8 @@ export default function HomeDashboard() {
         triggerReasoningHighlight(`doc-${payload.new.id}`);
       })
       .subscribe((status) => {
-        // vitals update is handled by useDashboardData
+        // Lampu Realtime dinilai dari langganan INI (Item 130 Tahap B) — gratis; dulu statusnya tak pernah diisi.
+        laporRealtime(status);
       });
 
     window.triggerReasoningHighlight = triggerReasoningHighlight;
@@ -144,7 +147,8 @@ export default function HomeDashboard() {
       return '#ef4444';
     }
 
-    let baseColor = node.color;
+    // Simpul layanan: warna dari status TERKINI (mis. Realtime yang terlapor sesudah graf disusun), bukan saat disusun.
+    let baseColor = node.group === 'pipeline' && node.statusKey ? warnaStatus(vitals[node.statusKey]) : node.color;
 
     if (!baseColor) {
       switch (node.group) {
@@ -224,6 +228,7 @@ export default function HomeDashboard() {
             executionTrace={executionTrace}
             observability={observability}
             vitals={vitals}
+            keteranganLampu={keteranganLampu}
             stats={stats}
             lastCheckTime={lastCheckTime}
             serviceManager={kernel.serviceManager}
