@@ -1,10 +1,11 @@
 # ROADMAP-GRAF-HOME-PETA-SISTEM — Item 130: Graf Home menjadi peta sistem Mamet
 
-**Status:** 📝 berjalan — Tahap 0 ✅ (pratinjau disetujui 2 Nov), **Tahap A ✅** (2 Nov, dicek Owner di desktop —
+**Status:** ✅ selesai 2 Nov 2026 — Tahap 0 ✅ (pratinjau disetujui 2 Nov), **Tahap A ✅** (2 Nov, dicek Owner di desktop —
 [log](../project-memory/changelog/2026-11-02-graf-home-tahap-a.md)), **Tahap B ✅** (2 Nov, dicek Owner —
 [log](../project-memory/changelog/2026-11-02-graf-home-tahap-b.md)), **Tahap C ✅** (2 Nov, dicek Owner; Konstitusi 23
 direvisi — [log](../project-memory/changelog/2026-11-02-graf-home-tahap-c.md)), **Tahap D ✅** (2 Nov, dicek Owner,
-`agent-process` v544 — [log](../project-memory/changelog/2026-11-02-graf-home-tahap-d.md)); berikutnya **Tahap E**.
+`agent-process` v544 — [log](../project-memory/changelog/2026-11-02-graf-home-tahap-d.md)), **Tahap E ✅** (2 Nov, dicek
+Owner, migrasi `20261102085252` — [log](../project-memory/changelog/2026-11-02-graf-home-tahap-e.md)). **Item 130 selesai.**
 **Kedudukan:** butir **Parkir** fase hardening ([ADR-0022](../adr/ADR-0022-mamet-cukup-dan-fase-hardening.md)) yang
 diambil Owner — boleh dikerjakan kapan saja (mis. selagi K1/K2 menunggu saldo), asal uji yang menjaga K1–K7 tetap hijau.
 **Kode:** `frontend/src/components/dashboard/ActivityGraph.jsx`, `HomeDashboard.jsx`,
@@ -88,7 +89,7 @@ Graf Home menggambarkan **apa yang tersimpan**, bukan **bagaimana Mamet bekerja*
 | **B** | Gratis & lampu jujur: buang `ping`, kueri hemat (tanpa `select('*')`), lampu dari heartbeat/`api_usage`/`PROVIDER_ERROR`, Realtime dari langganan, Embedding UNKNOWN jujur; vitals basi & UNKNOWN merah dibetulkan | ✅ 2 Nov |
 | **C** | Ubah Konstitusi 23 (pusat, lapisan); pusat MAMET dua belahan + penyambung; lingkar 1; fondasi luar. Ikut: data = ekor kemampuan, label kerangka dilukis terakhir, `tataPas` menyisakan pita legenda | ✅ 2 Nov |
 | **D** | Lapisan Kemampuan (tombol): alat chat dari ToolRegistry, alat folder dari `shared/folderKerjaAlat.js`, MCP berekor (preload baca-saja), sub-agent dari daftar resmi baru `shared/daftarSubagen.js` (dibaca `izin_subagent.ts`, v544) | ✅ 2 Nov |
-| **E** | Percakapan berekor pesan: RPC/view hitungan + migrasi grant; ekor dimuat saat klik; garis pesan → alat dari penanda pemakaian | 📋 |
+| **E** | Percakapan berekor pesan: RPC hitungan + ekor (migrasi, EXECUTE hanya authenticated); ekor dimuat saat klik; garis pesan → alat dari penanda pemakaian. Ikut: penghindar tabrakan label, LLM CALLS sebenarnya, Inspector hanya simpul data | ✅ 2 Nov |
 
 **Perubahan server:** hanya Tahap D (server ikut membaca daftar sub-agent di `shared/`) — Owner men-deploy dulu, bundel
 esbuild sebelum meminta deploy, catat & push sekali (CLAUDE.md). Tahap E butuh migrasi basis data (atas izin Owner).
@@ -116,10 +117,10 @@ esbuild sebelum meminta deploy, catat & push sekali (CLAUDE.md). Tahap E butuh m
   `alat-mcp-*`) — hanya bila lapisan menyala; bila mati, ke kemampuannya. `RUANG_ATAS` 150 px tetap (legenda satu baris di 1046 px);
   bila legenda membungkus ke dua baris di layar sempit, nilainya perlu diukur dari elemen legenda.
 - Belahan yang digeser Owner tetap di tempat barunya sampai muat ulang (perilaku bawaan force-graph untuk simpul berpaku).
-- **Panel: LLM CALLS selalu 100** (ditemukan Owner 2 Nov) — menghitung baris kueri `api_usage` yang dibatasi `limit(100)`,
-  jadi angkanya tak bermakna. Butuh hitungan di DB (sekalian RPC Tahap E) atau dibuang.
-- Hitungan potongan per dokumen masih menarik hingga 5.000 baris `document_id` (±3.600 kini) — pindah ke hitungan di DB
-  bersama RPC hitungan pesan Tahap E (butuh migrasi + grant K5).
+- ~~Panel LLM CALLS selalu 100~~ ✅ Tahap E (total dari `hitungan_graf_home`). ~~Hitungan potongan di klien~~ ✅ Tahap E.
+- **Batas Tahap E:** `hitungan_graf_home` membaca kolom `messages` (±300 ms per buka Home, tumbuh bersama riwayat). Bila
+  terasa lambat: kolom `jumlah_pesan` berpemicu — ubah skema `chats`, periksa dulu Cadangkan/Pulihkan K6.
+- Panel lain masih menghitung kueri ber-limit 100 (MEMORY READS/WRITES dari `ai_system_logs`/`agent_logs`) — Parkir.
 - Embedding UNKNOWN permanen sampai ada sinyal: `rag-process`/embedding tidak mencatat ke `api_usage` (pertimbangkan di
   Item 126 Fase 0 telemetri).
 - Ambang nama simpul data `AMBANG_LABEL_DATA = 2` tetap (bukan relatif terhadap skala pas): layar 4K bisa melewatinya

@@ -5,7 +5,7 @@ import NodeInspector from './NodeInspector';
 import ObservabilityPanel from './ObservabilityPanel';
 import { supabase } from '../../supabase';
 import { kernel } from '../../core/runtime/Kernel';
-import { pasangGayaGraf, warnaStatus, statusGabungan, PUSAT, tataPas, susunLapisanKemampuan, gabungGraf, konektorUntukGraf } from '../../core/runtime/hooks/grafHome.js';
+import { pasangGayaGraf, warnaStatus, statusGabungan, PUSAT, tataPas, susunLapisanKemampuan, gabungGraf, konektorUntukGraf, susunEkorPesan, GRUP_DATA } from '../../core/runtime/hooks/grafHome.js';
 import { SUBAGEN } from '../../../../shared/daftarSubagen.js';
 import { ALAT_SEMUA } from '../../../../shared/folderKerjaAlat.js';
 import { KONEKTOR_DIKENAL } from '../../../../shared/konektorAlat.js';
@@ -55,10 +55,16 @@ export default function HomeDashboard() {
     })();
     return () => { batal = true; };
   }, [kemampuanTampil]);
-  const grafTampil = useMemo(
-    () => (kemampuanTampil && lapisan ? gabungGraf(graphData, lapisan) : graphData),
-    [graphData, kemampuanTampil, lapisan],
-  );
+  // ── Ekor pesan (Item 130 Tahap E): satu percakapan, dimuat SAAT DIKLIK lewat `pesan_percakapan_graf` — angka & kode
+  // alat dari basis data, cuplikan 80 huruf; konteks/memori tak pernah sampai ke klien. Klik lagi = tutup.
+  const [ekorBaris, setEkorBaris] = useState(null); // { chatId: 'chat-…', baris: [...] }
+  const grafTampil = useMemo(() => {
+    const dasarPlus = kemampuanTampil && lapisan ? gabungGraf(graphData, lapisan) : graphData;
+    const idAda = new Set(dasarPlus.nodes.map((n) => n.id));
+    // Percakapannya harus masih ada di graf (data bisa dimuat ulang) — garis ke simpul yang hilang membuat force-graph galat.
+    const ekor = ekorBaris && idAda.has(ekorBaris.chatId) ? susunEkorPesan(ekorBaris.chatId, ekorBaris.baris, idAda) : null;
+    return gabungGraf(dasarPlus, ekor);
+  }, [graphData, kemampuanTampil, lapisan, ekorBaris]);
 
   const fgRef = useRef();
   const containerRef = useRef();
@@ -208,6 +214,15 @@ export default function HomeDashboard() {
     if (window.triggerReasoningHighlight) {
       window.triggerReasoningHighlight(node.id);
     }
+    if (node?.group === 'chat') bukaEkor(node.id);
+  };
+
+  // Klik percakapan → muat ekornya; klik percakapan yang sama lagi → tutup. Satu percakapan terbuka pada satu waktu.
+  const bukaEkor = async (chatId) => {
+    if (ekorBaris?.chatId === chatId) { setEkorBaris(null); return; }
+    const { data, error } = await supabase.rpc('pesan_percakapan_graf', { p_chat: chatId.replace(/^chat-/, '') });
+    if (error) { console.warn('[GrafHome] ekor pesan tak termuat:', error.message); return; }
+    setEkorBaris({ chatId, baris: data || [] });
   };
 
   const handleNodeDrag = () => {
@@ -260,7 +275,9 @@ export default function HomeDashboard() {
 
       {/* Right Panel: Detail / Metrics */}
       <div className="w-full md:w-80 border-t md:border-t-0 md:border-l border-white/10 bg-[rgb(var(--warna-panel-sisi)/0.9)] backdrop-blur-xl p-6 flex flex-col z-20 overflow-y-auto h-1/2 md:h-full shrink-0">
-        {selectedNode && !selectedNode.isCategory ? (
+        {/* Inspektur hanya untuk simpul DATA (memori, dokumen, percakapan) — ia tak mengenal alat/pesan dan dulu
+            memberi mereka lencana bawaan "USER MEMORY" (ditemukan Tahap E). */}
+        {selectedNode && GRUP_DATA.includes(selectedNode.group) ? (
           <NodeInspector 
             selectedNode={selectedNode} 
             onClose={() => setSelectedNode(null)} 

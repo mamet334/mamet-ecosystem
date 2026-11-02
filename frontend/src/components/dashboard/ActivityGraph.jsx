@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { kernel } from '../../core/runtime/Kernel';
 import { temaService } from '../../core/runtime/services/TemaService';
-import { simpulDirektori, labelTooltipAman, AMBANG_LABEL_DATA } from '../../core/runtime/hooks/grafHome.js';
+import { simpulDirektori, labelTooltipAman, AMBANG_LABEL_DATA, prioritasLabel, bolehLabel, kotakLabel } from '../../core/runtime/hooks/grafHome.js';
 
 const FALLBACK_COLOR = '#475569';
 // [ROADMAP-KNOWLEDGE-GALAXY-COSMIC-ORBITS §3.A] Lengkungan orbit gravitasi kosmik
@@ -52,6 +52,8 @@ export default function ActivityGraph({
   // langsung — nilainya akan terkunci pada saat mount (kemungkinan besar masih kosong).
   // Dibaca ulang setiap tema berganti — fungsi gambar kanvas membaca ref ini, bukan variabel saat mount.
   const warnaKanvasRef = useRef(null);
+  // Label yang diantrekan selama satu bingkai, dilukis di onRenderFramePost (Tahap E).
+  const antreanLabelRef = useRef([]);
   if (!warnaKanvasRef.current) warnaKanvasRef.current = bacaWarnaKanvas();
   useEffect(() => temaService.langgan(() => { warnaKanvasRef.current = bacaWarnaKanvas(); }), []);
 
@@ -196,29 +198,36 @@ export default function ActivityGraph({
               ctx.shadowBlur = 0; // reset agar tidak bocor ke elemen kanvas berikutnya
             }
 
-            // Render node labels directly on canvas (Constitution 23 Knowledge Graph)
+            // Label TIDAK dilukis di sini (Item 130 Tahap E): diantrekan, lalu dilukis di akhir bingkai menurut prioritas
+            // dengan penghindar tabrakan (onRenderFramePost) — pasti di atas semua titik, dan tak pernah saling tindih.
             if (node.name) {
               const isCategory = node.isCategory || node.group === 'core';
-              // Display label if reasonably visible or if it's a category/conflict node
               if (globalScale >= AMBANG_LABEL_DATA || isCategory || isConflict) {
-                const baseFontSize = isCategory ? 12 : 9.5;
-                const fontSize = baseFontSize / globalScale;
-                ctx.font = `${isCategory ? '600 ' : '400 '}${fontSize}px sans-serif, monospace`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'top';
-
-                if (isConflict) {
-                  ctx.fillStyle = warnaKanvasRef.current.konflik;
-                } else if (isCategory) {
-                  ctx.fillStyle = warnaKanvasRef.current.putih;
-                } else {
-                  ctx.fillStyle = warnaKanvasRef.current.label;
-                }
-
                 const maxLen = isCategory ? 26 : 18;
-                const label = node.name.length > maxLen ? node.name.substring(0, maxLen) + '…' : node.name;
-                ctx.fillText(label, node.x, node.y + size + (2.5 / globalScale));
+                antreanLabelRef.current.push({
+                  teks: node.name.length > maxLen ? node.name.substring(0, maxLen) + '…' : node.name,
+                  x: node.x,
+                  y: node.y + size + (2.5 / globalScale),
+                  kategori: isCategory,
+                  warna: isConflict ? warnaKanvasRef.current.konflik : isCategory ? warnaKanvasRef.current.putih : warnaKanvasRef.current.label,
+                  prioritas: prioritasLabel(node),
+                  arah: node.labelArah,
+                });
               }
+            }
+          }}
+          onRenderFramePre={() => { antreanLabelRef.current = []; }}
+          onRenderFramePost={(ctx, globalScale) => {
+            const terpakai = [];
+            ctx.textBaseline = 'top';
+            for (const l of antreanLabelRef.current.sort((a, b) => a.prioritas - b.prioritas)) {
+              const fontSize = (l.kategori ? 12 : 9.5) / globalScale;
+              ctx.font = `${l.kategori ? '600 ' : '400 '}${fontSize}px sans-serif, monospace`;
+              const lebar = ctx.measureText(l.teks).width;
+              if (!bolehLabel(kotakLabel(l.x, l.y, lebar, fontSize * 1.2, l.arah), terpakai)) continue;
+              ctx.textAlign = l.arah === 'kiri' ? 'right' : l.arah === 'kanan' ? 'left' : 'center';
+              ctx.fillStyle = l.warna;
+              ctx.fillText(l.teks, l.x, l.y);
             }
           }}
           linkCurvature={ORBIT_CURVATURE}

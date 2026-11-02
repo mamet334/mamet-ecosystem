@@ -13,7 +13,7 @@ import { join } from 'node:path';
 
 const AKAR = fileURLToPath(new URL('../..', import.meta.url));
 const d3 = await import(pathToFileURL(join(AKAR, 'frontend/node_modules/d3-force-3d/src/index.js')).href);
-const { susunGrafHome, AMBANG_LABEL_DATA, tataPas, gabungGraf } = await import(pathToFileURL(join(AKAR, 'frontend/src/core/runtime/hooks/grafHome.js')).href);
+const { susunGrafHome, AMBANG_LABEL_DATA, tataPas, gabungGraf, prioritasLabel, bolehLabel, kotakLabel } = await import(pathToFileURL(join(AKAR, 'frontend/src/core/runtime/hooks/grafHome.js')).href);
 
 export const SEBARAN_OWNER = Object.freeze({ assistant: 131, engineer: 84, lite: 4, dokumen: 229, memori: 10 });
 export const LAYAR_OWNER = Object.freeze({ lebar: 1046, tinggi: 690 }); // 1366×768 dikurangi panel kanan & bilah
@@ -38,14 +38,18 @@ const lebarTeks = (s) => [...s].reduce((n, c) => n + (c >= 'A' && c <= 'Z' ? 8.4
 
 /**
  * @param {(sim: object, links: Array) => void} [pasangGaya] — mis. `pasangGayaGraf` dari grafHome.js; kosong = setelan lama.
- * @returns {{ skala: number, label: Array, tumpang: Array<[string,string]>, simpul: Array, garis: Array }}
+ * @returns {{ skala: number, label: Array, tumpang: Array<[string,string]>, tampil: Array, tersembunyi: Array, simpul: Array, garis: Array }}
+ *   label = kandidat label; tumpang = tumpang MENTAH (mutu tata letak); tampil/tersembunyi = sesudah penghindar tabrakan.
  */
 export function simulasikan({ pasangGaya, benih = 1, layar = LAYAR_OWNER, detak = 900, sebaran = SEBARAN_OWNER, ambangLabel = AMBANG_LABEL_DATA, lapisan = null } = {}) {
   const asli = Math.random;
   Math.random = acakBerbenih(benih);
   try {
     // `lapisan` = hasil susunLapisanKemampuan (Tahap D) — digabung seperti HomeDashboard saat tombol Kemampuan menyala.
-    const { nodes, links } = gabungGraf(susunGrafHome({ ...barisTiruan(sebaran), vitals: {} }), lapisan);
+    // Tahap E: `lapisan` boleh larik (lapisan Kemampuan + ekor pesan); fungsi = dibangun dari graf dasar (butuh id simpulnya).
+    const dasar = susunGrafHome({ ...barisTiruan(sebaran), vitals: {} });
+    const daftar = (Array.isArray(lapisan) ? lapisan : [lapisan]).map((l) => (typeof l === 'function' ? l(dasar) : l));
+    const { nodes, links } = gabungGraf(dasar, ...daftar);
     const sim = d3.forceSimulation(nodes, 2)
       .force('link', d3.forceLink(links).id((n) => n.id))
       .force('charge', d3.forceManyBody())
@@ -70,14 +74,19 @@ export function simulasikan({ pasangGaya, benih = 1, layar = LAYAR_OWNER, detak 
       const lebar = lebarTeks(teks) * (kategori ? 1 : 9.5 / 12), tinggi = kategori ? 14 : 11;
       const [x, yPusat] = keLayar(n.x, n.y + Math.min(n.val || 5, 8));
       const y = yPusat + 2.5;
-      return { id: n.id, teks, kotak: [x - lebar / 2, y, x + lebar / 2, y + tinggi] };
+      return { id: n.id, group: n.group, teks, prioritas: prioritasLabel(n), kotak: kotakLabel(x, y, lebar, tinggi, n.labelArah) };
     });
+    // `tumpang` = tumpang MENTAH antar-kandidat label (mutu tata letak, sebelum penghindar tabrakan).
     const tumpang = [];
     for (let i = 0; i < label.length; i++) for (let j = i + 1; j < label.length; j++) {
       const a = label[i].kotak, b = label[j].kotak;
       if (a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]) tumpang.push([label[i].teks, label[j].teks]);
     }
-    return { skala: k, label, tumpang, simpul: nodes, garis: links, atasSimpul };
+    // Penghindar tabrakan Tahap E — aturan yang SAMA dengan ActivityGraph onRenderFramePost (prioritas, bolehLabel).
+    const terpakai = [];
+    const tampil = [], tersembunyi = [];
+    [...label].sort((a, b) => a.prioritas - b.prioritas).forEach((l) => (bolehLabel([...l.kotak], terpakai) ? tampil : tersembunyi).push(l));
+    return { skala: k, label, tumpang, tampil, tersembunyi, simpul: nodes, garis: links, atasSimpul };
   } finally {
     Math.random = asli;
   }

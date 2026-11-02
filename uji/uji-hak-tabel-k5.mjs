@@ -36,6 +36,9 @@ const RPC_INVOKER = {
   asn_simpan_berkas: { asn_berkas: ['INSERT', 'UPDATE'], asn_pegawai: ['INSERT'] },
   conversion_worker_heartbeat: { conversion_workers: ['INSERT', 'UPDATE', 'SELECT'] },
   conversion_worker_status: { conversion_workers: ['SELECT'] },
+  // Item 130 Tahap E (migrasi 20261102000000): graf Home — angka & ekor pesan, baca-saja.
+  hitungan_graf_home: { chats: ['SELECT'], documents: ['SELECT'], document_chunks: ['SELECT'], api_usage: ['SELECT'] },
+  pesan_percakapan_graf: { chats: ['SELECT'] },
 };
 
 function bacaKlien() {

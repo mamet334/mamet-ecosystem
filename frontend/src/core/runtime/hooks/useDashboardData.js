@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../../../supabase';
 import { fetchExecutionTrace } from '../services/ExecutionTraceService';
-import { susunGrafHome, nilaiLampu, statusRealtime, KOLOM_LOG_AGEN, bentukLogAgen, PUSAT } from './grafHome.js';
+import { susunGrafHome, nilaiLampu, statusRealtime, KOLOM_LOG_AGEN, bentukLogAgen, PUSAT, bacaHitunganGraf } from './grafHome.js';
 
 const EXEC_TRACE_MAX = 40;
 
@@ -83,24 +83,30 @@ export default function useDashboardData() {
           chatQuery = chatQuery.eq('user_id', currentUserId);
         }
 
-        const [memRes, docRes, chatRes, chunkRes] = await Promise.all([
+        // Item 130 Tahap E: angka dihitung di basis data (`hitungan_graf_home`, migrasi 20261102000000) — pesan per
+        // percakapan, potongan per dokumen, total pemakaian model. Dulu ±3.600 baris document_id ditarik hanya untuk
+        // dihitung. Bila RPC gagal (mis. migrasi belum diterapkan) → jalan lama, Home tetap utuh.
+        const [memRes, docRes, chatRes, hitunganRes] = await Promise.all([
           memQuery,
           docQuery,
           chatQuery,
-          chunkQuery
+          supabase.rpc('hitungan_graf_home')
         ]);
 
         const memories = memRes.data || [];
         const documents = docRes.data || [];
         const chats = chatRes.data || [];
-        const chunks = chunkRes.data || [];
 
-        const docChunkCounts = {};
-        chunks.forEach(c => {
-          if (c.document_id) {
-            docChunkCounts[c.document_id] = (docChunkCounts[c.document_id] || 0) + 1;
-          }
-        });
+        const hitungan = bacaHitunganGraf(hitunganRes.data);
+        let docChunkCounts = hitungan.docChunkCounts;
+        let chunkRes = { error: null };
+        if (hitunganRes.error) {
+          chunkRes = await chunkQuery;
+          docChunkCounts = {};
+          (chunkRes.data || []).forEach(c => {
+            if (c.document_id) docChunkCounts[c.document_id] = (docChunkCounts[c.document_id] || 0) + 1;
+          });
+        }
 
         // ---- Observability telemetry (0 LLM Tokens, Zero-Cost DB read) ----
         // Item 130 Tahap B (syarat GRATIS): tanpa `select('*')` — hanya kolom yang dibaca di bawah. `agent_logs` tak lagi
@@ -279,7 +285,8 @@ export default function useDashboardData() {
 
         const totalLlmCalls = Math.max(
           logs.reduce((acc, l) => acc + (l.llm_call_count || 0), 0),
-          apiUsages.length,
+          // Total sebenarnya dari basis data (Tahap E); dulu panjang kueri ber-limit 100 → selalu 100.
+          hitungan.pemakaianModel ?? apiUsages.length,
           agentLogs.filter(l => (l.event_type || '').toLowerCase().includes('provider') || (l.event_type || '').toLowerCase().includes('response')).length
         );
 
@@ -356,7 +363,7 @@ export default function useDashboardData() {
         setLastCheckTime(new Date().toLocaleTimeString('id-ID', { hour12: false }));
 
         // Susunan graf = modul murni `grafHome.js` (Item 130 Tahap A) — bisa diuji tanpa peramban.
-        const { nodes, links, stats: statistik } = susunGrafHome({ memories, documents, chats, docChunkCounts, vitals: vitalsBaru });
+        const { nodes, links, stats: statistik } = susunGrafHome({ memories, documents, chats, docChunkCounts, vitals: vitalsBaru, pesanPerChat: hitungan.pesanPerChat });
         setStats(statistik);
 
         // ---- Execution Trace ----

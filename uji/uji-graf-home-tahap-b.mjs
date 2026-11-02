@@ -85,7 +85,7 @@ cek(langgar.length === 0, `Home gratis: tanpa Edge Function, select('*'), pollin
 
 // ── 6. Terpasang ────────────────────────────────────────────────────────────────────────────────
 const H = kode('frontend/src/core/runtime/hooks/useDashboardData.js');
-cek(/susunGrafHome\(\{[^}]*vitals: vitalsBaru \}\)/.test(H) && /setVitals\(vitalsBaru\)/.test(H), 'graf & panel memakai vitals TERKINI yang sama');
+cek(/susunGrafHome\(\{[^}]*vitals: vitalsBaru[,\s}]/.test(H) && /setVitals\(vitalsBaru\)/.test(H), 'graf & panel memakai vitals TERKINI yang sama');
 cek(/nilaiLampu\(\{/.test(H) && /select\(KOLOM_LOG_AGEN\)/.test(H) && /from\('api_usage'\)\.select\('created_at'\)/.test(H), 'hook memakai nilaiLampu, KOLOM_LOG_AGEN, api_usage seperlunya');
 const HD = kode('frontend/src/components/dashboard/HomeDashboard.jsx');
 cek(/laporRealtime\(status\)/.test(HD) && /node\.statusKeys \? warnaLampu\(node\.statusKeys\)/.test(HD) && /warnaStatus\(statusGabungan\(kunci, vitals\)\)/.test(HD),

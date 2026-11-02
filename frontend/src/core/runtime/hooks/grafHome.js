@@ -13,7 +13,7 @@ export function simpulDirektori(nodes) {
   return (nodes || []).filter((n) => GRUP_DATA.includes(n.group));
 }
 
-const KELAS = { pusat: 'pusat', kemampuan: 'kemampuan', fondasi: 'fondasi', lapisan: 'lapisan', alat: 'alat' };
+const KELAS = { pusat: 'pusat', kemampuan: 'kemampuan', fondasi: 'fondasi', lapisan: 'lapisan', alat: 'alat', pesan: 'pesan' };
 const kelasSimpul = (n) => KELAS[n?.group] || 'data';
 
 /**
@@ -42,10 +42,20 @@ export function pasangGayaGraf(sim, links) {
   // 'alat-kemampuan' (Tahap D): garis alat data_tabel → Data Tabel ASN. Dengan panjang bawaan 28 ia menyeret Data Tabel
   // (tanpa ekor data) ke kerumunan Chat/Server — tindih di layar Owner pada 2 dari 3 urutan alat. 120 → 768 px tindih 2;
   // 180 → layar Owner, 1920, 768: 0 di semua urutan.
-  const jarak = { 'kemampuan-pusat': 230, 'fondasi-pusat': 320, 'lapisan-kemampuan': 110, 'lapisan-pusat': 140, 'lapisan-lapisan': 70, 'alat-kemampuan': 180 };
-  const tolak = { pusat: -400, kemampuan: -700, fondasi: -500, lapisan: -300, alat: -25, data: -18 };
+  // Tahap E: pesan menempel pada percakapannya ('pesan-data' pendek); garisnya ke kemampuan/alat panjang supaya satu
+  // percakapan yang dibuka tidak menyeret kerangka.
+  const jarak = { 'kemampuan-pusat': 230, 'fondasi-pusat': 320, 'lapisan-kemampuan': 110, 'lapisan-pusat': 140, 'lapisan-lapisan': 70, 'alat-kemampuan': 180,
+    'pesan-data': 16, 'pesan-kemampuan': 220, 'pesan-alat': 140 };
+  const tolak = { pusat: -400, kemampuan: -700, fondasi: -500, lapisan: -300, alat: -25, pesan: -6, data: -18 };
   const kunci = (l) => `${kelasSimpul(l.source)}-${kelasSimpul(l.target)}`;
   sim.force('link')?.distance((l) => jarak[kunci(l)] ?? 28);
+  // Kekuatan pegas = rumus bawaan d3 forceLink (1 / min(derajat ujung-ujungnya)), KECUALI garis pesan → alat (Tahap E):
+  // itu penunjuk rute, bukan pegas — dengan kekuatan bawaan ia menyeret Memori & kerangka ke percakapan yang dibuka
+  // (diukur: 2 tindih di layar Owner saat lapisan Kemampuan menyala).
+  const derajat = {};
+  const idUjung = (x) => x?.id ?? x;
+  (links || []).forEach((l) => { [idUjung(l.source), idUjung(l.target)].forEach((i) => { derajat[i] = (derajat[i] || 0) + 1; }); });
+  sim.force('link')?.strength?.((l) => (l.jalurAlat ? 0.03 : 1 / Math.max(1, Math.min(derajat[idUjung(l.source)] || 1, derajat[idUjung(l.target)] || 1))));
   sim.force('charge')?.strength((n) => tolak[kelasSimpul(n)] ?? -18);
   const tertambat = new Set();
   (links || []).forEach((l) => { tertambat.add(l.source?.id ?? l.source); tertambat.add(l.target?.id ?? l.target); });
@@ -132,6 +142,34 @@ export const AMBANG_LABEL_DATA = 2;
  */
 export function labelTooltipAman(node) {
   return String(node?.name ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+
+/**
+ * Prioritas label (kecil = lebih penting). Label dilukis di AKHIR bingkai menurut urutan ini (ActivityGraph
+ * onRenderFramePost); label yang akan menindih label yang sudah dilukis DILEWATI — simpulnya tetap tampil & namanya
+ * terbaca lewat sorot. Diputuskan 2 Nov (Tahap E) sesudah penyetelan gaya terbukti tak bisa menjamin 15 label kerangka
+ * selalu muat: tiap pasang yang dibereskan memunculkan pasang lain di keadaan lain (urutan alat, ekor pesan, layar).
+ */
+export const PRIORITAS_LABEL = Object.freeze({ pusat: 0, kemampuan: 1, fondasi: 2, lapisan: 3, konektor: 4, konflik: 5, data: 6 });
+export const prioritasLabel = (n) => (n?.isConflict ? PRIORITAS_LABEL.konflik : (PRIORITAS_LABEL[n?.group] ?? PRIORITAS_LABEL.data));
+
+/** Kotak label [x0, y0, x1, y1] di titik (x, y) selebar `lebar`: tengah (bawaan), 'kiri' = berakhir di x, 'kanan' = mulai di x. */
+export function kotakLabel(x, y, lebar, tinggi, arah) {
+  const x0 = arah === 'kiri' ? x - lebar : arah === 'kanan' ? x : x - lebar / 2;
+  return [x0, y, x0 + lebar, y + tinggi];
+}
+
+/** Kotak [x0, y0, x1, y1] boleh dilukis bila tak menindih yang sudah terpakai; bila boleh, ia ikut dicatat terpakai. */
+export function bolehLabel(kotak, terpakai) {
+  if (terpakai.some((t) => kotak[0] < t[2] && t[0] < kotak[2] && kotak[1] < t[3] && t[1] < kotak[3])) return false;
+  terpakai.push(kotak);
+  return true;
+}
+
+/** Urutan lukis simpul: data dulu, kerangka sesudahnya (titik kerangka di atas awan data), kerangka menurut prioritas. */
+export function urutLukis(nodes) {
+  const p = (n) => (n.isCategory ? 1 + prioritasLabel(n) : 0);
+  return nodes.sort((a, b) => p(a) - p(b));
 }
 
 /** Warna lampu layanan. UNKNOWN = abu-abu ("tak ada sinyal"), BUKAN merah — merah hanya untuk bukti kegagalan. */
@@ -266,13 +304,39 @@ export function kemampuanPercakapan(workspaceType) {
   return w === 'engineer' || w === 'owner' ? 'kem-engineer' : 'kem-chat';
 }
 
-export function susunGrafHome({ memories, documents, chats, docChunkCounts, vitals = {} }) {
+/**
+ * Baris `hitungan_graf_home()` (Tahap E) → peta angka. 'pemakaian_model' = total baris api_usage akun — panel "LLM CALLS"
+ * dulu menghitung baris kueri ber-limit 100, jadi selalu 100.
+ * @returns {{ pesanPerChat: Record<string, number>, docChunkCounts: Record<string, number>, pemakaianModel: number|null }}
+ */
+export function bacaHitunganGraf(baris) {
+  const pesanPerChat = {}, docChunkCounts = {};
+  let pemakaianModel = null;
+  (Array.isArray(baris) ? baris : []).forEach((b) => {
+    const n = Number(b?.jumlah);
+    if (!Number.isFinite(n)) return;
+    if (b.jenis === 'pesan' && b.id) pesanPerChat[b.id] = n;
+    else if (b.jenis === 'potongan' && b.id) docChunkCounts[b.id] = n;
+    else if (b.jenis === 'pemakaian_model') pemakaianModel = n;
+  });
+  return { pesanPerChat, docChunkCounts, pemakaianModel };
+}
+
+/** Ukuran simpul percakapan dari jumlah pesannya (Tahap E, `hitungan_graf_home`); tanpa hitungan → 8 seperti dulu. */
+export function ukuranPercakapan(jumlahPesan) {
+  return Number.isFinite(jumlahPesan) ? Math.max(4, Math.min(24, 4 + jumlahPesan * 0.3)) : 8;
+}
+
+export function susunGrafHome({ memories, documents, chats, docChunkCounts, vitals = {}, pesanPerChat = {} }) {
   const nodes = [];
   const links = [];
 
   // ── Pusat: dua belahan, posisi dipaku ──────────────────────────────────────────────────────────
-  nodes.push({ id: PUSAT.desktop, name: 'MAMET · DESKTOP', type: 'Belahan', group: 'pusat', val: 30, color: '#ffffff', isCategory: true, fx: -140, fy: 0 });
-  nodes.push({ id: PUSAT.server, name: 'MAMET · SERVER', type: 'Belahan', group: 'pusat', val: 30, color: '#ffffff', isCategory: true, fx: 140, fy: 0 });
+  // `labelArah` (Tahap E): label belahan diratakan KE LUAR (Desktop ke kiri, Server ke kanan), bukan di tengah simpul —
+  // jarak antar-label berlipat tanpa memindahkan simpul. Diukur: di 768 px dengan lapisan + ekor menyala, label tengah
+  // "MAMET · SERVER" tertabrak "MAMET · DESKTOP" dan disembunyikan.
+  nodes.push({ id: PUSAT.desktop, name: 'MAMET · DESKTOP', type: 'Belahan', group: 'pusat', val: 30, color: '#ffffff', isCategory: true, fx: -140, fy: 0, labelArah: 'kiri' });
+  nodes.push({ id: PUSAT.server, name: 'MAMET · SERVER', type: 'Belahan', group: 'pusat', val: 30, color: '#ffffff', isCategory: true, fx: 140, fy: 0, labelArah: 'kanan' });
 
   // ── Lingkar 1 & fondasi ────────────────────────────────────────────────────────────────────────
   KEMAMPUAN.forEach((k) => nodes.push({ id: k.id, name: k.name, type: 'Kemampuan', group: 'kemampuan', val: 20, color: '#38bdf8', isCategory: true }));
@@ -317,14 +381,15 @@ export function susunGrafHome({ memories, documents, chats, docChunkCounts, vita
   });
 
   chats.forEach(c => {
+    const jumlahPesan = pesanPerChat[c.id];
     nodes.push({
       id: `chat-${c.id}`,
       name: c.title || 'Chat',
       type: 'Conversation',
       group: 'chat',
-      val: 8,
+      val: ukuranPercakapan(jumlahPesan),
       color: '#eab308',
-      data: { created: c.created_at, used: 1, source: c.workspace_type, relations: 1 }
+      data: { created: c.created_at, used: 1, source: c.workspace_type, relations: 1, ...(Number.isFinite(jumlahPesan) ? { pesan: jumlahPesan } : {}) }
     });
   });
 
@@ -349,7 +414,7 @@ export function susunGrafHome({ memories, documents, chats, docChunkCounts, vita
   // Kerangka (pusat, kemampuan, fondasi) PALING AKHIR: force-graph melukis simpul menurut urutan daftar, dan label
   // digambar bersama simpulnya — dulu ratusan titik data dilukis SESUDAH label kemampuan dan menimbunnya
   // ("RAG Dokume●", tangkapan layar Owner 2 Nov). Urutan stabil: urutan di dalam tiap golongan tidak berubah.
-  nodes.sort((a, b) => (a.isCategory ? 1 : 0) - (b.isCategory ? 1 : 0));
+  urutLukis(nodes);
 
   // ── Statistik (definisi tidak berubah) ─────────────────────────────────────────────────────────
   const orphanCount = nodes.filter(n => !n.isCategory && n.data && n.data.relations === 0).length;
@@ -438,6 +503,8 @@ export function susunLapisanKemampuan({ alatChat = [], alatFolder = [], konektor
       const baris = konektor.filter((k) => k.id === kid);
       const diaktifkan = baris.some((k) => k.diaktifkan);
       const id = `lap-konektor-${kid}`;
+      // Grup 'lapisan' (ikut cincin lapisan). Dicoba grup sendiri tanpa cincin (2 Nov): hub "MCP" malah tersembunyi di 7
+      // dari 15 keadaan — lebih buruk; tindih MCP/konektor yang tersisa ditangani penghindar tabrakan label.
       simpul({ id, name: diaktifkan ? konektorDikenal[kid].nama : `${konektorDikenal[kid].nama} · mati`, type: 'Konektor', group: 'lapisan', val: 10,
         color: diaktifkan ? '#38bdf8' : WARNA_ALAT.mati, isCategory: true, aktif: diaktifkan });
       garis(id, hMcp);
@@ -460,10 +527,56 @@ export function susunLapisanKemampuan({ alatChat = [], alatFolder = [], konektor
   return { nodes, links };
 }
 
-/** Graf dasar + lapisan, tanpa mengubah graf dasar. Kerangka (isCategory) tetap dilukis paling akhir. */
-export function gabungGraf(dasar, lapisan) {
-  if (!lapisan) return dasar;
-  const nodes = [...dasar.nodes, ...lapisan.nodes];
-  nodes.sort((a, b) => (a.isCategory ? 1 : 0) - (b.isCategory ? 1 : 0));
-  return { nodes, links: [...dasar.links, ...lapisan.links] };
+/** Graf dasar + lapisan (boleh lebih dari satu; null dilewati), tanpa mengubah graf dasar. Kerangka tetap dilukis terakhir. */
+export function gabungGraf(dasar, ...lapisan) {
+  const ada = lapisan.filter(Boolean);
+  if (!ada.length) return dasar;
+  const nodes = urutLukis([...dasar.nodes, ...ada.flatMap((l) => l.nodes)]);
+  return { nodes, links: [...dasar.links, ...ada.flatMap((l) => l.links)] };
+}
+
+// ═════════════════════════════════════════════════════════════════════════════════════════════════
+// Ekor pesan (Item 130 Tahap E) — satu percakapan, dimuat SAAT DIKLIK lewat `pesan_percakapan_graf` (migrasi
+// 20261102000000). Baris berisi urutan, peran, cuplikan 80 huruf, dan KODE alat yang diturunkan basis data dari angka &
+// penanda (rag, web, memori, nama alat/sub-agent) — teks konteks & memori tak pernah sampai ke klien.
+// ═════════════════════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Kode alat → simpul yang ada di graf sekarang. Garis hanya digambar ke simpul yang ADA (lapisan Kemampuan bisa mati);
+ * kode yang tak dikenal (mis. `knowledge_manager`, sub-agent lama yang dihapus T9) tak bergaris — tetap tercantum di nama.
+ */
+export function simpulAlat(kode, idAda) {
+  const calon = {
+    rag: ['kem-rag'],
+    memori: ['kem-memori'],
+    web: ['alat-chat-web_search', 'alat-sub-researcher'],
+  }[kode] || [`alat-chat-${kode}`, `alat-sub-${kode}`, `alat-folder-${kode}`];
+  return calon.find((id) => idAda.has(id)) || null;
+}
+
+/**
+ * @param {string} chatId id simpul percakapan (`chat-…`)
+ * @param {Array<{urutan: number, peran: string, cuplikan: string, alat: string[]}>} baris hasil `pesan_percakapan_graf`
+ * @param {Set<string>} idAda id simpul yang sedang ada di graf (dasar + lapisan)
+ */
+export function susunEkorPesan(chatId, baris, idAda) {
+  const nodes = [], links = [];
+  (Array.isArray(baris) ? baris : []).forEach((b) => {
+    const id = `pesan-${chatId}-${b.urutan}`;
+    const alat = Array.isArray(b.alat) ? b.alat : [];
+    const pengguna = b.peran === 'user';
+    nodes.push({
+      id,
+      name: `${pengguna ? 'Anda' : 'Mamet'} · ${b.cuplikan || '(kosong)'}${alat.length ? ` [${alat.join(', ')}]` : ''}`,
+      type: 'Pesan', group: 'pesan', val: 2.5,
+      color: pengguna ? '#fde68a' : '#eab308',
+      data: { urutan: b.urutan, peran: b.peran, alat },
+    });
+    links.push({ source: id, target: chatId });
+    alat.forEach((k) => {
+      const tujuan = simpulAlat(k, idAda);
+      if (tujuan) links.push({ source: id, target: tujuan, jalurAlat: true });
+    });
+  });
+  return { nodes, links };
 }
