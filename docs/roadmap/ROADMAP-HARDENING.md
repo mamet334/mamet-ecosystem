@@ -114,5 +114,6 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
   ([log](../project-memory/changelog/2026-11-02-metadata-chat-ramping.md)). Sisa bukti: satu chat baru di desktop (💳)
 - `npm run dev` Mametlite layar kosong — CSP `script-src 'self'` memblokir preamble React inline Vite (build tak terdampak)
 - T18 kelas Tailwind tak dibuat · retensi tabel log lain (`verification_audit_logs`, `evidence_audit_logs`, `memory_audit_logs`)
-- Graf Home diperkaya & `graf-bercahaya`
+- Graf Home → peta sistem Mamet: **terdaftar sebagai Item 130** ([rancangan](./ROADMAP-GRAF-HOME-PETA-SISTEM.md)) ·
+  `graf-bercahaya` (graphify) terpisah, belum ditanggapi
 - Engineer: T10 Tahap 2–3, Engineer Mandiri Tahap 1 & 4
