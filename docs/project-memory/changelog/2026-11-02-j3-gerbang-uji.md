@@ -57,3 +57,14 @@ Item 125 Fase C. Prasyarat J3b (uji goyah) dipatok 30 Okt; **J3c diputuskan Owne
   satu gagal, uji tetap **GAGAL** (keluar 1) dan tidak tertutup DILEWATI — dibuktikan dengan merusak kondisinya.
   Satu mutasi pertama saya keliru (`&& false` mengenai teks pesan, bukan kondisi) — diulang dengan benar.
 - Laptop 140/140.
+
+## Run kedua hijau & PR uji ditolak — J3 selesai
+
+- **`main` (b8dd7d4), run `41373734784`: success** — 140 uji · **131 lulus · 9 dilewati · 0 gagal** (±2 menit). Yang
+  dilewati semuanya butuh benda yang hanya ada di laptop Owner (Excel pegawai, data-lokal, .venv crawler, repo
+  gabut/engine, bundel CHIMERA) dan tercantum di ringkasan run.
+- **Patokan selesai J3 — "PR dengan satu uji sengaja merah → CI menolak": TERBUKTI.** PR
+  [mamet334/mamet-ecosystem#6](https://github.com/mamet334/mamet-ecosystem/pull/6) (cabang `uji/gerbang-merah-j3`, satu
+  asersi `uji-kata-sandi.mjs` dibalik, tanpa kode aplikasi): run `41374157720` (pull_request, e635ad5) **failure** —
+  140 uji, 130 lulus, 9 dilewati, **1 gagal = `uji-kata-sandi.mjs`** tepat pada asersi yang dibalik. PR ditutup **tanpa
+  merge**, cabang dihapus (GitHub & lokal).

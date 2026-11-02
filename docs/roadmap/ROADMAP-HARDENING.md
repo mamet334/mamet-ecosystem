@@ -90,8 +90,9 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - ✅ Suite 129/129; galat dalam bahasa manusia (Item 125 M4).
 - ✅ **Uji goyah J3b dipatok** (30 Okt): asersi dipecah tiga + satu percobaan ulang bila Python belum menyala; tetap gagal
   bila pohon proses tak dimatikan ([log](../project-memory/changelog/2026-10-30-k5-batas-rag-j3b-u8b.md)). Suite 136/136.
-- 🟡 **J3 gerbang uji** (2 Nov): suite penuh jalan di GitHub pada push/PR, rilis hanya terbit sesudah uji lulus; suite tak
-  lagi bergantung pada laptop Owner; J3c pilihan B (CRLF bukan gerbang). Kode ✅ 140/140, bukti GitHub menunggu push
+- ✅ **J3 gerbang uji** (2 Nov, terbukti di GitHub: main hijau 131 lulus/9 dilewati/0 gagal; PR #6 berisi uji sengaja merah
+  DITOLAK): suite penuh jalan di GitHub pada push/PR, rilis hanya terbit sesudah uji lulus; suite tak
+  lagi bergantung pada laptop Owner; J3c pilihan B (CRLF bukan gerbang). Laptop 140/140
   ([log](../project-memory/changelog/2026-11-02-j3-gerbang-uji.md)).
 - ✅ **Rilis 4.4.0 TERBIT** (30 Okt 15:06Z, Latest): Electron 45 + hasil hardening sisi klien; build GitHub hijau,
   `latest.yml` cocok dengan aset ([log](../project-memory/changelog/2026-10-30-rilis-4.4.0-hardening.md)).
