@@ -54,7 +54,10 @@ jobs:
       - name: 🧪 Jalankan suite uji
         shell: bash
         run: |
-          node uji/jalankan-semua.mjs --keluar=hasil-uji.json > /dev/null 2>&1; kode=$?
+          # `|| kode=$?`, bukan `; kode=$?`: shell langkah GitHub memakai `bash -e`, yang berhenti di kode keluar 1
+          # SEBELUM ringkasan sempat dicetak (run pertama 2 Nov: merah tanpa menyebut uji mana).
+          kode=0
+          node uji/jalankan-semua.mjs --keluar=hasil-uji.json > /dev/null 2>&1 || kode=$?
           node -e "
             const d = JSON.parse(require('fs').readFileSync('hasil-uji.json', 'utf8').split('\n')[0]);
             console.log('total ' + d.total + ' · lulus ' + d.lulus + ' · dilewati ' + d.dilewati.length + ' · gagal ' + d.gagal.length);

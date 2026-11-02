@@ -27,6 +27,13 @@ const dp = new Set(); J.namaLembar('RSUD', dp); cek(J.namaLembar('rsud', dp) ===
 
 // --- simulasi 53 berkas → berkas aktif + pegawai berbentuk database
 const AKAR = 'D:/REKONSIALISASI 2026';
+// J3 (2 Nov 2026): Excel pegawai SUNGGUHAN hanya di laptop Owner (tak boleh ke repo publik). Tanpanya bagian di bawah
+// DILEWATI — tetapi pemeriksaan NIP buatan di atas sudah berjalan, dan kegagalannya TIDAK boleh tertutup DILEWATI.
+if (!fs.existsSync(AKAR)) {
+  if (gagal) { console.log(`\n${gagal} GAGAL`); process.exit(1); }
+  console.log('DILEWATI — bagian NIP buatan lulus; simulasi 53 berkas butuh D:/REKONSIALISASI 2026 (Excel pegawai sungguhan)');
+  process.exit(0);
+}
 const daftar = [];
 (function j(d) { for (const n of fs.readdirSync(d).sort()) { const p = path.join(d, n); if (fs.statSync(p).isDirectory()) j(p); else if (/\.xlsx$/i.test(n) && !n.startsWith('~$')) daftar.push(p); } })(AKAR);
 const aktif = [];

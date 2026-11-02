@@ -14,6 +14,12 @@ const M = await import(pathToFileURL(base + 'dataTabelAsn.js').href + '?v=' + Da
 const S = await import(pathToFileURL(AKAR_REPO + '/shared/dataTabelAsnSaring.js').href + '?v=' + Date.now());
 
 let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}`); if (!ok) gagal++; };
+// J3 (2 Nov 2026): berkas Excel rekonsiliasi pegawai SUNGGUHAN hanya ada di laptop Owner — tak boleh ke repo publik.
+// Tanpanya uji ini DILEWATI dengan jujur di mesin lain (CI GitHub); K3 diulang di laptop sebelum rilis garis dasar.
+if (!fs.existsSync('D:/REKONSIALISASI 2026')) {
+  console.log('DILEWATI — butuh D:/REKONSIALISASI 2026 (Excel pegawai sungguhan, sengaja di luar repo)');
+  process.exit(0);
+}
 const baca = (rel, opd) => {
   const h = { berkas: path.basename(rel), ...M.bacaWorkbookAsn(M.dariSheetJS(XLSX.readFile('D:/REKONSIALISASI 2026/' + rel), XLSX)) };
   return M.siapkanSimpan(h, opd).p_pegawai.map((p) => ({ ...p, opd }));

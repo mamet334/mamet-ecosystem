@@ -45,3 +45,15 @@ Item 125 Fase C. Prasyarat J3b (uji goyah) dipatok 30 Okt; **J3c diputuskan Owne
 - YAML kedua workflow diurai `js-yaml`: urutan `periksa-versi → uji → build`.
 - **Belum terbukti di GitHub** — run pertama `uji.yml` terjadi saat push; patokan selesai J3 ("PR dengan satu uji
   sengaja merah → CI menolak") butuh satu PR uji.
+
+## Run pertama di GitHub (83fb424) — merah, dan apa yang ditangkapnya
+
+- Run `41372936324`: **131 lulus · 5 dilewati · 4 gagal** (37 detik). Keempatnya uji Data Tabel ASN (`uji-data-tabel-asn`,
+  `-tahap2`, `-tahap3`, `-tahap4`) yang membaca `D:/REKONSIALISASI 2026` — Excel pegawai sungguhan di luar repo. Salinan
+  bersih di laptop tak menangkapnya karena folder itu ADA di laptop: ini yang hanya bisa dibuktikan di mesin lain.
+- Cacat di langkah saya sendiri: shell GitHub `bash -e` berhenti di kode keluar 1 SEBELUM ringkasan tercetak — run merah
+  tanpa menyebut uji mana (dibaca dari artefak `hasil-uji.json`). Kini `kode=0; … || kode=$?`, dijaga `uji-gerbang-uji`.
+- Perbaikan: keempatnya DILEWATI jujur tanpa folder itu. `tahap4` lebih dulu menjalankan 8 pemeriksaan NIP buatan; bila
+  satu gagal, uji tetap **GAGAL** (keluar 1) dan tidak tertutup DILEWATI — dibuktikan dengan merusak kondisinya.
+  Satu mutasi pertama saya keliru (`&& false` mengenai teks pesan, bukan kondisi) — diulang dengan benar.
+- Laptop 140/140.

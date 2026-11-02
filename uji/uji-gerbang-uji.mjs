@@ -30,6 +30,8 @@ cek(pemicu.push?.branches?.includes('main') && pemicu.pull_request?.branches?.in
 const langkah = (U.jobs?.suite?.steps || []).map((s) => s.run || '').join('\n');
 cek(/node uji\/jalankan-semua\.mjs/.test(langkah) && /exit \$kode/.test(langkah),
   'uji.yml menjalankan jalankan-semua dan meneruskan kode keluarnya (uji merah → job merah)');
+cek(/jalankan-semua\.mjs[^\n]*\|\| kode=\$\?/.test(langkah),
+  'kode keluar ditangkap dengan `|| kode=$?` — `bash -e` GitHub tak memotong ringkasan sebelum dicetak');
 const butuh = [].concat(B.jobs?.build?.needs || []);
 cek(butuh.includes('uji') && B.jobs?.uji?.uses === './.github/workflows/uji.yml',
   'build.yml: job build (menerbitkan rilis) BUTUH job uji lulus', butuh);

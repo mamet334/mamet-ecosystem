@@ -13,6 +13,12 @@ const XLSX = require('xlsx');
 const M = await import(pathToFileURL(AKAR_REPO + '/frontend/src/core/runtime/services/dataTabelAsn.js').href + '?v=' + Date.now());
 
 const AKAR = 'D:/REKONSIALISASI 2026';
+// J3 (2 Nov 2026): berkas Excel rekonsiliasi pegawai SUNGGUHAN hanya ada di laptop Owner — tak boleh ke repo publik.
+// Tanpanya uji ini DILEWATI dengan jujur di mesin lain (CI GitHub); K3 diulang di laptop sebelum rilis garis dasar.
+if (!fs.existsSync(AKAR)) {
+  console.log('DILEWATI — butuh D:/REKONSIALISASI 2026 (Excel pegawai sungguhan, sengaja di luar repo)');
+  process.exit(0);
+}
 const berkas = [];
 (function j(d) { for (const n of fs.readdirSync(d).sort()) { const p = path.join(d, n); if (fs.statSync(p).isDirectory()) j(p); else if (/\.xlsx$/i.test(n) && !n.startsWith('~$')) berkas.push(p); } })(AKAR);
 let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}`); if (!ok) gagal++; };
