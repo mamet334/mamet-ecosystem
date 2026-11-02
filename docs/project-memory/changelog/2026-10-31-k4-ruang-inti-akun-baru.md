@@ -50,3 +50,13 @@ Diperiksa sebelum dipakai: kedua aplikasi hanya mengenali `type=recovery` — or
   karena tokennya palsu (Supabase 403), menampilkan "Tautan … sudah tidak berlaku" — jalur yang benar untuk token tak sah.
   Undangan sungguhan diuji Owner sesudah Mametlite terbit.
 - Akun undangan otomatis mendapat ruang CORE (pemicu di atas). Suite **138/138**.
+
+## Terbukti live (Owner, 31 Okt — undangan sungguhan)
+
+- Owner mengundang satu akun lewat dashboard Supabase (Invite user, 18:21 UTC), membuka tautannya, membuat kata sandi,
+  lalu **masuk** di mamet-ecosystem.vercel.app.
+- Research App akun itu menampilkan **"My Core Knowledge · inti"** (1 space) — dibuat pemicu, tanpa langkah tangan.
+  Unggahan dokumen lolos pemeriksaan ruang & volume dan baru berhenti di embedding karena saldo OpenRouter (402) — bukan
+  lagi "Core space belum di-setup".
+- Database (hitungan saja): 4 akun, 1 lewat undangan, akun undangan **sudah punya kata sandi** dan **punya CORE**; akun
+  tanpa CORE **0**.

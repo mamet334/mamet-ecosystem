@@ -57,7 +57,8 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
   mengunggah dokumen ("Core space belum di-setup"); pemicu di `auth.users` + isi ulang, CORE 3/3
   ([log](../project-memory/changelog/2026-10-31-k4-ruang-inti-akun-baru.md)).
 - ✅ **Tautan undangan Supabase membuka layar buat kata sandi** (31 Okt, kode): akun didaftarkan Owner lewat "Send invitation";
-  dulu yang diundang masuk tanpa pernah membuat kata sandi. ⏳👤 uji live dengan undangan sungguhan sesudah Mametlite terbit.
+  dulu yang diundang masuk tanpa pernah membuat kata sandi. ✅ **Terbukti live 31 Okt**: akun undangan membuat sandi, masuk, dan
+  langsung punya CORE.
 - ⏳👤 Uji live ganti kata sandi bagi yang sudah masuk.
 
 ### K5 — Keamanan
@@ -74,10 +75,14 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
   embedding; unggahan live Owner sesudah deploy berhasil ([log](../project-memory/changelog/2026-10-30-k5-batas-rag-j3b-u8b.md)).
 - ✅ **`proxy_fetch` wajib token + hanya alamat publik; log autentikasi hanya ID** — ter-deploy v540 30 Okt, live tanpa token → 401
   ([log](../project-memory/changelog/2026-10-30-k5-proxy-fetch-log-email.md)).
+- ✅ **Pendaftaran publik ditutup** (31 Okt, Owner): `disable_signup: true`, daftar lewat API → 422 `signup_disabled`; akun baru
+  hanya lewat undangan dashboard — akar TM-001..004 tertutup ([log](../project-memory/changelog/2026-10-31-k6-hapus-akun-dan-daftar-tertutup.md)).
 - ⏳👤 **Ganti kunci API** yang pernah bocor (T7) & token Apify (T1).
 
 ### K6 — Data aman & bisa dipulihkan
 - ✅ "Cadangkan data" 13/13 cocok; uji pulih ke Postgres lokal 13/13 (Item 93 Tahap 1–2).
+- ✅ **Hapus akun = hapus seluruh datanya** (31 Okt, pilihan A Owner): pemicu BEFORE DELETE di auth.users, sisa data 0;
+  regresi CORE (semua akun tak bisa dihapus) diperbaiki ([log](../project-memory/changelog/2026-10-31-k6-hapus-akun-dan-daftar-tertutup.md)).
 - ⏳ Ulang sekali sebelum rilis garis dasar.
 
 ### K7 — Stabil & sampai ke aplikasi terpasang
@@ -99,6 +104,7 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
   `agent-process/lib/maef/engineering_lifecycle.ts` (1 baris "MOVED"), `agent-process/plugins/memory_manager.ts` (tak terdaftar)
 - Metadata chat menyimpan `[SYSTEM CONTEXT FINAL] fullSystemContext=…` (termasuk teks potongan dokumen) di langkah proses
   ±300 pesan — membengkakkan baris `chats` & berkas cadangan (milik pengguna sendiri, RLS; bukan kebocoran)
+- `api_usage` 12 baris milik ID uji palsu Juni (`99999999-…`, `11111111-2222-…` dari `test-suite`) — sampah uji, bukan data pribadi
 - `.gitignore` akar tidak memuat `hasil/` padahal CLAUDE.md melarang meng-commit-nya
 - `npm run dev` Mametlite layar kosong — CSP `script-src 'self'` memblokir preamble React inline Vite (build tak terdampak)
 - T18 kelas Tailwind tak dibuat · retensi tabel log lain (`verification_audit_logs`, `evidence_audit_logs`, `memory_audit_logs`)

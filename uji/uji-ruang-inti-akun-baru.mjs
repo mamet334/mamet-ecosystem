@@ -43,5 +43,15 @@ cek(/revoke execute on function public\.buat_ruang_inti_akun_baru\(\) from publi
 cek(/where not exists \(select 1 from public\.knowledge_spaces k where k\.user_id = u\.id and k\.space_type = 'CORE'\)/i.test(MIG),
   'isi ulang hanya untuk akun yang belum punya CORE');
 
+// ── Regresi 31 Okt: pemicu lama prevent_core_deletion menolak CASCADE dari auth.users → semua akun tak bisa dihapus ──
+const HAPUS = tanpaKomentar(baca('supabase/migrations/20261031010000_core_ikut_terhapus_bersama_akun.sql'));
+const tolak = HAPUS.indexOf("raise exception 'Akses Ditolak");
+const syaratAkun = HAPUS.search(/if exists \(select 1 from auth\.users where id = old\.user_id\) then/i);
+cek(syaratAkun > 0 && tolak > syaratAkun,
+  'CORE ditolak dihapus HANYA selama akun pemiliknya masih ada (CASCADE dari penghapusan akun lolos)');
+cek(/security definer/i.test(HAPUS) && /set search_path = ''/i.test(HAPUS),
+  'prevent_core_deletion SECURITY DEFINER + search_path kosong (authenticated tak boleh membaca auth.users)');
+cek(/old\.space_type = 'CORE'::public\.space_type_enum/i.test(HAPUS), 'tipe enum ditulis lengkap dengan skemanya (search_path kosong)');
+
 console.log(gagal === 0 ? '\nSEMUA LULUS' : `\n${gagal} GAGAL`);
 process.exit(gagal === 0 ? 0 : 1);
