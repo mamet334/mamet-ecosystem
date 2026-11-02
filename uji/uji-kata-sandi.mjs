@@ -26,7 +26,8 @@ const cek = (ok, pesan, rinci) => {
 };
 
 // ── 1. Aturan bersama ──────────────────────────────────────────────────────────────────────────
-cek(K.jenisTautanAuth('#access_token=abc&expires_in=3600&refresh_token=x&token_type=bearer&type=recovery') === 'pemulihan',
+// PR UJI J3 — SENGAJA MERAH, JANGAN DI-MERGE: harapan dibalik untuk membuktikan gerbang CI menolak PR.
+cek(K.jenisTautanAuth('#access_token=abc&expires_in=3600&refresh_token=x&token_type=bearer&type=recovery') === 'SENGAJA-SALAH',
   'tautan pemulihan Supabase (#…&type=recovery) → pemulihan');
 cek(K.jenisTautanAuth('#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired') === 'kedaluwarsa',
   'tautan basi (otp_expired) → kedaluwarsa');
