@@ -185,7 +185,8 @@ disentuh. Sampai itu, uji penjaga membandingkan konstanta palet keduanya.
 > **Diganti sebagian oleh hasil 19 Okt (K2):** isi & susunannya dipakai seperti di bawah, tetapi **bentuknya
 > bukan kolom kiri yang selalu tampil**. Sesudah empat putaran penilaian Owner di layarnya sendiri, menu menjadi
 > **kotak melayang** yang dibuka tombol **MENU** — kotak kecil yang bisa digeser (bawaan kiri bawah); di Home
-> kotaknya terbuka sendiri (lobi). Alasan & jejak putarannya:
+> kotaknya terbuka sendiri (lobi) — **diganti 2 Nov oleh [Item 130 Tahap A](./ROADMAP-GRAF-HOME-PETA-SISTEM.md): tertutup
+> di semua halaman, termasuk Home** (keputusan Owner: Home rapi saat dibuka). Alasan & jejak putarannya:
 > [changelog K2](../project-memory/changelog/2026-10-19-menu-game-menu-teks.md). Konsekuensinya, "menu kiri
 > menyusut jadi ikon tipis di halaman kerja" (§5.3) tidak diperlukan: menu tak mengambil kolom sama sekali.
 

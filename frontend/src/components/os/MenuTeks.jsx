@@ -10,8 +10,9 @@ import { supabase } from '../../supabase';
  * memotong layar" dan "kaku saat riwayat dibuka"). Menu TIDAK mengambil kolom apa pun: tombol MENU adalah kotak
  * kecil melayang yang bisa DIGESER, bawaannya pojok KIRI BAWAH (versi jalur 48px pun dinilai "tidak menyatu dengan temanya"; kiri atas
  * setiap halaman sudah terisi, kiri bawah kosong di semuanya). Kotak menu terbuka ke arah yang lapang (mengikuti posisi tombol), setinggi isinya:
- *   - di Home ia TERBUKA (lobi game sebelum mulai);
- *   - di halaman lain tertutup; MENU membukanya; memilih aplikasi menutupnya; klik di luar menutupnya.
+ *   - TERTUTUP di semua halaman, termasuk Home (Item 130 Tahap A, keputusan Owner 2 Nov — membalik "lobi game" Item 127
+ *     yang membukanya di Home: Home harus rapi saat dibuka); MENU membukanya; memilih aplikasi menutupnya; klik di luar
+ *     menutupnya.
  *
  * Isinya dari `NavigationService` (= public/metadata/navigation.json), sama dengan sumber bilah samping lama —
  * MUS §21. Grup membuka sub-menu di tempat yang sama dengan "‹ Kembali" (VIDEO · AUDIO · CONTROLS · BACK di
@@ -123,9 +124,9 @@ export default function MenuTeks() {
     if (g.bergeser) setPosisi((p) => { simpanPosisi(p); return p; });
   };
 
-  // Lobi: kotak terbuka saat berada di Home, tertutup di halaman lain.
-  const ikutiHalaman = (st) => {
-    setTerbuka(st.activeAppId === 'app:home');
+  // Berpindah halaman selalu menutup kotak menu — juga ke Home (dulu "lobi": terbuka di Home; dibalik Item 130 Tahap A).
+  const ikutiHalaman = () => {
+    setTerbuka(false);
     setGrupTerbuka(null);
   };
 

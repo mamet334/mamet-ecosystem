@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { kernel } from '../../core/runtime/Kernel';
 import { temaService } from '../../core/runtime/services/TemaService';
+import { simpulDirektori, labelTooltipAman, AMBANG_LABEL_DATA } from '../../core/runtime/hooks/grafHome.js';
 
 const FALLBACK_COLOR = '#475569';
 // [ROADMAP-KNOWLEDGE-GALAXY-COSMIC-ORBITS §3.A] Lengkungan orbit gravitasi kosmik
@@ -36,7 +37,8 @@ export default function ActivityGraph({
   onNodeDragEnd,
   onEngineStop
 }) {
-  const [isExplorerOpen, setIsExplorerOpen] = useState(true);
+  // Tertutup di awal (keputusan Owner 2 Nov, Item 130 Tahap A) — dibuka dengan klik "Tampilkan".
+  const [isExplorerOpen, setIsExplorerOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL' | 'CONFLICTS' | 'RAG' | 'MEMORY' | 'CHAT'
   const [searchQuery, setSearchQuery] = useState('');
   // [ROADMAP-KNOWLEDGE-GALAXY-COSMIC-ORBITS §3.B] Simpul memori yang sedang "dipikirkan"
@@ -82,9 +84,8 @@ export default function ActivityGraph({
     return unsubscribe;
   }, []);
 
-  const leafNodes = useMemo(() => {
-    return (graphData?.nodes || []).filter(n => !n.isCategory && n.group !== 'core');
-  }, [graphData?.nodes]);
+  // Hanya simpul DATA — dulu sub-cluster statis & layanan ikut terdaftar berlencana MEMORI (lihat grafHome.js).
+  const leafNodes = useMemo(() => simpulDirektori(graphData?.nodes), [graphData?.nodes]);
 
   const counts = useMemo(() => {
     let conflicts = 0, rag = 0, memory = 0, chat = 0;
@@ -132,7 +133,7 @@ export default function ActivityGraph({
           width={dimensions.width}
           height={dimensions.height}
           graphData={graphData}
-          nodeLabel="name"
+          nodeLabel={labelTooltipAman}
           nodeColor={getNodeColor}
           nodeRelSize={1}
           nodeCanvasObjectMode={() => 'after'}
@@ -196,7 +197,7 @@ export default function ActivityGraph({
             if (node.name) {
               const isCategory = node.isCategory || node.group === 'core';
               // Display label if reasonably visible or if it's a category/conflict node
-              if (globalScale >= 0.75 || isCategory || isConflict) {
+              if (globalScale >= AMBANG_LABEL_DATA || isCategory || isConflict) {
                 const baseFontSize = isCategory ? 12 : 9.5;
                 const fontSize = baseFontSize / globalScale;
                 ctx.font = `${isCategory ? '600 ' : '400 '}${fontSize}px sans-serif, monospace`;

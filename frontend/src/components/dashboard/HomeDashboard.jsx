@@ -5,6 +5,7 @@ import NodeInspector from './NodeInspector';
 import ObservabilityPanel from './ObservabilityPanel';
 import { supabase } from '../../supabase';
 import { kernel } from '../../core/runtime/Kernel';
+import { pasangGayaGraf } from '../../core/runtime/hooks/grafHome.js';
 
 const FALLBACK_COLOR = '#475569';
 
@@ -35,6 +36,15 @@ export default function HomeDashboard() {
 
   useEffect(() => {
     graphDataRef.current = graphData;
+  }, [graphData]);
+
+  // Tata letak (Item 130 Tahap A): label kategori tak menumpuk & simpul tanpa relasi tak terlempar jauh — diukur di
+  // uji-graf-home-tahap-a.mjs dengan mesin yang sama. Ref ForceGraph2D (anak) sudah terpasang saat efek induk berjalan.
+  useEffect(() => {
+    const fg = fgRef.current;
+    if (!fg || graphData.nodes.length === 0) return;
+    pasangGayaGraf({ force: (nama, gaya) => (gaya === undefined ? fg.d3Force(nama) : fg.d3Force(nama, gaya)) }, graphData.links);
+    fg.d3ReheatSimulation();
   }, [graphData]);
 
   useEffect(() => {

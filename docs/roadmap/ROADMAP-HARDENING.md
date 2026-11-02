@@ -78,6 +78,9 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
   ([log](../project-memory/changelog/2026-10-30-k5-proxy-fetch-log-email.md)).
 - ✅ **Pendaftaran publik ditutup** (31 Okt, Owner): `disable_signup: true`, daftar lewat API → 422 `signup_disabled`; akun baru
   hanya lewat undangan dashboard — akar TM-001..004 tertutup ([log](../project-memory/changelog/2026-10-31-k6-hapus-akun-dan-daftar-tertutup.md)).
+- ✅ **Tooltip graf Home tak lagi menjalankan HTML** (2 Nov, Item 130 Tahap A): nama simpul (judul chat, nama berkas,
+  ringkasan memori) dulu ditulis lewat innerHTML di renderer yang memegang `electronAPI` (desktop tanpa CSP) — kini
+  di-escape ([log](../project-memory/changelog/2026-11-02-graf-home-tahap-a.md)).
 - ⏳👤 **Ganti kunci API** yang pernah bocor (T7) & token Apify (T1).
 
 ### K6 — Data aman & bisa dipulihkan

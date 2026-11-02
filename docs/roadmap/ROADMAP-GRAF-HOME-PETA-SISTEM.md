@@ -1,6 +1,7 @@
 # ROADMAP-GRAF-HOME-PETA-SISTEM — Item 130: Graf Home menjadi peta sistem Mamet
 
-**Status:** 📋 terdaftar 2 Nov 2026 — keputusan Owner lengkap, **mulai dari Tahap 0 (pratinjau)**.
+**Status:** 📝 berjalan — Tahap 0 ✅ (pratinjau disetujui 2 Nov), **Tahap A ✅** (2 Nov, dicek Owner di desktop —
+[log](../project-memory/changelog/2026-11-02-graf-home-tahap-a.md)); berikutnya **Tahap B**.
 **Kedudukan:** butir **Parkir** fase hardening ([ADR-0022](../adr/ADR-0022-mamet-cukup-dan-fase-hardening.md)) yang
 diambil Owner — boleh dikerjakan kapan saja (mis. selagi K1/K2 menunggu saldo), asal uji yang menjaga K1–K7 tetap hijau.
 **Kode:** `frontend/src/components/dashboard/ActivityGraph.jsx`, `HomeDashboard.jsx`,
@@ -79,8 +80,8 @@ Graf Home menggambarkan **apa yang tersimpan**, bukan **bagaimana Mamet bekerja*
 
 | Tahap | Isi | Status |
 |---|---|---|
-| **0** | **Pratinjau** (gambar/mockup statis) susunan dua belahan + lingkar + fondasi + lapisan Kemampuan + ekor; disetujui Owner sebelum kode aplikasi disentuh | 📋 |
-| **A** | Tampilan Home: Directory & Menu tertutup di awal; label cluster tak menumpuk; lencana Directory benar | 📋 |
+| **0** | **Pratinjau** (gambar/mockup statis) susunan dua belahan + lingkar + fondasi + lapisan Kemampuan + ekor; disetujui Owner sebelum kode aplikasi disentuh | ✅ 2 Nov |
+| **A** | Tampilan Home: Directory & Menu tertutup di awal; label cluster tak menumpuk; lencana Directory benar. Ikut: celah K5 tooltip ber-HTML ditutup; penyusun graf dipindah ke `grafHome.js` (dapat diuji) | ✅ 2 Nov |
 | **B** | Gratis & lampu jujur: buang `ping`, kueri hemat (tanpa `select('*')`, hitungan di DB), status agent-process & penyedia dari `agent_logs`, Realtime/Embedding jujur atau dibuang | 📋 |
 | **C** | Ubah Konstitusi 23 (pusat, lapisan); pusat MAMET dua belahan + penyambung; lingkar 1; fondasi luar | 📋 |
 | **D** | Lapisan Kemampuan (tombol): alat chat dari ToolRegistry, alat folder dari `shared/folderKerjaAlat.js`, MCP berekor (preload baca-saja), sub-agent dari daftar resmi baru di `shared/` (mulai dari `plugins/registry.ts` & `izin_subagent.ts`) | 📋 |
@@ -103,6 +104,13 @@ esbuild sebelum meminta deploy, catat & push sekali (CLAUDE.md). Tahap E butuh m
 - **Graf dibandingkan sumber resmi:** jumlah simpul alat = isi registry/`KONEKTOR`/daftar `shared/`.
 
 ## 6. Sisa / catatan
+
+- **Untuk Tahap B (ditemukan di Tahap A):** warna simpul layanan memakai `vitals` dari state SEBELUM `setVitals` —
+  `susunGrafHome` menerima objek awal (semua UNKNOWN), jadi 11 simpul layanan selalu abu-abu dengan garis merah ke pusat,
+  apa pun keadaan sebenarnya. `documents` tak punya kolom `metadata` → semua dokumen jatuh ke satu sub-cluster `docs`.
+- Ambang nama simpul data `AMBANG_LABEL_DATA = 2` tetap (bukan relatif terhadap skala pas): layar 4K bisa melewatinya
+  saat dibuka — belum diukur.
+- Simulasi tata letak (`uji/lib/simulasiGrafHome.mjs`) dipakai lagi di Tahap C untuk susunan dua belahan.
 
 - `scripts/graf-bercahaya.mjs` (efek cahaya untuk graf **graphify**, bukan graf Home) belum di-commit & belum ditanggapi
   Owner — terpisah dari item ini.
