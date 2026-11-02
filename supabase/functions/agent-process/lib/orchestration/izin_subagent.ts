@@ -17,17 +17,17 @@
  * `researcher` (lewat `web_search`) dan `deep_research`; sub-agent lain hanya tercapai lewat permintaan rakitan.
  */
 
-/** Nama di `tools` klien → nama sub-agent (sama dengan `getPluginPromptList`). */
-export const ALIAS_TOOLS: Record<string, string> = {
-  web_search: 'researcher',
-  code_executor: 'coder',
-  web_scraper: 'scraper',
-};
+// Sumber daftar & sifatnya = `shared/daftarSubagen.js` (Item 130 Tahap D, 2 Nov 2026) — satu daftar resmi yang juga
+// dibaca graf Home. Aturan di bawah tidak berubah; hanya asal daftarnya.
+import { ALIAS_TOOLS as ALIAS_SHARED, SUBAGEN_MAMETLITE, SUBAGEN_KHUSUS_PEMILIK } from '../../../../../shared/daftarSubagen.js';
 
-export const SUBAGENT_MAMETLITE = new Set(['researcher', 'deep_research']);
+/** Nama di `tools` klien → nama sub-agent (sama dengan `getPluginPromptList`). */
+export const ALIAS_TOOLS: Record<string, string> = { ...ALIAS_SHARED };
+
+export const SUBAGENT_MAMETLITE = new Set<string>(SUBAGEN_MAMETLITE);
 
 /** Memakai token Apify server (biaya Owner) — model ancaman TM-003. */
-export const SUBAGENT_KHUSUS_PEMILIK = new Set(['youtube_analyst']);
+export const SUBAGENT_KHUSUS_PEMILIK = new Set<string>(SUBAGEN_KHUSUS_PEMILIK);
 
 export function subagentDiminta(tools: unknown): Set<string> {
   if (!Array.isArray(tools)) return new Set();

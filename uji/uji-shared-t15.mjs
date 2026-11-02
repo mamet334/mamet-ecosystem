@@ -18,7 +18,8 @@ import { join, resolve, relative, dirname } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 
 const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const MODUL = ['folderKerjaAlat', 'konektorAlat', 'dataTabelAsnSaring', 'KnowledgeService', 'RetrievalStrategyService', 'kueri_pencarian', 'teks_rss'];
+// + daftarSubagen (2 Nov, Item 130 Tahap D): daftar resmi sub-agent, dibaca izin_subagent.ts & graf Home.
+const MODUL = ['folderKerjaAlat', 'konektorAlat', 'dataTabelAsnSaring', 'KnowledgeService', 'RetrievalStrategyService', 'kueri_pencarian', 'teks_rss', 'daftarSubagen'];
 
 console.log('uji-shared-t15 v2');
 let gagal = 0;

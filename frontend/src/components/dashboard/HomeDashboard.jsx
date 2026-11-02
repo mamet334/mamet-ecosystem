@@ -1,11 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import useDashboardData from '../../core/runtime/hooks/useDashboardData';
 import ActivityGraph from './ActivityGraph';
 import NodeInspector from './NodeInspector';
 import ObservabilityPanel from './ObservabilityPanel';
 import { supabase } from '../../supabase';
 import { kernel } from '../../core/runtime/Kernel';
-import { pasangGayaGraf, warnaStatus, statusGabungan, PUSAT, tataPas } from '../../core/runtime/hooks/grafHome.js';
+import { pasangGayaGraf, warnaStatus, statusGabungan, PUSAT, tataPas, susunLapisanKemampuan, gabungGraf, konektorUntukGraf } from '../../core/runtime/hooks/grafHome.js';
+import { SUBAGEN } from '../../../../shared/daftarSubagen.js';
+import { ALAT_SEMUA } from '../../../../shared/folderKerjaAlat.js';
+import { KONEKTOR_DIKENAL } from '../../../../shared/konektorAlat.js';
 
 const FALLBACK_COLOR = '#475569';
 
@@ -29,25 +32,53 @@ export default function HomeDashboard() {
     setDimensions
   } = useDashboardData();
 
+  // ── Lapisan Kemampuan (Item 130 Tahap D): tertutup di awal, dibuka tombol. Disusun HANYA saat dinyalakan; semua
+  // sumbernya di laptop (registry alat, daftar shared/, status konektor baca-saja) — tanpa jaringan, tanpa biaya.
+  const [kemampuanTampil, setKemampuanTampil] = useState(false);
+  const [lapisan, setLapisan] = useState(null);
+  useEffect(() => {
+    if (!kemampuanTampil) return;
+    let batal = false;
+    (async () => {
+      const registry = kernel.serviceManager?.get('ToolRegistryService');
+      const preferensi = kernel.serviceManager?.get('ToolPreferencesService');
+      const alatChat = (registry?.listTools?.() || []).map((t) => ({
+        name: t.name,
+        aktif: preferensi ? preferensi.getEffective('ws-assistant', t.name) !== false : true,
+      }));
+      // Hanya `status()` — jalur baca-saja yang juga dipakai Settings › Konektor. Graf tak pernah memanggil alat konektor.
+      const statusKonektor = window.electronAPI?.konektor?.status;
+      const konektor = statusKonektor ? konektorUntukGraf(await statusKonektor().catch(() => [])) : null;
+      if (!batal) {
+        setLapisan(susunLapisanKemampuan({ alatChat, alatFolder: ALAT_SEMUA, konektorDikenal: KONEKTOR_DIKENAL, konektor, subagen: SUBAGEN }));
+      }
+    })();
+    return () => { batal = true; };
+  }, [kemampuanTampil]);
+  const grafTampil = useMemo(
+    () => (kemampuanTampil && lapisan ? gabungGraf(graphData, lapisan) : graphData),
+    [graphData, kemampuanTampil, lapisan],
+  );
+
   const fgRef = useRef();
   const containerRef = useRef();
-  const graphDataRef = useRef(graphData);
+  const graphDataRef = useRef(grafTampil);
   const timeoutRef = useRef(null);
   const isDraggingRef = useRef(false);
   const activePathRef = useRef(null);
 
   useEffect(() => {
-    graphDataRef.current = graphData;
-  }, [graphData]);
+    graphDataRef.current = grafTampil;
+  }, [grafTampil]);
 
   // Tata letak (Item 130 Tahap A): label kategori tak menumpuk & simpul tanpa relasi tak terlempar jauh — diukur di
   // uji-graf-home-tahap-a.mjs dengan mesin yang sama. Ref ForceGraph2D (anak) sudah terpasang saat efek induk berjalan.
   useEffect(() => {
     const fg = fgRef.current;
-    if (!fg || graphData.nodes.length === 0) return;
-    pasangGayaGraf({ force: (nama, gaya) => (gaya === undefined ? fg.d3Force(nama) : fg.d3Force(nama, gaya)) }, graphData.links);
+    if (!fg || grafTampil.nodes.length === 0) return;
+    pasangGayaGraf({ force: (nama, gaya) => (gaya === undefined ? fg.d3Force(nama) : fg.d3Force(nama, gaya)) }, grafTampil.links);
     fg.d3ReheatSimulation();
-  }, [graphData]);
+  }, [grafTampil]);
 
   useEffect(() => {
     isDraggingRef.current = isDragging;
@@ -212,7 +243,9 @@ export default function HomeDashboard() {
       {/* Main Graph Area */}
       <div ref={containerRef} className="flex-1 relative h-full w-full z-10">
         <ActivityGraph
-          graphData={graphData}
+          graphData={grafTampil}
+          kemampuanTampil={kemampuanTampil}
+          onToggleKemampuan={() => setKemampuanTampil((t) => !t)}
           dimensions={dimensions}
           fgRef={fgRef}
           getNodeColor={getNodeColor}

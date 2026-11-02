@@ -32,6 +32,8 @@ export default function ActivityGraph({
   fgRef,
   getNodeColor,
   warnaLampu,
+  kemampuanTampil = false,
+  onToggleKemampuan,
   activePath,
   handleNodeClick,
   onNodeDrag,
@@ -326,6 +328,20 @@ export default function ActivityGraph({
               {isExplorerOpen ? '▲ Sembunyikan' : '▼ Tampilkan'}
             </button>
           </div>
+
+          {/* Lapisan Kemampuan (Item 130 Tahap D, Konstitusi 23 "lingkar 2"): alat chat, alat folder, MCP berekor,
+              sub-agent — tidak selalu tampil (layar Owner 1366×768), dibuka di sini. */}
+          {onToggleKemampuan && (
+            <div
+              onClick={onToggleKemampuan}
+              className="px-3.5 py-2.5 bg-white/[0.03] hover:bg-white/[0.06] border-b border-white/5 flex items-center justify-between cursor-pointer transition-colors"
+            >
+              <span className="text-xs font-bold tracking-wider text-white/80 uppercase">Kemampuan</span>
+              <button className="text-white/50 hover:text-white text-[12px] px-1" aria-pressed={kemampuanTampil}>
+                {kemampuanTampil ? '▲ Sembunyikan' : '▼ Tampilkan'}
+              </button>
+            </div>
+          )}
 
           {isExplorerOpen && (
             <div className="p-3">

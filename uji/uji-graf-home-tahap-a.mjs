@@ -82,7 +82,8 @@ cek(/nodeLabel=\{labelTooltipAman\}/.test(AG) && !/nodeLabel="name"/.test(AG), '
 cek(/simpulDirektori\(graphData\?\.nodes\)/.test(AG), 'Directory diisi simpulDirektori');
 cek(/globalScale >= AMBANG_LABEL_DATA/.test(AG) && !/globalScale >= 0\.75/.test(AG), 'ambang nama simpul data = AMBANG_LABEL_DATA (sama dengan simulasi)');
 const HD = baca('frontend/src/components/dashboard/HomeDashboard.jsx');
-cek(/pasangGayaGraf\(\{ force:[^\n]*graphData\.links\)/.test(HD) && /d3ReheatSimulation\(\)/.test(HD), 'HomeDashboard memasang tata letak pada data graf');
+// Sejak Tahap D tata letak dipasang pada graf GABUNGAN (dasar + lapisan Kemampuan) = `grafTampil`.
+cek(/pasangGayaGraf\(\{ force:[^\n]*grafTampil\.links\)/.test(HD) && /d3ReheatSimulation\(\)/.test(HD), 'HomeDashboard memasang tata letak pada graf yang ditampilkan');
 const MT = baca('frontend/src/components/os/MenuTeks.jsx');
 const ikuti = MT.match(/const ikutiHalaman = [^\n]*\n([\s\S]*?)\n  \};/)?.[1] || '';
 cek(/setTerbuka\(false\)/.test(ikuti) && !/app:home/.test(ikuti), 'Menu tertutup di semua halaman, termasuk Home', ikuti);

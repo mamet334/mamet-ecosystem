@@ -13,7 +13,7 @@ import { join } from 'node:path';
 
 const AKAR = fileURLToPath(new URL('../..', import.meta.url));
 const d3 = await import(pathToFileURL(join(AKAR, 'frontend/node_modules/d3-force-3d/src/index.js')).href);
-const { susunGrafHome, AMBANG_LABEL_DATA, tataPas } = await import(pathToFileURL(join(AKAR, 'frontend/src/core/runtime/hooks/grafHome.js')).href);
+const { susunGrafHome, AMBANG_LABEL_DATA, tataPas, gabungGraf } = await import(pathToFileURL(join(AKAR, 'frontend/src/core/runtime/hooks/grafHome.js')).href);
 
 export const SEBARAN_OWNER = Object.freeze({ assistant: 131, engineer: 84, lite: 4, dokumen: 229, memori: 10 });
 export const LAYAR_OWNER = Object.freeze({ lebar: 1046, tinggi: 690 }); // 1366×768 dikurangi panel kanan & bilah
@@ -40,11 +40,12 @@ const lebarTeks = (s) => [...s].reduce((n, c) => n + (c >= 'A' && c <= 'Z' ? 8.4
  * @param {(sim: object, links: Array) => void} [pasangGaya] — mis. `pasangGayaGraf` dari grafHome.js; kosong = setelan lama.
  * @returns {{ skala: number, label: Array, tumpang: Array<[string,string]>, simpul: Array, garis: Array }}
  */
-export function simulasikan({ pasangGaya, benih = 1, layar = LAYAR_OWNER, detak = 900, sebaran = SEBARAN_OWNER, ambangLabel = AMBANG_LABEL_DATA } = {}) {
+export function simulasikan({ pasangGaya, benih = 1, layar = LAYAR_OWNER, detak = 900, sebaran = SEBARAN_OWNER, ambangLabel = AMBANG_LABEL_DATA, lapisan = null } = {}) {
   const asli = Math.random;
   Math.random = acakBerbenih(benih);
   try {
-    const { nodes, links } = susunGrafHome({ ...barisTiruan(sebaran), vitals: {} });
+    // `lapisan` = hasil susunLapisanKemampuan (Tahap D) — digabung seperti HomeDashboard saat tombol Kemampuan menyala.
+    const { nodes, links } = gabungGraf(susunGrafHome({ ...barisTiruan(sebaran), vitals: {} }), lapisan);
     const sim = d3.forceSimulation(nodes, 2)
       .force('link', d3.forceLink(links).id((n) => n.id))
       .force('charge', d3.forceManyBody())

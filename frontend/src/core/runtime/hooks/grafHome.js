@@ -13,7 +13,7 @@ export function simpulDirektori(nodes) {
   return (nodes || []).filter((n) => GRUP_DATA.includes(n.group));
 }
 
-const KELAS = { pusat: 'pusat', kemampuan: 'kemampuan', fondasi: 'fondasi' };
+const KELAS = { pusat: 'pusat', kemampuan: 'kemampuan', fondasi: 'fondasi', lapisan: 'lapisan', alat: 'alat' };
 const kelasSimpul = (n) => KELAS[n?.group] || 'data';
 
 /**
@@ -39,8 +39,11 @@ const kelasSimpul = (n) => KELAS[n?.group] || 'data';
  */
 export function pasangGayaGraf(sim, links) {
   // Tahap C: lingkar 1 (kemampuan) dekat pusat, fondasi di lingkar luar, data menempel pada kemampuannya.
-  const jarak = { 'kemampuan-pusat': 230, 'fondasi-pusat': 320 };
-  const tolak = { pusat: -400, kemampuan: -700, fondasi: -500, data: -18 };
+  // 'alat-kemampuan' (Tahap D): garis alat data_tabel → Data Tabel ASN. Dengan panjang bawaan 28 ia menyeret Data Tabel
+  // (tanpa ekor data) ke kerumunan Chat/Server — tindih di layar Owner pada 2 dari 3 urutan alat. 120 → 768 px tindih 2;
+  // 180 → layar Owner, 1920, 768: 0 di semua urutan.
+  const jarak = { 'kemampuan-pusat': 230, 'fondasi-pusat': 320, 'lapisan-kemampuan': 110, 'lapisan-pusat': 140, 'lapisan-lapisan': 70, 'alat-kemampuan': 180 };
+  const tolak = { pusat: -400, kemampuan: -700, fondasi: -500, lapisan: -300, alat: -25, data: -18 };
   const kunci = (l) => `${kelasSimpul(l.source)}-${kelasSimpul(l.target)}`;
   sim.force('link')?.distance((l) => jarak[kunci(l)] ?? 28);
   sim.force('charge')?.strength((n) => tolak[kelasSimpul(n)] ?? -18);
@@ -49,7 +52,10 @@ export function pasangGayaGraf(sim, links) {
   sim.force('gravitasi', gayaGravitasi((n) => (tertambat.has(n.id) ? 0.02 : 0.12)));
   // Lingkar (Konstitusi 23): tanpa ini kemampuan — didorong awan datanya (RAG ±229 dokumen) — terlempar LEBIH jauh dari
   // fondasi (diukur: kemampuan 438, fondasi 323). Pegas saja tak menjaga urutan lingkar.
-  const cincin = { kemampuan: JARI_KEMAMPUAN, fondasi: JARI_FONDASI };
+  // Tahap D: hub lapisan Kemampuan di cincinnya sendiri. Tanpa cincin, "Alat folder" & "MCP" (sama-sama bergaris ke Chat &
+  // Engineer) terdorong ke titik yang sama; tolakan lebih kuat memperbesar graf & label kerangka ikut menindih. Diukur:
+  // 340 → 1–3 tindih, 380 → 1 (768 px), 400 → 0 di layar Owner, 1920, 768, data 2×; 420 → 1.
+  const cincin = { kemampuan: JARI_KEMAMPUAN, fondasi: JARI_FONDASI, lapisan: JARI_LAPISAN };
   sim.force('cincin', gayaCincin((n) => cincin[kelasSimpul(n)] ?? null, 0.3));
 }
 
@@ -77,6 +83,7 @@ export function tataPas({ bbox, lebar, tinggi, padding = 50, atas = RUANG_ATAS }
 }
 
 export const JARI_KEMAMPUAN = 200;
+export const JARI_LAPISAN = 400;
 export const JARI_FONDASI = 480;
 
 /** Tarikan ke jari-jari tertentu — rumus `forceRadial` d3 (v += (r − d)/d × posisi × kekuatan × alpha); null = tak ditarik. */
@@ -357,4 +364,106 @@ export function susunGrafHome({ memories, documents, chats, docChunkCounts, vita
   };
 
   return { nodes, links, stats };
+}
+
+// ═════════════════════════════════════════════════════════════════════════════════════════════════
+// Lapisan Kemampuan (Item 130 Tahap D, Konstitusi 23 "lingkar 2") — dibuka lewat tombol, tidak selalu tampil.
+// Sumbernya daftar RESMI, bukan karangan: registry alat chat (`tools/`), `shared/folderKerjaAlat.js`,
+// `shared/konektorAlat.js` + status konektor desktop (baca-saja), `shared/daftarSubagen.js`. Semuanya di laptop —
+// menampilkannya tak memanggil jaringan sama sekali.
+// ═════════════════════════════════════════════════════════════════════════════════════════════════
+
+export const WARNA_ALAT = Object.freeze({ aktif: '#7dd3fc', mati: '#64748b' });
+
+/**
+ * Status konektor dari `electronAPI.konektor.status()` dipangkas ke yang ditampilkan graf. Baris aslinya juga memuat
+ * pid, ringkasan katalog, dan keadaan komponen stealth — tak ada urusannya dengan graf, jadi tak dibawa.
+ * @returns {Array<{ id: string, nama: string, workspace: string, diaktifkan: boolean, menyala: boolean, alat: string[] }>}
+ */
+export function konektorUntukGraf(baris) {
+  return (Array.isArray(baris) ? baris : []).map((b) => ({
+    id: String(b?.konektor ?? ''),
+    nama: String(b?.nama ?? b?.konektor ?? ''),
+    workspace: String(b?.workspace ?? ''),
+    diaktifkan: b?.diaktifkan === true,
+    menyala: b?.status === 'nyala',   // konektorMcp.cjs: 'nyala' | 'mati' | 'berhenti'
+    alat: Array.isArray(b?.alat) ? b.alat.map(String) : [],
+  })).filter((k) => k.id);
+}
+
+/**
+ * @param {{ alatChat: Array<{name: string, aktif: boolean}>, alatFolder: string[],
+ *           konektorDikenal: Record<string, {nama: string, alat: string[]}>, konektor: Array|null,
+ *           subagen: Array<{nama: string, label: string, khususPemilik: boolean}> }} sumber
+ *   `konektor` null = bukan desktop (web): MCP tak tersedia, ditandai "hanya desktop".
+ * @returns {{ nodes: Array, links: Array }} untuk digabung ke graf dasar lewat `gabungGraf`
+ */
+export function susunLapisanKemampuan({ alatChat = [], alatFolder = [], konektorDikenal = {}, konektor = null, subagen = [] } = {}) {
+  const nodes = [], links = [];
+  const simpul = (n) => { nodes.push(n); return n.id; };
+  const garis = (s, t) => links.push({ source: s, target: t });
+  const hub = (id, name) => simpul({ id, name, type: 'Lapisan', group: 'lapisan', val: 12, color: '#38bdf8', isCategory: true });
+  const alat = (id, name, aktif, induk) => {
+    simpul({ id, name: aktif ? name : `${name} · nonaktif`, type: 'Alat', group: 'alat', val: 4, color: aktif ? WARNA_ALAT.aktif : WARNA_ALAT.mati, aktif });
+    garis(id, induk);
+  };
+
+  // Alat chat (panel Tools Assistant). Alat yang ADALAH sebuah kemampuan inti ikut bergaris ke kemampuannya.
+  const hChat = hub('lap-alat-chat', `Alat chat · ${alatChat.length}`);
+  garis(hChat, 'kem-chat');
+  const kemampuanAlat = { data_tabel: 'kem-tabel', memory_manager: 'kem-memori' };
+  alatChat.forEach((a) => {
+    const id = `alat-chat-${a.name}`;
+    alat(id, a.name, a.aktif !== false, hChat);
+    if (kemampuanAlat[a.name]) garis(id, kemampuanAlat[a.name]);
+  });
+
+  // Alat folder kerja — Assistant (tombol 📁) & Engineer, dijalankan desktop.
+  const hFolder = hub('lap-alat-folder', `Alat folder · ${alatFolder.length}`);
+  garis(hFolder, 'kem-chat');
+  garis(hFolder, 'kem-engineer');
+  alatFolder.forEach((n) => alat(`alat-folder-${n}`, n, true, hFolder));
+
+  // MCP berekor: MCP → konektor → alat. Konektor baru di `KONEKTOR`/`KONEKTOR_DIKENAL` muncul sendiri.
+  const desktop = Array.isArray(konektor);
+  const daftarKonektor = Object.keys(konektorDikenal);
+  const hMcp = hub('lap-mcp', desktop ? `MCP · ${daftarKonektor.length} konektor` : 'MCP · hanya desktop');
+  garis(hMcp, 'kem-chat');
+  garis(hMcp, 'kem-engineer');
+  // Server MCP berjalan sebagai proses Electron (konektorMcp.cjs, proses utama) — relasi nyata, sekaligus yang
+  // membedakan letaknya dari "Alat folder" (diukur: tanpa garis ini keduanya saling tindih di layar Owner).
+  garis(hMcp, 'fon-electron');
+  if (desktop) {
+    daftarKonektor.forEach((kid) => {
+      const baris = konektor.filter((k) => k.id === kid);
+      const diaktifkan = baris.some((k) => k.diaktifkan);
+      const id = `lap-konektor-${kid}`;
+      simpul({ id, name: diaktifkan ? konektorDikenal[kid].nama : `${konektorDikenal[kid].nama} · mati`, type: 'Konektor', group: 'lapisan', val: 10,
+        color: diaktifkan ? '#38bdf8' : WARNA_ALAT.mati, isCategory: true, aktif: diaktifkan });
+      garis(id, hMcp);
+      // Alat dari server MCP yang sedang menyala; bila mati, daftar alat yang dikenal (`shared/konektorAlat.js`).
+      const nyata = [...new Set(baris.flatMap((k) => k.alat))];
+      (nyata.length ? nyata : konektorDikenal[kid].alat).forEach((n) => alat(`alat-mcp-${kid}-${n}`, n, diaktifkan, id));
+    });
+  }
+
+  // Sub-agent server (daftar resmi `shared/daftarSubagen.js`) — berjalan di belahan Server.
+  const hSub = hub('lap-subagen', `Sub-agent · ${subagen.length}`);
+  garis(hSub, 'mamet-server');
+  subagen.forEach((s) => {
+    const id = `alat-sub-${s.nama}`;
+    simpul({ id, name: s.khususPemilik ? `${s.label} · terkunci` : s.label, type: 'Sub-agent', group: 'alat', val: 4,
+      color: s.khususPemilik ? WARNA_ALAT.mati : WARNA_ALAT.aktif, aktif: !s.khususPemilik });
+    garis(id, hSub);
+  });
+
+  return { nodes, links };
+}
+
+/** Graf dasar + lapisan, tanpa mengubah graf dasar. Kerangka (isCategory) tetap dilukis paling akhir. */
+export function gabungGraf(dasar, lapisan) {
+  if (!lapisan) return dasar;
+  const nodes = [...dasar.nodes, ...lapisan.nodes];
+  nodes.sort((a, b) => (a.isCategory ? 1 : 0) - (b.isCategory ? 1 : 0));
+  return { nodes, links: [...dasar.links, ...lapisan.links] };
 }
