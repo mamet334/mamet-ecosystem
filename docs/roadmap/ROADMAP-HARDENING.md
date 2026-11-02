@@ -108,8 +108,10 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - ✅ **Dibereskan 2 Nov:** kode mati (`test-suite/`, `maef/engineering_lifecycle.ts`, `plugins/memory_manager.ts`),
   12 baris sampah uji `api_usage`, `.gitignore` untuk `.venv`/`data`/`hasil`
   ([log](../project-memory/changelog/2026-11-02-bersih-bersih-parkir.md))
-- Metadata chat menyimpan `[SYSTEM CONTEXT FINAL] fullSystemContext=…` (termasuk teks potongan dokumen) di langkah proses
-  ±300 pesan — membengkakkan baris `chats` & berkas cadangan (milik pengguna sendiri, RLS; bukan kebocoran)
+- ✅ **Dibereskan 2 Nov:** metadata chat membengkak — langkah proses tersimpan dua kali (`steps` +
+  `metadata.processingSteps`); kini sekali, tak ikut terkirim di `history`; chat lama dibersihkan (teks 22 → 12 MB,
+  tabel 13 → 6,9 MB); `[SYSTEM CONTEXT FINAL]` sengaja dipertahankan
+  ([log](../project-memory/changelog/2026-11-02-metadata-chat-ramping.md)). Sisa bukti: satu chat baru di desktop (💳)
 - `npm run dev` Mametlite layar kosong — CSP `script-src 'self'` memblokir preamble React inline Vite (build tak terdampak)
 - T18 kelas Tailwind tak dibuat · retensi tabel log lain (`verification_audit_logs`, `evidence_audit_logs`, `memory_audit_logs`)
 - Graf Home diperkaya & `graf-bercahaya`

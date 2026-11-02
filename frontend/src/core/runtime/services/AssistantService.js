@@ -26,6 +26,7 @@ import { ambilPermintaanKonektor, susunPesanHasilKonektor, catatanHasilKonektor,
 import { cekPerintahBerulang, petunjukHasilKosong, petunjukKeluaranTerpotong, petunjukGrepSebagian, peringatanTugasTakDiumumkan, adaPenandaPatch, buangPenandaPatch } from './engineer/ProsedurEngineer.js';
 import { peringatanKlaimTakTeruji } from './engineer/UjiKlaim.js';
 import { anggaranKonteks, pilihPesanKonteks, bacaMulaiDari } from './KonteksChat.js';
+import { rampingkanPesan, pesanUntukServer } from './pesanRamping.js';
 
 // Folder kerja (Item 85 Tahap 1): batas total isi berkas yang dibaca per pertanyaan (semua putaran) — riwayat ikut
 // membawa hasil putaran sebelumnya, jadi tanpa batas ini 4 putaran × 5 berkas × 60 KB bisa ±1,2 MB ke model.
@@ -927,7 +928,7 @@ export class AssistantService {
       pemilihModel: 'tier-auto',
       appSource: resolvedAppSource,
       workspaceTarget: null,
-      history: history.slice(-3),  // hanya 3 pesan terakhir (bukan 10)
+      history: history.slice(-3).map(pesanUntukServer),  // hanya 3 pesan terakhir (bukan 10), tanpa langkah proses
       globalMemory: '',            // sengaja kosong — konteks klien tidak dibangun di jalur ringan
       semanticContext: '',         // sengaja kosong
       stream: false,
@@ -1090,7 +1091,7 @@ export class AssistantService {
           // yaitu model utama yang Owner set di Settings. Jadi pemilihnya Owner, bukan sistem.
           pemilihModel: 'owner-settings',
           appSource: resolvedAppSource,
-          history: history.slice(-5),
+          history: history.slice(-5).map(pesanUntukServer),
           globalMemory: '',
           semanticContext: '',
           stream: false,
@@ -1440,7 +1441,7 @@ export class AssistantService {
       appSource: resolvedAppSource,
       workspaceTarget: workspaceId,
       traceId: requestTraceId,
-      history: konteks.dikirim,
+      history: konteks.dikirim.map(pesanUntukServer),   // tanpa langkah proses — server tak membacanya (pesanRamping.js)
       globalMemory: trimmedRagContext,
       semanticContext: trimmedSemanticContext,
       stream: false,
@@ -1830,7 +1831,7 @@ export class AssistantService {
     const payload = {
       user_id: userId,
       title,
-      messages,
+      messages: messages.map(rampingkanPesan),   // langkah proses tersimpan sekali, bukan dua kali (pesanRamping.js)
       updated_at: new Date().toISOString(),
       workspace_type: workspaceId || 'ws-assistant'
     };
