@@ -24,7 +24,7 @@ const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (kode) =>
   kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
-console.log('uji-inventaris-fungsi v2');
+console.log('uji-inventaris-fungsi v3');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -34,6 +34,7 @@ const cek = (syarat, pesan, detail) => {
 
 const F = {
   CE: 'frontend/src/components/workbench/ConversationEngine.jsx',
+  MENU: 'frontend/src/components/konektor/MenuTambah.jsx', // v3 (3 Nov, Item 129 G5): tombol + kini menu
   SET: 'frontend/src/components/Settings.jsx',
   APP: 'frontend/src/App.jsx',
   SHELL: 'frontend/src/components/os/OSDesktopShell.jsx',
@@ -75,7 +76,8 @@ const INVENTARIS = [
   ['📁 Folder kerja (Assistant) · Akar repo (Engineer)', [['CE', /<FolderKerjaTombol\b/], ['CE', /<AkarRepoTombol\b/]]],
   ['Pil tier model (Assistant)', [['CE', /setShowTierPanel\(/], ['CE', /setModelTierOverride\(/]]],
   ['Kartu konfirmasi pencarian web', [['CE', /\{webConfirmation && /]]],
-  ['Percakapan baru', [['CE', /onClick=\{handleNewChat\}/], ['CE', /title="Percakapan Baru"/]]],
+  // G5: "Percakapan baru" = baris pertama menu tombol + (MenuTambah) — sambungan & pemanggilannya keduanya dijaga.
+  ['Percakapan baru', [['CE', /<MenuTambah onNewChat=\{handleNewChat\}/], ['MENU', /setBuka\(false\); onNewChat\(\);/], ['MENU', />\s*Percakapan baru\s*</]]],
   ['Riwayat chat', [['CE', /<ChatHistory\b/], ['CE', /title="Toggle Chat History"/]]],
   ['Panel Tools (RAG + registry)', [['CE', /setShowToolsPanel\(/]]],
   ['Meteran jendela konteks · Padatkan', [['CE', /meteranKonteks\(/], ['CE', /bolehPadatkan\(/]]],

@@ -6,6 +6,7 @@ import { tautanUnduh } from '../../core/runtime/services/remoteConversionClient'
 import RiwayatKonversi from './RiwayatKonversi';
 import { kernel } from '../../core/runtime/Kernel';
 import FolderKerjaTombol from './FolderKerjaTombol';
+import MenuTambah from '../konektor/MenuTambah';
 import AkarRepoTombol from './AkarRepoTombol';
 import ChatHistory from './ChatHistory';
 import MemoryContextPanel from './MemoryContextPanel';
@@ -1709,13 +1710,8 @@ export default function ConversationEngine({ sessionId }) {
           >
             <span className="material-symbols-outlined text-[20px]">{isSidebarOpen ? 'keyboard_double_arrow_left' : 'menu'}</span>
           </button>
-          <button
-            onClick={handleNewChat}
-            className="w-10 h-10 flex items-center justify-center bg-surface-container-low border border-outline-variant rounded-xl hover:bg-surface-variant text-on-surface transition-all shadow-sm"
-            title="Percakapan Baru"
-          >
-            <span className="material-symbols-outlined text-[20px]">add</span>
-          </button>
+          {/* Tombol + (Item 129 Tahap G5): menu "Percakapan baru" + konektor workspace ini — komponen sendiri. */}
+          <MenuTambah onNewChat={handleNewChat} workspaceId={osState?.workspaceId} />
 
           {/* Panel Tools — satu tombol untuk RAG + semua tool dari registry, override langsung
               untuk workspace yang sedang aktif (supaya tidak perlu bolak-balik ke Settings).

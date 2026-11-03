@@ -6,6 +6,7 @@ import TombolUnduhDesktop from './TombolUnduhDesktop';
 import { angka } from '../core/runtime/services/formatAngka.js';
 import BagianTampilan from './BagianTampilan';
 import BagianKonektor from './BagianKonektor';
+import { ambilBagianSettings, PERISTIWA_BAGIAN_SETTINGS } from './konektor/arahSettings';
 import GantiKataSandi from './GantiKataSandi';
 
 // Workspace yang bisa punya override preferensi tool sendiri (lihat WorkspaceManager.js)
@@ -23,7 +24,14 @@ const TOOL_LABELS = {
 export default function Settings() {
   // Item 127 Tahap 2: Settings bertab — satu bagian tampil pada satu waktu, bukan sembilan kartu yang
   // digulir. Bentuknya sama dengan gambar referensi menu Owner: daftar di kiri, isi di kanan.
-  const [bagianAktif, setBagianAktif] = useState('model');
+  // Item 129 Tahap G5: "Atur di Settings ›" dari menu + chat membuka tab Konektor (arahSettings.js) — dibaca saat
+  // terpasang, dan lewat peristiwa bila Settings sudah terpasang di belakang.
+  const [bagianAktif, setBagianAktif] = useState(() => ambilBagianSettings() || 'model');
+  useEffect(() => {
+    const ganti = (e) => { if (e.detail?.bagian) { ambilBagianSettings(); setBagianAktif(e.detail.bagian); } };
+    window.addEventListener(PERISTIWA_BAGIAN_SETTINGS, ganti);
+    return () => window.removeEventListener(PERISTIWA_BAGIAN_SETTINGS, ganti);
+  }, []);
   const [user, setUser] = useState(null);
   const [health, setHealth] = useState(null);
 

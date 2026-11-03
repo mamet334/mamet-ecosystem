@@ -21,7 +21,7 @@ const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
 const tanpaKomentar = (kode) =>
   kode.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
-console.log('uji-settings-bertab v3');
+console.log('uji-settings-bertab v4');
 
 let gagal = 0;
 const cek = (syarat, pesan, detail) => {
@@ -50,7 +50,8 @@ const daftar = [...S.matchAll(/\{ id: '([a-z]+)', label: '[^']+', ikon: '([a-z_]
   .map((m) => ({ id: m[1], ikon: m[2], tampil: m[3].trim() }));
 cek(JSON.stringify(daftar.map((d) => d.id)) === JSON.stringify(idBagian), 'urutan & id daftar == urutan & id bagian',
   { daftar: daftar.map((d) => d.id), bagian: idBagian });
-cek(/useState\('model'\)/.test(S) && daftar[0]?.id === 'model', "tab bawaan 'model' — bagian pertama");
+// v4 (3 Nov, Item 129 G5): tab bawaan tetap 'model'; hanya "Atur di Settings ›" dari menu + yang meminta tab lain.
+cek(/useState\(\(\) => ambilBagianSettings\(\) \|\| 'model'\)/.test(S) && daftar[0]?.id === 'model', "tab bawaan 'model' — bagian pertama");
 cek(/BAGIAN_SETTINGS\.filter\(\(g\) => g\.tampil\)\.map/.test(S), 'tab dirender dari daftar yang DISARING `tampil`');
 
 // ── 3. Syarat asli ──────────────────────────────────────────────────────────────────────────────
