@@ -620,6 +620,27 @@ export function konektorUntukGraf(baris) {
 }
 
 /**
+ * Server MCP UMUM (Item 129 Tahap G3, titik sambung S8) ikut lapisan MCP: status baca-saja `konektorUmum.status()` →
+ * tambahan `konektorDikenal` (nama + alat yang DISETUJUI Owner) dan baris per workspace dengan bentuk yang sama
+ * dengan `konektorUntukGraf`. Tanpa ini graf hanya mengenal crawler dan server yang dipasang Owner tak pernah tampil.
+ * @returns {{konektorDikenal: object, konektor: Array|null}}
+ */
+export function gabungKonektorUmum(konektorDikenal, konektor, statusUmum) {
+  const umum = Array.isArray(statusUmum) ? statusUmum.filter((s) => s && typeof s.id === 'string' && s.id) : [];
+  if (!umum.length) return { konektorDikenal, konektor };
+  const dikenal = { ...konektorDikenal };
+  const baris = [...(konektor || [])];
+  for (const s of umum) {
+    if (dikenal[s.id]) continue; // id bawaan tak boleh ditimpa
+    dikenal[s.id] = { nama: String(s.nama || s.id), alat: Array.isArray(s.alatDisetujui) ? s.alatDisetujui.map(String) : [] };
+    for (const [ws, w] of Object.entries(s.ws || {})) {
+      baris.push({ id: s.id, nama: String(s.nama || s.id), workspace: ws, diaktifkan: w?.diaktifkan === true, menyala: w?.status === 'nyala', alat: Array.isArray(w?.alat) ? w.alat.map(String) : [] });
+    }
+  }
+  return { konektorDikenal: dikenal, konektor: baris };
+}
+
+/**
  * @param {{ alatChat: Array<{name: string, aktif: boolean}>, alatFolder: string[],
  *           konektorDikenal: Record<string, {nama: string, alat: string[]}>, konektor: Array|null,
  *           subagen: Array<{nama: string, label: string, khususPemilik: boolean}> }} sumber

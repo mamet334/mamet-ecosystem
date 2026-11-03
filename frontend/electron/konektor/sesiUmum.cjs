@@ -269,7 +269,24 @@ function buatSesiUmum({ daftar, brankas, berkasSakelar, lingkungan, ada = fs.exi
     }
   }
 
-  return { status, atur, nyalakan, matikan, matikanSemua, mulaiUlang, pulihkan, tinjau, setujui, hapus, panggil };
+  /**
+   * Untuk chat (G3): server yang MENYALA di workspace ini + alat yang DIPAKAI (sidik cocok dengan persetujuan Owner).
+   * Definisi alat apa adanya dari server — disaring & dinetralkan `shared/konektorUmum.js` sebelum ke prompt.
+   */
+  function aktif(ws) {
+    const hasil = [];
+    for (const e of daftar.semua()) {
+      const s = sesi.get(kunci(ws, e.id));
+      if (s?.status === 'nyala' && s.alat.length) {
+        hasil.push({ id: e.id, nama: e.nama, alat: s.alat.map((a) => ({ name: a.name, description: a.description, inputSchema: a.inputSchema })) });
+      }
+    }
+    return hasil;
+  }
+
+  const namaServer = (id) => daftar.ambil(id)?.nama || null;
+
+  return { status, atur, nyalakan, matikan, matikanSemua, mulaiUlang, pulihkan, tinjau, setujui, hapus, panggil, aktif, namaServer };
 }
 
 module.exports = { buatSesiUmum, ringkasParameter, klienSdk };

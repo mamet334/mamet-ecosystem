@@ -15,6 +15,7 @@ import { konteksWaktuPengguna, zonaWaktuSah } from './waktu_pengguna.ts';
 import { bersihkanRiwayatDataTabel } from '../../../../../shared/dataTabelAsnSaring.js';
 import { blokPromptFolder } from '../../../../../shared/folderKerjaAlat.js';
 import { blokPromptKonektor } from '../../../../../shared/konektorAlat.js';
+import { blokPromptKonektorUmum } from '../../../../../shared/konektorUmum.js';
 
 
 /**
@@ -449,6 +450,13 @@ Wajib ikuti struktur persis seperti contoh di atas!`;
   if (parsed.konektor) {
     ctx.request.agentIdentityPrompt += blokPromptKonektor(parsed.konektor);
     console.log(`[Konektor] aktif "${parsed.konektor.id}" · putaran alat ${parsed.konektor.putaran} · ${parsed.konektor.sumberSiap.length} sumber siap`);
+  }
+
+  // KONEKTOR UMUM (Item 129 Tahap G3): server MCP yang dipasang Owner (mis. GitHub). Alatnya ditinjau & dipaku Owner
+  // (K16); deskripsinya tetap tulisan pihak luar → dinetralkan & ditandai di blok. Log hanya hitungan, bukan deskripsi.
+  if (parsed.konektorUmum) {
+    ctx.request.agentIdentityPrompt += blokPromptKonektorUmum(parsed.konektorUmum);
+    console.log(`[KonektorUmum] aktif ${parsed.konektorUmum.daftar.map((k: any) => `${k.id}(${k.alat.length} alat)`).join(', ')} · putaran alat ${parsed.konektorUmum.putaran}`);
   }
 
   // =============================================

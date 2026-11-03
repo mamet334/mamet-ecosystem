@@ -64,8 +64,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // KONEKTOR UMUM (Item 129 Tahap G2) — server MCP dari resep. Program dipilih di dialog proses utama; kredensial
-  // hanya DIKIRIM (tak ada saluran yang mengembalikan nilainya); alat dipanggil lewat gerbang izin (G3), bukan dari sini.
+  // hanya DIKIRIM (tak ada saluran yang mengembalikan nilainya). G3: `panggil` melewati GERBANG izin di proses utama
+  // (dialog per alat / selama percakapan, K17); `aktif` = alat yang disetujui Owner di server yang menyala.
   konektorUmum: {
+    aktif: (workspace) => ipcRenderer.invoke('konektor-umum:aktif', { workspace }),
+    panggil: (workspace, id, alat, argumen, percakapan) => ipcRenderer.invoke('konektor-umum:panggil', { workspace, id, alat, argumen, percakapan }),
     resep: () => ipcRenderer.invoke('konektor-umum:resep'),
     status: () => ipcRenderer.invoke('konektor-umum:status'),
     pasang: (resepId) => ipcRenderer.invoke('konektor-umum:pasang', { resepId }),

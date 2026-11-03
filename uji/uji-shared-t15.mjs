@@ -19,9 +19,10 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 
 const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 // + daftarSubagen (2 Nov, Item 130 Tahap D): daftar resmi sub-agent, dibaca izin_subagent.ts & graf Home.
-const MODUL = ['folderKerjaAlat', 'konektorAlat', 'dataTabelAsnSaring', 'KnowledgeService', 'RetrievalStrategyService', 'kueri_pencarian', 'teks_rss', 'daftarSubagen'];
+// + konektorUmum (3 Nov, Item 129 Tahap G3): penyaring & blok prompt konektor MCP umum, dipakai desktop & request_parser.
+const MODUL = ['folderKerjaAlat', 'konektorAlat', 'dataTabelAsnSaring', 'KnowledgeService', 'RetrievalStrategyService', 'kueri_pencarian', 'teks_rss', 'daftarSubagen', 'konektorUmum'];
 
-console.log('uji-shared-t15 v2');
+console.log('uji-shared-t15 v3');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 500)}` : ''}`);

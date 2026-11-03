@@ -1,5 +1,6 @@
 import { WorkspaceGuardian } from '../workspace_guardian.ts';
 import { infoKonektorAman } from '../../../../../shared/konektorAlat.js';
+import { muatanKonektorUmumAman } from '../../../../../shared/konektorUmum.js';
 
 export async function parseRequestParams(req: Request, user: any) {
   let reqJson;
@@ -8,7 +9,7 @@ export async function parseRequestParams(req: Request, user: any) {
   } catch(e) {
     reqJson = {};
   }
-  let { message, tools, model, userId: _clientUserId, userName, file, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource: clientAppSource = 'assistant', workspaceTarget = 'AUTO', auditMode = 'OFF', mode: clientMode, provider, thinking, traceId: clientTraceId, requestId, clientTimezone, streamNalar, memoryEnabled, dataTabel, folderKerja, konektor, pemilihModel } = reqJson;
+  let { message, tools, model, userId: _clientUserId, userName, file, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource: clientAppSource = 'assistant', workspaceTarget = 'AUTO', auditMode = 'OFF', mode: clientMode, provider, thinking, traceId: clientTraceId, requestId, clientTimezone, streamNalar, memoryEnabled, dataTabel, folderKerja, konektor, konektorUmum, pemilihModel } = reqJson;
   const traceId = clientTraceId || requestId || null;
   const mode = clientMode || 'ASSISTANT';
   console.log('[RequestParser] Mode diterima:', mode);
@@ -116,7 +117,11 @@ export async function parseRequestParams(req: Request, user: any) {
     folderKerja: folderKerjaAman(folderKerja),
     // Konektor (Item 129 Tahap D): hanya konektor yang dikenal protokol; id, putaran, sumber siap (id saja), sakelar
     // akses (boolean). Disaring oleh modul protokol yang SAMA dengan desktop (konektorAlat.js).
-    konektor: infoKonektorAman(konektor)
+    konektor: infoKonektorAman(konektor),
+    // Konektor UMUM (Item 129 Tahap G3): server MCP yang dipasang Owner, alat yang sudah ditinjau & dipaku. Bidang
+    // BARU — klien lama (4.4.1) tak mengirimnya, jalur `konektor` (crawler) di atas tak berubah. Disaring ulang di sini
+    // dengan modul yang sama dengan desktop: id & nama alat berpola sempit, deskripsi dinetralkan & dipotong.
+    konektorUmum: muatanKonektorUmumAman(konektorUmum)
   };
 }
 

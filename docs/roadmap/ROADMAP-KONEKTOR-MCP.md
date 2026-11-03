@@ -21,7 +21,7 @@ data di %APPDATA%; K14: stealth tidak dibundel ([log](../project-memory/changelo
 unduhan ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-e2-stealth.md)). **E3 ✅ 26 Okt** —
 "Yang terpasang di perangkat ini" + Buka folder; crawler tetap satu bundel, bukan diunduh dari repo crawler
 ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-e3-transparansi.md)).
-**Tahap G 🟡 3 Nov** (G1 ✅ pipa proses utama — [log](../project-memory/changelog/2026-11-03-konektor-mcp-tahap-g1-pipa-umum.md); G2 ✅ Settings — [log](../project-memory/changelog/2026-11-03-konektor-mcp-tahap-g2-settings-umum.md)) — konektor umum ("banyak tangan"): server MCP apa saja lewat resep tanpa kode, alat ditinjau & dipaku, izin "selama percakapan ini", kredensial terenkripsi di perangkat; server pertama GitHub (K16–K19, §9).
+**Tahap G 🟡 3 Nov** (G1 ✅ pipa proses utama — [log](../project-memory/changelog/2026-11-03-konektor-mcp-tahap-g1-pipa-umum.md); G2 ✅ Settings — [log](../project-memory/changelog/2026-11-03-konektor-mcp-tahap-g2-settings-umum.md); G3 ✅ protokol + gerbang K17, server v546 — [log](../project-memory/changelog/2026-11-03-konektor-mcp-tahap-g3-protokol-umum.md)) — konektor umum ("banyak tangan"): server MCP apa saja lewat resep tanpa kode, alat ditinjau & dipaku, izin "selama percakapan ini", kredensial terenkripsi di perangkat; server pertama GitHub (K16–K19, §9).
 **Aplikasi:** **Mamet Ecosystem** (`frontend/`, desktop Electron + web) — **bukan** Mametlite.
 **Arah:** Mamet sebagai **klien** MCP — memakai alat dari server MCP luar. Mamet **tidak** dibuka sebagai server MCP
 (arah itu tidak termasuk item ini).
@@ -275,7 +275,7 @@ pengembangan lewat `scripts/kunci_bundel.py`, bukan disunting tangan
 
 ---
 
-## 9. Tahap G — Konektor umum ("banyak tangan") — 🟡 G1 ✅ G2 ✅ 3 Nov 2026
+## 9. Tahap G — Konektor umum ("banyak tangan") — 🟡 G1 ✅ G2 ✅ G3 ✅ 3 Nov 2026 (G4 GitHub live menunggu unduhan, token, saldo)
 
 **Permintaan Owner (3 Nov):** MCP adalah tangan Mamet dan harus optimal. Owner ingin bisa memasang **server MCP apa
 saja**, bukan hanya crawler. Server pertama adalah **GitHub**. Pipanya disiapkan supaya server lain bisa digabungkan
@@ -376,7 +376,7 @@ label server tidak menerimanya sebagai dasar VERIFIED. Aturan ini sama dengan cr
   dibuktikan dengan mutasi pada salinan. Belum ada layar, server, maupun unduhan.
 - ✅ **G2 — Settings** (3 Nov; mutasi 18/18, suite 150/150, tampil di aplikasi Owner): tambah server, kredensial, tinjau & paku alat, sakelar per workspace (K3). Dibuktikan di
   `npm run desktop`.
-- **G3 — Protokol & server:** banyak konektor aktif, blok prompt umum, gerbang K17. `agent-process` dibundel dengan
+- ✅ **G3 — Protokol & server** (3 Nov; mutasi 31/32 + 1 setara, suite 151/151, agent-process v546 dibandingkan paketnya): banyak konektor aktif, blok prompt umum, gerbang K17. `agent-process` dibundel dengan
   esbuild, lalu **Owner men-deploy**. Rantainya dibuktikan tanpa model.
 - **G4 — GitHub live:** Owner mengunduh biner dan membuat token. Rantai tanpa model dibuktikan dulu; jawaban model
   menyusul **sesudah saldo diisi**.

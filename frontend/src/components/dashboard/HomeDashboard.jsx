@@ -5,7 +5,7 @@ import NodeInspector from './NodeInspector';
 import ObservabilityPanel from './ObservabilityPanel';
 import { supabase } from '../../supabase';
 import { kernel } from '../../core/runtime/Kernel';
-import { tataSurya, terapkanGeser, mulaiSeret, ikutSeret, warnaStatus, statusGabungan, PUSAT, tataPas, susunLapisanKemampuan, gabungGraf, konektorUntukGraf, susunEkorPesan, GRUP_DATA } from '../../core/runtime/hooks/grafHome.js';
+import { tataSurya, terapkanGeser, mulaiSeret, ikutSeret, warnaStatus, statusGabungan, PUSAT, tataPas, susunLapisanKemampuan, gabungGraf, konektorUntukGraf, gabungKonektorUmum, susunEkorPesan, GRUP_DATA } from '../../core/runtime/hooks/grafHome.js';
 import { SUBAGEN } from '../../../../shared/daftarSubagen.js';
 import { ALAT_SEMUA } from '../../../../shared/folderKerjaAlat.js';
 import { KONEKTOR_DIKENAL } from '../../../../shared/konektorAlat.js';
@@ -48,9 +48,12 @@ export default function HomeDashboard() {
       }));
       // Hanya `status()` — jalur baca-saja yang juga dipakai Settings › Konektor. Graf tak pernah memanggil alat konektor.
       const statusKonektor = window.electronAPI?.konektor?.status;
-      const konektor = statusKonektor ? konektorUntukGraf(await statusKonektor().catch(() => [])) : null;
+      const konektorBawaan = statusKonektor ? konektorUntukGraf(await statusKonektor().catch(() => [])) : null;
+      // Tahap G3 (S8): server MCP umum ikut tampil — juga lewat `status()` baca-saja.
+      const statusUmum = window.electronAPI?.konektorUmum?.status;
+      const { konektorDikenal, konektor } = gabungKonektorUmum(KONEKTOR_DIKENAL, konektorBawaan, statusUmum ? await statusUmum().catch(() => []) : []);
       if (!batal) {
-        setLapisan(susunLapisanKemampuan({ alatChat, alatFolder: ALAT_SEMUA, konektorDikenal: KONEKTOR_DIKENAL, konektor, subagen: SUBAGEN }));
+        setLapisan(susunLapisanKemampuan({ alatChat, alatFolder: ALAT_SEMUA, konektorDikenal, konektor, subagen: SUBAGEN }));
       }
     })();
     return () => { batal = true; };

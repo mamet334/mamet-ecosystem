@@ -19,7 +19,7 @@ import { berkasGudang, idMisi, potretGudang } from './gudangCrawler.mjs';
 const AKAR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const P = await import(pathToFileURL(path.join(AKAR, 'shared/konektorAlat.js')).href);
 
-console.log('uji-konektor-protokol v3');
+console.log('uji-konektor-protokol v4');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 500)}` : ''}`);
@@ -94,10 +94,14 @@ const AS = baca('frontend/src/core/runtime/services/AssistantService.js');
 const RP = baca('supabase/functions/agent-process/lib/request/request_parser.ts');
 const PL = baca('supabase/functions/agent-process/lib/request/request_pipeline.ts');
 const MW = baca('supabase/functions/agent-process/memory_write_worker.ts');
-cek(/window\.electronAPI\.konektor\.panggil\(workspaceId, p\.konektor, p\.alat, p\.argumen\)/.test(AS), 'desktop memanggil alat lewat electronAPI.konektor.panggil (gerbang proses utama)');
+// G3 (3 Nov): penerusan pindah ke konektorAktif.js — crawler tetap ke gerbang crawler, server umum ke gerbang K17.
+const KA = baca('frontend/src/core/runtime/services/konektorAktif.js');
+cek(/panggilKonektor\(workspaceId, p, chatId\)/.test(AS) && /e\.konektor\.panggil\(workspaceId, p\.konektor, p\.alat, p\.argumen\)/.test(KA),
+  'desktop memanggil alat crawler lewat electronAPI.konektor.panggil (gerbang proses utama)');
 cek((AS.match(/HASIL ALAT KONEKTOR\\\]/g) || []).length >= 2, 'desktop: "[HASIL ALAT KONEKTOR]" = pesan hasil mesin (tanpa web/RAG/memori, tanpa pencarian susulan)');
 cek(/_folderPutaran > 0 \|\| _konektorPutaran > 0/.test(AS), 'putaran lanjutan konektor selalu CONVERSATION (bukan diklasifikasi ulang)');
-cek((AS.match(/konektor: payloadKonektor\(_konektor\)/g) || []).length === 2, 'muatan konektor dikirim di jalur LOOKUP & CONVERSATION');
+cek((AS.match(/\.\.\.muatanKonektor\(_konektor\)/g) || []).length === 2 && /konektor: info\.crawler \? payloadKonektor\(/.test(KA),
+  'muatan konektor (crawler: bentuk lama payloadKonektor) dikirim di jalur LOOKUP & CONVERSATION');
 cek(/infoKonektorAman\(konektor\)/.test(RP) && /from '[^']*konektorAlat\.js'/.test(RP), 'server menyaring info konektor dengan fungsi yang SAMA');
 cek(/blokPromptKonektor\(parsed\.konektor\)/.test(PL), 'server menambah blok prompt konektor');
 cek(/HASIL ALAT KONEKTOR\\\]/.test(MW), 'server: data konektor tidak dicatat sebagai memori');

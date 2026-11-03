@@ -5,7 +5,7 @@
 //   - Alamat program DIPILIH di dialog proses utama, tidak dikirim layar.
 //   - Kredensial: layar mengirim nilai sekali (S10); tak ada saluran yang mengembalikan nilainya.
 //   - Menghapus server ditanyakan di dialog proses utama.
-//   - Tak ada saluran `panggil` di sini — alat dipanggil lewat gerbang izin K17 (G3).
+//   - Memanggil alat HANYA lewat gerbang izin K17 (`gerbangUmum.cjs`, G3) — tak ada jalan ke `sesi.panggil` langsung.
 
 const fs = require('fs');
 const path = require('path');
@@ -13,6 +13,7 @@ const { buatDaftarServer, entriDariResep } = require('./daftarServer.cjs');
 const { buatBrankas } = require('./brankas.cjs');
 const { semuaResep, FOLDER_BAWAAN } = require('./resep.cjs');
 const { buatSesiUmum } = require('./sesiUmum.cjs');
+const { buatGerbangUmum } = require('./gerbangUmum.cjs');
 
 /**
  * @param {{ipcMain: object, dialog: object, shell: object, safeStorage: object, folderData: string,
@@ -68,6 +69,23 @@ function daftarkanKonektorUmum({ ipcMain, dialog, shell, safeStorage, folderData
     await sesi.mulaiUlang(id);
     return { ok: true, terisi: h.terisi };
   });
+
+  // G3 — chat: alat aktif per workspace & pemanggilan LEWAT GERBANG izin K17 (dialog per alat / selama percakapan).
+  const gerbang = buatGerbangUmum({
+    sesi,
+    namaServer: (id) => sesi.namaServer(id),
+    log,
+    mintaIzin: async ({ judul, rincian, tombol }) => {
+      const { response } = await dialog.showMessageBox(jendela(), {
+        type: 'question', title: 'Mamet — konektor', message: judul, detail: rincian,
+        buttons: tombol, defaultId: 0, cancelId: 0, noLink: true,
+      });
+      return response;
+    },
+  });
+  ipcMain.handle('konektor-umum:aktif', (_e, { workspace } = {}) => sesi.aktif(workspace));
+  ipcMain.handle('konektor-umum:panggil', (_e, { workspace, id, alat, argumen, percakapan } = {}) =>
+    gerbang.panggil(workspace, id, alat, argumen, percakapan));
 
   ipcMain.handle('konektor-umum:tinjau', (_e, { id } = {}) => sesi.tinjau(id));
   ipcMain.handle('konektor-umum:setujui', (_e, { id, alat } = {}) => sesi.setujui(id, alat));

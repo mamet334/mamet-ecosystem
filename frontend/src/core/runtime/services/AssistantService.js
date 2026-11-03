@@ -22,7 +22,8 @@ const AGENT_ENDPOINT = 'https://uuyzdjifhdfyyvpxsofu.supabase.co/functions/v1/ag
 import { supabase } from '../../../supabase.js';
 import { statusLaptop, kirimKeLaptop, sidikJari, cariDiCache, KUOTA_CACHE_MB } from './remoteConversionClient.js';
 import { ambilPermintaanAlat, susunPesanHasil, susunPesanKoreksi, namaFolderAman, buangKakiTiruan, peringatanKlaimTanpaAlat, peringatanKlaimEngineer, blokKodeKeMametCmd, MAKS_PUTARAN } from '../../../../../shared/folderKerjaAlat.js';
-import { ambilPermintaanKonektor, susunPesanHasilKonektor, catatanHasilKonektor, payloadKonektor, KONEKTOR_DIKENAL, MAKS_PUTARAN_KONEKTOR } from '../../../../../shared/konektorAlat.js';
+import { ambilPermintaanKonektor, susunPesanHasilKonektor, catatanHasilKonektor, MAKS_PUTARAN_KONEKTOR } from '../../../../../shared/konektorAlat.js';
+import { bacaKonektorAktif, petaAlatAktif, muatanKonektor, panggilKonektor, labelAlat } from './konektorAktif.js';
 import { cekPerintahBerulang, petunjukHasilKosong, petunjukKeluaranTerpotong, petunjukGrepSebagian, peringatanTugasTakDiumumkan, adaPenandaPatch, buangPenandaPatch } from './engineer/ProsedurEngineer.js';
 import { peringatanKlaimTakTeruji } from './engineer/UjiKlaim.js';
 import { anggaranKonteks, pilihPesanKonteks, bacaMulaiDari } from './KonteksChat.js';
@@ -351,20 +352,11 @@ export class AssistantService {
   }
 
   /**
-   * Konektor yang menyala di workspace ini (Item 129 Tahap D) — dibaca dari PROSES UTAMA setiap pesan. Per workspace
-   * (K3): Assistant dan Engineer masing-masing hanya melihat sakelarnya sendiri. Hanya konektor yang dikenal protokol
-   * (`KONEKTOR_DIKENAL`). Server menerima info singkat saja: id, sumber yang siap, sakelar akses.
+   * Konektor yang menyala di workspace ini (Item 129 Tahap D; G3: crawler + server MCP umum) — dibaca dari PROSES UTAMA
+   * setiap pesan. Per workspace (K3). Rinciannya di `konektorAktif.js`.
    */
   async _statusKonektor(workspaceId) {
-    if (typeof window === 'undefined' || !window.electronAPI?.konektor?.panggil) return null;
-    try {
-      const daftar = await window.electronAPI.konektor.status();
-      const s = (daftar || []).find((x) => x.workspace === workspaceId && x.status === 'nyala' && KONEKTOR_DIKENAL[x.konektor]);
-      if (!s) return null;
-      return { id: s.konektor, nama: s.nama, sumberSiap: s.ringkasan?.sumberSiap || [], akses: s.ringkasan?.akses || null };
-    } catch {
-      return null; // proses utama sibuk/galat → pesan ini berjalan tanpa konektor, sama seperti sakelar mati
-    }
+    return bacaKonektorAktif(workspaceId);
   }
 
   async processMessage({
@@ -429,23 +421,19 @@ export class AssistantService {
       const pertanyaanKonektor = _konektorPertanyaan || userMsg;
       const catatanKonektor = _konektorCatatan || [];
       onDone = async (finalText, steps, jsonMetadata, extras = {}) => {
-        const { permintaan, galat, teksTanpaTag } = ambilPermintaanKonektor(finalText, konektor.id);
+        // G3: crawler + server umum yang menyala; alat yang boleh diminta = yang tercantum di prompt (konektorAktif.js).
+        const { permintaan, galat, teksTanpaTag } = ambilPermintaanKonektor(finalText, petaAlatAktif(konektor));
         if (permintaan.length && _konektorPutaran < MAKS_PUTARAN_KONEKTOR) {
           const putaran = _konektorPutaran + 1;
           const hasil = [];
           for (const p of permintaan) {
-            const label = {
-              jalankan_misi: '🛰️ menunggu persetujuan misi Anda (lihat dialog), lalu crawler bekerja (≤ 2 menit)',
-              status_misi: '⏳ memeriksa status misi',
-              baca_tangkapan: '📥 membaca hasil misi',
-              daftar_misi: '📋 menunggu izin Anda melihat daftar misi (lihat dialog)',
-              ekspor_misi: '💾 menunggu izin Anda mengekspor hasil (lihat dialog)',
-            }[p.alat] || `⚙️ ${p.alat}`;
+            const label = labelAlat(p);
             onChunk?.(`${label}…`, `_${label}… (putaran konektor ${putaran}/${MAKS_PUTARAN_KONEKTOR})_`, steps || []);
             let h;
-            try { h = await window.electronAPI.konektor.panggil(workspaceId, p.konektor, p.alat, p.argumen); }
+            // Server umum: id percakapan ikut, untuk izin "selama percakapan ini" (K17, titik sambung S6).
+            try { h = await panggilKonektor(workspaceId, p, chatId); }
             catch (e) { h = { ok: false, alasan: `alat gagal: ${e.message || e}` }; }
-            h = { ...h, alat: p.alat, argumen: p.argumen };
+            h = { ...h, konektor: p.konektor, alat: p.alat, argumen: p.argumen };
             catatanKonektor.push(catatanHasilKonektor(h));
             hasil.push(h);
           }
@@ -943,7 +931,7 @@ export class AssistantService {
       // Folder kerja (Item 85 Tahap 1): NAMA saja — alamat lengkap tetap di proses utama desktop.
       folderKerja: _folderKerja || undefined,
       // Konektor (Item 129 Tahap D): id, putaran, sumber siap, sakelar akses — disaring lagi di server.
-      konektor: payloadKonektor(_konektor),
+      ...muatanKonektor(_konektor), // G3: `konektor` (crawler) + `konektorUmum` (server MCP umum)
       cache_hint: true,
       _request_type: 'LOOKUP'
     };
@@ -1465,7 +1453,7 @@ export class AssistantService {
       // Folder kerja (Item 85 Tahap 1): NAMA saja — alamat lengkap tetap di proses utama desktop.
       folderKerja: _folderKerja || undefined,
       // Konektor (Item 129 Tahap D): id, putaran, sumber siap, sakelar akses — disaring lagi di server.
-      konektor: payloadKonektor(_konektor),
+      ...muatanKonektor(_konektor), // G3: `konektor` (crawler) + `konektorUmum` (server MCP umum)
       cache_hint: true,
       _token_meta: { estimated_before: tokensBefore, estimated_after: tokensAfter, saved: tokensSaved },
       _request_type: 'CONVERSATION'

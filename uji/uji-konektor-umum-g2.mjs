@@ -164,7 +164,9 @@ const IPC = baca('frontend/electron/konektor/ipcUmum.cjs');
 cek(/require\('\.\/konektor\/ipcUmum\.cjs'\)/.test(MAIN) && /konektorUmum\.matikanSemua\(\)/.test(MAIN) && /konektorUmum\.pulihkan\(\)/.test(MAIN),
   'main.cjs: pintu didaftarkan, server umum dipulihkan saat dibuka & DIMATIKAN saat keluar');
 cek(/safeStorage\.encryptString/.test(IPC) && /safeStorage\.isEncryptionAvailable/.test(IPC), 'K18: brankas di proses utama memakai safeStorage');
-cek(!/konektor-umum:panggil/.test(IPC + PRE) && /konektorUmum:\s*\{/.test(PRE), 'tak ada saluran panggil alat dari layar (gerbang K17 menyusul di G3)');
+// G3 (3 Nov): saluran panggil ADA, tetapi hanya lewat gerbang izin K17 — tak ada jalan ke sesi.panggil langsung.
+cek(/'konektor-umum:panggil'[\s\S]{0,200}gerbang\.panggil\(/.test(IPC) && !/sesi\.panggil\(/.test(IPC) && /konektorUmum:\s*\{/.test(PRE),
+  'panggil alat dari layar HANYA lewat gerbang izin (tak ada jalan ke sesi.panggil langsung)');
 cek(/showOpenDialog/.test(IPC) && !/program/.test(PRE.match(/konektorUmum:\s*\{[\s\S]*?\n {2}\},/)?.[0] || 'program'),
   'alamat program dipilih di dialog proses utama, tidak dikirim layar');
 const LAYAR = ['KonektorUmum', 'KartuServerUmum', 'TinjauAlat', 'TambahServer'].map((n) => baca(`frontend/src/components/konektor/${n}.jsx`)).join('\n');
