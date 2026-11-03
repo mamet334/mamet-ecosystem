@@ -247,7 +247,7 @@ Owner (Windows 10, pemasang **4.4.1**), crawler menyala di **percobaan pertama**
 `CRAWLER_ROOT` = `%APPDATA%\Mamet AI\crawler\` (yang terwujud: `%APPDATA%\ai-agent-frontend\crawler\`) (folder program pemasang hanya-baca); `.env` ditempatkan di sana saat
 pertama dipasang. Browser stealth sesuai K14.
 
-**Tahap F — menyusul:** server MCP jarak jauh (K4 bagian HTTP) dan Google Drive (K6).
+**Tahap F — 📋 dirancang 3 Nov (§10):** server MCP jarak jauh dengan OAuth, dibuktikan dengan Notion. Google Drive (K6) tetap ditunda, karena Google Cloud meminta kartu kredit.
 
 **Uji tiap tahap:** setiap tahap punya uji di `uji/` yang dibuktikan bisa merah (mutasi), mengikuti kebiasaan repo;
 Tahap B–D juga dibuktikan di aplikasi desktop sungguhan (`npm run desktop`) — misi kecil dijalankan dari chat
@@ -382,3 +382,100 @@ label server tidak menerimanya sebagai dasar VERIFIED. Aturan ini sama dengan cr
   menyusul **sesudah saldo diisi**.
 - ✅ **G5 — Konektor terlihat dari chat** (3 Nov, usul Owner): tombol + menjadi menu berisi "Percakapan baru" dan konektor workspace ini dengan sakelarnya. Titik di tombol + menandai konektor yang menyala atau bermasalah. "Atur di Settings ›" membuka tab Konektor. Mutasi 15/15, suite 152/152, tampil di aplikasi Owner.
 - Server berikutnya (Notion, basis data, …) cukup **satu berkas resep**. Server jarak jauh ber-OAuth tetap di Tahap F.
+
+---
+
+## 10. Tahap F — OAuth: server MCP jarak jauh yang meminta login — 📋 dirancang 3 Nov 2026
+
+**Permintaan Owner (3 Nov):** konektor dibuat lebih fleksibel. Akun yang terhubung harus **akun yang dipilih dan
+disetujui pengguna Mamet sendiri**, seperti cara aplikasi Claude terhubung ke Google Workspace.
+
+**Arah, setelah Owner memberi informasi baru:**
+- Google Cloud meminta **kartu kredit** walaupun hanya untuk mendaftar. Karena itu jalur Google (klien OAuth buatan
+  sendiri, server MCP resmi Google) **ditunda**.
+- OAuth dibangun **umum**, dengan **pendaftaran klien otomatis** (*dynamic client registration*, DCR), dan
+  dibuktikan dengan **Notion** (paket gratis). Owner memilih Notion untuk dicoba.
+
+### Kenapa OAuth membuat konektor fleksibel
+
+Sekarang server jarak jauh hanya bisa memakai kunci tetap. Sebagian besar server MCP jarak jauh modern memakai OAuth.
+Dengan OAuth, resep cukup berisi **URL**, lalu pengguna menekan **"Hubungkan akun"**: login di browser dan memilih
+akunnya sendiri. Di laptop lain tidak ada unduhan program, cukup menghubungkan ulang.
+
+### Yang sudah diperiksa (3 Nov, metadata publik)
+
+| Server | DCR | PKCE | Pencabutan token |
+|---|---|---|---|
+| **Notion** `https://mcp.notion.com/mcp` ("Notion MCP (Beta)") | ✅ `/register` | S256 | ✅ |
+| Linear `mcp.linear.app` | ✅ | S256 | — |
+| Atlassian `mcp.atlassian.com` | ✅ | plain, S256 | — |
+| Sentry `mcp.sentry.dev` | ✅ | S256 | — |
+| GitHub jarak jauh `api.githubcopilot.com` | ❌ metadata tak ditemukan di akar | — | — |
+
+Notion mengikuti spesifikasi otorisasi MCP sepenuhnya:
+- tanpa token, server menjawab **401** dengan `WWW-Authenticate: … resource_metadata=…/oauth-protected-resource/mcp`;
+- metadata server otorisasinya memuat `authorize`, `token`, `register`, dan `revocation`;
+- metode autentikasi klien `none` didukung, jadi klien publik dengan PKCE tanpa rahasia bisa dipakai;
+- token pembaru (`refresh_token`) didukung.
+
+SDK yang terpasang (`@modelcontextprotocol/sdk` 1.32.1, `client/auth.js`) sudah punya penemuan metadata, pendaftaran
+klien, penukaran kode, dan pembaruan token.
+
+### Alur
+
+1. Resep `notion.json` berisi jenis `http`, URL, dan `oauth: true`. Tidak ada kredensial yang diketik.
+2. Owner menekan **"Hubungkan akun"**:
+   1. Mamet menemukan metadata, lalu **mendaftarkan dirinya** ke server itu (sekali, disimpan).
+   2. Mamet membuka **browser sistem**, bukan jendela Electron, sehingga Mamet tidak pernah melihat password.
+   3. Owner login dan memilih akun serta halaman Notion yang boleh diakses.
+   4. Browser kembali ke `http://127.0.0.1:<port acak>/balikan`, yaitu penerima sekali pakai di proses utama
+      (RFC 8252). Penerima ini memeriksa `state`, lalu Mamet menukar kode dengan token memakai PKCE.
+   5. Token akses dan token pembaru disimpan di **brankas** (terenkripsi DPAPI).
+3. Langkah berikutnya sama dengan GitHub: **Tinjau alat** → centang (Notion juga punya alat tulis, jadi Owner memilih)
+   → sakelar per workspace → dialog izin per alat (K16, K17 tetap berlaku).
+4. Token kedaluwarsa diperbarui otomatis. Kalau pembaruan gagal, statusnya **"perlu hubungkan ulang"**, tanpa
+   percobaan berulang diam-diam.
+5. **"Putuskan"** mencabut token lewat `revocation_endpoint` bila ada, lalu menghapus token dan data pendaftaran dari
+   brankas.
+
+### Susunan berkas (satu berkas satu tugas)
+
+| Berkas | Tugas |
+|---|---|
+| `electron/konektor/oauthPenyedia.cjs` | Implementasi `OAuthClientProvider` SDK: metadata klien (nama "Mamet Ecosystem", alamat balikan loopback, `token_endpoint_auth_method: none`), simpan/baca informasi klien & token lewat brankas, simpan verifier PKCE di memori, buka URL otorisasi di browser sistem (hanya https) |
+| `electron/konektor/penerimaBalikan.cjs` | Server HTTP sekali pakai di `127.0.0.1`, port acak, satu jalur `/balikan`, periksa `state`, batas waktu 5 menit, halaman "kembali ke Mamet", lalu tutup |
+| `electron/konektor/alurOAuth.cjs` | Orkestrasi `hubungkan(id)` dan `putuskan(id)`, serta status (terhubung / perlu hubungkan ulang) |
+| `resep.cjs`, `transport.cjs`, `sesiUmum.cjs`, `ipcUmum.cjs` (ada) | Bidang `oauth` di resep; transport HTTP memakai `authProvider`; IPC `hubungkan`/`putuskan` |
+| `KartuServerUmum.jsx` (ada) | Untuk server OAuth: tombol "Hubungkan akun" / "Putuskan" menggantikan kolom token |
+| `electron/konektor/resep/notion.json` | Resep Notion (data, bukan kode) |
+
+### Batas keamanan
+
+- Alamat balikan **hanya loopback**. `state` diperiksa. PKCE **S256 wajib**: server yang tidak mendukungnya ditolak.
+- URL otorisasi dibuka hanya bila `https`. Pemeriksaan bahwa host-nya sama dengan host di metadata server otorisasi
+  dilakukan **SDK** (rancangan ini belum memastikannya; diuji di F1).
+- Token tidak pernah ke layar, model, atau log. Batas nilai brankas (4.096 huruf) perlu dinaikkan atau token disimpan
+  sebagai entri tersendiri.
+- Per perangkat dan per akun Windows (K7, K18). Laptop lain menghubungkan sendiri.
+- T12: hasil alat Notion ikut terkirim ke penyedia model, sama seperti GitHub.
+
+### Keputusan untuk Owner
+
+| # | Pertanyaan | Usulan |
+|---|---|---|
+| K20 | Server OAuth pertama | ✅ **Notion** (dipilih Owner 3 Nov). Google ditunda (butuh kartu kredit) |
+| K21 | Alat Notion yang boleh dipakai | ✅ Alat **baca** dulu (cari, ambil halaman), alat tulis menyusul. Dipilih Owner saat Tinjau alat |
+| K22 | "Putuskan" | ✅ Cabut di Notion (`revocation_endpoint`) **dan** hapus dari brankas |
+| K23 | Pembaruan token gagal | ✅ Status "perlu hubungkan ulang", sakelar tetap tercatat, server tidak dinyalakan |
+
+K21–K23 disetujui Owner pada 3 Nov. Owner juga sudah mendaftar akun Notion untuk pemakaian pribadi.
+
+### Tahapan
+
+- **F1 — Pipa OAuth** (penyedia, penerima balikan, alur), diuji dengan **server OAuth + MCP tiruan lokal** (DCR,
+  PKCE, `state`, pembaruan, pencabutan) dan mutasi. Tanpa layar, tanpa server Mamet.
+- **F2 — Settings:** "Hubungkan akun" / "Putuskan", resep `notion.json`. Dibuktikan di `npm run desktop`.
+- **F3 — Notion live:** Owner membuat akun Notion gratis, menghubungkan, meninjau alat, dan menyalakan. Rantai tanpa
+  model dibuktikan dulu; jawaban model menyusul sesudah saldo ada.
+- Server agent-process **tidak berubah** (protokol G3 sudah umum).
+- Sampai ke aplikasi terpasang lewat **rilis berikutnya**, bersama G1–G5.
