@@ -31,10 +31,14 @@ export function susunMenuKonektor(statusBawaan, statusUmum, ws) {
     const w = u.ws?.[ws] || {};
     const menyala = w.status === 'nyala';
     const disetujui = Array.isArray(u.alatDisetujui) ? u.alatDisetujui.length : 0;
-    const kredensialLengkap = (u.kredensial || []).every((k) => k?.terisi);
+    // Tahap F2: server OAuth butuh akun terhubung — sama pentingnya dengan kredensial ketik.
+    const akunTerhubung = u.oauth !== true || u.terhubung === true;
+    const kredensialLengkap = (u.kredensial || []).every((k) => k?.terisi) && akunTerhubung;
     const siap = kredensialLengkap && disetujui > 0;
     let keterangan = 'mati';
     if (menyala) keterangan = 'menyala';
+    else if (!akunTerhubung) keterangan = 'akun belum dihubungkan — atur di Settings';
+    else if (w.status === 'perlu_hubungkan_ulang') keterangan = 'login kedaluwarsa — hubungkan ulang di Settings';
     else if (!kredensialLengkap) keterangan = 'kredensial belum diisi — atur di Settings';
     else if (!disetujui) keterangan = 'alat belum ditinjau — atur di Settings';
     else if (w.status === 'perlu_tinjau') keterangan = 'alat berubah sejak disetujui — tinjau di Settings';

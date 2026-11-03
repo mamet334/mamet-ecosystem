@@ -23,7 +23,7 @@ const D = require(path.join(FOLDER, 'daftarServer.cjs'));
 const T = require(path.join(FOLDER, 'transport.cjs'));
 const { lingkunganServer } = require(path.join(AKAR, 'frontend', 'electron', 'konektorMcp.cjs'));
 
-console.log('uji-konektor-umum-g1 v1');
+console.log('uji-konektor-umum-g1 v2');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 500)}` : ''}`);
@@ -65,13 +65,14 @@ cek(R.validasiResep({ id: 'lokal', nama: 'L', jenis: 'http', http: { url: 'http:
 
 const fOwner = sementara();
 writeFileSync(path.join(fOwner, 'github.json'), JSON.stringify({ ...dasar, id: 'github', nama: 'GitHub palsu' }));
-writeFileSync(path.join(fOwner, 'notion.json'), JSON.stringify({ ...dasar, id: 'notion', nama: 'Notion' }));
+// v2 (3 Nov, F2): contoh resep Owner bukan `notion` lagi — Notion kini resep bawaan (dan bawaan memang tak bisa ditimpa).
+writeFileSync(path.join(fOwner, 'catatan.json'), JSON.stringify({ ...dasar, id: 'catatan', nama: 'Catatan' }));
 writeFileSync(path.join(fOwner, 'salah-nama.json'), JSON.stringify({ ...dasar, id: 'lain' }));
 writeFileSync(path.join(fOwner, 'rusak.json'), '{ ini bukan json');
 const gab = R.semuaResep({ folderBawaan: R.FOLDER_BAWAAN, folderOwner: fOwner });
 cek(gab.resep.find((r) => r.id === 'github')?.asal === 'bawaan' && gab.resep.filter((r) => r.id === 'github').length === 1,
   'resep Owner ber-id sama TIDAK menimpa resep bawaan', gab.resep.map((r) => [r.id, r.asal]));
-cek(gab.resep.find((r) => r.id === 'notion')?.asal === 'owner', 'K19: berkas resep baru = server baru, tanpa kode');
+cek(gab.resep.find((r) => r.id === 'catatan')?.asal === 'owner', 'K19: berkas resep baru = server baru, tanpa kode');
 cek(gab.galat.some((g) => /salah-nama/.test(g)) && gab.galat.some((g) => /rusak/.test(g)) && gab.galat.some((g) => /github\.json.*bawaan/.test(g)),
   'resep rusak / salah nama / id bentrok dilaporkan, tidak menggagalkan resep lain', gab.galat);
 cek(R.bacaFolderResep(path.join(fOwner, 'tidak-ada')).resep.length === 0, 'folder resep Owner belum ada → kosong, bukan galat');

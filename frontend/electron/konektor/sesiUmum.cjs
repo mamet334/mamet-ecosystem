@@ -211,6 +211,9 @@ function buatSesiUmum({ daftar, brankas, berkasSakelar, lingkungan, ada = fs.exi
         deskripsiTerpotong: String(a.description ?? '').length > BATAS_DESKRIPSI_TINJAU,
         parameter: ringkasParameter(a.inputSchema),
         keadaan: keadaanAlat(a),
+        // Penanda dari PEMBUAT SERVER (anotasi MCP) — hanya bantuan memilih di layar, bukan jaminan; tidak ikut sidik.
+        bacaSaja: a.annotations?.readOnlyHint === true,
+        merusak: a.annotations?.destructiveHint === true,
       })),
       hilang: bandingkan(alatServer, disetujui).hilang,
     };
@@ -256,6 +259,9 @@ function buatSesiUmum({ daftar, brankas, berkasSakelar, lingkungan, ada = fs.exi
       lokasi: e.jenis === 'stdio' ? e.program : e.http.url,
       argumen: e.jenis === 'stdio' ? e.stdio.argumen : [],
       kredensial: (e.kredensial || []).map((kr) => ({ id: kr.id, label: kr.label, terisi: !!brankas.status(e.id)[kr.id] })),
+      // Tahap F2: server OAuth — layar menampilkan "Hubungkan akun" / "Putuskan" (tanpa token apa pun).
+      oauth: e.oauth === true,
+      terhubung: e.oauth === true ? buatPenyediaOAuth({ id: e.id, brankas }).terhubung() : null,
       alatDisetujui: Object.keys(e.alatDisetujui || {}),
       ws: Object.fromEntries(WORKSPACE.map((ws) => [ws, { diaktifkan: s[ws]?.[e.id] === true, ...ringkas(ws, e.id) }])),
     }));

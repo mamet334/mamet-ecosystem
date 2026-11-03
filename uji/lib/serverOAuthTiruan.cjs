@@ -111,8 +111,10 @@ function mulai(opsi = {}) {
       const mcp = new Server({ name: 'notion-tiruan', version: '1.0.0' }, { capabilities: { tools: {} } });
       mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
         tools: [
-          { name: 'cari_halaman', description: 'Mencari halaman yang dibagikan pengguna', inputSchema: { type: 'object', properties: { kueri: { type: 'string' } }, required: ['kueri'] } },
-          { name: 'tulis_halaman', description: 'Membuat halaman baru', inputSchema: { type: 'object', properties: { judul: { type: 'string' } } } },
+          { name: 'cari_halaman', description: 'Mencari halaman yang dibagikan pengguna', inputSchema: { type: 'object', properties: { kueri: { type: 'string' } }, required: ['kueri'] },
+            annotations: { readOnlyHint: true } },
+          { name: 'tulis_halaman', description: 'Membuat halaman baru', inputSchema: { type: 'object', properties: { judul: { type: 'string' } } },
+            annotations: { readOnlyHint: false, destructiveHint: true } },
         ],
       }));
       mcp.setRequestHandler(CallToolRequestSchema, async (r) => ({ content: [{ type: 'text', text: `hasil ${r.params.name}: ${JSON.stringify(r.params.arguments)}` }] }));

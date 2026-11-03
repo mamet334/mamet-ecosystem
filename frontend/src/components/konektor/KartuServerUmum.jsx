@@ -20,6 +20,8 @@ export function teksStatusUmum(w, sedang) {
   if (w?.status === 'nyala') return { teks: `● menyala — ${w.alat.length} alat dipakai`, kelas: 'text-primary' };
   if (w?.status === 'perlu_tinjau') return { teks: '● alat berubah sejak disetujui — tinjau ulang', kelas: 'text-error' };
   if (w?.status === 'belum_ditinjau') return { teks: '○ alat belum ditinjau', kelas: 'text-on-surface-variant' };
+  if (w?.status === 'belum_terhubung') return { teks: '○ akun belum dihubungkan', kelas: 'text-on-surface-variant' };
+  if (w?.status === 'perlu_hubungkan_ulang') return { teks: '● login kedaluwarsa — tekan Hubungkan ulang', kelas: 'text-error' };
   if (w?.status === 'gagal') return { teks: `● gagal: ${w.alasan || 'tanpa keterangan'}`, kelas: 'text-error' };
   if (w?.status === 'berhenti') return { teks: '● berhenti — matikan lalu nyalakan lagi', kelas: 'text-error' };
   return { teks: '○ mati', kelas: 'text-on-surface-variant' };
@@ -56,12 +58,50 @@ function IsiKredensial({ k, onSimpan }) {
   );
 }
 
+/**
+ * Akun server OAuth (Tahap F2): login di BROWSER SISTEM — akun & halaman dipilih Owner di halaman penyedia. Mamet tidak
+ * pernah melihat password maupun token; layar hanya tahu terhubung/belum.
+ */
+function BagianAkun({ s, onHubungkan, onPutuskan, sedangLogin }) {
+  return (
+    <div className="mt-3 flex items-center gap-3 flex-wrap">
+      <span className="text-body-sm text-on-surface">
+        Akun — {s.terhubung ? <b className="text-primary">terhubung</b> : <b className="text-error">belum dihubungkan</b>}
+      </span>
+      <button type="button" disabled={sedangLogin} onClick={onHubungkan} className={TOMBOL_BIASA}>
+        <Ikon nama="key" ukuran={18} />
+        {sedangLogin ? 'Menunggu login di browser…' : s.terhubung ? 'Hubungkan ulang' : 'Hubungkan akun'}
+      </button>
+      {s.terhubung && (
+        <button type="button" disabled={sedangLogin} onClick={onPutuskan} className={TOMBOL_BIASA}>
+          <Ikon nama="logout" ukuran={18} />
+          Putuskan
+        </button>
+      )}
+      {sedangLogin && (
+        <span className="text-body-sm text-on-surface-variant basis-full">
+          Selesaikan login di browser, lalu kembali ke sini. Batas waktu 5 menit.
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function KartuServerUmum({ s, api, onBerubah }) {
   const [sedang, setSedang] = useState({});
   const [galat, setGalat] = useState(null);
   const [tinjauan, setTinjauan] = useState(null);
   const [sedangTinjau, setSedangTinjau] = useState(false);
-  const siap = s.kredensial.every((k) => k.terisi) && s.alatDisetujui.length > 0;
+  const [sedangLogin, setSedangLogin] = useState(false);
+  // Akses siap: kredensial ketik terisi (stdio/http berkunci) DAN — untuk server OAuth — akun terhubung.
+  const aksesSiap = s.kredensial.every((k) => k.terisi) && (!s.oauth || s.terhubung === true);
+  const siap = aksesSiap && s.alatDisetujui.length > 0;
+
+  const hubungkan = async () => {
+    setSedangLogin(true);
+    await jalankan(() => api.hubungkan(s.id)); // `jalankan` didefinisikan di bawah; dipanggil saat tombol ditekan
+    setSedangLogin(false);
+  };
 
   const jalankan = async (kerja) => {
     setGalat(null);
@@ -116,17 +156,23 @@ export default function KartuServerUmum({ s, api, onBerubah }) {
         </div>
       )}
 
+      {s.oauth && (
+        <BagianAkun s={s} sedangLogin={sedangLogin} onHubungkan={hubungkan} onPutuskan={() => jalankan(() => api.putuskan(s.id))} />
+      )}
+
       <div className="mt-3 flex items-center gap-3 flex-wrap">
         <span className="text-body-sm text-on-surface">
           {s.alatDisetujui.length ? `${s.alatDisetujui.length} alat disetujui` : 'Belum ada alat yang disetujui'}
         </span>
-        <button type="button" disabled={sedangTinjau || !s.kredensial.every((k) => k.terisi)} onClick={tinjau} className={TOMBOL_BIASA}>
+        <button type="button" disabled={sedangTinjau || !aksesSiap} onClick={tinjau} className={TOMBOL_BIASA}>
           <Ikon nama="verified_user" ukuran={18} />
           {sedangTinjau && !tinjauan ? 'Membaca alat…' : 'Tinjau alat'}
         </button>
       </div>
-      {!s.kredensial.every((k) => k.terisi) && (
-        <p className="text-body-sm text-on-surface-variant mt-1">Isi kredensial dulu — server baru bisa dibaca alatnya sesudah itu.</p>
+      {!aksesSiap && (
+        <p className="text-body-sm text-on-surface-variant mt-1">
+          {s.oauth && !s.terhubung ? 'Hubungkan akun dulu' : 'Isi kredensial dulu'} — server baru bisa dibaca alatnya sesudah itu.
+        </p>
       )}
 
       {tinjauan && <TinjauAlat hasil={tinjauan} sedang={sedangTinjau} onSetujui={setujui} onBatal={() => setTinjauan(null)} />}

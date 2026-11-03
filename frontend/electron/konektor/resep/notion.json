@@ -1,0 +1,11 @@
+{
+  "id": "notion",
+  "nama": "Notion",
+  "jenis": "http",
+  "http": {
+    "url": "https://mcp.notion.com/mcp"
+  },
+  "oauth": true,
+  "petunjuk": "Server MCP resmi Notion (masih Beta). Tekan \"Hubungkan akun\": browser terbuka, Anda login ke Notion dan memilih sendiri ruang kerja serta halaman yang boleh dibaca Mamet. Tidak ada token yang diketik; akses bisa dicabut lewat tombol Putuskan atau di Notion (Settings > Connections). Notion juga punya alat tulis - centang hanya alat baca saat Tinjau alat bila belum perlu menulis.",
+  "sumber": "https://developers.notion.com/docs/mcp"
+}

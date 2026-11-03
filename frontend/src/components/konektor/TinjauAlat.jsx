@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Ikon from '../Ikon';
+import { perkiraanBlokKonektor, BATAS_UMUM } from '../../../../shared/konektorUmum.js';
 
 /**
  * Tinjau alat server MCP (Item 129 Tahap G2, K16). Deskripsi alat adalah TULISAN PIHAK LAIN: ditampilkan sebagai teks
@@ -8,18 +9,44 @@ import Ikon from '../Ikon';
  *
  * Centang awal: alat yang sudah disetujui dan tidak berubah. Alat baru & alat yang BERUBAH tidak dicentang —
  * Owner memutuskannya sendiri.
+ *
+ * 3 Nov (permintaan Owner, Notion 68 alat): tombol Tandai semua / Kosongkan / Tandai alat baca (penanda `readOnlyHint`
+ * dari pembuat server — bantuan memilih, bukan jaminan), label baca / bisa menghapus, deskripsi panjang diringkas, dan
+ * PERKIRAAN beban prompt alat yang dicentang (dihitung dengan fungsi yang sama dengan blok server).
  */
 const LABEL_KEADAAN = {
   disetujui: { teks: 'disetujui', kelas: 'text-primary' },
   baru: { teks: 'baru', kelas: 'text-on-surface-variant' },
   berubah: { teks: 'BERUBAH sejak disetujui', kelas: 'text-error' },
 };
+const RINGKAS = 300;
+const TOMBOL = 'flex items-center gap-2 px-3 py-2 rounded-lg border transition-all active:scale-95 font-semibold text-xs border-outline-variant bg-surface-container-low text-on-surface-variant hover:text-on-surface disabled:opacity-60';
+
+function Deskripsi({ teks, terpotong }) {
+  const [buka, setBuka] = useState(false);
+  const isi = teks || '(tanpa deskripsi)';
+  const panjang = isi.length > RINGKAS;
+  return (
+    <p className="text-body-sm text-on-surface-variant whitespace-pre-wrap break-words">
+      {panjang && !buka ? `${isi.slice(0, RINGKAS)}…` : isi}{buka && terpotong ? ' …(dipotong untuk tampilan)' : ''}
+      {panjang && (
+        <button type="button" onClick={(e) => { e.preventDefault(); setBuka((b) => !b); }} className="ml-1 text-primary hover:underline">
+          {buka ? 'ringkas' : 'selengkapnya'}
+        </button>
+      )}
+    </p>
+  );
+}
 
 export default function TinjauAlat({ hasil, onSetujui, onBatal, sedang }) {
   const [pilih, setPilih] = useState(() => new Set((hasil?.alat || []).filter((a) => a.keadaan === 'disetujui').map((a) => a.nama)));
   if (!hasil?.ok) return null;
   const alat = hasil.alat || [];
   const ubah = (nama) => setPilih((p) => { const b = new Set(p); if (b.has(nama)) b.delete(nama); else b.add(nama); return b; });
+  const alatBaca = alat.filter((a) => a.bacaSaja);
+  const terpilih = alat.filter((a) => pilih.has(a.nama));
+  const beban = perkiraanBlokKonektor({ id: 'perkiraan', alat: terpilih });
+  const lewatBatas = terpilih.length > BATAS_UMUM.alatPerKonektor;
 
   return (
     <div className="mt-4 rounded-lg border border-outline-variant p-3">
@@ -34,6 +61,24 @@ export default function TinjauAlat({ hasil, onSetujui, onBatal, sedang }) {
       {hasil.hilang?.length > 0 && (
         <p className="text-body-sm text-error mt-2">Alat yang dulu disetujui tetapi tidak ada lagi: {hasil.hilang.join(', ')}</p>
       )}
+
+      <div className="mt-3 flex items-center gap-2 flex-wrap">
+        <button type="button" onClick={() => setPilih(new Set(alat.map((a) => a.nama)))} className={TOMBOL}>
+          <Ikon nama="check_box" ukuran={16} />
+          Tandai semua
+        </button>
+        <button type="button" onClick={() => setPilih(new Set())} className={TOMBOL}>
+          <Ikon nama="check_box_outline_blank" ukuran={16} />
+          Kosongkan
+        </button>
+        {alatBaca.length > 0 && (
+          <button type="button" onClick={() => setPilih(new Set(alatBaca.map((a) => a.nama)))} className={TOMBOL} title="Penanda dari pembuat server — periksa tetap daftar di bawah">
+            <Ikon nama="visibility" ukuran={16} />
+            Tandai alat baca ({alatBaca.length})
+          </button>
+        )}
+      </div>
+
       <div className="mt-3 flex flex-col">
         {alat.map((a) => (
           <label key={a.nama} className="flex items-start gap-3 py-2.5 border-t border-outline-variant cursor-pointer">
@@ -42,10 +87,10 @@ export default function TinjauAlat({ hasil, onSetujui, onBatal, sedang }) {
               <div className="flex items-center gap-2 flex-wrap">
                 <code className="text-sm text-on-surface break-all">{a.nama}</code>
                 <span className={`text-[12px] ${LABEL_KEADAAN[a.keadaan]?.kelas || ''}`}>{LABEL_KEADAAN[a.keadaan]?.teks || a.keadaan}</span>
+                {a.bacaSaja && <span className="text-[12px] px-1.5 rounded border border-outline-variant text-on-surface-variant">baca</span>}
+                {a.merusak && <span className="text-[12px] px-1.5 rounded border border-error/50 text-error">bisa menghapus</span>}
               </div>
-              <p className="text-body-sm text-on-surface-variant whitespace-pre-wrap break-words">
-                {a.deskripsi || '(tanpa deskripsi)'}{a.deskripsiTerpotong ? ' …(dipotong untuk tampilan)' : ''}
-              </p>
+              <Deskripsi teks={a.deskripsi} terpotong={a.deskripsiTerpotong} />
               {a.parameter?.length > 0 && (
                 <p className="text-[12px] text-on-surface-variant break-words">
                   Parameter: {a.parameter.map((p) => `${p.nama}${p.wajib ? '*' : ''} (${p.tipe})`).join(', ')}
@@ -55,7 +100,12 @@ export default function TinjauAlat({ hasil, onSetujui, onBatal, sedang }) {
           </label>
         ))}
       </div>
-      <div className="mt-3 flex items-center gap-3 flex-wrap">
+
+      <p className={`mt-3 text-body-sm ${lewatBatas ? 'text-error' : 'text-on-surface-variant'}`}>
+        {pilih.size} alat dicentang · perkiraan ±{beban.token.toLocaleString('id-ID')} token tambahan di SETIAP pesan workspace yang menyalakan konektor ini.
+        {lewatBatas ? ` Hanya ${BATAS_UMUM.alatPerKonektor} alat pertama yang dikirim ke model.` : ''}
+      </p>
+      <div className="mt-2 flex items-center gap-3 flex-wrap">
         <button
           type="button"
           disabled={sedang}

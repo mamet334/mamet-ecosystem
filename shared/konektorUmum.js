@@ -18,13 +18,16 @@ export const POLA_ID_UMUM = /^[a-z][a-z0-9-]{1,39}$/;
 export const POLA_NAMA_ALAT = /^[A-Za-z0-9_.-]{1,64}$/;
 const ID_BAWAAN = new Set(['ecosystem-crawler']); // punya protokol & bloknya sendiri
 
+// Batas dinaikkan 3 Nov (permintaan Owner, Notion 68 alat): 40 → 100 alat per konektor, blok 16.000 → 40.000 huruf
+// (±10 ribu token tambahan per pesan bila penuh). Protokol MCP sendiri tak membatasi jumlah alat — batas ini menjaga
+// biaya & ketepatan model memilih alat; perkiraannya ditampilkan di layar Tinjau alat (perkiraanBlokKonektor).
 export const BATAS_UMUM = Object.freeze({
   konektor: 5,
-  alatPerKonektor: 40,
+  alatPerKonektor: 100,
   parameter: 15,
   deskripsi: 300,
   nama: 60,
-  blokHuruf: 16000,
+  blokHuruf: 40000,
 });
 
 /** Teks pihak luar → satu baris aman untuk prompt. */
@@ -104,6 +107,19 @@ const barisAlat = (a) => {
   const p = a.parameter.map((x) => `${x.nama}${x.wajib ? '*' : ''}: ${x.tipe}`).join(', ');
   return `- ${a.nama}(${p})${a.deskripsi ? ` — deskripsi pembuat server: «${a.deskripsi}»` : ''}`;
 };
+
+/**
+ * Perkiraan beban prompt SATU konektor bila alat-alat ini disetujui — dihitung dengan penyaring & baris yang SAMA dengan
+ * blok server. Token ≈ huruf / 4 (perkiraan kasar untuk teks campuran Inggris/Indonesia; bukan hitungan tokenizer).
+ * @returns {{alat: number, huruf: number, token: number, terpotong: boolean}}
+ */
+export function perkiraanBlokKonektor(k) {
+  const a = konektorUmumAman(k);
+  if (!a) return { alat: 0, huruf: 0, token: 0, terpotong: false };
+  const huruf = a.alat.reduce((n, x) => n + barisAlat(x).length + 1, 0);
+  const mentah = Array.isArray(k?.alat) ? k.alat.length : 0;
+  return { alat: a.alat.length, huruf, token: Math.ceil(huruf / 4), terpotong: mentah > a.alat.length || huruf > BATAS_UMUM.blokHuruf };
+}
 
 /** Blok prompt untuk konektor umum yang menyala di workspace ini. Kosong bila tak ada. */
 export function blokPromptKonektorUmum(muatan) {

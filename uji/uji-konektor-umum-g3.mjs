@@ -28,7 +28,7 @@ const { buatDaftarServer } = require(path.join(AKAR, 'frontend', 'electron', 'ko
 const { buatBrankas } = require(path.join(AKAR, 'frontend', 'electron', 'konektor', 'brankas.cjs'));
 const { lingkunganServer } = require(path.join(AKAR, 'frontend', 'electron', 'konektorMcp.cjs'));
 
-console.log('uji-konektor-umum-g3 v1');
+console.log('uji-konektor-umum-g3 v2');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 600)}` : ''}`);
@@ -58,7 +58,15 @@ cek(JSON.stringify(ka.alat[0].parameter) === JSON.stringify([{ nama: 'owner', ti
   'parameter dari skema: nama sah saja, tipe, wajib', ka.alat[0].parameter);
 cek(U.konektorUmumAman({ ...gh, id: 'ecosystem-crawler' }) === null && U.konektorUmumAman({ ...gh, id: '../x' }) === null && U.konektorUmumAman({ id: 'kosong', alat: [] }) === null,
   'id bawaan / tidak sah / tanpa alat → ditolak');
-cek(U.konektorUmumAman({ id: 'banyak', alat: Array.from({ length: 60 }, (_, i) => ({ name: `a${i}` })) }).alat.length === U.BATAS_UMUM.alatPerKonektor, 'alat per konektor dibatasi');
+cek(U.konektorUmumAman({ id: 'banyak', alat: Array.from({ length: 150 }, (_, i) => ({ name: `a${i}` })) }).alat.length === U.BATAS_UMUM.alatPerKonektor, 'alat per konektor dibatasi');
+// 3 Nov: batas dinaikkan untuk Notion (68 alat) — 68 alat berdeskripsi panjang muat utuh di blok, tanpa ada yang terpotong.
+const notion68 = { id: 'notion', nama: 'Notion', alat: Array.from({ length: 68 }, (_, i) => ({ name: `notion-alat-${i}`, description: 'd'.repeat(900),
+  inputSchema: { type: 'object', properties: { query: { type: 'string' }, page_size: { type: 'number' } }, required: ['query'] } })) };
+const p68 = U.perkiraanBlokKonektor(notion68);
+cek(U.BATAS_UMUM.alatPerKonektor >= 68 && p68.alat === 68 && !p68.terpotong && !/tidak dicantumkan/.test(U.blokPromptKonektorUmum({ daftar: [notion68] })),
+  'Notion 68 alat: semuanya masuk blok prompt (tak ada yang dipotong)', p68);
+cek(p68.token > 0 && Math.abs(p68.huruf - U.blokPromptKonektorUmum({ daftar: [notion68] }).split('\n').filter((b) => b.startsWith('- notion-alat-')).join('\n').length) <= 68,
+  'perkiraan beban = panjang baris alat di blok server yang sebenarnya', p68);
 cek(U.muatanKonektorUmumAman(undefined) === null && U.muatanKonektorUmumAman({ daftar: [] }) === null, 'S4: klien lama tak mengirim bidang ini → null, tak ada blok tambahan');
 const enam = U.muatanKonektorUmumAman({ putaran: 99, daftar: Array.from({ length: 7 }, (_, i) => ({ id: `srv${i}`, alat: [{ name: 'a' }] })) });
 cek(enam.daftar.length === U.BATAS_UMUM.konektor && enam.putaran === A.MAKS_PUTARAN_KONEKTOR, 'jumlah konektor & putaran dibatasi', enam);

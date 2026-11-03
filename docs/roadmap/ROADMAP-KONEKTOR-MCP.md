@@ -385,7 +385,7 @@ label server tidak menerimanya sebagai dasar VERIFIED. Aturan ini sama dengan cr
 
 ---
 
-## 10. Tahap F — OAuth: server MCP jarak jauh yang meminta login — 🟡 F1 ✅ 3 Nov 2026
+## 10. Tahap F — OAuth: server MCP jarak jauh yang meminta login — 🟡 F1 ✅ F2 ✅ 3 Nov 2026 (jawaban model dengan alat Notion menunggu saldo)
 
 **Permintaan Owner (3 Nov):** konektor dibuat lebih fleksibel. Akun yang terhubung harus **akun yang dipilih dan
 disetujui pengguna Mamet sendiri**, seperti cara aplikasi Claude terhubung ke Google Workspace.
@@ -476,7 +476,7 @@ K21–K23 disetujui Owner pada 3 Nov. Owner juga sudah mendaftar akun Notion unt
   [log](../project-memory/changelog/2026-11-03-konektor-mcp-tahap-f1-pipa-oauth.md)): penyedia, penerima balikan, dan
   alur, diuji dengan **server OAuth + MCP tiruan lokal** (DCR, PKCE, `state`, pembaruan, pencabutan). Uji menemukan
   satu cacat: token pembaru tak pernah dipakai di mode diam. Sudah diperbaiki.
-- **F2 — Settings:** "Hubungkan akun" / "Putuskan", resep `notion.json`. Dibuktikan di `npm run desktop`.
+- ✅ **F2 — Settings** (3 Nov; mutasi 13/13 + 8/8, suite 154/154, server v547 — [log](../project-memory/changelog/2026-11-03-konektor-mcp-tahap-f2-notion-oauth.md)): "Hubungkan akun" / "Putuskan", resep `notion.json`, dan Tinjau alat untuk server besar (Tandai semua / Tandai alat baca / perkiraan token). Batas dinaikkan menjadi 100 alat per konektor dan 40.000 huruf per blok. Notion terhubung di aplikasi Owner dengan 37 alat baca; log server memuat `[KonektorUmum] aktif github(27 alat), notion(37 alat)`.
 - **F3 — Notion live:** Owner membuat akun Notion gratis, menghubungkan, meninjau alat, dan menyalakan. Rantai tanpa
   model dibuktikan dulu; jawaban model menyusul sesudah saldo ada.
 - Server agent-process **tidak berubah** (protokol G3 sudah umum).

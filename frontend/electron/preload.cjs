@@ -78,6 +78,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     atur: (workspace, id, nyala) => ipcRenderer.invoke('konektor-umum:atur', { workspace, id, nyala }),
     hapus: (id) => ipcRenderer.invoke('konektor-umum:hapus', { id }),
     bukaFolderResep: () => ipcRenderer.invoke('konektor-umum:buka-folder-resep'),
+    // Tahap F2 (OAuth): login di browser sistem; Putuskan ditanyakan di dialog proses utama.
+    hubungkan: (id) => ipcRenderer.invoke('konektor-umum:hubungkan', { id }),
+    putuskan: (id) => ipcRenderer.invoke('konektor-umum:putuskan', { id }),
   },
 
   engineer: {

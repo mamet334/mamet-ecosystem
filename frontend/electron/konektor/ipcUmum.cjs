@@ -14,6 +14,7 @@ const { buatBrankas } = require('./brankas.cjs');
 const { semuaResep, FOLDER_BAWAAN } = require('./resep.cjs');
 const { buatSesiUmum } = require('./sesiUmum.cjs');
 const { buatGerbangUmum } = require('./gerbangUmum.cjs');
+const { buatAlurOAuth } = require('./alurOAuth.cjs');
 
 /**
  * @param {{ipcMain: object, dialog: object, shell: object, safeStorage: object, folderData: string,
@@ -87,6 +88,27 @@ function daftarkanKonektorUmum({ ipcMain, dialog, shell, safeStorage, folderData
   ipcMain.handle('konektor-umum:panggil', (_e, { workspace, id, alat, argumen, percakapan } = {}) =>
     gerbang.panggil(workspace, id, alat, argumen, percakapan));
 
+  // F2 — OAuth (Tahap F): "Hubungkan akun" membuka browser SISTEM (bukan jendela Mamet; URL sudah diperiksa penyedia:
+  // https & asal server otorisasi). Sesudah terhubung, workspace yang dinyalakan Owner dinyalakan ulang.
+  const alur = buatAlurOAuth({ daftar, brankas, bukaBrowser: (url) => shell.openExternal(url), versi, log });
+  ipcMain.handle('konektor-umum:hubungkan', async (_e, { id } = {}) => {
+    const h = await alur.hubungkan(id);
+    if (h.ok) await sesi.mulaiUlang(id);
+    return h;
+  });
+  ipcMain.handle('konektor-umum:putuskan', async (_e, { id } = {}) => {
+    const entri = daftar.ambil(id);
+    if (!entri?.oauth) return { ok: false, alasan: `server ${id} tidak memakai login` };
+    const { response } = await dialog.showMessageBox(jendela(), {
+      type: 'question', title: 'Mamet — putuskan akun', message: `Putuskan akun ${entri.nama}?`,
+      detail: 'Server dimatikan di semua workspace, izin Mamet dicabut di server penyedia (bila didukung), dan token dihapus dari perangkat ini. Persetujuan alat tetap tersimpan.',
+      buttons: ['Batal', 'Putuskan'], defaultId: 0, cancelId: 0, noLink: true,
+    });
+    if (response !== 1) return { ok: false, dibatalkan: true, alasan: 'dibatalkan' };
+    for (const ws of ['ws-assistant', 'ws-engineer']) await sesi.matikan(ws, id);
+    return alur.putuskan(id);
+  });
+
   ipcMain.handle('konektor-umum:tinjau', (_e, { id } = {}) => sesi.tinjau(id));
   ipcMain.handle('konektor-umum:setujui', (_e, { id, alat } = {}) => sesi.setujui(id, alat));
   ipcMain.handle('konektor-umum:atur', (_e, { workspace, id, nyala } = {}) => sesi.atur(workspace, id, nyala));
@@ -100,6 +122,8 @@ function daftarkanKonektorUmum({ ipcMain, dialog, shell, safeStorage, folderData
       buttons: ['Batal', 'Hapus'], defaultId: 0, cancelId: 0, noLink: true,
     });
     if (response !== 1) return { ok: false, dibatalkan: true, alasan: 'dibatalkan' };
+    // Server OAuth: izin dicabut di penyedia dulu — menghapus konektor tidak boleh meninggalkan akses hidup di sana.
+    if (entri.oauth) { for (const ws of ['ws-assistant', 'ws-engineer']) await sesi.matikan(ws, id); await alur.putuskan(id); }
     return sesi.hapus(id);
   });
 
