@@ -481,3 +481,42 @@ K21–K23 disetujui Owner pada 3 Nov. Owner juga sudah mendaftar akun Notion unt
   model dibuktikan dulu; jawaban model menyusul sesudah saldo ada.
 - Server agent-process **tidak berubah** (protokol G3 sudah umum).
 - Sampai ke aplikasi terpasang lewat **rilis berikutnya**, bersama G1–G5.
+
+### GitHub lewat OAuth — tanpa `github-mcp-server.exe` (📋 diputuskan 3 Nov 2026)
+
+**Alasan (Owner, 3 Nov):** pengguna lain sebaiknya bisa menghubungkan akun GitHub mereka **tanpa repot mengunduh
+`github-mcp-server.exe`**, sama seperti Notion.
+
+**Yang diperiksa (3 Nov, metadata publik):**
+- Server MCP jarak jauh GitHub `https://api.githubcopilot.com/mcp/` mengikuti standar otorisasi MCP: menjawab 401
+  dengan `resource_metadata`, dan nama sumber dayanya "GitHub MCP Server".
+- Server otorisasinya `https://github.com/login/oauth`, dengan **PKCE S256**, `refresh_token`, dan **device code**.
+  Metadata ini ada di `github.com/.well-known/oauth-authorization-server/login/oauth`.
+- **Tidak ada pendaftaran klien otomatis** (`registration_endpoint` tidak ada). Mamet harus didaftarkan **sekali** sebagai
+  GitHub App. Pendaftarannya gratis dan tanpa kartu kredit.
+- Ada jalur **baca-saja** `…/mcp/readonly` dengan metadatanya sendiri (jalur sembarang menjawab 404).
+- Metadata tidak mencantumkan cara autentikasi klien.
+
+**Belum pasti, dan baru terjawab lewat percobaan:**
+1. Apakah server jarak jauh mewajibkan **langganan Copilot**.
+2. Apakah penukaran kode login mewajibkan **client secret**.
+3. Apakah GitHub menerima alamat balikan `127.0.0.1` dengan **port yang berubah-ubah**.
+
+**Keputusan Owner (3 Nov, mengikuti usulan):**
+
+| # | Pertanyaan | Keputusan |
+|---|---|---|
+| ~~K24~~ | GitHub untuk banyak pengguna | ✅ **OAuth ke server jarak jauh GitHub**. Owner mendaftarkan **satu GitHub App "Mamet Ecosystem"** sebagai penerbit. `client_id`-nya ikut di resep bawaan. Setiap pengguna login dengan akunnya sendiri dan memilih repo di layar GitHub. Token disimpan di brankas laptop masing-masing |
+| ~~K25~~ | Rahasia klien | ✅ **Tidak disimpan di aplikasi**, karena pemasang bisa dibongkar. Bila GitHub mewajibkannya, dipakai **device flow** (kode singkat dimasukkan di `github.com/login/device`; dirancang untuk aplikasi desktop, tanpa rahasia). Penukaran lewat server Mamet hanya cadangan terakhir |
+| ~~K26~~ | Alat yang tersedia | ✅ **Sama dengan Notion:** jalur penuh `…/mcp/`, lalu Owner memilih lewat **Tinjau alat** (Tandai semua / Tandai alat baca / centang sendiri; label baca / bisa menghapus; perkiraan token). Izin GitHub App **mulai baca saja** (Contents, Issues, Pull requests, Metadata). Alat tulis akan ditolak GitHub sampai izin App diperluas, dan itu keputusan terpisah |
+| ~~K27~~ | Bila server jarak jauh butuh Copilot | ✅ GitHub tetap memakai `.exe` (stdio, seperti sekarang). Apakah `.exe` dibundel di pemasang atau diunduh sendiri diputuskan sesudah percobaan |
+
+**Tahapan:**
+- **GH1 — Owner mendaftarkan GitHub App.** Isinya: nama "Mamet Ecosystem"; alamat balikan `http://127.0.0.1/balikan`;
+  Device Flow aktif; webhook mati; izin Repository Contents/Issues/Pull requests/Metadata Read-only; bisa dipasang
+  oleh akun mana pun.
+- **GH2 — Dukungan klien terdaftar:** resep OAuth menerima `klienId` (tanpa DCR), pipa F1 memakainya, dan percobaan
+  dilakukan dengan akun GitHub Owner. Hasilnya menjawab ketiga hal yang belum pasti di atas.
+- **GH3 — Device flow** (hanya bila GH2 menunjukkan rahasia klien wajib).
+- **GH4 — Resep bawaan:** `github` beralih ke OAuth, dan `.exe` menjadi resep cadangan (K27). GitHub `.exe` di laptop
+  Owner tetap berjalan sampai GH4.
