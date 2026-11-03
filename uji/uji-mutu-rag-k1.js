@@ -22,7 +22,7 @@
 // Biaya: 26 soal × 2 putaran = 52 jawaban chat dengan model tier otomatis. Hasil: tabel konsol + berkas
 // `uji-mutu-k1-<waktu>.json` (pertanyaan, jawaban, label, penilaian, penyedia).
 
-const VERSI = 'k1-1';
+const VERSI = 'k1-2'; // k1-2 (3 Nov): galat (saldo/jaringan) = GALAT → TIDAK_TERUKUR, bukan SALAH
 const DIR = new URL('./data-lokal', import.meta.url).href;
 const WS = 'ws-assistant';
 const ALAT_UJI = { rag: true, web_search: false, deep_research: false, data_tabel: false, memory_manager: false };
@@ -93,7 +93,7 @@ export async function uji({ ulang = 2, hanya = null } = {}) {
         const { data: { session: sesiKini } } = await supabase.auth.getSession();
         const j = await tanya(asisten, { soal, token: sesiKini?.access_token, workspaceManager: sm.get('WorkspaceManager') });
         if (j.galat) {
-          putaran.push({ hasil: 'SALAH', alasan: [`galat: ${j.galat}`], galat: j.galat, detik: j.detik });
+          putaran.push({ ...P.hasilGalat(j.galat), detik: j.detik }); // bukan SALAH — tidak ada jawaban untuk dinilai
           console.warn(`[uji-mutu-k1] ${soal.id} #${i + 1} galat: ${j.galat}`);
           continue;
         }

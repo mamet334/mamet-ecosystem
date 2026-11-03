@@ -14,8 +14,8 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 
 | # | Kriteria | Status | Sisa |
 |---|---|---|---|
-| K1 | RAG menemukan & menjawab benar | ⏳ penguji siap | 1 (💳 jalankan) |
-| K2 | RAG jujur saat gagal | ⏳ penguji siap | 1 (💳 jalankan) |
+| K1 | RAG menemukan & menjawab benar | ⏳ penguji siap; belum terukur (saldo) | 1 (💳 jalankan) |
+| K2 | RAG jujur saat gagal | ⏳ penguji siap; belum terukur (saldo) | 1 (💳 jalankan) |
 | K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ (ulang sebelum rilis) | 1 (💳) |
 | K4 | Mametlite layak bagi orang awam | ✅ (T19, isolasi dua akun, CORE, undangan, ganti sandi — live) | — |
 | K5 | Keamanan | ✅ (OpenRouter diganti, Apify dicabut — 3 Nov) | — |
@@ -29,8 +29,10 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - ⏳💳 **Set uji mutu jawaban yang sah** dibangun ulang (set lama 13 pertanyaan tak sah — dokumennya terhapus) dan lulus
   ambang: **semua pertanyaan pokok benar + sumber benar**; "tidak ditemukan" yang jujur boleh, mengarang tidak.
   ✅ **Set & penguji siap (3 Nov):** `set-uji-mutu-k1.json` (22 pokok HCDP-01..08 + BUKU-01..14, 4 tidak_ada — susunan
-  disetujui Owner; KEP-01..06 dibuang, dokumennya tak ada lagi), penilai `uji/lib/penilaiMutuRag.mjs` (mutasi 18/18),
-  modul konsol `uji/uji-mutu-rag-k1.js`. Sisa: dijalankan (💳) — perintahnya di kepala modul.
+  disetujui Owner; KEP-01..06 dibuang, dokumennya tak ada lagi), penilai `uji/lib/penilaiMutuRag.mjs` (mutasi 23/23),
+  modul konsol `uji/uji-mutu-rag-k1.js` (versi `k1-2`). Jalan pertama 3 Nov tanpa saldo: 52/52 berhenti di model
+  (402) — **belum terukur**; pengambilan potongan terbukti live (HCDP-01 6–8 potongan, skor 0,73, gate PASSED). Galat
+  kini = TIDAK_TERUKUR, bukan SALAH. Sisa: dijalankan sesudah saldo diisi (💳) — perintahnya di kepala modul.
 
 ### K2 — RAG jujur saat gagal
 - ✅ RAG turun bersuara (2 Okt).
@@ -114,6 +116,8 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 ## Parkir (bukan utang — Owner boleh mengambil kapan saja)
 
 - Item 126 Fase 1 bukti live (router, jalur aman, baris langkah di chat sungguhan) · Fase 0 kegagalan telemetri · Fase 2–4
+- Biaya embedding pertanyaan (RAG) tak tercatat di `cost_ledger`/`api_usage` — terlihat 3 Nov: saldo turun tiap
+  percobaan walau semua jawaban ditolak 402 (pembukuan Data Flywheel)
 - ADR-0021 §7 penulis ulang kueri untuk pesan yang merujuk percakapan
 - Item 129 Tahap D (label Hypothesis & Engineer)
 - Item 92 koreksi pemetaan Data Tabel

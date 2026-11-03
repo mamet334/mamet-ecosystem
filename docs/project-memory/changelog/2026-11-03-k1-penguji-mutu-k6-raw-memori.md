@@ -72,4 +72,28 @@ Ada dua batas bukti:
 - Daftar secret tidak bisa dibaca dari alat yang ada; bukti terhapusnya adalah keterangan Owner.
 - Chat penuh (sampai ke model) baru terbukti bersama uji K1/K2.
 
-Sisa: menjalankan uji K1/K2 dan K3 (💳), lalu tepat sebelum rilis "Cadangkan data" dan uji pulih (👤).
+## Jalan pertama penguji (saldo belum diisi) — dan satu cacat penguji
+
+Owner menjalankan penguji di `npm run desktop` dua kali: satu soal (02:47 UTC), lalu uji penuh (02:50 UTC). Ke-52
+jawaban berhenti di langkah model: "Saldo OpenRouter hanya cukup untuk 48 token jawaban". **K1/K2 belum terukur.**
+
+**Yang terbukti live** dari log `agent-process`:
+- Penguji berjalan sesuai rancangan: Memory mati, kunci yang dipakai `BYOK header`.
+- Embedding pertanyaan berhasil.
+- HCDP-01 mendapat 6–8 potongan lewat pencarian gabungan, skor teratas 0,725–0,733, dan evidence gate `PASSED`.
+- Tier otomatis memilih `deepseek-v4-flash-0731`.
+- Penolakan 402 ditangani rapi (tidak diulang, galat jelas).
+
+Artinya rantai sudah utuh sampai tepat sebelum model menjawab.
+
+**Cacat penguji:** kegagalan saldo dicatat sebagai **SALAH**, sehingga putusannya "K1 GAGAL, K2 GAGAL". Mutu yang
+belum pernah diukur jadi dinyatakan buruk. Versi skrip `k1-2` memperbaikinya:
+- Kegagalan tanpa jawaban kini dicatat **GALAT** (`hasilGalat`), dengan putusan **TIDAK_TERUKUR**.
+- Urutan putusan: GAGAL (ada SALAH) > TIDAK_TERUKUR > PERIKSA > LULUS.
+- Uji penilai lulus; mutasi **23/23 mati** (5 baru untuk GALAT); suite 148/148.
+
+**Temuan Parkir:** angka "cukup untuk N token" turun dari 48 ke 18 walaupun semua jawaban gagal. Penyebabnya,
+embedding pertanyaan tetap dibayar sebelum model menolak. Biaya itu tidak tercatat di `cost_ledger` maupun
+`api_usage` (0 baris di rentang uji). Ini urusan pembukuan Data Flywheel (Item 126), bukan K1–K7.
+
+Sisa: isi saldo, lalu jalankan uji K1/K2 (`k1-2`) dan K3 (💳); tepat sebelum rilis "Cadangkan data" dan uji pulih (👤).

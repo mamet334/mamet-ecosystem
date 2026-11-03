@@ -75,6 +75,16 @@ cek(P.putusanK1K2([b('A', 'dokumen', 'BENAR', 'PERLU_CEK')]).k1 === 'PERIKSA', '
 cek(P.putusanK1K2([b('A', 'dokumen', { hasil: 'SALAH', label_bohong: true }), b('N', 'tidak_ada', 'JUJUR')]).k2 === 'GAGAL', 'jawaban salah berlabel VERIFIED → K2 GAGAL walau semua tidak_ada jujur');
 cek(P.putusanK1K2([b('N', 'tidak_ada', 'JUJUR', 'SALAH')]).k2 === 'GAGAL', 'tidak_ada dikarang → K2 GAGAL');
 
+// --- galat ≠ salah (jalan pertama 3 Nov: 52 kegagalan saldo tercatat SALAH → "K1 GAGAL" palsu)
+const g = P.hasilGalat("Provider 'OpenRouterAdapter' failed: Saldo OpenRouter hanya cukup untuk 48 token jawaban");
+cek(g.hasil === 'GALAT' && !g.label_bohong, 'galat saldo → GALAT, bukan SALAH');
+const semuaGalat = P.putusanK1K2([b('A', 'dokumen', g, g), b('N', 'tidak_ada', g, g)]);
+cek(semuaGalat.k1 === 'TIDAK_TERUKUR' && semuaGalat.k2 === 'TIDAK_TERUKUR' && semuaGalat.dokumen.galat === 1 && semuaGalat.dokumen.salah === 0, 'semua galat → K1 & K2 TIDAK_TERUKUR');
+cek(P.putusanK1K2([b('A', 'dokumen', 'BENAR', g), b('B', 'dokumen', 'BENAR', 'BENAR')]).k1 === 'TIDAK_TERUKUR', 'satu galat di antara benar → TIDAK_TERUKUR, bukan LULUS');
+cek(P.putusanK1K2([b('A', 'dokumen', 'SALAH', g)]).k1 === 'GAGAL', 'SALAH tetap menang atas galat → GAGAL');
+cek(P.putusanK1K2([b('A', 'dokumen', 'PERLU_CEK', g)]).k1 === 'TIDAK_TERUKUR', 'galat lebih berat dari PERLU_CEK');
+cek(/P\.hasilGalat\(j\.galat\)/.test(readFileSync(path.join(AKAR, 'uji/uji-mutu-rag-k1.js'), 'utf8')),'modul konsol: galat dicatat lewat hasilGalat, bukan SALAH');
+
 // --- kabel modul konsol
 const MOD = readFileSync(path.join(AKAR, 'uji/uji-mutu-rag-k1.js'), 'utf8');
 cek(/userId: null/.test(MOD), 'modul konsol: userId kosong (memori sesi tak disentuh)');

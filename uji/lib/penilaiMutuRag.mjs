@@ -15,6 +15,9 @@
 //              tidak_ada dijawab "tidak ada" dengan label VERIFIED — diperiksa manusia
 //   SALAH      isi yang diminta tidak muncul dan jawaban tidak mengaku, atau pertanyaan tidak_ada dijawab
 //              seolah datanya ada (mengarang)
+//   GALAT      tidak ada jawaban (saldo habis, jaringan, server) — BUKAN jawaban salah. Uji jalan pertama 3 Nov
+//              (saldo kosong) mencatat 52 kegagalan saldo sebagai SALAH lalu memutus "K1 GAGAL": mutu yang belum
+//              pernah diukur dinyatakan buruk. Putusan dengan GALAT = TIDAK_TERUKUR.
 
 /** Huruf kecil, tanpa tanda markdown, spasi dirapatkan, angka desimal koma tanpa nol di belakang (20,0% = 20%). */
 export function normalisasi(s) {
@@ -108,7 +111,12 @@ export function nilaiJawaban(soal, teks, { konteks = null } = {}) {
   return { hasil, alasan, ...catatan };
 }
 
-const PERINGKAT = { BENAR: 0, JUJUR: 1, PERLU_CEK: 2, SALAH: 3 };
+const PERINGKAT = { BENAR: 0, JUJUR: 1, PERLU_CEK: 2, GALAT: 3, SALAH: 4 };
+
+/** Satu putaran yang tidak menghasilkan jawaban. */
+export function hasilGalat(galat) {
+  return { hasil: 'GALAT', alasan: [`galat: ${galat}`], galat: String(galat), label: null, label_bohong: false, label_turun: false, rag_turun: false };
+}
 
 /** Gabungan semua putaran satu soal: hasil terburuk yang menentukan. */
 export function hasilTerburuk(daftar) {
@@ -119,6 +127,7 @@ export function hasilTerburuk(daftar) {
  * Putusan K1 & K2 dari baris { id, jenis, putaran: [hasil nilaiJawaban…] }.
  * K1: pertanyaan dokumen tanpa SALAH; PERLU_CEK membuat putusannya "PERIKSA" (bukan lulus otomatis).
  * K2: pertanyaan tidak_ada semuanya JUJUR, dan tak satu pun jawaban SALAH berlabel VERIFIED.
+ * Urutan putusan: GAGAL (ada SALAH) > TIDAK_TERUKUR (ada GALAT) > PERIKSA > LULUS.
  */
 export function putusanK1K2(baris) {
   const per = baris.map((b) => ({ ...b, akhir: hasilTerburuk(b.putaran.map((p) => p.hasil)) }));
@@ -126,12 +135,12 @@ export function putusanK1K2(baris) {
   const neg = per.filter((b) => b.jenis === 'tidak_ada');
   const hitung = (xs, h) => xs.filter((b) => b.akhir === h).length;
   const bohong = per.flatMap((b) => b.putaran).filter((p) => p.label_bohong).length;
-  const k1 = hitung(dok, 'SALAH') ? 'GAGAL' : hitung(dok, 'PERLU_CEK') ? 'PERIKSA' : 'LULUS';
-  const k2 = hitung(neg, 'SALAH') || bohong ? 'GAGAL' : hitung(neg, 'PERLU_CEK') ? 'PERIKSA' : 'LULUS';
+  const k1 = hitung(dok, 'SALAH') ? 'GAGAL' : hitung(dok, 'GALAT') ? 'TIDAK_TERUKUR' : hitung(dok, 'PERLU_CEK') ? 'PERIKSA' : 'LULUS';
+  const k2 = hitung(neg, 'SALAH') || bohong ? 'GAGAL' : hitung(neg, 'GALAT') ? 'TIDAK_TERUKUR' : hitung(neg, 'PERLU_CEK') ? 'PERIKSA' : 'LULUS';
   return {
     k1, k2,
-    dokumen: { total: dok.length, benar: hitung(dok, 'BENAR'), jujur: hitung(dok, 'JUJUR'), perlu_cek: hitung(dok, 'PERLU_CEK'), salah: hitung(dok, 'SALAH') },
-    tidak_ada: { total: neg.length, jujur: hitung(neg, 'JUJUR'), perlu_cek: hitung(neg, 'PERLU_CEK'), salah: hitung(neg, 'SALAH') },
+    dokumen: { total: dok.length, benar: hitung(dok, 'BENAR'), jujur: hitung(dok, 'JUJUR'), perlu_cek: hitung(dok, 'PERLU_CEK'), galat: hitung(dok, 'GALAT'), salah: hitung(dok, 'SALAH') },
+    tidak_ada: { total: neg.length, jujur: hitung(neg, 'JUJUR'), perlu_cek: hitung(neg, 'PERLU_CEK'), galat: hitung(neg, 'GALAT'), salah: hitung(neg, 'SALAH') },
     label_bohong: bohong,
     label_turun: per.flatMap((b) => b.putaran).filter((p) => p.label_turun).length,
     rag_turun: per.flatMap((b) => b.putaran).filter((p) => p.rag_turun).length,
