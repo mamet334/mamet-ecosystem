@@ -63,6 +63,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
     bukaFolder: (konektor, kunci) => ipcRenderer.invoke('konektor:buka-folder', { konektor, kunci }),
   },
 
+  // KONEKTOR UMUM (Item 129 Tahap G2) — server MCP dari resep. Program dipilih di dialog proses utama; kredensial
+  // hanya DIKIRIM (tak ada saluran yang mengembalikan nilainya); alat dipanggil lewat gerbang izin (G3), bukan dari sini.
+  konektorUmum: {
+    resep: () => ipcRenderer.invoke('konektor-umum:resep'),
+    status: () => ipcRenderer.invoke('konektor-umum:status'),
+    pasang: (resepId) => ipcRenderer.invoke('konektor-umum:pasang', { resepId }),
+    kredensial: (id, kredensial, nilai) => ipcRenderer.invoke('konektor-umum:kredensial', { id, kredensial, nilai }),
+    tinjau: (id) => ipcRenderer.invoke('konektor-umum:tinjau', { id }),
+    setujui: (id, alat) => ipcRenderer.invoke('konektor-umum:setujui', { id, alat }),
+    atur: (workspace, id, nyala) => ipcRenderer.invoke('konektor-umum:atur', { workspace, id, nyala }),
+    hapus: (id) => ipcRenderer.invoke('konektor-umum:hapus', { id }),
+    bukaFolderResep: () => ipcRenderer.invoke('konektor-umum:buka-folder-resep'),
+  },
+
   engineer: {
     jalankan: (perintah) => ipcRenderer.invoke('engineer:jalankan', perintah),
     ujiKlaim: (permintaan) => ipcRenderer.invoke('engineer:uji-klaim', permintaan),

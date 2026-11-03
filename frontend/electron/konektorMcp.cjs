@@ -471,4 +471,6 @@ function buatGerbangKonektor({ pengelola, mintaIzin, log = () => {} }) {
 module.exports = {
   buatPengelolaKonektor, buatGerbangKonektor, susunDialog, misiIdDari,
   peluncuran, lingkunganServer, teksHasil, normalisasiSetelan, ringkasKatalog, KONEKTOR, WORKSPACE, BATAS,
+  // Tahap G2: dipakai juga oleh konektor umum (konektor/sesiUmum.cjs) — satu cara mematikan & membatasi waktu.
+  matikanPohon, denganBatasWaktu,
 };

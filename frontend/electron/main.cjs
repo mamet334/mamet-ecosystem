@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, net, protocol, session, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, net, protocol, session, shell, safeStorage } = require('electron');
 // MATIKAN AKSELERASI GPU SEAWAL MUNGKIN UNTUK MENCEGAH CRASH GPU
 app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('disable-gpu');
@@ -1236,8 +1236,22 @@ ipcMain.handle('konektor:buka-folder', async (_event, { konektor, kunci } = {}) 
   const galat = await shell.openPath(lokasi); // '' berarti berhasil
   return galat ? { ok: false, alasan: galat } : { ok: true };
 });
+// KONEKTOR UMUM (Item 129 Tahap G2, 2026-11-03) — server MCP apa saja yang dipasang Owner dari resep; seluruh
+// salurannya di konektor/ipcUmum.cjs. Kredensial dienkripsi safeStorage (K18), alat ditinjau & dipaku (K16).
+const { daftarkanKonektorUmum } = require('./konektor/ipcUmum.cjs');
+const { lingkunganServer } = require('./konektorMcp.cjs');
+const konektorUmum = daftarkanKonektorUmum({
+  ipcMain, dialog, shell, safeStorage,
+  folderData: app.getPath('userData'),
+  jendela: () => mainWindow,
+  lingkungan: () => lingkunganServer(),
+  versi: app.getVersion(),
+  log: (pesan) => console.log(pesan),
+});
 app.whenReady().then(() => pengelolaKonektor.pulihkan().then((h) => {
   if (h.length) console.log(`[KONEKTOR] dipulihkan: ${h.map((x) => `${x.workspace}::${x.konektor}=${x.ok ? 'nyala' : x.alasan}`).join(', ')}`);
+}).then(() => konektorUmum.pulihkan()).then((h) => {
+  if (h?.length) console.log(`[KONEKTOR-UMUM] dipulihkan: ${h.map((x) => `${x.workspace}::${x.konektor}=${x.ok ? 'nyala' : x.alasan}`).join(', ')}`);
 }));
 // Server konektor adalah proses anak — tanpa ini ia tetap hidup sesudah Mamet ditutup.
 let konektorSudahDimatikan = false;
@@ -1245,7 +1259,7 @@ app.on('will-quit', (event) => {
   if (konektorSudahDimatikan) return;
   event.preventDefault();
   konektorSudahDimatikan = true;
-  pengelolaKonektor.matikanSemua().finally(() => app.quit());
+  Promise.allSettled([pengelolaKonektor.matikanSemua(), konektorUmum.matikanSemua()]).finally(() => app.quit());
 });
 
 // 4. Check for updates manually

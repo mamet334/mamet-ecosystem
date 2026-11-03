@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import Ikon from './Ikon';
+import KonektorUmum from './konektor/KonektorUmum';
 
 /**
  * Settings › Konektor (Item 129 Tahap C, 2026-10-23) — susunan disetujui Owner dari pratinjau ①–⑤.
@@ -391,6 +392,9 @@ export default function BagianKonektor() {
           {galatBuka && <p className="text-body-sm text-error mt-2">Folder tidak bisa dibuka: {galatBuka}</p>}
         </div>
       ))}
+
+      {/* Tahap G2: server MCP umum dari resep (GitHub, dsb.) — komponen sendiri, bukan menambah isi berkas ini. */}
+      {api && <KonektorUmum />}
     </section>
   );
 }
