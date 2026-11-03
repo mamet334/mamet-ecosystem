@@ -21,6 +21,8 @@ export const TABEL_CADANGAN = [
   { nama: 'asn_berkas', halaman: 1000 },
   { nama: 'asn_pegawai', halaman: 1000 },
   { nama: 'chats', halaman: 200, catatan: 'riwayat chat bisa besar' },
+  // K6 (3 Nov, keputusan Owner): sumber asli memori ("Golden Source") — user_memories.raw_content_id menunjuk ke sini.
+  { nama: 'raw_memory_content', halaman: 1000, catatan: 'isi asli memori; ringkasannya di user_memories' },
   { nama: 'user_memories', halaman: 1000 },
   { nama: 'api_usage', halaman: 1000 },
   { nama: 'project_memory_entries', halaman: 1000 },

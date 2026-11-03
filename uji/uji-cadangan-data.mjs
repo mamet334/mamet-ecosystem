@@ -71,6 +71,12 @@ cek(namaCadangan.includes('cost_ledger') && namaCadangan.includes('umpan_balik_j
 const sbFw = tiruan({ ...jumlah, cost_ledger: 9, umpan_balik_jawaban: 1 });
 const fw = await C.buatCadangan(sbFw, { userId: 'u1' });
 cek(fw.ringkas.cocok && fw.berkas.data.cost_ledger.length === 9 && fw.berkas.data.umpan_balik_jawaban.length === 1, 'isi keduanya masuk berkas & cocok dengan hitungan');
+// v3 (K6, 3 Nov): sumber asli memori ikut — dulu hanya ringkasannya (user_memories) yang tercadang.
+cek(namaCadangan.includes('raw_memory_content') && namaCadangan.indexOf('raw_memory_content') < namaCadangan.indexOf('user_memories'),
+  'raw_memory_content ikut dicadangkan, sebelum user_memories yang menunjuknya');
+const sbRaw = tiruan({ ...jumlah, raw_memory_content: 22 });
+const raw = await C.buatCadangan(sbRaw, { userId: 'u1' });
+cek(raw.ringkas.cocok && raw.berkas.data.raw_memory_content.length === 22, 'isi raw_memory_content masuk berkas & cocok dengan hitungan');
 const skemaPulih = readFileSync(AKAR_REPO + '/scripts/kedaulatan/skema-pulih.sql', 'utf8');
 const tanpaSkema = namaCadangan.filter((n) => !new RegExp(`create table public\\.${n} \\(`).test(skemaPulih));
 cek(tanpaSkema.length === 0, `setiap tabel cadangan punya definisi di skema-pulih.sql${tanpaSkema.length ? ` (tidak ada: ${tanpaSkema.join(', ')})` : ''}`);

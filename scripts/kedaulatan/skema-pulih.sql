@@ -95,6 +95,21 @@ create table public.chats (
   workspace_type text default 'OWNER'::text,
   primary key (id)
 );
+-- K6 (3 Nov): sumber asli memori ikut dicadangkan. Kolom disalin dari information_schema database live; user_id
+-- memang text di sana (bukan uuid). Tanpa kunci asing di live, maka tak ditambahkan di sini.
+create table public.raw_memory_content (
+  id uuid default gen_random_uuid() not null,
+  user_id text not null,
+  content text not null,
+  content_hash text not null,
+  source_type text default 'fact'::text,
+  source_reference text,
+  chat_id text,
+  version_code text,
+  created_at timestamp with time zone default timezone('utc'::text, now()),
+  updated_at timestamp with time zone default timezone('utc'::text, now()),
+  primary key (id)
+);
 create table public.user_memories (
   id uuid default gen_random_uuid() not null,
   user_id uuid not null,

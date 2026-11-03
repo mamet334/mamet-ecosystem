@@ -10,16 +10,16 @@ Lainnya → **Parkir** (bukan utang). Fitur baru boleh jalan, asal uji yang menj
 
 Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter · 👤 tindakan Owner
 
-## Status K1–K7 (30 Okt 2026)
+## Status K1–K7 (3 Nov 2026)
 
 | # | Kriteria | Status | Sisa |
 |---|---|---|---|
-| K1 | RAG menemukan & menjawab benar | ⏳ | 1 |
-| K2 | RAG jujur saat gagal | ⏳ | 1 |
-| K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ (ulang sebelum rilis) | 1 |
+| K1 | RAG menemukan & menjawab benar | ⏳ penguji siap | 1 (💳 jalankan) |
+| K2 | RAG jujur saat gagal | ⏳ penguji siap | 1 (💳 jalankan) |
+| K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ (ulang sebelum rilis) | 1 (💳) |
 | K4 | Mametlite layak bagi orang awam | ✅ (T19, isolasi dua akun, CORE, undangan, ganti sandi — live) | — |
-| K5 | Keamanan | ⏳ | 1 (👤 ganti kunci) |
-| K6 | Data aman & bisa dipulihkan | ✅ (ulang sebelum rilis) | 1 |
+| K5 | Keamanan | ⏳ OpenRouter ✅ | 1 (👤 cabut token Apify) |
+| K6 | Data aman & bisa dipulihkan | ✅ 16 tabel (ulang sebelum rilis) | 1 (👤 cadangkan → uji pulih) |
 | K7 | Stabil & sampai ke aplikasi terpasang | ⏳ | 1 (rilis 💳👤) |
 
 ## Daftar kerja
@@ -28,6 +28,9 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - ✅ Pengambilan: recall@8 **14/14** (Item 90 Tahap A–C).
 - ⏳💳 **Set uji mutu jawaban yang sah** dibangun ulang (set lama 13 pertanyaan tak sah — dokumennya terhapus) dan lulus
   ambang: **semua pertanyaan pokok benar + sumber benar**; "tidak ditemukan" yang jujur boleh, mengarang tidak.
+  ✅ **Set & penguji siap (3 Nov):** `set-uji-mutu-k1.json` (22 pokok HCDP-01..08 + BUKU-01..14, 4 tidak_ada — susunan
+  disetujui Owner; KEP-01..06 dibuang, dokumennya tak ada lagi), penilai `uji/lib/penilaiMutuRag.mjs` (mutasi 18/18),
+  modul konsol `uji/uji-mutu-rag-k1.js`. Sisa: dijalankan (💳) — perintahnya di kepala modul.
 
 ### K2 — RAG jujur saat gagal
 - ✅ RAG turun bersuara (2 Okt).
@@ -81,13 +84,19 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - ✅ **Tooltip graf Home tak lagi menjalankan HTML** (2 Nov, Item 130 Tahap A): nama simpul (judul chat, nama berkas,
   ringkasan memori) dulu ditulis lewat innerHTML di renderer yang memegang `electronAPI` (desktop tanpa CSP) — kini
   di-escape ([log](../project-memory/changelog/2026-11-02-graf-home-tahap-a.md)).
-- ⏳👤 **Ganti kunci API** yang pernah bocor (T7) & token Apify (T1).
+- ✅ **Kunci OpenRouter** yang pernah tersimpan di `agent_logs` (T7) — sudah diganti Owner sesudah 17 Sep (keterangan Owner 3 Nov).
+- ⏳👤 **Token Apify dicabut, bukan diganti** (3 Nov): satu-satunya pemakai `youtube_analyst`, yang sejak T1 hanya jalan
+  untuk `MAMET_PEMILIK_IDS` (sengaja kosong) — Apify tak terpakai. Hapus token di Apify + secret `APIFY_API_TOKEN` di
+  Supabase (tanpa deploy; tanpa token alat gagal dengan pesan biasa). Kunci Google/Groq lama dicabut bila masih aktif.
 
 ### K6 — Data aman & bisa dipulihkan
 - ✅ "Cadangkan data" 13/13 cocok; uji pulih ke Postgres lokal 13/13 (Item 93 Tahap 1–2).
 - ✅ **Hapus akun = hapus seluruh datanya** (31 Okt, pilihan A Owner): pemicu BEFORE DELETE di auth.users, sisa data 0;
   regresi CORE (semua akun tak bisa dihapus) diperbaiki ([log](../project-memory/changelog/2026-10-31-k6-hapus-akun-dan-daftar-tertutup.md)).
-- ⏳ Ulang sekali sebelum rilis garis dasar.
+- ✅ **`raw_memory_content` ikut dicadangkan** (3 Nov, keputusan Owner): sumber asli memori (22 baris) dulu tak tercadang —
+  hanya ringkasannya di `user_memories`. Cadangan & skema pulih kini 16 tabel; uji 4/4 mutasi.
+- ⏳👤 **Sekali tepat sebelum rilis** (keputusan Owner 3 Nov): "Cadangkan data" (16 tabel) → uji pulih ke Postgres lokal.
+  Uji pulih terakhir 27 Okt (15/15); cadangan 2 Nov hanya pengaman sebelum chat dirampingkan, belum memuat tabel baru.
 
 ### K7 — Stabil & sampai ke aplikasi terpasang
 - ✅ Suite 129/129; galat dalam bahasa manusia (Item 125 M4).
