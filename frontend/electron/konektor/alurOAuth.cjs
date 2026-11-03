@@ -41,7 +41,11 @@ function buatAlurOAuth({ daftar, brankas, bukaBrowser, versi = '0', log = () => 
     if (!(meta.code_challenge_methods_supported || []).includes('S256')) return tolak('server tidak mendukung PKCE S256 — tidak dihubungkan');
     if (!urlBolehDibuka(meta.authorization_endpoint)) return tolak('alamat login server bukan https');
 
-    const lama = buatPenyediaOAuth({ id, brankas });
+    const klienId = entri.oauthKlienId || null; // GH2: klien terdaftar (mis. GitHub, tanpa DCR)
+    const lama = buatPenyediaOAuth({ id, brankas, klienId });
+    if (!meta.registration_endpoint && !klienId && !lama.klien()) {
+      return tolak('server ini tidak mendukung pendaftaran klien otomatis — resepnya perlu "oauthKlienId"');
+    }
     let portLama = 0;
     try { portLama = Number(new URL(lama.klien()?.redirect_uris?.[0] || '').port) || 0; } catch { portLama = 0; /* belum pernah mendaftar */ }
     let penerima;
@@ -55,7 +59,7 @@ function buatAlurOAuth({ daftar, brankas, bukaBrowser, versi = '0', log = () => 
     lama.penyedia.invalidateCredentials('tokens'); // login segar
 
     const p = buatPenyediaOAuth({
-      id, brankas, redirectUrl: penerima.url, mode: 'interaktif', bukaBrowser, versi,
+      id, brankas, redirectUrl: penerima.url, mode: 'interaktif', bukaBrowser, versi, klienId,
       asalOtorisasi: new URL(meta.authorization_endpoint).origin,
     });
     try {
@@ -85,9 +89,9 @@ function buatAlurOAuth({ daftar, brankas, bukaBrowser, versi = '0', log = () => 
 
   async function putuskan(id) {
     const entri = daftar.ambil(id);
-    const p = buatPenyediaOAuth({ id, brankas });
+    const p = buatPenyediaOAuth({ id, brankas, klienId: entri?.oauthKlienId || null });
     const tok = p.token();
-    const klien = p.klien();
+    const klien = p.klien() || (entri?.oauthKlienId ? { client_id: entri.oauthKlienId } : null);
     let dicabut = null;
     if (entri?.oauth && tok && (tok.refresh_token || tok.access_token)) {
       try {

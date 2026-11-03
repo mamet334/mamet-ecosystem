@@ -33,7 +33,7 @@ function urlBolehDibuka(u) {
  *   bukaBrowser?: (url: string) => void|Promise<void>, asalOtorisasi?: string|null, versi?: string}} opsi
  *   `asalOtorisasi` = origin `authorization_endpoint` dari metadata (diisi alurOAuth sebelum login).
  */
-function buatPenyediaOAuth({ id, brankas, redirectUrl = null, mode = 'diam', bukaBrowser = null, asalOtorisasi = null, versi = '0' }) {
+function buatPenyediaOAuth({ id, brankas, redirectUrl = null, mode = 'diam', bukaBrowser = null, asalOtorisasi = null, versi = '0', klienId = null }) {
   let verifier = null;
   let stateTerakhir = null;
   let perluHubungkanUlang = false;
@@ -50,7 +50,9 @@ function buatPenyediaOAuth({ id, brankas, redirectUrl = null, mode = 'diam', buk
 
   // Mode diam tidak membuka penerima, tetapi tetap WAJIB menyebut alamat balikan yang dulu didaftarkan: tanpa itu SDK
   // menganggap alurnya non-interaktif (client_credentials) dan tidak pernah memakai token pembaru (temuan uji F1).
-  const alamatBalikan = () => redirectUrl || bacaJson(KUNCI_KLIEN)?.redirect_uris?.[0] || undefined;
+  // GH2: klien terdaftar (tanpa DCR) tidak punya `redirect_uris` tersimpan — alamat balikan bakunya dipakai (port tak
+  // berpengaruh untuk pembaruan token; yang penting SDK tahu ini alur interaktif, bukan client_credentials).
+  const alamatBalikan = () => redirectUrl || bacaJson(KUNCI_KLIEN)?.redirect_uris?.[0] || (klienId ? 'http://127.0.0.1/balikan' : undefined);
 
   const penyedia = {
     get redirectUrl() { return alamatBalikan(); },
@@ -70,7 +72,8 @@ function buatPenyediaOAuth({ id, brankas, redirectUrl = null, mode = 'diam', buk
       stateTerakhir = crypto.randomBytes(24).toString('base64url');
       return stateTerakhir;
     },
-    clientInformation: () => bacaJson(KUNCI_KLIEN),
+    // Tersimpan (DCR) didahulukan; klien terdaftar (GH2) hanya `client_id` — tanpa rahasia, keamanannya dari PKCE.
+    clientInformation: () => bacaJson(KUNCI_KLIEN) || (klienId ? { client_id: klienId } : undefined),
     saveClientInformation: (info) => simpanJson(KUNCI_KLIEN, info),
     tokens: () => bacaJson(KUNCI_TOKEN),
     saveTokens: (t) => { simpanJson(KUNCI_TOKEN, t); perluHubungkanUlang = false; },

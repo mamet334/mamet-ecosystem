@@ -114,6 +114,14 @@ function validasiResep(mentah) {
     if (mentah.oauth !== true || jenis !== 'http') return tolak(`resep ${id}: "oauth": true hanya untuk jenis http`);
     resep.oauth = true;
   }
+  // GH2: server tanpa pendaftaran klien otomatis (mis. GitHub) — `client_id` aplikasi yang didaftarkan penerbit Mamet
+  // sekali. BUKAN rahasia (ikut tampil di alamat login); rahasia klien tidak pernah ada di resep (K25).
+  if (mentah.oauthKlienId !== undefined) {
+    if (resep.oauth !== true || !/^[A-Za-z0-9._-]{4,100}$/.test(String(mentah.oauthKlienId))) {
+      return tolak(`resep ${id}: "oauthKlienId" hanya untuk resep OAuth, berupa id klien tanpa spasi`);
+    }
+    resep.oauthKlienId = String(mentah.oauthKlienId);
+  }
   if (mentah.petunjuk !== undefined) {
     if (!teks(mentah.petunjuk, BATAS.petunjuk)) return tolak(`resep ${id}: "petunjuk" terlalu panjang`);
     resep.petunjuk = mentah.petunjuk.trim();

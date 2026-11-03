@@ -23,9 +23,21 @@ function bacaBadan(r) {
   return new Promise((ok) => { let s = ''; r.on('data', (d) => { s += d; }); r.on('end', () => ok(s)); });
 }
 
+// Bentuk GitHub (GH2, dilihat 3 Nov): `gayaGithub: true` → tanpa pendaftaran otomatis (tak ada registration_endpoint,
+// /register 404), satu klien TERDAFTAR `klien_terdaftar` dengan balikan `http://127.0.0.1/balikan` yang menerima port
+// berapa pun (aplikasi desktop, RFC 8252), dan tanpa revocation_endpoint.
+const KLIEN_TERDAFTAR = 'klien_terdaftar';
+const cocokBalikan = (terdaftar, diminta) => {
+  try {
+    const a = new URL(terdaftar); const b = new URL(diminta);
+    return a.protocol === b.protocol && a.hostname === b.hostname && a.pathname === b.pathname && ['127.0.0.1', 'localhost'].includes(a.hostname);
+  } catch { return false; /* alamat rusak = tidak cocok */ }
+};
+
 function mulai(opsi = {}) {
-  const sakelar = { tolakLogin: false, pembaruanGagal: false, tanpaS256: false, asalLoginLain: false, ...opsi };
-  const keadaan = { klien: new Map(), kode: new Map(), akses: new Set(), pembaru: new Map(), dicabut: [], otorisasi: [], panggilanMcp: 0 };
+  const sakelar = { tolakLogin: false, pembaruanGagal: false, tanpaS256: false, asalLoginLain: false, gayaGithub: false, ...opsi };
+  const keadaan = { klien: new Map(), kode: new Map(), akses: new Set(), pembaru: new Map(), dicabut: [], otorisasi: [], panggilanMcp: 0, pendaftaran: 0 };
+  if (sakelar.gayaGithub) keadaan.klien.set(KLIEN_TERDAFTAR, { redirect_uris: ['http://127.0.0.1/balikan'], terdaftar: true });
 
   const server = http.createServer(async (rq, rs) => {
     const base = `http://127.0.0.1:${server.address().port}`;
@@ -39,12 +51,15 @@ function mulai(opsi = {}) {
       return json(200, {
         issuer: base,
         authorization_endpoint: sakelar.asalLoginLain ? 'https://login-palsu.contoh.invalid/authorize' : `${base}/authorize`,
-        token_endpoint: `${base}/token`, registration_endpoint: `${base}/register`, revocation_endpoint: `${base}/revoke`,
+        token_endpoint: `${base}/token`,
+        ...(sakelar.gayaGithub ? {} : { registration_endpoint: `${base}/register`, revocation_endpoint: `${base}/revoke` }),
         response_types_supported: ['code'], grant_types_supported: ['authorization_code', 'refresh_token'],
         token_endpoint_auth_methods_supported: ['none'], code_challenge_methods_supported: sakelar.tanpaS256 ? ['plain'] : ['S256'],
       });
     }
     if (rq.method === 'POST' && u.pathname === '/register') {
+      if (sakelar.gayaGithub) { rs.writeHead(404).end(); return undefined; }
+      keadaan.pendaftaran++;
       const b = JSON.parse(await bacaBadan(rq) || '{}');
       const id = `klien_${acak(6)}`;
       keadaan.klien.set(id, b);
@@ -54,7 +69,8 @@ function mulai(opsi = {}) {
       const p = Object.fromEntries(u.searchParams);
       keadaan.otorisasi.push(p);
       const k = keadaan.klien.get(p.client_id);
-      if (!k || !(k.redirect_uris || []).includes(p.redirect_uri) || p.code_challenge_method !== 'S256' || !p.code_challenge) {
+      const balikanSah = k && (k.terdaftar ? k.redirect_uris.some((r) => cocokBalikan(r, p.redirect_uri)) : (k.redirect_uris || []).includes(p.redirect_uri));
+      if (!balikanSah || p.code_challenge_method !== 'S256' || !p.code_challenge) {
         return json(400, { error: 'invalid_request' });
       }
       const tujuan = new URL(p.redirect_uri);

@@ -29,7 +29,7 @@ const { buatSesiUmum } = require(path.join(K, 'sesiUmum.cjs'));
 const { lingkunganServer } = require(path.join(AKAR, 'frontend', 'electron', 'konektorMcp.cjs'));
 const { mulai } = require(path.join(AKAR, 'uji', 'lib', 'serverOAuthTiruan.cjs'));
 
-console.log('uji-konektor-oauth-f1 v1');
+console.log('uji-konektor-oauth-f1 v2');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 600)}` : ''}`);
@@ -197,8 +197,43 @@ h = await sesi2.atur('ws-assistant', 'notion', true);
 cek(!h.ok && h.status === 'belum_terhubung', 'sesudah diputuskan: tidak menyala, status "belum terhubung"', h);
 await sesi2.matikanSemua();
 
-cek(!log.some((m) => /at_[0-9a-f]{6}|rt_[0-9a-f]{6}|kode_[0-9a-f]{6}/.test(m)), 'log tidak memuat token atau kode', log);
 await srv.tutup();
+
+// ── 7. Gaya GitHub (GH2): tanpa DCR, klien terdaftar, tanpa pencabutan ──────────────────────────────────────
+console.log('\n-- 7. gaya github --');
+const gh = await mulai({ gayaGithub: true });
+cek(validasiResep({ ...notion, oauthKlienId: 'Iv23li3SbHZO7UlcxipI' }).resep?.oauthKlienId === 'Iv23li3SbHZO7UlcxipI', 'resep menerima oauthKlienId (client_id bukan rahasia)');
+cek(!validasiResep({ ...notion, oauth: undefined, oauthKlienId: 'Iv23abc' }).ok && !validasiResep({ ...notion, oauthKlienId: 'ada spasi' }).ok, 'oauthKlienId hanya untuk resep OAuth & tanpa spasi');
+daftar.tambah({ id: 'gh-tanpa-id', nama: 'GH tanpa id', jenis: 'http', http: { url: gh.url }, oauth: true });
+daftar.tambah({ id: 'gh-jauh', nama: 'GitHub jauh', jenis: 'http', http: { url: gh.url }, oauth: true, oauthKlienId: 'klien_terdaftar' });
+const bukaSebelumGh = dibukaAlur.length;
+h = await alur.hubungkan('gh-tanpa-id');
+cek(!h.ok && /oauthKlienId/.test(h.alasan) && dibukaAlur.length === bukaSebelumGh, 'server tanpa DCR & resep tanpa client_id → pesan jelas, browser TIDAK dibuka', h);
+h = await alur.hubungkan('gh-jauh');
+const otGh = gh.keadaan.otorisasi.at(-1) || {};
+cek(h.ok && alur.status('gh-jauh').terhubung && gh.keadaan.pendaftaran === 0 && otGh.client_id === 'klien_terdaftar',
+  'klien terdaftar: login tanpa pendaftaran otomatis, memakai client_id resep', { h, otGh });
+cek(/^http:\/\/127\.0\.0\.1:\d+\/balikan$/.test(otGh.redirect_uri), 'balikan 127.0.0.1 dengan port acak diterima server bergaya GitHub', otGh.redirect_uri);
+cek(!JSON.stringify(otGh).includes('secret') && !readFileSync(path.join(dir, 'brankas.json'), 'utf8').includes('klien_terdaftar'), 'tanpa rahasia klien; klien terdaftar tidak disimpan di brankas (cukup di resep)');
+const sesiGh = buatSesiUmum({ daftar, brankas, berkasSakelar: path.join(dir, 'sakelar-gh.json'), lingkungan: () => lingkunganServer(), versi: 'uji', msSambung: 15000 });
+try {
+  await sesiGh.tinjau('gh-jauh');
+  await sesiGh.setujui('gh-jauh', ['cari_halaman']);
+  h = await sesiGh.atur('ws-assistant', 'gh-jauh', true);
+  cek(h.ok && h.status === 'nyala', 'menyala lewat token OAuth klien terdaftar', h);
+  const lamaGh = buatPenyediaOAuth({ id: 'gh-jauh', brankas }).token().access_token;
+  gh.kedaluwarsakanAkses();
+  await sesiGh.matikan('ws-assistant', 'gh-jauh');
+  h = await sesiGh.nyalakan('ws-assistant', 'gh-jauh');
+  cek(h.ok && buatPenyediaOAuth({ id: 'gh-jauh', brankas }).token().access_token !== lamaGh, 'token kedaluwarsa diperbarui di mode diam (klien terdaftar tanpa redirect tersimpan)', h);
+} finally {
+  await sesiGh.matikanSemua();
+}
+h = await alur.putuskan('gh-jauh');
+cek(h.ok && h.dicabut === null && !alur.status('gh-jauh').terhubung, 'tanpa alamat pencabutan: Putuskan menghapus token lokal & melaporkan dicabut=null (layar meminta cabut di situs penyedia)', h);
+await gh.tutup();
+
+cek(!log.some((m) => /at_[0-9a-f]{6}|rt_[0-9a-f]{6}|kode_[0-9a-f]{6}/.test(m)), 'log tidak memuat token atau kode', log);
 
 console.log(`\n${gagal ? `GAGAL ${gagal}` : 'SEMUA LULUS'}`);
 process.exit(gagal ? 1 : 0);

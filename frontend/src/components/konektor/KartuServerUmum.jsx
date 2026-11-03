@@ -97,7 +97,19 @@ export default function KartuServerUmum({ s, api, onBerubah }) {
   const aksesSiap = s.kredensial.every((k) => k.terisi) && (!s.oauth || s.terhubung === true);
   const siap = aksesSiap && s.alatDisetujui.length > 0;
 
+  // GH2: penyedia tanpa alamat pencabutan (mis. GitHub) — token di laptop sudah dihapus, tetapi izinnya masih ada di
+  // sana sampai dicabut di situs penyedia. Dikatakan apa adanya, bukan "terputus" saja.
+  const [info, setInfo] = useState(null);
+  const putuskan = async () => {
+    setInfo(null);
+    const h = await jalankan(() => api.putuskan(s.id));
+    if (h?.ok && h.dicabut !== true) {
+      setInfo('Token di perangkat ini sudah dihapus. Penyedia ini tidak menyediakan pencabutan otomatis — cabut juga izinnya di situs penyedia (GitHub: Settings › Applications › Authorized GitHub Apps).');
+    }
+  };
+
   const hubungkan = async () => {
+    setInfo(null);
     setSedangLogin(true);
     await jalankan(() => api.hubungkan(s.id)); // `jalankan` didefinisikan di bawah; dipanggil saat tombol ditekan
     setSedangLogin(false);
@@ -157,8 +169,9 @@ export default function KartuServerUmum({ s, api, onBerubah }) {
       )}
 
       {s.oauth && (
-        <BagianAkun s={s} sedangLogin={sedangLogin} onHubungkan={hubungkan} onPutuskan={() => jalankan(() => api.putuskan(s.id))} />
+        <BagianAkun s={s} sedangLogin={sedangLogin} onHubungkan={hubungkan} onPutuskan={putuskan} />
       )}
+      {info && <p className="text-body-sm text-on-surface-variant mt-2">{info}</p>}
 
       <div className="mt-3 flex items-center gap-3 flex-wrap">
         <span className="text-body-sm text-on-surface">

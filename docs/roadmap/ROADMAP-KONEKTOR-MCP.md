@@ -515,8 +515,17 @@ K21–K23 disetujui Owner pada 3 Nov. Owner juga sudah mendaftar akun Notion unt
 - **GH1 — Owner mendaftarkan GitHub App.** Isinya: nama "Mamet Ecosystem"; alamat balikan `http://127.0.0.1/balikan`;
   Device Flow aktif; webhook mati; izin Repository Contents/Issues/Pull requests/Metadata Read-only; bisa dipasang
   oleh akun mana pun.
-- **GH2 — Dukungan klien terdaftar:** resep OAuth menerima `klienId` (tanpa DCR), pipa F1 memakainya, dan percobaan
-  dilakukan dengan akun GitHub Owner. Hasilnya menjawab ketiga hal yang belum pasti di atas.
+- ✅ **GH1** (3 Nov): GitHub App "Mamet Ecosystem" didaftarkan Owner, Client ID `Iv23li3SbHZO7UlcxipI`, tanpa rahasia
+  klien.
+- ✅ **GH2 — Dukungan klien terdaftar** (3 Nov; mutasi 29/29 —
+  [log](../project-memory/changelog/2026-11-03-konektor-mcp-gh2-klien-terdaftar.md)): resep menerima `oauthKlienId`
+  (tanpa DCR) dan pipa F1 memakainya. Hasil percobaan dengan akun Owner:
+  - port 127.0.0.1 acak **diterima**;
+  - web flow **mewajibkan client secret** (`incorrect_client_credentials`);
+  - device flow **jalan tanpa rahasia**;
+  - kebutuhan Copilot belum terjawab.
+
+  Lanjut ke GH3.
 - **GH3 — Device flow** (hanya bila GH2 menunjukkan rahasia klien wajib).
 - **GH4 — Resep bawaan:** `github` beralih ke OAuth, dan `.exe` menjadi resep cadangan (K27). GitHub `.exe` di laptop
   Owner tetap berjalan sampai GH4.

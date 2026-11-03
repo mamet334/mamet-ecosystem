@@ -99,7 +99,7 @@ function buatSesiUmum({ daftar, brankas, berkasSakelar, lingkungan, ada = fs.exi
     // Tahap F1: server OAuth → penyedia mode DIAM (tak pernah membuka browser; login ulang = status, K23).
     let oauth = null;
     if (rencana.oauth) {
-      oauth = buatPenyediaOAuth({ id, brankas, mode: 'diam', versi });
+      oauth = buatPenyediaOAuth({ id, brankas, mode: 'diam', versi, klienId: entri.oauthKlienId || null });
       if (!oauth.terhubung()) return { ...tolak('akun belum dihubungkan — tekan "Hubungkan akun" di Settings'), kode: 'belum_terhubung' };
     }
     try {
