@@ -1,0 +1,19 @@
+{
+  "id": "github",
+  "nama": "GitHub",
+  "jenis": "stdio",
+  "stdio": {
+    "namaProgram": "github-mcp-server.exe",
+    "argumen": ["stdio", "--read-only"]
+  },
+  "kredensial": [
+    {
+      "id": "token",
+      "label": "Token GitHub (fine-grained, izin baca saja)",
+      "env": "GITHUB_PERSONAL_ACCESS_TOKEN"
+    }
+  ],
+  "petunjuk": "Unduh github-mcp-server_Windows_x86_64.zip dari halaman rilis resmi, ekstrak, lalu tunjuk berkas github-mcp-server.exe. Buat token fine-grained di GitHub (Settings > Developer settings > Personal access tokens) dengan izin baca saja, hanya untuk repo yang boleh dibaca Mamet. Mode --read-only: alat tulis (membuat issue/PR, mengubah berkas) tidak dimuat.",
+  "sumber": "https://github.com/github/github-mcp-server/releases",
+  "versiDiuji": "2.0.3"
+}

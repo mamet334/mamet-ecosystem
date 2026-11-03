@@ -21,6 +21,7 @@ data di %APPDATA%; K14: stealth tidak dibundel ([log](../project-memory/changelo
 unduhan ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-e2-stealth.md)). **E3 ✅ 26 Okt** —
 "Yang terpasang di perangkat ini" + Buka folder; crawler tetap satu bundel, bukan diunduh dari repo crawler
 ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-e3-transparansi.md)).
+**Tahap G 🟡 3 Nov** (G1 ✅ pipa proses utama — [log](../project-memory/changelog/2026-11-03-konektor-mcp-tahap-g1-pipa-umum.md)) — konektor umum ("banyak tangan"): server MCP apa saja lewat resep tanpa kode, alat ditinjau & dipaku, izin "selama percakapan ini", kredensial terenkripsi di perangkat; server pertama GitHub (K16–K19, §9).
 **Aplikasi:** **Mamet Ecosystem** (`frontend/`, desktop Electron + web) — **bukan** Mametlite.
 **Arah:** Mamet sebagai **klien** MCP — memakai alat dari server MCP luar. Mamet **tidak** dibuka sebagai server MCP
 (arah itu tidak termasuk item ini).
@@ -271,3 +272,112 @@ stealth sungguhan & PC bersih dibuktikan sesudah rilis berikutnya / Windows Sand
 terkunci, Python 3.12.10; sejak 4.3.2 ber-hash + `--require-hashes`) — daftar itu wajib diperbarui bersama `.venv`
 pengembangan lewat `scripts/kunci_bundel.py`, bukan disunting tangan
 ([log](../project-memory/changelog/2026-10-26-rilis-4.3.0-crawler-terbundel.md)).
+
+---
+
+## 9. Tahap G — Konektor umum ("banyak tangan") — 🟡 G1 ✅ 3 Nov 2026
+
+**Permintaan Owner (3 Nov):** MCP adalah tangan Mamet dan harus optimal. Owner ingin bisa memasang **server MCP apa
+saja**, bukan hanya crawler. Server pertama adalah **GitHub**. Pipanya disiapkan supaya server lain bisa digabungkan
+**tanpa kode**, dan tiap berkas tetap memegang **satu tugas**.
+
+Tahap ini fitur baru, bukan K1–K7. Menurut ADR-0022 ia boleh jalan selama uji penjaga K1–K7 tetap hijau.
+
+### Keadaan sekarang (dibaca 3 Nov)
+
+Konektor ditulis tangan di **tiga tempat**:
+- `electron/konektorMcp.cjs` `KONEKTOR`: cara menjalankan dan aturan izin per alat;
+- `shared/konektorAlat.js` `KONEKTOR_DIKENAL`: alat yang boleh diminta model;
+- blok prompt khusus crawler (`blokPromptKonektor`) yang disusun server.
+
+Protokolnya hanya melayani satu konektor aktif (`idAktif`), dan jalurnya hanya stdio. Akibatnya, menambah satu server
+berarti mengubah kode di tiga tempat dan men-deploy server.
+
+### Kenapa server umum mengubah siapa yang dipercaya
+
+Deskripsi alat crawler ditulis Mamet sendiri, jadi tidak ada teks luar yang masuk ke prompt. Server umum berbeda:
+Mamet hanya mengenal alatnya dari `tools/list`, yang berisi nama, deskripsi, dan skema argumen. Itu teks pihak lain.
+Ada dua serangan MCP yang dikenal:
+- **Tool poisoning:** deskripsi alat menyelipkan perintah untuk model.
+- **Rug pull:** server mengganti alatnya diam-diam sesudah disetujui.
+
+Keputusan di bawah menjawab keduanya.
+
+### Keputusan Owner (3 Nov)
+
+| # | Pertanyaan | Keputusan |
+|---|---|---|
+| ~~K16~~ | Deskripsi alat dari server luar | ✅ **Ditinjau & dipaku.** Saat menambah server, Owner melihat daftar alat beserta deskripsinya, memilih alat yang dipakai, lalu menyetujuinya. Mamet menyimpan **sidik** (SHA-256) definisi alat yang disetujui. Bila server mengubah alat itu, konektor tidak dipakai sampai Owner meninjaunya lagi. Alat baru yang belum disetujui diabaikan. Deskripsi masuk prompt sebagai DATA: dipotong dan tag alatnya dinetralkan |
+| ~~K17~~ | Izin memakai alat | ✅ **Dialog untuk setiap alat**, ditambah pilihan **"izinkan alat ini selama percakapan ini"**. Ini mengikuti pola K8 crawler: Owner tidak dibanjiri dialog, dan izin tidak menyebar ke percakapan, workspace, atau alat lain |
+| ~~K18~~ | Kredensial server (token GitHub, dsb.) | ✅ **Di perangkat, terenkripsi** oleh Windows (`safeStorage`/DPAPI), diisi Owner sendiri di Settings. Hanya diberikan ke server itu, sebagai variabel lingkungan (stdio) atau header (HTTP). Tidak ikut akun, tidak pernah ke layar, model, atau log |
+| ~~K19~~ | Server pertama dan cara menambah yang lain | ✅ **GitHub**. Server lain ditambahkan **tanpa kode**: lewat **resep** (satu berkas JSON per server) atau isian Settings. Kode tetap **satu berkas satu tugas** |
+
+### Cara GitHub dipasang (usulan, menunggu Owner)
+
+- **Server lokal resmi** `github/github-mcp-server` **v2.0.3** (terbit 21 Okt 2026). Aset Windows-nya
+  `github-mcp-server_Windows_x86_64.zip`, 9,6 MB. Dijalankan dengan `github-mcp-server stdio --read-only`, dan tokennya
+  dibaca dari `GITHUB_PERSONAL_ACCESS_TOKEN`.
+- **`--read-only`:** alat tulis (membuat issue, PR, mengubah berkas) tidak dimuat sama sekali. Membuka alat tulis
+  adalah keputusan Owner berikutnya.
+- **Kenapa bukan versi jarak jauh** (`https://api.githubcopilot.com/mcp/`): titiknya hidup (menjawab 401 tanpa token),
+  tetapi dokumen GitHub masih menyebutnya *public preview*, dan apakah ia butuh langganan Copilot belum jelas. Versi
+  lokal berstatus GA dan bekerja lewat jalur stdio yang sudah teruji.
+- **Langkah Owner** (pengunduhan dan pembuatan kredensial tidak dikerjakan AI): unduh zip itu, lalu buat token
+  **fine-grained** baca-saja hanya untuk repo yang ingin dibaca Mamet.
+
+### Susunan berkas (satu berkas satu tugas)
+
+| Berkas | Tugas tunggal |
+|---|---|
+| `electron/konektor/resep/<id>.json` (bawaan) + `%APPDATA%\ai-agent-frontend\konektor-resep\<id>.json` (buatan Owner) | **Resep** satu server: nama, jenis (`stdio`/`http`), program & argumen atau URL, kredensial yang diminta (nama variabel/header + label), petunjuk pasang, sumber resmi. Server baru = berkas resep baru, **tanpa kode** |
+| `electron/konektor/resep.cjs` | Membaca dan memvalidasi resep (bentuk, id, jenis, tanpa shell) |
+| `electron/konektor/daftarServer.cjs` | Server yang dipasang Owner (dari resep atau isian sendiri) di `userData/konektor-server.json`: tambah, ubah, hapus, validasi |
+| `electron/konektor/brankas.cjs` | Kredensial per server, dienkripsi `safeStorage`. Layar hanya tahu "terisi" atau "kosong" |
+| `electron/konektor/sidikAlat.cjs` | Sidik definisi alat dan perbandingannya dengan yang disetujui: sama, berubah, atau alat baru |
+| `electron/konektor/transport.cjs` | Dari entri server ke transport SDK. **stdio:** program tanpa shell, lingkungan bersih, kredensial dari brankas. **HTTP:** Streamable HTTP + `Authorization: Bearer`. OAuth tetap Tahap F |
+| `electron/konektor/gerbangUmum.cjs` | Izin K17: dialog per alat dan "selama percakapan ini" |
+| `electron/konektorMcp.cjs` (ada) | Pengelola sesi: kini membaca konektor **bawaan** (crawler, tak berubah) **dan** daftar Owner |
+| `shared/konektorUmum.js` | Definisi alat yang dipaku menjadi bentuk aman untuk prompt. Nama alat `^[A-Za-z0-9_.-]{1,64}$`, deskripsi ≤ 300 huruf dan dinetralkan, skema diringkas menjadi nama, tipe, dan wajib-tidaknya parameter. Ditambah blok prompt umum dan label HYPOTHESIS |
+| `shared/konektorAlat.js` (ada) | Tag `<alat_konektor>` melayani **beberapa** konektor aktif sekaligus |
+| Settings: `TambahServer.jsx`, `TinjauAlat.jsx` | Pilih resep atau isi sendiri; isi kredensial; tinjau, centang, lalu setujui alat (memaku) |
+
+### Titik sambung (ditelusuri dari graf graphify, 3 Nov — 12.383 node, 0 berkas mati, tanpa siklus impor)
+
+Graf dan kode menunjukkan beberapa titik yang **akan diam-diam salah** bila rancangan di atas diikuti apa adanya:
+
+| # | Titik | Jebakan | Penanganan |
+|---|---|---|---|
+| S1 | Pemasang hanya membawa `dist/**` dan `electron/**` (`frontend/package.json` `build.files`) | resep di `capability/` **tidak ikut** ke aplikasi terpasang, dan tanpa galat | resep bawaan di `electron/konektor/resep/`. Resep buatan Owner di folder data (folder program pemasang hanya-baca) |
+| S2 | `AssistantService._statusKonektor` menyaring `KONEKTOR_DIKENAL[x.konektor]` dan mengambil **satu** (`find`) | konektor umum yang menyala **dibuang tanpa suara**, sehingga model tak pernah melihatnya | daftar konektor aktif diambil dari status proses utama (bawaan + umum yang alatnya sudah dipaku) |
+| S3 | Server `infoKonektorAman` menolak id yang tak dikenal (`null`), dan `blokPromptKonektor` hanya untuk crawler | blok prompt kosong untuk server umum | `shared/konektorUmum.js` menyaring dan menyusun blok umum. Crawler tetap memakai bloknya sendiri |
+| S4 | **Aplikasi 4.4.1 terpasang** mengirim `konektor` sebagai **satu objek** | deploy server yang hanya menerima daftar akan merusak konektor crawler di aplikasi terpasang | server menerima **dua bentuk**: objek lama dan daftar baru. Dijaga uji |
+| S5 | `lingkunganServer` membuang variabel yang namanya berbau rahasia (`TOKEN`, `KEY`, …) | token dari brankas ikut terbuang, dan GitHub menolak tanpa keterangan jelas | kredensial dari brankas ditambahkan **sesudah** penyaringan, hanya untuk server pemiliknya |
+| S6 | `konektor:panggil` hanya membawa (workspace, konektor, alat, argumen) | izin "selama percakapan ini" (K17) tak punya kunci percakapan | IPC membawa id percakapan. Tanpa id, perilakunya kembali ke dialog setiap kali (aman ke arah tanya) |
+| S7 | `uraiHasilKonektor` menulis "data mentah dari internet", dan `catatanHasilKonektor` khas crawler | keterangan salah untuk GitHub | keterangan umum "data dari layanan luar", catatan kaki umum `✓ alat` |
+| S8 | Graf Home (`grafHome.js`, `HomeDashboard.jsx`) memakai `KONEKTOR_DIKENAL` | server umum tak tampil di lapisan MCP | lapisan MCP membaca status (bawaan + umum) |
+| S9 | Brankas memakai `safeStorage` Electron, yang tidak ada di Node uji | uji tidak bisa menjalankan enkripsi asli | enkripsi **disuntikkan** (proses utama memberi `safeStorage`, uji memberi tiruan). Tanpa enkripsi yang tersedia, brankas **menolak menyimpan**, tidak jatuh ke teks biasa |
+| S10 | Kredensial diketik Owner di layar (renderer) | nilainya harus lewat IPC sekali | layar hanya **mengirim**. `status` tak pernah mengembalikan nilai, hanya "terisi" atau "kosong" |
+
+**Kerapian (dari graf):**
+- Tidak ada siklus impor dan tidak ada node mati. Node yang "mati" hanya modul luar (`node:fs`, `xlsx`, …).
+- Ada 26 berkas kode tanpa pemakai statis, dan semuanya beralasan:
+  - `_knowledge_archive/` memang arsip;
+  - `tools/*.js` dimuat dinamis oleh `ToolRegistryService`;
+  - `IntentClassifier.js` sengaja disimpan dengan alasan tertulis (ADR-0017);
+  - `backend/server.js` adalah T3.
+- Tiga berkas gemuk: `ConversationEngine.jsx` (2.643 baris), `AssistantService.js` (2.054), dan `main.cjs` (1.465; kohesi 0,06). Karena itu Tahap G **tidak menambah isi** ketiganya: kabel IPC konektor umum dan putaran alat masing-masing tinggal di berkasnya sendiri.
+
+**Data konektor umum = HYPOTHESIS.** Isinya datang dari layanan luar, bukan dari dokumen RAG Owner, sehingga pemeriksa
+label server tidak menerimanya sebagai dasar VERIFIED. Aturan ini sama dengan crawler.
+
+### Tahapan
+
+- ✅ **G1 — Pipa proses utama** (3 Nov; mutasi 27/27, suite 149/149): resep, daftar server, brankas, sidik, transport, beserta resep `github.json`. Uji murni
+  dibuktikan dengan mutasi pada salinan. Belum ada layar, server, maupun unduhan.
+- **G2 — Settings:** tambah server, kredensial, tinjau & paku alat, sakelar per workspace (K3). Dibuktikan di
+  `npm run desktop`.
+- **G3 — Protokol & server:** banyak konektor aktif, blok prompt umum, gerbang K17. `agent-process` dibundel dengan
+  esbuild, lalu **Owner men-deploy**. Rantainya dibuktikan tanpa model.
+- **G4 — GitHub live:** Owner mengunduh biner dan membuat token. Rantai tanpa model dibuktikan dulu; jawaban model
+  menyusul **sesudah saldo diisi**.
+- Server berikutnya (Notion, basis data, …) cukup **satu berkas resep**. Server jarak jauh ber-OAuth tetap di Tahap F.
