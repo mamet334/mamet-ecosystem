@@ -18,7 +18,7 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 | K2 | RAG jujur saat gagal | ⏳ penguji siap | 1 (💳 jalankan) |
 | K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ (ulang sebelum rilis) | 1 (💳) |
 | K4 | Mametlite layak bagi orang awam | ✅ (T19, isolasi dua akun, CORE, undangan, ganti sandi — live) | — |
-| K5 | Keamanan | ⏳ OpenRouter ✅ | 1 (👤 cabut token Apify) |
+| K5 | Keamanan | ✅ (OpenRouter diganti, Apify dicabut — 3 Nov) | — |
 | K6 | Data aman & bisa dipulihkan | ✅ 16 tabel (ulang sebelum rilis) | 1 (👤 cadangkan → uji pulih) |
 | K7 | Stabil & sampai ke aplikasi terpasang | ⏳ | 1 (rilis 💳👤) |
 
@@ -85,9 +85,10 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
   ringkasan memori) dulu ditulis lewat innerHTML di renderer yang memegang `electronAPI` (desktop tanpa CSP) — kini
   di-escape ([log](../project-memory/changelog/2026-11-02-graf-home-tahap-a.md)).
 - ✅ **Kunci OpenRouter** yang pernah tersimpan di `agent_logs` (T7) — sudah diganti Owner sesudah 17 Sep (keterangan Owner 3 Nov).
-- ⏳👤 **Token Apify dicabut, bukan diganti** (3 Nov): satu-satunya pemakai `youtube_analyst`, yang sejak T1 hanya jalan
-  untuk `MAMET_PEMILIK_IDS` (sengaja kosong) — Apify tak terpakai. Hapus token di Apify + secret `APIFY_API_TOKEN` di
-  Supabase (tanpa deploy; tanpa token alat gagal dengan pesan biasa). Kunci Google/Groq lama dicabut bila masih aktif.
+- ✅ **Token Apify dicabut, bukan diganti** (3 Nov, Owner): satu-satunya pemakai `youtube_analyst`, yang sejak T1 hanya
+  jalan untuk `MAMET_PEMILIK_IDS` (sengaja kosong) — Apify tak terpakai. Token dihapus di Apify + secret `APIFY_API_TOKEN`
+  di Supabase. Sesudahnya `agent-process` v545 (tanpa deploy) `booted 70ms` + OPTIONS 200 pukul 02:43 UTC, tanpa galat;
+  daftar secret tak terbaca dari alat yang ada (keterangan Owner). Chat penuh terbukti bersama uji K1/K2 (💳).
 
 ### K6 — Data aman & bisa dipulihkan
 - ✅ "Cadangkan data" 13/13 cocok; uji pulih ke Postgres lokal 13/13 (Item 93 Tahap 1–2).

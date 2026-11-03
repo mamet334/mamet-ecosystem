@@ -61,5 +61,15 @@ Owner): uji pulih terakhir 27 Okt, dan cadangan 2 Nov belum memuat tabel ini.
 - Server dev Vite melayani modul, penilai, dan set (200, JSON sah, 26 soal).
 - Suite penuh **148/148**.
 
-Sisa: menjalankan uji K1/K2 dan K3 (💳), mencabut token Apify (👤), lalu tepat sebelum rilis "Cadangkan data" dan
-uji pulih (👤).
+## K5 selesai (siang)
+
+Owner mencabut token Apify di dashboard Apify dan menghapus secret `APIFY_API_TOKEN` di Supabase. Satu permintaan
+OPTIONS tanpa data (02:43 UTC) menyalakan `agent-process` dengan secret yang berlaku sekarang. Hasilnya `booted
+(time: 70ms)`, `Listening`, dan `OPTIONS 200`, tanpa galat. Versi tetap 545, jadi tidak ada deploy ulang. Ini sesuai
+kodenya: token dibaca dengan `|| ''`, sehingga secret yang hilang menjadi nilai kosong, bukan galat.
+
+Ada dua batas bukti:
+- Daftar secret tidak bisa dibaca dari alat yang ada; bukti terhapusnya adalah keterangan Owner.
+- Chat penuh (sampai ke model) baru terbukti bersama uji K1/K2.
+
+Sisa: menjalankan uji K1/K2 dan K3 (💳), lalu tepat sebelum rilis "Cadangkan data" dan uji pulih (👤).
