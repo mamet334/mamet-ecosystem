@@ -69,16 +69,13 @@ const L = G.nilaiLampu({ desktop: true }), W = G.nilaiLampu({ desktop: false });
 cek(L.status.electron === 'HEALTHY' && W.status.electron === 'UNKNOWN' && /web/.test(W.keterangan.electron), 'lampu Electron: desktop hijau, web abu-abu dengan alasan');
 
 // ── 5. Tata letak: lingkar 1 dekat pusat, fondasi di luar, label tak menumpuk ───────────────────
-const sim = simulasikan({ pasangGaya: G.pasangGayaGraf });
+// Sejak Tahap F (tata surya) lingkarnya DIHITUNG: kemampuan tepat di orbit dalam, fondasi tepat di orbit luar.
+const sim = simulasikan();
 const jarak = (n) => Math.hypot(n.x, n.y);
-const rata = (g) => { const s = sim.simpul.filter((n) => n.group === g); return s.reduce((a, n) => a + jarak(n), 0) / s.length; };
-cek(rata('fondasi') > rata('kemampuan') * 1.2, `fondasi di lingkar luar (rata-rata ${rata('fondasi').toFixed(0)} vs kemampuan ${rata('kemampuan').toFixed(0)})`);
+const kem = sim.simpul.filter((n) => n.group === 'kemampuan'), fon = sim.simpul.filter((n) => n.group === 'fondasi');
+cek(kem.every((n) => Math.abs(jarak(n) - sim.ukuran.jariOrbit) < 1e-6) && fon.every((n) => Math.abs(jarak(n) - sim.ukuran.jariLuar) < 1e-6)
+  && sim.ukuran.jariLuar > sim.ukuran.jariOrbit, `kemampuan di orbit dalam (${sim.ukuran.jariOrbit.toFixed(0)}), fondasi di orbit luar (${sim.ukuran.jariLuar.toFixed(0)})`);
 cek(sim.tumpang.length === 0 && sim.label.length === 10, `layar Owner: 10 label (2 belahan + 5 kemampuan + 3 fondasi), 0 tumpang (skala ${sim.skala.toFixed(3)})`, sim.tumpang);
-
-const c = G.gayaCincin((n) => n.r, 0.5);
-const titik = [{ x: 100, y: 0, vx: 0, vy: 0, r: 200 }, { x: 0, y: 300, vx: 0, vy: 0, r: 200 }, { x: 50, y: 0, vx: 0, vy: 0, r: null }];
-c.initialize(titik); c(1);
-cek(titik[0].vx === 50 && titik[1].vy === -50 && titik[2].vx === 0, 'gayaCincin = rumus forceRadial d3 (terlalu dekat didorong keluar, terlalu jauh ditarik, null tak disentuh)', titik.map((t) => [t.vx, t.vy]));
 
 // ── 5b. Label kerangka tak tertimbun, legenda tak tertimpa (tangkapan layar Owner 2 Nov) ─────────
 const iKerangkaPertama = nodes.findIndex((n) => n.isCategory);
@@ -89,7 +86,7 @@ const layarY = (gy) => (gy - p.y) * p.k + 350, layarX = (gx) => (gx - p.x) * p.k
 cek(p.k === 4.5 && Math.abs(layarX(-100) - 50) < 1e-9 && layarY(-50) >= 150 - 1e-9 && layarY(50) <= 650 + 1e-9,
   'tataPas memuat graf ke wilayah di bawah pita legenda (rumus layar force-graph)', { k: p.k, atas: layarY(-50), bawah: layarY(50) });
 for (const [nama, layar] of [['layar Owner', undefined], ['1920×1080', { lebar: 1600, tinggi: 980 }]]) {
-  const h = simulasikan({ pasangGaya: G.pasangGayaGraf, ...(layar ? { layar } : {}) });
+  const h = simulasikan(layar ? { layar } : {});
   cek(h.atasSimpul >= G.RUANG_ATAS - 0.5 && h.tumpang.length === 0, `${nama}: tak ada simpul di pita judul & legenda (teratas ${h.atasSimpul.toFixed(0)} px ≥ ${G.RUANG_ATAS}), 0 tumpang`, h.tumpang);
 }
 cek(/tataPas\(\{ bbox, lebar: dimensions\.width, tinggi: dimensions\.height \}\)/.test(kode('frontend/src/components/dashboard/HomeDashboard.jsx'))

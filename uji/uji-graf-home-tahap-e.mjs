@@ -103,7 +103,7 @@ const ekorPanjang = Array.from({ length: 138 }, (_, i) => ({ urutan: i + 1, pera
 const ekorF = (lp) => (dasar) => G.susunEkorPesan(`chat-${id0}`, ekorPanjang, new Set([...dasar.nodes, ...(lp ? lp.nodes : [])].map((n) => n.id)));
 for (const [nama, opsi] of [['layar Owner', {}], ['1920×1080', { layar: { lebar: 1600, tinggi: 980 } }], ['768×900', { layar: { lebar: 768, tinggi: 600 } }]]) {
   for (const [kasus, lp] of [['ekor 138 pesan', [ekorF(null)]], ['ekor + Kemampuan', [lapisan, ekorF(lapisan)]]]) {
-    const s = simulasikan({ ...opsi, pasangGaya: G.pasangGayaGraf, lapisan: lp });
+    const s = simulasikan({ ...opsi, lapisan: lp });
     const intiHilang = s.tersembunyi.filter((l) => ['pusat', 'kemampuan', 'fondasi'].includes(l.group)).map((l) => l.teks);
     cek(intiHilang.length === 0 && s.atasSimpul >= G.RUANG_ATAS - 0.5,
       `${nama}, ${kasus}: 0 label inti tersembunyi, pita legenda bersih (tumpang mentah ${s.tumpang.length}, disembunyikan ${s.tersembunyi.length})`, intiHilang);

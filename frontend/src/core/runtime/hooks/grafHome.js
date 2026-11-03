@@ -13,60 +13,231 @@ export function simpulDirektori(nodes) {
   return (nodes || []).filter((n) => GRUP_DATA.includes(n.group));
 }
 
-const KELAS = { pusat: 'pusat', kemampuan: 'kemampuan', fondasi: 'fondasi', lapisan: 'lapisan', alat: 'alat', pesan: 'pesan' };
-const kelasSimpul = (n) => KELAS[n?.group] || 'data';
+// ═════════════════════════════════════════════════════════════════════════════════════════════════
+// TATA SURYA (Item 130 Tahap F, Konstitusi 23 revisi 3 Nov 2026) — menggantikan tata letak gaya fisika Tahap A–E.
+//
+// Dulu simpul saling tolak & tarik lalu "mencari keseimbangan" (d3-force): graf memantul ±15 detik, posisi planet acak,
+// data menggumpal jadi awan, dan setiap pasang label yang dibereskan dengan menyetel gaya memunculkan pasang lain
+// (lihat changelog Tahap A–E). Owner 3 Nov: "seharusnya seperti tata surya — matahari, planet beserta bulannya."
+// Kini posisi DIHITUNG (rumus orbit) dan DIPAKU (fx/fy):
+//   bintang ganda   MAMET · Desktop (−jarak, 0) & Server (+jarak, 0)
+//   planet          5 kemampuan di satu orbit, sudut dibagi rata (URUTAN_PLANET), jari-jari orbit dari ukuran sistemnya
+//   bulan           data milik planet dalam cincin-cincin konsentris (terbesar paling dalam); pesan = bulan percakapan
+//   planet luar     fondasi di orbit luar, di sela planet
+//   satelit         lapisan Kemampuan (hub & alatnya) di luar sistem induknya
+// Tanpa garis orbit (keputusan Owner). Diam — tak berputar.
+// ═════════════════════════════════════════════════════════════════════════════════════════════════
+
+export const ORBIT = Object.freeze({
+  jarakBintang: 30,      // setengah jarak Desktop–Server
+  ruangBintang: 72,      // jari-jari ruang kosong di sekitar bintang: planet tak boleh masuk (cukup bagi satelit sub-agent)
+  jedaBulan: 1.5,        // sela antar-bulan dalam satu cincin
+  jedaCincin: 2,         // sela antar-cincin bulan
+  jedaSistem: 16,        // sela antar-sistem planet bertetangga
+  jedaFondasi: 40,       // sela orbit luar dari sistem planet terbesar
+  jedaSatelit: 14,       // sela satelit (hub lapisan) dari sistem induknya
+  // Derajat: satelit tak lurus keluar dari induknya (jalur label induk), tetapi menyamping. Diukur 3 Nov (layar Owner,
+  // 1920, 768; lapisan & lapisan + ekor): 0° & 50° → 1 label tersembunyi, −50° → 2, 70° → 0 di semua keadaan.
+  putarSatelit: 70,
+});
+export const URUTAN_PLANET = Object.freeze(['kem-chat', 'kem-memori', 'kem-rag', 'kem-tabel', 'kem-engineer']);
+// Sudut fondasi (derajat, 0 = kanan, searah jarum jam di layar): di SELA planet (planet di −90 + 72·i).
+const SUDUT_FONDASI = Object.freeze({ 'fon-supabase': -54, 'fon-openrouter': 90, 'fon-electron': -126 });
+// Satelit lapisan Kemampuan → induknya (sistem yang ia kitari).
+const INDUK_SATELIT = Object.freeze({ 'lap-alat-chat': 'kem-chat', 'lap-alat-folder': 'kem-engineer', 'lap-mcp': 'fon-electron', 'lap-subagen': 'mamet-server' });
+
+/** Jari-jari simpul di kanvas — force-graph: √val × nodeRelSize (ActivityGraph nodeRelSize = 1). */
+export const jariSimpul = (n) => Math.sqrt(Math.max(0, n?.val || 1));
 
 /**
- * Tata letak graf Home (Item 130 Tahap A). Diukur 2 Nov dengan mesin yang sama (`uji/lib/simulasiGrafHome.mjs`, sebaran
- * data Owner, layar 1366×768): setelan bawaan force-graph → 9 label kategori, **7 pasang saling tindih**, skala 0,155.
- * Akarnya bukan jarak antar-kategori saja: simpul TANPA relasi (10 memori Owner) tak tertambat apa pun, didorong
- * tolakan ±470 simpul sampai ribuan satuan jauhnya, lalu `zoomToFit` mengecilkan seluruh graf demi memuatnya — label
- * kategori di tengah berdesakan. Maka: gravitasi lembut ke pusat (lebih kuat bagi yang tak bertambat) + jarak & tolakan
- * lebih lega bagi kategori.
- *
- * Tahap C (susunan dua belahan): kedua belahan dipaku ±60 → label "MAMET · DESKTOP"/"SERVER" saling tindih di semua
- * keadaan; ±140 + fondasi 320 → 0 tindih, tetapi fondasi (323) lebih DEKAT ke pusat daripada kemampuan (438). Dengan
- * gaya cincin (kemampuan 200, fondasi 480): fondasi 448 vs kemampuan 264, 0 tindih di 6 keadaan, layar Owner skala
- * 0,856 (setelan bawaan pada susunan yang sama: 4 tindih, skala 0,488).
- * Lalu pita atas legenda disisakan (`tataPas`) → ruang tegak berkurang, "Data Tabel ASN" (tanpa ekor data, hanya bergaris
- * ke Desktop) menindih label "MAMET · DESKTOP". Jari cincin 240/260 & tolakan belahan −1200 tak menolong; garis
- * kemampuan–pusat 150 → 230 menolong: 0 tindih di 6 keadaan, layar Owner skala 0,737. Kini setiap data adalah ekor kemampuannya, jadi gravitasi "tak bertambat" jarang terpakai — tetap dijaga
- * untuk data yang kehilangan pemakainya.
- *
- * @param {{ force: Function }} sim simulasi d3-force — di peramban `{ force: fg.d3Force }` (ref ForceGraph2D)
- * @param {Array} links garis graf — "tertambat" dihitung dari DATA, bukan dari simulasi: force-graph memasang datanya
- *   secara asinkron, jadi saat efek React berjalan gaya `link` bisa masih memegang garis lama.
+ * Bulan dalam cincin konsentris di sekeliling (0,0). Bulan diurut menurun; tiap cincin diisi sebanyak muat menurut bulan
+ * TERBESAR di cincin itu (busur ≥ 1,1 × (diameter + sela), cukup juga bagi tali busur); cincin berikutnya di luar.
+ * @returns {{ posisi: Map<object, [number, number]>, jari: number }} posisi relatif & jari-jari luar sistem
  */
-export function pasangGayaGraf(sim, links) {
-  // Tahap C: lingkar 1 (kemampuan) dekat pusat, fondasi di lingkar luar, data menempel pada kemampuannya.
-  // 'alat-kemampuan' (Tahap D): garis alat data_tabel → Data Tabel ASN. Dengan panjang bawaan 28 ia menyeret Data Tabel
-  // (tanpa ekor data) ke kerumunan Chat/Server — tindih di layar Owner pada 2 dari 3 urutan alat. 120 → 768 px tindih 2;
-  // 180 → layar Owner, 1920, 768: 0 di semua urutan.
-  // Tahap E: pesan menempel pada percakapannya ('pesan-data' pendek); garisnya ke kemampuan/alat panjang supaya satu
-  // percakapan yang dibuka tidak menyeret kerangka.
-  const jarak = { 'kemampuan-pusat': 230, 'fondasi-pusat': 320, 'lapisan-kemampuan': 110, 'lapisan-pusat': 140, 'lapisan-lapisan': 70, 'alat-kemampuan': 180,
-    'pesan-data': 16, 'pesan-kemampuan': 220, 'pesan-alat': 140 };
-  const tolak = { pusat: -400, kemampuan: -700, fondasi: -500, lapisan: -300, alat: -25, pesan: -6, data: -18 };
-  const kunci = (l) => `${kelasSimpul(l.source)}-${kelasSimpul(l.target)}`;
-  sim.force('link')?.distance((l) => jarak[kunci(l)] ?? 28);
-  // Kekuatan pegas = rumus bawaan d3 forceLink (1 / min(derajat ujung-ujungnya)), KECUALI garis pesan → alat (Tahap E):
-  // itu penunjuk rute, bukan pegas — dengan kekuatan bawaan ia menyeret Memori & kerangka ke percakapan yang dibuka
-  // (diukur: 2 tindih di layar Owner saat lapisan Kemampuan menyala).
-  const derajat = {};
-  const idUjung = (x) => x?.id ?? x;
-  (links || []).forEach((l) => { [idUjung(l.source), idUjung(l.target)].forEach((i) => { derajat[i] = (derajat[i] || 0) + 1; }); });
-  sim.force('link')?.strength?.((l) => (l.jalurAlat ? 0.03 : 1 / Math.max(1, Math.min(derajat[idUjung(l.source)] || 1, derajat[idUjung(l.target)] || 1))));
-  sim.force('charge')?.strength((n) => tolak[kelasSimpul(n)] ?? -18);
-  const tertambat = new Set();
-  (links || []).forEach((l) => { tertambat.add(l.source?.id ?? l.source); tertambat.add(l.target?.id ?? l.target); });
-  sim.force('gravitasi', gayaGravitasi((n) => (tertambat.has(n.id) ? 0.02 : 0.12)));
-  // Lingkar (Konstitusi 23): tanpa ini kemampuan — didorong awan datanya (RAG ±229 dokumen) — terlempar LEBIH jauh dari
-  // fondasi (diukur: kemampuan 438, fondasi 323). Pegas saja tak menjaga urutan lingkar.
-  // Tahap D: hub lapisan Kemampuan di cincinnya sendiri. Tanpa cincin, "Alat folder" & "MCP" (sama-sama bergaris ke Chat &
-  // Engineer) terdorong ke titik yang sama; tolakan lebih kuat memperbesar graf & label kerangka ikut menindih. Diukur:
-  // 340 → 1–3 tindih, 380 → 1 (768 px), 400 → 0 di layar Owner, 1920, 768, data 2×; 420 → 1.
-  const cincin = { kemampuan: JARI_KEMAMPUAN, fondasi: JARI_FONDASI, lapisan: JARI_LAPISAN };
-  sim.force('cincin', gayaCincin((n) => cincin[kelasSimpul(n)] ?? null, 0.3));
+export function cincinBulan(bulan, jariInti) {
+  const urut = [...(bulan || [])].sort((a, b) => jariSimpul(b) - jariSimpul(a));
+  const posisi = new Map();
+  let tepi = jariInti + ORBIT.jedaCincin, i = 0, ke = 0;
+  while (i < urut.length) {
+    const jb = jariSimpul(urut[i]);
+    const r = tepi + jb;
+    const kap = Math.max(1, Math.floor((2 * Math.PI * r) / (1.1 * (2 * jb + ORBIT.jedaBulan))));
+    const isi = urut.slice(i, i + kap);
+    isi.forEach((n, k) => { const a = (2 * Math.PI * k) / isi.length + ke * 0.5; posisi.set(n, [r * Math.cos(a), r * Math.sin(a)]); });
+    i += kap; ke++; tepi = r + jb + ORBIT.jedaCincin;
+  }
+  return { posisi, jari: urut.length ? tepi : jariInti };
+}
+
+const idOf = (x) => x?.id ?? x;
+
+/**
+ * Induk langsung tiap bulan/satelit — dari garis STRUKTUR saja (bukan garis relasi seperti memori → asalnya).
+ * @returns {Map<string, object[]>} id induk → simpul anaknya
+ */
+export function anakStruktur({ nodes, links }) {
+  const byId = new Map((nodes || []).map((n) => [n.id, n]));
+  const anak = new Map();
+  const tambah = (induk, n) => { if (!anak.has(induk)) anak.set(induk, []); if (!anak.get(induk).includes(n)) anak.get(induk).push(n); };
+  (links || []).forEach((l) => {
+    const s = byId.get(idOf(l.source)), t = idOf(l.target);
+    if (!s || !byId.has(t)) return;
+    if (GRUP_DATA.includes(s.group) && t.startsWith('kem-')) tambah(t, s);
+    else if (s.group === 'pesan' && t.startsWith('chat-')) tambah(t, s);
+    else if (s.group === 'alat' && t.startsWith('lap-')) tambah(t, s);
+    else if (s.group === 'lapisan' && s.id.startsWith('lap-konektor-') && t === 'lap-mcp') tambah(t, s);
+  });
+  return anak;
+}
+
+/**
+ * Seluruh isi sistem sebuah simpul (bulan, satelit, bulan dari bulan — berulang), yang ikut bergerak saat simpul itu
+ * digeser (keputusan Owner 3 Nov: "bulan mengikuti planetnya"). Satelit lapisan Kemampuan ikut induknya (INDUK_SATELIT).
+ * @returns {Map<string, object[]>} id simpul → semua keturunannya (tanpa dirinya)
+ */
+export function keturunanSistem({ nodes, links }) {
+  const byId = new Map((nodes || []).map((n) => [n.id, n]));
+  const anak = anakStruktur({ nodes, links });
+  Object.entries(INDUK_SATELIT).forEach(([hubId, indukId]) => {
+    if (!byId.has(hubId) || !byId.has(indukId)) return;
+    if (!anak.has(indukId)) anak.set(indukId, []);
+    anak.get(indukId).push(byId.get(hubId));
+  });
+  const hasil = new Map();
+  const kumpul = (id, lihat) => (anak.get(id) || []).flatMap((n) => (lihat.has(n.id) ? [] : (lihat.add(n.id), [n, ...kumpul(n.id, lihat)])));
+  anak.forEach((_, id) => hasil.set(id, kumpul(id, new Set([id]))));
+  return hasil;
+}
+
+/**
+ * Seretan simpul: `mulaiSeret` mencatat seluruh sistemnya beserta posisi awal; `ikutSeret` menggeser semuanya sejauh
+ * simpul itu bergeser dari titik awal seretan (dipanggil tiap gerakan, mutlak terhadap awal — tak menumpuk galat).
+ */
+export function mulaiSeret(graf, node) {
+  const awal = node.__initialDragPos || { x: node.x, y: node.y };
+  const ikut = (keturunanSistem(graf).get(node.id) || []).map((n) => ({ n, x: n.x, y: n.y }));
+  return { id: node.id, x: awal.x, y: awal.y, ikut };
+}
+export function ikutSeret(seret, node) {
+  const dx = node.x - seret.x, dy = node.y - seret.y;
+  seret.ikut.forEach(({ n, x, y }) => { n.fx = n.x = x + dx; n.fy = n.y = y + dy; });
+  return [dx, dy];
+}
+
+/**
+ * Menerapkan geseran Owner (id → [dx, dy] kumulatif) sesudah `tataSurya`: simpul & seluruh sistemnya ikut pindah, jadi
+ * planet yang digeser tetap di tempat barunya saat graf disusun ulang (data baru, ekor pesan dibuka, lapisan dinyalakan).
+ */
+export function terapkanGeser(graf, geser) {
+  if (!geser?.size) return;
+  const byId = new Map((graf.nodes || []).map((n) => [n.id, n]));
+  const turun = keturunanSistem(graf);
+  geser.forEach(([dx, dy], id) => {
+    const n = byId.get(id);
+    if (!n || n.fx === undefined) return;
+    [n, ...(turun.get(id) || [])].forEach((m) => { m.fx = m.x = m.fx + dx; m.fy = m.y = m.fy + dy; });
+  });
+}
+
+/**
+ * Memaku setiap simpul yang dikenal ke posisinya (fx/fy, x/y) dan memberi arah labelnya. Mengubah simpul di tempat;
+ * simpul yang tak dikenal dibiarkan. Hanya membaca garis struktur (bulan → induk), bukan garis relasi.
+ * @returns {{ jariOrbit: number, jariLuar: number, sistem: Map<string, number> }} ukuran yang dipakai (untuk uji)
+ */
+export function tataSurya({ nodes, links }) {
+  const byId = new Map((nodes || []).map((n) => [n.id, n]));
+  const pakai = (n, x, y) => { n.fx = n.x = x; n.fy = n.y = y; };
+  const keluar = (n, x, y, jarak) => {   // label di sisi luar (menjauhi pusat), sejauh `jarak` dari simpul
+    const d = Math.hypot(x, y) || 1, ux = x / d, uy = y / d;
+    n.labelGeser = [ux * jarak, uy * jarak];
+    n.labelArah = ux > 0.35 ? 'kanan' : ux < -0.35 ? 'kiri' : undefined;
+    n.labelAtas = uy < -0.35;
+  };
+
+  const anak = anakStruktur({ nodes, links });
+
+  // Bintang ganda.
+  const D = ORBIT.jarakBintang;
+  if (byId.has('mamet-desktop')) pakai(byId.get('mamet-desktop'), -D, 0);
+  if (byId.has('mamet-server')) pakai(byId.get('mamet-server'), D, 0);
+
+  // Sistem planet & jari-jari orbit: cukup jauh dari bintang, dan sistem bertetangga tak bersentuhan.
+  const planet = URUTAN_PLANET.filter((id) => byId.has(id)).map((id) => byId.get(id));
+  const sistem = new Map(planet.map((p) => [p.id, cincinBulan(anak.get(p.id), jariSimpul(p))]));
+  const S = (p) => sistem.get(p.id).jari;
+  const N = planet.length;
+  let jariOrbit = Math.max(0, ...planet.map((p) => ORBIT.ruangBintang + S(p)));
+  if (N > 1) planet.forEach((p, i) => {
+    const q = planet[(i + 1) % N];
+    jariOrbit = Math.max(jariOrbit, (S(p) + S(q) + ORBIT.jedaSistem) / (2 * Math.sin(Math.PI / N)));
+  });
+  planet.forEach((p, i) => {
+    const a = -Math.PI / 2 + (2 * Math.PI * i) / N;
+    const x = jariOrbit * Math.cos(a), y = jariOrbit * Math.sin(a);
+    pakai(p, x, y);
+    keluar(p, x, y, S(p) + 3);
+    sistem.get(p.id).posisi.forEach(([bx, by], b) => pakai(b, x + bx, y + by));
+  });
+
+  // Planet luar: fondasi.
+  const jariLuar = jariOrbit + Math.max(0, ...planet.map(S)) + ORBIT.jedaFondasi;
+  Object.entries(SUDUT_FONDASI).forEach(([id, deg]) => {
+    if (!byId.has(id)) return;
+    const a = (deg * Math.PI) / 180, x = jariLuar * Math.cos(a), y = jariLuar * Math.sin(a);
+    pakai(byId.get(id), x, y);
+    keluar(byId.get(id), x, y, jariSimpul(byId.get(id)) + 3);
+  });
+
+  // Satelit lapisan Kemampuan — di luar sistem induknya (menjauhi pusat); sub-agent di ruang kosong sekitar Server.
+  const jariSistem = (id) => (sistem.has(id) ? sistem.get(id).jari : jariSimpul(byId.get(id)));
+  const pasangSatelit = (hub, ix, iy, ux, uy, jarakInduk) => {
+    const sys = cincinBulan(anak.get(hub.id), jariSimpul(hub));
+    const jarak = jarakInduk + ORBIT.jedaSatelit + sys.jari;
+    const x = ix + ux * jarak, y = iy + uy * jarak;
+    pakai(hub, x, y);
+    keluar(hub, ux, uy, sys.jari + 3);
+    sys.posisi.forEach(([bx, by], b) => pakai(b, x + bx, y + by));
+    return { x, y, jari: sys.jari };
+  };
+  Object.entries(INDUK_SATELIT).forEach(([hubId, indukId]) => {
+    const hub = byId.get(hubId), induk = byId.get(indukId);
+    if (!hub || !induk || induk.fx === undefined) return;
+    if (hubId === 'lap-subagen') { pasangSatelit(hub, induk.fx, induk.fy, 0, 1, jariSimpul(induk)); return; }
+    // Arah satelit = keluar dari pusat, DIPUTAR menyamping (ORBIT.putarSatelit): lurus keluar ia duduk tepat di jalur
+    // label induknya (yang juga menghadap keluar) — diukur: label "Alat folder" tertabrak label "Engineer".
+    const d = Math.hypot(induk.fx, induk.fy) || 1;
+    const p = ORBIT.putarSatelit * Math.PI / 180;
+    const ux = (induk.fx * Math.cos(p) - induk.fy * Math.sin(p)) / d, uy = (induk.fx * Math.sin(p) + induk.fy * Math.cos(p)) / d;
+    const h = pasangSatelit(hub, induk.fx, induk.fy, ux, uy, jariSistem(indukId));
+    if (hubId === 'lap-mcp') {
+      // Konektor = satelit dari satelit MCP, menyebar ±25° bila lebih dari satu.
+      (anak.get('lap-mcp') || []).forEach((k, i, semua) => {
+        const sudut = (i - (semua.length - 1) / 2) * (25 * Math.PI / 180);
+        const vx = ux * Math.cos(sudut) - uy * Math.sin(sudut), vy = ux * Math.sin(sudut) + uy * Math.cos(sudut);
+        pasangSatelit(k, h.x, h.y, vx, vy, h.jari);
+      });
+    }
+  });
+
+  // Bulan dari bulan: pesan di sekeliling percakapan yang dibuka (Tahap E).
+  anak.forEach((isi, indukId) => {
+    const induk = byId.get(indukId);
+    if (!indukId.startsWith('chat-') || !induk || induk.fx === undefined) return;
+    cincinBulan(isi, jariSimpul(induk)).posisi.forEach(([bx, by], b) => pakai(b, induk.fx + bx, induk.fy + by));
+  });
+
+  return { jariOrbit, jariLuar, sistem: new Map([...sistem].map(([id, s]) => [id, s.jari])) };
+}
+
+/**
+ * Garis relasi = jaring laba-laba, SELALU tampil (keputusan Owner 3 Nov: "jalur hubungan itu fiturnya"; sempat
+ * disembunyikan di awal Tahap F). Saat simpul dipilih, garisnya — dan pesan → alat untuk percakapan yang dipilih —
+ * MENYALA, sisanya meredup.
+ */
+export function garisMenyala(link, terpilih) {
+  if (!terpilih) return false;
+  const s = idOf(link?.source), t = idOf(link?.target);
+  return s === terpilih || t === terpilih || (typeof s === 'string' && s.startsWith(`pesan-${terpilih}-`));
 }
 
 /**
@@ -92,47 +263,22 @@ export function tataPas({ bbox, lebar, tinggi, padding = 50, atas = RUANG_ATAS }
   };
 }
 
-export const JARI_KEMAMPUAN = 200;
-export const JARI_LAPISAN = 400;
-export const JARI_FONDASI = 480;
-
-/** Tarikan ke jari-jari tertentu — rumus `forceRadial` d3 (v += (r − d)/d × posisi × kekuatan × alpha); null = tak ditarik. */
-export function gayaCincin(jari, kekuatan) {
-  let simpul = [];
-  const gaya = (alpha) => {
-    for (const n of simpul) {
-      const r = jari(n);
-      if (r === null || r === undefined) continue;
-      const x = n.x || 1e-6, y = n.y || 0, d = Math.hypot(x, y);
-      const k = ((r - d) / d) * kekuatan * alpha;
-      n.vx += x * k;
-      n.vy += y * k;
-    }
-  };
-  gaya.initialize = (n) => { simpul = n || []; };
-  return gaya;
-}
-
-/** Tarikan lembut ke titik (0,0) — rumus `forceX(0)`/`forceY(0)` d3, tanpa mengimpor d3 (bukan dependensi langsung). */
-export function gayaGravitasi(tarik) {
-  let simpul = [];
-  const gaya = (alpha) => {
-    for (const n of simpul) {
-      const k = tarik(n) * alpha;
-      n.vx -= (n.x || 0) * k;
-      n.vy -= (n.y || 0) * k;
-    }
-  };
-  gaya.initialize = (n) => { simpul = n || []; };
-  return gaya;
-}
-
 /**
  * Nama simpul data (judul chat, dokumen, memori) baru tampil di kanvas pada skala ini. Dulu 0,75 — begitu tata letak
  * dirapatkan, layar 1920×1080 langsung melewatinya saat dibuka (skala pas 0,78) dan 490 nama tampil bertumpuk.
  * Nama tetap bisa dibaca lewat sorot (tooltip) dan Knowledge Directory.
  */
 export const AMBANG_LABEL_DATA = 2;
+
+/**
+ * Ambang nama simpul data RELATIF terhadap skala pas kamera (Tahap F). Tata surya membuat graf jauh lebih besar: layar
+ * 2560 dibuka pada skala 2,36 — melewati ambang tetap 2 → 468 nama tampil sekaligus. Kini nama data tampil sesudah Owner
+ * memperbesar ±1,8× dari pandangan awal, apa pun layarnya (dan tak pernah di bawah 2).
+ */
+export const FAKTOR_LABEL_DATA = 1.8;
+export function ambangLabelData(skalaPas) {
+  return Math.max(AMBANG_LABEL_DATA, (Number(skalaPas) || 0) * FAKTOR_LABEL_DATA);
+}
 
 /**
  * Tooltip sorot simpul. `float-tooltip` (dipakai force-graph) menulis string lewat `.html()` = innerHTML; nama simpul
@@ -153,10 +299,26 @@ export function labelTooltipAman(node) {
 export const PRIORITAS_LABEL = Object.freeze({ pusat: 0, kemampuan: 1, fondasi: 2, lapisan: 3, konektor: 4, konflik: 5, data: 6 });
 export const prioritasLabel = (n) => (n?.isConflict ? PRIORITAS_LABEL.konflik : (PRIORITAS_LABEL[n?.group] ?? PRIORITAS_LABEL.data));
 
-/** Kotak label [x0, y0, x1, y1] di titik (x, y) selebar `lebar`: tengah (bawaan), 'kiri' = berakhir di x, 'kanan' = mulai di x. */
-export function kotakLabel(x, y, lebar, tinggi, arah) {
+/**
+ * Kotak label [x0, y0, x1, y1] di titik (x, y) selebar `lebar`: tengah (bawaan), 'kiri' = berakhir di x, 'kanan' = mulai
+ * di x; `atas` = teks berakhir di y (label di atas simpul — planet di belahan atas tata surya, Tahap F).
+ */
+export function kotakLabel(x, y, lebar, tinggi, arah, atas = false) {
   const x0 = arah === 'kiri' ? x - lebar : arah === 'kanan' ? x : x - lebar / 2;
-  return [x0, y, x0 + lebar, y + tinggi];
+  const y0 = atas ? y - tinggi : y;
+  return [x0, y0, x0 + lebar, y0 + tinggi];
+}
+
+/**
+ * Titik jangkar label simpul di kanvas. Simpul tata surya membawa `labelGeser` (di luar sistem bulannya, Tahap F);
+ * lainnya di bawah simpul seperti dulu. `celah` = 2,5 px layar dalam satuan graf.
+ */
+export function jangkarLabel(node, jari, celah) {
+  if (node?.labelGeser) {
+    const [gx, gy] = node.labelGeser;
+    return { x: node.x + gx, y: node.y + gy + (node.labelAtas ? -celah : celah), arah: node.labelArah, atas: !!node.labelAtas };
+  }
+  return { x: node.x, y: node.y + jari + celah, arah: node.labelArah, atas: false };
 }
 
 /** Kotak [x0, y0, x1, y1] boleh dilukis bila tak menindih yang sudah terpakai; bila boleh, ia ikut dicatat terpakai. */
@@ -335,8 +497,9 @@ export function susunGrafHome({ memories, documents, chats, docChunkCounts, vita
   // `labelArah` (Tahap E): label belahan diratakan KE LUAR (Desktop ke kiri, Server ke kanan), bukan di tengah simpul —
   // jarak antar-label berlipat tanpa memindahkan simpul. Diukur: di 768 px dengan lapisan + ekor menyala, label tengah
   // "MAMET · SERVER" tertabrak "MAMET · DESKTOP" dan disembunyikan.
-  nodes.push({ id: PUSAT.desktop, name: 'MAMET · DESKTOP', type: 'Belahan', group: 'pusat', val: 30, color: '#ffffff', isCategory: true, fx: -140, fy: 0, labelArah: 'kiri' });
-  nodes.push({ id: PUSAT.server, name: 'MAMET · SERVER', type: 'Belahan', group: 'pusat', val: 30, color: '#ffffff', isCategory: true, fx: 140, fy: 0, labelArah: 'kanan' });
+  // Tahap F: bintang ganda tata surya (posisi akhir dari `tataSurya`; nilai di sini sama).
+  nodes.push({ id: PUSAT.desktop, name: 'MAMET · DESKTOP', type: 'Belahan', group: 'pusat', val: 30, color: '#ffffff', isCategory: true, fx: -ORBIT.jarakBintang, fy: 0, labelArah: 'kiri' });
+  nodes.push({ id: PUSAT.server, name: 'MAMET · SERVER', type: 'Belahan', group: 'pusat', val: 30, color: '#ffffff', isCategory: true, fx: ORBIT.jarakBintang, fy: 0, labelArah: 'kanan' });
 
   // ── Lingkar 1 & fondasi ────────────────────────────────────────────────────────────────────────
   KEMAMPUAN.forEach((k) => nodes.push({ id: k.id, name: k.name, type: 'Kemampuan', group: 'kemampuan', val: 20, color: '#38bdf8', isCategory: true }));

@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { kernel } from '../../core/runtime/Kernel';
 import { temaService } from '../../core/runtime/services/TemaService';
-import { simpulDirektori, labelTooltipAman, AMBANG_LABEL_DATA, prioritasLabel, bolehLabel, kotakLabel } from '../../core/runtime/hooks/grafHome.js';
+import { simpulDirektori, labelTooltipAman, ambangLabelData, prioritasLabel, bolehLabel, kotakLabel, jangkarLabel, garisMenyala } from '../../core/runtime/hooks/grafHome.js';
 
 const FALLBACK_COLOR = '#475569';
 // [ROADMAP-KNOWLEDGE-GALAXY-COSMIC-ORBITS §3.A] Lengkungan orbit gravitasi kosmik
@@ -34,6 +34,8 @@ export default function ActivityGraph({
   warnaLampu,
   kemampuanTampil = false,
   onToggleKemampuan,
+  simpulTerpilih = null,
+  skalaPas = 0,
   activePath,
   handleNodeClick,
   onNodeDrag,
@@ -202,16 +204,19 @@ export default function ActivityGraph({
             // dengan penghindar tabrakan (onRenderFramePost) — pasti di atas semua titik, dan tak pernah saling tindih.
             if (node.name) {
               const isCategory = node.isCategory || node.group === 'core';
-              if (globalScale >= AMBANG_LABEL_DATA || isCategory || isConflict) {
+              if (globalScale >= ambangLabelData(skalaPas) || isCategory || isConflict) {
                 const maxLen = isCategory ? 26 : 18;
+                // Tahap F: planet/fondasi/satelit berlabel di luar sistem bulannya (`labelGeser`), lainnya di bawah simpul.
+                const j = jangkarLabel(node, size, 2.5 / globalScale);
                 antreanLabelRef.current.push({
                   teks: node.name.length > maxLen ? node.name.substring(0, maxLen) + '…' : node.name,
-                  x: node.x,
-                  y: node.y + size + (2.5 / globalScale),
+                  x: j.x,
+                  y: j.y,
                   kategori: isCategory,
                   warna: isConflict ? warnaKanvasRef.current.konflik : isCategory ? warnaKanvasRef.current.putih : warnaKanvasRef.current.label,
                   prioritas: prioritasLabel(node),
-                  arah: node.labelArah,
+                  arah: j.arah,
+                  atas: j.atas,
                 });
               }
             }
@@ -219,18 +224,19 @@ export default function ActivityGraph({
           onRenderFramePre={() => { antreanLabelRef.current = []; }}
           onRenderFramePost={(ctx, globalScale) => {
             const terpakai = [];
-            ctx.textBaseline = 'top';
             for (const l of antreanLabelRef.current.sort((a, b) => a.prioritas - b.prioritas)) {
               const fontSize = (l.kategori ? 12 : 9.5) / globalScale;
               ctx.font = `${l.kategori ? '600 ' : '400 '}${fontSize}px sans-serif, monospace`;
               const lebar = ctx.measureText(l.teks).width;
-              if (!bolehLabel(kotakLabel(l.x, l.y, lebar, fontSize * 1.2, l.arah), terpakai)) continue;
+              if (!bolehLabel(kotakLabel(l.x, l.y, lebar, fontSize * 1.2, l.arah, l.atas), terpakai)) continue;
+              ctx.textBaseline = l.atas ? 'bottom' : 'top';
               ctx.textAlign = l.arah === 'kiri' ? 'right' : l.arah === 'kanan' ? 'left' : 'center';
               ctx.fillStyle = l.warna;
               ctx.fillText(l.teks, l.x, l.y);
             }
           }}
-          linkCurvature={ORBIT_CURVATURE}
+          // Jaring laba-laba (Tahap F): garis relasi selalu tampil, lurus; hanya jalur pesan Desktop ⇄ Server melengkung.
+          linkCurvature={(link) => (link?.jalurPesan ? ORBIT_CURVATURE : 0)}
           linkColor={(link) => {
             if (!link || !link.source || !link.target) return `rgba(${warnaKanvasRef.current.putihRgb}, 0.35)`;
             const sourceId = (link.source && (link.source.id || link.source)) || '';
@@ -240,6 +246,8 @@ export default function ActivityGraph({
               if (activePath.links.has(`${sourceId}->${targetId}`)) return '#00ffcc';
               return `rgba(${warnaKanvasRef.current.putihRgb}, 0.02)`;
             }
+            // Simpul dipilih: garisnya menyala, jaring lain meredup.
+            if (simpulTerpilih) return garisMenyala(link, simpulTerpilih) ? `rgba(${warnaKanvasRef.current.putihRgb}, 0.9)` : `rgba(${warnaKanvasRef.current.putihRgb}, 0.06)`;
             // Garis berlampu (jalur pesan, fondasi → belahan) ikut status TERKINI (Item 130 Tahap B–C).
             if (link.statusKeys && warnaLampu) return warnaLampu(link.statusKeys);
             return link.color || `rgba(${warnaKanvasRef.current.putihRgb}, 0.35)`;
@@ -250,6 +258,7 @@ export default function ActivityGraph({
             const targetId = (link.target && (link.target.id || link.target)) || '';
             if (!sourceId || !targetId) return 1.5;
             if (activePath && activePath.links.has(`${sourceId}->${targetId}`)) return 3;
+            if (garisMenyala(link, simpulTerpilih)) return 2.5;
             return link.width || 1.5;
           }}
           linkDirectionalParticles={(link) => {
@@ -286,6 +295,8 @@ export default function ActivityGraph({
             }
           }}
           backgroundColor="#00000000"
+          // Posisi dipaku tata surya (Tahap F) — tak ada yang perlu "dicari"; mesin berhenti cepat, tak memantul.
+          cooldownTicks={30}
           d3AlphaDecay={0.02}
           d3VelocityDecay={0.3}
           onEngineStop={onEngineStop}

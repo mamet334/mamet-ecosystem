@@ -1,19 +1,18 @@
-// Simulasi graf Home di Node (Item 130 Tahap A, 2 Nov 2026) — mesin yang SAMA dengan Home (`d3-force-3d` lewat
-// `force-graph`), penyusun simpul yang SAMA (`susunGrafHome`), sebaran data Owner yang diukur 2 Nov (hanya hitungan):
-// chat 131 Assistant / 84 Engineer / 4 Lite, 229 dokumen ber-potongan, 10 memori tanpa relasi.
+// Simulasi graf Home di Node (Item 130). Sejak Tahap F (tata surya, 3 Nov 2026) posisi tidak lagi "dicari" oleh gaya
+// fisika: `tataSurya` (grafHome.js) menghitung & memaku semuanya — fungsi yang SAMA yang dipakai HomeDashboard. Penyusun
+// simpul juga yang sama (`susunGrafHome`, `gabungGraf`), sebaran data Owner yang diukur 2 Nov (hanya hitungan): chat 131
+// Assistant / 84 Engineer / 4 Lite, 229 dokumen ber-potongan, 10 memori.
 //
-// Setelan meniru `force-graph` 1.x + ActivityGraph: forceLink (jarak 30) + forceManyBody (-30) + forceCenter,
-// alphaDecay 0.02, velocityDecay 0.3, ±900 detak (cooldownTime 15 dtk ≈ 60 fps), lalu `tataPas` (padding 50 + pita atas
-// RUANG_ATAS — pengganti zoomToFit sejak Tahap C). Koordinat label = piksel layar mutlak.
-// Label kategori digambar 12px di layar (`ActivityGraph` nodeCanvasObject), simpul lain hanya bila skala ≥ ambang
-// (`ambangLabel`: bawaan = AMBANG_LABEL_DATA dari grafHome.js, yang juga dipakai ActivityGraph; 0,75 = setelan lama).
+// Kamera = `tataPas` (padding 50 + pita atas RUANG_ATAS), seperti onEngineStop HomeDashboard. Label: kategori 12 px di
+// layar, simpul data hanya bila skala ≥ ambang; jangkar label = `jangkarLabel` (label planet di luar sistem bulannya);
+// penghindar tabrakan = `bolehLabel` menurut `prioritasLabel` — aturan yang SAMA dengan ActivityGraph onRenderFramePost.
 
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 
 const AKAR = fileURLToPath(new URL('../..', import.meta.url));
-const d3 = await import(pathToFileURL(join(AKAR, 'frontend/node_modules/d3-force-3d/src/index.js')).href);
-const { susunGrafHome, AMBANG_LABEL_DATA, tataPas, gabungGraf, prioritasLabel, bolehLabel, kotakLabel } = await import(pathToFileURL(join(AKAR, 'frontend/src/core/runtime/hooks/grafHome.js')).href);
+const { susunGrafHome, ambangLabelData, tataPas, gabungGraf, prioritasLabel, bolehLabel, kotakLabel, tataSurya, jangkarLabel, jariSimpul } =
+  await import(pathToFileURL(join(AKAR, 'frontend/src/core/runtime/hooks/grafHome.js')).href);
 
 export const SEBARAN_OWNER = Object.freeze({ assistant: 131, engineer: 84, lite: 4, dokumen: 229, memori: 10 });
 export const LAYAR_OWNER = Object.freeze({ lebar: 1046, tinggi: 690 }); // 1366×768 dikurangi panel kanan & bilah
@@ -29,65 +28,47 @@ export function barisTiruan(s = SEBARAN_OWNER) {
   return { memories, documents, chats, docChunkCounts };
 }
 
-function acakBerbenih(benih) {
-  let a = benih >>> 0;
-  return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-}
-
 const lebarTeks = (s) => [...s].reduce((n, c) => n + (c >= 'A' && c <= 'Z' ? 8.4 : 7.2), 0);
 
 /**
- * @param {(sim: object, links: Array) => void} [pasangGaya] — mis. `pasangGayaGraf` dari grafHome.js; kosong = setelan lama.
- * @returns {{ skala: number, label: Array, tumpang: Array<[string,string]>, tampil: Array, tersembunyi: Array, simpul: Array, garis: Array }}
- *   label = kandidat label; tumpang = tumpang MENTAH (mutu tata letak); tampil/tersembunyi = sesudah penghindar tabrakan.
+ * @param {object} [opsi] layar, sebaran, ambangLabel, pesanPerChat, lapisan (satu atau larik: hasil susunLapisanKemampuan /
+ *   susunEkorPesan, atau fungsi (grafDasar) → lapisan). `pasangGaya`/`benih`/`detak` dari masa gaya fisika diabaikan.
+ * @returns {{ skala, label, tumpang, tampil, tersembunyi, simpul, garis, atasSimpul, ukuran }}
+ *   label = kandidat label; tumpang = tumpang MENTAH (mutu tata letak); tampil/tersembunyi = sesudah penghindar tabrakan;
+ *   ukuran = hasil tataSurya (jariOrbit, jariLuar, sistem).
  */
-export function simulasikan({ pasangGaya, benih = 1, layar = LAYAR_OWNER, detak = 900, sebaran = SEBARAN_OWNER, ambangLabel = AMBANG_LABEL_DATA, lapisan = null } = {}) {
-  const asli = Math.random;
-  Math.random = acakBerbenih(benih);
-  try {
-    // `lapisan` = hasil susunLapisanKemampuan (Tahap D) — digabung seperti HomeDashboard saat tombol Kemampuan menyala.
-    // Tahap E: `lapisan` boleh larik (lapisan Kemampuan + ekor pesan); fungsi = dibangun dari graf dasar (butuh id simpulnya).
-    const dasar = susunGrafHome({ ...barisTiruan(sebaran), vitals: {} });
-    const daftar = (Array.isArray(lapisan) ? lapisan : [lapisan]).map((l) => (typeof l === 'function' ? l(dasar) : l));
-    const { nodes, links } = gabungGraf(dasar, ...daftar);
-    const sim = d3.forceSimulation(nodes, 2)
-      .force('link', d3.forceLink(links).id((n) => n.id))
-      .force('charge', d3.forceManyBody())
-      .force('center', d3.forceCenter())
-      .alphaDecay(0.02).velocityDecay(0.3).stop();
-    if (pasangGaya) pasangGaya(sim, links);
-    for (let i = 0; i < detak; i++) sim.tick();
+export function simulasikan({ layar = LAYAR_OWNER, sebaran = SEBARAN_OWNER, ambangLabel = null, lapisan = null, pesanPerChat = {} } = {}) {
+  const dasar = susunGrafHome({ ...barisTiruan(sebaran), vitals: {}, pesanPerChat });
+  const daftar = (Array.isArray(lapisan) ? lapisan : [lapisan]).map((l) => (typeof l === 'function' ? l(dasar) : l));
+  const graf = gabungGraf(dasar, ...daftar);
+  const ukuran = tataSurya(graf);
+  const { nodes, links } = graf;
 
-    const r = (n) => Math.sqrt(Math.max(0, n.val || 1));
-    const xs = nodes.map((n) => [n.x - r(n), n.x + r(n)]).flat(), ys = nodes.map((n) => [n.y - r(n), n.y + r(n)]).flat();
-    const bx = [Math.min(...xs), Math.max(...xs)], by = [Math.min(...ys), Math.max(...ys)];
-    // Kamera = tataPas (pengganti zoomToFit di HomeDashboard, Tahap C): pita atas untuk judul & legenda disisakan.
-    const kamera = tataPas({ bbox: { x: bx, y: by }, lebar: layar.lebar, tinggi: layar.tinggi });
-    const k = kamera.k;
-    const keLayar = (gx, gy) => [(gx - kamera.x) * k + layar.lebar / 2, (gy - kamera.y) * k + layar.tinggi / 2];
-    // Titik teratas simpul mana pun di layar (px) — harus di bawah pita legenda.
-    const atasSimpul = Math.min(...nodes.map((n) => keLayar(n.x, n.y - r(n))[1]));
+  const r = (n) => jariSimpul(n);
+  const xs = nodes.map((n) => [n.x - r(n), n.x + r(n)]).flat(), ys = nodes.map((n) => [n.y - r(n), n.y + r(n)]).flat();
+  const bx = [Math.min(...xs), Math.max(...xs)], by = [Math.min(...ys), Math.max(...ys)];
+  const kamera = tataPas({ bbox: { x: bx, y: by }, lebar: layar.lebar, tinggi: layar.tinggi });
+  const k = kamera.k;
+  const keLayar = (gx, gy) => [(gx - kamera.x) * k + layar.lebar / 2, (gy - kamera.y) * k + layar.tinggi / 2];
+  const atasSimpul = Math.min(...nodes.map((n) => keLayar(n.x, n.y - r(n))[1]));
 
-    const label = nodes.filter((n) => n.name && (n.isCategory || n.group === 'core' || k >= ambangLabel)).map((n) => {
-      const kategori = n.isCategory || n.group === 'core';
-      const teks = n.name.length > (kategori ? 26 : 18) ? n.name.slice(0, kategori ? 26 : 18) + '…' : n.name;
-      const lebar = lebarTeks(teks) * (kategori ? 1 : 9.5 / 12), tinggi = kategori ? 14 : 11;
-      const [x, yPusat] = keLayar(n.x, n.y + Math.min(n.val || 5, 8));
-      const y = yPusat + 2.5;
-      return { id: n.id, group: n.group, teks, prioritas: prioritasLabel(n), kotak: kotakLabel(x, y, lebar, tinggi, n.labelArah) };
-    });
-    // `tumpang` = tumpang MENTAH antar-kandidat label (mutu tata letak, sebelum penghindar tabrakan).
-    const tumpang = [];
-    for (let i = 0; i < label.length; i++) for (let j = i + 1; j < label.length; j++) {
-      const a = label[i].kotak, b = label[j].kotak;
-      if (a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]) tumpang.push([label[i].teks, label[j].teks]);
-    }
-    // Penghindar tabrakan Tahap E — aturan yang SAMA dengan ActivityGraph onRenderFramePost (prioritas, bolehLabel).
-    const terpakai = [];
-    const tampil = [], tersembunyi = [];
-    [...label].sort((a, b) => a.prioritas - b.prioritas).forEach((l) => (bolehLabel([...l.kotak], terpakai) ? tampil : tersembunyi).push(l));
-    return { skala: k, label, tumpang, tampil, tersembunyi, simpul: nodes, garis: links, atasSimpul };
-  } finally {
-    Math.random = asli;
+  // Ambang nama data = ambangLabelData(skala pas) seperti ActivityGraph (Tahap F); `ambangLabel` angka = paksa (pembanding).
+  const ambang = ambangLabel ?? ambangLabelData(k);
+  const label = nodes.filter((n) => n.name && (n.isCategory || k >= ambang)).map((n) => {
+    const kategori = !!n.isCategory;
+    const teks = n.name.length > (kategori ? 26 : 18) ? n.name.slice(0, kategori ? 26 : 18) + '…' : n.name;
+    const lebar = lebarTeks(teks) * (kategori ? 1 : 9.5 / 12), tinggi = kategori ? 14 : 11;
+    const j = jangkarLabel(n, Math.min(n.val || 5, 8), 2.5 / k);
+    const [x, y] = keLayar(j.x, j.y);
+    return { id: n.id, group: n.group, teks, prioritas: prioritasLabel(n), kotak: kotakLabel(x, y, lebar, tinggi, j.arah, j.atas) };
+  });
+  const tumpang = [];
+  for (let i = 0; i < label.length; i++) for (let j = i + 1; j < label.length; j++) {
+    const a = label[i].kotak, b = label[j].kotak;
+    if (a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]) tumpang.push([label[i].teks, label[j].teks]);
   }
+  const terpakai = [];
+  const tampil = [], tersembunyi = [];
+  [...label].sort((a, b) => a.prioritas - b.prioritas).forEach((l) => (bolehLabel([...l.kotak], terpakai) ? tampil : tersembunyi).push(l));
+  return { skala: k, label, tumpang, tampil, tersembunyi, simpul: nodes, garis: links, atasSimpul, ukuran };
 }

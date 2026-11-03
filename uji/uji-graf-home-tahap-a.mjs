@@ -12,7 +12,7 @@ import { join } from 'node:path';
 const AKAR = fileURLToPath(new URL('..', import.meta.url));
 const grafHome = await import(pathToFileURL(join(AKAR, 'frontend/src/core/runtime/hooks/grafHome.js')).href);
 const { simulasikan, barisTiruan, SEBARAN_OWNER } = await import(pathToFileURL(join(AKAR, 'uji/lib/simulasiGrafHome.mjs')).href);
-const { susunGrafHome, simpulDirektori, labelTooltipAman, pasangGayaGraf, gayaGravitasi } = grafHome;
+const { susunGrafHome, simpulDirektori, labelTooltipAman } = grafHome;
 console.warn = () => {};   // safeLink memperingatkan simpul tiruan yang memang tak bertautan — bukan hasil uji
 
 let gagal = 0;
@@ -24,10 +24,11 @@ const baca = (p) => readFileSync(join(AKAR, p), 'utf8');
 console.log('uji-graf-home-tahap-a v1');
 
 // ── 1. Label kategori tak menumpuk (simulasi) ───────────────────────────────────────────────────
-// Pembanding = setelan bawaan force-graph pada susunan YANG SAMA (sejak Tahap C: dua belahan; dulu 7 pasang di bintang
-// SUPABASE KERNEL). Membuktikan simulasi memang bisa melihat tumpang — bukan selalu 0.
-const lama = simulasikan({ ambangLabel: 0.75 });
-cek(lama.tumpang.length >= 3, `pembanding: setelan bawaan memang menumpuk di layar Owner (${lama.tumpang.length} pasang, skala ${lama.skala.toFixed(3)})`);
+// Sejak Tahap F posisi dihitung `tataSurya` (bukan gaya fisika) — pembanding "setelan bawaan force-graph", uji gravitasi &
+// "lebih lega daripada bawaan" pensiun bersama fisikanya. Pembuktian bahwa simulasi bisa melihat tumpang: ambang label
+// data 0,75 (setelan lama) di layar 2560 menampilkan ratusan nama sekaligus.
+const lama = simulasikan({ ambangLabel: 0.75, layar: { lebar: 2240, tinggi: 1340 } });
+cek(lama.tumpang.length >= 3, `pembanding: dengan ambang lama 0,75 nama data bertumpuk di layar 2560 (${lama.tumpang.length} pasang, skala ${lama.skala.toFixed(3)})`);
 const kasus = [
   ['layar Owner 1366×768', {}],
   ['layar 1920×1080', { layar: { lebar: 1600, tinggi: 980 } }],
@@ -37,28 +38,10 @@ const kasus = [
   ['120 memori tanpa relasi', { sebaran: { ...SEBARAN_OWNER, memori: 120 } }],
 ];
 for (const [nama, opsi] of kasus) {
-  const h = simulasikan({ ...opsi, pasangGaya: pasangGayaGraf });
+  const h = simulasikan(opsi);
   cek(h.tumpang.length === 0 && h.label.length <= 12,
     `${nama}: 0 label bertumpuk, hanya label kategori saat dibuka (${h.label.length} label, skala ${h.skala.toFixed(3)})`, h.tumpang.slice(0, 4));
 }
-const owner = simulasikan({ pasangGaya: pasangGayaGraf });
-cek(owner.skala > lama.skala * 1.1, `tata letak lebih lega daripada setelan bawaan (skala ${lama.skala.toFixed(3)} → ${owner.skala.toFixed(3)})`);
-
-// Gravitasi dipasang & lebih kuat bagi simpul yang tak bertambat (sejak Tahap C semua data bertambat pada kemampuannya,
-// jadi dijaga langsung pada gaya yang dipasang — bukan lewat simulasi).
-const gaya = {};
-const simPalsu = { force: (nama, f) => { if (f === undefined) return null; gaya[nama] = f; return simPalsu; } };
-pasangGayaGraf(simPalsu, [{ source: 'a', target: 'b' }]);
-const uji = [{ id: 'a', x: 100, y: 0, vx: 0, vy: 0 }, { id: 'yatim', x: 100, y: 0, vx: 0, vy: 0 }];
-gaya.gravitasi?.initialize?.(uji); gaya.gravitasi?.(1);
-cek(typeof gaya.gravitasi === 'function' && uji[0].vx === -2 && Math.abs(uji[1].vx + 12) < 1e-9,
-  'pasangGayaGraf memasang gravitasi: 0,02 bagi yang bertambat, 0,12 bagi yang tak bertambat', uji.map((n) => n.vx));
-
-// ── 2. Gravitasi: menarik ke pusat, lebih kuat bagi yang tak bertambat ──────────────────────────
-const g = gayaGravitasi((n) => n.k);
-const s = [{ x: 100, y: -50, vx: 0, vy: 0, k: 0.1 }, { x: 100, y: 0, vx: 0, vy: 0, k: 0.02 }];
-g.initialize(s); g(1);
-cek(s[0].vx === -10 && s[0].vy === 5 && s[1].vx === -2, 'gayaGravitasi = rumus forceX(0)/forceY(0) d3 (v -= posisi × kekuatan × alpha)', s);
 
 // ── 3. Knowledge Directory: hanya simpul data ───────────────────────────────────────────────────
 const { nodes } = susunGrafHome({ ...barisTiruan(), vitals: {} });
@@ -80,10 +63,10 @@ const AG = baca('frontend/src/components/dashboard/ActivityGraph.jsx');
 cek(/\[isExplorerOpen, setIsExplorerOpen\] = useState\(false\)/.test(AG), 'Knowledge Directory tertutup di awal');
 cek(/nodeLabel=\{labelTooltipAman\}/.test(AG) && !/nodeLabel="name"/.test(AG), 'tooltip graf memakai labelTooltipAman (bukan nama mentah)');
 cek(/simpulDirektori\(graphData\?\.nodes\)/.test(AG), 'Directory diisi simpulDirektori');
-cek(/globalScale >= AMBANG_LABEL_DATA/.test(AG) && !/globalScale >= 0\.75/.test(AG), 'ambang nama simpul data = AMBANG_LABEL_DATA (sama dengan simulasi)');
+cek(/globalScale >= ambangLabelData\(skalaPas\)/.test(AG) && !/globalScale >= 0\.75/.test(AG), 'ambang nama simpul data = ambangLabelData(skala pas) (sama dengan simulasi)');
 const HD = baca('frontend/src/components/dashboard/HomeDashboard.jsx');
-// Sejak Tahap D tata letak dipasang pada graf GABUNGAN (dasar + lapisan Kemampuan) = `grafTampil`.
-cek(/pasangGayaGraf\(\{ force:[^\n]*grafTampil\.links\)/.test(HD) && /d3ReheatSimulation\(\)/.test(HD), 'HomeDashboard memasang tata letak pada graf yang ditampilkan');
+// Sejak Tahap D tata letak dipasang pada graf GABUNGAN (dasar + lapisan) = `grafTampil`; sejak Tahap F lewat tataSurya.
+cek(/const graf = gabungGraf\(dasarPlus, ekor\);\s*tataSurya\(graf\);/.test(HD), 'HomeDashboard menata graf yang ditampilkan (tataSurya pada graf gabungan)');
 const MT = baca('frontend/src/components/os/MenuTeks.jsx');
 const ikuti = MT.match(/const ikutiHalaman = [^\n]*\n([\s\S]*?)\n  \};/)?.[1] || '';
 cek(/setTerbuka\(false\)/.test(ikuti) && !/app:home/.test(ikuti), 'Menu tertutup di semua halaman, termasuk Home', ikuti);

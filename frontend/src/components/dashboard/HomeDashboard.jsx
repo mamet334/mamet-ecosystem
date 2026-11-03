@@ -5,7 +5,7 @@ import NodeInspector from './NodeInspector';
 import ObservabilityPanel from './ObservabilityPanel';
 import { supabase } from '../../supabase';
 import { kernel } from '../../core/runtime/Kernel';
-import { pasangGayaGraf, warnaStatus, statusGabungan, PUSAT, tataPas, susunLapisanKemampuan, gabungGraf, konektorUntukGraf, susunEkorPesan, GRUP_DATA } from '../../core/runtime/hooks/grafHome.js';
+import { tataSurya, terapkanGeser, mulaiSeret, ikutSeret, warnaStatus, statusGabungan, PUSAT, tataPas, susunLapisanKemampuan, gabungGraf, konektorUntukGraf, susunEkorPesan, GRUP_DATA } from '../../core/runtime/hooks/grafHome.js';
 import { SUBAGEN } from '../../../../shared/daftarSubagen.js';
 import { ALAT_SEMUA } from '../../../../shared/folderKerjaAlat.js';
 import { KONEKTOR_DIKENAL } from '../../../../shared/konektorAlat.js';
@@ -58,12 +58,19 @@ export default function HomeDashboard() {
   // ── Ekor pesan (Item 130 Tahap E): satu percakapan, dimuat SAAT DIKLIK lewat `pesan_percakapan_graf` — angka & kode
   // alat dari basis data, cuplikan 80 huruf; konteks/memori tak pernah sampai ke klien. Klik lagi = tutup.
   const [ekorBaris, setEkorBaris] = useState(null); // { chatId: 'chat-…', baris: [...] }
+  // Geseran Owner per simpul (id → [dx, dy]); diterapkan ulang setiap graf disusun agar planet yang dipindah tetap di
+  // tempatnya. Hanya di memori — dibuka ulang, tata surya kembali rapi.
+  const geserRef = useRef(new Map());
+  const seretRef = useRef(null); // { id, x, y, ikut: [{ n, x, y }] } selama satu seretan
   const grafTampil = useMemo(() => {
     const dasarPlus = kemampuanTampil && lapisan ? gabungGraf(graphData, lapisan) : graphData;
     const idAda = new Set(dasarPlus.nodes.map((n) => n.id));
     // Percakapannya harus masih ada di graf (data bisa dimuat ulang) — garis ke simpul yang hilang membuat force-graph galat.
     const ekor = ekorBaris && idAda.has(ekorBaris.chatId) ? susunEkorPesan(ekorBaris.chatId, ekorBaris.baris, idAda) : null;
-    return gabungGraf(dasarPlus, ekor);
+    const graf = gabungGraf(dasarPlus, ekor);
+    tataSurya(graf);   // Tahap F: semua posisi dihitung & dipaku — bintang, planet, bulan, fondasi, satelit, bulan-dari-bulan
+    terapkanGeser(graf, geserRef.current);
+    return graf;
   }, [graphData, kemampuanTampil, lapisan, ekorBaris]);
 
   const fgRef = useRef();
@@ -77,13 +84,14 @@ export default function HomeDashboard() {
     graphDataRef.current = grafTampil;
   }, [grafTampil]);
 
-  // Tata letak (Item 130 Tahap A): label kategori tak menumpuk & simpul tanpa relasi tak terlempar jauh — diukur di
-  // uji-graf-home-tahap-a.mjs dengan mesin yang sama. Ref ForceGraph2D (anak) sudah terpasang saat efek induk berjalan.
+  // Tata surya (Item 130 Tahap F): posisi dipaku `tataSurya`, jadi gaya fisika force-graph dimatikan — tak ada tolak,
+  // tarik pegas, atau penengah yang menggeser (dulu graf "memantul" ±15 detik mencari keseimbangan).
   useEffect(() => {
     const fg = fgRef.current;
     if (!fg || grafTampil.nodes.length === 0) return;
-    pasangGayaGraf({ force: (nama, gaya) => (gaya === undefined ? fg.d3Force(nama) : fg.d3Force(nama, gaya)) }, grafTampil.links);
-    fg.d3ReheatSimulation();
+    fg.d3Force('charge')?.strength?.(0);
+    fg.d3Force('link')?.strength?.(0);
+    fg.d3Force('center', null);
   }, [grafTampil]);
 
   useEffect(() => {
@@ -225,13 +233,22 @@ export default function HomeDashboard() {
     setEkorBaris({ chatId, baris: data || [] });
   };
 
-  const handleNodeDrag = () => {
+  // Bulan ikut planetnya (keputusan Owner 3 Nov): saat seretan dimulai, seluruh sistem simpul dicatat bersama posisi
+  // awalnya; tiap gerakan menggeser semuanya sejauh simpul itu bergeser dari titik awal seretan.
+  const handleNodeDrag = (node) => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    isDraggingRef.current = true;
-    setIsDragging(true);
+    if (seretRef.current?.id !== node.id) seretRef.current = mulaiSeret(grafTampil, node);
+    ikutSeret(seretRef.current, node);
+    if (!isDraggingRef.current) { isDraggingRef.current = true; setIsDragging(true); }
   };
 
   const handleNodeDragEnd = (node) => {
+    if (seretRef.current?.id === node.id) {
+      const [dx, dy] = ikutSeret(seretRef.current, node);
+      const [gx, gy] = geserRef.current.get(node.id) || [0, 0];
+      geserRef.current.set(node.id, [gx + dx, gy + dy]);
+    }
+    seretRef.current = null;
     isDraggingRef.current = false;
     setIsDragging(false);
     if (activePathRef.current) {
@@ -244,13 +261,21 @@ export default function HomeDashboard() {
 
   // Dulu `zoomToFit(400, 50)` — padding sama di keempat sisi, graf masuk ke bawah judul & legenda. Kini pita atas
   // disisakan (grafHome.js tataPas, Item 130 Tahap C).
+  // Kamera disesuaikan ulang hanya bila isi DASAR berubah (data dimuat, lapisan Kemampuan dinyalakan/dimatikan) — bukan
+  // saat ekor pesan dibuka, supaya pandangan Owner pada percakapan yang ia klik tak melompat (Tahap F).
+  const kunciPasRef = useRef(null);
+  const [skalaPas, setSkalaPas] = useState(0);   // skala kamera saat dipaskan — dasar ambang nama simpul data
   const handleEngineStop = () => {
     const fg = fgRef.current;
     const bbox = fg?.getGraphBbox?.();
     if (!fg || !bbox) return;
+    const kunci = `${graphData.nodes.length}|${kemampuanTampil && lapisan ? 1 : 0}`;
+    if (kunciPasRef.current === kunci) return;
+    kunciPasRef.current = kunci;
     const { x, y, k } = tataPas({ bbox, lebar: dimensions.width, tinggi: dimensions.height });
     fg.centerAt(x, y, 400);
     fg.zoom(k, 400);
+    setSkalaPas(k);
   };
 
   return (
@@ -261,6 +286,8 @@ export default function HomeDashboard() {
           graphData={grafTampil}
           kemampuanTampil={kemampuanTampil}
           onToggleKemampuan={() => setKemampuanTampil((t) => !t)}
+          simpulTerpilih={selectedNode?.id ?? null}
+          skalaPas={skalaPas}
           dimensions={dimensions}
           fgRef={fgRef}
           getNodeColor={getNodeColor}

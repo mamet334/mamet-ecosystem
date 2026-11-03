@@ -95,6 +95,25 @@ berjalan:
 
 ---
 
+## TATA SURYA (tata letak)
+
+> Ditambahkan 3 November 2026 (Item 130 Tahap F, keputusan Owner): graf adalah tata surya — matahari, planet beserta
+> bulannya. Menggantikan tata letak gaya fisika yang memantul & menggumpalkan data.
+
+* **Matahari = bintang ganda MAMET** (Desktop & Server), disambung jalur pesan.
+* **Planet = kemampuan inti** di satu orbit, sudut dibagi rata; jari-jari orbit dihitung dari ukuran sistemnya sehingga
+  sistem bertetangga tak pernah bersentuhan.
+* **Bulan = data milik planet** dalam cincin-cincin rapi (terbesar paling dalam): percakapan → Chat/Engineer, dokumen →
+  RAG Dokumen, memori → Memori. **Pesan = bulan dari percakapannya**, muncul saat percakapan dibuka.
+* **Planet luar = fondasi**, di sela planet. **Satelit = lapisan Kemampuan**, di luar sistem induknya, menyamping.
+* Posisi **dihitung dan dipaku**, bukan dicari gaya fisika: graf **diam**, tak memantul, tak berputar.
+* Planet atau bulan diseret → **seluruh sistemnya ikut bergeser** (bulan, satelit, pesan), dan tetap di tempat barunya
+  sampai Home dibuka ulang.
+* **Tanpa garis orbit.** Garis relasi (bulan → planet, planet → belahan, memori → asalnya, pesan → alat) adalah
+  fiturnya: **jaring laba-laba** yang selalu tampil, lurus. Simpul dipilih → garisnya menyala, jaring lain meredup.
+
+---
+
 ## DYNAMIC GROWTH
 Jumlah node harus mengikuti isi database.
 
@@ -151,17 +170,17 @@ Lampu fondasi & jalur pesan: hijau (sehat) · kuning (menurun) · merah (gagal, 
 ```text
 ┌──────────────────────────────────────────────────────┐
 │ MAMET KNOWLEDGE GRAPH            [Knowledge Directory▼]│
+│        ○ Electron      ∘∘∘                ○ Supabase  │
+│   Engineer ⊙∘∘∘       Chat ⊙∘∘∘                       │
+│                                       Memori ⊙∘       │
+│              DESKTOP ●══● SERVER                      │
 │                                                      │
-│      Chat ●        RAG Dokumen ●  · · · dokumen      │
-│                                                      │
-│   Tabel ASN ●  [ DESKTOP ●══jalur pesan══● SERVER ]  │
-│                                                      │
-│      Engineer ●            Memori ● · · memori       │
-│                                                      │
-│  ○ Electron        ○ Supabase         ○ OpenRouter   │
+│     Tabel ASN ⊙              RAG Dokumen ⊙∘∘∘∘∘       │
+│                     ○ OpenRouter                     │
 │ [MENU]                                [Kemampuan]    │
 └──────────────────────────────────────────────────────┘
 ```
+⊙ planet · ∘ bulan dalam cincin · ○ fondasi (planet luar) · tanpa garis orbit.
 
 Knowledge Directory dan kotak Menu **tertutup saat Home dibuka** — dibuka dengan klik.
 

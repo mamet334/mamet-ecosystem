@@ -89,16 +89,16 @@ cek(G.simpulDirektori(gab.nodes).length === G.simpulDirektori(dasar.nodes).lengt
 
 // ── 6. Tata letak saat lapisan menyala ──────────────────────────────────────────────────────────
 // Urutan alat di registry tak bisa dikendalikan (penemuan modul) dan menggeser keseimbangan — diukur 3 urutan.
-// Batas jujur (diukur 2 Nov: jari fondasi 480/lapisan 400 terbaik dari 540/600/380/420; garis alat→kemampuan 180):
-// layar Owner & 1920 → 0 tumpang mentah di semua urutan; 768 → ≤ 2; data 2× DENGAN lapisan → ≤ 3 (graf dasar tetap 0).
+// Sejak Tahap F (tata surya, posisi dihitung — bukan gaya fisika): 0 tumpang mentah di SEMUA layar & urutan, termasuk 768
+// & data 2× yang semasa gaya fisika masih 1–3. Batas dikencangkan ke 0.
 const nama = alatChat.map((a) => a.name);
 const urutan = [nama, [...nama].reverse(), ['word_to_pdf', 'web_search', 'deep_research', 'memory_manager', 'data_tabel']];
 const lapisanUrut = urutan.map((u) => G.susunLapisanKemampuan({ ...sumber, konektor: [], alatChat: u.map((n) => alatChat.find((a) => a.name === n)) }));
 for (const [nama2, opsi, batas] of [['layar Owner', {}, 0], ['1920×1080', { layar: { lebar: 1600, tinggi: 980 } }, 0],
-  ['768×900', { layar: { lebar: 768, tinggi: 600 } }, 2], ['data 2×', { sebaran: { assistant: 260, engineer: 170, lite: 10, dokumen: 460, memori: 20 } }, 3]]) {
+  ['768×900', { layar: { lebar: 768, tinggi: 600 } }, 0], ['data 2×', { sebaran: { assistant: 260, engineer: 170, lite: 10, dokumen: 460, memori: 20 } }, 0]]) {
   // Sejak Tahap E: tumpang MENTAH = mutu tata letak (dijaga batas); label yang tetap menindih disembunyikan penghindar
   // tabrakan — label INTI (pusat, kemampuan, fondasi) tak pernah boleh termasuk yang disembunyikan.
-  const hasil = lapisanUrut.map((lp) => simulasikan({ ...opsi, pasangGaya: G.pasangGayaGraf, lapisan: lp }));
+  const hasil = lapisanUrut.map((lp) => simulasikan({ ...opsi, lapisan: lp }));
   const tumpang = hasil.map((h) => h.tumpang.length);
   const intiHilang = hasil.flatMap((h) => h.tersembunyi.filter((l) => ['pusat', 'kemampuan', 'fondasi'].includes(l.group)).map((l) => l.teks));
   cek(tumpang.every((t) => t <= batas) && intiHilang.length === 0 && hasil.every((h) => h.label.length === 15 && h.atasSimpul >= G.RUANG_ATAS - 0.5),
@@ -108,7 +108,7 @@ for (const [nama2, opsi, batas] of [['layar Owner', {}, 0], ['1920×1080', { lay
 // ── 7. Terpasang, tertutup di awal, hanya membaca konektor ──────────────────────────────────────
 const HD = kode('frontend/src/components/dashboard/HomeDashboard.jsx');
 const AG = kode('frontend/src/components/dashboard/ActivityGraph.jsx');
-cek(/\[kemampuanTampil, setKemampuanTampil\] = useState\(false\)/.test(HD) && /graphData=\{grafTampil\}/.test(HD) && /grafTampil\.links\)/.test(HD),
+cek(/\[kemampuanTampil, setKemampuanTampil\] = useState\(false\)/.test(HD) && /graphData=\{grafTampil\}/.test(HD) && /tataSurya\(graf\);/.test(HD),
   'lapisan tertutup di awal; graf & tata letak memakai graf gabungan');
 cek(/konektor\?\.status/.test(HD) && !/konektor\??\.(panggil|atur|pasangStealth|bukaFolder)/.test(HD + AG + kode('frontend/src/core/runtime/hooks/grafHome.js')),
   'graf hanya memanggil konektor.status (baca-saja) — tak pernah panggil/atur');

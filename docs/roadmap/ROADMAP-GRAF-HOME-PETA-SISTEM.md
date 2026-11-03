@@ -5,7 +5,8 @@
 [log](../project-memory/changelog/2026-11-02-graf-home-tahap-b.md)), **Tahap C ✅** (2 Nov, dicek Owner; Konstitusi 23
 direvisi — [log](../project-memory/changelog/2026-11-02-graf-home-tahap-c.md)), **Tahap D ✅** (2 Nov, dicek Owner,
 `agent-process` v544 — [log](../project-memory/changelog/2026-11-02-graf-home-tahap-d.md)), **Tahap E ✅** (2 Nov, dicek
-Owner, migrasi `20261102085252` — [log](../project-memory/changelog/2026-11-02-graf-home-tahap-e.md)). **Item 130 selesai.**
+Owner, migrasi `20261102085252` — [log](../project-memory/changelog/2026-11-02-graf-home-tahap-e.md)), **Tahap F ✅** (3 Nov,
+tata surya + jaring laba-laba, dicek Owner — [log](../project-memory/changelog/2026-11-03-graf-home-tahap-f.md)). **Item 130 selesai.**
 **Kedudukan:** butir **Parkir** fase hardening ([ADR-0022](../adr/ADR-0022-mamet-cukup-dan-fase-hardening.md)) yang
 diambil Owner — boleh dikerjakan kapan saja (mis. selagi K1/K2 menunggu saldo), asal uji yang menjaga K1–K7 tetap hijau.
 **Kode:** `frontend/src/components/dashboard/ActivityGraph.jsx`, `HomeDashboard.jsx`,
@@ -90,6 +91,7 @@ Graf Home menggambarkan **apa yang tersimpan**, bukan **bagaimana Mamet bekerja*
 | **C** | Ubah Konstitusi 23 (pusat, lapisan); pusat MAMET dua belahan + penyambung; lingkar 1; fondasi luar. Ikut: data = ekor kemampuan, label kerangka dilukis terakhir, `tataPas` menyisakan pita legenda | ✅ 2 Nov |
 | **D** | Lapisan Kemampuan (tombol): alat chat dari ToolRegistry, alat folder dari `shared/folderKerjaAlat.js`, MCP berekor (preload baca-saja), sub-agent dari daftar resmi baru `shared/daftarSubagen.js` (dibaca `izin_subagent.ts`, v544) | ✅ 2 Nov |
 | **E** | Percakapan berekor pesan: RPC hitungan + ekor (migrasi, EXECUTE hanya authenticated); ekor dimuat saat klik; garis pesan → alat dari penanda pemakaian. Ikut: penghindar tabrakan label, LLM CALLS sebenarnya, Inspector hanya simpul data | ✅ 2 Nov |
+| **F** | Tata surya (keputusan Owner 3 Nov, sesudah fisika terbukti memantul): bintang ganda MAMET, planet kemampuan di satu orbit, bulan data dalam cincin, fondasi = planet luar, satelit lapisan, pesan = bulan percakapan; posisi dipaku, fisika dimatikan; tanpa garis orbit; garis relasi = jaring laba-laba yang selalu tampil; seretan menggeser seluruh sistem | ✅ 3 Nov |
 
 **Perubahan server:** hanya Tahap D (server ikut membaca daftar sub-agent di `shared/`) — Owner men-deploy dulu, bundel
 esbuild sebelum meminta deploy, catat & push sekali (CLAUDE.md). Tahap E butuh migrasi basis data (atas izin Owner).
@@ -111,21 +113,21 @@ esbuild sebelum meminta deploy, catat & push sekali (CLAUDE.md). Tahap E butuh m
 
 - ~~Vitals basi di graf~~ ✅ Tahap B. ~~Sub-cluster `docs`~~ ✅ Tahap C (dokumen = ekor RAG Dokumen).
 - ~~Data Tabel ASN tanpa ekor~~ — Tahap D: bergaris dari alat `data_tabel` saat lapisan menyala.
-- **Batas tata letak lapisan (Tahap D):** data 2× dengan lapisan menyala → 1–3 label tindih (layar Owner, 1920, 768: 0).
-  Bila data Owner tumbuh ke sana, ukur ulang dengan `uji/lib/simulasiGrafHome.mjs` (urutan alat ikut menggeser hasil).
+- ~~Batas tata letak lapisan (Tahap D): data 2× → 1–3 label tindih~~ ✅ Tahap F: tata surya — 0 tindih & 0 tersembunyi di
+  18 skenario termasuk data 2×. Ukur ulang dengan `uji/lib/simulasiGrafHome.mjs` bila bentuk data berubah jauh.
 - **Untuk Tahap E:** garis pesan → alat yang dipakai bisa menunjuk simpul lapisan (`alat-chat-*`, `alat-sub-*`,
   `alat-mcp-*`) — hanya bila lapisan menyala; bila mati, ke kemampuannya. `RUANG_ATAS` 150 px tetap (legenda satu baris di 1046 px);
   bila legenda membungkus ke dua baris di layar sempit, nilainya perlu diukur dari elemen legenda.
-- Belahan yang digeser Owner tetap di tempat barunya sampai muat ulang (perilaku bawaan force-graph untuk simpul berpaku).
+- Simpul yang digeser Owner (beserta sistemnya) tetap di tempat barunya sampai Home dibuka ulang — geseran hanya di
+  memori (Tahap F), tidak disimpan.
 - ~~Panel LLM CALLS selalu 100~~ ✅ Tahap E (total dari `hitungan_graf_home`). ~~Hitungan potongan di klien~~ ✅ Tahap E.
 - **Batas Tahap E:** `hitungan_graf_home` membaca kolom `messages` (±300 ms per buka Home, tumbuh bersama riwayat). Bila
   terasa lambat: kolom `jumlah_pesan` berpemicu — ubah skema `chats`, periksa dulu Cadangkan/Pulihkan K6.
 - Panel lain masih menghitung kueri ber-limit 100 (MEMORY READS/WRITES dari `ai_system_logs`/`agent_logs`) — Parkir.
 - Embedding UNKNOWN permanen sampai ada sinyal: `rag-process`/embedding tidak mencatat ke `api_usage` (pertimbangkan di
   Item 126 Fase 0 telemetri).
-- Ambang nama simpul data `AMBANG_LABEL_DATA = 2` tetap (bukan relatif terhadap skala pas): layar 4K bisa melewatinya
-  saat dibuka — belum diukur.
-- Simulasi tata letak (`uji/lib/simulasiGrafHome.mjs`) dipakai lagi di Tahap C untuk susunan dua belahan.
+- ~~Ambang nama simpul data tetap 2~~ ✅ Tahap F: relatif terhadap skala pas (`ambangLabelData` = max(2, skala pas × 1,8)).
+- Simulasi tata letak (`uji/lib/simulasiGrafHome.mjs`) sejak Tahap F memakai `tataSurya` (tanpa d3).
 
 - `scripts/graf-bercahaya.mjs` (efek cahaya untuk graf **graphify**, bukan graf Home) belum di-commit & belum ditanggapi
   Owner — terpisah dari item ini.
