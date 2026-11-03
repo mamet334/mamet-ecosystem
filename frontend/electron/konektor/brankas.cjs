@@ -48,12 +48,15 @@ function buatBrankas({ berkas, enkripsi }) {
     catch { return false; /* safeStorage belum siap (sebelum app ready) = tidak tersedia → simpan menolak, aman */ }
   };
 
-  /** Simpan satu kredensial. Nilai kosong = hapus kredensial itu. */
-  function simpan(serverId, kredId, nilai) {
+  /**
+   * Simpan satu kredensial. Nilai kosong = hapus kredensial itu. `maks` hanya dinaikkan proses utama sendiri (token
+   * OAuth, Tahap F1); saluran dari layar memakai batas bawaan.
+   */
+  function simpan(serverId, kredId, nilai, { maks = BATAS_NILAI } = {}) {
     if (!POLA_ID.test(String(serverId || '')) || !POLA_ID.test(String(kredId || ''))) return tolak('id server/kredensial tidak sah');
     if (typeof nilai !== 'string') return tolak('nilai kredensial harus teks');
     const bersih = nilai.trim();
-    if (bersih.length > BATAS_NILAI) return tolak(`nilai kredensial lebih dari ${BATAS_NILAI} huruf`);
+    if (bersih.length > maks) return tolak(`nilai kredensial lebih dari ${maks} huruf`);
     if (/[\r\n\0]/.test(bersih)) return tolak('nilai kredensial tidak boleh memuat baris baru'); // juga mencegah sisipan header
     const isi = baca();
     if (!bersih) {

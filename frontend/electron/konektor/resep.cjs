@@ -44,6 +44,8 @@ function validasiKredensial(daftar, jenis) {
   for (const k of daftar) {
     if (!k || typeof k !== 'object') return tolak('kredensial harus objek');
     if (!POLA_ID.test(String(k.id || '')) || sudah.has(k.id)) return tolak(`id kredensial tidak sah/ganda: ${k.id}`);
+    // `oauth-*` milik penyedia OAuth (token & pendaftaran klien di brankas) — tidak boleh bisa ditimpa dari kolom ketik.
+    if (String(k.id).startsWith('oauth-')) return tolak(`id kredensial ${k.id} dicadangkan untuk OAuth`);
     if (!teks(k.label, BATAS.nama * 2)) return tolak(`label kredensial ${k.id} kosong/terlalu panjang`);
     sudah.add(k.id);
     if (jenis === 'stdio') {
@@ -107,6 +109,11 @@ function validasiResep(mentah) {
   const kr = validasiKredensial(mentah.kredensial, jenis);
   if (!kr.ok) return tolak(`resep ${id}: ${kr.alasan}`);
   resep.kredensial = kr.kredensial;
+  // Tahap F1: server jarak jauh yang meminta LOGIN (OAuth) — tanpa kredensial ketik; akun dipilih Owner di browser.
+  if (mentah.oauth !== undefined) {
+    if (mentah.oauth !== true || jenis !== 'http') return tolak(`resep ${id}: "oauth": true hanya untuk jenis http`);
+    resep.oauth = true;
+  }
   if (mentah.petunjuk !== undefined) {
     if (!teks(mentah.petunjuk, BATAS.petunjuk)) return tolak(`resep ${id}: "petunjuk" terlalu panjang`);
     resep.petunjuk = mentah.petunjuk.trim();

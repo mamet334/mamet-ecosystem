@@ -385,7 +385,7 @@ label server tidak menerimanya sebagai dasar VERIFIED. Aturan ini sama dengan cr
 
 ---
 
-## 10. Tahap F — OAuth: server MCP jarak jauh yang meminta login — 📋 dirancang 3 Nov 2026
+## 10. Tahap F — OAuth: server MCP jarak jauh yang meminta login — 🟡 F1 ✅ 3 Nov 2026
 
 **Permintaan Owner (3 Nov):** konektor dibuat lebih fleksibel. Akun yang terhubung harus **akun yang dipilih dan
 disetujui pengguna Mamet sendiri**, seperti cara aplikasi Claude terhubung ke Google Workspace.
@@ -472,8 +472,10 @@ K21–K23 disetujui Owner pada 3 Nov. Owner juga sudah mendaftar akun Notion unt
 
 ### Tahapan
 
-- **F1 — Pipa OAuth** (penyedia, penerima balikan, alur), diuji dengan **server OAuth + MCP tiruan lokal** (DCR,
-  PKCE, `state`, pembaruan, pencabutan) dan mutasi. Tanpa layar, tanpa server Mamet.
+- ✅ **F1 — Pipa OAuth** (3 Nov; mutasi 23/23, suite 153/153 —
+  [log](../project-memory/changelog/2026-11-03-konektor-mcp-tahap-f1-pipa-oauth.md)): penyedia, penerima balikan, dan
+  alur, diuji dengan **server OAuth + MCP tiruan lokal** (DCR, PKCE, `state`, pembaruan, pencabutan). Uji menemukan
+  satu cacat: token pembaru tak pernah dipakai di mode diam. Sudah diperbaiki.
 - **F2 — Settings:** "Hubungkan akun" / "Putuskan", resep `notion.json`. Dibuktikan di `npm run desktop`.
 - **F3 — Notion live:** Owner membuat akun Notion gratis, menghubungkan, meninjau alat, dan menyalakan. Rantai tanpa
   model dibuktikan dulu; jawaban model menyusul sesudah saldo ada.

@@ -18,15 +18,16 @@ const fs = require('fs');
 const path = require('path');
 const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const { rencanaTransport, buatTransport, ringkasRencana } = require('./transport.cjs');
+const { buatPenyediaOAuth } = require('./oauthPenyedia.cjs');
 const { bandingkan, pakuAlat, sidik } = require('./sidikAlat.cjs');
 const { matikanPohon, denganBatasWaktu, teksHasil, BATAS, WORKSPACE } = require('../konektorMcp.cjs');
 
 const tolak = (alasan) => ({ ok: false, alasan });
 const BATAS_DESKRIPSI_TINJAU = 4000; // deskripsi yang DITAMPILKAN untuk ditinjau (sidik tetap dari teks utuh)
 
-/** Klien MCP sungguhan dari rencana transport. Bisa diganti di uji. */
-async function klienSdk(rencana, { versi, msSambung }) {
-  const transport = buatTransport(rencana);
+/** Klien MCP sungguhan dari rencana transport. Bisa diganti di uji. `authProvider` untuk server OAuth (Tahap F1). */
+async function klienSdk(rencana, { versi, msSambung, authProvider = null }) {
+  const transport = buatTransport(rencana, { authProvider });
   const catatan = { stderr: '' };
   transport.stderr?.on('data', (b) => { catatan.stderr = (catatan.stderr + b.toString('utf8')).slice(-BATAS.stderrHuruf); });
   const client = new Client({ name: 'mamet-ecosystem', version: versi });
@@ -95,11 +96,19 @@ function buatSesiUmum({ daftar, brankas, berkasSakelar, lingkungan, ada = fs.exi
     if (!entri) return tolak(`server ${id} tidak terpasang`);
     const rencana = rencanaTransport(entri, brankas.ambil(id), { lingkungan: lingkungan(), ada });
     if (!rencana.ok) return rencana;
+    // Tahap F1: server OAuth → penyedia mode DIAM (tak pernah membuka browser; login ulang = status, K23).
+    let oauth = null;
+    if (rencana.oauth) {
+      oauth = buatPenyediaOAuth({ id, brankas, mode: 'diam', versi });
+      if (!oauth.terhubung()) return { ...tolak('akun belum dihubungkan — tekan "Hubungkan akun" di Settings'), kode: 'belum_terhubung' };
+    }
     try {
-      const klien = await buatKlien(rencana, { versi, msSambung });
+      const klien = await buatKlien(rencana, { versi, msSambung, authProvider: oauth?.penyedia || null });
       return { ok: true, klien, entri, rencana: ringkasRencana(rencana) };
     } catch (e) {
-      return tolak(e.message); // dinaikkan ke pemanggil: tampil sebagai status "gagal" + alasannya di Settings
+      // dinaikkan ke pemanggil: tampil sebagai status "gagal" + alasannya di Settings
+      if (oauth?.perluHubungkanUlang()) return { ...tolak('akun perlu dihubungkan ulang (login kedaluwarsa)'), kode: 'perlu_hubungkan_ulang' };
+      return tolak(e.message);
     }
   }
 
@@ -107,7 +116,8 @@ function buatSesiUmum({ daftar, brankas, berkasSakelar, lingkungan, ada = fs.exi
     const k = kunci(ws, id);
     if (sesi.get(k)?.status === 'nyala') return { ok: true, ...ringkas(ws, id) };
     const s = await sambung(id);
-    if (!s.ok) { keadaan.set(k, { status: 'gagal', alasan: s.alasan }); return { ...s, ...ringkas(ws, id) }; }
+    // `kode` (Tahap F1): 'belum_terhubung' / 'perlu_hubungkan_ulang' tampil sebagai status sendiri, bukan "gagal".
+    if (!s.ok) { keadaan.set(k, { status: s.kode || 'gagal', alasan: s.alasan }); return { ...s, ...ringkas(ws, id) }; }
     let alatServer;
     try { alatServer = await s.klien.alat(); }
     catch (e) { await s.klien.tutup(); keadaan.set(k, { status: 'gagal', alasan: e.message }); return { ...tolak(e.message), ...ringkas(ws, id) }; }
