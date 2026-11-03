@@ -112,7 +112,8 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - ✅ **Rilis 4.4.0 TERBIT** (30 Okt 15:06Z, Latest): Electron 45 + hasil hardening sisi klien; build GitHub hijau,
   `latest.yml` cocok dengan aset ([log](../project-memory/changelog/2026-10-30-rilis-4.4.0-hardening.md)).
 - ✅ **Rilis 4.4.1 TERBIT** (3 Nov 04:35Z, Latest; keputusan Owner, bukan 5.0.0): graf Home tata surya dan hasil
-  hardening klien sejak 4.4.0. Build GitHub hijau, `latest.yml` cocok dengan aset
+  hardening klien sejak 4.4.0. Build GitHub hijau, `latest.yml` cocok dengan aset; aplikasi terpasang Owner sudah
+  diperbarui ke 4.4.1
   ([log](../project-memory/changelog/2026-11-03-rilis-4.4.1.md)).
 - ⏳💳👤 **Rilis garis dasar 5.0.0** — hanya bila K1–K7 semuanya ✅.
 
