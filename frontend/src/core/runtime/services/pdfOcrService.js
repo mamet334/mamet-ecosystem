@@ -191,7 +191,7 @@ export function perkiraanMenitOcr(jumlahHalaman, serentak = OCR_SERENTAK) {
  * unggahan: halaman itu dilewati — teks pdf.js untuk halaman tersebut tetap dipakai — dan nomornya
  * dikembalikan lewat `halamanGagal` supaya pemanggil bisa memberitahu pengguna apa adanya.
  * `onProgress` dipanggil tiap halaman SELESAI; `ke` = jumlah yang selesai, bukan urutan halaman.
- * @returns {Promise<{ peta: Map<number, string>, halamanGagal: number[] }>} peta: nomor halaman (1-based) → teks bersih
+ * @returns {Promise<{ peta: Map<number, string>, halamanGagal: number[], dariCache: number, saldoHabis: string|null, halamanBelum: number[] }>} peta: nomor halaman (1-based) → teks bersih
  */
 // `cache` (K1 langkah 2, 5 Nov 2026 — lihat cacheOcr.js): { ambil(n), simpan(n, teks) }. Halaman yang ada di cache
 // tidak di-OCR (tidak dibayar), dan teksnya sama persis dengan bacaan sebelumnya — syarat agar unggahan yang terputus
@@ -202,6 +202,12 @@ export async function terapkanOcrHalaman(fileBytes, nomorHalamanList, kunci, onP
   const teks = new Array(nomorHalamanList.length);
   const halamanGagal = [];
   let berikut = 0; let selesai = 0; let dariCache = 0;
+  // Saldo habis (402) — 5 Nov 2026: buku Kepbup, saldo turun di bawah $0,50 di halaman 442 → 522 halaman sisanya
+  // tetap DICOBA satu per satu, semuanya 402, lalu unggahan jalan terus dengan teks pdf.js untuk separuh buku.
+  // Kini begitu satu halaman 402, tak ada halaman yang dikirim lagi; halaman yang ada di cache tetap dipakai
+  // (gratis), sisanya dilaporkan `halamanBelum` dan pemanggil bertanya ke pengguna.
+  let saldoHabis = null;
+  const halamanBelum = [];
 
   const pekerja = async () => {
     while (berikut < nomorHalamanList.length) {
@@ -212,21 +218,30 @@ export async function terapkanOcrHalaman(fileBytes, nomorHalamanList, kunci, onP
         if (typeof tersimpan === 'string') {
           teks[i] = tersimpan;
           dariCache++;
+        } else if (saldoHabis) {
+          halamanBelum.push(n);
         } else {
           teks[i] = await ocrHalamanPdf(await pisahHalamanPdf(asal, n), kunci);
           if (cache) await cache.simpan(n, teks[i]);
         }
       } catch (e) {
-        console.warn(`[OCR] Halaman ${n} dilewati: ${e?.message || e}`);
-        halamanGagal.push(n);
+        if (e?.status === 402) {
+          saldoHabis ??= e.message || 'saldo OpenRouter tidak cukup (402)';
+          halamanBelum.push(n);
+        } else {
+          console.warn(`[OCR] Halaman ${n} dilewati: ${e?.message || e}`);
+          halamanGagal.push(n);
+        }
       }
-      onProgress?.({ tahap: 'ocr', halaman: n, ke: ++selesai, total: nomorHalamanList.length, gagal: halamanGagal.length, dariCache });
+      onProgress?.({ tahap: 'ocr', halaman: n, ke: ++selesai, total: nomorHalamanList.length, gagal: halamanGagal.length, dariCache, saldoHabis: Boolean(saldoHabis) });
     }
   };
   await Promise.all(Array.from({ length: Math.max(1, Math.min(serentak, nomorHalamanList.length)) }, pekerja));
+  if (saldoHabis) console.warn(`[OCR] Berhenti: saldo OpenRouter tidak cukup — ${halamanBelum.length} halaman belum di-OCR`);
 
   const peta = new Map();
   nomorHalamanList.forEach((n, i) => { if (teks[i] != null) peta.set(n, teks[i]); });
   halamanGagal.sort((a, b) => a - b);
-  return { peta, halamanGagal, dariCache };
+  halamanBelum.sort((a, b) => a - b);
+  return { peta, halamanGagal, dariCache, saldoHabis, halamanBelum };
 }

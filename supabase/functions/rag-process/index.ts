@@ -83,6 +83,8 @@ serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
   let documentId: string | null = null;
+  let versiLamaId: string | null = null;    // perbarui dokumen: versi selesai yang diganti versi ini
+  let disalin = 0;                          // potongan yang vektornya disalin dari versi lama (panggilan ini)
   let memegangKunci = false;
   let dibuatSekarang = false;
   let sudahAda = 0;        // potongan yang tersimpan sebelum panggilan ini
@@ -101,7 +103,7 @@ serve(async (req) => {
       return jawab({ error: 'Sesi tidak sah. Silakan masuk kembali.', code: 'UNAUTHORIZED' }, 401);
     }
 
-    const { title, text, userId: userIdBody, spaceId, source_url, source_type, retrieved_at } = await req.json();
+    const { title, text, userId: userIdBody, spaceId, source_url, source_type, retrieved_at, perbarui } = await req.json();
     if (userIdBody && userIdBody !== user.id) {
       return jawab({ error: 'userId tidak cocok dengan sesi.', code: 'USER_MISMATCH' }, 403);
     }
@@ -158,7 +160,7 @@ serve(async (req) => {
 
     // 6. Unggahan tertunda dengan judul sama di ruang yang sama? Lanjutkan bila teksnya sama.
     const { data: tertunda, error: errTertunda } = await supabase
-      .from('documents').select('id, sidik, total_potongan')
+      .from('documents').select('id, sidik, total_potongan, menggantikan')
       .eq('user_id', userId).eq('title', title).eq('space_id', targetSpaceId).eq('selesai', false)
       .order('created_at', { ascending: false }).limit(1);
     if (errTertunda) throw new Error(`DB Error: ${errTertunda.message}`);
@@ -186,6 +188,7 @@ serve(async (req) => {
       }
       documentId = lama.id;
       memegangKunci = true;
+      versiLamaId = lama.menggantikan ?? null;   // versi baru yang belum selesai mengingat versi yang ia gantikan
       sudahAdaDiketahui = false;
       const { count, error: errHitung } = await supabase
         .from('document_chunks').select('id', { count: 'exact', head: true }).eq('document_id', documentId);
@@ -199,6 +202,23 @@ serve(async (req) => {
       }
       sudahAda = count;
       sudahAdaDiketahui = true;
+    } else if (perbarui === true) {
+      // 6a. PERBARUI DOKUMEN (5 Nov 2026, permintaan Owner): versi selesai berjudul sama di ruang yang sama.
+      const { data: versi, error: errVersi } = await supabase
+        .from('documents').select('id, sidik, total_potongan')
+        .eq('user_id', userId).eq('title', title).eq('space_id', targetSpaceId).eq('selesai', true)
+        .order('created_at', { ascending: false }).limit(1);
+      if (errVersi) throw new Error(`DB Error: ${errVersi.message}`);
+      const v = Array.isArray(versi) ? versi[0] : null;
+      if (v && v.sidik === sidik && v.total_potongan === chunks.length) {
+        // Isi sama persis — tidak ada yang perlu dibangun, tidak ada biaya.
+        return jawab({
+          success: true, selesai: true, diperbarui: false, sama: true, documentId: v.id,
+          message: `"${title}" isinya sama persis dengan yang tersimpan — tidak ada yang diperbarui.`,
+          chunks: chunks.length, tersimpan: chunks.length, total: chunks.length
+        }, 200);
+      }
+      versiLamaId = v?.id ?? null;
     }
 
     // 6b. Batas volume (K5, TM-004) — sebelum embedding: penolakan tanpa biaya. Hanya potongan yang BELUM tersimpan.
@@ -225,7 +245,8 @@ serve(async (req) => {
     if (!documentId) {
       const docPayload: Record<string, unknown> = {
         title, user_id: userId, space_id: targetSpaceId, selesai: false, sidik, total_potongan: chunks.length,
-        diproses_sampai: kunciSampai()
+        diproses_sampai: kunciSampai(),
+        ...(versiLamaId ? { menggantikan: versiLamaId } : {})
       };
       if (source_url !== undefined) docPayload.source_url = source_url;
       if (source_type !== undefined) docPayload.source_type = source_type;
@@ -245,6 +266,30 @@ serve(async (req) => {
     for (let i = sudahAda; i < chunks.length; i += UKURAN_KELOMPOK) {
       if (Date.now() - mulai > ANGGARAN_PANGGILAN_MS) break;
       const kelompok = chunks.slice(i, i + UKURAN_KELOMPOK);
+
+      if (versiLamaId) {
+        // Perbarui dokumen: potongan yang isinya sama dengan versi lama menyalin vektornya (tanpa OpenRouter);
+        // hanya sisanya di-embed. Satu kelompok disimpan dalam SATU perintah (atomik) — lihat migrasi 20261105030000.
+        const { data: ada, error: errAda } = await supabase.rpc('potongan_lama_ada', { p_dok_baru: documentId, p_dok_lama: versiLamaId, p_isi: kelompok });
+        if (errAda) throw new Error(`DB Error: ${errAda.message}`);
+        const salin = new Set((Array.isArray(ada) ? ada : []).map((x: any) => Number(typeof x === 'object' ? Object.values(x)[0] : x) - 1));
+        const perlu = kelompok.map((_, k) => k).filter((k) => !salin.has(k));
+        const vektorBaru = perlu.length
+          ? await embedLewatOpenRouter(perlu.map((k) => kelompok[k]), kunci, { batasWaktuMs: BATAS_KERAS_MS - (Date.now() - mulai) })
+          : [];
+        const pVektor: (string | null)[] = kelompok.map(() => null);
+        perlu.forEach((k, j) => { pVektor[k] = JSON.stringify(vektorBaru[j]); });
+        const { data: n, error: errSimpan } = await supabase.rpc('simpan_kelompok_perbarui', {
+          p_dok_baru: documentId, p_dok_lama: versiLamaId, p_isi: kelompok, p_vektor: pVektor,
+          p_source_url: source_url ?? null, p_source_type: source_type ?? null
+        });
+        if (errSimpan) throw new Error(`DB Insert Error: ${errSimpan.message}`);
+        if (Number(n) !== kelompok.length) throw new Error(`DB Insert Error: tersimpan ${n} dari ${kelompok.length} potongan`);
+        tersimpan += kelompok.length;
+        disalin += salin.size;
+        continue;
+      }
+
       const vektor = await embedLewatOpenRouter(kelompok, kunci, { batasWaktuMs: BATAS_KERAS_MS - (Date.now() - mulai) });
 
       const baris = kelompok.map((content, k) => {
@@ -272,12 +317,26 @@ serve(async (req) => {
 
     const { error: errSelesai } = await supabase.from('documents').update({ selesai: true }).eq('id', documentId);
     if (errSelesai) throw new Error(`DB Error: ${errSelesai.message}`);
-    console.log(`[rag-process] ✅ "${title}": ${chunks.length}/${chunks.length} potongan${sudahAda ? ` (${sudahAda} dari cache)` : ''} dalam ${detik} s`);
+    // Perbarui dokumen: versi lama dihapus SESUDAH versi baru selesai (sesaat keduanya terbaca — lebih baik daripada
+    // sesaat tak ada sama sekali). Gagal menghapus → dilaporkan; versi baru tetap sah.
+    let catatanLama = '';
+    if (versiLamaId) {
+      const { data: terhapus, error: errHapusLama } = await supabase
+        .from('documents').delete().eq('id', versiLamaId).eq('user_id', userId).select('id');
+      if (errHapusLama || !Array.isArray(terhapus) || terhapus.length === 0) {
+        console.error(`[rag-process] Versi lama ${versiLamaId} gagal dihapus: ${errHapusLama?.message || 'tidak ditemukan'}`);
+        catatanLama = ' Versi lama gagal dihapus — hapus manual dari daftar.';
+      } else {
+        catatanLama = ' Versi lama diganti.';
+      }
+    }
+    console.log(`[rag-process] ✅ "${title}": ${chunks.length}/${chunks.length} potongan${sudahAda ? ` (${sudahAda} dari cache)` : ''}${versiLamaId ? `, perbarui: ${disalin} vektor disalin dari versi lama` : ''} dalam ${detik} s`);
     return jawab({
       success: true,
       selesai: true,
-      message: `Berhasil memproses ${chunks.length} dari ${chunks.length} blok teks${sudahAda ? ` (${sudahAda} sudah tersimpan sebelumnya)` : ''}.`,
-      documentId, chunks: chunks.length, tersimpan: chunks.length, total: chunks.length, seconds: detik
+      message: `Berhasil memproses ${chunks.length} dari ${chunks.length} blok teks${sudahAda ? ` (${sudahAda} sudah tersimpan sebelumnya)` : ''}${versiLamaId ? `; ${disalin} potongan tak berubah memakai vektor lama.` : '.'}${catatanLama}`,
+      documentId, chunks: chunks.length, tersimpan: chunks.length, total: chunks.length, seconds: detik,
+      ...(versiLamaId ? { diperbarui: true, disalin } : {})
     }, 200);
 
   } catch (error: any) {

@@ -349,13 +349,23 @@ function App() {
           // Cache OCR di perangkat (K1 langkah 2): halaman yang pernah di-OCR tidak dibayar lagi, dan teksnya sama
           // persis — syarat agar unggahan yang terputus bisa dilanjutkan.
           const cache = buatCacheOcr(await sidikBerkas(bytes));
-          const { peta: petaOcr, halamanGagal } = await terapkanOcrHalaman(
+          const { peta: petaOcr, halamanGagal, saldoHabis, halamanBelum = [] } = await terapkanOcrHalaman(
             bytes,
             hasil.halamanBertabelTerdeteksi,
             kunciOcr,
             ({ ke, total, gagal, dariCache }) => setStatusUnggah(`OCR halaman ${ke}/${total}${dariCache ? ` (${dariCache} dari cache)` : ''}${gagal ? ` (${gagal} dilewati)` : ''}…`),
             { cache }
           );
+          // Saldo habis di tengah OCR (5 Nov: buku Kepbup, 522 halaman jatuh ke teks pdf.js tanpa ditanya).
+          // Pengguna memutuskan; bawaan aman = berhenti.
+          if (saldoHabis && !window.confirm(
+            `OCR berhenti: saldo OpenRouter tidak cukup (OCR berkas butuh saldo minimal $0,50).\n\n` +
+            `${halamanBelum.length} dari ${jumlah} halaman tabel belum di-OCR; yang sudah di-OCR tidak dibayar ulang.\n\n` +
+            'OK = lanjut unggah TANPA OCR untuk halaman itu (mutu tabel lebih rendah).\n' +
+            'Batal = hentikan; isi saldo, lalu unggah lagi.'
+          )) {
+            throw new Error('Dihentikan: saldo OpenRouter tidak cukup untuk OCR. Isi saldo, lalu unggah lagi — halaman yang sudah di-OCR tidak dibayar ulang.');
+          }
           if (halamanGagal.length) {
             console.warn(`[Mametlite] OCR melewati ${halamanGagal.length} halaman:`, halamanGagal.join(', '));
             alert(
@@ -389,7 +399,9 @@ function App() {
       // panggilan diulang dengan teks yang sama sampai selesai. Gagal sesaat (503 gerbang, jaringan, penolakan
       // penyedia) dicoba lagi; yang sudah tersimpan menjadi cache untuk dilanjutkan. Alasan galat non-2xx dibaca dari
       // body jawaban (error.context) di unggahBertahap.
-      const body = { title: file.name, text: hasil.teks, userId: session.user.id };
+      // Perbarui dokumen (5 Nov 2026): judul sama yang sudah selesai → server membangun versi baru, menyalin vektor
+      // potongan yang isinya sama (tanpa biaya), lalu menghapus versi lama sesudah versi baru selesai.
+      const body = { title: file.name, text: hasil.teks, userId: session.user.id, ...(existingDoc ? { perbarui: true } : {}) };
       const headers = openRouterKey ? { 'x-byok-openrouter': openRouterKey } : {};
       const data = await unggahBertahap({
         panggil: () => supabase.functions.invoke('rag-process', { body, headers }),
@@ -399,8 +411,9 @@ function App() {
         }
       });
 
-      // Versi baru sudah tersimpan lengkap — baru sekarang versi lama (yang sudah selesai) dihapus.
-      if (existingDoc && existingDoc.id !== data?.documentId) {
+      // Versi lama dihapus server bila diperbarui (`diperbarui`), atau tak tersentuh bila isinya sama (`sama`). Cadangan:
+      // server versi lama / versi lama di ruang lain → dihapus di sini, sesudah versi baru tersimpan lengkap.
+      if (existingDoc && !data?.diperbarui && !data?.sama && existingDoc.id !== data?.documentId) {
         const { error: errHapus } = await supabase.from('documents').delete().eq('id', existingDoc.id);
         if (errHapus) console.warn(`[mametlite] Versi lama "${file.name}" gagal dihapus: ${errHapus.message}`);
       }

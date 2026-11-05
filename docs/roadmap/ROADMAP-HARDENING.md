@@ -54,6 +54,12 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
      ulang kelompok yang ditolak sesaat (503 gerbang Supabase, penolakan lokasi Google), bersihkan karakter NUL —
      [log](../project-memory/changelog/2026-11-05-unggah-buku-besar-dan-sejarah-aplikasi.md).
   3. ⏳💳 Unggah ulang **buku asli utuh** (sekali, sesudah 1 & 2 — OCR tidak dibayar dua kali) → BUKU-10 ×5 → K1/K2 penuh.
+     5 Nov: buku masuk "kepbup oku" (2.880 potongan) tetapi saldo habis di halaman ±442 → 522 halaman tanpa OCR (tak
+     sah untuk uji). ✅ **Perbarui dokumen + OCR berhenti saat 402** (live 6 Nov: migrasi `perbarui_dokumen`,
+     rag-process v84; uji SQL live) — nama sama di workspace yang sama → versi baru dibangun, potongan tak berubah
+     menyalin vektor lama di database, versi lama dihapus sesudah selesai —
+     [log](../project-memory/changelog/2026-11-06-k1-perbarui-dokumen-dan-ocr-402.md). Sisa: uji pakai dokumen pendek;
+     💳 isi saldo → unggah ulang "Kepbup Standar Kompetensi Jabatan(1).pdf" (nama persis) → Perbarui → uji penuh.
 
 ### K2 — RAG jujur saat gagal
 - ✅ RAG turun bersuara (2 Okt).

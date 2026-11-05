@@ -206,16 +206,30 @@ export default function ResearchApp() {
             // Judul yang sudah ada di server (bukan daftar di layar, yang bisa basi) → dilewati. Unggahan yang BELUM
             // selesai (K1 langkah 2) tidak dilewati: berkas yang sama melanjutkannya dari potongan terakhir.
             const { data: judulAda, error: errJudul } = await supabase
-                .from('documents').select('title, selesai').eq('user_id', session.user.id).limit(10000);
+                .from('documents').select('title, selesai, space_id').eq('user_id', session.user.id).limit(10000);
             if (errJudul) throw errJudul;
             const sudahAda = new Set((judulAda || []).filter((d) => d.selesai !== false).map((d) => d.title));
             const tertunda = new Set((judulAda || []).filter((d) => d.selesai === false).map((d) => d.title));
+            // PERBARUI DOKUMEN (5 Nov 2026, permintaan Owner: nama sama, isi berbeda). Judul yang sudah ada DI WORKSPACE
+            // INI boleh diperbarui — rag-process membangun versi baru (potongan yang isinya sama menyalin vektor lama,
+            // tanpa biaya), lalu menghapus versi lama sesudah versi baru selesai. Judul yang ada di workspace LAIN tetap
+            // dilewati seperti dulu (unggahan ganda 17 Sep).
+            const diRuangIni = new Set((judulAda || [])
+                .filter((d) => d.selesai !== false && (!selectedSpace || d.space_id === selectedSpace)).map((d) => d.title));
+            const kembar = files.filter((f) => diRuangIni.has(f.name)).map((f) => f.name);
+            const perbarui = kembar.length > 0 && window.confirm(
+                `${kembar.length} berkas sudah ada di workspace ini:\n${kembar.slice(0, 10).map((n) => `- ${n}`).join('\n')}` +
+                `${kembar.length > 10 ? `\n… dan ${kembar.length - 10} lagi` : ''}\n\n` +
+                'OK = PERBARUI isinya: versi baru dibangun, bagian yang isinya sama tidak dibayar ulang, versi lama dihapus ' +
+                'sesudah versi baru selesai (selama itu versi lama tetap dipakai chat).\nBatal = lewati berkas-berkas itu.'
+            );
 
             // 1. Baca semua berkas. PDF/DOCX diambil teksnya di browser (Item 69); berkas teks dibaca apa adanya.
             //    Gagal (scan, terkunci, format lama…) = GagalEkstrak berpesan jelas → dicatat, berkas lain lanjut.
             const siap = [];
             for (const file of files) {
-                if (sudahAda.has(file.name)) { hasilAkhir.dilewati.push(file.name); continue; }
+                const diperbarui = perbarui && diRuangIni.has(file.name);
+                if (sudahAda.has(file.name) && !diperbarui) { hasilAkhir.dilewati.push(file.name); continue; }
                 try {
                     setStatusUnggah(`Membaca ${namaBerkas(file)}…`);
                     const hasil = await ekstrakTeksDokumen(file, {
@@ -223,7 +237,7 @@ export default function ResearchApp() {
                             if (total) setStatusUnggah(`Membaca ${banyak ? `berkas ${files.indexOf(file) + 1}/${files.length}, ` : ''}halaman ${halaman}/${total}…`);
                         }
                     });
-                    siap.push({ file, hasil });
+                    siap.push({ file, hasil, perbarui: diperbarui });
                 } catch (err) {
                     hasilAkhir.gagal.push({ nama: file.name, pesan: err.message });
                 }
@@ -260,13 +274,13 @@ export default function ResearchApp() {
                 const totalDolar = siap.reduce((a, s) => a + perkiraanUnggah(s.hasil.huruf).dolar, 0);
                 const totalHalaman = siap.reduce((a, s) => a + (s.hasil.halaman || 0), 0);
                 const infoKosong = siap.reduce((a, s) => a + (s.hasil.halamanKosong || 0), 0);
-                const nLanjut = siap.filter((s) => tertunda.has(s.file.name)).length;
+                const nLanjut = siap.filter((s) => tertunda.has(s.file.name) || s.perbarui).length;
                 const lanjut = window.confirm(
                     `${banyak ? `${siap.length} berkas` : `"${siap[0].file.name}"`}: ` +
                     `${totalHalaman ? `${totalHalaman} halaman, ` : ''}±${totalPotongan} potongan teks.` +
                     `${infoKosong ? `\n${infoKosong} halaman berupa gambar dilewati.` : ''}\n\n` +
                     `Perkiraan biaya embedding ±${angka(totalDolar, 3)} dari saldo OpenRouter Anda.` +
-                    (nLanjut ? `\n${banyak ? `${nLanjut} berkas melanjutkan` : 'Ini melanjutkan'} unggahan yang belum selesai — potongan yang sudah tersimpan tidak dibayar lagi, jadi biaya sebenarnya lebih kecil.` : '') +
+                    (nLanjut ? `\n${banyak ? `${nLanjut} berkas melanjutkan` : 'Ini melanjutkan'} unggahan yang belum selesai atau memperbarui dokumen lama — potongan yang sudah tersimpan tidak dibayar lagi, jadi biaya sebenarnya lebih kecil.` : '') +
                     ` Lanjutkan?`
                 );
                 if (!lanjut) return;
@@ -288,13 +302,28 @@ export default function ResearchApp() {
                         // Cache OCR di perangkat (K1 langkah 2): halaman yang pernah di-OCR tidak dibayar lagi, dan teksnya
                         // sama persis — syarat agar unggahan yang terputus bisa dilanjutkan.
                         const cache = buatCacheOcr(await sidikBerkas(bytes));
-                        const { peta: petaOcr, halamanGagal } = await terapkanOcrHalaman(
+                        const { peta: petaOcr, halamanGagal, saldoHabis, halamanBelum = [] } = await terapkanOcrHalaman(
                             bytes,
                             halamanTabel,
                             openRouterKey,
                             ({ ke, total, gagal, dariCache }) => setStatusUnggah(`${awalan}OCR halaman ${ke}/${total}${dariCache ? ` (${dariCache} dari cache)` : ''}${gagal ? ` (${gagal} dilewati)` : ''}…`),
                             { cache }
                         );
+                        // Saldo habis di tengah OCR (5 Nov: buku Kepbup, 522 halaman jatuh ke teks pdf.js tanpa ditanya).
+                        // Pengguna memutuskan; bawaan aman = berhenti (kebenaran data RAG di atas biaya).
+                        if (saldoHabis) {
+                            const lanjutTanpaOcr = window.confirm(
+                                `OCR "${file.name}" berhenti: saldo OpenRouter tidak cukup (OCR berkas butuh saldo minimal $0,50).\n\n` +
+                                `${halamanBelum.length} dari ${halamanTabel.length} halaman tabel belum di-OCR; yang sudah di-OCR tersimpan ` +
+                                'di cache dan tidak dibayar ulang.\n\n' +
+                                'OK = lanjut unggah TANPA OCR untuk halaman itu (tabelnya dibaca pdf.js, mutunya lebih rendah).\n' +
+                                'Batal = hentikan unggahan; isi saldo, lalu unggah lagi.'
+                            );
+                            if (!lanjutTanpaOcr) {
+                                throw Object.assign(new Error('Dihentikan: saldo OpenRouter tidak cukup untuk OCR. Isi saldo, lalu unggah lagi — halaman yang sudah di-OCR tidak dibayar ulang.'), { status: 402 });
+                            }
+                            hasilAkhir.ocrDilewati.push({ nama: file.name, halaman: halamanBelum });
+                        }
                         if (halamanGagal.length) {
                             console.warn(`[ResearchApp] OCR melewati ${halamanGagal.length} halaman di ${file.name}:`, halamanGagal.join(', '));
                             hasilAkhir.ocrDilewati.push({ nama: file.name, halaman: halamanGagal });
@@ -315,7 +344,9 @@ export default function ResearchApp() {
                         // Tanpa ini rag-process mencari space CORE milik pengguna sendiri.
                         ...(selectedSpace ? { spaceId: selectedSpace } : {}),
                         source_type: 'user_upload',
-                        retrieved_at: new Date().toISOString()
+                        retrieved_at: new Date().toISOString(),
+                        // Perbarui dokumen berjudul sama di workspace ini (lihat konfirmasi di atas).
+                        ...(item.perbarui ? { perbarui: true } : {})
                     };
                     const data = await unggahBertahap({
                         panggil: () => supabase.functions.invoke('rag-process', { body, headers }),
@@ -326,7 +357,8 @@ export default function ResearchApp() {
                     });
 
                     console.log(`[ResearchApp] ✅ ${file.name}: ${data?.message ?? 'terunggah'} (${hasil.jenis}, ${hasil.huruf} huruf${data?.seconds ? `, ${data.seconds} s` : ''})`);
-                    hasilAkhir.berhasil.push(file.name);
+                    hasilAkhir.berhasil.push(data?.sama ? `${file.name} (isinya sama persis — tidak diubah)`
+                        : data?.diperbarui ? `${file.name} (diperbarui${data.disalin ? `, ${data.disalin} potongan tak berubah` : ''})` : file.name);
                 } catch (err) {
                     console.error(`[ResearchApp] Gagal upload ${file.name}:`, err);
                     hasilAkhir.gagal.push({ nama: file.name, pesan: err.message });
