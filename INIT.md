@@ -1,8 +1,10 @@
 # 🗺️ INIT.md - MAMET ECOSYSTEM MASTER INDEX
 
 ## 📌 1. DIREKTIF UTAMA (Wajib dipatuhi AI/Engineer)
-Proyek ini memiliki **28 dokumen di folder `constitution/`** dan beberapa dokumen di root.
+Proyek ini memiliki **dokumen bernomor di folder `constitution/`** dan beberapa dokumen di root.
 Anda **TIDAK DIIZINKAN** membaca seluruh dokumen sekaligus.
+0. **WAJIB sebelum tugas apa pun:** baca utuh `constitution/29_CARA_KERJA_OWNER.md` — gaya kerja Owner, titik buta yang
+   menggeser Mamet perlahan, dan daftar periksa sebelum melapor.
 1. Identifikasi tugas Anda berdasarkan **Peta Navigasi Tugas (Poin 4)**.
 2. **HANYA** buka dokumen yang ditunjuk di folder `constitution/`.
 3. Jangan membuka folder `src/` atau menulis kode sebelum dokumen tersebut selesai Anda baca.
@@ -50,6 +52,8 @@ Anda **TIDAK DIIZINKAN** membaca seluruh dokumen sekaligus.
 | **3** | `25_DESIGN_PHILOSOPHY.md` | Maxim teknis: Simple beats complex, Root Cause First, Observability Mandatory. |
 | **3** | `26_MENTAL_MODEL.md` | Peta konsep ringkas lintas komponen (Owner→Mamet→Capability→LLM→Infra). |
 | **3** | `27_DECISION_HEURISTICS.md` | Strategic Decision Matrix, Engineer/Assistant Principle, tie-breaker konkret untuk keputusan strategis. |
+| **3** | `28_PROSEDUR_KERJA_ENGINEER.md` | Urutan langkah Engineer dari menerima tugas sampai melapor. |
+| **3** | `29_CARA_KERJA_OWNER.md` | **Wajib dibaca pertama.** Gaya kerja Owner, titik buta pergeseran perlahan, daftar periksa sebelum melapor. |
 | **3** | `ENGINEERING_CONTRACT.md` | Kontrak teknis mengikat antara MAEF dan Engineer. |
 
 ---

@@ -160,6 +160,8 @@ Menjelaskan Core Architecture.
 
 28_PROSEDUR_KERJA_ENGINEER.md
 
+29_CARA_KERJA_OWNER.md
+
 ↓
 
 Menjelaskan implementasi teknis dan spesifikasi UI spesifik.

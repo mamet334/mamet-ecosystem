@@ -7,6 +7,10 @@ Jangan masukkan berkas ini ke indeks konstitusi Engineer (`frontend/electron/ind
 Berkas ini **pelengkap**, bukan pengganti: `AGENTS.md` dan urutan baca Konstitusi tetap berlaku lebih dulu.
 Titik masuk status pekerjaan: `docs/roadmap/INDEX-ROADMAP.md`.
 
+**Wajib sebelum bekerja:** skill `cara-kerja-mamet` (`.claude/skills/`) → [`constitution/29_CARA_KERJA_OWNER.md`](constitution/29_CARA_KERJA_OWNER.md):
+gaya kerja Owner, titik buta yang menggeser Mamet perlahan, daftar periksa sebelum melapor. Sumber yang sama dipatuhi
+Engineer — jangan menyalin isinya ke berkas ini.
+
 ## Komunikasi & Git
 
 - Berkomunikasi dengan Owner dalam **bahasa Indonesia**.

@@ -126,8 +126,19 @@ WAJIB membaca dokumen secara berurutan:
 
 27_DECISION_HEURISTICS.md
 
+↓
+
+28_PROSEDUR_KERJA_ENGINEER.md
+
+↓
+
+29_CARA_KERJA_OWNER.md
+
+> [!IMPORTANT]
+> `29_CARA_KERJA_OWNER.md` dibaca **pertama** sebelum tugas apa pun, bukan hanya di akhir urutan onboarding ini.
+
 > [!NOTE]
-> Untuk navigasi cepat berdasarkan jenis tugas (tanpa harus membaca semua 28 dokumen sekaligus), gunakan `INIT.md` di root repository — berisi Peta Navigasi Tugas (trigger → dokumen wajib dibuka) dan Buku Saku Teknis Eksekutif. `INIT.md` adalah index operasional; urutan baca di atas tetap otoritas untuk onboarding menyeluruh.
+> Untuk navigasi cepat berdasarkan jenis tugas (tanpa harus membaca semua dokumen sekaligus), gunakan `INIT.md` di root repository — berisi Peta Navigasi Tugas (trigger → dokumen wajib dibuka) dan Buku Saku Teknis Eksekutif. `INIT.md` adalah index operasional; urutan baca di atas tetap otoritas untuk onboarding menyeluruh.
 
 ---
 
