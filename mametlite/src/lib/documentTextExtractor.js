@@ -20,7 +20,7 @@
  * seperti tabel DOCX karena tak ada struktur HTML untuk direkonstruksi, hanya posisi teks.
  */
 
-import { bacaTabelCentang } from './tabelCentang.js';
+import { bacaTabelCentang, tulisCentangDiItems, tulisCentangDiTeks } from './tabelCentang.js';
 
 export const EKSTENSI_TEKS =['.txt', '.md', '.csv', '.json', '.html', '.xml'];
 export const EKSTENSI_DIDUKUNG = [...EKSTENSI_TEKS, '.pdf', '.docx'];
@@ -246,7 +246,7 @@ export async function ekstrakPdfDariData(data, pdfjs, onProgress, petaOcr) {
     const halaman = [];
     const bertabel = [];
     const blokCentang = [];
-    const centang = { halaman: [], tidakPasti: [] };
+    const centang = { halaman: [], tidakPasti: [], ditulis: [] };
     let judulCentang = null;
     let itemsSebelumnya = null;
     for (let n = 1; n <= doc.numPages; n++) {
@@ -255,13 +255,24 @@ export async function ekstrakPdfDariData(data, pdfjs, onProgress, petaOcr) {
       const { baris, cetakUlang } = kelompokkanBaris(isi.items);
       if (deteksiTabelHalaman(isi.items)) bertabel.push(n);
       const teksOcr = petaOcr?.get(n);
-      halaman.push(teksOcr !== undefined
-        ? teksOcr.split('\n').filter(Boolean)
-        : baris.map((b) => gabungBaris(b.bagian, cetakUlang)).filter(Boolean));
       // Item 88: kolom tanda centang dari koordinat pdf.js (OCR menggesernya pada judul bertingkat).
       const tc = bacaTabelCentang(isi.items, { teksOcr, bawaan: judulCentang, nomorHalaman: n, itemsSebelumnya });
       judulCentang = tc.bawaan;
       itemsSebelumnya = isi.items;
+      // K1 (5 Nov 2026): kolom itu juga ditulis di samping tandanya ("√ Mutlak"), supaya tabel dan potongan yang
+      // terpisah dari bloknya tetap benar. OCR: hanya bila pemasangan urutannya pasti (tulisCentangDiTeks).
+      // pdf.js: langsung pada item tandanya (tulisCentangDiItems). Blok TABEL CENTANG tetap ditempel.
+      if (teksOcr !== undefined) {
+        const barisOcr = teksOcr.split('\n').filter(Boolean);
+        const tulis = tulisCentangDiTeks(barisOcr.join('\n'), tc.tanda);
+        halaman.push(tulis.ditulis ? tulis.teks.split('\n') : barisOcr);
+        if (tulis.ditulis) centang.ditulis.push(n);
+      } else {
+        const tulis = tulisCentangDiItems(isi.items, tc.tanda);
+        const susunan = tulis.ditulis ? kelompokkanBaris(tulis.items) : { baris, cetakUlang };
+        halaman.push(susunan.baris.map((b) => gabungBaris(b.bagian, susunan.cetakUlang)).filter(Boolean));
+        if (tulis.ditulis) centang.ditulis.push(n);
+      }
       blokCentang.push(tc.blok);
       if (tc.blok) centang.halaman.push(n);
       if (tc.ringkasan.tidakPasti) centang.tidakPasti.push(n);
@@ -271,7 +282,8 @@ export async function ekstrakPdfDariData(data, pdfjs, onProgress, petaOcr) {
     const { teks, halamanKosong } = rakitTeksHalaman(halaman, blokCentang);
     return {
       jenis: 'pdf', teks, halaman: halaman.length, halamanKosong, halamanBertabelTerdeteksi: bertabel,
-      halamanTabelCentang: centang.halaman, halamanCentangTidakPasti: centang.tidakPasti
+      halamanTabelCentang: centang.halaman, halamanCentangTidakPasti: centang.tidakPasti,
+      halamanCentangDitulis: centang.ditulis
     };
   } finally {
     await tugas.destroy();

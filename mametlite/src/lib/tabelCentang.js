@@ -28,7 +28,6 @@ const HURUF_CENTANG = '√✓✔☑☒';
 // Kepbup OKU: jabatan 177 (Bidang Pencegahan Damkar, 2026-09-17) — tanpa ini blok TABEL CENTANG jabatan itu hilang.
 // Hanya bila berdiri sendiri sebagai satu potongan teks; sejajar judul kolom tetap disyaratkan seperti centang lain.
 const POLA_CENTANG_SAJA = new RegExp(`^(?:[${HURUF_CENTANG}]{1,2}|\\u00D6)$`);
-const POLA_CENTANG_GLOBAL = new RegExp(`[${HURUF_CENTANG}]`, 'g');
 
 export const TOLERANSI_SEJAJAR = 12;   // pt; centang di luar rentang deret judul lebih dari ini → tidak pasti
 const TOLERANSI_DALAM_JUDUL = 6;       // pt; pusat centang harus di dalam lebar judul kolomnya ±6
@@ -44,7 +43,16 @@ const CELAH_BARIS_LANJUTAN = 20;     // pt; baris lanjutan label sejauh ini masi
 
 const ringkas = (s) => s.replace(/\s+/g, ' ').trim();
 
-export const hitungCentangTeks = (teks) => (teks?.match(POLA_CENTANG_GLOBAL) || []).length;
+// Di teks OCR, "Ö" hanya dihitung centang bila sendirian di sel tabel Markdown ("| Ö |") — huruf Ö di kata
+// biasa bukan centang. Jabatan 177 (5 Nov): tanpa ini blok halaman itu berkata "di teks OCR 0" padahal ada 2.
+const POLA_CENTANG_TEKS = new RegExp(`[${HURUF_CENTANG}]|(?<=\\|[ \\t]*)\\u00D6(?=[ \\t]*\\|)`, 'g');
+
+/** Posisi setiap tanda centang di teks (urutan baca) → [{ i, huruf }]. */
+export const cariCentangTeks = (teks) => [...(teks || '').matchAll(POLA_CENTANG_TEKS)].map((m) => ({ i: m.index, huruf: m[0] }));
+export const hitungCentangTeks = (teks) => cariCentangTeks(teks).length;
+
+// Posisi dibulatkan 2 pt: salinan cetak-ulang (efek tebal) berkunci sama dengan aslinya.
+const kunciPotongan = (it) => `${Math.round(it.transform[4] / 2)}|${Math.round(it.transform[5] / 2)}|${it.str}`;
 
 /** Item getTextContent → potongan bersih; salinan cetak-ulang (efek tebal) dibuang seperti kelompokkanBaris. */
 function potonganHalaman(items) {
@@ -54,11 +62,11 @@ function potonganHalaman(items) {
     if (!it || typeof it.str !== 'string' || !it.transform || !it.str.trim()) continue;
     const x = it.transform[4];
     const y = it.transform[5];
-    const kunci = `${Math.round(x / 2)}|${Math.round(y / 2)}|${it.str}`;
+    const kunci = kunciPotongan(it);
     if (terlihat.has(kunci)) continue;
     terlihat.add(kunci);
     const s = it.str.trim();
-    hasil.push({ s, x, y, w: it.width || 0, centang: POLA_CENTANG_SAJA.test(s) });
+    hasil.push({ s, x, y, w: it.width || 0, centang: POLA_CENTANG_SAJA.test(s), kunci });
   }
   return hasil;
 }
@@ -266,6 +274,7 @@ export function bacaTabelCentang(items, { teksOcr, bawaan = null, nomorHalaman, 
     return {
       blok: alasan.length ? blokTidakPasti(alasan, []) : '',
       bawaan,
+      tanda: [],
       ringkasan: { centang: 0, terpetakan: 0, tidakPasti: alasan.length > 0 }
     };
   }
@@ -275,6 +284,7 @@ export function bacaTabelCentang(items, { teksOcr, bawaan = null, nomorHalaman, 
 
   const entri = [];          // { judul, label, kolom[] } berurutan atas ke bawah
   const gagal = [];
+  const tanda = [];          // satu per centang, urutan baca: { kolom: teks judul | null, label }
   let judulTerakhir = null;
   const judulPerY = new Map();   // satu objek per baris judul → "Kolom:" dicetak sekali per tabel
   // Judul bawaan hanya untuk halaman TEPAT sesudahnya, dan hanya untuk centang yang posisi x-nya sama
@@ -311,6 +321,7 @@ export function bacaTabelCentang(items, { teksOcr, bawaan = null, nomorHalaman, 
       }
     }
     const { teks: label, perkiraan } = susunLabel(baris, c, judul);
+    tanda.push({ kolom: judul && label ? terdekat.teks : null, label, kunci: c.kunci });
     if (!judul) {
       gagal.push(`${label || '(tanpa teks baris di dekatnya)'} → ${bawaanBerlaku
         ? `tabel tampaknya berlanjut dari halaman ${bawaan.halaman}, tetapi posisi tanda centang tidak sama dengan yang sudah terpetakan di sana`
@@ -358,6 +369,7 @@ export function bacaTabelCentang(items, { teksOcr, bawaan = null, nomorHalaman, 
     blok: bagian.join('\n'),
     // Tanpa centang terpetakan di halaman ini, rantai bawaan putus (halamanTerakhir tidak maju).
     bawaan: judulTerakhir ? { ...judulTerakhir, halamanTerakhir: nomorHalaman } : bawaan,
+    tanda,
     ringkasan: {
       centang: centang.length,
       terpetakan: centang.length - gagal.length,
@@ -365,6 +377,88 @@ export function bacaTabelCentang(items, { teksOcr, bawaan = null, nomorHalaman, 
       labelPerkiraan: selTengah
     }
   };
+}
+
+// Kata yang terlalu umum untuk membuktikan bahwa baris OCR dan label PDF adalah baris yang sama.
+const KATA_UMUM = new Set(['yang', 'dengan', 'dalam', 'untuk', 'atau', 'pada', 'dari', 'oleh', 'serta', 'sebagai',
+  'tahun', 'paling', 'kurang', 'sedikit', 'memiliki', 'sedang', 'pernah', 'jabatan', 'bidang', 'terkait', 'sesuai']);
+// Label yang seluruhnya kata umum ("2. Sedang atau pernah" — sel terbelah, hanya baris pertamanya yang sebaris
+// dengan centang) memakai kata umum itu: lebih baik penjaga yang lemah daripada tanpa penjaga.
+const kataPembeda = (s) => {
+  const semua = s.toLowerCase().match(/\p{L}{4,}/gu) || [];
+  const pembeda = semua.filter((k) => !KATA_UMUM.has(k));
+  return new Set(pembeda.length ? pembeda : semua);
+};
+
+/**
+ * CENTANG DITULIS SEBAGAI KATA DI TEKS OCR (K1, 5 Nov 2026 — keputusan Owner: data dirapikan saat unggah, tanpa LLM).
+ *
+ * Tabel OCR menggeser sel (uraian yang memakan dua sel, sel kosong berlebih/kurang), sehingga posisi "√" di baris
+ * Markdown tidak menunjukkan kolomnya — menghitung sel dari kanan hanya setuju 83% dengan posisi di PDF (diukur di
+ * korpus Kepbup). Kolom yang pasti ada di `tanda` (dari koordinat pdf.js). Fungsi ini memasangkan tanda centang
+ * ke-k di PDF dengan tanda centang ke-k di teks OCR — keduanya urutan baca, atas ke bawah lalu kiri ke kanan — dan
+ * menulis judul kolomnya tepat di samping tanda: "| √ |" → "| √ Mutlak |".
+ *
+ * Ditulis hanya bila SEMUA syarat terpenuhi; satu saja gagal → teks dikembalikan apa adanya (blok TABEL CENTANG /
+ * TIDAK PASTI tetap menjadi sumber kolom):
+ *   1. jumlah tanda di teks OCR = jumlah tanda di PDF;
+ *   2. setiap tanda PDF terpetakan ke kolom dan berlabel;
+ *   3. baris OCR yang memuat tanda ke-k berbagi ≥1 kata pembeda dengan label PDF tanda ke-k — urutan yang bergeser
+ *      membuat tanda jatuh di baris lain, dan baris lain hampir selalu tak berbagi kata dengan label itu.
+ * @returns {{ teks: string, ditulis: number, alasan: string|null }}
+ */
+export function tulisCentangDiTeks(teksOcr, tanda) {
+  const asli = { teks: teksOcr, ditulis: 0 };
+  if (!teksOcr || !tanda?.length) return { ...asli, alasan: null };
+  const posisi = cariCentangTeks(teksOcr);
+  if (posisi.length !== tanda.length) return { ...asli, alasan: `jumlah tanda di teks OCR ${posisi.length}, di PDF ${tanda.length}` };
+  if (tanda.some((t) => !t.kolom || !t.label)) return { ...asli, alasan: 'ada tanda di PDF yang kolom atau barisnya tidak pasti' };
+  const kataLabel = tanda.map((t) => kataPembeda(t.label));
+  for (let k = 0; k < posisi.length; k++) {
+    const awal = teksOcr.lastIndexOf('\n', posisi[k].i) + 1;
+    const akhir = teksOcr.indexOf('\n', posisi[k].i);
+    const kataBaris = new Set(teksOcr.slice(awal, akhir < 0 ? undefined : akhir).toLowerCase().match(/\p{L}{4,}/gu) || []);
+    const skor = (j) => [...kataLabel[j]].filter((w) => kataBaris.has(w)).length;
+    const milik = skor(k);
+    if (!milik) return { ...asli, alasan: `tanda ke-${k + 1} jatuh di baris OCR yang tidak memuat kata dari labelnya di PDF` };
+    // Baris yang lebih mirip label tanda LAIN berkolom berbeda = urutan bisa bergeser (diukur: tanpa syarat ini
+    // 4 dari 191 pasangan yang sengaja digeser satu lolos — "Diklat Teknis yang relevan…" ↔ "Pengalaman Kerja…").
+    // Tanda lain berkolom sama tidak dihitung: tertukar pun kata yang ditulis sama. Tanda berlabel SAMA juga tidak:
+    // itu satu baris PDF yang dicentang di beberapa kolom (057: Mutlak, Penting, Perlu), dan di dalam satu baris
+    // urutan kiri-ke-kanan PDF dan OCR sama — kata tidak bisa membedakannya, jumlah tanda yang sama sudah menjaga.
+    if (tanda.some((t, j) => j !== k && t.kolom !== tanda[k].kolom && t.label !== tanda[k].label && skor(j) >= milik)) {
+      return { ...asli, alasan: `baris OCR tanda ke-${k + 1} sama mirip atau lebih mirip dengan label tanda lain yang berkolom berbeda` };
+    }
+  }
+  let teks = '';
+  let dari = 0;
+  posisi.forEach((p, k) => {
+    teks += `${teksOcr.slice(dari, p.i)}${p.huruf} ${tanda[k].kolom}`;
+    dari = p.i + p.huruf.length;
+  });
+  return { teks: teks + teksOcr.slice(dari), ditulis: posisi.length, alasan: null };
+}
+
+/**
+ * Halaman TANPA OCR: teksnya disusun dari item pdf.js yang sama, jadi kolom ditulis langsung pada item tanda itu
+ * ("√" → "√ Penting") — pasti per tanda, tanpa memasangkan urutan. Pemasangan urutan (`tulisCentangDiTeks`) tidak
+ * cocok di sini: teks pdf.js mengikuti urutan aliran PDF, setiap sel menjadi baris sendiri, dan "√" sering
+ * sendirian tanpa kata labelnya (diukur 5 Nov: hanya 3 dari 30 halaman lolos penjaga). Tanda yang kolom atau
+ * barisnya tidak pasti dibiarkan apa adanya. Salinan cetak-ulang ikut ditulis (kuncinya sama).
+ * @returns {{ items: Array, ditulis: number }}  items baru; `items` asli tidak diubah
+ */
+export function tulisCentangDiItems(items, tanda) {
+  const kolomPer = new Map((tanda || []).filter((t) => t.kolom && t.kunci).map((t) => [t.kunci, t.kolom]));
+  if (!kolomPer.size) return { items, ditulis: 0 };
+  let ditulis = 0;
+  const baru = (items || []).map((it) => {
+    if (!it?.transform || typeof it.str !== 'string') return it;
+    const kolom = kolomPer.get(kunciPotongan(it));
+    if (!kolom) return it;
+    ditulis++;
+    return { ...it, str: `${it.str.trim()} ${kolom}` };
+  });
+  return { items: baru, ditulis };
 }
 
 function blokTidakPasti(alasan, gagal) {
