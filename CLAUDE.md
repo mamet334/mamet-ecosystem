@@ -29,6 +29,40 @@ Titik masuk status pekerjaan: `docs/roadmap/INDEX-ROADMAP.md`.
    **Parkir** di `docs/roadmap/ROADMAP-HARDENING.md` — bukan utang, jangan ditawarkan sebagai "sisa". Laporan ditutup
    dengan **status K1–K7**, bukan "sisa roadmap".
 
+## Memaksimalkan model (keputusan Owner 6 Nov 2026 — Item 131)
+
+Mamet ada untuk memakai model LLM **semaksimal mungkin**. Berbulan-bulan pembatas ditambah satu per satu dengan alasan
+lokal dan model reasoning-nya jadi "dibuat lapar": riwayat dipotong 800 huruf, RAG yang sudah ketemu dibuang batas
+waktu, alat dimatikan diam-diam oleh blokir kata kunci ([`ROADMAP-MAKSIMALKAN-MODEL.md`](docs/roadmap/ROADMAP-MAKSIMALKAN-MODEL.md)).
+
+- **Sebelum menambah atau mempertahankan batas** (pemangkas teks/riwayat, batas waktu, batas putaran/jumlah, penjaga,
+  blokir), jawab dulu: apa yang **benar-benar dilindunginya**, dan apa yang **hilang dari model**? Jalan pertama selalu
+  membuat model BISA (indeks agar cepat, alat agar ia menelusuri sendiri, anggaran yang terlihat) — bukan pembatas.
+- **Keamanan hanya di titik yang melindungi:** izin Owner sebelum aksi berefek (tulis, hapus, kirim), isolasi data per
+  akun, saring rahasia, hasil alat diperlakukan sebagai data. Blokir kata kunci / pola teks **bukan** keamanan.
+- **Biaya punya satu sumber:** Settings (batas biaya harian & jendela model; anggaran putaran alat = angka sendiri).
+  Jangan menambah pemangkas tersembunyi di lapis lain.
+- **Tak ada kegagalan diam, tak ada catatan palsu.** Yang gagal/terpotong diteruskan ke model & pengguna apa adanya.
+  Catatan jujur adalah jaring terakhir, bukan perbaikannya.
+- **Pembatas lama bukan keputusan suci.** Ia keputusan Owner hanya bila tercatat sebagai keputusan Owner; selain itu
+  tinjau saat menyentuh jalurnya — jangan diwariskan diam-diam.
+- **Ukur ujung-ke-ujung:** perubahan jalur chat dibuktikan dengan apa yang benar-benar sampai ke model dalam percakapan
+  panjang, korpus penuh, dengan alat (Item 131 Tahap 0) — bukan hanya uji unit.
+
+## Komentar kode (keputusan Owner 6 Nov 2026)
+
+Komentar yang tak ikut berubah bersama kodenya pelan-pelan menyesatkan: ia membuat pembatas lama terbaca sebagai
+keputusan yang harus dijaga (akar Item 131).
+
+- **Kode Mamet Ecosystem ditulis tanpa komentar penjelas.** Yang perlu diketahui dibawa oleh nama (fungsi, variabel,
+  konstanta), oleh uji, dan oleh dokumen bertanggal — changelog, roadmap, ADR — yang jelas kapan basinya.
+- Yang tetap boleh hanya **perintah ke alat**: `/* @vite-ignore */`, `// eslint-disable-next-line`, `@ts-*`,
+  `deno-lint-ignore`, shebang, lisensi.
+- Terutama jangan pernah menulis: sejarah & kronologi ("dulu…", tanggal, "sejak…"), angka ukuran/insiden, nomor item
+  roadmap sebagai pembenaran, label "keputusan Owner", klaim tentang kode di berkas lain.
+- Komentar yang masih ada dihapus menyeluruh di Item 131 **Tahap J**; sebelum itu, komentar di berkas yang disentuh
+  ikut dihapus.
+
 ## Struktur kode
 
 - Aturan yang dipakai **klien** (`frontend/`, Vite) dan **server** (`agent-process`, Deno) tinggal di `shared/`: murni,

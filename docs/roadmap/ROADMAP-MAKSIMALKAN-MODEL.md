@@ -36,6 +36,28 @@ Legenda: 📋 terdaftar · 📝 berjalan · ✅ terbukti · 🔧 server (Owner d
   disaring manual. **Celah:** 43 berkas `.sql` tak masuk graf (`tree_sitter_sql` tak terpasang); fungsi RAG dibaca
   langsung dari database (`pg_get_functiondef`).
 
+## Tahap 0 — Ukur apa yang benar-benar diterima model (gerbang semua tahap) 📋 🔧🖥
+
+**Kenapa ini ada (keluhan Owner 6 Nov: "selama ini membuat aplikasi mamet seperti memperbodoh model reasoningnya").**
+Suite 158/158, mutasi, dan uji K1 22/22 semuanya lulus — tetapi semuanya mengukur potongan kecil (satu fungsi, satu
+pertanyaan baru, korpus kecil). **Tak ada satu uji pun yang mengukur isi prompt nyata dalam percakapan panjang dengan
+korpus penuh dan alat.** Karena itu pembatas bertumpuk berbulan-bulan tanpa ketahuan: tiap lapis lulus ujinya sendiri.
+
+**Arah.**
+1. **Jejak prompt per permintaan** (server, satu baris log terstruktur, HANYA angka — bukan isi, aturan privasi): huruf per
+   blok prompt; pesan & huruf riwayat yang dipilih klien vs yang sampai ke model; potongan RAG ditemukan vs dikirim
+   (+ sebab bila berbeda: batas waktu, saringan); hasil alat yang terbawa dari pertanyaan sebelumnya; keputusan kebijakan
+   (izin/batas); pemotongan apa pun beserta lapisnya.
+2. **Skenario ujung-ke-ujung** di `npm run desktop` (pola modul konsol seperti `uji-mutu-rag-k1.js`): percakapan ≥15
+   giliran di korpus penuh — pertanyaan RAG (termasuk dokumen di space besar), baca folder lalu "jangan dicari kembali",
+   pertanyaan lanjutan, konektor.
+3. **Gerbang:** riwayat yang sampai = yang dipilih klien; potongan RAG yang ditemukan = yang dikirim; hasil alat
+   sebelumnya masih ada (dalam anggaran) atau tercatat sebagai catatan kerja; 0 pemotongan/penolakan diam-diam.
+   Dijalankan sebelum & sesudah setiap tahap di bawah, dan sebelum rilis.
+
+**Selesai bila:** skenario jalan di aplikasi sungguhan dan angka "sebelum" untuk keadaan sekarang tercatat (harus merah
+di C2/C3/C4 dan A — itulah bukti alat ukurnya bekerja); mutasi: mencabut satu pemangkas mengubah angkanya.
+
 ## Tahap A — RAG cepat & tak membuang hasil (K1, K2) 📋 🗄🔧
 
 **Masalah.** Lima pertanyaan awal tentang changelog: log server `Tier 1 RAG timeout after 5000ms`, lalu 2–3 detik
@@ -98,8 +120,8 @@ Owner menulis "data yang sudah anda dapatkan jangan dicari kembali", model meman
 
 **Arah.** Anggaran klien (C1) = **satu-satunya** penentu; C2 & C3 dihapus (penjaga ukuran jendela model tetap di klien).
 Hasil alat disimpan bersama jawaban dan dikirim ulang dalam anggaran; yang lama **dipadatkan menjadi catatan kerja**
-(berkas yang sudah dibaca + fakta pentingnya), bukan dibuang. C5 mengikuti anggaran yang sama. C6 ditinjau: dimatikan
-atau penolakannya diteruskan ke model & pengguna. Catatan palsu dihapus.
+(berkas yang sudah dibaca + fakta pentingnya), bukan dibuang. C5 mengikuti anggaran yang sama. C6 **dihapus** (keputusan Owner —
+lihat bawah). Catatan palsu dihapus.
 
 **Selesai bila:** live — pertanyaan ke-N memakai hasil folder dari pertanyaan ke-(N−k) tanpa memanggil alat lagi; log
 `[Riwayat]` = jumlah yang dipilih klien; uji mutasi untuk tiap pemangkas yang dicabut.
@@ -160,13 +182,65 @@ dipakai `ragTurunKeKata`):
 - penolakan penjaga memori (C6), pemangkasan konteks yang tersisa, sub-agen yang dihentikan (E4);
 - tidak ada lagi catatan yang tidak benar (C2) atau label pemasaran (E4).
 
-## Urutan usulan
+## Tahap I — Prompt sistem melayani tugas, bukan sebaliknya (K1) 📋 🔧
 
+**Masalah.** Log `[PROMPT_KOMPOSISI]` 5 Nov: `dasar_identitas_panduan` **8.100–13.500 huruf** (prompt sistem total
+10.500–16.600) melawan riwayat percakapan ±2.800–4.200 huruf. Aturan 3–4× lebih panjang daripada percakapan yang sedang
+dikerjakan — model menghabiskan perhatian dan nalarnya untuk mematuhi aturan, bukan untuk tugas Owner.
+
+**Arah.** Inventaris isi prompt sistem per bagian (asal, alasan, apakah masih berlaku — banyak aturan lahir sebagai
+tambalan atas gejala yang kini diperbaiki di A–H, mis. aturan "jangan mengaku menjalankan alat" karena model tak memegang
+hasil alatnya). Pertahankan yang benar-benar mengarahkan (identitas, bahasa, format, kejujuran sumber); buang/padatkan
+yang mengulang atau menambal. Diukur dengan set K1/K2 dan Tahap 0 sebelum & sesudah — mutu tak boleh turun.
+
+**Selesai bila:** prompt sistem terukur lebih ramping, set K1/K2 tidak turun, Tahap 0 menunjukkan porsi konteks untuk
+percakapan & bahan naik.
+
+## Tahap J — Hapus semua komentar penjelas di kode Mamet Ecosystem 📋 🔧🖥
+
+**Perintah Owner (6 Nov):** *"kode tidak usah memakai komentar yang hasilnya nanti akan menyesatkan secara perlahan"* →
+*"masukkan juga tahap penghapusan semua komentar di kode mamet ecosystem."*
+
+**Kenapa.** Komentar naratif (sejarah, tanggal, angka ukuran, "keputusan", nomor item) tak ikut berubah bersama kodenya;
+sesi AI berikutnya membacanya sebagai keputusan yang harus dijaga — itu salah satu akar pembatas bertumpuk di roadmap ini.
+Isi komentar tidak hilang: tetap ada di sejarah git, dan alasan yang penting sudah tercatat di changelog/roadmap/ADR.
+
+**Cakupan.** Semua berkas kode yang dilacak git: `frontend/` (src + electron), `supabase/functions/`, `shared/`, `uji/`,
+`scripts/`, `tools/`, `backend/`, `types/`, `capability/` (Python: komentar `#`).
+**Di luar cakupan:** `mametlite/` (aplikasi live pengguna eksternal — hanya bila Owner memerintahkan), berkas migrasi
+`supabase/migrations/` (catatan riwayat yang sudah diterapkan; komentar di dalam badan fungsi SQL ikut tersimpan di
+database, jadi mengubahnya tanpa menerapkan ulang membuat repo ≠ database), `node_modules`, `graphify-out/`, keluaran build.
+
+**Yang DIPERTAHANKAN (perintah ke alat, bukan penjelasan):** `/* @vite-ignore */` (4 — tanpanya impor dinamis rusak),
+`// eslint-disable-next-line` (6), dan direktif sejenis bila ditemukan (`@ts-*`, `deno-lint-ignore`, shebang, lisensi).
+
+**Cara (mekanis, bukan regex — `//` juga muncul di URL & string):**
+1. Rentang komentar diambil dengan pemindai TypeScript (`ts.createScanner`, sudah terpasang di `frontend/node_modules`)
+   untuk `.js/.jsx/.ts/.tsx/.cjs/.mjs`; Python dengan modul `tokenize`. Hanya rentang komentar yang dibuang, sisa berkas
+   tak disentuh (baris kosong yang tersisa dirapikan).
+2. **Bukti tiap berkas:** keluaran `esbuild` (transform + minify) **sebelum = sesudah** untuk JS/TS; `ast.dump` sebelum =
+   sesudah untuk Python. Berkas yang berbeda = ditolak & diperiksa tangan. Plus pindai karakter kendali.
+3. Suite penuh, `vite build`, bundel esbuild `agent-process` & `rag-process`. Uji yang memeriksa teks sumber bisa
+   bergantung pada komentar — disesuaikan agar memeriksa kode, bukan komentar.
+4. **Salinan Mametlite** (`uji-salinan-mametlite` menjaga modul `shared`/`services` yang disalin identik): **keputusan
+   Owner 6 Nov — uji salinan diubah** agar membandingkan kode tanpa komentar (pemindai yang sama); `mametlite/` tidak
+   disentuh.
+5. Server: Owner deploy `agent-process` & `rag-process` → isi paket diperiksa di platform → changelog → commit (alur biasa).
+6. Aturan sesudahnya: `CLAUDE.md` "Komentar kode" — kode tanpa komentar penjelas.
+
+**Selesai bila:** 0 komentar penjelas di cakupan (dihitung pemindai), 0 berkas dengan keluaran build berbeda, suite &
+build hijau, server ter-deploy sama dengan repo.
+
+## Urutan (disetujui Owner 6 Nov)
+
+0. **Tahap 0** (ukur ujung-ke-ujung) — gerbang semua tahap; tanpa alat ukur ini kesalahan yang sama bisa terulang diam-diam.
+   **J** (hapus komentar) — **keputusan Owner 6 Nov: langsung sesudah Tahap 0, sebelum A**, supaya sesi yang mengerjakan
+   A–I tidak lagi disesatkan komentar lama; perubahannya terbukti tak mengubah kode (keluaran build sama).
 1. **A** (RAG cepat) — syarat uji K1/K2 buku utuh.
 2. **C** (konteks utuh) + **H** (kegagalan jujur) — model berhenti lupa & berhenti diam.
 3. **B** (alat RAG) — dibangun di atas A.
 4. **D** (cabut keamanan semu).
-5. **E**, **F**, **G**.
+5. **E**, **F**, **G**, **I** (prompt sistem — sesudah C/H, karena sebagian aturannya tambalan atas gejala yang hilang di sana).
 Perubahan server mengikuti alur biasa: bundel esbuild + uji + mutasi → Owner deploy → periksa paket di platform →
 changelog → commit. Migrasi (indeks HNSW, fungsi pencarian) minta izin tersendiri. Perubahan klien ikut rilis
 berikutnya sesudah 4.4.2.
@@ -175,14 +249,26 @@ berikutnya sesudah 4.4.2.
 
 - **E1/E2 anggaran putaran alat: ANGKA SENDIRI** — bukan turunan batas biaya harian konteks. Diatur di Settings; nilai
   awal diusulkan (dengan ukuran biaya per putaran) saat Tahap E dikerjakan.
-- **C6 penjaga memori lama:** Owner belum tahu. **Rekomendasi: hapus** — terbukti tak pernah menolak:
+- **C6 penjaga memori lama: HAPUS** (keputusan Owner 6 Nov, atas rekomendasi) — terbukti tak pernah menolak:
   `AssistantService` mengirim konteks tanpa `source`, jadi `calculateTruthScore` selalu 0,4 ≥ ambang tolak 0,3, dan
   `latent` selalu kosong → selalu ALLOW. Penjaga yang tampak menjaga tetapi tak melakukan apa pun = keamanan semu;
-  menghapusnya tidak mengubah perilaku. Dikonfirmasi Owner saat Tahap C.
+  menghapusnya tidak mengubah perilaku. Dikerjakan di Tahap C (cari pemanggil lain dulu, termasuk
+  `lib/cognitiveMemoryGovernor.ts` sisi server yang disebut di kepala berkasnya).
 - **Graf:** hasil pindai lama dihapus, graf terbaru (6 Nov) dilacak di GitHub (`graph.json`, `graph.html`,
   `GRAPH_REPORT.md`). Celah 43 berkas SQL (`graphifyy[sql]` = unduhan paket) belum diputuskan.
 
 ## Pemetaan ke catatan temuan 6 Nov
 
 Nomor di catatan percakapan → tahap: 1 & 13 → A · 2 → B · 6, 8, 12 → C · 3 & 7 → D · 4, 10, 11 → E · 9 → F · 5 → G ·
-catatan kegagalan → H.
+catatan kegagalan → H. Ditambahkan sesudah keluhan Owner 6 Nov: Tahap 0 (ukur ujung-ke-ujung) dan Tahap I (prompt sistem).
+
+## Agar tidak terulang
+
+Aturan kerja AI coding kini tertulis di [`CLAUDE.md`](../../CLAUDE.md) bagian **"Memaksimalkan model"** dan dipasang
+sebagai pengingat di kepala [`INDEX-ROADMAP.md`](./INDEX-ROADMAP.md) — dua tempat yang pertama dibaca setiap sesi.
+Akar yang diakui: (1) pembatas ditambah satu per satu dengan alasan lokal (biaya, kecepatan, "keamanan") dan tak pernah
+ditinjau saat korpus & pemakaian tumbuh; (2) sesi AI berikutnya menjaga pembatas lama seolah keputusan Owner; (3)
+kecenderungan AI memilih menambah penjaga daripada membuat model mampu; (4) uji mengukur potongan kecil, bukan isi prompt
+nyata; (5) biaya dihemat dua kali — batas harian Owner DAN pemangkas tersembunyi; (6) **komentar kode naratif**
+(sejarah, angka ukuran, "keputusan", nomor item) yang tak ikut berubah bersama kodenya — ia yang membuat pembatas lama
+terbaca sebagai keputusan. Aturan komentar: `CLAUDE.md` "Komentar kode"; penghapusan menyeluruh = Tahap J.
