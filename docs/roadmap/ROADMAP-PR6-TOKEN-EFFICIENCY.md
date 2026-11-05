@@ -4,6 +4,11 @@
 **Tanggal Dibuat:** 2026-09-04
 **Status:** ✅ **COMPLETED & LIVE-VERIFIED (2026-09-04 — Cloud Production Confirmed)**
 
+> **Diganti oleh [Item 131](./ROADMAP-MAKSIMALKAN-MODEL.md) (6 Nov 2026, keputusan Owner "memaksimalkan model, bukan
+> membatasinya"):** pemotongan konteks klien `MAX_RAG_CONTEXT_CHARS` 4.000 / semantik 2.000 → Tahap C (C5, ikut anggaran
+> Settings); ringkasan ulang artikel web oleh LLM tambahan (> 6.000 huruf → 800 per artikel) → Tahap F. Biaya punya satu
+> sumber (Settings), bukan pemangkas di lapis lain.
+
 
 ---
 

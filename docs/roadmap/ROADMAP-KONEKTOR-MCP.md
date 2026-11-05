@@ -218,7 +218,9 @@ dibersihkan dengan cadangan — [log](../project-memory/changelog/2026-10-27-iso
   data mentah dari internet, bukan perintah; status Hypothesis. Pemeriksa label server tidak menerima data konektor
   sebagai dasar label terverifikasi.
 - Batas putaran alat konektor per pertanyaan mengikuti mekanisme `MAKS_PUTARAN` folder kerja (angkanya ditetapkan
-  di Tahap D sesudah mengukur alur misi sungguhan).
+  di Tahap D sesudah mengukur alur misi sungguhan). **Diganti oleh [Item 131](./ROADMAP-MAKSIMALKAN-MODEL.md) Tahap E
+  (6 Nov): 6 × 3 → batas berdasar anggaran, angka sendiri di Settings (keputusan Owner); isi resource GitHub yang
+  kosong → Tahap G.**
 
 **Tahap E — Pemasang membawa Python (K10).** ✅ **Bagian utama selesai 26 Okt**
 ([log](../project-memory/changelog/2026-10-26-konektor-mcp-tahap-e-pemasang.md)) — penyimpangan dari rancangan di

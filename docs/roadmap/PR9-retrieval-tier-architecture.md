@@ -1,5 +1,10 @@
 # Retrieval Tier Architecture — Design Document
 
+> **Penyimpangan (6 Nov 2026) → [Item 131](./ROADMAP-MAKSIMALKAN-MODEL.md) Tahap A & H:** batas Tier 1 **5 detik**
+> membuang hasil yang sudah ketemu (korpus 12.445 potongan: pencarian gabungan dingin 6,9 s), dan "status failure dicatat
+> transparan di `ctx.state.tier1Retrieval`" ternyata **tak dibaca siapa pun** — model & pengguna tak pernah tahu. Batas
+> ini dan klaim transparansinya tidak berlaku lagi.
+
 > **Diganti sebagian (2026-09-17):** Tier 1 lokal di browser (`RetrievalOrchestrator` + `KnowledgeService`/`RetrievalStrategyService`) tidak lagi dipakai sejak Item 65 (dokumen dicari server berdasarkan makna, `document_search.ts`) dan **dihapus** 2026-09-17 — lihat [`ROADMAP-PENGAMBILAN-POTONGAN-RAG.md`](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) §3. `KnowledgeService`/`RetrievalStrategyService` tinggal sebagai cadangan pencocokan kata di server. Tier 2 & Tier 3 tetap.
 
 **Status:** ✅ **Selesai Penuh (Fase 1, 2, & 3 — Live-Verified 2026-09-04)**: Tier 1 lokal, Tier 2 internal fallback, dan Tier 3 Web Comparison aktif dengan gerbang konfirmasi Owner (Human-in-Command), multi-provider resilience, IPC bridge, server-side RAG integration, dan standarisasi universal label status epistemik.

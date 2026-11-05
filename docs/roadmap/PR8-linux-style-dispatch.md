@@ -1,6 +1,9 @@
 # PR#8 — Linux-style Request Dispatch
 
 Status: Draft — Disepakati Untuk Dikerjakan
+
+> **Penyimpangan (6 Nov 2026):** `history.slice(-3)` untuk `LOOKUP` (dan `slice(-5)` di jalur skill) memangkas riwayat di
+> luar anggaran konteks Settings → [Item 131](./ROADMAP-MAKSIMALKAN-MODEL.md) Tahap C (C7): satu anggaran untuk semua jalur.
 Owner: Mamet AI Project
 Scope: Assistant Capability — Routing & Handler Layer
 Prinsip Payung: Linux-Inspired Architecture — "Ringan, Bebas, dan Tangguh seperti Linux"

@@ -153,7 +153,9 @@ cara pipeline sekarang memproses jawaban (JSON/hybrid dengan nalar).
 - [x] Payload membawa penanda folder aktif; server menambah blok "FOLDER KERJA AKTIF" + alat `folder_list`,
       `folder_read`, `folder_search`. ✅ format alat diputuskan: tag `<alat_folder>{JSON}</alat_folder>` (`folderKerjaAlat.js`).
 - [x] Putaran alat: jawaban AI → desktop menjalankan alat baca → hasil kembali ke AI (dengan akun & riwayat) → jawaban
-      akhir. Batas jumlah putaran per pesan. ✅ 4 putaran, 5 alat/putaran, 150 KB isi/pertanyaan. **Tambahan:** label
+      akhir. Batas jumlah putaran per pesan. ✅ 4 putaran, 5 alat/putaran, 150 KB isi/pertanyaan. **Diganti oleh
+      [Item 131](./ROADMAP-MAKSIMALKAN-MODEL.md) Tahap E (6 Nov): batas berdasar anggaran — angka sendiri di Settings
+      (keputusan Owner); hasil alat disimpan antar-pertanyaan (Tahap C, C4).** **Tambahan:** label
       VERIFIED dari berkas yang terbukti dibaca (`sumberDariHasilAlat` di pemeriksa label server).
 - [x] Tampilan langkah di chat ("📂 membaca `src/app.js`"). ✅ + daftar berkas yang dibaca di bawah jawaban akhir.
 - **Kriteria selesai:** "jelaskan isi folder ini", "cari di mana fungsi X", dan "ringkas dokumen Y di folder" terjawab

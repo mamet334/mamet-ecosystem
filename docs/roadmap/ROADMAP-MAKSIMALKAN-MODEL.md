@@ -113,12 +113,13 @@ menempelkan isinya; uji mutasi untuk isolasi akun & saringan `selesai`.
 | C4 | lubang | **hasil alat** (daftar/isi berkas, hasil konektor) hanya hidup di dalam putaran satu pertanyaan; tak disimpan di `chats` → hilang di pertanyaan berikutnya |
 | C5 | klien `AssistantService.js` | konteks memori + dokumen + **hasil web** dipotong `MAX_RAG_CONTEXT_CHARS = 4000`, semantik `2000` |
 | C6 | klien `CognitiveMemoryGovernorService` (`LEGACY_COGNITION_ENABLED = true`) | bila menolak, **seluruh** konteks memori + dokumen klien dibuang, hanya `console.warn` |
+| C7 | klien `AssistantService.js` jalur lain | `LOOKUP` mengirim **3 pesan terakhir** (`history.slice(-3)`, rancangan [PR8](./PR8-linux-style-dispatch.md)); jalur skill **5** (`history.slice(-5)`) — di luar anggaran C1 (ditemukan saat membaca turunan INDEX 6 Nov) |
 
 **Bukti log (5 Nov 17:06–17:22):** setiap kiriman `riwayat=11 pesan / 2.818–4.209 huruf` untuk percakapan 30+ pesan;
 prompt sistem 10–16 ribu huruf; hasil `folder_list` ±26.000 huruf di satu putaran, nol di pertanyaan berikutnya. Saat
 Owner menulis "data yang sudah anda dapatkan jangan dicari kembali", model memang tak memegangnya lagi.
 
-**Arah.** Anggaran klien (C1) = **satu-satunya** penentu; C2 & C3 dihapus (penjaga ukuran jendela model tetap di klien).
+**Arah.** Anggaran klien (C1) = **satu-satunya** penentu untuk semua jalur (termasuk C7); C2 & C3 dihapus (penjaga ukuran jendela model tetap di klien).
 Hasil alat disimpan bersama jawaban dan dikirim ulang dalam anggaran; yang lama **dipadatkan menjadi catatan kerja**
 (berkas yang sudah dibaca + fakta pentingnya), bukan dibuang. C5 mengikuti anggaran yang sama. C6 **dihapus** (keputusan Owner —
 lihat bawah). Catatan palsu dihapus.

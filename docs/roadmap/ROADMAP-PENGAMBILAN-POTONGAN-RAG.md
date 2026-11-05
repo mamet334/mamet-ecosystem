@@ -107,6 +107,10 @@ potongan yang hanya mirip makna.
   sebelum diterapkan; RPC lama tetap ada sampai hybrid terbukti.
 - **Ditolak bila:** recall@8 tidak naik, atau NEG-01/02 mulai mengambil potongan yang menyesatkan.
 - **Selesai bila:** recall@8 set Tahap A naik tanpa penurunan pertanyaan yang sudah benar; live terbukti.
+- **Penyimpangan (6 Nov 2026) → [Item 131](./ROADMAP-MAKSIMALKAN-MODEL.md) Tahap A:** fungsi gabungan menghitung jarak,
+  `ts_rank_cd`, dan dua peringkat untuk **setiap** potongan akun — tak bisa memakai indeks; di 12.445 potongan dingin
+  6,9 s → hasil dibuang batas Tier 1. Disusun ulang ke dua top-K (HNSW + GIN) lalu RRF; patokan recall@8 14/14 wajib
+  bertahan.
 - ✅ **Selesai 2026-09-17** — migrasi `20260917073305_match_documents_hybrid` (kolom `fts` + GIN, RPC
   `match_documents_hybrid`, anon tanpa hak), `document_search.ts` memakai RPC gabungan + cadangan
   `match_documents`, kata kunci dari `kataKunciPencarian` (`KnowledgeService.js`, dipakai server & skrip uji).

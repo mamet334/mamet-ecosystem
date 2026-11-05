@@ -199,6 +199,10 @@ tanpa bukti kebutuhan.
 
 ## PR#2 — Reaktivasi Cognitive Memory Governor
 
+> **Diganti oleh [Item 131](./ROADMAP-MAKSIMALKAN-MODEL.md) Tahap C (6 Nov 2026):** terbukti tak pernah menolak —
+> pemanggil di `AssistantService` mengirim konteks tanpa `source`, `calculateTruthScore` selalu 0,4 ≥ ambang 0,3,
+> `latent` selalu kosong → selalu ALLOW. Keputusan Owner: **dihapus**. Rancangan di bawah tidak berlaku lagi.
+
 ### Status Saat Ini
 `lib/cognitiveMemoryGovernor.ts` (97 baris) sudah punya kerangka logika validasi
 memory yang cukup matang secara desain:

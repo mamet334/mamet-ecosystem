@@ -10,7 +10,7 @@ Lainnya → **Parkir** (bukan utang). Fitur baru boleh jalan, asal uji yang menj
 
 Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter · 👤 tindakan Owner
 
-## Status K1–K7 (3 Nov 2026)
+## Status K1–K7 (6 Nov 2026)
 
 | # | Kriteria | Status | Sisa |
 |---|---|---|---|
@@ -18,9 +18,9 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 | K2 | RAG jujur saat gagal | ❌ 6 Nov: kegagalan batas waktu RAG & pemangkasan konteks tak diberitahukan — Item 131 C, H; sebelumnya tidak_ada 8/8 JUJUR (5 Nov) | ikut K1 |
 | K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ final 5 Nov (5/5 VERIFIED, 0 NIP ke model) | — |
 | K4 | Mametlite layak bagi orang awam | ✅ (T19, isolasi dua akun, CORE, undangan, ganti sandi — live) | — |
-| K5 | Keamanan | ✅ (OpenRouter diganti, Apify dicabut — 3 Nov) | — |
+| K5 | Keamanan | ⏳ 6 Nov: pemblokir kata kunci = keamanan semu (memblokir dokumen Owner, mematikan alat diam-diam) — [Item 131](./ROADMAP-MAKSIMALKAN-MODEL.md) D; email akun tertulis di 3 dokumen publik (menunggu keputusan Owner); sebelumnya ✅ OpenRouter diganti, Apify dicabut (3 Nov) | 1–2 |
 | K6 | Data aman & bisa dipulihkan | ✅ 16 tabel (ulang sebelum rilis) | 1 (👤 cadangkan → uji pulih) |
-| K7 | Stabil & sampai ke aplikasi terpasang | ⏳ | 1 (rilis 💳👤) |
+| K7 | Stabil & sampai ke aplikasi terpasang | ⏳ 4.4.2 draf (build GitHub ✅, menunggu Publish) | 1 (rilis 5.0.0 💳👤 sesudah K1–K6) |
 
 ## Daftar kerja
 
@@ -152,8 +152,10 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
   diperbarui ke 4.4.1, termasuk di PC kedua (Windows 10) dengan crawler menyala di percobaan pertama
   ([log](../project-memory/changelog/2026-11-03-rilis-4.4.1.md)).
 - ⏳👤 **Rilis 4.4.2** (perintah Owner 6 Nov, bukan 5.0.0): konektor umum (Item 129 G1–G5, F1–F2, GH2–GH3) + K1 unggah
-  bertahap, hapus banyak, perbarui dokumen, OCR berhenti saat 402. Build lokal & suite 158/158 hijau; sisa: build
-  GitHub → Publish (Owner) → bukti `latest.yml` ([log](../project-memory/changelog/2026-11-06-rilis-4.4.2.md)).
+  bertahap, hapus banyak, perbarui dokumen, OCR berhenti saat 402. Build lokal & suite 158/158 hijau; build GitHub
+  `e5dcd87a` ✅ (gerbang uji + build), draf `v4.4.2` berisi `.exe`, `.blockmap`, `latest.yml` (API 6 Nov); sisa:
+  Publish (Owner) → bukti `latest.yml` & `releases/latest` ([log](../project-memory/changelog/2026-11-06-rilis-4.4.2.md)).
+  Belum membawa Item 131.
 - ⏳💳👤 **Rilis garis dasar 5.0.0** — hanya bila K1–K7 semuanya ✅.
 
 ## Parkir (bukan utang — Owner boleh mengambil kapan saja)
