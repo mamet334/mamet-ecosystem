@@ -14,7 +14,7 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 
 | # | Kriteria | Status | Sisa |
 |---|---|---|---|
-| K1 | RAG menemukan & menjawab benar | ⏳ lulus di korpus pecahan 5 Nov (pokok 22/22, BUKU-10 5/5) | 2 (unggah dokumen besar · 💳 buku utuh + uji penuh) |
+| K1 | RAG menemukan & menjawab benar | ⏳ lulus di korpus pecahan 5 Nov (pokok 22/22, BUKU-10 5/5); unggah dokumen besar ✅ live | 1 (💳 buku utuh + uji penuh → VACUUM FULL) |
 | K2 | RAG jujur saat gagal | ⏳ lulus di korpus pecahan 5 Nov (tidak_ada 8/8 JUJUR) | ikut K1 |
 | K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ final 5 Nov (5/5 VERIFIED, 0 NIP ke model) | — |
 | K4 | Mametlite layak bagi orang awam | ✅ (T19, isolasi dua akun, CORE, undangan, ganti sandi — live) | — |
@@ -43,8 +43,13 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
      [log](../project-memory/changelog/2026-11-05-k1-centang-ditulis-saat-unggah.md). ✅ **Uji ulang live** sesudah 221
      pecahan diunggah ulang: BUKU-10 5/5 benar; uji penuh pokok **22/22** benar, tidak_ada 8/8 jujur (HCDP sempat hilang
      dari RAG, diunggah ulang) — [log](../project-memory/changelog/2026-11-05-k1-uji-ulang-sesudah-centang.md).
-  2. ⏳ **Unggah dokumen besar otomatis** (anggaran `rag-process` 110 detik; buku 1.008 halaman ±165 detik): diproses
-     bertahap per kelompok halaman ke satu dokumen, bisa dilanjutkan bila terputus, tanpa LLM. **Terbukti perlu 5 Nov**
+  2. ✅ **Unggah dokumen besar bertahap** (5 Nov, live: rag-process v82, migrasi `unggah_bertahap`, `kunci_unggah`,
+     `indeks_document_id`): satu berkas mentah = satu dokumen; setiap kelompok 32 potongan langsung tersimpan sebagai
+     cache; ±80 s per panggilan, klien memanggil lagi; putus → berkas yang sama melanjutkan dari potongan terakhir
+     (sidik SHA-256, dihitung server); dokumen belum selesai tak dipakai chat; kunci sementara (423); cache OCR di
+     perangkat; NUL dibuang; penolakan lokasi diulang. Live: buku 1.986 potongan (2 panggilan, 1.440 dari cache),
+     Kamus 6.472 (Ctrl+R di tengah → "lanjut dari 2496", tiap potongan tepat sekali) —
+     [log](../project-memory/changelog/2026-11-05-k1-unggah-dokumen-besar-bertahap.md). Riwayat: **terbukti perlu 5 Nov**
      dengan buku umum Owner (gagal di 1.856/1.986 potongan, 105 s) dan unggah massal 385 changelog — ikut dirancang:
      ulang kelompok yang ditolak sesaat (503 gerbang Supabase, penolakan lokasi Google), bersihkan karakter NUL —
      [log](../project-memory/changelog/2026-11-05-unggah-buku-besar-dan-sejarah-aplikasi.md).
@@ -116,6 +121,10 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
   regresi CORE (semua akun tak bisa dihapus) diperbaiki ([log](../project-memory/changelog/2026-10-31-k6-hapus-akun-dan-daftar-tertutup.md)).
 - ✅ **`raw_memory_content` ikut dicadangkan** (3 Nov, keputusan Owner): sumber asli memori (22 baris) dulu tak tercadang —
   hanya ringkasannya di `user_memories`. Cadangan & skema pulih kini 16 tabel; uji 4/4 mutasi.
+- ⏳ **VACUUM FULL `document_chunks`** (pengingat Owner 5 Nov, juga di INDEX §1) sesudah dokumen besar dihapus —
+  pertama sesudah 221 Kepbup pecahan dihapus di K1 langkah 3. Paket Supabase gratis 500 MB; DELETE tidak menurunkan
+  pemakaian kuota sampai VACUUM FULL (kunci eksklusif sebentar → jalankan saat tak ada unggahan/chat). Ukur
+  `pg_database_size` sebelum & sesudah. Batas volume K5 per akun dinaikkan 10.000 → 25.000 (5 Nov, total tetap 45.000).
 - ⏳👤 **Sekali tepat sebelum rilis** (keputusan Owner 3 Nov): "Cadangkan data" (16 tabel) → uji pulih ke Postgres lokal.
   Uji pulih terakhir 27 Okt (15/15); cadangan 2 Nov hanya pengaman sebelum chat dirampingkan, belum memuat tabel baru.
 
@@ -143,7 +152,13 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - ADR-0021 §7 penulis ulang kueri untuk pesan yang merujuk percakapan
 - Item 129 Tahap D (label Hypothesis & Engineer)
 - Item 92 koreksi pemetaan Data Tabel
-- Item 88 BUKU-10 · Item 90 U4, U6, U7 · Item 93 Tahap 3–4
+- ~~Item 88 BUKU-10~~ (ditutup 5 Nov lewat K1 langkah 1) · Item 90 U4, U6, U7 · Item 93 Tahap 3–4
+- Research App: daftar dokumen sesudah muat ulang bisa sesaat menampilkan dokumen SEMUA workspace (dua pemuatan
+  berlomba saat pilihan workspace belum pulih; jawaban tanpa saringan bisa datang belakangan). Data tidak tercampur —
+  diperiksa 5 Nov. Perbaikan: abaikan jawaban yang sudah usang. ([log](../project-memory/changelog/2026-11-05-k1-unggah-dokumen-besar-bertahap.md))
+- Unggah bertahap: perkiraan biaya OCR di dialog belum memperhitungkan cache (biaya sebenarnya lebih kecil); halaman
+  yang tetap gagal di-OCR tidak disimpan di cache → bila sesudahnya berhasil, teks berubah dan lanjutan ditolak 409
+  (pesan menyuruh hapus & unggah ulang); cache OCR di server (pilihan B, lintas perangkat).
 - ✅ **Dibereskan 2 Nov:** kode mati (`test-suite/`, `maef/engineering_lifecycle.ts`, `plugins/memory_manager.ts`),
   12 baris sampah uji `api_usage`, `.gitignore` untuk `.venv`/`data`/`hasil`
   ([log](../project-memory/changelog/2026-11-02-bersih-bersih-parkir.md))

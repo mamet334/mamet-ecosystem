@@ -5,6 +5,8 @@ import { FormLupaSandi, FormSandiBaru, FormGantiSandi } from './lib/KataSandi';
 import { callAgentSimple, parseSSEStream } from './lib/callAgentSimple';
 import { ekstrakTeksDokumen, perkiraanUnggah, ACCEPT_UNGGAH } from './lib/documentTextExtractor';
 import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN, OCR_SERENTAK } from './lib/pdfOcrService';
+import { unggahBertahap } from './lib/unggahBertahap';
+import { buatCacheOcr, sidikBerkas } from './lib/cacheOcr';
 import { pisahLabel, warnaLabel, teksSalinan } from './lib/labelRamah';
 import TeksKaya from './lib/TeksKaya';
 import { bacaRiwayat, simpanRiwayat, riwayatBaru } from './lib/riwayatLokal';
@@ -220,7 +222,7 @@ function App() {
   }, []);
 
   const fetchDocuments = async (userId) => {
-    const { data, error } = await supabase.from('documents').select('id, title, created_at').eq('user_id', userId).order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('documents').select('id, title, created_at, selesai, total_potongan').eq('user_id', userId).order('created_at', { ascending: false });
     if (!error && data) {
       setDocuments(data);
     }
@@ -292,8 +294,12 @@ function App() {
     // Filter dokumen ganda / Update dokumen. Hanya DITANYAKAN di sini — dokumen lama baru
     // dihapus setelah unggahan baru berhasil (Item 69). Dulu dihapus lebih dulu, jadi unggahan
     // yang gagal (PDF scan, saldo habis…) ikut menghilangkan dokumen lama.
-    const existingDoc = documents.find(doc => doc.title === file.name);
-    if (existingDoc) {
+    // Unggah bertahap (K1 langkah 2, 5 Nov 2026): judul sama yang BELUM selesai bukan "versi lama" — berkas yang sama
+    // melanjutkannya dari potongan terakhir (rag-process mengenalinya dari isi teks). Hanya versi yang sudah selesai
+    // yang ditanyakan & dihapus sesudah unggahan baru selesai.
+    const tertundaDoc = documents.find(doc => doc.title === file.name && doc.selesai === false);
+    const existingDoc = documents.find(doc => doc.title === file.name && doc.selesai !== false);
+    if (existingDoc && !tertundaDoc) {
       const confirmUpdate = window.confirm(`Dokumen bernama "${file.name}" sudah ada. Apakah Anda ingin menimpanya (memperbarui data)?`);
       if (!confirmUpdate) {
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -339,11 +345,16 @@ function App() {
         ));
         if (lanjutMassal) {
           setStatusUnggah(`Membaca ulang ${jumlah} halaman tabel dengan OCR…`);
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          // Cache OCR di perangkat (K1 langkah 2): halaman yang pernah di-OCR tidak dibayar lagi, dan teksnya sama
+          // persis — syarat agar unggahan yang terputus bisa dilanjutkan.
+          const cache = buatCacheOcr(await sidikBerkas(bytes));
           const { peta: petaOcr, halamanGagal } = await terapkanOcrHalaman(
-            new Uint8Array(await file.arrayBuffer()),
+            bytes,
             hasil.halamanBertabelTerdeteksi,
             kunciOcr,
-            ({ ke, total, gagal }) => setStatusUnggah(`OCR halaman ${ke}/${total}${gagal ? ` (${gagal} dilewati)` : ''}…`)
+            ({ ke, total, gagal, dariCache }) => setStatusUnggah(`OCR halaman ${ke}/${total}${dariCache ? ` (${dariCache} dari cache)` : ''}${gagal ? ` (${gagal} dilewati)` : ''}…`),
+            { cache }
           );
           if (halamanGagal.length) {
             console.warn(`[Mametlite] OCR melewati ${halamanGagal.length} halaman:`, halamanGagal.join(', '));
@@ -363,7 +374,9 @@ function App() {
         const infoKosong = hasil.halamanKosong ? `\n${hasil.halamanKosong} halaman berupa gambar dilewati.` : '';
         const lanjut = window.confirm(
           `"${file.name}": ${infoHalaman}±${potongan} potongan teks.${infoKosong}\n\n` +
-          `Perkiraan biaya embedding ±$${dolar.toFixed(3)} dari saldo OpenRouter Anda. Lanjutkan?`
+          `Perkiraan biaya embedding ±$${dolar.toFixed(3)} dari saldo OpenRouter Anda.` +
+          (tertundaDoc ? '\nIni melanjutkan unggahan yang belum selesai — potongan yang sudah tersimpan tidak dibayar lagi, jadi biaya sebenarnya lebih kecil.' : '') +
+          ' Lanjutkan?'
         );
         if (!lanjut) return;
       }
@@ -372,25 +385,22 @@ function App() {
       // Embedding dibayar pengguna dengan kunci OpenRouter-nya sendiri (Item 63) — kunci
       // yang sama dengan yang dipakai chat.
       const openRouterKey = bacaKunci().replace(/[^\x00-\x7F]/g, '');
-      const { error } = await supabase.functions.invoke('rag-process', {
-        body: { title: file.name, text: hasil.teks, userId: session.user.id },
-        headers: openRouterKey ? { 'x-byok-openrouter': openRouterKey } : {}
+      // Unggah bertahap (K1 langkah 2): rag-process bekerja ±80 detik per panggilan dan menyimpan setiap kelompok;
+      // panggilan diulang dengan teks yang sama sampai selesai. Gagal sesaat (503 gerbang, jaringan, penolakan
+      // penyedia) dicoba lagi; yang sudah tersimpan menjadi cache untuk dilanjutkan. Alasan galat non-2xx dibaca dari
+      // body jawaban (error.context) di unggahBertahap.
+      const body = { title: file.name, text: hasil.teks, userId: session.user.id };
+      const headers = openRouterKey ? { 'x-byok-openrouter': openRouterKey } : {};
+      const data = await unggahBertahap({
+        panggil: () => supabase.functions.invoke('rag-process', { body, headers }),
+        onKemajuan: ({ tersimpan, total, ulang, menunggu }) => {
+          if (menunggu) setStatusUnggah(`Menunggu proses sebelumnya selesai (${menunggu})…`);
+          else if (total) setStatusUnggah(`Memvektorkan ${tersimpan}/${total} potongan${ulang ? ` — mencoba lagi (${ulang})` : ''}…`);
+        }
       });
 
-      if (error) {
-        // Alasan sebenarnya ada di body jawaban, bukan di error.message yang umum.
-        let pesan = error.message;
-        try {
-          const isi = await error.context?.json?.();
-          if (isi?.error) pesan = isi.error;
-        } catch {
-          // Body bukan JSON — pakai pesan bawaan.
-        }
-        throw new Error(pesan);
-      }
-
-      // Versi baru sudah tersimpan — baru sekarang versi lama dihapus.
-      if (existingDoc) {
+      // Versi baru sudah tersimpan lengkap — baru sekarang versi lama (yang sudah selesai) dihapus.
+      if (existingDoc && existingDoc.id !== data?.documentId) {
         const { error: errHapus } = await supabase.from('documents').delete().eq('id', existingDoc.id);
         if (errHapus) console.warn(`[mametlite] Versi lama "${file.name}" gagal dihapus: ${errHapus.message}`);
       }
@@ -400,6 +410,8 @@ function App() {
 
     } catch (err) {
       alert(`Gagal mengunggah: ${err.message}`);
+      // Sebagian sudah tersimpan (unggah bertahap) → tampilkan dokumen "belum selesai" di daftar.
+      if (err?.bisaDilanjutkan && session) fetchDocuments(session.user.id);
     } finally {
       setIsUploading(false);
       setStatusUnggah('');
@@ -710,6 +722,10 @@ function App() {
                   <div className="flex items-center gap-2 truncate">
                     <BookOpen className="w-3 h-3 text-indigo-400 shrink-0" />
                     <span className="truncate" title={formatWaktu(doc.created_at)}>{doc.title}</span>
+                    {doc.selesai === false && (
+                      // Unggah bertahap (K1 langkah 2): belum dipakai menjawab sampai lengkap.
+                      <span className="shrink-0 text-amber-400" title="Belum selesai diunggah — belum dipakai menjawab. Unggah berkas yang sama untuk melanjutkan, atau hapus.">belum selesai</span>
+                    )}
                   </div>
                   <button onClick={() => handleDeleteDocument(doc.id)} className="opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:text-red-400 p-1 transition-opacity shrink-0">
                     <Trash2 className="w-3 h-3" />

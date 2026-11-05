@@ -12,6 +12,8 @@ import { pilihRuangAwal, ingatRuangTerpilih, ruangTerpilihTersimpan, buatRuang, 
 import { opdDariNamaBerkas, siapkanSimpan, dugaVersi, bandingkanIsi, uraiPerbedaan } from '../../core/runtime/services/dataTabelAsn.js';
 import { ambilBerkasAktif, ambilPegawaiBerkas, simpanBerkasAsn, daftarBerkasAsn, hapusBerkasAsn, ambilBahanLaporan } from '../../core/runtime/services/dataTabelAsnDb.js';
 import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN, OCR_SERENTAK } from '../../core/runtime/services/pdfOcrService.js';
+import { unggahBertahap } from '../../core/runtime/services/unggahBertahap.js';
+import { buatCacheOcr, sidikBerkas } from '../../core/runtime/services/cacheOcr.js';
 import { adalahPdf, perkiraanPdfAsn, bacaBerkasPdfAsn } from '../../core/runtime/services/bacaPdfAsn.js';
 import { buatCadangan, periksaBerkasCadangan, namaBerkasCadangan } from '../../core/runtime/services/cadanganData.js';
 import { angka, ukuranMB } from '../../core/runtime/services/formatAngka.js';
@@ -187,11 +189,13 @@ export default function ResearchApp() {
                 return;
             }
 
-            // Judul yang sudah ada di server (bukan daftar di layar, yang bisa basi) → dilewati.
+            // Judul yang sudah ada di server (bukan daftar di layar, yang bisa basi) → dilewati. Unggahan yang BELUM
+            // selesai (K1 langkah 2) tidak dilewati: berkas yang sama melanjutkannya dari potongan terakhir.
             const { data: judulAda, error: errJudul } = await supabase
-                .from('documents').select('title').eq('user_id', session.user.id).limit(10000);
+                .from('documents').select('title, selesai').eq('user_id', session.user.id).limit(10000);
             if (errJudul) throw errJudul;
-            const sudahAda = new Set((judulAda || []).map((d) => d.title));
+            const sudahAda = new Set((judulAda || []).filter((d) => d.selesai !== false).map((d) => d.title));
+            const tertunda = new Set((judulAda || []).filter((d) => d.selesai === false).map((d) => d.title));
 
             // 1. Baca semua berkas. PDF/DOCX diambil teksnya di browser (Item 69); berkas teks dibaca apa adanya.
             //    Gagal (scan, terkunci, format lama…) = GagalEkstrak berpesan jelas → dicatat, berkas lain lanjut.
@@ -242,11 +246,14 @@ export default function ResearchApp() {
                 const totalDolar = siap.reduce((a, s) => a + perkiraanUnggah(s.hasil.huruf).dolar, 0);
                 const totalHalaman = siap.reduce((a, s) => a + (s.hasil.halaman || 0), 0);
                 const infoKosong = siap.reduce((a, s) => a + (s.hasil.halamanKosong || 0), 0);
+                const nLanjut = siap.filter((s) => tertunda.has(s.file.name)).length;
                 const lanjut = window.confirm(
                     `${banyak ? `${siap.length} berkas` : `"${siap[0].file.name}"`}: ` +
                     `${totalHalaman ? `${totalHalaman} halaman, ` : ''}±${totalPotongan} potongan teks.` +
                     `${infoKosong ? `\n${infoKosong} halaman berupa gambar dilewati.` : ''}\n\n` +
-                    `Perkiraan biaya embedding ±${angka(totalDolar, 3)} dari saldo OpenRouter Anda. Lanjutkan?`
+                    `Perkiraan biaya embedding ±${angka(totalDolar, 3)} dari saldo OpenRouter Anda.` +
+                    (nLanjut ? `\n${banyak ? `${nLanjut} berkas melanjutkan` : 'Ini melanjutkan'} unggahan yang belum selesai — potongan yang sudah tersimpan tidak dibayar lagi, jadi biaya sebenarnya lebih kecil.` : '') +
+                    ` Lanjutkan?`
                 );
                 if (!lanjut) return;
             }
@@ -263,11 +270,16 @@ export default function ResearchApp() {
                     const halamanTabel = hasil.halamanBertabelTerdeteksi || [];
                     if (pakaiOcr && halamanTabel.length) {
                         setStatusUnggah(`${awalan}OCR ${halamanTabel.length} halaman tabel…`);
+                        const bytes = new Uint8Array(await file.arrayBuffer());
+                        // Cache OCR di perangkat (K1 langkah 2): halaman yang pernah di-OCR tidak dibayar lagi, dan teksnya
+                        // sama persis — syarat agar unggahan yang terputus bisa dilanjutkan.
+                        const cache = buatCacheOcr(await sidikBerkas(bytes));
                         const { peta: petaOcr, halamanGagal } = await terapkanOcrHalaman(
-                            new Uint8Array(await file.arrayBuffer()),
+                            bytes,
                             halamanTabel,
                             openRouterKey,
-                            ({ ke, total, gagal }) => setStatusUnggah(`${awalan}OCR halaman ${ke}/${total}${gagal ? ` (${gagal} dilewati)` : ''}…`)
+                            ({ ke, total, gagal, dariCache }) => setStatusUnggah(`${awalan}OCR halaman ${ke}/${total}${dariCache ? ` (${dariCache} dari cache)` : ''}${gagal ? ` (${gagal} dilewati)` : ''}…`),
+                            { cache }
                         );
                         if (halamanGagal.length) {
                             console.warn(`[ResearchApp] OCR melewati ${halamanGagal.length} halaman di ${file.name}:`, halamanGagal.join(', '));
@@ -277,34 +289,27 @@ export default function ResearchApp() {
                     }
 
                     setStatusUnggah(`${awalan}Memvektorkan ±${perkiraanUnggah(hasil.huruf).potongan} potongan…`);
-                    const { data, error } = await supabase.functions.invoke('rag-process', {
-                        body: {
-                            title: file.name,
-                            text: hasil.teks,
-                            userId: session.user.id,
-                            // Hanya dikirim kalau pengguna memang sedang memilih sebuah space.
-                            // Tanpa ini rag-process mencari space CORE milik pengguna sendiri.
-                            ...(selectedSpace ? { spaceId: selectedSpace } : {}),
-                            source_type: 'user_upload',
-                            retrieved_at: new Date().toISOString()
-                        },
-                        headers
-                    });
-
-                    // Untuk status non-2xx supabase-js mengembalikan `error` bermesej umum
-                    // ("Edge Function returned a non-2xx status code"); alasan sebenarnya ada di
-                    // body jawaban, yang tersedia lewat error.context (Item 63).
-                    if (error) {
-                        let pesan = error.message;
-                        try {
-                            const isi = await error.context?.json?.();
-                            if (isi?.error) pesan = isi.error;
-                        } catch {
-                            // Body bukan JSON — pakai pesan bawaan.
+                    // Unggah bertahap (K1 langkah 2): rag-process bekerja ±80 detik per panggilan dan menyimpan setiap
+                    // kelompok; panggilan diulang dengan teks yang sama sampai selesai. Gagal sesaat (503 gerbang,
+                    // jaringan, penolakan penyedia) dicoba lagi; yang sudah tersimpan menjadi cache untuk dilanjutkan.
+                    // Alasan galat non-2xx dibaca dari body jawaban (error.context, Item 63) — di unggahBertahap.
+                    const body = {
+                        title: file.name,
+                        text: hasil.teks,
+                        userId: session.user.id,
+                        // Hanya dikirim kalau pengguna memang sedang memilih sebuah space.
+                        // Tanpa ini rag-process mencari space CORE milik pengguna sendiri.
+                        ...(selectedSpace ? { spaceId: selectedSpace } : {}),
+                        source_type: 'user_upload',
+                        retrieved_at: new Date().toISOString()
+                    };
+                    const data = await unggahBertahap({
+                        panggil: () => supabase.functions.invoke('rag-process', { body, headers }),
+                        onKemajuan: ({ tersimpan, total, ulang, menunggu }) => {
+                            if (menunggu) setStatusUnggah(`${awalan}Menunggu proses sebelumnya selesai (${menunggu})…`);
+                            else if (total) setStatusUnggah(`${awalan}Memvektorkan ${tersimpan}/${total} potongan${ulang ? ` — mencoba lagi (${ulang})` : ''}…`);
                         }
-                        throw new Error(pesan);
-                    }
-                    if (data?.error) throw new Error(data.error);
+                    });
 
                     console.log(`[ResearchApp] ✅ ${file.name}: ${data?.message ?? 'terunggah'} (${hasil.jenis}, ${hasil.huruf} huruf${data?.seconds ? `, ${data.seconds} s` : ''})`);
                     hasilAkhir.berhasil.push(file.name);
@@ -312,7 +317,7 @@ export default function ResearchApp() {
                     console.error(`[ResearchApp] Gagal upload ${file.name}:`, err);
                     hasilAkhir.gagal.push({ nama: file.name, pesan: err.message });
                     // Saldo habis / kunci ditolak berlaku untuk semua berkas berikutnya → berhenti, jangan menagih ulang.
-                    if (/\b(401|402)\b|SALDO_HABIS|KUNCI_TIDAK_VALID|OPENROUTER_KEY_REQUIRED/i.test(err.message)) {
+                    if (err.status === 401 || err.status === 402 || /\b(401|402)\b|SALDO_HABIS|KUNCI_TIDAK_VALID|OPENROUTER_KEY_REQUIRED/i.test(err.message)) {
                         siap.slice(i + 1).forEach((s) => hasilAkhir.gagal.push({ nama: s.file.name, pesan: 'tidak diproses — kunci/saldo OpenRouter bermasalah' }));
                         break;
                     }
@@ -616,6 +621,12 @@ export default function ResearchApp() {
                                 <div>
                                     <p className="text-sm text-slate-200">{doc.title}</p>
                                     <p className="text-[12px] text-slate-500">{formatDate(doc.created_at)}</p>
+                                    {doc.selesai === false && (
+                                        // Unggah bertahap (K1 langkah 2): belum dipakai menjawab chat sampai lengkap.
+                                        <p className="text-[12px] text-amber-400">
+                                            Belum selesai{doc.total_potongan ? ` (${doc.total_potongan} potongan)` : ''} — belum dipakai chat. Unggah berkas yang sama untuk melanjutkan, atau hapus.
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                             <button

@@ -143,6 +143,7 @@ export class KnowledgeService {
           .from('documents')
           .select('id, title')
           .or(titleFilterStr)
+          .eq('selesai', true) // dokumen yang belum selesai diunggah tidak dipakai menjawab (K1 langkah 2)
           .limit(10);
 
         if (userId) docQuery = docQuery.eq('user_id', userId);
@@ -188,15 +189,14 @@ export class KnowledgeService {
       // 3. TAHAP CONTENT SEARCH FALLBACK/SUPPLEMENT: Isi sisa slot dengan pencarian konten
       if (result.length < limit) {
         const remainingLimit = limit - result.length;
-        let selectFields = 'id, document_id, content, source_url, source_type';
-        const needsDocJoin = Boolean(userId || options.spaceId);
-        if (needsDocJoin) {
-          selectFields = 'id, document_id, content, source_url, source_type, documents!inner(id, title, user_id, space_id)';
-        }
+        // Selalu bergabung dengan `documents`: dokumen yang belum selesai diunggah (K1 langkah 2, 5 Nov 2026) tidak
+        // boleh terbaca lewat jalur cadangan ini — sama seperti di fungsi pencarian database.
+        const selectFields = 'id, document_id, content, source_url, source_type, documents!inner(id, title, user_id, space_id, selesai)';
 
         let contentQuery = supabase
           .from('document_chunks')
-          .select(selectFields);
+          .select(selectFields)
+          .eq('documents.selesai', true);
 
         if (targetedDocIds.length > 0) {
           contentQuery = contentQuery.not('document_id', 'in', `(${targetedDocIds.join(',')})`);

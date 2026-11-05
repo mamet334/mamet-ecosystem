@@ -11,15 +11,26 @@ import { tolakKarenaVolume } from './batas_volume.ts'
  *    bukan kunci Gemini sistem. Tanpa kunci → ditolak dengan pesan jelas.
  *  - Potongan dikirim BERKELOMPOK, bukan satu per satu dengan jeda 0,6 detik. Dulu
  *    33 potongan gagal setelah 44 detik; berkelompok selesai ±3,4 detik.
- *  - Anggaran waktu dijaga di bawah batas wall-clock edge function (150 s). Dihentikan
- *    platform di tengah jalan berarti blok `catch` tak sempat membatalkan, dan dokumen
- *    setengah jadi tertinggal di RAG.
  *  - Identitas pengguna diambil dari TOKEN SESI. Fungsi ini di-deploy verify_jwt=false
  *    dan memakai service role; dulu `userId` dari body dipercaya begitu saja, sehingga
  *    siapa pun bisa menulis dokumen ke akun orang lain. `spaceId` kiriman klien juga
  *    wajib milik pengguna itu.
  *  - Berkas PDF/Word yang dibaca mentah (mametlite memanggil file.text() untuk .pdf dan
  *    .docx) ditolak — kalau tidak, pengguna membayar untuk memvektorkan sampah biner.
+ *
+ * UNGGAH BERTAHAP (K1 langkah 2, 2026-11-05 — keputusan Owner: satu berkas mentah = satu dokumen; yang gagal di tengah
+ * jalan menjadi cache, dilanjutkan dengan berkas yang sama tanpa embedding ulang dari awal). 5 Nov buku umum Owner
+ * berhenti di 1.856/1.986 potongan sesudah 105 detik dan SELURUHNYA dibuang — embedding 58 kelompok tetap dibayar.
+ *  - Dokumen dibuat `selesai = false`; setiap kelompok 32 potongan disimpan begitu vektornya jadi. Pencarian chat
+ *    hanya membaca dokumen `selesai` (migrasi 20261105000000), jadi buku setengah jadi tak pernah dipakai menjawab.
+ *  - Satu panggilan bekerja ±80 detik lalu menjawab `selesai: false` + jumlah tersimpan; klien memanggil lagi dengan
+ *    teks yang sama. Titik lanjut dihitung SERVER dari potongan yang sudah tersimpan, bukan dipercaya dari klien.
+ *  - Teks yang sama dikenali dari SHA-256-nya (dihitung di sini). Potongan ke-N hanya bermakna untuk teks dan aturan
+ *    pemotongan yang sama — sidik atau jumlah potongan berbeda → ditolak dengan pesan, bukan disambung acak.
+ *  - Gagal di tengah (penolakan penyedia, galat simpan) → dokumen DIPERTAHANKAN sebagai cache, kecuali belum satu pun
+ *    potongan tersimpan. Penghapusan dokumen tertunda diputuskan pengguna (dari daftar dokumen), bukan otomatis.
+ *  - Karakter NUL dibuang sebelum dipotong: Postgres menolaknya ("unsupported Unicode escape sequence") — 5 Nov satu
+ *    changelog ber-UTF-16 campuran gagal karenanya.
  */
 
 const corsHeaders = {
@@ -27,11 +38,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-byok-openrouter',
 };
 
-// 32 potongan per panggilan embedding (dulu 12, saat potongan 4.500 huruf). Potongan kini 800 huruf
-// (Item 70) — ebook 436 halaman ±920 potongan: 12 per kelompok = ±77 panggilan, terlalu dekat dengan
-// anggaran 110 detik; 32 per kelompok = ±29 panggilan dengan teks per panggilan tetap lebih kecil.
+// 32 potongan per panggilan embedding (dulu 12, saat potongan 4.500 huruf). Potongan kini 800 huruf (Item 70).
 const UKURAN_KELOMPOK = 32;
-const ANGGARAN_WAKTU_MS = 110_000;
+// Kelompok baru tidak dimulai lewat 80 detik; satu kelompok yang sedang berjalan masih boleh selesai sampai 110 detik
+// (batas wall-clock edge function 150 s — dihentikan platform berarti tak sempat menjawab).
+export const ANGGARAN_PANGGILAN_MS = 80_000;
+const BATAS_KERAS_MS = 110_000;
+// Kunci sementara per dokumen (migrasi 20261105010000): di atas batas keras, supaya panggilan yang masih berjalan tak
+// pernah kehilangan kuncinya; kunci yang tak sempat dilepas (fungsi dihentikan platform) kedaluwarsa sendiri.
+export const SEWA_KUNCI_MS = 130_000;
+const kunciSampai = () => new Date(Date.now() + SEWA_KUNCI_MS).toISOString();
 
 function jawab(isi: unknown, status: number): Response {
   return new Response(JSON.stringify(isi), {
@@ -47,8 +63,13 @@ function tampakBiner(text: string): boolean {
   const awal = text.trimStart();
   if (awal.startsWith('%PDF-') || awal.startsWith('PK\u0003\u0004')) return true;
   const sampel = text.slice(0, 20_000);
-  const pengganti = sampel.split('\uFFFD').length - 1;
+  const pengganti = sampel.split('�').length - 1;
   return sampel.length > 0 && pengganti / sampel.length > 0.01;
+}
+
+export async function sidikTeks(teks: string): Promise<string> {
+  const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(teks));
+  return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 serve(async (req) => {
@@ -62,7 +83,11 @@ serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
   let documentId: string | null = null;
-  let tersimpan = 0;
+  let memegangKunci = false;
+  let dibuatSekarang = false;
+  let sudahAda = 0;        // potongan yang tersimpan sebelum panggilan ini
+  let sudahAdaDiketahui = true; // false selama hitungan potongan unggahan tertunda belum terbaca (5 Nov: timeout)
+  let tersimpan = 0;       // potongan yang tersimpan di panggilan ini
   let totalPotongan = 0;
 
   try {
@@ -122,55 +147,105 @@ serve(async (req) => {
       targetSpaceId = core.id;
     }
 
-    // 5. Potong teks.
-    const chunks = chunkText(text).filter(c => c.trim() !== ''); // 800 / 100 — vector_utils (Item 70)
+    // 5. Potong teks (NUL dibuang lebih dulu) dan hitung sidiknya.
+    const bersih = String(text).replace(/\u0000/g, '');
+    const chunks = chunkText(bersih).filter(c => c.trim() !== ''); // 800 / 100 — vector_utils (Item 70)
     totalPotongan = chunks.length;
     if (chunks.length === 0) {
       return jawab({ error: `Dokumen "${title}" kosong atau tidak memiliki teks yang bisa dibaca.`, code: 'EMPTY_DOCUMENT' }, 400);
     }
+    const sidik = await sidikTeks(bersih);
 
-    // 5b. Batas volume (K5, TM-004) — sebelum dokumen dibuat & sebelum embedding: penolakan tanpa biaya.
-    //     Hitungan tak terbaca → DITOLAK dengan pesan jelas, bukan diloloskan diam-diam (K2: jujur saat gagal).
-    const [milik, semua] = await Promise.all([
-      supabase.from('document_chunks').select('id, documents!inner(user_id)', { count: 'exact', head: true })
-        .eq('documents.user_id', userId),
-      supabase.from('document_chunks').select('id', { count: 'exact', head: true }),
-    ]);
-    if (milik.error || semua.error || typeof milik.count !== 'number' || typeof semua.count !== 'number') {
-      console.error(`[rag-process] Hitungan volume gagal: ${milik.error?.message || semua.error?.message || 'count kosong'}`);
-      return jawab({ error: 'Kapasitas penyimpanan dokumen tidak bisa diperiksa saat ini. Coba lagi sebentar lagi.', code: 'KUOTA_TAK_TERBACA' }, 503);
-    }
-    const tolakVolume = tolakKarenaVolume({ baru: chunks.length, milikAkun: milik.count, total: semua.count });
-    if (tolakVolume) {
-      console.warn(`[rag-process] ⛔ ${tolakVolume.code}: akun ${milik.count} + ${chunks.length} baru, total ${semua.count}`);
-      return jawab(tolakVolume, 413);
-    }
-
-    // 6. Dokumen induk.
-    const docPayload: Record<string, unknown> = { title, user_id: userId, space_id: targetSpaceId };
-    if (source_url !== undefined) docPayload.source_url = source_url;
-    if (source_type !== undefined) docPayload.source_type = source_type;
-    if (retrieved_at !== undefined) docPayload.retrieved_at = retrieved_at;
-
-    const { data: docData, error: docError } = await supabase
-      .from('documents').insert(docPayload).select('id').single();
-    if (docError) throw new Error(`DB Error: ${docError.message}`);
-    documentId = docData.id;
-
-    console.log(`[rag-process] ${chunks.length} potongan untuk "${title}" (user ${userId}), kelompok ${UKURAN_KELOMPOK}`);
-
-    // 7. Vektorkan berkelompok, simpan per kelompok.
-    for (let i = 0; i < chunks.length; i += UKURAN_KELOMPOK) {
-      const sisa = ANGGARAN_WAKTU_MS - (Date.now() - mulai);
-      if (sisa <= 0) {
-        throw new EmbedGagal(
-          'WAKTU_HABIS',
-          `Dokumen terlalu besar untuk sekali proses. Pecah dokumen (misalnya per bab) lalu unggah bagian demi bagian.`,
-          413
-        );
+    // 6. Unggahan tertunda dengan judul sama di ruang yang sama? Lanjutkan bila teksnya sama.
+    const { data: tertunda, error: errTertunda } = await supabase
+      .from('documents').select('id, sidik, total_potongan')
+      .eq('user_id', userId).eq('title', title).eq('space_id', targetSpaceId).eq('selesai', false)
+      .order('created_at', { ascending: false }).limit(1);
+    if (errTertunda) throw new Error(`DB Error: ${errTertunda.message}`);
+    const lama = Array.isArray(tertunda) ? tertunda[0] : null;
+    if (lama) {
+      if (lama.sidik !== sidik || lama.total_potongan !== chunks.length) {
+        return jawab({
+          error: `"${title}" punya unggahan yang belum selesai dengan isi berbeda (berkasnya berubah, atau hasil bacanya berbeda). ` +
+            'Hapus dokumen yang belum selesai itu dari daftar, lalu unggah lagi.',
+          code: 'TERTUNDA_BERBEDA'
+        }, 409);
       }
+      // Kunci sementara: panggilan lama (mis. sesudah Ctrl+R di aplikasi) mungkin masih menyimpan potongan. Dua panggilan
+      // yang menghitung titik lanjut yang sama akan menyimpan potongan yang sama dua kali.
+      const { data: terkunci, error: errKunci } = await supabase
+        .from('documents').update({ diproses_sampai: kunciSampai() })
+        .eq('id', lama.id).or(`diproses_sampai.is.null,diproses_sampai.lt.${new Date(Date.now()).toISOString()}`)
+        .select('id');
+      if (errKunci) throw new Error(`DB Error: ${errKunci.message}`);
+      if (!Array.isArray(terkunci) || terkunci.length === 0) {
+        return jawab({
+          error: `"${title}" masih diproses oleh unggahan sebelumnya. Tunggu sebentar — unggahan dilanjutkan otomatis sesudah proses itu selesai.`,
+          code: 'SEDANG_DIPROSES'
+        }, 423);
+      }
+      documentId = lama.id;
+      memegangKunci = true;
+      sudahAdaDiketahui = false;
+      const { count, error: errHitung } = await supabase
+        .from('document_chunks').select('id', { count: 'exact', head: true }).eq('document_id', documentId);
+      if (errHitung || typeof count !== 'number') throw new Error(`DB Error: ${errHitung?.message || 'hitungan potongan kosong'}`);
+      if (count > chunks.length) {
+        return jawab({
+          error: `"${title}" yang belum selesai menyimpan ${count} potongan, lebih banyak dari isi berkasnya (${chunks.length}). ` +
+            'Hapus dokumen itu dari daftar, lalu unggah lagi.',
+          code: 'TERTUNDA_TAK_KONSISTEN'
+        }, 409);
+      }
+      sudahAda = count;
+      sudahAdaDiketahui = true;
+    }
+
+    // 6b. Batas volume (K5, TM-004) — sebelum embedding: penolakan tanpa biaya. Hanya potongan yang BELUM tersimpan.
+    //     Hitungan tak terbaca → DITOLAK dengan pesan jelas, bukan diloloskan diam-diam (K2: jujur saat gagal).
+    const baru = chunks.length - sudahAda;
+    if (baru > 0) {
+      const [milik, semua] = await Promise.all([
+        supabase.from('document_chunks').select('id, documents!inner(user_id)', { count: 'exact', head: true })
+          .eq('documents.user_id', userId),
+        supabase.from('document_chunks').select('id', { count: 'exact', head: true }),
+      ]);
+      if (milik.error || semua.error || typeof milik.count !== 'number' || typeof semua.count !== 'number') {
+        console.error(`[rag-process] Hitungan volume gagal: ${milik.error?.message || semua.error?.message || 'count kosong'}`);
+        return jawab({ error: 'Kapasitas penyimpanan dokumen tidak bisa diperiksa saat ini. Coba lagi sebentar lagi.', code: 'KUOTA_TAK_TERBACA' }, 503);
+      }
+      const tolakVolume = tolakKarenaVolume({ baru, milikAkun: milik.count, total: semua.count });
+      if (tolakVolume) {
+        console.warn(`[rag-process] ⛔ ${tolakVolume.code}: akun ${milik.count} + ${baru} baru, total ${semua.count}`);
+        return jawab(tolakVolume, 413);
+      }
+    }
+
+    // 7. Dokumen induk baru — belum selesai sampai potongan terakhir masuk.
+    if (!documentId) {
+      const docPayload: Record<string, unknown> = {
+        title, user_id: userId, space_id: targetSpaceId, selesai: false, sidik, total_potongan: chunks.length,
+        diproses_sampai: kunciSampai()
+      };
+      if (source_url !== undefined) docPayload.source_url = source_url;
+      if (source_type !== undefined) docPayload.source_type = source_type;
+      if (retrieved_at !== undefined) docPayload.retrieved_at = retrieved_at;
+
+      const { data: docData, error: docError } = await supabase
+        .from('documents').insert(docPayload).select('id').single();
+      if (docError) throw new Error(`DB Error: ${docError.message}`);
+      documentId = docData.id;
+      dibuatSekarang = true;
+      memegangKunci = true;
+    }
+
+    console.log(`[rag-process] ${chunks.length} potongan untuk "${title}" (user ${userId}), ${sudahAda ? `lanjut dari ${sudahAda}, ` : ''}kelompok ${UKURAN_KELOMPOK}`);
+
+    // 8. Vektorkan berkelompok, simpan per kelompok — setiap kelompok yang tersimpan adalah cache.
+    for (let i = sudahAda; i < chunks.length; i += UKURAN_KELOMPOK) {
+      if (Date.now() - mulai > ANGGARAN_PANGGILAN_MS) break;
       const kelompok = chunks.slice(i, i + UKURAN_KELOMPOK);
-      const vektor = await embedLewatOpenRouter(kelompok, kunci, { batasWaktuMs: sisa });
+      const vektor = await embedLewatOpenRouter(kelompok, kunci, { batasWaktuMs: BATAS_KERAS_MS - (Date.now() - mulai) });
 
       const baris = kelompok.map((content, k) => {
         const row: Record<string, unknown> = { document_id: documentId, content, embedding: vektor[k] };
@@ -184,27 +259,60 @@ serve(async (req) => {
     }
 
     const detik = +((Date.now() - mulai) / 1000).toFixed(1);
-    console.log(`[rag-process] ✅ "${title}": ${tersimpan}/${chunks.length} potongan dalam ${detik} s`);
+    const kini = sudahAda + tersimpan;
+    if (kini < chunks.length) {
+      console.log(`[rag-process] ⏸ "${title}": ${kini}/${chunks.length} potongan (${tersimpan} di panggilan ini, ${detik} s) — dilanjutkan klien`);
+      return jawab({
+        success: true,
+        selesai: false,
+        message: `Tersimpan ${kini} dari ${chunks.length} blok teks — belum selesai; unggahan dilanjutkan dengan berkas yang sama.`,
+        documentId, tersimpan: kini, total: chunks.length, seconds: detik
+      }, 200);
+    }
+
+    const { error: errSelesai } = await supabase.from('documents').update({ selesai: true }).eq('id', documentId);
+    if (errSelesai) throw new Error(`DB Error: ${errSelesai.message}`);
+    console.log(`[rag-process] ✅ "${title}": ${chunks.length}/${chunks.length} potongan${sudahAda ? ` (${sudahAda} dari cache)` : ''} dalam ${detik} s`);
     return jawab({
       success: true,
-      message: `Berhasil memproses ${tersimpan} dari ${chunks.length} blok teks.`,
-      documentId,
-      chunks: tersimpan,
-      seconds: detik
+      selesai: true,
+      message: `Berhasil memproses ${chunks.length} dari ${chunks.length} blok teks${sudahAda ? ` (${sudahAda} sudah tersimpan sebelumnya)` : ''}.`,
+      documentId, chunks: chunks.length, tersimpan: chunks.length, total: chunks.length, seconds: detik
     }, 200);
 
   } catch (error: any) {
-    // Batalkan dokumen setengah jadi — potongannya ikut terhapus (ON DELETE CASCADE).
-    if (documentId) {
+    const kini = sudahAda + tersimpan;
+    // Belum satu pun potongan tersimpan dan dokumennya baru dibuat → tak ada yang layak disimpan sebagai cache.
+    const dibatalkan = Boolean(documentId) && dibuatSekarang && kini === 0;
+    if (dibatalkan) {
       const { error: hapusError } = await supabase.from('documents').delete().eq('id', documentId);
       if (hapusError) console.error(`[rag-process] Gagal membatalkan dokumen ${documentId}: ${hapusError.message}`);
     }
+    // Dokumen tertunda dari unggahan sebelumnya tetap ada walau panggilan ini belum menambah apa pun.
+    const disimpan = Boolean(documentId) && !dibatalkan;
     const status = error instanceof EmbedGagal ? error.status : 500;
     const code = error instanceof EmbedGagal ? error.kode : 'INTERNAL';
+    // Hitungan potongan unggahan tertunda gagal dibaca (5 Nov: statement timeout) → jangan menulis "0 dari N": yang
+    // tersimpan sebelumnya tetap ada, hanya jumlahnya yang tak terbaca.
     const pesan = totalPotongan > 0
-      ? `Proses terhenti setelah ${tersimpan} dari ${totalPotongan} potongan — dokumen dibatalkan. ${error.message}`
+      ? (!sudahAdaDiketahui
+        ? `Proses terhenti sebelum potongan baru disimpan — potongan dari unggahan sebelumnya tetap ada; unggah berkas yang sama lagi untuk melanjutkan. ${error.message}`
+        : disimpan
+          ? `Proses terhenti setelah ${kini} dari ${totalPotongan} potongan — yang sudah tersimpan DISIMPAN; unggah berkas yang sama lagi untuk melanjutkan. ${error.message}`
+          : `Proses terhenti setelah 0 dari ${totalPotongan} potongan — dokumen dibatalkan. ${error.message}`)
       : error.message;
     console.error(`[rag-process] ❌ ${code} setelah ${((Date.now() - mulai) / 1000).toFixed(1)} s: ${pesan}`);
-    return jawab({ error: pesan, code }, status);
+    return jawab({
+      error: pesan, code,
+      ...(totalPotongan > 0 ? { tersimpan: sudahAdaDiketahui ? kini : null, total: totalPotongan, bisaDilanjutkan: disimpan } : {}),
+      ...(disimpan ? { documentId } : {})
+    }, status);
+  } finally {
+    // Kunci dilepas di SETIAP jalan keluar (selesai, jeda anggaran, ditolak, gagal) — panggilan lanjutan klien tak perlu
+    // menunggu kedaluwarsanya. Dokumen yang dibatalkan sudah terhapus; update ke baris yang tak ada tak berbuat apa-apa.
+    if (memegangKunci && documentId) {
+      const { error: errLepas } = await supabase.from('documents').update({ diproses_sampai: null }).eq('id', documentId);
+      if (errLepas) console.error(`[rag-process] Kunci dokumen ${documentId} gagal dilepas (kedaluwarsa sendiri): ${errLepas.message}`);
+    }
   }
 });

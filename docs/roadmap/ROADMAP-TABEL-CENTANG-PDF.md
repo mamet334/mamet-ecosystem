@@ -2,7 +2,10 @@
 
 **Tipe Dokumen:** Engineering Roadmap
 **Area:** Ekstraksi PDF di browser (`documentTextExtractor.js`, salinan Mametlite) & kontrak label jawaban (`agent-process`)
-**Status:** 🟡 **Tahap 1–3 selesai 2026-09-17** (Tahap 3 lulus lewat [Item 90](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) B–C / [Item 89](./ROADMAP-KONTEKS-POTONGAN-RAG.md)) — **keputusan §7 nomor 3 berjalan:** buku dipecah per jabatan, **221/221 jabatan masuk** (2026-09-17); set uji buku penuh **recall@8 13/14** (2026-09-21)
+**Status (5 Nov 2026):** ✅ **sisa BUKU-10 ditutup** lewat fase hardening K1 langkah 1 — kolom tanda centang kini
+ditulis sebagai kata saat unggah ("| √ Mutlak |"; [log](../project-memory/changelog/2026-11-05-k1-centang-ditulis-saat-unggah.md));
+uji ulang live BUKU-10 5/5, set BUKU 14/14 ([log](../project-memory/changelog/2026-11-05-k1-uji-ulang-sesudah-centang.md)).
+Riwayat: 🟡 **Tahap 1–3 selesai 2026-09-17** (Tahap 3 lulus lewat [Item 90](./ROADMAP-PENGAMBILAN-POTONGAN-RAG.md) B–C / [Item 89](./ROADMAP-KONTEKS-POTONGAN-RAG.md)) — **keputusan §7 nomor 3 berjalan:** buku dipecah per jabatan, **221/221 jabatan masuk** (2026-09-17); set uji buku penuh **recall@8 13/14** (2026-09-21)
 **Tanggal:** 2026-09-17
 **Roadmap Index:** Item 88
 

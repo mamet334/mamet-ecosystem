@@ -11,9 +11,15 @@
  *   - Total 45.000 potongan (±290 MB) — banyak akun bersama-sama pun berhenti jauh sebelum 500 MB; yang tertolak
  *     hanya unggahan baru, bukan seluruh aplikasi.
  * Diperiksa SEBELUM dokumen dibuat dan sebelum embedding — penolakan tidak memakan biaya pengguna.
+ *
+ * 5 Nov 2026 (keputusan Owner): per akun 10.000 → 25.000 (±163 MB). Diukur hari itu: paket gratis (500 MB), DB 86 MB,
+ * 6.503 B/potongan, akun Owner 8.304 potongan — "Kamus Bahasa Indonesia" (6.472) ditolak 413 sebelum embedding.
+ * Ancaman per akun (pendaftaran terbuka) sudah tertutup sejak 31 Okt — akun hanya lewat undangan. Batas TOTAL tetap
+ * 45.000 dan tetap menjaga kuota: penuh pun DB ±330 MB (±65%). Catatan: menghapus potongan TIDAK langsung menurunkan
+ * pemakaian kuota Supabase — ruangnya kembali sesudah VACUUM FULL (pengingat di INDEX-ROADMAP).
  */
 
-export const BATAS_POTONGAN_PER_AKUN = 10_000;
+export const BATAS_POTONGAN_PER_AKUN = 25_000;
 export const BATAS_POTONGAN_TOTAL = 45_000;
 
 const angka = (n: number) => n.toLocaleString('id-ID');

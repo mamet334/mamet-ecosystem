@@ -193,24 +193,34 @@ export function perkiraanMenitOcr(jumlahHalaman, serentak = OCR_SERENTAK) {
  * `onProgress` dipanggil tiap halaman SELESAI; `ke` = jumlah yang selesai, bukan urutan halaman.
  * @returns {Promise<{ peta: Map<number, string>, halamanGagal: number[] }>} peta: nomor halaman (1-based) → teks bersih
  */
-export async function terapkanOcrHalaman(fileBytes, nomorHalamanList, kunci, onProgress, { serentak = OCR_SERENTAK } = {}) {
+// `cache` (K1 langkah 2, 5 Nov 2026 — lihat cacheOcr.js): { ambil(n), simpan(n, teks) }. Halaman yang ada di cache
+// tidak di-OCR (tidak dibayar), dan teksnya sama persis dengan bacaan sebelumnya — syarat agar unggahan yang terputus
+// bisa dilanjutkan. Halaman yang gagal di-OCR tidak disimpan.
+export async function terapkanOcrHalaman(fileBytes, nomorHalamanList, kunci, onProgress, { serentak = OCR_SERENTAK, cache = null } = {}) {
   const { PDFDocument } = await import('pdf-lib');
   const asal = await PDFDocument.load(fileBytes);
   const teks = new Array(nomorHalamanList.length);
   const halamanGagal = [];
-  let berikut = 0; let selesai = 0;
+  let berikut = 0; let selesai = 0; let dariCache = 0;
 
   const pekerja = async () => {
     while (berikut < nomorHalamanList.length) {
       const i = berikut++;
       const n = nomorHalamanList[i];
       try {
-        teks[i] = await ocrHalamanPdf(await pisahHalamanPdf(asal, n), kunci);
+        const tersimpan = cache ? await cache.ambil(n) : undefined;
+        if (typeof tersimpan === 'string') {
+          teks[i] = tersimpan;
+          dariCache++;
+        } else {
+          teks[i] = await ocrHalamanPdf(await pisahHalamanPdf(asal, n), kunci);
+          if (cache) await cache.simpan(n, teks[i]);
+        }
       } catch (e) {
         console.warn(`[OCR] Halaman ${n} dilewati: ${e?.message || e}`);
         halamanGagal.push(n);
       }
-      onProgress?.({ tahap: 'ocr', halaman: n, ke: ++selesai, total: nomorHalamanList.length, gagal: halamanGagal.length });
+      onProgress?.({ tahap: 'ocr', halaman: n, ke: ++selesai, total: nomorHalamanList.length, gagal: halamanGagal.length, dariCache });
     }
   };
   await Promise.all(Array.from({ length: Math.max(1, Math.min(serentak, nomorHalamanList.length)) }, pekerja));
@@ -218,5 +228,5 @@ export async function terapkanOcrHalaman(fileBytes, nomorHalamanList, kunci, onP
   const peta = new Map();
   nomorHalamanList.forEach((n, i) => { if (teks[i] != null) peta.set(n, teks[i]); });
   halamanGagal.sort((a, b) => a - b);
-  return { peta, halamanGagal };
+  return { peta, halamanGagal, dariCache };
 }

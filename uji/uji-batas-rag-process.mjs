@@ -64,14 +64,19 @@ function sbTiruan({ milik, total, galatHitung = false }) {
         const perAkun = st.filter.some(([k]) => k === 'documents.user_id');
         return { count: perAkun ? milik : total, error: null, data: null };
       }
+      // Unggah bertahap (5 Nov): tidak ada unggahan tertunda di uji ini.
+      if (st.tabel === 'documents' && st.op === 'select') return { data: [], error: null };
       if (st.tabel === 'documents' && st.op === 'insert') return { data: { id: 'dok-1' }, error: null };
       return { data: null, error: null };
     };
     const p = {
       select(_k, opsi) { if (st.op === 'select') st.opsi = opsi; return p; },
       insert(isi) { st.op = 'insert'; tulisan.push({ tabel, op: 'insert', n: Array.isArray(isi) ? isi.length : 1 }); return p; },
+      update() { st.op = 'update'; tulisan.push({ tabel, op: 'update' }); return p; },
       delete() { st.op = 'delete'; tulisan.push({ tabel, op: 'delete' }); return p; },
       eq(k, v) { st.filter.push([k, v]); return p; },
+      order() { return p; },
+      limit() { return p; },
       maybeSingle() { return Promise.resolve(hasilAkhir()); },
       single() { return Promise.resolve(hasilAkhir()); },
       then(ok, nok) { return Promise.resolve(hasilAkhir()).then(ok, nok); },
@@ -105,9 +110,11 @@ const nPotongan = r.isi.chunks;
 
 // ── 2. Batas per akun ───────────────────────────────────────────────────────────────────────────
 r = await unggah({ milik: M.BATAS_POTONGAN_PER_AKUN - nPotongan + 1, total: 5000, isi: ISI });
-cek(r.status === 413 && r.isi.code === 'KUOTA_AKUN_PENUH', 'akun melewati 10.000 potongan → 413 KUOTA_AKUN_PENUH', r.isi);
+cek(r.status === 413 && r.isi.code === 'KUOTA_AKUN_PENUH', `akun melewati ${M.BATAS_POTONGAN_PER_AKUN.toLocaleString('id-ID')} potongan → 413 KUOTA_AKUN_PENUH`, r.isi);
 cek(r.divektorkan === 0 && r.tulisan.length === 0, 'ditolak SEBELUM embedding & sebelum dokumen dibuat (tanpa biaya, tanpa sisa)', r);
-cek(/Hapus dokumen/.test(r.isi.error) && /10\.000/.test(r.isi.error), 'pesan per akun menyebut batas & jalan keluarnya', r.isi.error);
+cek(/Hapus dokumen/.test(r.isi.error) && r.isi.error.includes(M.BATAS_POTONGAN_PER_AKUN.toLocaleString('id-ID')), 'pesan per akun menyebut batas & jalan keluarnya', r.isi.error);
+// 5 Nov 2026: batas per akun dinaikkan Owner 10.000 → 25.000 (akun hanya lewat undangan sejak 31 Okt); total tetap.
+cek(M.BATAS_POTONGAN_PER_AKUN === 25_000 && M.BATAS_POTONGAN_TOTAL === 45_000, 'batas sesuai keputusan Owner 5 Nov: per akun 25.000, total 45.000');
 r = await unggah({ milik: M.BATAS_POTONGAN_PER_AKUN - nPotongan, total: 5000, isi: ISI });
 cek(r.status === 200, 'tepat di batas akun → masih boleh', r.isi);
 
