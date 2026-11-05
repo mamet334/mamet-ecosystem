@@ -14,8 +14,8 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 
 | # | Kriteria | Status | Sisa |
 |---|---|---|---|
-| K1 | RAG menemukan & menjawab benar | ❌ terukur 5 Nov: GAGAL di BUKU-10 (tabel centang) | 2 (unggah dokumen besar · 💳 uji ulang) — centang saat unggah ✅ |
-| K2 | RAG jujur saat gagal | ❌ ikut BUKU-10 (tidak_ada 3/4 JUJUR, NEG-01 PERLU_CEK) | ikut K1 |
+| K1 | RAG menemukan & menjawab benar | ⏳ lulus di korpus pecahan 5 Nov (pokok 22/22, BUKU-10 5/5) | 2 (unggah dokumen besar · 💳 buku utuh + uji penuh) |
+| K2 | RAG jujur saat gagal | ⏳ lulus di korpus pecahan 5 Nov (tidak_ada 8/8 JUJUR) | ikut K1 |
 | K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ (ulang sebelum rilis) | 1 (💳) |
 | K4 | Mametlite layak bagi orang awam | ✅ (T19, isolasi dua akun, CORE, undangan, ganti sandi — live) | — |
 | K5 | Keamanan | ✅ (OpenRouter diganti, Apify dicabut — 3 Nov) | — |
@@ -40,7 +40,9 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
   1. ✅ **Centang ditulis sebagai kata saat unggah** (5 Nov): `| √ |` → `| √ Mutlak |` dari posisi tanda di PDF — OCR
      lewat pemasangan urutan berpenjaga, pdf.js langsung di item; "Ö" dihitung; Ecosystem + Mametlite. Korpus: 210/247
      halaman bercentang ditulis, 0 geseran berbahaya lolos, 177 = kunci BUKU-10 —
-     [log](../project-memory/changelog/2026-11-05-k1-centang-ditulis-saat-unggah.md). Data RAG lama ikut benar di langkah 3.
+     [log](../project-memory/changelog/2026-11-05-k1-centang-ditulis-saat-unggah.md). ✅ **Uji ulang live** sesudah 221
+     pecahan diunggah ulang: BUKU-10 5/5 benar; uji penuh pokok **22/22** benar, tidak_ada 8/8 jujur (HCDP sempat hilang
+     dari RAG, diunggah ulang) — [log](../project-memory/changelog/2026-11-05-k1-uji-ulang-sesudah-centang.md).
   2. ⏳ **Unggah dokumen besar otomatis** (anggaran `rag-process` 110 detik; buku 1.008 halaman ±165 detik): diproses
      bertahap per kelompok halaman ke satu dokumen, bisa dilanjutkan bila terputus, tanpa LLM.
   3. ⏳💳 Unggah ulang **buku asli utuh** (sekali, sesudah 1 & 2 — OCR tidak dibayar dua kali) → BUKU-10 ×5 → K1/K2 penuh.
