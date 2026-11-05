@@ -53,13 +53,15 @@ token github.txt
 # Data uji berisi NIP/nama pegawai — TIDAK boleh masuk repo publik (lihat uji/README.md)
 uji/data-lokal/
 
-# Keluaran graphify: HASIL TURUNAN dari kode, bisa dibangun ulang kapan saja dengan
-#   graphify . --update --code-only   &&   graphify cluster-only .
-# Dilacak sampai 18 Okt 2026, lalu dikeluarkan: graph.json ±1,9 MB dan graph.html ±1,7 MB berubah
-# total setiap penyegaran, jadi tiap pemindaian menghasilkan diff ±4 MB yang tidak bisa dibaca
-# manusia dan tidak menambah apa pun ke sejarah repo. Berkasnya TETAP ADA di disk — yang berhenti
-# hanyalah pelacakannya. Keadaan graf dicatat sebagai ANGKA di dokumen roadmap, bukan sebagai blob.
-graphify-out/
+# Keluaran graphify: HASIL TURUNAN dari kode, dibangun ulang dengan `graphify update .`.
+# Dilacak sampai 18 Okt 2026, lalu dikeluarkan (diff besar tiap penyegaran). 6 Nov 2026, perintah Owner: hasil pindai
+# lama dihapus, graf TERBARU dilacak di GitHub — hanya tiga keluarannya. Cache, manifest, dan berkas samping (memuat
+# jalur lokal mesin Owner, mis. `.graphify_python`) tetap tidak ikut. Catatan: graph.json ±11,8 MB, jadi setiap
+# penyegaran yang di-commit menambah ±12 MB ke sejarah repo.
+graphify-out/*
+!graphify-out/graph.json
+!graphify-out/graph.html
+!graphify-out/GRAPH_REPORT.md
 
 # CLAUDE.md: jangan pernah meng-commit `.venv`, `data/`, atau `hasil/` — dulu hanya dijaga ingatan (Parkir 31 Okt: `hasil/`
 # di akar TIDAK diabaikan, ketahuan saat laporan model ancaman nyaris tersimpan di sana). `.gitignore` crawler sudah

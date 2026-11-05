@@ -14,8 +14,8 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 
 | # | Kriteria | Status | Sisa |
 |---|---|---|---|
-| K1 | RAG menemukan & menjawab benar | ⏳ lulus di korpus pecahan 5 Nov (pokok 22/22, BUKU-10 5/5); unggah dokumen besar ✅ live | 1 (💳 buku utuh + uji penuh → VACUUM FULL) |
-| K2 | RAG jujur saat gagal | ⏳ lulus di korpus pecahan 5 Nov (tidak_ada 8/8 JUJUR) | ikut K1 |
+| K1 | RAG menemukan & menjawab benar | ❌ 6 Nov: RAG chat kosong karena batas waktu (korpus 12.445 potongan) — [Item 131](./ROADMAP-MAKSIMALKAN-MODEL.md) A–C; sebelumnya lulus di korpus pecahan 5 Nov (pokok 22/22, BUKU-10 5/5); unggah dokumen besar ✅ live | 2 (Item 131 A → 💳 buku utuh + uji penuh) |
+| K2 | RAG jujur saat gagal | ❌ 6 Nov: kegagalan batas waktu RAG & pemangkasan konteks tak diberitahukan — Item 131 C, H; sebelumnya tidak_ada 8/8 JUJUR (5 Nov) | ikut K1 |
 | K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ final 5 Nov (5/5 VERIFIED, 0 NIP ke model) | — |
 | K4 | Mametlite layak bagi orang awam | ✅ (T19, isolasi dua akun, CORE, undangan, ganti sandi — live) | — |
 | K5 | Keamanan | ✅ (OpenRouter diganti, Apify dicabut — 3 Nov) | — |
@@ -60,6 +60,9 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
      menyalin vektor lama di database, versi lama dihapus sesudah selesai —
      [log](../project-memory/changelog/2026-11-06-k1-perbarui-dokumen-dan-ocr-402.md). Sisa: uji pakai dokumen pendek;
      💳 isi saldo → unggah ulang "Kepbup Standar Kompetensi Jabatan(1).pdf" (nama persis) → Perbarui → uji penuh.
+     ❌ **Temuan 6 Nov:** RAG chat kosong karena batas 5 s (pencarian gabungan dingin 6,9 s, tanpa indeks vektor — hasil
+     yang sudah ketemu dibuang, tanpa pemberitahuan) dan konteks percakapan dipangkas server → **uji penuh menunggu
+     [Item 131](./ROADMAP-MAKSIMALKAN-MODEL.md) Tahap A** (lalu C & H untuk K2).
 
 ### K2 — RAG jujur saat gagal
 - ✅ RAG turun bersuara (2 Okt).
