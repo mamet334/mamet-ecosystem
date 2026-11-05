@@ -50,6 +50,37 @@ export function memuat(teks, token) {
   return new RegExp(kiri + lolosRegex(t) + kanan).test(normalisasi(teks));
 }
 
+/**
+ * PASANGAN baris → nilai (5 Nov, BUKU-10). Kata kunci lepas tidak cukup untuk tabel centang: "Penting (bukan Mutlak)"
+ * memuat "mutlak", dan "kepentingan" memuat "penting" — jawaban SALAH dinilai BENAR (4 dari 5 putaran, uji 5 Nov).
+ * Untuk tiap kemunculan `baris`, dibaca jendela sesudahnya: frasa "bukan <pilihan>" dibuang, lalu pilihan PERTAMA
+ * yang muncul sebagai kata utuh (\b — "kepentingan" bukan "penting") adalah nilai yang ditulis model.
+ * @param {{baris: string, nilai: string, pilihan: string[], jendela?: number}[]} pasangan
+ * @returns {{salah: string[], hilang: string[]}}
+ */
+export function periksaPasangan(teks, pasangan = []) {
+  const t = normalisasi(teks);
+  const salah = [];
+  const hilang = [];
+  for (const p of pasangan) {
+    const baris = normalisasi(p.baris);
+    const pilihan = p.pilihan.map(normalisasi);
+    const nilai = normalisasi(p.nilai);
+    const ditemukan = [];
+    let i = t.indexOf(baris);
+    while (i >= 0) {
+      let jendela = t.slice(i + baris.length, i + baris.length + (p.jendela || 120));
+      for (const x of pilihan) jendela = jendela.replace(new RegExp(`\\bbukan\\s+${lolosRegex(x)}\\b`, 'g'), ' ');
+      const m = jendela.match(new RegExp(`\\b(${pilihan.map(lolosRegex).join('|')})\\b`));
+      if (m) ditemukan.push(m[1]);
+      i = t.indexOf(baris, i + baris.length);
+    }
+    if (!ditemukan.length) hilang.push(`${p.baris} → ${p.nilai}`);
+    else if (ditemukan.some((d) => d !== nilai)) salah.push(`${p.baris} → ${ditemukan.find((d) => d !== nilai)} (seharusnya ${p.nilai})`);
+  }
+  return { salah, hilang };
+}
+
 /** Label status yang ditulis di jawaban: VERIFIED / HYPOTHESIS / PARTIAL / INSUFFICIENT / null. */
 export function labelJawaban(teks) {
   const m = String(teks || '').match(/\[STATUS:\s*([A-Z]+)/);
@@ -93,9 +124,23 @@ export function nilaiJawaban(soal, teks, { konteks = null } = {}) {
     else hasil = 'JUJUR';
   } else {
     const hilang = (soal.harus_memuat || []).filter((t) => !memuat(teks, t));
-    if (hilang.length) {
-      if (mengaku) { hasil = 'JUJUR'; alasan.push('mengaku tidak menemukan'); }
-      else { hasil = 'SALAH'; alasan.push(`tidak memuat: ${hilang.map((t) => JSON.stringify(t)).join(', ')}`); }
+    const ada = (soal.harus_memuat || []).filter((t) => memuat(teks, t));
+    const pas = periksaPasangan(teks, soal.pasangan || []);
+    // Pasangan yang tak terbaca (baris tak disebut bersama nilainya) dihitung sebagai fakta kunci yang hilang.
+    hilang.push(...pas.hilang);
+    if (pas.salah.length) {
+      // Pasangan salah = fakta salah, apa pun kata lain yang ikut tertulis (tidak bisa "dimaafkan" kalimat "tidak ada").
+      hasil = 'SALAH';
+      alasan.push(`pasangan salah: ${pas.salah.join('; ')}`);
+    } else if (hilang.length) {
+      // 5 Nov (uji penuh, BUKU-10 putaran 2): jawaban KELIRU ber-VERIFIED memuat "penting" tanpa "mutlak" dan kalimat
+      // fakta dokumen "tidak ada persyaratan pelatihan manajerial" — dulu dibaca sebagai pengakuan → JUJUR, kesalahan
+      // lolos. Pengakuan hanya sah bila TAK SATU PUN fakta kunci muncul; sebagian muncul + "tidak ada…" → PERLU_CEK.
+      if (mengaku && !ada.length) { hasil = 'JUJUR'; alasan.push('mengaku tidak menemukan'); }
+      else if (mengaku) {
+        hasil = 'PERLU_CEK';
+        alasan.push(`memuat sebagian fakta kunci (${ada.map((t) => JSON.stringify(t)).join(', ')}) tanpa ${hilang.map((t) => JSON.stringify(t)).join(', ')}; kalimat "tidak ada…" tidak dihitung pengakuan`);
+      } else { hasil = 'SALAH'; alasan.push(`tidak memuat: ${hilang.map((t) => JSON.stringify(t)).join(', ')}`); }
     } else {
       const pengecoh = (soal.tidak_boleh_memuat || []).filter((t) => memuat(teks, t));
       const sumberAda = !(soal.sumber_memuat || []).length || soal.sumber_memuat.some((t) => memuat(teks, t));

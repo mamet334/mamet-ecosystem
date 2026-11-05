@@ -14,8 +14,8 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 
 | # | Kriteria | Status | Sisa |
 |---|---|---|---|
-| K1 | RAG menemukan & menjawab benar | ⏳ penguji siap; belum terukur (saldo) | 1 (💳 jalankan) |
-| K2 | RAG jujur saat gagal | ⏳ penguji siap; belum terukur (saldo) | 1 (💳 jalankan) |
+| K1 | RAG menemukan & menjawab benar | ❌ terukur 5 Nov: GAGAL di BUKU-10 (tabel centang) | 3 (centang saat unggah · unggah dokumen besar · 💳 uji ulang) |
+| K2 | RAG jujur saat gagal | ❌ ikut BUKU-10 (tidak_ada 3/4 JUJUR, NEG-01 PERLU_CEK) | ikut K1 |
 | K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ (ulang sebelum rilis) | 1 (💳) |
 | K4 | Mametlite layak bagi orang awam | ✅ (T19, isolasi dua akun, CORE, undangan, ganti sandi — live) | — |
 | K5 | Keamanan | ✅ (OpenRouter diganti, Apify dicabut — 3 Nov) | — |
@@ -33,6 +33,17 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
   modul konsol `uji/uji-mutu-rag-k1.js` (versi `k1-2`). Jalan pertama 3 Nov tanpa saldo: 52/52 berhenti di model
   (402) — **belum terukur**; pengambilan potongan terbukti live (HCDP-01 6–8 potongan, skor 0,73, gate PASSED). Galat
   kini = TIDAK_TERUKUR, bukan SALAH. Sisa: dijalankan sesudah saldo diisi (💳) — perintahnya di kepala modul.
+- ❌ **Uji penuh pertama (5 Nov):** pokok 43/44 benar; **BUKU-10 salah** (4/5 pada ulang ×5). Penilai diperbaiki
+  (pengakuan sebagian = PERLU_CEK; pasangan baris → nilai) — [log](../project-memory/changelog/2026-11-05-k1-uji-penuh-penilai-pasangan.md).
+  Menempel tingkat dengan menghitung sel OCR **ditolak** (83% setuju di korpus). Keputusan Owner: dirapikan saat unggah,
+  tanpa LLM. Sisa, berurutan:
+  1. ⏳ **Centang ditulis sebagai kata saat unggah** (`tabelCentang.js` / ekstraktor): baris tabel bertanda menjadi
+     "<syarat> — Tingkat: Mutlak" dari posisi tanda di PDF, satu baris satu fakta (tak terpisah pemotong); tak pasti →
+     "tingkat tidak terbaca — cek dokumen asli"; "Ö" ikut dihitung. Diukur di 222 berkas pecahan (isi = buku asli)
+     terhadap blok lama sebelum dipasang. Salinan Mametlite tidak disentuh kecuali Owner minta.
+  2. ⏳ **Unggah dokumen besar otomatis** (anggaran `rag-process` 110 detik; buku 1.008 halaman ±165 detik): diproses
+     bertahap per kelompok halaman ke satu dokumen, bisa dilanjutkan bila terputus, tanpa LLM.
+  3. ⏳💳 Unggah ulang **buku asli utuh** (sekali, sesudah 1 & 2 — OCR tidak dibayar dua kali) → BUKU-10 ×5 → K1/K2 penuh.
 
 ### K2 — RAG jujur saat gagal
 - ✅ RAG turun bersuara (2 Okt).

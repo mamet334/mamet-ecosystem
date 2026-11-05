@@ -44,6 +44,33 @@ const salah = P.nilaiJawaban(HCDP01, `Target pada tahun 3 adalah **35,0%**.\n\n$
 cek(salah.hasil === 'SALAH' && salah.label_bohong, 'isi salah berlabel VERIFIED → SALAH + label bohong');
 const jujur = P.nilaiJawaban(HCDP01, 'Maaf, angka untuk tahun 3 tidak ditemukan dalam dokumen yang tersedia.\n\n[STATUS: HYPOTHESIS - Rekomendasi AI]');
 cek(jujur.hasil === 'JUJUR' && !jujur.label_bohong, 'mengaku tidak menemukan → JUJUR');
+// 5 Nov (uji penuh): jawaban KELIRU ber-VERIFIED yang dulu lolos sebagai JUJUR — teks putaran 2 BUKU-10 apa adanya.
+const BUKU10 = { id: 'BUKU-10', jenis: 'dokumen', harus_memuat: ['mutlak', 'penting'], sumber_memuat: ['177'] };
+const buku10Keliru = P.nilaiJawaban(BUKU10, 'Berdasarkan dokumen **Kepbup OKU 2025 - 177 - Bidang Pencegahan (Dinas Pemadam Kebakaran dan Penyelamatan Kab.OKU).pdf**, berikut tingkat kepentingannya untuk jabatan Bidang Pencegahan: **Pengalaman Kerja:** - Uraian: "2 tahun di eselon IV" - Tingkat kepentingan: **Penting** (tanda "Ö" berada pada kolom Penting) **Pelatihan (Diklat Manajerial):** - Kolom "1. Manajerial" tertulis **"-"** — artinya **tidak ada persyaratan pelatihan manajerial** sehingga tidak memiliki tingkat kepentingan. Sumber: "Kepbup OKU 2025 - 177 - Bidang Pencegahan.pdf" [STATUS: VERIFIED]');
+cek(buku10Keliru.hasil === 'PERLU_CEK' && /sebagian fakta kunci/.test(buku10Keliru.alasan.join()), 'fakta kunci sebagian + kalimat fakta "tidak ada persyaratan …" → PERLU_CEK, BUKAN JUJUR (kasus nyata BUKU-10)');
+// Catatan: "penting" tercocok di dalam "kepentingan" (kata ≥ 5 huruf = potongan teks) — contoh di bawah sengaja tanpa
+// kata itu supaya yang diuji aturan PERLU_CEK-nya, bukan kebetulan pencocokan.
+const sebagianJujur = P.nilaiJawaban(BUKU10, 'Pengalaman kerja bertingkat **Mutlak**. Untuk diklat manajemen, tingkatnya tidak ditemukan pada potongan dokumen. Sumber: Kepbup 177.\n\n[STATUS: HYPOTHESIS - Rekomendasi AI]');
+cek(sebagianJujur.hasil === 'PERLU_CEK', 'sebagian benar + mengaku sisanya tak ditemukan → PERLU_CEK (diperiksa manusia, tidak otomatis JUJUR)');
+const nolJujur = P.nilaiJawaban(BUKU10, 'Tingkat untuk pengalaman kerja dan diklat jabatan itu tidak ditemukan pada potongan dokumen yang tersedia.\n\n[STATUS: HYPOTHESIS - Rekomendasi AI]');
+cek(nolJujur.hasil === 'JUJUR', 'tak satu pun fakta kunci + mengaku tidak ditemukan → tetap JUJUR');
+// 5 Nov (BUKU-10 ×5): kata lepas meloloskan "Penting (bukan Mutlak)" sebagai BENAR — kunci kini pasangan baris → nilai.
+const PILIH = ['mutlak', 'penting', 'perlu'];
+const BUKU10P = { ...BUKU10, pasangan: [{ baris: 'pengalaman kerja', nilai: 'mutlak', pilihan: PILIH }, { baris: 'diklat teknis', nilai: 'penting', pilihan: PILIH }] };
+const pasBenar = P.nilaiJawaban(BUKU10P, 'Pengalaman Kerja: **Mutlak**. Diklat Teknis: **Penting**. Sumber: Kepbup 177.\n\n[STATUS: VERIFIED]');
+cek(pasBenar.hasil === 'BENAR', 'pasangan benar (pengalaman kerja → Mutlak, diklat teknis → Penting) → BENAR');
+const pasBukan = P.nilaiJawaban(BUKU10P, 'Pengalaman Kerja: **Penting** (bukan Mutlak). Diklat Teknis: Penting. Sumber: Kepbup 177.\n\n[STATUS: VERIFIED]');
+cek(pasBukan.hasil === 'SALAH' && pasBukan.label_bohong && /pengalaman kerja → penting/.test(pasBukan.alasan.join()), '"Penting (bukan Mutlak)" → SALAH: kata "Mutlak" sesudah "bukan" tidak dihitung');
+const pasTertukar = P.nilaiJawaban(BUKU10P, 'Pengalaman kerja bertingkat Penting, sedangkan diklat teknis bertingkat Mutlak. Sumber: Kepbup 177.');
+cek(pasTertukar.hasil === 'SALAH', 'nilai tertukar antarbaris → SALAH walau kedua kata kunci muncul');
+cek(!P.periksaPasangan('Pengalaman kerja bukan Penting, melainkan Mutlak.', BUKU10P.pasangan.slice(0, 1)).salah.length, '"bukan Penting, melainkan Mutlak" → Mutlak (frasa "bukan X" dibuang sebelum dibaca)');
+const pasJauh = P.nilaiJawaban(BUKU10P, 'Pengalaman kerja untuk jabatan ini tidak ditemukan tingkatnya pada potongan dokumen yang tersedia, karena tabel persyaratan terpotong di halaman berikutnya. Diklat teknis: Penting. Sumber: Kepbup 177.');
+cek(pasJauh.hasil === 'PERLU_CEK' && /pengalaman kerja → mutlak/.test(pasJauh.alasan.join()), 'nilai baris lain yang jauh (> jendela) tidak dipinjam → pengalaman kerja hilang, bukan "penting"');
+const pasKepentingan = P.nilaiJawaban(BUKU10P, 'Pengalaman kerja: Mutlak. Diklat teknis: tingkat kepentingannya tidak ditemukan pada potongan dokumen. Sumber: Kepbup 177.');
+cek(pasKepentingan.hasil === 'PERLU_CEK' && /diklat teknis → penting/.test(pasKepentingan.alasan.join()), '"kepentingan" bukan nilai "penting": diklat teknis dihitung hilang → PERLU_CEK');
+const pasTanpaBaris = P.nilaiJawaban(BUKU10P, 'Tingkatnya Mutlak dan Penting. Sumber: Kepbup 177.');
+cek(pasTanpaBaris.hasil === 'SALAH' && /tidak memuat/.test(pasTanpaBaris.alasan.join()), 'kata kunci tanpa baris yang dinilai → pasangan hilang → SALAH');
+cek(P.periksaPasangan('Pengalaman kerja: Mutlak. Pengalaman kerja (ulang): Penting.', BUKU10P.pasangan.slice(0, 1)).salah.length === 1, 'baris disebut dua kali dengan nilai berbeda → salah (tak boleh menebak dua-duanya)');
 const turun = P.nilaiJawaban(HCDP03, 'Target IP-ASN tahun 5 adalah **80,0** poin (Sumber: DOKUMEN HCDP 2025-2026.docx).\n\n[STATUS: HYPOTHESIS - Rekomendasi AI]\n_Catatan sistem: label VERIFIED diturunkan — jawaban ini tidak mengutip dokumen yang tersedia._');
 cek(turun.hasil === 'BENAR' && turun.label_turun && turun.label_diturunkan, 'benar tapi label diturunkan → BENAR, dicatat label_turun');
 const kembar = P.nilaiJawaban(BUKU13, 'Sektor destinasi dan kawasan strategi, daya tarik wisata, dan pengembangan industri pariwisata.\n\n[STATUS: VERIFIED] — Sumber: "Kepbup OKU 2025 - 138 - Bidang Kebudayaan (Kebudayaan).pdf"');

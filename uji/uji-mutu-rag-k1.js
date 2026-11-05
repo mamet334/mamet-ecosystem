@@ -22,7 +22,7 @@
 // Biaya: 26 soal × 2 putaran = 52 jawaban chat dengan model tier otomatis. Hasil: tabel konsol + berkas
 // `uji-mutu-k1-<waktu>.json` (pertanyaan, jawaban, label, penilaian, penyedia).
 
-const VERSI = 'k1-2'; // k1-2 (3 Nov): galat (saldo/jaringan) = GALAT → TIDAK_TERUKUR, bukan SALAH
+const VERSI = 'k1-3'; // k1-3 (5 Nov): catat blok TABEL CENTANG di konteks; penilai: "tidak ada…" + fakta kunci sebagian = PERLU_CEK · k1-2 (3 Nov): galat = TIDAK_TERUKUR
 const DIR = new URL('./data-lokal', import.meta.url).href;
 const WS = 'ws-assistant';
 const ALAT_UJI = { rag: true, web_search: false, deep_research: false, data_tabel: false, memory_manager: false };
@@ -99,7 +99,10 @@ export async function uji({ ulang = 2, hanya = null } = {}) {
         }
         const konteks = j.langkah.find((l) => l.startsWith('[SYSTEM CONTEXT FINAL]')) ?? null;
         const n = P.nilaiJawaban(soal, j.teks, { konteks });
-        putaran.push({ ...n, jawaban: j.teks, penyedia: j.penyedia, detik: j.detik, konteks_ada: konteks != null });
+        // k1-3 (5 Nov, diagnosis BUKU-10): apakah blok [TABEL CENTANG …] (posisi centang dari pdf.js, Item 88) ikut
+        // dibaca model — hanya tandanya, isi konteks tetap tidak disimpan.
+        const blokCentang = konteks == null ? null : konteks.includes('[TABEL CENTANG —') ? 'ada' : konteks.includes('[TABEL CENTANG') ? 'hanya-tidak-pasti' : 'tidak';
+        putaran.push({ ...n, jawaban: j.teks, penyedia: j.penyedia, detik: j.detik, konteks_ada: konteks != null, blok_centang: blokCentang });
         console.log(`[uji-mutu-k1] ${soal.id} #${i + 1} ${n.hasil} · label ${n.label || '—'} · ${j.detik} dtk${n.alasan.length ? ' · ' + n.alasan.join('; ') : ''}`);
       }
       baris.push({ id: soal.id, jenis: soal.jenis, pertanyaan: soal.pertanyaan, putaran });
