@@ -44,7 +44,10 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
      pecahan diunggah ulang: BUKU-10 5/5 benar; uji penuh pokok **22/22** benar, tidak_ada 8/8 jujur (HCDP sempat hilang
      dari RAG, diunggah ulang) — [log](../project-memory/changelog/2026-11-05-k1-uji-ulang-sesudah-centang.md).
   2. ⏳ **Unggah dokumen besar otomatis** (anggaran `rag-process` 110 detik; buku 1.008 halaman ±165 detik): diproses
-     bertahap per kelompok halaman ke satu dokumen, bisa dilanjutkan bila terputus, tanpa LLM.
+     bertahap per kelompok halaman ke satu dokumen, bisa dilanjutkan bila terputus, tanpa LLM. **Terbukti perlu 5 Nov**
+     dengan buku umum Owner (gagal di 1.856/1.986 potongan, 105 s) dan unggah massal 385 changelog — ikut dirancang:
+     ulang kelompok yang ditolak sesaat (503 gerbang Supabase, penolakan lokasi Google), bersihkan karakter NUL —
+     [log](../project-memory/changelog/2026-11-05-unggah-buku-besar-dan-sejarah-aplikasi.md).
   3. ⏳💳 Unggah ulang **buku asli utuh** (sekali, sesudah 1 & 2 — OCR tidak dibayar dua kali) → BUKU-10 ×5 → K1/K2 penuh.
 
 ### K2 — RAG jujur saat gagal
@@ -147,7 +150,8 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - ✅ **Dibereskan 2 Nov:** metadata chat membengkak — langkah proses tersimpan dua kali (`steps` +
   `metadata.processingSteps`); kini sekali, tak ikut terkirim di `history`; chat lama dibersihkan (teks 22 → 12 MB,
   tabel 13 → 6,9 MB); `[SYSTEM CONTEXT FINAL]` sengaja dipertahankan
-  ([log](../project-memory/changelog/2026-11-02-metadata-chat-ramping.md)). Sisa bukti: satu chat baru di desktop (💳)
+  ([log](../project-memory/changelog/2026-11-02-metadata-chat-ramping.md)). ✅ Bukti chat baru desktop 5 Nov (chat uji K3:
+  langkah sekali, ±52 KB — [log](../project-memory/changelog/2026-11-05-unggah-buku-besar-dan-sejarah-aplikasi.md))
 - `npm run dev` Mametlite layar kosong — CSP `script-src 'self'` memblokir preamble React inline Vite (build tak terdampak)
 - T18 kelas Tailwind tak dibuat · retensi tabel log lain (`verification_audit_logs`, `evidence_audit_logs`, `memory_audit_logs`)
 - Graf Home → peta sistem Mamet: **terdaftar sebagai Item 130** ([rancangan](./ROADMAP-GRAF-HOME-PETA-SISTEM.md)) ·
