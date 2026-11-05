@@ -148,6 +148,9 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
   hardening klien sejak 4.4.0. Build GitHub hijau, `latest.yml` cocok dengan aset; aplikasi terpasang Owner sudah
   diperbarui ke 4.4.1, termasuk di PC kedua (Windows 10) dengan crawler menyala di percobaan pertama
   ([log](../project-memory/changelog/2026-11-03-rilis-4.4.1.md)).
+- ⏳👤 **Rilis 4.4.2** (perintah Owner 6 Nov, bukan 5.0.0): konektor umum (Item 129 G1–G5, F1–F2, GH2–GH3) + K1 unggah
+  bertahap, hapus banyak, perbarui dokumen, OCR berhenti saat 402. Build lokal & suite 158/158 hijau; sisa: build
+  GitHub → Publish (Owner) → bukti `latest.yml` ([log](../project-memory/changelog/2026-11-06-rilis-4.4.2.md)).
 - ⏳💳👤 **Rilis garis dasar 5.0.0** — hanya bila K1–K7 semuanya ✅.
 
 ## Parkir (bukan utang — Owner boleh mengambil kapan saja)
