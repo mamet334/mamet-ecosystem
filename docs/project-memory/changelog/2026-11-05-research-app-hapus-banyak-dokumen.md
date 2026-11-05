@@ -40,4 +40,8 @@ sambungan di ResearchApp, dan 32 kelas tampilan dikompilasi Tailwind sungguhan. 
 ResearchApp dibunuh pemeriksaan teks sumber — bukti lebih lemah; perilaku dibuktikan live). `uji-ciri-tampilan` sempat
 merah (5 kelas `slate-*` baru) → diganti token tema. Suite **158/158**.
 
+Gerbang GitHub sempat merah sesudah push (`ee7552c2`, run 42057388216): satu pemeriksaan teks sumber memakai pola
+`\n`, sedangkan checkout GitHub ber-CRLF (J3c). Direproduksi pada salinan CRLF (gagal persis sama), diperbaiki dengan
+menyeragamkan akhir baris saat membaca; lulus di salinan CRLF dan di laptop.
+
 Belum: Mametlite tidak punya hapus banyak (daftarnya kecil di bilah sisi) — bila perlu, menyusul.

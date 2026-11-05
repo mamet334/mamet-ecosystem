@@ -108,8 +108,11 @@ cek(H.ringkasRuang([{ space_id: 's1' }, { space_id: 's1' }, { space_id: 's2' }, 
 
 // ── 3. sambungan di Research App ──────────────────────────────────────────────────────────────────
 console.log('\n-- 3. Research App --');
-const RA = readFileSync(path.join(AKAR, 'frontend/src/components/research/ResearchApp.jsx'), 'utf8');
-const BILAH = readFileSync(path.join(AKAR, 'frontend/src/components/research/BilahPilihDokumen.jsx'), 'utf8');
+// Akhir baris diseragamkan: checkout GitHub ber-CRLF (J3c) — pola `\n` di bawah gagal di CI walau lulus di laptop
+// (5 Nov, run 42057388216).
+const bacaLF = (p) => readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
+const RA = bacaLF(path.join(AKAR, 'frontend/src/components/research/ResearchApp.jsx'));
+const BILAH = bacaLF(path.join(AKAR, 'frontend/src/components/research/BilahPilihDokumen.jsx'));
 const muat = RA.slice(RA.indexOf('const loadDocuments'), RA.indexOf('useEffect(() => {\n        loadSpaces();'));
 cek(/const nomor = penjagaDaftar\.current\.mulai\(\);/.test(muat) && muat.indexOf('masihTerbaru(nomor)') > -1
   && muat.indexOf('masihTerbaru(nomor)') < muat.indexOf('setDocuments('), 'loadDocuments membuang jawaban usang SEBELUM mengisi daftar');
