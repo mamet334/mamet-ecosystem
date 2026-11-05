@@ -16,7 +16,7 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 |---|---|---|---|
 | K1 | RAG menemukan & menjawab benar | ⏳ lulus di korpus pecahan 5 Nov (pokok 22/22, BUKU-10 5/5) | 2 (unggah dokumen besar · 💳 buku utuh + uji penuh) |
 | K2 | RAG jujur saat gagal | ⏳ lulus di korpus pecahan 5 Nov (tidak_ada 8/8 JUJUR) | ikut K1 |
-| K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ (ulang sebelum rilis) | 1 (💳) |
+| K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ final 5 Nov (5/5 VERIFIED, 0 NIP ke model) | — |
 | K4 | Mametlite layak bagi orang awam | ✅ (T19, isolasi dua akun, CORE, undangan, ganti sandi — live) | — |
 | K5 | Keamanan | ✅ (OpenRouter diganti, Apify dicabut — 3 Nov) | — |
 | K6 | Data aman & bisa dipulihkan | ✅ 16 tabel (ulang sebelum rilis) | 1 (👤 cadangkan → uji pulih) |
@@ -56,7 +56,9 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 
 ### K3 — Data tabel ASN
 - ✅ Tanya-jawab live **5/5 VERIFIED**, NIP tidak ke model (Item 92).
-- ⏳ Ulang sekali sebelum rilis garis dasar.
+- ✅ **Diulang 5 Nov** (pertanyaan sama dengan 21 Sep, kunci dihitung dari DB): 5/5 VERIFIED & benar (total kini 634 —
+  Kelurahan Baturaja Lama masuk), 0 NIP karangan (190/190 ada di DB), 0 NIP di konteks model —
+  [log](../project-memory/changelog/2026-11-05-k3-uji-ulang-data-tabel.md).
 
 ### K4 — Mametlite layak bagi orang awam
 - ✅ RAG Mametlite live (U8a), tampilan HP (Item 125 M3).
