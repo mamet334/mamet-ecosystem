@@ -153,9 +153,9 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - Item 129 Tahap D (label Hypothesis & Engineer)
 - Item 92 koreksi pemetaan Data Tabel
 - ~~Item 88 BUKU-10~~ (ditutup 5 Nov lewat K1 langkah 1) · Item 90 U4, U6, U7 · Item 93 Tahap 3–4
-- Research App: daftar dokumen sesudah muat ulang bisa sesaat menampilkan dokumen SEMUA workspace (dua pemuatan
-  berlomba saat pilihan workspace belum pulih; jawaban tanpa saringan bisa datang belakangan). Data tidak tercampur —
-  diperiksa 5 Nov. Perbaikan: abaikan jawaban yang sudah usang. ([log](../project-memory/changelog/2026-11-05-k1-unggah-dokumen-besar-bertahap.md))
+- ✅ **Diambil Owner 5 Nov:** Research App — daftar yang berlomba sesudah muat ulang (jawaban usang kini dibuang) +
+  **pilih banyak dokumen lalu hapus** ([log](../project-memory/changelog/2026-11-05-research-app-hapus-banyak-dokumen.md)).
+  Mametlite belum punya hapus banyak.
 - Unggah bertahap: perkiraan biaya OCR di dialog belum memperhitungkan cache (biaya sebenarnya lebih kecil); halaman
   yang tetap gagal di-OCR tidak disimpan di cache → bila sesudahnya berhasil, teks berubah dan lanjutan ditolak 409
   (pesan menyuruh hapus & unggah ulang); cache OCR di server (pilihan B, lintas perangkat).

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../supabase';
 import { kernel } from '../../core/runtime/Kernel';
 import Ikon from '../Ikon';
@@ -14,6 +14,8 @@ import { ambilBerkasAktif, ambilPegawaiBerkas, simpanBerkasAsn, daftarBerkasAsn,
 import { perkiraanOcr, terapkanOcrHalaman, perkiraanMenitOcr, OCR_BANYAK_HALAMAN, OCR_SERENTAK } from '../../core/runtime/services/pdfOcrService.js';
 import { unggahBertahap } from '../../core/runtime/services/unggahBertahap.js';
 import { buatCacheOcr, sidikBerkas } from '../../core/runtime/services/cacheOcr.js';
+import { hapusDokumenBanyak, buatPenjagaTerbaru, ringkasRuang } from '../../core/runtime/services/hapusDokumen.js';
+import BilahPilihDokumen from './BilahPilihDokumen.jsx';
 import { adalahPdf, perkiraanPdfAsn, bacaBerkasPdfAsn } from '../../core/runtime/services/bacaPdfAsn.js';
 import { buatCadangan, periksaBerkasCadangan, namaBerkasCadangan } from '../../core/runtime/services/cadanganData.js';
 import { angka, ukuranMB } from '../../core/runtime/services/formatAngka.js';
@@ -35,6 +37,11 @@ export default function ResearchApp() {
     const [uploading, setUploading] = useState(false);
     const [statusUnggah, setStatusUnggah] = useState('');
     const [deletingId, setDeletingId] = useState(null);
+    // Pilih banyak dokumen untuk dihapus (5 Nov 2026, permintaan Owner).
+    const [pilihan, setPilihan] = useState(() => new Set());
+    const [statusHapusBanyak, setStatusHapusBanyak] = useState('');
+    // Hanya jawaban pemuatan daftar TERBARU yang dipakai (lihat buatPenjagaTerbaru).
+    const penjagaDaftar = useRef(buatPenjagaTerbaru());
     const [knowledgeSpaces, setKnowledgeSpaces] = useState([]);
     // Pratinjau data tabel Excel (Item 92 Tahap 1) — hanya di layar, belum disimpan.
     const [pratinjauTabel, setPratinjauTabel] = useState(null);
@@ -76,6 +83,7 @@ export default function ResearchApp() {
         const dari = tambah ? documents.length : 0;
         const sampai = tambah ? dari + DOKUMEN_PER_HALAMAN : Math.max(documents.length, DOKUMEN_PER_HALAMAN);
         if (tambah) setMemuatLagi(true); else setLoading(true);
+        const nomor = penjagaDaftar.current.mulai();
         try {
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) return;
@@ -94,13 +102,18 @@ export default function ResearchApp() {
                 .order('created_at', { ascending: false }).order('id', { ascending: true })
                 .range(dari, sampai - 1);
             if (error) throw error;
+            // Jawaban usang (pemuatan lain dimulai sesudahnya) dibuang: 5 Nov, sesudah muat ulang, daftar tanpa
+            // saringan workspace datang belakangan dan menimpa daftar yang benar — dengan hapus banyak itu berbahaya.
+            if (!penjagaDaftar.current.masihTerbaru(nomor)) return;
             setDocuments((lama) => (tambah ? [...lama, ...(data || [])] : (data || [])));
             setTotalDokumen(count ?? 0);
         } catch (err) {
             console.error('[ResearchApp] Gagal memuat dokumen:', err);
         } finally {
-            setLoading(false);
-            setMemuatLagi(false);
+            if (penjagaDaftar.current.masihTerbaru(nomor)) {
+                setLoading(false);
+                setMemuatLagi(false);
+            }
         }
     };
 
@@ -111,6 +124,7 @@ export default function ResearchApp() {
 
     useEffect(() => {
         setDocuments([]);
+        setPilihan(new Set()); // pilihan tak boleh terbawa ke workspace / pencarian lain
         loadDocuments();
     }, [selectedSpace, searchQuery]);
 
@@ -464,6 +478,45 @@ export default function ResearchApp() {
         }
     };
 
+    // Pilih banyak & hapus terpilih (5 Nov 2026, permintaan Owner). Hanya dokumen yang TAMPIL di daftar yang bisa
+    // terpilih; konfirmasi menyebut jumlah, contoh judul, dan asal workspace-nya.
+    const togglePilih = (id) => setPilihan((lama) => {
+        const baru = new Set(lama);
+        if (baru.has(id)) baru.delete(id); else baru.add(id);
+        return baru;
+    });
+    const pilihSemuaTampil = () => setPilihan((lama) =>
+        (documents.length > 0 && documents.every((d) => lama.has(d.id)) ? new Set() : new Set(documents.map((d) => d.id))));
+    const hapusTerpilih = async () => {
+        const target = documents.filter((d) => pilihan.has(d.id));
+        if (!target.length || statusHapusBanyak) return;
+        const contoh = target.slice(0, 10).map((d) => `- ${d.title}`).join('\n') + (target.length > 10 ? `\n… dan ${target.length - 10} lagi` : '');
+        const lanjut = window.confirm(
+            `Hapus ${target.length} dokumen beserta SEMUA potongannya?\n\n` +
+            `Dari workspace: ${ringkasRuang(target, knowledgeSpaces)}\n\n${contoh}\n\n` +
+            'Tidak bisa dibatalkan.'
+        );
+        if (!lanjut) return;
+        setStatusHapusBanyak(`Menghapus 0/${target.length}…`);
+        try {
+            const h = await hapusDokumenBanyak(supabase, target.map((d) => d.id), {
+                onKemajuan: ({ selesai, total }) => setStatusHapusBanyak(`Menghapus ${selesai}/${total}…`)
+            });
+            const catatan = [];
+            if (h.gagal) catatan.push(`Berhenti sesudah ${h.dihapus.length} dari ${target.length} dokumen terhapus: ${h.gagal.pesan}`);
+            if (h.tidakDitemukan.length) catatan.push(`${h.tidakDitemukan.length} dokumen sudah tidak ada di server (daftar basi) — dilewati.`);
+            if (catatan.length) alert(catatan.join('\n\n'));
+            console.log(`[ResearchApp] Hapus terpilih: ${h.dihapus.length} terhapus, ${h.tidakDitemukan.length} tak ditemukan${h.gagal ? ', berhenti karena galat' : ''}`);
+        } catch (err) {
+            console.error('[ResearchApp] Gagal menghapus terpilih:', err);
+            alert('Gagal menghapus dokumen terpilih: ' + (err.message || err));
+        } finally {
+            setStatusHapusBanyak('');
+            setPilihan(new Set());
+            loadDocuments();
+        }
+    };
+
     // Tampilkan jam juga: dua unggahan berjudul sama di hari yang sama
     // tidak bisa dibedakan bila hanya tanggal.
     const formatDate = (dateStr) => {
@@ -611,12 +664,28 @@ export default function ResearchApp() {
                 </div>
             ) : (
                 <div className="space-y-2">
+                    <BilahPilihDokumen
+                        jumlahTampil={documents.length}
+                        jumlahDipilih={documents.filter((d) => pilihan.has(d.id)).length}
+                        onPilihSemua={pilihSemuaTampil}
+                        onBatal={() => setPilihan(new Set())}
+                        onHapus={hapusTerpilih}
+                        status={statusHapusBanyak}
+                    />
                     {documents.map(doc => (
                         <div
                             key={doc.id}
-                            className="flex items-center justify-between bg-slate-900/50 border border-slate-800 rounded-lg p-4 hover:border-blue-500/30 transition-all"
+                            className={`flex items-center justify-between bg-slate-900/50 border rounded-lg p-4 hover:border-blue-500/30 transition-all ${pilihan.has(doc.id) ? 'border-blue-500/60' : 'border-slate-800'}`}
                         >
                             <div className="flex items-center gap-3">
+                                <input
+                                    type="checkbox"
+                                    checked={pilihan.has(doc.id)}
+                                    onChange={() => togglePilih(doc.id)}
+                                    disabled={!!statusHapusBanyak}
+                                    aria-label={`Pilih ${doc.title}`}
+                                    className="w-4 h-4 shrink-0 cursor-pointer accent-blue-500"
+                                />
                                 <Ikon nama="description" ukuran={20} className="text-blue-400 shrink-0" />
                                 <div>
                                     <p className="text-sm text-slate-200">{doc.title}</p>
