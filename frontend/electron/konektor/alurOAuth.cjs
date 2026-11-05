@@ -14,6 +14,8 @@
 const { auth, discoverOAuthServerInfo } = require('@modelcontextprotocol/sdk/client/auth.js');
 const { buatPenyediaOAuth, urlBolehDibuka } = require('./oauthPenyedia.cjs');
 const { mulaiPenerima } = require('./penerimaBalikan.cjs');
+const { loginPerangkat } = require('./alurPerangkat.cjs');
+const { buatFetchOAuthJujur } = require('./fetchOAuthJujur.cjs');
 
 const tolak = (alasan) => ({ ok: false, alasan });
 
@@ -21,12 +23,37 @@ const tolak = (alasan) => ({ ok: false, alasan });
  * @param {{daftar: object, brankas: object, bukaBrowser: (url: string) => Promise<void>|void, versi?: string,
  *   log?: Function, fetchFn?: Function, batasMs?: number}} opsi
  */
-function buatAlurOAuth({ daftar, brankas, bukaBrowser, versi = '0', log = () => {}, fetchFn = undefined, batasMs = undefined }) {
-  const sedang = new Map(); // id → janji: tombol ditekan dua kali tidak membuka dua login
+function buatAlurOAuth({ daftar, brankas, bukaBrowser, versi = '0', log = () => {}, fetchFn = undefined, batasMs = undefined, tambahLambatMs = undefined }) {
+  const sedang = new Map();    // id → janji: tombol ditekan dua kali tidak membuka dua login
+  const tertunda = new Map();  // id → { jenis: 'browser' | 'perangkat', kodePengguna?, alamat?, berlakuSampai? } (untuk layar)
+  const pembatal = new Map();  // id → fungsi pembatal login yang sedang berjalan (GH3)
+  // GH3: galat OAuth ber-status 200 (GitHub) dinormalkan supaya SDK membaca alasannya — lihat fetchOAuthJujur.cjs.
+  // `fetchFn` = jaringanKonektor (net.fetch) dari ipcUmum; fetch global hanya di uji Node tanpa Electron.
+  const fetchAuth = buatFetchOAuthJujur(fetchFn || globalThis.fetch);
 
   async function metadata(url) {
-    const info = await discoverOAuthServerInfo(url, fetchFn ? { fetchFn } : undefined);
+    const info = await discoverOAuthServerInfo(url, { fetchFn: fetchAuth });
     return info?.authorizationServerMetadata || null;
+  }
+
+  /** GH3 — login perangkat (device flow): kode ditampilkan di Mamet, disetujui di halaman penyedia, tanpa rahasia. */
+  async function hubungkanPerangkat(id, entri, meta) {
+    const klienId = entri.oauthKlienId;
+    buatPenyediaOAuth({ id, brankas, klienId }).penyedia.invalidateCredentials('tokens'); // login segar
+    const sinyal = { dibatalkan: false, saatBatal: null };
+    pembatal.set(id, () => { sinyal.dibatalkan = true; sinyal.saatBatal?.(); });
+    tertunda.set(id, { jenis: 'perangkat' });
+    try {
+      const tok = await loginPerangkat({
+        meta, klienId, fetchFn: fetchAuth, bukaBrowser, sinyal, ...(tambahLambatMs ? { tambahLambatMs } : {}),
+        onKode: (k) => tertunda.set(id, { jenis: 'perangkat', ...k }),
+      });
+      buatPenyediaOAuth({ id, brankas, klienId }).penyedia.saveTokens({ ...tok, ...(meta.issuer ? { issuer: meta.issuer } : {}) });
+      log(`[KONEKTOR-UMUM] ${id}: akun terhubung (login perangkat)`); // tanpa token/kode
+      return { ok: true, terhubung: true };
+    } catch (e) {
+      return tolak(e.message); // dinaikkan ke layar: alasan gagal login tampil di kartu konektor
+    }
   }
 
   async function hubungkanSekali(id) {
@@ -38,8 +65,9 @@ function buatAlurOAuth({ daftar, brankas, bukaBrowser, versi = '0', log = () => 
     let meta;
     try { meta = await metadata(url); } catch (e) { return tolak(`metadata OAuth tidak terbaca: ${e.message}`); }
     if (!meta?.authorization_endpoint || !meta?.token_endpoint) return tolak('server tidak mengumumkan metadata OAuth');
-    if (!(meta.code_challenge_methods_supported || []).includes('S256')) return tolak('server tidak mendukung PKCE S256 — tidak dihubungkan');
     if (!urlBolehDibuka(meta.authorization_endpoint)) return tolak('alamat login server bukan https');
+    if (entri.oauthAlur === 'perangkat') return hubungkanPerangkat(id, entri, meta);
+    if (!(meta.code_challenge_methods_supported || []).includes('S256')) return tolak('server tidak mendukung PKCE S256 — tidak dihubungkan');
 
     const klienId = entri.oauthKlienId || null; // GH2: klien terdaftar (mis. GitHub, tanpa DCR)
     const lama = buatPenyediaOAuth({ id, brankas, klienId });
@@ -62,13 +90,15 @@ function buatAlurOAuth({ daftar, brankas, bukaBrowser, versi = '0', log = () => 
       id, brankas, redirectUrl: penerima.url, mode: 'interaktif', bukaBrowser, versi, klienId,
       asalOtorisasi: new URL(meta.authorization_endpoint).origin,
     });
+    tertunda.set(id, { jenis: 'browser' });
+    pembatal.set(id, () => penerima.tutup()); // GH3: Batal menutup penerima → penantian berhenti
     try {
-      let r = await auth(p.penyedia, { serverUrl: url, ...(fetchFn ? { fetchFn } : {}) });
+      let r = await auth(p.penyedia, { serverUrl: url, fetchFn: fetchAuth });
       if (r === 'REDIRECT') {
         const b = await penerima.tunggu();
         if (b.galat) return tolak(`login dibatalkan di halaman penyedia (${b.galat})`);
         if (!b.state || b.state !== p.stateTerakhir()) return tolak('balikan login tidak cocok (state) — diabaikan');
-        r = await auth(p.penyedia, { serverUrl: url, authorizationCode: b.code, ...(fetchFn ? { fetchFn } : {}) });
+        r = await auth(p.penyedia, { serverUrl: url, authorizationCode: b.code, fetchFn: fetchAuth });
       }
       if (r !== 'AUTHORIZED' || !p.terhubung()) return tolak('login tidak selesai');
       log(`[KONEKTOR-UMUM] ${id}: akun terhubung (OAuth)`); // tanpa token
@@ -82,10 +112,21 @@ function buatAlurOAuth({ daftar, brankas, bukaBrowser, versi = '0', log = () => 
 
   function hubungkan(id) {
     if (sedang.has(id)) return sedang.get(id);
-    const j = hubungkanSekali(id).finally(() => sedang.delete(id));
+    const j = hubungkanSekali(id).finally(() => { sedang.delete(id); tertunda.delete(id); pembatal.delete(id); });
     sedang.set(id, j);
     return j;
   }
+
+  /** GH3: Owner membatalkan login yang sedang menunggu (browser maupun perangkat). */
+  function batalkan(id) {
+    const f = pembatal.get(id);
+    if (!f) return { ok: false, alasan: 'tidak ada login yang sedang menunggu' };
+    f();
+    return { ok: true };
+  }
+
+  /** Untuk layar: login yang sedang menunggu (jenis + kode perangkat bila ada). Tanpa token apa pun. */
+  const loginTertunda = (id) => tertunda.get(id) || null;
 
   async function putuskan(id) {
     const entri = daftar.ambil(id);
@@ -103,7 +144,7 @@ function buatAlurOAuth({ daftar, brankas, bukaBrowser, versi = '0', log = () => 
             token_type_hint: tok.refresh_token ? 'refresh_token' : 'access_token',
             ...(klien?.client_id ? { client_id: klien.client_id } : {}),
           });
-          const res = await (fetchFn || fetch)(rev, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: badan });
+          const res = await fetchAuth(rev, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: badan });
           dicabut = res.ok;
         }
       } catch (e) {
@@ -118,7 +159,7 @@ function buatAlurOAuth({ daftar, brankas, bukaBrowser, versi = '0', log = () => 
 
   const status = (id) => ({ terhubung: buatPenyediaOAuth({ id, brankas }).terhubung() });
 
-  return { hubungkan, putuskan, status };
+  return { hubungkan, putuskan, status, batalkan, loginTertunda };
 }
 
 module.exports = { buatAlurOAuth };

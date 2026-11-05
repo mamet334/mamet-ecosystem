@@ -15,12 +15,16 @@ const { semuaResep, FOLDER_BAWAAN } = require('./resep.cjs');
 const { buatSesiUmum } = require('./sesiUmum.cjs');
 const { buatGerbangUmum } = require('./gerbangUmum.cjs');
 const { buatAlurOAuth } = require('./alurOAuth.cjs');
+const { buatJaringanKonektor } = require('./jaringanKonektor.cjs');
 
 /**
  * @param {{ipcMain: object, dialog: object, shell: object, safeStorage: object, folderData: string,
  *   jendela: () => object, lingkungan: () => Record<string,string>, versi: string, log?: Function}} opsi
  */
-function daftarkanKonektorUmum({ ipcMain, dialog, shell, safeStorage, folderData, jendela, lingkungan, versi, log = () => {} }) {
+function daftarkanKonektorUmum({ ipcMain, dialog, shell, safeStorage, folderData, jendela, lingkungan, versi, log = () => {}, ambil = null }) {
+  // GH3: satu jalan keluar HTTP konektor = net.fetch (main.cjs menyuntikkan `ambil: net.fetch`); fetch global hanya
+  // di uji Node tanpa Electron. Lihat jaringanKonektor.cjs.
+  const jaringan = buatJaringanKonektor(ambil || globalThis.fetch);
   const folderResepOwner = path.join(folderData, 'konektor-resep');
   const daftar = buatDaftarServer({ berkas: path.join(folderData, 'konektor-server.json') });
   const brankas = buatBrankas({
@@ -31,11 +35,13 @@ function daftarkanKonektorUmum({ ipcMain, dialog, shell, safeStorage, folderData
       buka: (buf) => safeStorage.decryptString(buf),
     },
   });
-  const sesi = buatSesiUmum({ daftar, brankas, berkasSakelar: path.join(folderData, 'konektor-umum-sakelar.json'), lingkungan, versi, log });
+  const sesi = buatSesiUmum({ daftar, brankas, berkasSakelar: path.join(folderData, 'konektor-umum-sakelar.json'), lingkungan, versi, log, fetchJaringan: jaringan });
   const resep = () => semuaResep({ folderBawaan: FOLDER_BAWAAN, folderOwner: folderResepOwner });
 
   ipcMain.handle('konektor-umum:resep', () => resep());
-  ipcMain.handle('konektor-umum:status', () => sesi.status());
+  // GH3: login yang sedang menunggu (jenis + kode perangkat) ikut status, supaya kartu bisa menampilkan kodenya.
+  // `alur` dideklarasikan di bawah; aman karena saluran ini baru dipanggil layar sesudah pendaftaran selesai.
+  ipcMain.handle('konektor-umum:status', () => sesi.status().map((s) => (s.oauth ? { ...s, login: alur.loginTertunda(s.id) } : s)));
 
   ipcMain.handle('konektor-umum:pasang', async (_e, { resepId } = {}) => {
     const r = resep().resep.find((x) => x.id === resepId);
@@ -90,12 +96,13 @@ function daftarkanKonektorUmum({ ipcMain, dialog, shell, safeStorage, folderData
 
   // F2 — OAuth (Tahap F): "Hubungkan akun" membuka browser SISTEM (bukan jendela Mamet; URL sudah diperiksa penyedia:
   // https & asal server otorisasi). Sesudah terhubung, workspace yang dinyalakan Owner dinyalakan ulang.
-  const alur = buatAlurOAuth({ daftar, brankas, bukaBrowser: (url) => shell.openExternal(url), versi, log });
+  const alur = buatAlurOAuth({ daftar, brankas, bukaBrowser: (url) => shell.openExternal(url), versi, log, fetchFn: jaringan });
   ipcMain.handle('konektor-umum:hubungkan', async (_e, { id } = {}) => {
     const h = await alur.hubungkan(id);
     if (h.ok) await sesi.mulaiUlang(id);
     return h;
   });
+  ipcMain.handle('konektor-umum:batal-login', (_e, { id } = {}) => alur.batalkan(id));
   ipcMain.handle('konektor-umum:putuskan', async (_e, { id } = {}) => {
     const entri = daftar.ambil(id);
     if (!entri?.oauth) return { ok: false, alasan: `server ${id} tidak memakai login` };

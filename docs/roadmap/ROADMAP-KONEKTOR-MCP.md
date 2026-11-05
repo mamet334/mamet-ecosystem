@@ -526,6 +526,12 @@ K21–K23 disetujui Owner pada 3 Nov. Owner juga sudah mendaftar akun Notion unt
   - kebutuhan Copilot belum terjawab.
 
   Lanjut ke GH3.
-- **GH3 — Device flow** (hanya bila GH2 menunjukkan rahasia klien wajib).
+- ✅ **GH3 — Device flow** (5 Nov; mutasi 23/23, suite 155/155 —
+  [log](../project-memory/changelog/2026-11-05-konektor-mcp-gh3-login-perangkat.md)): login perangkat tanpa rahasia,
+  kode tampil di kartu, ada tombol Batal, dan galat 200 GitHub dibaca jujur.
+  - **Di aplikasi Owner:** GitHub jarak jauh terhubung, 28 alat baca menyala di Assistant, tanpa `.exe`. Server
+    jarak jauh bekerja untuk akun Owner; akun tanpa Copilot belum dibuktikan.
+  - **Temuan:** transport HTTP MCP dan OAuth sejak G1/F1 memakai `fetch()` Node lewat SDK. Kini semuanya lewat
+    `net.fetch` (`jaringanKonektor.cjs`).
 - **GH4 — Resep bawaan:** `github` beralih ke OAuth, dan `.exe` menjadi resep cadangan (K27). GitHub `.exe` di laptop
   Owner tetap berjalan sampai GH4.

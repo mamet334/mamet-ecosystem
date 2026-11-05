@@ -1247,6 +1247,9 @@ const konektorUmum = daftarkanKonektorUmum({
   lingkungan: () => lingkunganServer(),
   versi: app.getVersion(),
   log: (pesan) => console.log(pesan),
+  // GH3: lalu lintas HTTP konektor (MCP jarak jauh, OAuth) lewat jaringan Chromium, bukan fetch() Node — lihat
+  // konektor/jaringanKonektor.cjs & ambilWeb.cjs ("Black October").
+  ambil: net.fetch,
 });
 app.whenReady().then(() => pengelolaKonektor.pulihkan().then((h) => {
   if (h.length) console.log(`[KONEKTOR] dipulihkan: ${h.map((x) => `${x.workspace}::${x.konektor}=${x.ok ? 'nyala' : x.alasan}`).join(', ')}`);

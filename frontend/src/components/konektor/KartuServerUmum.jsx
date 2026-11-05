@@ -62,7 +62,35 @@ function IsiKredensial({ k, onSimpan }) {
  * Akun server OAuth (Tahap F2): login di BROWSER SISTEM — akun & halaman dipilih Owner di halaman penyedia. Mamet tidak
  * pernah melihat password maupun token; layar hanya tahu terhubung/belum.
  */
-function BagianAkun({ s, onHubungkan, onPutuskan, sedangLogin }) {
+function KodePerangkat({ login, onBatal }) {
+  const [disalin, setDisalin] = useState(false);
+  const salin = async () => {
+    try { await navigator.clipboard.writeText(login.kodePengguna); setDisalin(true); }
+    catch { setDisalin(false); /* papan klip ditolak — kode tetap terbaca di layar untuk diketik */ }
+  };
+  return (
+    <div className="basis-full rounded-lg border border-primary/50 bg-primary/10 p-3 flex flex-col gap-2">
+      <span className="text-body-sm text-on-surface">
+        Masukkan kode ini di <code className="break-all">{login.alamat}</code> (sudah dibuka di browser), lalu setujui Mamet Ecosystem:
+      </span>
+      <div className="flex items-center gap-3 flex-wrap">
+        <code className="text-headline-md font-semibold tracking-widest text-primary select-all">{login.kodePengguna}</code>
+        <button type="button" onClick={salin} className={TOMBOL_BIASA}>
+          <Ikon nama="content_copy" ukuran={18} />
+          {disalin ? 'Tersalin' : 'Salin kode'}
+        </button>
+        <button type="button" onClick={onBatal} className={TOMBOL_BIASA}>
+          <Ikon nama="cancel" ukuran={18} />
+          Batal
+        </button>
+      </div>
+      <span className="text-[12px] text-on-surface-variant">Mamet memeriksa ke penyedia beberapa detik sekali. Kode berlaku ±15 menit.</span>
+    </div>
+  );
+}
+
+function BagianAkun({ s, onHubungkan, onPutuskan, onBatal, sedangLogin }) {
+  const perangkat = s.login?.jenis === 'perangkat' && s.login.kodePengguna;
   return (
     <div className="mt-3 flex items-center gap-3 flex-wrap">
       <span className="text-body-sm text-on-surface">
@@ -78,9 +106,14 @@ function BagianAkun({ s, onHubungkan, onPutuskan, sedangLogin }) {
           Putuskan
         </button>
       )}
-      {sedangLogin && (
-        <span className="text-body-sm text-on-surface-variant basis-full">
+      {sedangLogin && perangkat && <KodePerangkat login={s.login} onBatal={onBatal} />}
+      {sedangLogin && !perangkat && (
+        <span className="text-body-sm text-on-surface-variant basis-full flex items-center gap-3 flex-wrap">
           Selesaikan login di browser, lalu kembali ke sini. Batas waktu 5 menit.
+          <button type="button" onClick={onBatal} className={TOMBOL_BIASA}>
+            <Ikon nama="cancel" ukuran={18} />
+            Batal
+          </button>
         </span>
       )}
     </div>
@@ -169,7 +202,7 @@ export default function KartuServerUmum({ s, api, onBerubah }) {
       )}
 
       {s.oauth && (
-        <BagianAkun s={s} sedangLogin={sedangLogin} onHubungkan={hubungkan} onPutuskan={putuskan} />
+        <BagianAkun s={s} sedangLogin={sedangLogin} onHubungkan={hubungkan} onPutuskan={putuskan} onBatal={() => api.batalLogin?.(s.id)} />
       )}
       {info && <p className="text-body-sm text-on-surface-variant mt-2">{info}</p>}
 

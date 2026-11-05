@@ -81,6 +81,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Tahap F2 (OAuth): login di browser sistem; Putuskan ditanyakan di dialog proses utama.
     hubungkan: (id) => ipcRenderer.invoke('konektor-umum:hubungkan', { id }),
     putuskan: (id) => ipcRenderer.invoke('konektor-umum:putuskan', { id }),
+    // GH3: batalkan login yang sedang menunggu (browser maupun kode perangkat).
+    batalLogin: (id) => ipcRenderer.invoke('konektor-umum:batal-login', { id }),
   },
 
   engineer: {

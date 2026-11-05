@@ -35,8 +35,13 @@ const cocokBalikan = (terdaftar, diminta) => {
 };
 
 function mulai(opsi = {}) {
-  const sakelar = { tolakLogin: false, pembaruanGagal: false, tanpaS256: false, asalLoginLain: false, gayaGithub: false, ...opsi };
-  const keadaan = { klien: new Map(), kode: new Map(), akses: new Set(), pembaru: new Map(), dicabut: [], otorisasi: [], panggilanMcp: 0, pendaftaran: 0 };
+  // GH3 (bentuk GitHub yang terukur 3 Nov): `webButuhRahasia` → penukaran kode login browser tanpa client_secret dijawab
+  // 200 + incorrect_client_credentials; `pembaruanButuhRahasia` → pembaruan token tanpa rahasia dijawab sama; login
+  // perangkat (device flow) di /device/code; `lambatSekali` → polling pertama dijawab slow_down.
+  const sakelar = { tolakLogin: false, pembaruanGagal: false, tanpaS256: false, asalLoginLain: false, gayaGithub: false,
+    webButuhRahasia: false, pembaruanButuhRahasia: false, lambatSekali: false, ...opsi };
+  const keadaan = { klien: new Map(), kode: new Map(), akses: new Set(), pembaru: new Map(), dicabut: [], otorisasi: [], panggilanMcp: 0, pendaftaran: 0,
+    perangkat: new Map(), pollPerangkat: 0 };
   if (sakelar.gayaGithub) keadaan.klien.set(KLIEN_TERDAFTAR, { redirect_uris: ['http://127.0.0.1/balikan'], terdaftar: true });
 
   const server = http.createServer(async (rq, rs) => {
@@ -52,7 +57,7 @@ function mulai(opsi = {}) {
         issuer: base,
         authorization_endpoint: sakelar.asalLoginLain ? 'https://login-palsu.contoh.invalid/authorize' : `${base}/authorize`,
         token_endpoint: `${base}/token`,
-        ...(sakelar.gayaGithub ? {} : { registration_endpoint: `${base}/register`, revocation_endpoint: `${base}/revoke` }),
+        ...(sakelar.gayaGithub ? { device_authorization_endpoint: `${base}/device/code` } : { registration_endpoint: `${base}/register`, revocation_endpoint: `${base}/revoke` }),
         response_types_supported: ['code'], grant_types_supported: ['authorization_code', 'refresh_token'],
         token_endpoint_auth_methods_supported: ['none'], code_challenge_methods_supported: sakelar.tanpaS256 ? ['plain'] : ['S256'],
       });
@@ -84,8 +89,38 @@ function mulai(opsi = {}) {
       rs.writeHead(302, { Location: tujuan.toString() });
       return rs.end();
     }
+    if (rq.method === 'POST' && u.pathname === '/device/code') {
+      const b = Object.fromEntries(new URLSearchParams(await bacaBadan(rq)));
+      if (!keadaan.klien.has(b.client_id)) return json(200, { error: 'unauthorized_client' }); // GitHub: galat ber-status 200
+      const device = `dev_${acak()}`;
+      const kodePengguna = `${acak(2).toUpperCase()}-${acak(2).toUpperCase()}`;
+      keadaan.perangkat.set(device, { status: 'menunggu', client_id: b.client_id, kodePengguna });
+      // `perangkatAsalLain`: server nakal menunjuk halaman perangkat ke situs lain (tak boleh dibuka otomatis).
+      const alamat = sakelar.perangkatAsalLain ? 'https://login-palsu.contoh.invalid/device' : `${base}/login/device`;
+      return json(200, { device_code: device, user_code: kodePengguna, verification_uri: alamat, expires_in: 900, interval: 1 });
+    }
     if (rq.method === 'POST' && u.pathname === '/token') {
       const b = Object.fromEntries(new URLSearchParams(await bacaBadan(rq)));
+      // GitHub menjawab galat penukaran token dengan status 200 (terukur 3 Nov).
+      const galat = (kode, desk) => json(sakelar.gayaGithub ? 200 : 400, { error: kode, ...(desk ? { error_description: desk } : {}) });
+      if (b.grant_type === 'urn:ietf:params:oauth:grant-type:device_code') {
+        keadaan.pollPerangkat++;
+        const d = keadaan.perangkat.get(b.device_code);
+        if (!d || d.client_id !== b.client_id) return galat('bad_verification_code');
+        if (sakelar.lambatSekali && keadaan.pollPerangkat === 1) return galat('slow_down');
+        if (d.status === 'menunggu') return galat('authorization_pending');
+        if (d.status === 'ditolak') return galat('access_denied');
+        keadaan.perangkat.delete(b.device_code);
+        const akses = `at_${acak()}`; const pembaru = `rt_${acak()}`;
+        keadaan.akses.add(akses); keadaan.pembaru.set(pembaru, b.client_id);
+        return json(200, { access_token: akses, token_type: 'bearer', expires_in: 28800, refresh_token: pembaru, scope: '' });
+      }
+      if (b.grant_type === 'authorization_code' && sakelar.webButuhRahasia && !b.client_secret) {
+        return galat('incorrect_client_credentials', 'The client_id and/or client_secret passed are incorrect.');
+      }
+      if (b.grant_type === 'refresh_token' && sakelar.pembaruanButuhRahasia && !b.client_secret) {
+        return galat('incorrect_client_credentials', 'The client_id and/or client_secret passed are incorrect.');
+      }
       const beri = (client_id) => {
         const akses = `at_${acak()}`;
         const pembaru = `rt_${acak()}`;
@@ -148,6 +183,11 @@ function mulai(opsi = {}) {
     ok({
       url: `${base}/mcp`, base, keadaan, sakelar,
       kedaluwarsakanAkses: () => keadaan.akses.clear(),
+      // Pengguna memasukkan kode di halaman perangkat lalu menyetujui / menolak (GH3).
+      jawabPerangkat: (kodePengguna, setuju = true) => {
+        for (const d of keadaan.perangkat.values()) if (d.kodePengguna === kodePengguna) { d.status = setuju ? 'disetujui' : 'ditolak'; return true; }
+        return false;
+      },
       tutup: () => new Promise((t) => { server.closeAllConnections?.(); server.close(() => t()); }),
     });
   }));

@@ -122,6 +122,13 @@ function validasiResep(mentah) {
     }
     resep.oauthKlienId = String(mentah.oauthKlienId);
   }
+  // GH3: `"oauthAlur": "perangkat"` — login perangkat (device flow, RFC 8628) untuk penyedia yang mewajibkan rahasia
+  // pada login browser (GitHub). Butuh client_id terdaftar; bawaan = login browser.
+  if (mentah.oauthAlur !== undefined) {
+    if (!['browser', 'perangkat'].includes(mentah.oauthAlur) || resep.oauth !== true) return tolak(`resep ${id}: "oauthAlur" harus "browser" atau "perangkat" (resep OAuth)`);
+    if (mentah.oauthAlur === 'perangkat' && !resep.oauthKlienId) return tolak(`resep ${id}: login perangkat butuh "oauthKlienId"`);
+    resep.oauthAlur = mentah.oauthAlur;
+  }
   if (mentah.petunjuk !== undefined) {
     if (!teks(mentah.petunjuk, BATAS.petunjuk)) return tolak(`resep ${id}: "petunjuk" terlalu panjang`);
     resep.petunjuk = mentah.petunjuk.trim();

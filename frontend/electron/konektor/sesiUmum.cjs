@@ -26,8 +26,8 @@ const tolak = (alasan) => ({ ok: false, alasan });
 const BATAS_DESKRIPSI_TINJAU = 4000; // deskripsi yang DITAMPILKAN untuk ditinjau (sidik tetap dari teks utuh)
 
 /** Klien MCP sungguhan dari rencana transport. Bisa diganti di uji. `authProvider` untuk server OAuth (Tahap F1). */
-async function klienSdk(rencana, { versi, msSambung, authProvider = null }) {
-  const transport = buatTransport(rencana, { authProvider });
+async function klienSdk(rencana, { versi, msSambung, authProvider = null, fetchJaringan = null }) {
+  const transport = buatTransport(rencana, { authProvider, fetchJaringan });
   const catatan = { stderr: '' };
   transport.stderr?.on('data', (b) => { catatan.stderr = (catatan.stderr + b.toString('utf8')).slice(-BATAS.stderrHuruf); });
   const client = new Client({ name: 'mamet-ecosystem', version: versi });
@@ -67,7 +67,7 @@ function ringkasParameter(skema) {
  * @param {{daftar: object, brankas: object, berkasSakelar: string, lingkungan: () => Record<string,string>,
  *   ada?: (p: string) => boolean, versi?: string, log?: Function, buatKlien?: Function, msSambung?: number}} opsi
  */
-function buatSesiUmum({ daftar, brankas, berkasSakelar, lingkungan, ada = fs.existsSync, versi = '0', log = () => {}, buatKlien = klienSdk, msSambung = BATAS.sambungMs }) {
+function buatSesiUmum({ daftar, brankas, berkasSakelar, lingkungan, ada = fs.existsSync, versi = '0', log = () => {}, buatKlien = klienSdk, msSambung = BATAS.sambungMs, fetchJaringan = null }) {
   const sesi = new Map();       // `${ws}::${id}` → { klien, status, alat (dipakai), perbandingan, sejak }
   const keadaan = new Map();    // `${ws}::${id}` → { status, alasan, perbandingan } untuk yang TIDAK menyala
   const snapshot = new Map();   // id → alat dari tinjauan terakhir (yang dilihat Owner)
@@ -103,7 +103,7 @@ function buatSesiUmum({ daftar, brankas, berkasSakelar, lingkungan, ada = fs.exi
       if (!oauth.terhubung()) return { ...tolak('akun belum dihubungkan — tekan "Hubungkan akun" di Settings'), kode: 'belum_terhubung' };
     }
     try {
-      const klien = await buatKlien(rencana, { versi, msSambung, authProvider: oauth?.penyedia || null });
+      const klien = await buatKlien(rencana, { versi, msSambung, authProvider: oauth?.penyedia || null, fetchJaringan });
       return { ok: true, klien, entri, rencana: ringkasRencana(rencana) };
     } catch (e) {
       // dinaikkan ke pemanggil: tampil sebagai status "gagal" + alasannya di Settings

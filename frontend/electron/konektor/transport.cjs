@@ -52,16 +52,20 @@ function rencanaTransport(entri, kredensial = {}, { lingkungan = {}, ada = () =>
  * Rencana → transport SDK. Pustaka dimuat saat dipakai (uji `rencanaTransport` tidak butuh SDK).
  * `authProvider` (Tahap F1) wajib untuk rencana `oauth` — tanpa itu server OAuth hanya akan menjawab 401.
  */
-function buatTransport(rencana, { authProvider = null } = {}) {
+function buatTransport(rencana, { authProvider = null, fetchJaringan = null } = {}) {
   if (rencana.jenis === 'stdio') {
     const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
     return new StdioClientTransport({ command: rencana.command, args: rencana.args, cwd: rencana.cwd, env: rencana.env, stderr: 'pipe' });
   }
   const { StreamableHTTPClientTransport } = require('@modelcontextprotocol/sdk/client/streamableHttp.js');
   if (rencana.oauth && !authProvider) throw new Error('server OAuth tanpa penyedia login');
+  // GH3: semua lalu lintas HTTP konektor lewat jaringanKonektor (net.fetch, tanpa cookie) — bukan fetch() Node bawaan
+  // SDK. Untuk OAuth, galat ber-status 200 (GitHub) dinormalkan juga saat token diperbarui (fetchOAuthJujur.cjs).
+  const ambil = fetchJaringan && rencana.oauth ? require('./fetchOAuthJujur.cjs').buatFetchOAuthJujur(fetchJaringan) : fetchJaringan;
   return new StreamableHTTPClientTransport(new URL(rencana.url), {
     requestInit: { headers: rencana.headers },
     ...(rencana.oauth ? { authProvider } : {}),
+    ...(ambil ? { fetch: ambil } : {}),
   });
 }
 
