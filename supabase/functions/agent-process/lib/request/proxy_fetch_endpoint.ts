@@ -1,19 +1,8 @@
 import { handleAuth } from './auth_middleware.ts';
 import { alamatBolehDiambil, ambilAman, AlamatDitolakError } from '../web/alamat_publik.ts';
 
-// Pagar alamat pindah ke modul bersama (30 Okt 2026) — dipakai juga `communicator` & `scraper`.
 export { alamatBolehDiambil };
 
-/**
- * PROXY FETCH — `{ action: 'proxy_fetch', url }`: server mengambilkan RSS/halaman untuk web Tier 3 di versi web
- * (`WebComparisonService._safeFetch`), karena peramban terhalang CORS.
- *
- * K5 (ADR-0022, 30 Okt 2026): dulu blok ini berada langsung di `index.ts` dan berjalan SEBELUM pemeriksaan token apa
- * pun — fungsi di-deploy `--no-verify-jwt`, jadi siapa pun di internet bisa memakai server sebagai proksi gratis
- * (terbukti live 29 Okt: tanpa token, `example.com` diambilkan). Pemanggil sahnya selalu membawa token pengguna
- * (`supabase.functions.invoke`), jadi kini token WAJIB — pola yang sama dengan `embed_endpoint.ts`.
- * Ditambah: hanya http/https ke alamat publik (bukan localhost, jaringan privat, atau metadata 169.254.x — SSRF).
- */
 
 const BATAS_MS = 12000;
 
@@ -46,7 +35,6 @@ export async function handleProxyFetchRequest(
 
   console.log(`[ProxyFetch] Server-side fetching external URL: ${targetUrl}`);
   try {
-    // ambilAman: tujuan setiap pengalihan ikut diperiksa (dulu `fetch` mengikutinya tanpa cek).
     const fetchRes = await ambilAman(targetUrl, {
       signal: AbortSignal.timeout(BATAS_MS),
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },

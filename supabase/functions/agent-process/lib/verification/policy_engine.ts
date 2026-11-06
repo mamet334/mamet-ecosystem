@@ -1,18 +1,4 @@
-/**
- * Policy Engine — Mamet AI Knowledge OS Phase 2 (Priority 12)
- * =============================================================
- * Satu tempat untuk SEMUA aturan kebijakan.
- * Tidak ada lagi if-else tersebar di index.ts.
- *
- * Filosofi: "Semua aturan berada di satu tempat."
- * Engineer tidak boleh menjawab tanpa evidence.
- * Assistant boleh pakai web. Engineer tidak boleh.
- * Semua keputusan ini ada di sini.
- */
 
-// ============================================================
-// TYPES
-// ============================================================
 
 import { MametMode, PolicyAction, PolicyContext, PolicyDecision } from './types.ts';
 
@@ -20,17 +6,12 @@ interface PolicyRule {
   id: string;
   description: string;
   action: PolicyAction;
-  evaluate: (ctx: PolicyContext) => PolicyDecision | null; // null = rule tidak berlaku
+  evaluate: (ctx: PolicyContext) => PolicyDecision | null;
 }
 
-// ============================================================
-// POLICY RULES REGISTRY
-// Semua aturan didefinisikan di sini — satu per satu, jelas.
-// ============================================================
 
 const POLICY_RULES: PolicyRule[] = [
 
-  // ── RULE P-001: Engineer WAJIB punya evidence sebelum LLM dipanggil ──
   {
     id: 'P-001',
     description: 'Engineer mode requires evidence before calling LLM',
@@ -50,7 +31,6 @@ const POLICY_RULES: PolicyRule[] = [
     }
   },
 
-  // ── RULE P-002: High risk request → block semua LLM calls ──
   {
     id: 'P-002',
     description: 'High risk score blocks LLM call',
@@ -69,7 +49,6 @@ const POLICY_RULES: PolicyRule[] = [
     }
   },
 
-  // ── RULE P-003: LITE tidak boleh write memory ──
   {
     id: 'P-003',
     description: 'LITE mode cannot write to memory',
@@ -88,7 +67,6 @@ const POLICY_RULES: PolicyRule[] = [
     }
   },
 
-  // ── RULE P-004: LITE tidak boleh read memory ──
   {
     id: 'P-004',
     description: 'LITE mode cannot read memory',
@@ -107,7 +85,6 @@ const POLICY_RULES: PolicyRule[] = [
     }
   },
 
-  // ── RULE P-005: Engineer tidak boleh pakai web search ──
   {
     id: 'P-005',
     description: 'Engineer mode cannot use web search (must use internal knowledge)',
@@ -126,7 +103,6 @@ const POLICY_RULES: PolicyRule[] = [
     }
   },
 
-  // ── RULE P-006: LITE tidak boleh pakai automation/cron ──
   {
     id: 'P-006',
     description: 'LITE mode cannot use automation tools',
@@ -145,7 +121,6 @@ const POLICY_RULES: PolicyRule[] = [
     }
   },
 
-  // ── RULE P-007: Engineer tidak boleh pakai desktop tools ──
   {
     id: 'P-007',
     description: 'Engineer mode cannot use desktop/OS tools',
@@ -164,7 +139,6 @@ const POLICY_RULES: PolicyRule[] = [
     }
   },
 
-  // ── RULE P-008: Engineer tidak boleh write knowledge tanpa explicit action ──
   {
     id: 'P-008',
     description: 'Engineer mode cannot write knowledge autonomously',
@@ -183,7 +157,6 @@ const POLICY_RULES: PolicyRule[] = [
     }
   },
 
-  // ── RULE P-009: Knowledge SUPERSEDED tidak boleh diakses Brain 1 ──
   {
     id: 'P-009',
     description: 'Superseded knowledge cannot be loaded into Brain 1',
@@ -202,7 +175,6 @@ const POLICY_RULES: PolicyRule[] = [
     }
   },
 
-  // ── RULE P-010: DRAFT/REVIEW tidak boleh masuk ke Brain 1 ──
   {
     id: 'P-010',
     description: 'Draft or review knowledge cannot be loaded into Brain',
@@ -210,7 +182,7 @@ const POLICY_RULES: PolicyRule[] = [
     evaluate: (ctx) => {
       if (ctx.govStatus === 'DRAFT' || ctx.govStatus === 'REVIEW') {
         return {
-          allow: true, // Tidak diblok tapi diberi constraint
+          allow: true,
           reason: `P-010: Knowledge dalam status ${ctx.govStatus} belum final. Gunakan dengan hati-hati.`,
           constraints: [`Knowledge status ${ctx.govStatus} — belum diverifikasi`],
           auditNote: `WARNING by P-010: ${ctx.govStatus} knowledge loaded`,
@@ -221,7 +193,6 @@ const POLICY_RULES: PolicyRule[] = [
     }
   },
 
-  // ── RULE P-011: Conflict aktif menurunkan kepercayaan jawaban ──
   {
     id: 'P-011',
     description: 'Active conflicts reduce answer confidence',
@@ -245,17 +216,8 @@ const POLICY_RULES: PolicyRule[] = [
 
 ];
 
-// ============================================================
-// POLICY ENGINE CLASS
-// ============================================================
 
 export class PolicyEngine {
-  /**
-   * Evaluasi semua aturan yang relevan untuk satu action.
-   * Returns: PolicyDecision terakhir yang paling restrictive.
-   *
-   * Prioritas: BLOCK > WARNING > INFO > (default ALLOW)
-   */
   static evaluate(action: PolicyAction, ctx: PolicyContext): PolicyDecision {
     const applicableRules = POLICY_RULES.filter(r => r.action === action);
 
@@ -270,7 +232,6 @@ export class PolicyEngine {
       auditNotes.push(decision.auditNote);
       constraints.push(...decision.constraints);
 
-      // BLOCK selalu menang
       if (decision.severity === 'BLOCK') {
         return {
           ...decision,
@@ -279,13 +240,11 @@ export class PolicyEngine {
         };
       }
 
-      // Simpan WARNING/INFO untuk digabung
       if (!finalDecision || decision.severity === 'WARNING') {
         finalDecision = decision;
       }
     }
 
-    // Jika ada decision non-BLOCK, return dengan constraints gabungan
     if (finalDecision) {
       return {
         ...finalDecision,
@@ -294,7 +253,6 @@ export class PolicyEngine {
       };
     }
 
-    // Default: ALLOW
     return {
       allow: true,
       reason: `Action '${action}' allowed by default (no applicable rules triggered).`,
@@ -304,10 +262,6 @@ export class PolicyEngine {
     };
   }
 
-  /**
-   * Evaluasi semua action sekaligus untuk satu request.
-   * Berguna di awal request untuk build full policy map.
-   */
   static evaluateAll(ctx: PolicyContext): Record<PolicyAction, PolicyDecision> {
     const actions: PolicyAction[] = [
       'CALL_LLM', 'WRITE_MEMORY', 'READ_MEMORY', 'USE_WEB_SEARCH',
@@ -323,10 +277,6 @@ export class PolicyEngine {
     return result;
   }
 
-  /**
-   * Bangun teks constraint untuk diinjeksikan ke system prompt LLM.
-   * Hanya constraints yang aktif (allow=true tapi punya constraints).
-   */
   static buildConstraintPrompt(decisions: Record<string, PolicyDecision>): string {
     const activeConstraints: string[] = [];
 

@@ -1,56 +1,21 @@
 import { FileIndexService } from './FileIndexService.js';
-import { SessionArtifact } from './engineer/SessionArtifact.js'; // [ADR-0017 Fase 1] Diekstrak dari file ini
-import { MAX_FILES_PER_PATCH, checkCapabilityAndDeclare } from './engineer/CapabilityGuard.js'; // [ADR-0017 Fase 2]
-import { extractExports, extractFunctionSignatures, findUsages, detectBreakingChanges, verifySemanticDiff } from './engineer/StaticCodeAnalyzer.js'; // [ADR-0017 Fase 3]
-import { savePendingPatch, clearPendingPatch, restorePersistedPatches, saveVerifiedApproach, saveRejectedApproach, loadVerifiedApproaches } from './engineer/EngineerMemoryStore.js'; // [ADR-0017 Fase 4]
-import { readFile, findFiles, extractFileNamesFromTask, findRelevantADR, tryReadFile } from './engineer/FileSystemGateway.js'; // [ADR-0017 Fase 4]
-import { emitReasoningReport, waitForUserConfirmation, handleUserConfirmation } from './engineer/ReasoningLock.js'; // [ADR-0017 Fase 5]
-import { handleApprovalResponse, requestApproval, emitRecommendation } from './engineer/ApprovalGateway.js'; // [ADR-0017 Fase 5]
-import { buildDynamicContext } from './engineer/TaskHandlers.js'; // [ADR-0017 Fase 6]
-import { generatePatch } from './engineer/PatchGenerator.js'; // [ADR-0017 Fase 7 + SPESIFIKASI-TEKNIS §2.1]
-import { executePatchApplication } from './engineer/PatchApplier.js'; // [ADR-0017 Fase 8]
+import { SessionArtifact } from './engineer/SessionArtifact.js';
+import { MAX_FILES_PER_PATCH, checkCapabilityAndDeclare } from './engineer/CapabilityGuard.js';
+import { extractExports, extractFunctionSignatures, findUsages, detectBreakingChanges, verifySemanticDiff } from './engineer/StaticCodeAnalyzer.js';
+import { savePendingPatch, clearPendingPatch, restorePersistedPatches, saveVerifiedApproach, saveRejectedApproach, loadVerifiedApproaches } from './engineer/EngineerMemoryStore.js';
+import { readFile, findFiles, extractFileNamesFromTask, findRelevantADR, tryReadFile } from './engineer/FileSystemGateway.js';
+import { emitReasoningReport, waitForUserConfirmation, handleUserConfirmation } from './engineer/ReasoningLock.js';
+import { handleApprovalResponse, requestApproval, emitRecommendation } from './engineer/ApprovalGateway.js';
+import { buildDynamicContext } from './engineer/TaskHandlers.js';
+import { generatePatch } from './engineer/PatchGenerator.js';
+import { executePatchApplication } from './engineer/PatchApplier.js';
 
-// Pemutus arus (TMN-0004). Angkanya dulu mati di tengah `_handlePatchTask`.
 export const BATAS_PATCH_PER_MENIT = 5;
 export const JENDELA_PEMUTUS_MS = 60_000;
 
-/**
- * Engineer.js — Engineering Brain Mamet AI (Real Analysis Engine + Core Protection)
- *
- * Peran:
- * - Membaca static knowledge (constitution, ADR)
- * - Menerima tugas via event bus
- * - Menganalisis, memberi rekomendasi
- * - Tidak pernah mengeksekusi perubahan tanpa persetujuan User
- * - TIDAK BOLEH mengubah file core (Kernel, EventBus, dll)
- *
- * Two-Brain Model:
- * - Brain 1: Static Engineering Knowledge (dimuat sekali)
- * - Brain 2: Dynamic Engineering Context (dibangun per tugas)
- *
- * Status: IMPLEMENTER — siap menghasilkan dan menerapkan patch
- * Upgrade: Real Analysis Engine (MAEF 4.5) + Core Protection Layer + Granular Approval
- *
- * Fixes Applied:
- * - ✅ Granular Approval support (approvedFiles flow)
- * - ✅ Confidence & Compliance injection ke UI
- * - ✅ Correct VerificationEngine method name (verifyPatchEngineering)
- * - ✅ [FIX #1] requiresApproval tidak lagi di-override oleh _emitRecommendation()
- * - ✅ [FIX #2] Timeout 10 menit di _waitForUserConfirmation() dan _requestApproval()
- * - ✅ [FIX #3] Session Artifact di-inject ke prompt LLM via _buildPatchPrompt()
- * - ✅ [FIX #4] Slice limit diselaraskan: max 10 file di _generatePatch() sesuai capability check
- * - ✅ [FIX #5] _buildDynamicContext() diperkaya dengan file list dan metadata task
- */
 
-// =============================================
-// CONSTANTS
-// =============================================
 
-// CONFIRMATION_TIMEOUT_MS [ADR-0017 Fase 5] diimpor dari ./engineer/ReasoningLock.js
-// APPROVAL_TIMEOUT_MS [ADR-0017 Fase 5] diimpor dari ./engineer/ApprovalGateway.js
-// MAX_FILES_PER_PATCH [ADR-0017 Fase 2] diimpor dari ./engineer/CapabilityGuard.js
 
-// [ADR-0017 Fase 1] Class SessionArtifact diekstrak ke ./engineer/SessionArtifact.js
 
 class Engineer {
   constructor(serviceManager) {
@@ -59,34 +24,26 @@ class Engineer {
     this.storageManager = serviceManager.get('StorageManager');
     this.process = serviceManager.get('ProcessManager');
     this.moduleLoader = serviceManager.get('ModuleLoader');
-    this.fileIndexService = null; // Akan diinisialisasi setelah StorageManager siap
-    // `repositoryReader` dihapus 2026-09-28 bersama jalur READ_REPO yang mati — satu-satunya pemakainya.
-    // `RepositoryReaderService` sendiri TETAP HIDUP dan dipakai FileExplorer.
+    this.fileIndexService = null;
 
-    // Two-Brain Model
     this.brain = {
       static: null,
       dynamic: null,
-      verifiedApproaches: [],  // Pendekatan yang terbukti berhasil (lintas sesi)
-      rejectedPatterns: []     // Pola yang pernah ditolak user
+      verifiedApproaches: [],
+      rejectedPatterns: []
     };
 
     this.capability = 'IMPLEMENTER';
     this.pendingPatches = new Map();
-    this.suspiciousAttempts = 0; // penjaga KEAMANAN (berkas inti), bukan pemutus arus
+    this.suspiciousAttempts = 0;
     this._apiCallCount = 0;
     this._lastApiReset = 0;
 
-    // Kenapa kapabilitas pernah diturunkan. Dua demosi berbeda memakai 'OBSERVER' yang sama,
-    // tetapi hanya SATU yang boleh pulih sendiri:
-    //   'laju'     — pemutus arus (>5 patch/menit). Pembatas LAJU: hukumannya harus ikut habis
-    //                saat jendela satu menitnya habis, kalau tidak ia jadi hukuman permanen.
-    //   'keamanan' — 3 percobaan menyentuh berkas inti. SENGAJA lengket; tak pulih otomatis.
     this._sebabDemosi = null;
     this._kapabilitasSebelumDemosi = null;
-    this.intentState = 'READY'; // READY | ANALYZING | ASK_CLARIFICATION | PROCEEDING
-    this.pendingConfirmations = new Map(); // Untuk Reasoning Lock
-    this.sessionArtifact = null; // FASE 4: Session Artifact — diinisialisasi di initialize()
+    this.intentState = 'READY';
+    this.pendingConfirmations = new Map();
+    this.sessionArtifact = null;
 
     this.metrics = {
       tasksAnalyzed: 0,
@@ -102,47 +59,31 @@ class Engineer {
   async initialize() {
     await this._loadStaticKnowledge();
 
-    // ✅ VERIFIED APPROACH MEMORY: Load pendekatan terbukti dari sesi sebelumnya ke Brain
     const { verifiedApproaches, rejectedPatterns } = await loadVerifiedApproaches({ storageManager: this.storageManager });
     this.brain.verifiedApproaches = verifiedApproaches;
     this.brain.rejectedPatterns = rejectedPatterns;
 
-    // ✅ Inisialisasi FileIndexService menggunakan static import di atas, dan tunggu selesai
     this.fileIndexService = new FileIndexService(this.storageManager);
     console.log('[Engineer] 🔨 Membangun FileIndexService...');
     await this.fileIndexService.buildIndex();
     console.log('[Engineer] ✅ FileIndexService siap digunakan');
 
-    // ✅ FASE 4: Inisialisasi Session Artifact (sekali, bukan per task)
     this._initializeSessionArtifact();
 
-    // ✅ PERSISTENT PENDING: Restore patch yang belum diapprove dari sesi sebelumnya
     await restorePersistedPatches({ storageManager: this.storageManager, eventBus: this.eventBus });
 
-    this._registerListeners(); // Pastikan terjadi SETELAH indeks siap!
+    this._registerListeners();
     console.log(`[Engineer] Initialized as ${this.capability}`);
     this.eventBus.emit('Engineer:Ready', { capability: this.capability });
   }
 
-  // =============================================
-  // FASE 4: SESSION ARTIFACT
-  // =============================================
 
-  /**
-   * Menginisialisasi Session Artifact untuk melacak konteks sesi Engineer.
-   * Dipanggil sekali saat initialize(), bukan per task.
-   */
   _initializeSessionArtifact() {
     const sessionId = `ENG-SESSION-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
     this.sessionArtifact = new SessionArtifact(sessionId);
     console.log(`[Engineer] 📦 Session Artifact initialized: ${sessionId}`);
   }
 
-  /**
-   * Memperbarui Session Artifact berdasarkan action yang terjadi.
-   * @param {string} action - Tipe action
-   * @param {Object} data - Data terkait action
-   */
   _updateArtifact(action, data = {}) {
     if (!this.sessionArtifact) {
       console.warn('[Engineer] ⚠️ Session Artifact belum diinisialisasi');
@@ -220,7 +161,6 @@ class Engineer {
         break;
 
       case 'COMMAND_EXECUTED':
-        // Audit trail: catat setiap terminal command [MAMET_CMD:]
         this.sessionArtifact.addCommand(
           data.command || 'unknown',
           data.status  || 'unknown',
@@ -238,15 +178,10 @@ class Engineer {
     }
   }
 
-/**
-   * [FIX #3] Menghasilkan string konteks Session Artifact untuk di-inject ke prompt LLM.
-   * @returns {string} Konteks terformat, atau string kosong jika artifact belum ada
-   */
   _injectArtifactIntoPrompt() {
     if (!this.sessionArtifact) {
       return '';
     }
-    // Hanya inject jika ada aktivitas sebelumnya yang relevan
     const summary = this.sessionArtifact.getSummary();
     if (summary.taskCount === 0 && summary.decisionsCount === 0) {
       return '';
@@ -254,13 +189,6 @@ class Engineer {
     return this.sessionArtifact.toPromptContext();
   }
 
-  /**
-   * [FASE 1] Memfinalisasi sesi Engineering: memanggil MemoryGovernorService
-   * untuk memverifikasi ringkasan memori terhadap raw content (golden source).
-   * Dipanggil di akhir _executePatchApplication() ketika patch berhasil/selesai.
-   * @param {Object} patch - Patch yang baru saja diterapkan
-   * @returns {Promise<Object|null>} hasil verifikasi, atau null jika governor tidak tersedia
-   */
   async _finalizeSession(patch = null) {
     try {
       const governor = this.serviceManager.has('MemoryGovernorService')
@@ -272,26 +200,7 @@ class Engineer {
         return null;
       }
 
-      // RINGKASAN SESI TIDAK LAGI DITULIS KE MEMORI PENGGUNA (keputusan Owner, 2026-10-01).
-      //
-      // Dulu di sini `memoryService.storeMemory("Engineering session ENG-SESSION-…")` dipanggil
-      // otomatis tiap sesi. Owner melihatnya muncul di panel Memory Context dan bertanya apakah itu
-      // wajar. Diukur: 6 dari 18 memori — sepertiga daftar pribadinya — lahir dari mesin dalam satu
-      // hari, sementara 12 memori Owner yang sungguhan terkumpul sejak 23 Juni.
-      //
-      // Tiga alasan ia dibuang, bukan dipindah:
-      //   1. TIDAK ADA YANG MEMBACANYA. `engineer_session` hanya muncul di tempat penulisannya dan
-      //      dua baris komentar — tak satu pun kode mencarinya kembali, di klien maupun server.
-      //   2. Isinya nomor mesin. Jenis memori yang dikenali server adalah IDENTITY/LOCATION/JOB/
-      //      PREFERENCE/PROJECT — fakta pribadi Owner. Nomor sesi benda asing di sana.
-      //   3. Kontrak Engineer sendiri berbunyi "Tidak boleh menulis memory otomatis".
-      //
-      // Rumah yang benar sudah ada dan sudah tersambung ke tiap kiriman: `TEMUAN-ENGINEER.md`
-      // (IngatanTemuan.js) untuk temuan, Brain 1 untuk Lesson/RootCause, dan `git log` untuk
-      // "apa yang berubah" — yang selalu benar dan kini bisa dijalankan Engineer tanpa izin.
-      // Memindahkan nomor sesi ke rak yang lebih rapi tetap memindahkan sampah.
 
-      // Verifikasi file yang dimodifikasi terhadap raw content
       const result = await governor.verifyEngineeringSession(this.sessionArtifact);
       console.log('[Engineer] Sesi Engineering difinalisasi:', result);
       return result;
@@ -300,27 +209,11 @@ class Engineer {
       return null;
     }
   }
-  // [ADR-0017 Fase 4] Pending Patch Persistence & Verified/Rejected Approach Memory
-  // diekstrak ke ./engineer/EngineerMemoryStore.js
 
-  // [ADR-0017 Fase 2] _checkCapabilityAndDeclare, _isImmutableFile, _isProtectedFile
-  // diekstrak ke ./engineer/CapabilityGuard.js (checkCapabilityAndDeclare, isImmutableFile, isProtectedFile)
 
-  // =============================================
-  // STATIC KNOWLEDGE (Brain 1)
-  // =============================================
 
   async _loadStaticKnowledge() {
     try {
-      // [FIX 2026-09-09] Daftar sebelumnya punya 4 path yang tidak pernah ada
-      // ('MAEF_v3.0.md', 'Mamet_AI_Constitution_v2.0.md', 'vision.md',
-      // 'master-architecture.md' — sisa skema penamaan lama, gagal senyap
-      // lewat try/catch di bawah, sia-sia dibaca tiap boot) dan 'init.md'/
-      // 'agent.md' salah case/nama (file asli: INIT.md, AGENTS.md — AGENTS.md
-      // sudah ada di daftar, 'agent.md' duplikat yang salah dihapus).
-      // Juga MENAMBAHKAN 24-27 yang sebelumnya tidak pernah dimuat ke
-      // brain.static — termasuk 24_ANTI_HALLUCINATION_PROTOCOL.md, dokumen
-      // paling penting secara operasional dari seluruh constitution/.
       const constitutionPaths = [
         'INIT.md',
         'AGENTS.md',
@@ -356,27 +249,6 @@ class Engineer {
         'constitution/README.md'
       ];
 
-      // ── DIUBAH 5 Oktober 2026 — dua cacat yang saling menyembunyikan ────────────────────
-      //
-      // 1. PEMBOROSAN. Baris lama membaca ke-33 berkas di atas (168.299 huruf ≈ 43.942 token)
-      //    ke `brain.static.raw` TIAP BOOT. Diperiksa di seluruh repo: `raw` punya NOL pemakai.
-      //    Yang mengalir hanya `loadedFiles.length`, dan angka itu pun berhenti di
-      //    `brain.dynamic` yang cuma ditugaskan dan tak pernah dibaca.
-      //
-      // 2. DAFTAR YANG MELENCENG. `constitutionPaths` di atas dipaku, dan sudah tidak cocok
-      //    dengan foldernya: `constitution/28_PROSEDUR_KERJA_ENGINEER.md` ADA di disk tetapi
-      //    TIDAK di daftar — justru berkas yang mengatur cara Engineer bekerja. Tak ada yang
-      //    menyadarinya berbulan-bulan karena isinya toh dibuang: cacat kedua bersembunyi di
-      //    balik yang pertama.
-      //
-      // Keduanya ditutup sekaligus dengan MEMINDAI folder di proses utama. `constitutionPaths`
-      // di atas SENGAJA dibiarkan sebagai pembanding — ia dipakai hanya bila pemindaian gagal
-      // (mis. versi Electron lama tanpa kanal ini), supaya perubahan ini tidak bisa membuat
-      // Engineer kehilangan apa yang sudah ia punya.
-      //
-      // Isinya TIDAK hilang, justru sebaliknya: kini ia benar-benar sampai ke model sebagai
-      // INDEKS di sisipan (`catatanKonstitusi`), dan dibaca saat perlu dengan
-      // `git show HEAD:<alamat>` yang sudah jalan tanpa dialog izin sejak 4.2.5.
       const terpindai = await (window?.electronAPI?.engineer?.indeksKonstitusi?.() ?? Promise.resolve([]))
         .catch(() => []);
       const daftar = Array.isArray(terpindai) && terpindai.length
@@ -398,12 +270,8 @@ class Engineer {
     }
   }
 
-  // =============================================
-  // EVENT LISTENERS
-  // =============================================
 
   _registerListeners() {
-    // `Engineer:AnalyzeTask` & `Engineer:ReviewChanges` dihapus 2026-09-29 — lihat catatan di akhir berkas.
     this.eventBus.on('Engineer:GeneratePatch', (wrappedPayload) => {
       const task = wrappedPayload?.data || wrappedPayload;
       console.log('[Engineer] 📨 Received GeneratePatch event:', task);
@@ -417,14 +285,11 @@ class Engineer {
       handleApprovalResponse(response, { pendingPatches: this.pendingPatches, storageManager: this.storageManager });
     });
 
-    // FASE 3: Reasoning Lock listener
     this.eventBus.on('Engineer:UserConfirmation', (wrappedPayload) => {
       const response = wrappedPayload?.data || wrappedPayload;
       handleUserConfirmation(response, { pendingConfirmations: this.pendingConfirmations });
     });
 
-    // (listener Engineer:ReadRepo dihapus 2026-09-28 — tidak ada pemancarnya)
-    // AUDIT TRAIL: terminal command dijalankan via [MAMET_CMD:] di ConversationEngine
     this.eventBus.on('Engineer:CommandExecuted', (wrappedPayload) => {
       const data = wrappedPayload?.data || wrappedPayload;
       console.log(`[Engineer] 📟 Command audit: [${(data?.status || '?').toUpperCase()}] $ ${data?.command || 'unknown'}`);
@@ -432,26 +297,9 @@ class Engineer {
     });
   }
 
-  // [ADR-0017 Fase 5] _emitReasoningReport, _waitForUserConfirmation, _handleUserConfirmation
-  // diekstrak ke ./engineer/ReasoningLock.js
-  // =============================================
-  // FASE 1: INTENT DETECTION & KLARIFIKASI
-  // =============================================
 
-  /**
-   * Mendeteksi intent user berdasarkan keyword pada task title + description.
-   * @param {Object} task - Task object dengan title & description
-   * @returns {string} 'ANALYSIS' | 'MODIFY_CODE' | 'CLARIFICATION' | 'UNKNOWN'
-   */
-  // [ADR-0017 Fase 2] _detectIntent diekstrak ke ./engineer/IntentClassifier.js (detectIntent)
 
-  // =============================================
-  // DYNAMIC CONTEXT (Brain 2) & TASK HANDLING
-  // =============================================
 
-  // [ADR-0017 Fase 6] _buildDynamicContext diekstrak ke ./engineer/TaskHandlers.js. Dua tetangganya
-  // di sana sudah tidak ada: keluarga READ_REPO dihapus 2026-09-28, penangan ANALYSIS & REVIEW
-  // dihapus 2026-09-29 — alasan lengkap keduanya di akhir berkas ini.
 
   async _buildDynamicContext(task) {
     return buildDynamicContext(task, {
@@ -461,42 +309,16 @@ class Engineer {
     });
   }
 
-  // `_buildDynamicContext` di atas TETAP HIDUP: dipakai jalur MODIFY_CODE (lihat _processTask).
 
-  // =============================================
-  // READ REPO — Membaca file dari repository
-  // =============================================
 
-  // JALUR READ_REPO DIHAPUS (2026-09-28). _handleReadRepoTask, _handleReadFiles, _handleListDirectory,
-  // _handleSearchFiles, dan _taskHandlerDeps mati sejak arsitektur lama: satu-satunya tugas yang pernah
-  // masuk datang dari tombol "Apply Patch" (ConversationEngine.jsx), dan tugas itu selalu membawa
-  // `dariTombolApply: true` sehingga intent dipaksa MODIFY_CODE — `detectIntent()` tidak pernah dipanggil,
-  // jadi cabang READ_REPO tak terjangkau. Pintu satunya, `Engineer:ReadRepo`, hanya punya pendengar:
-  // tidak ada satu pun pemancar di seluruh repo (diperiksa 28 Sep 2026).
-  //
-  // Kemampuan membacanya sendiri TIDAK hilang — dan tidak pernah lewat sini. Yang dipakai Engineer:
-  // `[MAMET_CMD: git grep -n -B2 -A4 …]` dan `git blame -L` (constitution/28 §3a). FileExplorer tetap
-  // memakai `RepositoryReaderService` secara langsung.
 
   async _handlePatchTask(task) {
-    // =============================================
-    // PEMUTUS ARUS: Mencegah saldo OpenRouter habis akibat loop AI
-    //
-    // TMN-0004: pencacahnya adalah pembatas LAJU — jendelanya mereset tiap menit. Hukumannya
-    // dulu TIDAK: sekali turun ke OBSERVER, satu-satunya jalan pulih adalah `upgradeCapability()`
-    // yang tak punya satu pun pemanggil, jadi Engineer berhenti menambal sampai aplikasi
-    // ditutup. Dan senyap — hanya console.warn, tanpa satu pun emit, sehingga pesan yang Owner
-    // lihat sesudahnya ("belum memiliki kapabilitas IMPLEMENTER") benar tetapi tak menjelaskan
-    // sebabnya. Sekarang hukumannya ikut habis bersama jendelanya, dan keduanya bersuara.
-    // =============================================
     this._apiCallCount++;
 
     const now = Date.now();
     if (now - this._lastApiReset > JENDELA_PEMUTUS_MS) {
       this._apiCallCount = 1;
       this._lastApiReset = now;
-      // Jendelanya habis, jadi hukumannya juga habis — tetapi HANYA bila yang menurunkan
-      // kapabilitas memang pemutus arus ini. Demosi keamanan tidak disentuh (lihat _sebabDemosi).
       this._pulihkanDariPemutusArus();
     }
 
@@ -515,16 +337,7 @@ class Engineer {
       return;
     }
 
-    // === FASE 1: INTENT DETECTION ===
     this.intentState = 'ANALYZING';
-    // Klik "Apply Patch" = niat MENGUBAH yang eksplisit dari Owner (UsulanPatch.js). Tebakan kata kunci dulu
-    // mengubahnya jadi CLARIFICATION untuk "kerjakan TUGAS-01…" (live T10, 2026-09-22).
-    // Satu-satunya pembuat tugas adalah tombol "Apply Patch" (UsulanPatch.js), dan ia SELALU menyetel
-    // `dariTombolApply: true`. Dulu tugas tanpa penanda itu ditebak `detectIntent()` lalu dialihkan ke
-    // cabang ANALYSIS/CLARIFICATION — keduanya tak pernah tercapai, dan penangannya sudah dihapus
-    // 2026-09-29. Menebak diam-diam digantikan penolakan yang BERSUARA: bila suatu saat ada pemancar
-    // tugas baru yang lupa menyetel penandanya, ia berhenti di sini dengan sebab yang jelas, bukan
-    // diperlakukan sebagai permintaan mengubah kode.
     if (!task?.dariTombolApply) {
       console.warn(`[Engineer] 🚫 Tugas tanpa dariTombolApply ditolak (task: ${task?.title || task?.id})`);
       this._emitRecommendation({
@@ -538,13 +351,11 @@ class Engineer {
     const intent = 'MODIFY_CODE';
     console.log(`[Engineer] 🎯 Intent: ${intent} (task: ${task.title || task.id})`);
 
-    // Jika sampai sini, intent pasti MODIFY_CODE
     this.intentState = 'PROCEEDING';
     this.metrics.patchesGenerated++;
     console.log(`[Engineer] 🔨 Proceeding with patch generation for: ${task.title || task.id}`);
     this.brain.dynamic = await this._buildDynamicContext(task);
 
-    // === FASE 2: CAPABILITY GUARD ===
     let modelName = 'unknown';
     try {
       const brainService = this.serviceManager.get('BrainService');
@@ -581,7 +392,6 @@ class Engineer {
 
     const analysis = await this._analyze(task);
 
-    // === FASE 3: REASONING LOCK ===
     const reasoningReport = emitReasoningReport(task, analysis, {
       intent: 'MODIFY_CODE',
       capabilityCheck,
@@ -593,14 +403,12 @@ class Engineer {
       extractFileNamesFromTask
     });
 
-    // FASE 4: Update Session Artifact — Reasoning
     this._updateArtifact('REASONING', {
       taskId: task.id,
       report: reasoningReport,
       summary: reasoningReport.summary
     });
 
-    // Tunggu konfirmasi user (Reasoning Lock)
     const userConfirmed = await waitForUserConfirmation(reasoningReport, { pendingConfirmations: this.pendingConfirmations, eventBus: this.eventBus });
 
     if (!userConfirmed) {
@@ -619,7 +427,6 @@ class Engineer {
     console.log(`[Engineer] ✅ User confirmed, proceeding to generate patch for: ${task.title || task.id}`);
     const patch = await this._generatePatch(task);
 
-    // FASE 4: Update Session Artifact — Patch Generated
     this._updateArtifact('PATCH_GENERATED', {
       taskId: task.id,
       files: patch.files?.map(f => f.path) || []
@@ -634,9 +441,6 @@ class Engineer {
               acc[f.path] = f.newContent;
               return acc;
             }, {})),
-            // Isi ASLI ikut dikirim supaya pemeriksa pola berbahaya bisa membandingkan PENAMBAHAN,
-            // bukan sekadar keberadaan. Tanpa ini, berkas yang menyebut `eval(` di komentar atau di
-            // pemeriksanya sendiri tidak akan pernah bisa di-patch (live 24 September: engineer.js).
             originalText: JSON.stringify(patch.files.reduce((acc, f) => {
               acc[f.path] = f.originalContent || '';
               return acc;
@@ -651,7 +455,6 @@ class Engineer {
             criticalCount: verificationResult.failures.filter(f => f.severity === 'CRITICAL').length
           };
 
-          // FASE 4: Update Session Artifact — Verification
           this._updateArtifact('VERIFICATION', {
             taskId: task.id,
             passed: patch.verification.passed,
@@ -668,10 +471,6 @@ class Engineer {
               taskId: task.id,
               patch,
               verification: patch.verification,
-              // MASALAHNYA DISEBUT SATU PER SATU, bukan cuma dihitung. Pesan "2 masalah kritis" tanpa
-              // rinciannya memaksa Owner menebak atau membuka Console — live 24 September, putaran kelima
-              // tugas yang sama. Ini kelas kesalahan yang sama dengan "Patch tidak dibuat" tanpa sebab:
-              // kegagalan yang tidak menyebut namanya sendiri membuat Owner buntu.
               message: [
                 `Patch tidak lolos verifikasi: ${patch.verification.criticalCount} masalah kritis`
                   + ` dari ${patch.verification.issues?.length || 0} temuan (skor ${patch.verification.score}).`,
@@ -694,11 +493,6 @@ class Engineer {
     }
 
     if (patch.ready) {
-      // ===================================================
-      // [C] BREAKING CHANGE DETECTOR
-      // Cek export yang hilang & masih dipakai file lain.
-      // Non-blocking: warning ditampilkan tapi tidak menghentikan proses.
-      // ===================================================
       try {
         console.log('[Engineer] 🔍 Menjalankan Breaking Change Detector...');
         const bcWarnings = await detectBreakingChanges(patch, { fileIndexService: this.fileIndexService, storageManager: this.storageManager });
@@ -706,7 +500,6 @@ class Engineer {
         const medSeverity    = bcWarnings.filter(w => w.severity === 'MEDIUM');
 
         if (highSeverity.length > 0) {
-          // Simpan di patch agar tampil di approval dialog
           patch.breakingWarnings = highSeverity;
 
           const lines = highSeverity.map(w =>
@@ -759,26 +552,16 @@ class Engineer {
       });
 
       if (approvalResult.approved) {
-        // Hasilnya DIPAKAI, tidak dibuang. Live 1 Oktober: Tahap 6 memulihkan berkas karena uji gagal,
-        // tetapi jalur ini tidak tahu dan tetap mengumumkan "Patch Berhasil Diterapkan!" — Owner melihat
-        // DUA pesan yang bertentangan dalam satu percakapan.
         const hasilTerap = await this._executePatchApplication(patch, approvalResult.approvedFiles);
         const dipulihkan = !!hasilTerap?.verifikasi?.dipulihkan;
         this.metrics.patchesApproved++;
 
-        // FASE 4: Update Session Artifact — Approved
         this._updateArtifact('APPROVED', {
           taskId: task.id,
           files: approvalResult.approvedFiles
         });
 
-        // ===================================================
-        // [D] SEMANTIC DIFF VERIFICATION (post-apply)
-        // Baca ulang file yang baru ditulis, verifikasi strukturnya.
-        // ===================================================
         try {
-          // Dilewati bila Tahap 6 sudah mengembalikan berkasnya: yang ada di disk kini isi SEBELUM
-          // patch, jadi memeriksanya akan melaporkan "perbedaan" terhadap patch yang sengaja dibatalkan.
           if (dipulihkan) throw { dilewati: true };
           console.log('[Engineer] 🔬 Menjalankan Semantic Diff Verification...');
           const semanticIssues = await verifySemanticDiff(patch, { storageManager: this.storageManager });
@@ -806,9 +589,6 @@ class Engineer {
           else console.warn('[Engineer] Semantic diff verification error (non-blocking):', sdErr.message);
         }
 
-        // Berkas yang sudah DIKEMBALIKAN Tahap 6 tidak diumumkan sebagai berhasil. Laporan yang benar
-        // sudah dikirim lewat `Engineer:PatchApplied` ("Patch dibatalkan sendiri" + daftar uji yang
-        // gagal). Dua pesan yang bertentangan lebih buruk daripada satu pesan yang kurang.
         if (!dipulihkan) {
           this._emitRecommendation({
             type: 'PATCH_APPLIED',
@@ -820,20 +600,17 @@ class Engineer {
           });
         }
 
-        // 🧠 VERIFIED APPROACH MEMORY: simpan pendekatan yang berhasil
-        saveVerifiedApproach(task, patch, { storageManager: this.storageManager }); // fire-and-forget
+        saveVerifiedApproach(task, patch, { storageManager: this.storageManager });
 
       } else {
         this.metrics.patchesRejected++;
 
-        // FASE 4: Update Session Artifact — Rejected
         this._updateArtifact('REJECTED', {
           taskId: task.id,
           reason: 'User menolak patch'
         });
 
-        // 🧠 VERIFIED APPROACH MEMORY: simpan pola yang ditolak
-        saveRejectedApproach(task, 'User menolak patch', { storageManager: this.storageManager }); // fire-and-forget
+        saveRejectedApproach(task, 'User menolak patch', { storageManager: this.storageManager });
 
         this._emitRecommendation({
           type: 'PATCH_REJECTED',
@@ -846,7 +623,6 @@ class Engineer {
       }
     } else {
       if (!patch.verification) {
-        // T10 (2026-09-22): dulu tanpa pesan — Owner tak tahu patch gagal dibuat. Alasan dari model/pembuat patch disebut.
         this._emitRecommendation({
           type: 'PATCH_FAILED',
           taskId: task.id,
@@ -859,19 +635,9 @@ class Engineer {
     }
   }
 
-  // =============================================
-  // FASE 3: BREAKING CHANGE DETECTOR
-  // Sebelum patch apply: cek apakah ada export yang hilang/berubah
-  // yang masih dipakai oleh file lain di codebase.
-  // =============================================
 
-  // [ADR-0017 Fase 3] _extractExports, _extractFunctionSignatures, _findUsages, _detectBreakingChanges,
-  // _verifySemanticDiff diekstrak ke ./engineer/StaticCodeAnalyzer.js
 
-  // [ADR-0017 Fase 5] _handleApprovalResponse diekstrak ke ./engineer/ApprovalGateway.js (handleApprovalResponse)
 
-  // [ADR-0017 Fase 4] readFile, findFiles, _extractFileNamesFromTask, _findRelevantADR
-  // diekstrak ke ./engineer/FileSystemGateway.js
 
   _checkCompliance(fileContents) {
     const violations = [];
@@ -1004,43 +770,7 @@ class Engineer {
     };
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────────────────────
-  // JALUR ANALYSIS & REVIEW DIHAPUS (2026-09-29) — sesudah diperiksa, bukan sebelum
-  //
-  // Keputusan Owner 28 September: "cari lagi agar bermanfaat; jika sudah dikerjakan oleh kode lain
-  // yang lebih baik, tidak masalah dihapus." Yang dihapus, dan alasan masing-masing:
-  //
-  //   `_review()`            — TIDAK menambah apa pun di atas `_analyze()`: ia memanggilnya lalu
-  //                            memetakan `violations.length > 0` menjadi APPROVE/REJECT. Vonis itu
-  //                            lahir dari MENCOCOKKAN POLA TEKS — cara yang pada 24 September
-  //                            menghasilkan dua pelanggaran palsu dan memblokir patch yang benar.
-  //                            Penggantinya lebih baik dan sudah jalan: Tahap 6 menerapkan patch
-  //                            lalu MENJALANKAN 54 berkas uji, dan memulihkan sendiri bila gagal.
-  //                            Pertanyaannya berubah dari "apakah ini tampak patuh" menjadi "apakah
-  //                            sistem ini masih benar sesudah patch".
-  //
-  //   `Engineer:AnalyzeTask` — hanya punya pendengar, tak pernah ada pemancar. Kemampuannya TIDAK
-  //   `Engineer:ReviewChanges` hilang: `_analyze()` tetap dipanggil jalur MODIFY_CODE yang hidup, dan
-  //   `_handleAnalysisTask`     hasilnya tetap sampai ke Owner lewat Reasoning Lock (emitReasoningReport).
-  //   `_handleReviewTask`       Yang dihapus pembungkus tugasnya, bukan kemampuannya.
-  //
-  //   cabang ANALYSIS &      — tak pernah tercapai: satu-satunya pembuat tugas (UsulanPatch.js) selalu
-  //   CLARIFICATION            menyetel `dariTombolApply: true`. Diganti penjaga yang bersuara di
-  //                            `_processTask`, bukan dibiarkan menebak diam-diam.
-  //
-  // YANG SENGAJA DIPERTAHANKAN karena terbukti masih dipakai:
-  //   `_analyze()`, `_buildDynamicContext()`, `_calculateConfidence()`, `_checkCompliance()`.
-  //
-  // `IntentClassifier.js` tidak dihapus: ia tidak lagi tersambung ke jalur hidup, tetapi dipakai
-  // beberapa berkas uji sebagai BAHAN uji nyata (uji-klaim-engineer, uji-prosedur-engineer,
-  // uji-sumber-terminal, uji-trace-parser-kendali-tetap). Catatan itu ditulis di kepala berkasnya.
-  // ─────────────────────────────────────────────────────────────────────────────────────────────
 
-  // [ADR-0017 Fase 7] _generatePatch, _buildPatchPrompt, _extractCodeFromResponse
-  // diekstrak ke ./engineer/PatchGenerator.js; _generateFallbackPatch dihapus total (T10,
-  // 2026-09-22) karena tidak lagi diperlukan. §2.1 (Scoped Snippet Extraction)
-  // diimplementasikan sebagai modul baru ./engineer/CodeSnippetExtractor.js, dipanggil dari
-  // dalam PatchGenerator.js — bukan lagi potongan char-count di prompt builder.
 
   async _generatePatch(task) {
     return generatePatch(task, {
@@ -1053,10 +783,6 @@ class Engineer {
     });
   }
 
-  // [ADR-0017 Fase 8] _executePatchApplication diekstrak ke ./engineer/PatchApplier.js.
-  // `suspiciousAttempts`/`capability` adalah primitif di instance ini (bukan reference
-  // type seperti Map/object di fase-fase sebelumnya) — mutasinya tetap tinggal di sini
-  // sebagai closure `onImmutableFileBlocked`, diteruskan sebagai satu callback ke modul.
   async _executePatchApplication(patch, approvedFiles = []) {
     return executePatchApplication(patch, approvedFiles, {
       metrics: this.metrics,
@@ -1068,8 +794,6 @@ class Engineer {
       onImmutableFileBlocked: () => {
         this.suspiciousAttempts++;
         if (this.suspiciousAttempts >= 3) {
-          // Demosi KEAMANAN — sengaja lengket. Penandanya wajib: tanpa ini, pemulihan otomatis
-          // pemutus arus akan mengangkatnya kembali satu menit kemudian (TMN-0004).
           this._kapabilitasSebelumDemosi = this.capability;
           this._sebabDemosi = 'keamanan';
           this.capability = 'OBSERVER';
@@ -1114,29 +838,12 @@ class Engineer {
     return { coverage, evidence, level };
   }
 
-  // [ADR-0017 Fase 4] _tryReadFile diekstrak ke ./engineer/FileSystemGateway.js (tryReadFile)
 
-  // [ADR-0017 Fase 5] _requestApproval diekstrak ke ./engineer/ApprovalGateway.js (requestApproval)
 
-  /**
-   * [ADR-0017 Fase 5] Wrapper tipis — logika sesungguhnya ada di
-   * ./engineer/ApprovalGateway.js (emitRecommendation). Dipertahankan sebagai
-   * method instance karena dipanggil dari ~21 tempat di dalam _handlePatchTask;
-   * mengubah semua titik panggil sekaligus berisiko tidak sepadan manfaatnya.
-   */
   _emitRecommendation(recommendation) {
     emitRecommendation(recommendation, { eventBus: this.eventBus, capability: this.capability });
   }
 
-  /**
-   * TMN-0004 — `opsi.otomatis` membedakan dua pemanggil yang hak-haknya TIDAK sama:
-   *
-   * - **Owner/kode (bawaan)**: boleh mengangkat apa pun dan menihilkan `suspiciousAttempts`.
-   * - **Pemulihan otomatis pemutus arus** (`{ otomatis: true }`): hanya boleh membatalkan
-   *   demosi yang ia sendiri sebabkan, dan TIDAK menyentuh `suspiciousAttempts`. Tanpa batas
-   *   ini, pulihnya pembatas laju akan ikut menghapus hitungan percobaan menyentuh berkas
-   *   inti — penjaga keamanan jadi bisa dinolkan oleh kejadian yang tak ada hubungannya.
-   */
   upgradeCapability(newCapability, opsi = {}) {
     const validCapabilities = [
       'OBSERVER', 'REVIEWER', 'ARCHITECT', 'PLANNER',
@@ -1162,13 +869,8 @@ class Engineer {
     return true;
   }
 
-  // =============================================
-  // PEMUTUS ARUS — turun & pulih (TMN-0004)
-  // =============================================
 
   _turunkanKarenaPemutusArus(task = null) {
-    // Sudah turun karena keamanan? Jangan ditimpa: sebabnya yang lebih berat harus bertahan,
-    // kalau tidak demosi keamanan bisa "pulih" lewat jalur pemutus arus satu menit kemudian.
     if (this._sebabDemosi !== 'keamanan') {
       this._kapabilitasSebelumDemosi = this.capability;
       this._sebabDemosi = 'laju';
@@ -1179,7 +881,6 @@ class Engineer {
       Math.ceil((JENDELA_PEMUTUS_MS - (Date.now() - this._lastApiReset)) / 1000)
     );
     console.warn(`[Engineer] PEMUTUS ARUS aktif: lebih dari ${BATAS_PATCH_PER_MENIT} patch dalam satu menit. Menambal dihentikan ~${detikLagi}s.`);
-    // Dulu bagian ini hanya console.warn, jadi Owner tidak pernah diberi tahu.
     this.eventBus.emit('Engineer:Recommendation', {
       type: 'ERROR',
       taskId: task?.id,
@@ -1203,7 +904,6 @@ class Engineer {
     }
   }
 
-  /** Pesan "kapabilitas kurang" dulu tak menyebut sebabnya, jadi tak bisa ditindaklanjuti. */
   _alasanKapabilitasKurang() {
     if (this._sebabDemosi === 'keamanan') {
       return `Engineer diturunkan ke ${this.capability} oleh penjaga keamanan — ada percobaan mengubah berkas inti. Ini tidak pulih sendiri; mulai ulang aplikasi setelah memastikan tugasnya benar.`;

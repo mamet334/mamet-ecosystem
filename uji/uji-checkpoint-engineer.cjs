@@ -9,8 +9,8 @@ let gagal = 0;
 const cek = (ok, pesan, rinci) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n      → ${JSON.stringify(rinci).slice(0, 300)}` : ''}`); if (!ok) gagal++; };
 
 const main = fs.readFileSync(path.join(__dirname, '../frontend/electron/main.cjs'), 'utf8');
-const awal = main.indexOf('// ENGINEER ROLLBACK SYSTEM');
-const akhir = main.indexOf('// 3. Folder Selection');
+const awal = main.indexOf("const { alamatDalamPagar: pagarRepo }");
+const akhir = main.indexOf("ipcMain.handle('select-folder'");
 const blok = main.slice(awal, akhir);
 cek(awal > 0 && !/git stash|exec\(/.test(blok.replace(/^\s*\/\/.*$/gm, '')), 'blok checkpoint tanpa git stash / exec (di luar komentar)');
 

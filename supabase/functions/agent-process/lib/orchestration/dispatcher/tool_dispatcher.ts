@@ -10,27 +10,21 @@ export interface DispatcherResult {
 }
 
 export class ToolDispatcher {
-  /**
-   * Executes a tool or plugin while enforcing policy sequence.
-   * Currently runs in SHADOW MODE (Phase 1 & 2).
-   */
   static async execute(
     toolName: string,
     args: any,
     rctx: RuntimeContext,
     executionFn: () => Promise<any>
   ): Promise<any> {
-    const shadowMode = false; // PRIORITY 1: Hard Enforcement Activated 
+    const shadowMode = false;
     let finalDecision: DispatcherDecision = 'ALLOW';
     let denyReason = '';
 
     try {
-      // 5. RuntimeContext null check
       if (!rctx || !rctx.policy || !rctx.state) {
           throw new Error('[ToolDispatcher] Critical Error: RuntimeContext is malformed or null.');
       }
 
-      // 6. Recursive dispatch protection using depth counter
       if (typeof rctx.state._dispatchDepth !== 'number') {
           rctx.state._dispatchDepth = 0;
       }
@@ -42,7 +36,6 @@ export class ToolDispatcher {
       
       rctx.state._dispatchDepth++;
 
-      // 1. EngineeringLifecycleManager (if in ENGINEER mode)
       if (rctx.policy.mode === 'ENGINEER' && rctx.state.engineeringState) {
          const policyRes = EngineeringLifecycleManager.enforcePolicy(toolName, args, rctx.state.engineeringState, rctx);
          if (!policyRes.allowed) {
@@ -51,15 +44,12 @@ export class ToolDispatcher {
          }
       }
 
-      // 2. Risk Gate
       if (finalDecision === 'ALLOW' && this.isHighRisk(toolName, args)) {
          finalDecision = shadowMode ? 'WOULD_DENY' : 'DENY';
          denyReason = 'Risk Gate: High risk operation detected (e.g. destructive commands or outside workspace).';
       }
 
-      // 3. HARD POLICY ENFORCEMENT
       if (finalDecision === 'ALLOW') {
-         // Determine workspace from mode
          let workspaceId = 'ws-assistant';
          if (rctx.policy.mode === 'ENGINEER') workspaceId = 'ws-engineer';
          if (rctx.policy.mode === 'LITE') workspaceId = 'ws-lite';
@@ -73,7 +63,6 @@ export class ToolDispatcher {
       }
 
     } catch (e: any) {
-      // 1. Fail-closed on internal error
       finalDecision = 'DENY';
       denyReason = `Dispatcher internal error during policy check: ${e.message}`;
       await this.logTelemetry(toolName, args, finalDecision, denyReason, rctx);
@@ -81,10 +70,8 @@ export class ToolDispatcher {
       throw new Error(`[DENY_ON_INTERNAL_ERROR] ${denyReason}`);
     }
     
-    // Log the SHADOW MODE decision
     await this.logTelemetry(toolName, args, finalDecision, denyReason, rctx);
 
-    // Final Execution
     if (!shadowMode && (finalDecision === 'DENY' || finalDecision === 'REQUIRE_USER_APPROVAL')) {
       if (rctx?.state?._dispatchDepth) rctx.state._dispatchDepth--;
       throw new Error(denyReason);
@@ -101,7 +88,6 @@ export class ToolDispatcher {
     if (toolName === 'run_command' && args?.CommandLine) {
       const cmd = args.CommandLine.toLowerCase();
       
-      // 3. Expanded Risk Gate based on Verification Audit
       const dangerousPatterns = [
           'rm -rf', 'rm -r ', 'del /s /q', 'format ',
           'remove-item', 'rmdir', 'shred ', 'dd if=', 
@@ -113,7 +99,6 @@ export class ToolDispatcher {
           if (cmd.includes(pattern)) return true;
       }
       
-      // Chaining check (&&, ||, ;, |)
       const chainedPatterns = ['&&', '||', ';', '|'];
       for (const pattern of chainedPatterns) {
           if (cmd.includes(pattern)) return true;
@@ -127,9 +112,6 @@ export class ToolDispatcher {
     
     const targetResource = args?.TargetFile || args?.AbsolutePath || args?.task || args?.CommandLine || 'unknown';
     const metadata = {
-       // `shadowMode` hanya ada di dalam execute(); dulu dirujuk di sini → ReferenceError setiap kali
-       // logger aktif, dan setiap sub-agent (mis. "researcher") gagal (uji mutu RAG 2026-09-14).
-       // WOULD_DENY hanya dihasilkan saat shadow mode, jadi mode dapat dibaca dari keputusannya.
        dispatcher_mode: decision === 'WOULD_DENY' ? 'SHADOW' : 'ENFORCED',
        tool_name: toolName,
        target: targetResource,
@@ -138,7 +120,6 @@ export class ToolDispatcher {
        timestamp: new Date().toISOString()
     };
 
-    // 4. Await directly to prevent telemetry loss on request timeout
     try {
         await rctx.logger.logAgentEvent('TOOL_DISPATCHER_AUDIT', 'system', JSON.stringify(metadata));
     } catch(e) {

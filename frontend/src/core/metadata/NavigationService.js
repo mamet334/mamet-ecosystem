@@ -20,12 +20,11 @@ export class NavigationService {
 
     const isAppEnabled = (appId) => {
       const capId = appToCap[appId];
-      if (!capId) return true; // If no capability required, it's enabled by default
+      if (!capId) return true;
       const cap = capabilities.find(c => c.id === capId);
       return cap ? cap.enabled : false;
     };
 
-    // Enhance navigation config with actual app data
     this.tree = navData.map(node => {
       if (node.type === 'item') {
         const app = registeredApps.find(a => a.id === node.appId);

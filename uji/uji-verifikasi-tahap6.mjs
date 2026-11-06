@@ -263,9 +263,9 @@ cek(/if \(sesudahPatch\.galat \|\| !gagal\.length\) return/.test(blok),
   'uji yang tak bisa dijalankan tidak memicu pemulihan', blok);
 
 // Tombol Undo Owner HARUS tetap bertanya — yang tanpa dialog hanya jalur otomatis.
-const blokRollback = MAIN.slice(MAIN.indexOf("ipcMain.handle('eng:git-rollback'"), MAIN.indexOf("// 3. Folder Selection"));
+const blokRollback = MAIN.slice(MAIN.indexOf("ipcMain.handle('eng:git-rollback'"), MAIN.indexOf("ipcMain.handle('select-folder'"));
 cek(/dialog\.showMessageBox/.test(blokRollback), 'tombol Undo Owner tetap minta konfirmasi');
-cek(!/dialog\.showMessageBox/.test(String(MAIN.slice(MAIN.indexOf('async function pulihkanDariCheckpoint'), MAIN.indexOf('/** Isi checkpoint')))),
+cek(!/dialog\.showMessageBox/.test(String(MAIN.slice(MAIN.indexOf('async function pulihkanDariCheckpoint'), MAIN.indexOf("ipcMain.handle('eng:git-rollback'")))),
   'fungsi pemulihan itu sendiri tidak punya dialog — itulah yang membuatnya bisa otomatis');
 
 cek(/data\?\.verifikasi\?\.laporan/.test(CE), 'laporan verifikasi ditempel di layar');

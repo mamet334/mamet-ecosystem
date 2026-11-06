@@ -21,7 +21,6 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // 1. Ambil task yang aktif dan waktunya sudah lewat (interval)
     const { data: tasks, error: fetchError } = await supabase
       .from('scheduled_tasks')
       .select('*')
@@ -37,16 +36,12 @@ serve(async (req) => {
       return diffHours >= task.interval_hours;
     });
 
-    // Note: We don't return early here because we also want to process shopee_queue
     const results = [];
 
-    // 2. Eksekusi setiap task
     for (const task of tasksToRun) {
       try {
         console.log(`Executing task ${task.id} for user ${task.user_id}`);
         
-        // Panggil agent-process
-        // Panggil agent-process menggunakan ANON KEY dari env variable
         const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
         if (!SUPABASE_ANON_KEY) throw new Error('Missing SUPABASE_ANON_KEY env variable');
         
@@ -62,16 +57,14 @@ serve(async (req) => {
             model: 'gemini-2.5-flash',
             userId: task.user_id,
             userName: 'Scheduled Agent',
-            stream: false // Harus false agar kita dapat JSON balasan utuh
+            stream: false
           })
         });
 
         const agentData = await agentResponse.json();
         
-        // Ambil pesan asli atau pesan error jika terjadi kegagalan dari LLM
         const aiMessageText = agentData.message || (agentData.error ? `🚨 **Error dari AI:** ${agentData.error}` : 'Gagal mengeksekusi agen.');
 
-        // Buat percakapan baru untuk user ini di tabel conversations
         const newConversation = {
           user_id: task.user_id,
           title: `[AUTO] ${task.title} - ${new Date().toLocaleDateString('id-ID')}`,
@@ -84,14 +77,11 @@ serve(async (req) => {
         const { error: insertError } = await supabase.from('chats').insert(newConversation);
         if (insertError) console.error('Error saving conversation:', insertError);
 
-        // Update waktu terakhir jalan
         await supabase.from('scheduled_tasks').update({ last_run_at: now.toISOString() }).eq('id', task.id);
         
-        // --- AUTO-NOTIFIER (EMAIL VIA RESEND) ---
         const resendKey = Deno.env.get('RESEND_API_KEY');
         if (resendKey) {
           try {
-            // Ambil email user menggunakan Service Role
             const { data: userData, error: userError } = await supabase.auth.admin.getUserById(task.user_id);
             if (!userError && userData?.user?.email) {
               const userEmail = userData.user.email;
@@ -130,17 +120,13 @@ ${aiMessageText.substring(0, 1000)}${aiMessageText.length > 1000 ? '\n\n... (Ter
 
         results.push({ taskId: task.id, status: 'success' });
 
-        // Jeda 3 detik antar task untuk menghindari Rate Limit
         await new Promise(r => setTimeout(r, 3000));
       } catch (err) {
         console.error(`Task ${task.id} failed:`, err);
         
-        // --- FITUR HARAKIRI (AUTO-KILL SWITCH) ---
-        // Jika tugas gagal (misal API Limit tercapai, kunci salah), langsung nonaktifkan tugas tersebut
-        // untuk mencegah bom tagihan atau loop error tanpa henti.
         await supabase.from('scheduled_tasks').update({ 
           is_active: false,
-          last_run_at: new Date().toISOString() // Simpan waktu gagal
+          last_run_at: new Date().toISOString()
         }).eq('id', task.id);
         
         console.warn(`HARAKIRI: Tugas ${task.id} dinonaktifkan otomatis karena terjadi error.`);
@@ -149,7 +135,6 @@ ${aiMessageText.substring(0, 1000)}${aiMessageText.length > 1000 ? '\n\n... (Ter
       }
     }
 
-    // Cek Master Switch Shopee Ninja
     const { data: toggleData } = await supabase
       .from('scheduled_tasks')
       .select('is_active')
@@ -165,16 +150,11 @@ ${aiMessageText.substring(0, 1000)}${aiMessageText.length > 1000 ? '\n\n... (Ter
       console.log('Shopee Ninja is ENABLED.');
     }
 
-    // 3. Proses Antrean Shopee Affiliate (Berjalan di latar belakang - SAFE MODE & HUMAN STEALTH)
-    // Supaya tidak agresif dan tidak terpola seperti robot:
-    // Tambahkan 40% probabilitas acak untuk MELEWATKAN (skip) proses afiliasi pada siklus ini. 
-    // Ini membuat jarak waktu posting sangat acak dan sangat natural seperti manusia yang sedang tidak aktif.
     const isStealthSkip = Math.random() < 0.4;
     
     const shopeeResults = [];
 
     if (isShopeeNinjaEnabled && !isStealthSkip) {
-      // Kita hanya proses MAKSIMAL 1 link per eksekusi cron.
       const { data: shopeeLinks, error: shopeeError } = await supabase
         .from('shopee_queue')
         .select('*')
@@ -188,8 +168,6 @@ ${aiMessageText.substring(0, 1000)}${aiMessageText.length > 1000 ? '\n\n... (Ter
           const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
           if (!SUPABASE_ANON_KEY) throw new Error('Missing SUPABASE_ANON_KEY');
 
-          // --- STEP A: SCRAPE DETAIL PRODUK (Bungkus Ulang / Repackaging) ---
-          // Baca halaman produk Shopee via Jina Reader untuk mendapatkan info asli
           let productInfo = '';
           try {
             const jinaRes = await fetch(`https://r.jina.ai/${link.original_url}`, {
@@ -197,14 +175,12 @@ ${aiMessageText.substring(0, 1000)}${aiMessageText.length > 1000 ? '\n\n... (Ter
             });
             if (jinaRes.ok) {
               const rawPage = await jinaRes.text();
-              // Ambil hanya 4000 karakter pertama (cukup untuk nama, harga, deskripsi, rating)
               productInfo = rawPage.substring(0, 4000);
             }
           } catch (scrapeErr) {
             console.log('Scrape produk gagal (non-fatal), lanjut tanpa detail:', scrapeErr);
           }
 
-          // --- STEP B: BUNGKUS ULANG JADI KONTEN ORIGINAL (NON-AI TEMPLATE) ---
           const templates = [
             "Lagi nyari barang murah? Coba cek ini deh, mantul banget buat harga segini: [URL]",
             "Keracunan barang ini gara2 liat review, ternyata beneran bagus. Buat yang mau: [URL]",
@@ -216,8 +192,6 @@ ${aiMessageText.substring(0, 1000)}${aiMessageText.length > 1000 ? '\n\n... (Ter
           const cleanName = (link.product_name || 'barang ini').replace('[AUTO-DISCOVERY]', '').trim();
           const aiMessageText = template.replace('[URL]', link.original_url).replace('[NAMA_PRODUK]', cleanName);
 
-          // --- AUTO-POST KE SOSIAL MEDIA ---
-          // 1. TELEGRAM
           const teleBotToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
           const teleChatId = Deno.env.get('TELEGRAM_CHAT_ID');
 
@@ -229,7 +203,6 @@ ${aiMessageText.substring(0, 1000)}${aiMessageText.length > 1000 ? '\n\n... (Ter
              });
           }
 
-          // 2. X / TWITTER (via API v2)
           const twitterToken = Deno.env.get('TWITTER_BEARER_TOKEN');
           if (twitterToken) {
              await fetch('https://api.twitter.com/2/tweets', {
@@ -238,11 +211,10 @@ ${aiMessageText.substring(0, 1000)}${aiMessageText.length > 1000 ? '\n\n... (Ter
                  'Authorization': `Bearer ${twitterToken}`,
                  'Content-Type': 'application/json'
                },
-               body: JSON.stringify({ text: aiMessageText.substring(0, 280) }) // Max 280 karakter
+               body: JSON.stringify({ text: aiMessageText.substring(0, 280) })
              });
           }
 
-          // 3. FACEBOOK PAGE
           const fbToken = Deno.env.get('FACEBOOK_PAGE_TOKEN');
           const fbPageId = Deno.env.get('FACEBOOK_PAGE_ID');
           if (fbToken && fbPageId) {
@@ -253,11 +225,9 @@ ${aiMessageText.substring(0, 1000)}${aiMessageText.length > 1000 ? '\n\n... (Ter
              });
           }
 
-          // Update status menjadi posted
           await supabase.from('shopee_queue').update({ status: 'posted', posted_at: new Date().toISOString() }).eq('id', link.id);
           shopeeResults.push({ id: link.id, status: 'success' });
 
-          // Delay santai untuk menghindari rate limit API serverless (walau biasanya terpotong, ini amannya)
           await new Promise(r => setTimeout(r, 3000));
         } catch (err) {
           console.error(`Shopee Queue ${link.id} failed:`, err);
@@ -269,18 +239,14 @@ ${aiMessageText.substring(0, 1000)}${aiMessageText.length > 1000 ? '\n\n... (Ter
       console.log('Stealth Mode Active: Skipping Shopee posting this cycle to simulate unpredictable human schedule.');
     }
 
-    // 4. AUTO-DISCOVERY: Cari Produk Laris Shopee Secara Otonom (1x per hari, hanya jika stok antrean menipis)
     let discoveryResults = [];
     try {
-      // Cek berapa banyak link pending yang tersisa di antrean
       const { count: pendingCount } = await supabase
         .from('shopee_queue')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending');
 
-      // Hanya jalankan discovery jika antrean tersisa < 3 link (agar tidak menumpuk terlalu banyak)
       if (isShopeeNinjaEnabled && (pendingCount || 0) < 3) {
-        // Cek apakah discovery sudah pernah jalan hari ini (hindari spam)
         const todayStart = new Date();
         todayStart.setHours(0, 0, 0, 0);
         const { count: todayDiscoveryCount } = await supabase
@@ -292,17 +258,13 @@ ${aiMessageText.substring(0, 1000)}${aiMessageText.length > 1000 ? '\n\n... (Ter
         if ((todayDiscoveryCount || 0) === 0) {
           console.log('Auto-Discovery: Antrean menipis, mencari produk laris Shopee...');
 
-          // Gunakan Jina Reader untuk men-scrape hasil pencarian DuckDuckGo (karena Google sering memblokir bot)
-          // Ini AMAN karena kita tidak menyentuh server Shopee secara langsung
           const searchQueries = [
             'site:shopee.co.id produk terlaris minggu ini',
             'site:shopee.co.id flash sale hari ini rekomendasi',
             'site:shopee.co.id best seller murah berkualitas'
           ];
-          // Pilih query secara acak agar tidak terpola
           const randomQuery = searchQueries[Math.floor(Math.random() * searchQueries.length)];
           
-          // Menggunakan DuckDuckGo HTML Lite (lebih ramah bot daripada Google)
           const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(randomQuery)}`;
 
           const jinaRes = await fetch(`https://r.jina.ai/${searchUrl}`, {
@@ -312,12 +274,10 @@ ${aiMessageText.substring(0, 1000)}${aiMessageText.length > 1000 ? '\n\n... (Ter
           if (jinaRes.ok) {
             const searchContent = await jinaRes.text();
 
-            // Ekstrak link Shopee menggunakan Regex (NON-AI)
             let aiOutput = "[]";
             const urlRegex = /https:\/\/shopee\.co\.id\/[\w\.-]+(?:-i\.\d+\.\d+)?/g;
             const matchedUrls = searchContent.match(urlRegex) || [];
             
-            // Filter unique URLs and ignore common non-product links
             const uniqueUrls = [...new Set(matchedUrls)].filter(url => 
               url.length > 30 && !url.includes('buyer') && !url.includes('cart')
             ).slice(0, 3);
@@ -329,16 +289,13 @@ ${aiMessageText.substring(0, 1000)}${aiMessageText.length > 1000 ? '\n\n... (Ter
             
             aiOutput = JSON.stringify(extractedProducts);
             
-            // Parse JSON dari output AI
               try {
-                // Bersihkan output dari markdown formatting jika ada
                 const cleanJson = aiOutput.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
                 const products = JSON.parse(cleanJson);
 
                 if (Array.isArray(products) && products.length > 0) {
-                  for (const product of products.slice(0, 3)) { // Maksimal 3 produk per hari
+                  for (const product of products.slice(0, 3)) {
                     if (product.url && product.url.includes('shopee.co.id')) {
-                      // Cek duplikasi: jangan masukkan URL yang sudah ada di antrean
                       const { count: existingCount } = await supabase
                         .from('shopee_queue')
                         .select('*', { count: 'exact', head: true })

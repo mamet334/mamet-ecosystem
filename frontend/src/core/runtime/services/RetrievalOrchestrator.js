@@ -1,19 +1,6 @@
-/**
- * RetrievalOrchestrator.js — Orkestrator Konteks Web & Panduan Tanpa Dokumen (PR#9)
- *
- * - Tier 2: panduan "jawab dari pengetahuan umum" (InternalKnowledgeFallbackService) — hanya saat RAG mati.
- * - Tier 3: pencarian web pembanding (tool web_search / WebComparisonService).
- *
- * Tier 1 (dokumen lokal lewat pencocokan kata KnowledgeService + RetrievalStrategyService) DIHAPUS
- * 2026-09-17 (Item 90): sejak Item 65 dokumen dicari SERVER berdasarkan makna, dan satu-satunya
- * pemanggil (AssistantService) selalu mengirim `skipLocalKnowledge: true` — cabang itu tak pernah jalan.
- * KnowledgeService & RetrievalStrategyService tetap ada: dipakai server sebagai cadangan pencocokan
- * kata bila vektor tak tersedia (agent-process context_builder.ts).
- */
 
 import { InternalKnowledgeFallbackService } from './InternalKnowledgeFallbackService.js';
 import { WebComparisonService } from './WebComparisonService.js';
-// Aturan "pesan menuntut info terkini" — satu salinan bersama klien & server (29 Okt 2026).
 import { adalahKueriWaktu } from '../../../../../shared/kueri_pencarian.js';
 
 export class RetrievalOrchestrator {
@@ -48,33 +35,10 @@ export class RetrievalOrchestrator {
     console.log('[RetrievalOrchestrator] Initialized (Tier 2 & Tier 3; dokumen dicari server)');
   }
 
-  /**
-   * Helper: Deteksi apakah query menuntut informasi temporal/terkini/berita.
-   * @param {string} query
-   * @returns {boolean}
-   */
   isTemporalQuery(query) {
     return adalahKueriWaktu(query);
   }
 
-  /**
-   * Main Entry Point: Eksekusi retrieval pengetahuan multi-tier.
-   *
-   * @param {string} query - Pesan/pertanyaan yang membutuhkan konteks pengetahuan
-   * @param {Object} [options]
-   * @param {number} [options.limit=5]
-   * @param {string} [options.traceId]
-   * @param {Object} [options.supabaseClient]
-   * @returns {Promise<{
-   *   chunks: Array<Object>,
-   *   formattedContext: string,
-   *   strategy: string,
-   *   sufficiency: number,
-   *   tier: 1|2|3,
-   *   isFallback: boolean,
-   *   error?: string
-   * }>}
-   */
   async retrieve(query, options = {}) {
     if (!this.isInitialized) {
       await this.initialize();
@@ -93,20 +57,13 @@ export class RetrievalOrchestrator {
 
     console.log(`[RetrievalOrchestrator] Starting knowledge retrieval for: "${query.substring(0, 60)}..."`);
 
-    // Dokumen tidak dicari di sini (lihat catatan berkas) — Tier 2 menerima hasil "kosong" yang jujur.
     const tier1Result = { chunks: [], strategy: 'dokumen_di_server', sufficiency: 0.0, caseType: 'NONE', tier: 1, isFallback: false };
 
-    // ========================================================
-    // TIER 2: INTERNAL LLM FALLBACK (Fase 2)
-    // ========================================================
 
     let tier2Result = null;
     try {
       const fallbackService = this.internalKnowledgeFallbackService || (this.serviceManager?.has('InternalKnowledgeFallbackService') ? this.serviceManager.get('InternalKnowledgeFallbackService') : null);
 
-      // options.skipInternalFallback (Item 65): dokumen dicari di SERVER, bukan di Tier 1 ini.
-      // Panduan Tier 2 berbunyi "tidak ditemukan dokumen lokal — jawab dari pengetahuan umum";
-      // disisipkan di sini, ia akan membantah dokumen yang ditemukan server.
       if (options.skipInternalFallback) {
         console.log('[RetrievalOrchestrator] Tier 2 dilewati — dokumen ditangani server (skipInternalFallback).');
       } else if (fallbackService && typeof fallbackService.buildFallbackContext === 'function') {
@@ -121,11 +78,6 @@ export class RetrievalOrchestrator {
       console.error('[RetrievalOrchestrator] Tier 2 fallback error:', tier2Err.message);
     }
 
-    // ========================================================
-    // TIER 3: WEB SEARCH COMPARISON (Fase 3)
-    // Pemicu: options.enableWebComparison === true ATAU options.needWebComparison === true ATAU isTemporalQuery(query)
-    // Wajib: Gerbang konfirmasi Owner (Human-in-Command) & Timeout 8s
-    // ========================================================
     const shouldTriggerTier3 = Boolean(options.enableWebComparison || options.needWebComparison || this.isTemporalQuery(query));
 
     if (shouldTriggerTier3) {
@@ -140,10 +92,6 @@ export class RetrievalOrchestrator {
           reason: options.webComparisonReason || (isTemporal ? 'Pertanyaan memerlukan berita/informasi terkini yang tidak ada di dokumen lokal.' : 'Konteks lokal belum memadai dan perbandingan web dibutuhkan.')
         };
 
-        // Jalur utama: lewat ToolRegistryService (folder tools/web_search.js) — supaya web
-        // search jadi tool yang bisa dipanggil generik, bukan cuma hardcode di sini.
-        // Fallback: kalau tool belum/tidak terdaftar (mis. scan folder tools/ gagal), tetap
-        // panggil WebComparisonService langsung supaya Tier 3 tidak mati total.
         const toolRegistry = this.serviceManager?.has('ToolRegistryService') ? this.serviceManager.get('ToolRegistryService') : null;
         const hasWebSearchTool = toolRegistry?.getTool?.('web_search');
 
@@ -160,7 +108,6 @@ export class RetrievalOrchestrator {
 
         if (tier3Result) {
 
-          // Jika Web Search SUKSES menghasilkan chunks
           if (tier3Result.status === 'SUCCESS' && tier3Result.chunks?.length > 0) {
             const formattedContext = this.formatAsContext(tier3Result.chunks);
 
@@ -180,7 +127,6 @@ export class RetrievalOrchestrator {
             };
           }
 
-          // Jika Web Search Ditolak / Timeout / Gagal -> Tetap jujur, sertakan disclaimer di atas Tier 2
           console.warn(`[RetrievalOrchestrator] Tier 3 web search ended with status: ${tier3Result.status}. Falling back to Tier 2 with disclaimer.`);
           const baseTier2Context = tier2Result ? this.formatAsContext(tier2Result.chunks) : '';
           const disclaimerText = tier3Result.fallbackDisclaimer || `⚠️ Pencarian web pembanding gagal (${tier3Result.error || 'Status: ' + tier3Result.status}). Menjawab dari pengetahuan internal model.`;
@@ -215,7 +161,6 @@ export class RetrievalOrchestrator {
       }
     }
 
-    // Jika Tier 3 tidak dipicu, kembalikan hasil Tier 2 normal
     if (tier2Result) {
       const formattedContext = this.formatAsContext(tier2Result.chunks);
 
@@ -234,7 +179,6 @@ export class RetrievalOrchestrator {
       };
     }
 
-    // Fallback Darurat jika Tier 2 & Tier 3 gagal
     return {
       chunks: [],
       formattedContext: '',
@@ -246,11 +190,6 @@ export class RetrievalOrchestrator {
     };
   }
 
-  /**
-   * Helper: Format chunks ke string markdown prompt LLM sesuai PR#9 §3 (atribusi sumber transparan).
-   * @param {Array} chunks
-   * @returns {string}
-   */
   formatAsContext(chunks) {
     if (!chunks || chunks.length === 0) return '';
     return chunks.map((c, i) => {
@@ -262,7 +201,6 @@ export class RetrievalOrchestrator {
       } else if (sourceType === 'encyclopedia' || c.isStaticEncyclopedia) {
         header = `--- Konteks ${i + 1} [Sumber: Ensiklopedia Statis — ${c.source_url || 'Wikipedia'} (Informasi ensiklopedis statis, BUKAN berita real-time), akurasi tidak terverifikasi] ---`;
       } else if (sourceType === 'web') {
-        // Tanggal terbit ikut ke model (29 Okt 2026): tanpanya berita lama terbaca sebagai "terbaru" — WebComparisonService.
         const terbit = c.terbit ? `terbit ${c.terbit}` : 'tanggal terbit tidak diketahui';
         header = `--- Konteks ${i + 1} [Sumber: Berita Web — ${c.source_url || 'Web Search'}, ${terbit}, akurasi tidak terverifikasi] ---`;
       }

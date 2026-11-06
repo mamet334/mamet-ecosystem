@@ -25,8 +25,6 @@ export default function DisasterRecoveryWidget() {
           'Authorization': `Bearer ${token}`
         }
       });
-      // Fallback: If no dedicated backup health API exists, just use system health.
-      // Since this is a widget taking data via Service Layer, it uses authenticated fetch.
       if (response.ok) {
         setBackupStatus('READY');
       } else {

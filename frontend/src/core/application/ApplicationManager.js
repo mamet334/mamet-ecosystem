@@ -1,8 +1,3 @@
-/**
- * ApplicationManager - Phase 2 Core
- * Handles the registration, activation, and lifecycle of Desktop Apps.
- * NOT a Service Locator. NOT an Event Bus.
- */
 class ApplicationManager {
   constructor(serviceManager) {
     this.serviceManager = serviceManager;
@@ -30,9 +25,6 @@ class ApplicationManager {
     };
   }
 
-  /**
-   * App Definition: { id, name, icon, renderComponent } — icon = nama Material Symbols (metadata system.json)
-   */
   registerApp(appDef) {
     if (this.apps.has(appDef.id)) {
       console.warn(`[ApplicationManager] App ${appDef.id} is already registered.`);

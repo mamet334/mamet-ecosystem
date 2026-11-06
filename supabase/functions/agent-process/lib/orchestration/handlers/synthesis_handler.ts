@@ -10,17 +10,12 @@ import { tutupJawabanDataTabel } from '../../data_tabel/data_tabel.ts';
 import { sisipkanNalar } from '../../adapters/reasoning_openrouter.ts';
 import { CATATAN_TERPOTONG, susunBahanLanjutan, susunPromptLanjutan, tenggatJawaban } from '../../streaming/batas_waktu.ts';
 
-/** Jawaban akhir. Nalar model ikut ditampilkan (`<think>`) hanya bila Thinking dinyalakan eksplisit. */
 async function jawabanAkhir(prompt: string, sistem: string, riwayat: any[], rctx: any, tanpaNalar = false): Promise<string> {
-  // Hybrid: nalar dialirkan ke klien sambil model berpikir; jawaban tetap dirakit utuh & diperiksa di bawah.
   const kirim = rctx?.model?.thinking === true && !tanpaNalar ? rctx?.stream?.kirimNalar : undefined;
   const opsi: any = kirim
     ? { onNalar: (teks: string) => kirim({ tipe: 'nalar', teks }), onIsiMulai: () => kirim({ tipe: 'nalar_selesai' }) }
     : {};
-  // Tenggat sebelum batas waktu dinding Supabase (2026-09-15): yang sudah ditulis disimpan, bukan dibuang.
   opsi.tenggat = tenggatJawaban(rctx);
-  // Lanjutan jawaban terpotong: nalarnya sudah dibayar dan ditampilkan di pesan sebelumnya, dan diserahkan lewat prompt.
-  // Live v444: lanjutan yang bernalar ulang dari nol terpotong lagi sebelum sempat menulis satu huruf pun.
   if (tanpaNalar) opsi.thinking = false;
   const r = await runLLMDenganNalar(prompt, sistem, riwayat, rctx, opsi);
   let teks = rctx?.model?.thinking === true ? sisipkanNalar(r.result, r.reasoning) : r.result;
@@ -46,27 +41,19 @@ export const SynthesisHandler = {
       routingDecision, 
       contractValidation 
     } = state;
-    // Pesan "lanjutkan" untuk jawaban yang terpotong batas waktu (core_engine.ts, streaming/batas_waktu.ts).
     const lanjutan = state.lanjutan || null;
     
     const stream = ctx.request.stream;
     const extractedImage = ctx.request.extractedImage;
     const history = ctx.request.history;
-    const requestMode = (ctx.request.mode || 'ASSISTANT').toUpperCase(); // Normalisasi mode
-    // Judul DAN kode dokumen ([DOC-0001]) yang benar-benar dilampirkan ke prompt — dipakai memeriksa
-    // label VERIFIED (Item 71). Keduanya diterima: model boleh menyebut judul atau kodenya.
+    const requestMode = (ctx.request.mode || 'ASSISTANT').toUpperCase();
     const judulDokumen: string[] = (ctx.state.ragArray || [])
       .flatMap((r: any) => [r.formattedTitle, r.docId])
       .filter((t: any) => typeof t === 'string' && t.trim());
-    // Isi potongan yang dilampirkan — angka dan pasangan label–angka jawaban VERIFIED dicocokkan ke sini (Item 77).
     const isiDokumen: string[] = (ctx.state.ragArray || [])
       .map((r: any) => r.contentWithId || r.content)
       .filter((t: any) => typeof t === 'string' && t.trim());
-    // K2/U8b: RAG turun ke pencocokan kata → satu baris catatan sistem di akhir jawaban (kosong bila tidak turun).
     const catatanRag = catatanRagTurun(ctx.state.ragTurunKeKata);
-    // Folder kerja (Item 85 Tahap 1): berkas yang TERBUKTI dibaca alat (pesan hasil alat kini + riwayat) ikut menjadi
-    // sumber sah — tanpa ini jawaban dari isi berkas nyata selalu diturunkan ("tidak mengutip dokumen"). Pemeriksaan
-    // tetap sama: nama berkas harus disebut di baris Sumber, angka jawaban harus ada di isi berkas/daftar.
     if ((ctx.request as any).folderKerja?.putaran > 0) {
       const sumberFolder = sumberDariHasilAlat([
         ctx.request.originalMessage || ctx.request.finalMessage,
@@ -76,9 +63,6 @@ export const SynthesisHandler = {
       isiDokumen.push(...sumberFolder.isi);
       ctx.state.processingSteps.push(`📂 Sumber folder kerja untuk pemeriksa label: ${sumberFolder.judul.length} berkas dibaca`);
     }
-    // ENGINEER (2026-09-23): keluaran perintah yang Owner setujui — "[TERMINAL OUTPUT for: …]" — ikut menjadi sumber
-    // sah. Tanpa ini, jawaban Engineer yang seluruhnya dibangun dari isi berkas nyata selalu diturunkan ke HYPOTHESIS
-    // "tidak mengutip dokumen" (live TUGAS-02 & TUGAS-04), sementara jawaban tanpa bukti sama sekali tidak dihukum.
     if (requestMode === 'ENGINEER') {
       const sumberTerminal = sumberDariKeluaranTerminal([
         ctx.request.originalMessage || ctx.request.finalMessage,
@@ -92,18 +76,12 @@ export const SynthesisHandler = {
     }
     let replyMessage = 'Gagal memproses jawaban.';
 
-    // Cabang dipilih menurut ADA-TIDAKNYA HASIL SUB-AGENT, bukan menurut "fase orkestrasi dijalankan" (Item 126 Fase 1,
-    // 2026-10-28). Riwayat chat: 66 dari 80 sintesis "multi-agen" berjalan dengan NOL sub-agent (Coordinator memutuskan
-    // [] atau gagal) — model diberi "Anda telah menugaskan beberapa sub-agent… Riwayat pekerjaan sub-agent:" yang
-    // kosong: klaim palsu yang memancing model mengarang tindakan. `subagentRuns` hanya terisi bila Execution Planner
-    // benar-benar menjalankan sub-agent (core_engine.ts) — sub-agent yang jalan lalu gagal tetap lewat cabang multi-agen.
     const tanpaHasilSubAgen = !Array.isArray(subagentRuns) || subagentRuns.length === 0;
     if (!lanjutan && !isChatBiasa && maef.shouldExecutePhase('ORCHESTRATION') && tanpaHasilSubAgen) {
         ctx.state.processingSteps.push('↩️ Tak ada sub-agent yang bekerja → dijawab langsung (bukan sintesis multi-agen)');
     }
 
     if (lanjutan) {
-        // Riset/sub-agent tidak diulang: bahan dan jawaban sejauh ini diambil dari metadata pesan yang terpotong.
         ctx.state.processingSteps.push('⏩ Melanjutkan jawaban yang terpotong — Coordinator & sub-agent tidak dijalankan ulang');
         replyMessage = await jawabanAkhir(susunPromptLanjutan(lanjutan), fullSystemContext, lanjutan.riwayat, rctx, true);
     } else if (isChatBiasa || !maef.shouldExecutePhase('ORCHESTRATION') || tanpaHasilSubAgen) {
@@ -126,7 +104,7 @@ export const SynthesisHandler = {
               routingDecision, 
               contractValidation,
               judulDokumen,
-              isiDokumen, // dikeluarkan lagi di stream_handler sebelum metadata jadi header
+              isiDokumen,
               catatanRag
             },
             snapshot: maef.getSnapshot() 
@@ -145,10 +123,6 @@ export const SynthesisHandler = {
           mode: requestMode
         };
 
-        // =============================================
-        // DIAGNOSTIC: Persist verification input snapshot (ADR-0012)
-        // =============================================
-        // Khusus untuk mode ENGINEER, simpan snapshot diagnostik sebelum verifikasi
         if (requestMode === 'ENGINEER') {
           rctx.tasks.fire('SynthesisDiag', persistTelemetryLog(rctx, {
             userId: ctx.auth.userId ?? null,
@@ -169,41 +143,23 @@ export const SynthesisHandler = {
           }));
         }
         
-        // =============================================
-        // MULTI-PROFILE VERIFICATION ROUTING (ADR-0013)
-        // =============================================
-        // ENGINEER mode: adaptif berdasarkan konten respons.
-        // Patch JSON aktual ditandai dengan struktur array/object yang spesifik.
-        // Chat natural → PERSONAL, Patch JSON → PATCH_ENGINEERING
-        // LITE      → PERSONAL, ASSISTANT → ENGINEERING
         const responseText = vContext.responseText || '';
-        // Cek apakah ini benar-benar JSON patch (bukan sekadar code block markdown dengan kurung kurawal)
-        // Patch Engineer format: {"path/ke/file.js": "content"} — dimulai dengan { dan berisi string values
-        // CATATAN: format lama juga dicek untuk backward compat
-        // Jawaban patch SELALU berupa JSON utuh (boleh dibungkus pagar ```json). Pola longgar `"kunci": "nilai"`
-        // DIHAPUS 2026-09-23: laporan analisis yang mengutip kode/JSON ikut tertangkap, lalu diperiksa sebagai patch
-        // dan diblokir HARD GATE "Invalid JSON patch: No JSON object found" — live TUGAS-04, analisis 6.237 huruf
-        // hilang seluruhnya dan Owner hanya menerima "Verification Failed".
         const tanpaPagar = responseText.replace(/^\s*```[a-z]*\s*/i, '').trimStart();
         const looksLikeJsonPatch = requestMode === 'ENGINEER' && (
-          /^[\[{]/.test(tanpaPagar) ||                 // JSON utuh (dengan/tanpa pagar ```json)
-          responseText.includes('"files"') ||          // field khas patch Engineer (format lama)
-          responseText.includes('"newContent"') ||     // field khas patch Engineer (format lama)
-          responseText.includes('"patches"') ||        // field khas patch Engineer (format lama)
-          responseText.includes('"__mode"') ||         // search-replace mode
-          responseText.includes('"search_replace"')    // format cari-ganti (PatchGenerator)
+          /^[\[{]/.test(tanpaPagar) ||
+          responseText.includes('"files"') ||
+          responseText.includes('"newContent"') ||
+          responseText.includes('"patches"') ||
+          responseText.includes('"__mode"') ||
+          responseText.includes('"search_replace"')
         );
         const effectiveMode = (requestMode === 'ENGINEER' && !looksLikeJsonPatch)
-          ? 'LITE'   // pakai profile PERSONAL — ringan untuk chat natural
+          ? 'LITE'
           : requestMode;
         const vReport = VerificationEngine.verify(effectiveMode, vContext);
         
         console.log(`[SynthesisHandler] Verification Profile: ${vReport.profile} | Decision: ${vReport.decision} | Score: ${vReport.score} | Mode: ${requestMode}`);
 
-        // =============================================
-        // SPECIFIC LOGGING: CHECK_002 Format Compliance (khusus ENGINEERING profile)
-        // =============================================
-        // Hanya relevan untuk profile ENGINEERING (mode ASSISTANT) yang membutuhkan ADR trace
         if (vReport.profile === 'ENGINEERING') {
           const check002Fail = vReport.failures.find(c => c.id === 'CHECK_002_SOURCE_TRACE_EXISTS');
           if (check002Fail) {
@@ -225,9 +181,6 @@ export const SynthesisHandler = {
           }
         }
         
-        // =============================================
-        // AUDIT RECORD CREATION (semua profile)
-        // =============================================
         const auditRecord = VerificationEngine.createAuditRecord(vReport, vContext);
         
         eventBus.emit({
@@ -245,13 +198,6 @@ export const SynthesisHandler = {
           }
         });
 
-        // =============================================
-        // HARD GATE: Konsisten untuk semua profile (MAEF 4.5)
-        // =============================================
-        // Setiap profile memiliki kriteria FAIL-nya sendiri:
-        // - ENGINEERING: FAIL jika ADR trace hilang atau ada hallucination
-        // - PERSONAL: FAIL jika response kosong atau ada forbidden phrases
-        // - PATCH_ENGINEERING: FAIL jika JSON invalid, ada dangerous patterns, atau core file dimodifikasi
         if (vReport.decision === "FAIL") {
           const failedChecksSummary = vReport.failures
             .map(f => `[${f.severity}] ${f.id}: ${f.message}`)
@@ -260,7 +206,6 @@ export const SynthesisHandler = {
           console.error(`[HARD GATE] ❌ BLOCKED. Profile: ${vReport.profile} | Mode: ${requestMode} | Score: ${vReport.score} | Failed Checks: ${vReport.failedChecks}/${vReport.totalChecks}`);
           console.error(`[HARD GATE] Failure details: ${failedChecksSummary}`);
           
-          // Response berbeda berdasarkan profile untuk debugging yang lebih baik
           const failureResponse = {
             message: "Verification Failed",
             profile: vReport.profile,
@@ -282,24 +227,13 @@ export const SynthesisHandler = {
           };
         }
         
-        // Log soft warning jika ada warnings (non-fatal)
         if (vReport.warnings && vReport.warnings.length > 0) {
           console.warn(`[VERIFICATION] ⚠️ ${vReport.warnings.length} warning(s) on profile ${vReport.profile}: ${vReport.warnings.map(w => w.id).join(', ')}`);
         }
         
     } else {
-        // =============================================
-        // MULTI-AGENT ORCHESTRATION PATH (sub-agents dispatched)
-        // =============================================
         if (maef.shouldExecutePhase('POST_PROCESSING')) {
           maef.requestTransition('POST_PROCESSING', 'Starting Final Synthesis');
-          // fullSystemContext TIDAK ditempel di sini (Item 66, 2026-09-11): ia sudah dikirim sebagai
-          // prompt sistem (argumen kedua runLLM di bawah). Dulu teks ini diawali
-          // `...sub-agent.${fullSystemContext}`, sehingga seluruh prompt sistem — termasuk semua
-          // potongan dokumen — terkirim DUA KALI. Terukur lewat [PROMPT_KOMPOSISI]: pertanyaan 80
-          // huruf menjadi pesan 28.519 huruf di atas sistem 27.802 huruf (15.272 token).
-          // Deep Research (2026-09-15) menyerahkan bahan artikel mentah dan pengguna memang meminta laporan riset, jadi
-          // larangan "format kaku seperti laporan" tidak berlaku bila bahannya benar-benar ada.
           const adaBahanDeepResearch = (subagentRuns || []).some((r: any) =>
             r?.subagent === 'deep_research' && String(r?.output || '').startsWith('Bahan DEEP RESEARCH'));
           const aturanFormat = adaBahanDeepResearch
@@ -325,8 +259,6 @@ export const SynthesisHandler = {
                 auditMode: ctx.request.auditMode, 
                 routingDecision, 
                 contractValidation,
-                // Tanpa dua data ini pemeriksa label di stream_handler mengira tidak ada dokumen dan
-                // menurunkan SETIAP VERIFIED (Mametlite, 2026-09-21: "dokumen dilampirkan: 0" walau 7 potongan).
                 judulDokumen,
                 isiDokumen,
                 catatanRag
@@ -352,8 +284,6 @@ export const SynthesisHandler = {
                 auditMode: ctx.request.auditMode, 
                 routingDecision, 
                 contractValidation,
-                // Tanpa dua data ini pemeriksa label di stream_handler mengira tidak ada dokumen dan
-                // menurunkan SETIAP VERIFIED (Mametlite, 2026-09-21: "dokumen dilampirkan: 0" walau 7 potongan).
                 judulDokumen,
                 isiDokumen,
                 catatanRag
@@ -365,9 +295,6 @@ export const SynthesisHandler = {
         }
     }
 
-    // =============================================
-    // MEMORY WRITE REQUEST (Event-Driven)
-    // =============================================
     eventBus.emit({
       type: 'Memory.WriteRequested',
       source: 'Orchestrator',
@@ -383,25 +310,17 @@ export const SynthesisHandler = {
 
     await rctx.tasks.awaitAll();
 
-    // Label VERIFIED hanya boleh bertahan bila jawaban mengutip dokumen yang dilampirkan (Item 71).
     const sebelumLabel = replyMessage;
     replyMessage = koreksiLabel(replyMessage, judulDokumen, requestMode, isiDokumen);
     if (catatanRag) replyMessage = `${replyMessage}\n\n${catatanRag}`;
 
-    // HAKIM BAYANGAN (T13, 2026-09-28) — menilai per kalimat, TIDAK mengubah apa pun. Letaknya di sini,
-    // sesudah `koreksiLabel`, supaya ia menilai jawaban yang sama dengan yang dilihat Owner dan supaya
-    // label sistem bisa dicatat sebagai pembanding. MATI kecuali env `HAKIM_BAYANGAN=1`.
-    // Ditunggu `tasks.awaitAll()` di index.ts, jadi ia menambah waktu tunggu — itu harga uji coba.
     await jalankanHakimBayangan(rctx, {
-      // Yang DINILAI: jawaban model apa adanya — catatan sistem bukan kalimat model.
       jawaban: sebelumLabel,
-      // Yang DIBANDINGKAN: teks akhir yang benar-benar dilihat Owner, termasuk label hasil koreksi.
       jawabanAkhir: replyMessage,
       isiDokumen,
       diturunkan: replyMessage !== sebelumLabel,
       chatId: (ctx.request as any)?.chatId || ''
     });
-    // Tabel data (Item 92 Tahap 3) disusun kode dari database — ditempel SESUDAH label diperiksa, di luar jawaban model.
     const dataTabel = (ctx.state as any).dataTabel;
     if (dataTabel) {
       const tutup = tutupJawabanDataTabel(replyMessage, dataTabel);
@@ -419,13 +338,9 @@ export const SynthesisHandler = {
       toolExecution,
       subagentRuns,
       processingSteps: ctx.state.processingSteps,
-      // T14 — penyedia hulu yang benar-benar melayani jawaban ini. Jalur non-stream; jalur stream
-      // mengirimnya sebagai bingkai SSE tersendiri (stream_handler.ts).
       ...(rctx.penyediaHulu ? { penyedia: rctx.penyediaHulu } : {}),
       timestamp: new Date(),
       userId: ctx.auth.userId,
-      // Terpotong batas waktu: bahan untuk "lanjutkan" ikut tersimpan di metadata pesan (chats.messages) dan dikirim
-      // kembali oleh desktop lewat riwayat. jawabanSebelumnya berantai bila lanjutan pun terpotong lagi.
       ...(rctx.stream?.jawabanTerpotong ? {
         terpotong: true,
         bahanLanjutan: susunBahanLanjutan(

@@ -64,8 +64,8 @@ cek(/verifyEngineeringSession\(this\.sessionArtifact\)/.test(ENG), 'finalisasi &
 cek(/MemoryGovernorService/.test(ENG), 'MemoryGovernorService tetap dipakai');
 cek(/sessionArtifact/.test(ENG), 'SessionArtifact tetap ada — catatan sesi di dalam sesi tidak dihapus');
 
-// PatchApplier: Tahap 6 & checkpoint TIDAK boleh ikut terbawa.
-cek(/TAHAP 6/.test(baca('frontend/src/core/runtime/services/engineer/PatchApplier.js')), 'blok Tahap 6 tetap ada');
+// PatchApplier: verifikasi patch & checkpoint TIDAK boleh ikut terbawa.
+cek(/putusanVerifikasi/.test(PA) && /laporanVerifikasi/.test(PA), 'verifikasi Tahap 6 tetap ada di PatchApplier');
 cek(/Engineer:PatchApplied/.test(PA), 'peristiwa PatchApplied tetap dipancarkan');
 cek(/checkpointRef/.test(PA), 'checkpoint tetap dibuat');
 

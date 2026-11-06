@@ -2,13 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { temaService } from '../core/runtime/services/TemaService';
 import { PILIHAN_SISTEM, latarNyala, lampuNyala, dasarTema } from '../core/runtime/services/tema.js';
 
-// Settings › Tampilan (Item 128 Tahap B). Pilihan tema & latar ruangan, disimpan per akun lewat TemaService.
-//
-// Pratinjau tiap tema memakai warna SUNGGUHAN tema itu: kotaknya diberi `data-tema`, jadi variabel --warna-* di
-// dalamnya milik tema tersebut sementara halaman tetap memakai tema aktif. Pelajaran Item 127: Owner menilai dari
-// melihat, bukan dari deskripsi.
 
-// "Kurangi gerakan" (Item 128 Tahap C) — bawaannya mengikuti setelan animasi Windows.
 const PILIHAN_GERAK_TAMPIL = [
   { id: 'sistem', nama: 'Ikuti Windows', keterangan: 'Mengikuti setelan efek animasi di Windows.' },
   { id: 'kurangi', nama: 'Kurangi', keterangan: 'Animasi & kedipan berhenti — lebih tenang di mata.' },
@@ -128,7 +122,6 @@ export default function BagianTampilan() {
               {latar ? 'toggle_on' : 'toggle_off'}
             </span>
           </button>
-          {/* Lampu (Item 128 Tahap C) — pendar hangat dari atas, 25% kekuatan layar masuk; bagian dari ruangan. */}
           <button
             type="button"
             role="switch"

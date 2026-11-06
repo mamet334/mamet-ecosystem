@@ -25,7 +25,6 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
   const isConflict = selectedNode.isConflict || selectedNode.data?.status === 'CONFLICT_PENDING_REVIEW';
   const nodeType = selectedNode.type || (selectedNode.group === 'rag' ? 'Document' : selectedNode.group === 'memory' ? 'Memory' : selectedNode.group === 'chat' ? 'Conversation' : 'Pipeline Service');
 
-  // Navigation handlers
   const handleResolveConflict = () => {
     sessionStorage.setItem('active_memory_tab', 'CONFLICTS');
     const sm = serviceManager;
@@ -78,7 +77,6 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
     }
   };
 
-  // Semantic color and badge
   let themeColor = '#22c55e';
   let badgeLabel = 'USER MEMORY';
   let badgeBorder = 'border-emerald-500/30 text-emerald-300 bg-emerald-500/10';
@@ -103,7 +101,6 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
 
   return (
     <div className="animate-in fade-in slide-in-from-right-4 duration-300 font-mono select-none">
-      {/* Header */}
       <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3">
         <div className="flex items-center gap-2">
           <span 
@@ -119,7 +116,6 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
         </button>
       </div>
 
-      {/* Title & Type Badge */}
       <div className="mb-5 bg-white/[0.02] border border-white/5 p-3 rounded-xl">
         <div className="flex items-center justify-between mb-1.5">
           <span className={`text-[12px] px-2 py-0.5 rounded border font-bold uppercase tracking-wider ${badgeBorder}`}>
@@ -132,11 +128,7 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
         </div>
       </div>
 
-      {/* Context-Specific Content */}
       <div className="space-y-3.5 text-xs">
-        {/* ================================================================= */}
-        {/* MEMORY NODE CARD */}
-        {/* ================================================================= */}
         {(nodeType === 'Memory' || selectedNode.group === 'memory') && (
           <>
             <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-3">
@@ -177,7 +169,6 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
               </div>
             </div>
 
-            {/* Action Buttons */}
             {isConflict ? (
               <button
                 onClick={handleResolveConflict}
@@ -198,9 +189,6 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
           </>
         )}
 
-        {/* ================================================================= */}
-        {/* DOCUMENT / RAG NODE CARD */}
-        {/* ================================================================= */}
         {(nodeType === 'Document' || selectedNode.group === 'rag') && (
           <>
             <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-3">
@@ -234,7 +222,6 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
             </div>
 
             <div className="space-y-2 pt-1">
-              {/* In-Place Preview Button */}
               <button
                 onClick={toggleLoadChunks}
                 className="w-full py-2 px-3 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-200 font-mono text-xs font-semibold rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
@@ -245,7 +232,6 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
                 {showChunks ? 'Tutup Teks Dokumen' : `Baca Isi Teks (${selectedNode.data?.relations ?? '0'} Chunks)`}
               </button>
 
-              {/* Chunk Viewer */}
               {showChunks && (
                 <div className="mt-2 bg-black/60 border border-purple-500/20 rounded-xl p-3 max-h-80 overflow-y-auto space-y-3 [scrollbar-width:thin] [scrollbar-color:rgba(168,85,247,0.3)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-purple-500/30 [&::-webkit-scrollbar-thumb]:rounded">
                   {loadingChunks ? (
@@ -276,9 +262,6 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
           </>
         )}
 
-        {/* ================================================================= */}
-        {/* CONVERSATION / CHAT NODE CARD */}
-        {/* ================================================================= */}
         {(nodeType === 'Conversation' || selectedNode.group === 'chat') && (
           <>
             <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-3">
@@ -313,9 +296,6 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
           </>
         )}
 
-        {/* ================================================================= */}
-        {/* PIPELINE SERVICE / SYSTEM NODE CARD */}
-        {/* ================================================================= */}
         {(nodeType === 'Pipeline Service' || selectedNode.group === 'pipeline') && (
           <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 space-y-3">
             <div>
@@ -351,9 +331,6 @@ export default function NodeInspector({ selectedNode, onClose, serviceManager })
           </div>
         )}
 
-        {/* ================================================================= */}
-        {/* OPTIONAL METADATA ACCORDION */}
-        {/* ================================================================= */}
         {selectedNode.data?.metadata && Object.keys(selectedNode.data.metadata).length > 0 && (
           <details className="mt-3 border border-white/5 rounded-lg bg-black/30 text-[12px]">
             <summary className="p-2 text-slate-400 hover:text-slate-200 cursor-pointer font-semibold uppercase tracking-wider flex items-center justify-between">

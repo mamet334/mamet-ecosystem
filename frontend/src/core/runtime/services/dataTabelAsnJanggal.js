@@ -1,13 +1,3 @@
-// Laporan kejanggalan per OPD (Item 92 Tahap 4) — murni, tanpa database & tanpa AI: semua diperiksa kode dari data
-// tersimpan (berkas AKTIF), hasilnya bisa dikirim balik ke OPD dengan baris Excel asalnya.
-//
-// Dua tingkat, supaya kesalahan nyata tidak tenggelam di bawah ratusan sel kosong:
-//   salah    — data saling bertentangan (L/P ≠ digit NIP, NIP mustahil, NIP di dua berkas, JUMLAH ≠ orang, ganda)
-//   lengkapi — data belum diisi (tanpa NIP, jabatan kosong, L/P kosong)
-//
-// Susunan NIP (BKN): 8 digit tanggal lahir (yyyymmdd) + 6 digit TMT (PNS: yyyymm; PPPK: tahun pengangkatan + "21")
-// + 1 digit jenis kelamin (1 laki-laki, 2 perempuan) + 3 digit nomor urut. Pengukuran 2026-09-21: 825 NIP PPPK
-// (kode "21") di 53 berkas — tanpa aturan PPPK semuanya akan dituduh "TMT mustahil".
 
 import { uraiBaris } from './dataTabelAsnOcr.js';
 
@@ -16,7 +6,6 @@ export const TINGKAT = {
   lengkapi: 'Perlu dilengkapi',
 };
 
-// Urutan = urutan tampil.
 export const JENIS = {
   jumlah_salah: { tingkat: 'salah', label: 'Baris JUMLAH tidak sama dengan jumlah orang' },
   jumlah_lp_beda: { tingkat: 'salah', label: 'Pembagian L/P di baris JUMLAH tidak sama dengan tanda per orang' },
@@ -37,10 +26,6 @@ const URUTAN_JENIS = Object.keys(JENIS);
 const rapat = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
 const kecil = (v) => rapat(v).toLowerCase();
 
-/**
- * Periksa susunan satu NIP 18 digit.
- * @returns {{sah:boolean, alasan:string[], jk:'L'|'P'|'', pppk:boolean}}
- */
 export function uraiNip(nip, tahunKini = new Date().getFullYear()) {
   const alasan = [];
   if (!/^\d{18}$/.test(nip || '')) return { sah: false, alasan: ['bukan 18 digit angka'], jk: '', pppk: false };
@@ -60,18 +45,10 @@ export function uraiNip(nip, tahunKini = new Date().getFullYear()) {
   return { sah: alasan.length === 0, alasan, jk, pppk };
 }
 
-/**
- * Susun laporan dari data tersimpan.
- * @param {{berkas: Array<{id, opd, nama_berkas, ringkasan_sheet}>, pegawai: Array<{berkas_id, sheet, kelompok,
- *   baris_asal, no_urut, nama, nip, jenis_kelamin, jabatan}>, tahunKini?: number}} data  — HANYA berkas aktif
- * @returns {{perOpd: Array<{berkas_id, opd, nama_berkas, butir: Array, hitung: Object, salah: number, lengkapi: number}>,
- *   total: {salah:number, lengkapi:number}}}
- */
 export function susunLaporanJanggal({ berkas = [], pegawai = [], tahunKini = new Date().getFullYear() }) {
   const perBerkas = new Map(berkas.map((b) => [b.id, []]));
   for (const p of pegawai) perBerkas.get(p.berkas_id)?.push(p);
 
-  // NIP → berkas aktif yang memuatnya (lintas berkas)
   const nipDi = new Map();
   for (const p of pegawai) {
     if (!p.nip || !perBerkas.has(p.berkas_id)) continue;
@@ -89,7 +66,6 @@ export function susunLaporanJanggal({ berkas = [], pegawai = [], tahunKini = new
       nama: p?.nama ?? '', nip: p?.nip ?? '', keterangan,
     });
 
-    // 1. Catatan tingkat sheet dari pembaca (tersimpan di ringkasan_sheet saat unggah).
     const infoSheet = new Map();
     const nipTerpotong = new Set();
     for (const s of b.ringkasan_sheet || []) {
@@ -102,7 +78,6 @@ export function susunLaporanJanggal({ berkas = [], pegawai = [], tahunKini = new
         if (k.jenis === 'jumlah_salah' || k.jenis === 'jumlah_lp_beda' || k.jenis === 'struktur') {
           tambah(k.jenis, null, k.pesan, { sheet: s.sheet, baris: k.baris ?? null });
         } else if (k.jenis === 'nip_tak_lengkap') {
-          // PDF pindaian (Tahap 5): angka NIP terpotong OCR. Orangnya tidak ikut dilaporkan "tanpa NIP" lagi.
           const p = orangDi(s.sheet, k.baris);
           if (p) nipTerpotong.add(p);
           tambah('nip_tak_lengkap', p, `${(k.pesan.match(/angka NIP terbaca \d+ digit/) || ['angka NIP tidak 18 digit'])[0]} — cocokkan dengan berkas kertas`, { sheet: s.sheet, baris: k.baris ?? null });
@@ -112,7 +87,6 @@ export function susunLaporanJanggal({ berkas = [], pegawai = [], tahunKini = new
       }
     }
 
-    // 2. Per orang.
     const nipDalam = new Map();
     for (const p of orang) if (p.nip) nipDalam.set(p.nip, [...(nipDalam.get(p.nip) || []), p]);
     const nomorDalam = new Map();
@@ -166,7 +140,6 @@ export function susunLaporanJanggal({ berkas = [], pegawai = [], tahunKini = new
   };
 }
 
-/** Isi satu lembar Excel (array of arrays) untuk satu OPD — siap dikirim balik. NIP ditulis sebagai teks. */
 export function lembarExcelOpd(lap, tanggal = new Date()) {
   const tgl = tanggal.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
   const aoa = [
@@ -183,7 +156,6 @@ export function lembarExcelOpd(lap, tanggal = new Date()) {
   return aoa;
 }
 
-/** Nama lembar Excel yang sah (≤31 huruf, tanpa []:*?/\) dan unik. */
 export function namaLembar(opd, dipakai = new Set()) {
   const dasar = rapat(String(opd).replace(/[[\]:*?\/\\]/g, ' ')).slice(0, 28) || 'OPD';
   let nama = dasar;
@@ -192,7 +164,6 @@ export function namaLembar(opd, dipakai = new Set()) {
   return nama;
 }
 
-/** Lembar ringkasan semua OPD (untuk berkas "semua OPD"). */
 export function lembarRingkasan(laporan, tanggal = new Date()) {
   const tgl = tanggal.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
   const jenis = URUTAN_JENIS.filter((j) => laporan.perOpd.some((x) => x.hitung[j]));

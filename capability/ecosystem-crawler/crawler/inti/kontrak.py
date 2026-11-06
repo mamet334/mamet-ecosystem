@@ -7,26 +7,20 @@ from crawler import konfig
 
 from .model import Misi, Temuan
 
-# lapor(nama_peristiwa, **detail), mis. lapor("Adapter.FallbackTriggered", dari="praw", ke="rss")
 Pelapor = Callable[..., None]
-
 
 class Sumber(ABC):
     id: str
-    kanal: str                       # tv | laptop | hp
-    jenis_akses: str                 # kunci konfig.CONFIDENCE_DASAR
-    kemampuan: tuple[str, ...] = ()  # cari | feed | komentar | url_langsung
+    kanal: str
+    jenis_akses: str
+    kemampuan: tuple[str, ...] = ()
     bahasa: tuple[str, ...] = ("semua",)
     cocok_untuk: tuple[str, ...] = ()
-    butuh_kredensial: str = ""       # kosong = tidak butuh
+    butuh_kredensial: str = ""
     berbayar: bool = False
     batas_laju: str = ""
-    alat: tuple[dict, ...] = ()      # tool asli yang dibungkus: nama, repo, lisensi
-    # Pola glob penulis yang dibuang bila misi tidak mengatur opsi kecualikan_penulis sendiri.
-    # Misi bisa mematikannya dengan kecualikan_penulis kosong ([] atau "").
+    alat: tuple[dict, ...] = ()
     kecualikan_penulis_default: tuple[str, ...] = ()
-    # Pseudonim penulis (ADR-CRW-0002). Default nyala untuk melindungi individu di sumber sosial.
-    # Dimatikan untuk sumber rujukan yang penulisnya byline publik (karya ilmiah, berita, cek fakta).
     pseudonim_penulis: bool = True
 
     def kesehatan(self) -> str:

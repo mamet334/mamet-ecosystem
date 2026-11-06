@@ -1,11 +1,3 @@
-// IPC KONEKTOR UMUM (Item 129 Tahap G2, 2026-11-03) — satu tugas: pintu dari Settings ke konektor umum.
-//
-// Disusun di berkas sendiri supaya `main.cjs` (sudah 1.400+ baris, kohesi terendah di graf) hanya bertambah satu
-// pemanggilan. Aturan pintu:
-//   - Alamat program DIPILIH di dialog proses utama, tidak dikirim layar.
-//   - Kredensial: layar mengirim nilai sekali (S10); tak ada saluran yang mengembalikan nilainya.
-//   - Menghapus server ditanyakan di dialog proses utama.
-//   - Memanggil alat HANYA lewat gerbang izin K17 (`gerbangUmum.cjs`, G3) — tak ada jalan ke `sesi.panggil` langsung.
 
 const fs = require('fs');
 const path = require('path');
@@ -17,13 +9,7 @@ const { buatGerbangUmum } = require('./gerbangUmum.cjs');
 const { buatAlurOAuth } = require('./alurOAuth.cjs');
 const { buatJaringanKonektor } = require('./jaringanKonektor.cjs');
 
-/**
- * @param {{ipcMain: object, dialog: object, shell: object, safeStorage: object, folderData: string,
- *   jendela: () => object, lingkungan: () => Record<string,string>, versi: string, log?: Function}} opsi
- */
 function daftarkanKonektorUmum({ ipcMain, dialog, shell, safeStorage, folderData, jendela, lingkungan, versi, log = () => {}, ambil = null }) {
-  // GH3: satu jalan keluar HTTP konektor = net.fetch (main.cjs menyuntikkan `ambil: net.fetch`); fetch global hanya
-  // di uji Node tanpa Electron. Lihat jaringanKonektor.cjs.
   const jaringan = buatJaringanKonektor(ambil || globalThis.fetch);
   const folderResepOwner = path.join(folderData, 'konektor-resep');
   const daftar = buatDaftarServer({ berkas: path.join(folderData, 'konektor-server.json') });
@@ -39,8 +25,6 @@ function daftarkanKonektorUmum({ ipcMain, dialog, shell, safeStorage, folderData
   const resep = () => semuaResep({ folderBawaan: FOLDER_BAWAAN, folderOwner: folderResepOwner });
 
   ipcMain.handle('konektor-umum:resep', () => resep());
-  // GH3: login yang sedang menunggu (jenis + kode perangkat) ikut status, supaya kartu bisa menampilkan kodenya.
-  // `alur` dideklarasikan di bawah; aman karena saluran ini baru dipanggil layar sesudah pendaftaran selesai.
   ipcMain.handle('konektor-umum:status', () => sesi.status().map((s) => (s.oauth ? { ...s, login: alur.loginTertunda(s.id) } : s)));
 
   ipcMain.handle('konektor-umum:pasang', async (_e, { resepId } = {}) => {
@@ -72,12 +56,11 @@ function daftarkanKonektorUmum({ ipcMain, dialog, shell, safeStorage, folderData
     if (!(entri.kredensial || []).some((k) => k.id === kredensial)) return { ok: false, alasan: 'kredensial tidak diminta server ini' };
     const h = brankas.simpan(id, kredensial, nilai);
     if (!h.ok) return h;
-    log(`[KONEKTOR-UMUM] ${id}: kredensial ${kredensial} ${h.terisi ? 'disimpan' : 'dihapus'}`); // tanpa nilai
+    log(`[KONEKTOR-UMUM] ${id}: kredensial ${kredensial} ${h.terisi ? 'disimpan' : 'dihapus'}`);
     await sesi.mulaiUlang(id);
     return { ok: true, terisi: h.terisi };
   });
 
-  // G3 — chat: alat aktif per workspace & pemanggilan LEWAT GERBANG izin K17 (dialog per alat / selama percakapan).
   const gerbang = buatGerbangUmum({
     sesi,
     namaServer: (id) => sesi.namaServer(id),
@@ -94,8 +77,6 @@ function daftarkanKonektorUmum({ ipcMain, dialog, shell, safeStorage, folderData
   ipcMain.handle('konektor-umum:panggil', (_e, { workspace, id, alat, argumen, percakapan } = {}) =>
     gerbang.panggil(workspace, id, alat, argumen, percakapan));
 
-  // F2 — OAuth (Tahap F): "Hubungkan akun" membuka browser SISTEM (bukan jendela Mamet; URL sudah diperiksa penyedia:
-  // https & asal server otorisasi). Sesudah terhubung, workspace yang dinyalakan Owner dinyalakan ulang.
   const alur = buatAlurOAuth({ daftar, brankas, bukaBrowser: (url) => shell.openExternal(url), versi, log, fetchFn: jaringan });
   ipcMain.handle('konektor-umum:hubungkan', async (_e, { id } = {}) => {
     const h = await alur.hubungkan(id);
@@ -129,12 +110,10 @@ function daftarkanKonektorUmum({ ipcMain, dialog, shell, safeStorage, folderData
       buttons: ['Batal', 'Hapus'], defaultId: 0, cancelId: 0, noLink: true,
     });
     if (response !== 1) return { ok: false, dibatalkan: true, alasan: 'dibatalkan' };
-    // Server OAuth: izin dicabut di penyedia dulu — menghapus konektor tidak boleh meninggalkan akses hidup di sana.
     if (entri.oauth) { for (const ws of ['ws-assistant', 'ws-engineer']) await sesi.matikan(ws, id); await alur.putuskan(id); }
     return sesi.hapus(id);
   });
 
-  // "Tanpa kode": Owner menaruh berkas resep sendiri di folder ini (dibuat bila belum ada).
   ipcMain.handle('konektor-umum:buka-folder-resep', async () => {
     try { fs.mkdirSync(folderResepOwner, { recursive: true }); } catch (e) { return { ok: false, alasan: e.message }; }
     const galat = await shell.openPath(folderResepOwner);

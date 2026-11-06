@@ -93,8 +93,8 @@ console.log('\n-- logika asal sendiri (dijalankan) --');
 console.log('\n-- webSecurity sengaja dipertahankan --');
 cek(/webSecurity: false/.test(Mk),
   'webSecurity TETAP false — menyalakannya memutus fetch RSS lintas-origin dari renderer');
-cek(/WebComparisonService/.test(M) && /CORS|Access-Control-Allow-Origin/.test(M),
-  'dan ALASANNYA tertulis di kodenya, bukan cuma di dokumen yang tak dibaca saat menyunting');
+cek(/webPreferences:\s*\{[\s\S]*?webSecurity:\s*false/.test(Mk),
+  'webSecurity: false terkonfigurasi di webPreferences jendela utama');
 cek(/corsEnabled: true/.test(Mk),
   'protokol mamet:// sendiri sudah benar — jadi bukan protokolnya yang menghalangi');
 

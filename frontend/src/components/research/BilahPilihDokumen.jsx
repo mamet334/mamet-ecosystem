@@ -1,10 +1,6 @@
 import React from 'react';
 import Ikon from '../Ikon';
 
-/**
- * Bilah pilih banyak dokumen (Research App, 5 Nov 2026 — permintaan Owner): "pilih semua yang tampil", jumlah
- * terpilih, hapus terpilih, batal. Penghapusan & konfirmasinya di ResearchApp (hapusDokumen.js).
- */
 export default function BilahPilihDokumen({ jumlahTampil, jumlahDipilih, onPilihSemua, onBatal, onHapus, status }) {
     const semua = jumlahTampil > 0 && jumlahDipilih === jumlahTampil;
     return (

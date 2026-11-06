@@ -1,18 +1,3 @@
-/**
- * Verification Engine — Multi-Profile Architecture
- * 
- * Sesuai MAEF 4.5 (Verification Before Trust) dan ADR-0013 (Multi-Profile Verification Architecture).
- * Setiap capability mode memiliki verification profile yang sesuai dengan nature-nya:
- * 
- *   - ENGINEERING (verifyEngineering): Chat natural dengan ADR trace & evidence
- *   - PERSONAL (verifyPersonal): Assistant ringan dengan sanity checks
- *   - PATCH_ENGINEERING (verifyPatchEngineering): JSON patch dari Engineer dengan keamanan kode
- * 
- * Tidak ada "bypass" — setiap profile memiliki kriteria kelulusan deterministik yang ketat.
- * 
- * Last Updated: 2026-07-27
- * ADR: ADR-0013 (Multi-Profile Verification Architecture)
- */
 
 export type VerificationStatus = "PASS" | "FAIL" | "WARN";
 export type VerificationDecision = "PASS" | "FAIL";
@@ -60,18 +45,15 @@ export interface VerificationAuditRecord {
 export interface VerificationContext {
   responseText: string;
   sourceTrace?: string;
-  sourceType?: string;    // 'local' | 'llm_internal' | 'web'
-  retrievalTier?: number; // 1 | 2 | 3
+  sourceType?: string;
+  retrievalTier?: number;
   confidenceReport?: any;
   evidenceReport?: any;
   runtimeContext?: any;
-  mode?: string;   // Mode request: 'ENGINEER' | 'ASSISTANT' | 'LITE'
+  mode?: string;
 }
 
 export class VerificationEngine {
-  // ========================================================================
-  // PROFILE 1: ENGINEERING (Mode ASSISTANT)
-  // ========================================================================
 
   static verifyEngineering(context: VerificationContext): VerificationReport {
     const isStrictMode = (Deno.env.get('ENGINEER_STRICT_MODE') ?? 'true') !== 'false';
@@ -83,7 +65,6 @@ export class VerificationEngine {
     const failures: VerificationCheck[] = [];
     const warnings: VerificationCheck[] = [];
 
-    // CHECK 001: RESPONSE_NOT_EMPTY
     const check001: VerificationCheck = {
       id: "CHECK_001_RESPONSE_NOT_EMPTY",
       name: "Response Text Not Empty",
@@ -103,7 +84,6 @@ export class VerificationEngine {
     if (check001.status === "FAIL") failures.push(check001);
     console.log(`[VERIFICATION:ENGINEERING]\n${check001.id}\n${check001.status}`);
 
-    // CHECK 002: SOURCE_TRACE_EXISTS
     const check002: VerificationCheck = {
       id: "CHECK_002_SOURCE_TRACE_EXISTS",
       name: "Source Trace Exists",
@@ -112,10 +92,6 @@ export class VerificationEngine {
       message: "Source trace string is present."
     };
 
-    // Mode ASSISTANT dan LITE adalah chat percakapan natural — tidak mewajibkan format SOURCE TRACE.
-    // LOOKUP adalah jalur ringan chat Assistant yang sama (Item 65): sejak ia ikut mencari dokumen,
-    // evidence > 0 dan mode ketat menuntut kode jejak sumber dari jawaban natural pendek — terbukti
-    // 2026-09-11 20:18 WIB: jawaban benar dari 5 potongan HCDP diblokir HARD GATE ("Verification Failed").
     if (context.mode === 'ASSISTANT' || context.mode === 'LITE' || context.mode === 'LOOKUP') {
       check002.status = "PASS";
       check002.severity = "INFO";
@@ -159,8 +135,6 @@ export class VerificationEngine {
     if (check002.status === "FAIL") failures.push(check002);
     else if (check002.status === "WARN") warnings.push(check002);
 
-    // CHECK 002B: INTERNAL_KNOWLEDGE_DISCLAIMER (PR#9 Fase 2 — Tier 2 Fallback)
-    // Jika retrieval berasal dari pengetahuan internal LLM (Tier 2), pastikan respon mengakui keterbatasan
     const isTier2Internal = context.sourceType === 'llm_internal' || context.retrievalTier === 2 || (context.sourceTrace && context.sourceTrace.includes('[Sumber: Pengetahuan internal model]'));
     if (isTier2Internal) {
       const check002b: VerificationCheck = {
@@ -182,7 +156,6 @@ export class VerificationEngine {
       checks.push(check002b);
     }
 
-    // CHECK 003: SOURCE_TRACE_FORMAT
     const check003: VerificationCheck = {
       id: "CHECK_003_SOURCE_TRACE_FORMAT",
       name: "Source Trace Format Valid",
@@ -193,9 +166,6 @@ export class VerificationEngine {
 
     const traceFormatRegex = /[A-Z]{2,3}-\d{4}/;
 
-    // Mode ASSISTANT, LITE, dan LOOKUP: skip CHECK_003 karena chat natural tidak memerlukan format
-    // source trace. LOOKUP wajib ikut di SINI JUGA — pengecualian CHECK_002 membuatnya PASS, dan
-    // cabang di bawah lalu menuntut format ID dari jawaban natural (gagal di CHECK_003 alih-alih 002).
     if (context.mode === 'ASSISTANT' || context.mode === 'LITE' || context.mode === 'LOOKUP') {
       check003.status = "PASS";
       check003.severity = "INFO";
@@ -219,7 +189,6 @@ export class VerificationEngine {
     if (check003.status === "FAIL") failures.push(check003);
     else if (check003.status === "WARN") warnings.push(check003);
 
-    // CHECK 004: CONFIDENCE_REPORT_EXISTS
     const check004: VerificationCheck = {
       id: "CHECK_004_CONFIDENCE_REPORT_EXISTS",
       name: "Confidence Report Exists",
@@ -239,7 +208,6 @@ export class VerificationEngine {
     if (check004.status === "FAIL") failures.push(check004);
     console.log(`[VERIFICATION:ENGINEERING]\n${check004.id}\n${check004.status}`);
 
-    // CHECK 005: EVIDENCE_REPORT_EXISTS
     const check005: VerificationCheck = {
       id: "CHECK_005_EVIDENCE_REPORT_EXISTS",
       name: "Evidence Report Exists",
@@ -259,7 +227,6 @@ export class VerificationEngine {
     if (check005.status === "FAIL") failures.push(check005);
     console.log(`[VERIFICATION:ENGINEERING]\n${check005.id}\n${check005.status}`);
 
-    // CHECK 006: RUNTIME_CONTEXT_EXISTS
     const check006: VerificationCheck = {
       id: "CHECK_006_RUNTIME_CONTEXT_EXISTS",
       name: "Runtime Context Exists",
@@ -279,7 +246,6 @@ export class VerificationEngine {
     if (check006.status === "FAIL") failures.push(check006);
     console.log(`[VERIFICATION:ENGINEERING]\n${check006.id}\n${check006.status}`);
 
-    // CHECK 007: FORBIDDEN_PHRASES (Content Hallucination Check)
     const check007: VerificationCheck = {
       id: "CHECK_007_FORBIDDEN_PHRASES",
       name: "No Forbidden Phrases (Hallucination)",
@@ -288,32 +254,7 @@ export class VerificationEngine {
       message: "No hallucination or forbidden phrases detected."
     };
 
-    // Daftar larangan sengaja DIPISAH DUA. Sebelum 2026-09-09 keduanya satu daftar
-    // tanpa syarat, dan itu membuat sistem menghukum model karena MEMATUHI perintahnya
-    // sendiri. Tiga sumber saling bertentangan pada frasa yang sama:
-    //
-    //   1. evidence_validator.ts (gateVerdictText) MEMERINTAHKAN, saat RAG & Memory kosong:
-    //      "Jawab dari pengetahuan umum dan sampaikan bahwa tidak ada data spesifik
-    //       project ditemukan."
-    //   2. CHECK_002B di berkas INI (lihat disclaimerRegex di atas) MEMBERI NILAI untuk
-    //      frasa "pengetahuan umum" — ketiadaannya justru diberi status WARN.
-    //   3. CHECK_007 di bawah MELARANGNYA dan menjatuhkan FAIL -50, memblokir seluruh
-    //      jawaban dengan pesan "Verification Failed" ke Owner.
-    //
-    // Terbukti live 2026-09-09 15:46: pertanyaan santai "apa game changer?" (mode LOOKUP,
-    // totalEvidence = 0) dijawab dengan disclaimer yang benar, lolos CHECK_002B, lalu
-    // diblokir CHECK_007. Owner tidak menerima jawaban apa pun.
-    //
-    // universal_contract.ts:136 menuliskan aturan aslinya sebagai
-    // 'Menyebut "berdasarkan pengetahuan umum saya" DI ENGINEER MODE' — jadi memang
-    // selalu dimaksudkan bersyarat. CHECK_007 yang kehilangan syaratnya.
-    //
-    // Pemisahannya mengikuti maksud asli: mengaku memakai pengetahuan umum itu
-    // TRANSPARANSI (diwajibkan 24_ANTI_HALLUCINATION_PROTOCOL) ketika memang tidak ada
-    // evidence. Itu baru jadi pelanggaran kalau evidence TERSEDIA namun diabaikan —
-    // di situlah model benar-benar mengarang alih-alih membaca sumbernya.
 
-    /** Selalu dilarang: sikap ragu-ragu dan bahasa robot. Tidak pernah jadi kepatuhan. */
     const alwaysForbidden = [
       "saya kurang yakin",
       "saya tidak tahu pasti",
@@ -321,7 +262,6 @@ export class VerificationEngine {
       "sebagai model bahasa ai"
     ];
 
-    /** Dilarang HANYA kalau evidence sebenarnya tersedia — artinya sumber diabaikan. */
     const forbiddenWhenEvidenceExists = [
       "berdasarkan pengetahuan umum saya"
     ];
@@ -346,7 +286,6 @@ export class VerificationEngine {
       overallStatus = "FAIL";
       overallScore = Math.max(0, overallScore - 50);
     } else if (totalEvidence === 0 && forbiddenWhenEvidenceExists.some(ph => responseLower.includes(ph))) {
-      // Bukan pelanggaran — ini justru kepatuhan pada perintah Evidence Gate.
       check007.message = "Disclaimer pengetahuan umum dipakai saat evidence kosong — sesuai instruksi Evidence Gate, bukan pelanggaran.";
     }
 
@@ -354,7 +293,6 @@ export class VerificationEngine {
     if (check007.status === "FAIL") failures.push(check007);
     console.log(`[VERIFICATION:ENGINEERING]\n${check007.id}\n${check007.status}`);
 
-    // CHECK 008: APOLOGETIC_REFUSAL (Content Evasion Check)
     const check008: VerificationCheck = {
       id: "CHECK_008_APOLOGETIC_REFUSAL",
       name: "No Apologetic Refusal",
@@ -385,7 +323,6 @@ export class VerificationEngine {
     if (check008.status === "WARN" || check008.status === "FAIL") warnings.push(check008);
     console.log(`[VERIFICATION:ENGINEERING]\n${check008.id}\n${check008.status}`);
 
-    // Final Calculation
     const executionTimeMs = performance.now() - startTime;
     const finalDecision: VerificationDecision = overallStatus === "PASS" ? "PASS" : "FAIL";
     const totalChecks = checks.length;
@@ -409,16 +346,11 @@ export class VerificationEngine {
     };
   }
 
-  // ========================================================================
-  // PROFILE 2: PERSONAL (Mode LITE / ASSISTANT Ringan)
-  // ✅ FIXED: executionTimeMs dihitung real menggunakan performance.now()
-  // ========================================================================
 
   static verifyPersonal(context: VerificationContext): VerificationReport {
-    const startTime = performance.now(); // ✅ FIX: Tambahkan startTime
+    const startTime = performance.now();
     const checks: VerificationCheck[] = [];
 
-    // CHECK 1: Response tidak boleh kosong
     checks.push({
       id: 'CHECK_001_RESPONSE_NOT_EMPTY',
       name: 'Response Text Not Empty',
@@ -429,7 +361,6 @@ export class VerificationEngine {
         : 'Response text is empty.'
     });
 
-    // CHECK 2: Tidak boleh ada frasa terlarang (halusinasi)
     const forbiddenPhrases = [
       'Sebagai AI', 'saya tidak bisa', 'saya tidak dapat',
       'maaf, saya', 'As an AI', 'I cannot', 'I am unable'
@@ -447,7 +378,6 @@ export class VerificationEngine {
         : 'No hallucination or forbidden phrases detected.'
     });
 
-    // CHECK 3: Confidence report harus ada
     checks.push({
       id: 'CHECK_004_CONFIDENCE_REPORT_EXISTS',
       name: 'Confidence Report Exists',
@@ -458,7 +388,6 @@ export class VerificationEngine {
         : 'Confidence report is missing.'
     });
 
-    // CHECK 4: Evidence report harus ada
     checks.push({
       id: 'CHECK_005_EVIDENCE_REPORT_EXISTS',
       name: 'Evidence Report Exists',
@@ -469,7 +398,6 @@ export class VerificationEngine {
         : 'Evidence report is missing.'
     });
 
-    // CHECK 5: Runtime context harus ada
     checks.push({
       id: 'CHECK_006_RUNTIME_CONTEXT_EXISTS',
       name: 'Runtime Context Exists',
@@ -480,7 +408,6 @@ export class VerificationEngine {
         : 'Runtime context is missing.'
     });
 
-    // CHECK 6: Disclaimer pengetahuan internal (PR#9 Fase 2 — Tier 2 Fallback)
     const isTier2Internal = context.sourceType === 'llm_internal' || context.retrievalTier === 2 || (context.sourceTrace && context.sourceTrace.includes('[Sumber: Pengetahuan internal model]'));
     if (isTier2Internal) {
       const disclaimerRegex = /pengetahuan umum|pengetahuan internal|tidak ditemukan di dokumen|bawaan model|unverified|tidak ada data lokal|data lokal tidak ditemukan/i;
@@ -496,7 +423,6 @@ export class VerificationEngine {
       });
     }
 
-    // Hitung skor
     const failedChecks = checks.filter(c => c.status === 'FAIL');
     const criticalFails = failedChecks.filter(c => c.severity === 'CRITICAL');
     const score = checks.length > 0
@@ -506,7 +432,7 @@ export class VerificationEngine {
     const warnings = checks.filter(c => c.severity === 'WARNING' && c.status === 'FAIL');
     const totalChecks = checks.length;
     const passedChecks = totalChecks - failedChecks.length;
-    const executionTimeMs = performance.now() - startTime; // ✅ FIX: Real time
+    const executionTimeMs = performance.now() - startTime;
 
     return {
       decision: criticalFails.length === 0 ? 'PASS' : 'FAIL',
@@ -519,15 +445,11 @@ export class VerificationEngine {
       checks,
       failures: failedChecks,
       warnings,
-      executionTimeMs,  // ✅ FIX: Gunakan nilai real
+      executionTimeMs,
       profile: "PERSONAL",
     };
   }
 
-  // ========================================================================
-  // PROFILE 3: PATCH_ENGINEERING (Mode ENGINEER)
-  // ADR-0013: Verifikasi khusus untuk output JSON patch dari Engineer
-  // ========================================================================
 
   static verifyPatchEngineering(context: VerificationContext): VerificationReport {
     const startTime = performance.now();
@@ -537,9 +459,6 @@ export class VerificationEngine {
     let overallStatus: VerificationStatus = "PASS";
     let overallScore = 100;
 
-    // =============================================
-    // DIAGNOSTIC LOG: Rekam response mentah untuk debugging
-    // =============================================
     const rawResponse = context.responseText || '';
     const responseLength = rawResponse.length;
     const responsePreview = rawResponse.substring(0, 500).replace(/\n/g, '\\n');
@@ -553,15 +472,8 @@ export class VerificationEngine {
     console.log(`[VERIFICATION:PATCH_ENGINEERING] Last 200 chars: "${rawResponse.substring(Math.max(0, responseLength - 200)).replace(/\n/g, '\\n')}"`);
     console.log(`[VERIFICATION:PATCH_ENGINEERING] === DIAGNOSTIC END ===`);
 
-    // =============================================
-    // RESPONSE NORMALIZATION LAYER
-    // Membersihkan output LLM dari noise sebelum parsing
-    // =============================================
     const normalizedResponse = VerificationEngine._normalizeLLMResponse(rawResponse);
 
-    // ---------------------------------------------------------
-    // CHECK P01: RESPONSE_NOT_EMPTY (CRITICAL)
-    // ---------------------------------------------------------
     const checkP01: VerificationCheck = {
       id: "CHECK_P01_RESPONSE_NOT_EMPTY",
       name: "Patch Response Not Empty",
@@ -579,10 +491,6 @@ export class VerificationEngine {
     checks.push(checkP01);
     if (checkP01.status === "FAIL") failures.push(checkP01);
 
-    // ---------------------------------------------------------
-    // CHECK P02: VALID_JSON_PATCH_FORMAT (CRITICAL)
-    // UPGRADE: Menggunakan normalized response
-    // ---------------------------------------------------------
     const checkP02: VerificationCheck = {
       id: "CHECK_P02_VALID_JSON_PATCH_FORMAT",
       name: "Valid JSON Patch Structure",
@@ -596,7 +504,6 @@ export class VerificationEngine {
     let extractionError: string = '';
 
     try {
-      // ✅ Coba extract file path dari context (runtimeContext atau evidence)
       const requestedFilePath = context.runtimeContext?.requestedFilePath || 
                                 context.runtimeContext?.targetFile ||
                                 undefined;
@@ -609,7 +516,6 @@ export class VerificationEngine {
         throw new Error(extractionError || "No valid JSON patch found after normalization");
       }
 
-      // Validasi struktur
       const keys = Object.keys(parsedPatch);
       if (keys.length === 0) {
         throw new Error("Empty patch object — no files to modify");
@@ -623,9 +529,6 @@ export class VerificationEngine {
         throw new Error(`Invalid file path format: ${invalidPaths.slice(0, 3).join(', ')}`);
       }
 
-      // Dua bentuk sah: teks isi berkas, atau cari-ganti {"__mode":"search_replace","changes":[{search,replace}]} —
-      // bentuk yang DIMINTA PatchGenerator.js (layar). Dulu hanya teks: live T10 (2026-09-22) patch cari-ganti satu baris
-      // yang benar diblokir "must be a string, got object", lalu layar menggantinya dengan patch TODO palsu.
       for (const [path, content] of Object.entries(parsedPatch)) {
         if (typeof content === 'string') continue;
         const c: any = content;
@@ -647,9 +550,6 @@ export class VerificationEngine {
     if (checkP02.status === "FAIL") failures.push(checkP02);
     console.log(`[VERIFICATION:PATCH_ENGINEERING]\n${checkP02.id}\n${checkP02.status}\nMethod: ${extractionMethod}`);
 
-    // ---------------------------------------------------------
-    // CHECK P03: NO_DANGEROUS_CODE_PATTERNS (CRITICAL - MAEF 4.1)
-    // ---------------------------------------------------------
     const checkP03: VerificationCheck = {
       id: "CHECK_P03_NO_DANGEROUS_PATTERNS",
       name: "No Dangerous Code Patterns (MAEF 4.1)",
@@ -667,12 +567,7 @@ export class VerificationEngine {
     ];
 
     const foundDangerous: string[] = [];
-    // ✅ Periksa HANYA konten file dalam parsedPatch, bukan rawResponse.
-    // rawResponse bisa berisi kode konteks (misal: verification_engine.ts yang berisi
-    // eval() sebagai bagian dari kode deteksi — bukan penggunaan aktual).
-    // Kita hanya peduli apakah kode yang AKAN DITULIS ke disk mengandung pola berbahaya.
     if (parsedPatch) {
-      // Cari-ganti: yang AKAN DITULIS adalah teks "replace" — tanpa ini objeknya terbaca "[object Object]" dan lolos pindai.
       const patchContent = Object.values(parsedPatch)
         .map((v: any) => (typeof v === 'string' ? v : (v?.changes || []).map((x: any) => String(x?.replace ?? '')).join('\n')))
         .join('\n');
@@ -682,7 +577,6 @@ export class VerificationEngine {
         }
       }
     }
-    // Jika parsedPatch null (CHECK_P02 sudah FAIL), skip P03 — tidak ada yang diperiksa.
 
     if (foundDangerous.length > 0) {
       checkP03.status = "FAIL";
@@ -693,9 +587,6 @@ export class VerificationEngine {
     checks.push(checkP03);
     if (checkP03.status === "FAIL") failures.push(checkP03);
 
-    // ---------------------------------------------------------
-    // CHECK P04: MAEF_EVENT_NAMESPACE_COMPLIANCE (ERROR - MAEF 4.6)
-    // ---------------------------------------------------------
     const checkP04: VerificationCheck = {
       id: "CHECK_P04_MAEF_EVENT_NAMESPACE",
       name: "MAEF 4.6 Event Namespace Compliance",
@@ -719,9 +610,6 @@ export class VerificationEngine {
     checks.push(checkP04);
     if (checkP04.status === "FAIL") failures.push(checkP04);
 
-    // ---------------------------------------------------------
-    // CHECK P05: NO_CORE_FILE_MODIFICATION (CRITICAL - MAEF 4.2)
-    // ---------------------------------------------------------
     const checkP05: VerificationCheck = {
       id: "CHECK_P05_NO_CORE_MODIFICATION",
       name: "No Core File Modification (MAEF 4.2)",
@@ -761,9 +649,6 @@ export class VerificationEngine {
     checks.push(checkP05);
     if (checkP05.status === "FAIL") failures.push(checkP05);
 
-    // ---------------------------------------------------------
-    // Final Calculation
-    // ---------------------------------------------------------
     const executionTimeMs = performance.now() - startTime;
     const finalDecision: VerificationDecision = overallStatus === "PASS" ? "PASS" : "FAIL";
     const totalChecks = checks.length;
@@ -789,23 +674,10 @@ export class VerificationEngine {
     };
   }
 
-  // ========================================================================
-  // RESPONSE NORMALIZATION LAYER (Private Helper Methods)
-  // ========================================================================
 
-  /**
-   * Helper unwrap patch: mengonversi berbagai variasi wrapper JSON patch
-   * ke bentuk standar flat: Record<string, string> (key = filePath, value = content).
-   * 
-   * Mendukung:
-   * 1. Whitelist wrapper keys eksplisit ('patch', 'patches', 'files')
-   * 2. Array of file objects dengan alias (file/path/filePath/filename/name dan content/code/newContent/source/text)
-   * 3. Flat dictionary map standar
-   */
   private static _unwrapPatchObject(parsed: any): Record<string, string> | null {
     if (!parsed || typeof parsed !== 'object') return null;
 
-    // KASUS 2: Array of file objects [ { file: '...', content: '...' } ]
     if (Array.isArray(parsed)) {
       const result: Record<string, string> = {};
       for (const item of parsed) {
@@ -820,11 +692,9 @@ export class VerificationEngine {
       return Object.keys(result).length > 0 ? result : null;
     }
 
-    // KASUS 1: Whitelist Wrapper Keys Eksplisit ('patch', 'patches', 'files')
     const WRAPPER_KEYS = ['patch', 'patches', 'files'];
     const keys = Object.keys(parsed);
 
-    // Jika objek memiliki key tunggal yang ada di whitelist wrapper
     if (keys.length === 1 && WRAPPER_KEYS.includes(keys[0].toLowerCase())) {
       const wrapperVal = parsed[keys[0]];
       if (wrapperVal && typeof wrapperVal === 'object') {
@@ -833,7 +703,6 @@ export class VerificationEngine {
       }
     }
 
-    // Jika objek memiliki wrapper key di antara properti lain (misal metadata + patch)
     for (const wKey of WRAPPER_KEYS) {
       if (parsed[wKey] && typeof parsed[wKey] === 'object') {
         const unwrapped = VerificationEngine._unwrapPatchObject(parsed[wKey]);
@@ -843,8 +712,6 @@ export class VerificationEngine {
       }
     }
 
-    // KASUS 3: Flat dictionary map standar { "path/to/file.js": "content" }
-    // Objek cari-ganti (PatchGenerator.js) ikut dipertahankan — patch campuran dulu kehilangan entri itu diam-diam.
     const result: Record<string, any> = {};
     for (const [k, v] of Object.entries(parsed)) {
       const cariGanti = v && typeof v === 'object' && (v as any).__mode === 'search_replace';
@@ -856,21 +723,13 @@ export class VerificationEngine {
     return Object.keys(result).length > 0 ? result : parsed;
   }
 
-  /**
-   * Membersihkan output LLM dari noise (markdown, HTML, prefix/suffix)
-   * agar JSON patch bisa di-extract dengan lebih reliable.
-   * 
-   * Ini bukan bypass — ini adalah standar industri untuk LLM output handling.
-   */
   private static _normalizeLLMResponse(rawResponse: string): string {
     if (!rawResponse) return '';
     
     let cleaned = rawResponse;
     
-    // 1. Hapus HTML tags (jika LLM mengembalikan HTML-wrapped response)
     cleaned = cleaned.replace(/<[^>]+>/g, '');
     
-    // 2. Hapus prefix umum yang sering ditambahkan LLM
     const prefixes = [
       /^(Here'?s the patch:?|Berikut patch-nya:?|Ini patch-nya:?|Tentu, ini patch-nya:?|OK, here'?s the JSON:?|Here is the JSON:?)/i,
       /^(I'?ve (added|modified|updated) .*?:?)/i,
@@ -880,7 +739,6 @@ export class VerificationEngine {
       cleaned = cleaned.replace(prefix, '').trim();
     }
     
-    // 3. Hapus suffix umum
     const suffixes = [
       /(Let me know if you need .*?\.?|Semoga membantu\.?|Hope this helps\.?)$/i,
       /(Feel free to ask .*?\.?)$/i,
@@ -892,18 +750,12 @@ export class VerificationEngine {
     return cleaned;
   }
 
-  /**
-   * Multi-stage JSON patch extractor dengan fallback code block extraction.
-   * UPGRADE: Jika tidak ada JSON sama sekali, coba extract code block dari natural language
-   * dan convert ke JSON patch format.
-   */
   private static _extractJSONPatch(
     normalized: string, 
     raw: string,
-    requestFilePath?: string  // ✅ Tambahkan parameter ini
+    requestFilePath?: string
   ): { parsed: Record<string, string> | null; method: string; error?: string } {
     
-    // STAGE 1: Direct parse dari normalized response
     try {
       const trimmed = normalized.trim();
       if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
@@ -915,7 +767,6 @@ export class VerificationEngine {
       }
     } catch (_) {}
 
-    // STAGE 2: Direct parse dari raw
     try {
       const trimmed = raw.trim();
       if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
@@ -927,7 +778,6 @@ export class VerificationEngine {
       }
     } catch (_) {}
 
-    // STAGE 3: Extract dari Markdown code block (JSON)
     const codeBlockRegex = /```(?:json)?\s*\n?([\s\S]*?)\n?```/g;
     const codeBlockMatches = [...raw.matchAll(codeBlockRegex)];
     for (const match of codeBlockMatches) {
@@ -943,7 +793,6 @@ export class VerificationEngine {
       }
     }
 
-    // STAGE 4: Fuzzy extraction
     const firstBrace = raw.indexOf('{');
     const lastBrace = raw.lastIndexOf('}');
     
@@ -971,7 +820,6 @@ export class VerificationEngine {
       }
     }
 
-    // STAGE 5: Regex fallback
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       try {
@@ -983,11 +831,6 @@ export class VerificationEngine {
       } catch (_) {}
     }
 
-    // =====================================================
-    // STAGE 6: FALLBACK CODE BLOCK EXTRACTION (NEW!)
-    // =====================================================
-    // Jika tidak ada JSON sama sekali, coba extract code block (jsx/javascript/typescript)
-    // dan convert ke JSON patch format. Ini adalah last resort untuk menyelamatkan request.
     const languageCodeBlockRegex = /```(?:jsx?|tsx?|javascript|typescript|react)\s*\n?([\s\S]*?)\n?```/g;
     const languageMatches = [...raw.matchAll(languageCodeBlockRegex)];
     
@@ -996,10 +839,8 @@ export class VerificationEngine {
       
       const syntheticPatch: Record<string, string> = {};
       
-      // Coba infer file path dari context
       let inferredPath = requestFilePath;
       if (!inferredPath) {
-        // Coba extract path dari response text
         const pathMatch = raw.match(/([a-zA-Z0-9_\-\/]+\.(jsx?|tsx?))/);
         if (pathMatch) {
           inferredPath = pathMatch[1];
@@ -1008,7 +849,6 @@ export class VerificationEngine {
         }
       }
       
-      // Ambil code block terbesar (anggap itu yang utama)
       let largestCode = '';
       for (const match of languageMatches) {
         if (match[1].length > largestCode.length) {
@@ -1026,10 +866,6 @@ export class VerificationEngine {
       }
     }
 
-    // =====================================================
-    // STAGE 7: DIFF FORMAT EXTRACTION
-    // =====================================================
-    // Handle: --- a/path/to/file.js\n+++ b/path/to/file.js\n@@ ... @@\n+content
     const diffRegex = /--- a\/(.+?)\n\+\+\+ b\/(.+?)\n@@.*?\n([\s\S]+?)(?=\n---|\n@@|$)/g;
     const diffMatches = [...raw.matchAll(diffRegex)];
     if (diffMatches.length > 0) {
@@ -1054,10 +890,6 @@ export class VerificationEngine {
       }
     }
 
-    // =====================================================
-    // STAGE 8: NAMED CODE BLOCK EXTRACTION
-    // =====================================================
-    // Handle: "file: path/to/file.js\n```js\ncode\n```"
     const namedBlockRegex = /(?:file|path)\s*[:：]\s*([^\n]+)\s*```(?:js|ts|jsx|tsx|json)\s*\n([\s\S]+?)\s*```/gi;
     const namedMatches = [...raw.matchAll(namedBlockRegex)];
     if (namedMatches.length > 0) {
@@ -1073,7 +905,6 @@ export class VerificationEngine {
       }
     }
 
-    // Semua stage gagal
     return { 
       parsed: null, 
       method: 'NO_JSON_FOUND',
@@ -1081,9 +912,6 @@ export class VerificationEngine {
     };
   }
 
-  // ========================================================================
-  // AUDIT RECORD CREATION
-  // ========================================================================
 
   public static createAuditRecord(
     report: VerificationReport,
@@ -1106,9 +934,6 @@ export class VerificationEngine {
     };
   }
 
-  // ========================================================================
-  // ROUTING HELPER (Deterministic Profile Selection - ADR-0013)
-  // ========================================================================
 
   public static verify(
     modeOrContext: "ENGINEER" | "LITE" | "ASSISTANT" | string | VerificationContext,

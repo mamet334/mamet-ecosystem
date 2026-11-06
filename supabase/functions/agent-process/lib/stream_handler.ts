@@ -8,8 +8,6 @@ export const corsHeaders = {
 };
 
 export const getStreamResponse = (promptText: string, systemPromptText = '', chatHistory: any[] = [], metaData: any = {}, rctx: RuntimeContext) => {
-  // isiDokumen (isi potongan RAG, bisa puluhan KB) hanya untuk memeriksa label — JANGAN ikut ke header X-Agent-Metadata.
-  // catatanRag (K2/U8b) ditulis ke isi jawaban di akhir stream — tak perlu ikut header.
   const { isiDokumen = [], catatanRag = '', ...metaTanpaIsi } = metaData || {};
   const safeMeta = { ...metaTanpaIsi };
   if (safeMeta.subagentRuns) safeMeta.subagentRuns = safeMeta.subagentRuns.map((r: any) => ({ ...r, output: '[Omitted to save header space]' }));
@@ -21,19 +19,14 @@ export const getStreamResponse = (promptText: string, systemPromptText = '', cha
          const data = JSON.stringify({ choices: [{ delta: { content: text } }] });
          controller.enqueue(encoder.encode(`data: ${data}\n\n`));
       };
-      // Bingkai TANPA teks: hanya data untuk metadata pesan, tidak pernah tampil di jawaban.
-      // Dipakai T14 mengirim nama penyedia hulu. Bentuknya sengaja sama dengan bingkai `step`
-      // yang sudah dikenal layar — satu objek JSON per bingkai, field yang tak dikenal diabaikan.
       const enqueueData = (obj: Record<string, unknown>) => {
          controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
       };
 
-      // 1. SSE EARLY INIT
       console.log("[SSE EARLY INIT] Streaming started before LLM calls");
-      enqueueStr(""); // Send first chunk immediately to prevent hanging HTTP request
+      enqueueStr("");
 
       const closeSafely = async () => {
-         // --- 🔎 MAMET AI V3 LIGHT+ (AUDIT INJECTOR) ---
          try {
             if (safeMeta.auditMode === 'BASIC' || safeMeta.auditMode === 'FULL') {
                 const amode = safeMeta.auditMode;
@@ -93,24 +86,16 @@ export const getStreamResponse = (promptText: string, systemPromptText = '', cha
       let fullLLMResponse = '';
 
       try {
-        // === ITERATE THROUGH CAPABILITY ADAPTER STREAM ===
         const streamIter = runStreamLLM(promptText, systemPromptText, chatHistory, rctx);
         for await (const chunk of streamIter) {
             fullLLMResponse += chunk;
             enqueueStr(chunk);
         }
         
-        // === LABEL VERIFIED HARUS MENGUTIP SUMBER (Item 71) ===
-        // Teks yang sudah terkirim tidak bisa ditarik kembali, jadi koreksinya DITAMBAHKAN di akhir —
-        // pembaca tetap tahu label itu tidak sah. Jalur non-stream menggantinya langsung.
-        // K4 (30 Okt 2026): semua penyedia gagal → isi stream adalah PESAN KEGAGALAN (llm_orchestrator), bukan jawaban
-        // model. Dulu ia ikut diberi label HYPOTHESIS + "model tidak menulis label" bila ada dokumen dilampirkan.
         const semuaGagal = Boolean((rctx as any)?.semuaPenyediaGagal);
         if (!semuaGagal) try {
           const cek = periksaLabelSumber(fullLLMResponse, safeMeta.judulDokumen || [], isiDokumen);
           if (cek.dikoreksi) {
-            // Label dibaca dari hasil, tidak lagi dipaku ke HYPOTHESIS: sejak T13 penurunannya bisa
-            // berhenti di PARTIAL, dan jalur stream harus memberi vonis yang sama dengan non-stream.
             const label = cek.label || LABEL_HIPOTESIS;
             console.warn(`[LABEL] stream: label dikoreksi -> ${label} (${cek.alasan}); dokumen dilampirkan: ${(safeMeta.judulDokumen || []).length}`);
             enqueueStr(`\n\n${label}\n${cek.catatan}\n`);
@@ -118,14 +103,8 @@ export const getStreamResponse = (promptText: string, systemPromptText = '', cha
         } catch (labelErr) {
           console.error('[LABEL] gagal memeriksa label:', labelErr);
         }
-        // K2/U8b: RAG turun ke pencocokan kata → catatan sistem (sama dengan jalur non-stream).
         if (catatanRag && !semuaGagal) enqueueStr(`\n\n${catatanRag}\n`);
 
-        // === T14: NAMA PENYEDIA HULU IKUT KE METADATA PESAN ===
-        // Satu nama model di OpenRouter dilayani banyak penyedia (terukur: 8 penyedia untuk
-        // deepseek-v4-flash dalam 4 jam) — gaya, biaya, dan latensi berayun tanpa kode berubah.
-        // Selama ini namanya hanya masuk log, jadi pertanyaan "apakah penyedia X terasa lebih
-        // buruk" tak pernah bisa dijawab data: log berumur pendek, pesan tersimpan selamanya.
         try {
           if (rctx.penyediaHulu) enqueueData({ penyedia: rctx.penyediaHulu });
         } catch (penyediaErr) {

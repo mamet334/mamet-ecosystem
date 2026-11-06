@@ -18,7 +18,6 @@ export async function pingHeartbeat(serviceName: string, status: 'HEALTHY' | 'DO
         {
           service_name: serviceName,
           status,
-          // Per schema project: tabel hanya punya last_heartbeat_at
           last_heartbeat_at: new Date().toISOString(),
         },
         { onConflict: 'service_name' }

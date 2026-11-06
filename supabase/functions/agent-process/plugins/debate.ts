@@ -5,7 +5,6 @@ export default {
     try {
       const topic = `Topik Diskusi: ${task}\nKonteks Tambahan: ${accumulatedContext}`;
       
-      // 3 Persona dipanggil secara PARALEL untuk menghemat waktu
       const [ceoResponse, cfoResponse, ctoResponse] = await Promise.all([
         runLLM(
           `Bahas topik berikut dari sudut pandang seorang CEO (Chief Executive Officer) yang visioner.\nFokus pada ekspansi, strategi pasar, kepemimpinan, dan gambaran besar.\n\n${topic}`, 
@@ -32,7 +31,6 @@ ${cfoResponse}
 ${ctoResponse}
 `;
 
-      // Chairman (Penyimpul) dipanggil setelah ketiganya selesai
       const chairmanPrompt = `Anda adalah "Chairman of the Board". Berikut adalah pendapat dari 3 direktur Anda (CEO, CFO, CTO) mengenai ide/masalah yang diajukan:
 
 ${debateLog}

@@ -14,7 +14,6 @@ from crawler.kanal import SesiSopan
 
 API = "https://api.stackexchange.com/2.3/search/advanced"
 
-
 class StackExchange(Sumber):
     id = "stackexchange"
     kanal = "laptop"

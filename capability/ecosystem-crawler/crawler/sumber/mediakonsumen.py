@@ -19,13 +19,10 @@ from crawler.kanal import AksesWeb, DilarangRobots, Terblokir
 from .web import ekstrak
 
 DASAR = "https://mediakonsumen.com"
-# Feed menambahkan baris promosi situs di akhir ringkasan.
 _PROMOSI = re.compile(r"\s*(Baca juga|Media Konsumen).*$", re.DOTALL)
-
 
 def slug(teks: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", teks.lower()).strip("-")
-
 
 class MediaKonsumen(Sumber):
     id = "mediakonsumen"
@@ -62,8 +59,6 @@ class MediaKonsumen(Sumber):
 
         if diambil or not misi.kata_kunci:
             return
-        # Cadangan: tag tidak ada atau kosong. Baca surat terbaru di feed utama, saring dengan kata kunci
-        # (judul + paragraf pertama) sebelum mengambil isi lengkap, agar tidak membuka halaman yang tidak relevan.
         halaman_utama = int(opsi.get("halaman_cadangan", 5))
         lapor("Adapter.FallbackTriggered", dari="tag", ke="feed_utama", halaman=halaman_utama)
         for e in self._baca_feed(akses, "", halaman_utama, lapor):
@@ -84,7 +79,7 @@ class MediaKonsumen(Sumber):
             except (DilarangRobots, Terblokir) as exc:
                 lapor("Sumber.HalamanDilewati", url=url, alasan=str(exc))
                 return
-            except Exception as exc:  # tag tidak ada / halaman habis (404)
+            except Exception as exc:
                 lapor("Sumber.FeedTidakAda", jalur=jalur or "feed_utama", halaman=hal, alasan=str(exc)[:120])
                 return
             entries = feedparser.parse(teks_feed).entries

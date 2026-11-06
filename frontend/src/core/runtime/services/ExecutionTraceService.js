@@ -1,13 +1,3 @@
-// ExecutionTraceService
-// Responsibility:
-// - fetch execution events by trace_id from existing telemetry sources
-// - normalize into a UI-friendly timeline format
-// - sort chronologically by created_at (ASC)
-//
-// IMPORTANT:
-// - No schema changes
-// - No backend refactor
-// - No synthetic/mock events
 
 import { supabase } from '../../../supabase';
 
@@ -176,19 +166,11 @@ function buildPipeline({ traceId, timeline }) {
 }
 
 export function normalizeAgentLogsEvent(row) {
-  // Expected shape from persistTelemetryLog (runtime_context.ts + subscribers)
-  // public.agent_logs:
-  // - event_type
-  // - provider
-  // - message
-  // - created_at
-  // - metadata (JSONB)
   const eventType = row.event_type || row.eventType;
   const metadata = row.metadata || row?.metadata_json || {};
 
   const createdAt = row.created_at ? new Date(row.created_at).toISOString() : null;
 
-  // Derive domain + status from known event types
   if (eventType === 'Capability.Executed') {
     return {
       type: 'capability',
@@ -203,7 +185,6 @@ export function normalizeAgentLogsEvent(row) {
     };
   }
 
-  // MEMORY domain
   if (eventType === 'Memory.Read.Start') {
     return {
       type: 'memory',
@@ -274,7 +255,6 @@ export function normalizeAgentLogsEvent(row) {
     };
   }
 
-  // PIPELINE domain
   if (eventType === 'Pipeline.Start') {
     return {
       type: 'pipeline',
@@ -316,7 +296,6 @@ export function normalizeAgentLogsEvent(row) {
     };
   }
 
-  // PROVIDER domain
   if (eventType === 'Provider.Request') {
     return {
       type: 'provider',
@@ -371,7 +350,6 @@ export function normalizeAgentLogsEvent(row) {
     };
   }
 
-  // PLANNER / RAG / VERIFICATION domain
   if (eventType === 'Planner.Start') {
     return {
       type: 'planner',
@@ -535,7 +513,6 @@ export function normalizeAgentLogsEvent(row) {
   if (eventType === 'Tool.Completed') {
     const status = metadata?.status || metadata?.tool_status || 'success';
 
-    // Map existing statuses to UI statuses without creating new rules.
     let uiStatus = 'success';
     if (typeof status === 'string') {
       const s = status.toLowerCase();
@@ -571,7 +548,6 @@ export function normalizeAgentLogsEvent(row) {
     };
   }
 
-  // Fallback for unknown event_type but still show it if correlated
   return {
     type: 'misc',
     event: eventType || 'Unknown',
@@ -588,7 +564,6 @@ export function normalizeAgentLogsEvent(row) {
 export async function fetchExecutionTrace({ traceId, limit = 200 }) {
   if (!traceId) return { traceId: null, timeline: [], sources: { agent_logs: 0, verification_audit_logs: 0 } };
 
-  // 1) agent_logs (event bus telemetry)
   const { data: agentLogsRows, error: agentLogsError } = await supabase
     .from('agent_logs')
     .select('id, event_type, provider, message, created_at, metadata')
@@ -597,7 +572,6 @@ export async function fetchExecutionTrace({ traceId, limit = 200 }) {
     .limit(limit);
 
   if (agentLogsError) {
-    // No synthetic data; just return empty with error context.
     console.error('fetchExecutionTrace: agent_logs error', agentLogsError);
     throw agentLogsError;
   }
@@ -605,11 +579,6 @@ export async function fetchExecutionTrace({ traceId, limit = 200 }) {
   const normalizedAgentEvents = (agentLogsRows || [])
     .map(row => enrichEventWithStep(row, normalizeAgentLogsEvent(row)));
 
-  // verification_audit_logs sengaja TIDAK dikueri (T6, 2026-09-17): tabel itu tidak punya kolom `metadata`
-  // (kueri lama → 400 "column … metadata does not exist" di setiap pemuatan jejak) dan penulis aktifnya
-  // (agent-process verification_service.ts) tidak pernah menyimpan trace id — request_id selalu null,
-  // source_trace berisi teks jejak sumber jawaban. Tidak ada kolom untuk mencocokkan baris ke traceId.
-  // Preseden: useDashboardData.js (2026-09-08) membuang kolom yang sama tanpa mengubah skema.
 
   const timeline = normalizedAgentEvents
     .filter(e => e && e.timestamp)

@@ -51,8 +51,6 @@ export class MetadataService {
       this.validateSchema(widgetData, 'widgets');
       this.metadata.widgets = widgetData.widgets;
 
-      // Tema (Item 128) — TIDAK kritis: tanpa daftar tema aplikasi tetap jalan dengan tema bawaan, jadi kegagalannya
-      // tidak menghentikan boot seperti metadata lain. Bentuknya diperiksa lagi oleh tema.js (periksaMeta).
       try {
         const temaData = await fetchJson('themes.json');
         this.validateSchema(temaData, 'themes');
@@ -65,7 +63,6 @@ export class MetadataService {
       console.log('[MetadataService] Successfully validated and loaded all metadata');
     } catch (e) {
       console.error('[MetadataService] CRITICAL ERROR: Failed to load metadata:', e.message);
-      // Kernel Phase 9 will catch this and halt booting.
       throw e;
     }
   }

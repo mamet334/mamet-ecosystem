@@ -6,51 +6,6 @@ import {
   type RuntimeContext
 } from '../runtime_context.ts';
 
-/**
- * ENDPOINT HAKIM KONFLIK — `{ action: 'judge_conflict', existing, incoming, model }`
- *
- * Dibuat 2026-09-10 (Item 55).
- *
- * KENAPA ADA
- * `detectAndMarkConflict` lama menandai konflik bila `source_reference` sama dan
- * isinya berbeda. Karena SETIAP fakta chat dalam satu kategori memakai
- * `source_reference` yang sama, dan pemeriksaan versinya tidak pernah bisa gagal
- * (semua baris `version_sequence = 1`), aturan itu runtuh menjadi: "dua fakta
- * berbeda dalam kategori sama = konflik". Dijamin positif palsu.
- *
- * KENAPA KEMIRIPAN VEKTOR SAJA TIDAK CUKUP
- * Diukur pada 12 pasang kalimat nyata milik Owner (2026-09-10):
- *
- *   0,8780  BENTROK  tabel vs tidak suka tabel
- *   0,8710  BENTROK  pak slamet vs pak mamet
- *   0,8514  BENTROK  kopi vs tidak suka kopi
- *   0,8323  TAJAM    kopi vs kopi hitam tanpa gula
- *   0,8185  TAJAM    UT vs jurusan SI di UT
- *   0,7890  BENTROK  teh vs benci teh
- *   0,7263  BEBAS    kopi vs teh
- *   0,6353  BENTROK  UT vs ITB
- *   0,5201  BEBAS    ai vs tabel
- *   ...
- *
- * Celah antara BENTROK terendah dan BEBAS tertinggi: **-0,091** — NEGATIF.
- * "UT vs ITB" bertentangan tapi duduk di bawah "kopi vs teh" yang bebas, dan
- * golongan TAJAM terkubur persis di tengah BENTROK. Tidak ada satu ambang pun
- * yang memisahkannya.
- *
- * Sebabnya mendasar: vektor mengukur KEMIRIPAN TOPIK, bukan PERTENTANGAN. Kata
- * "tidak" nyaris tidak menggeser vektor, sementara dua nama berbeda (UT/ITB)
- * menjauhkannya meski maknanya bertabrakan.
- *
- * MAKA: DUA TAHAP
- * Kemiripan dipakai sebagai PENYARING murah (di klien, ambang 0,78), dan
- * endpoint ini yang MEMUTUSKAN. Hanya pasangan yang lolos saringan sampai ke
- * sini, jadi panggilan LLM-nya jarang.
- *
- * BYOK WAJIB (Item 51)
- * Ini panggilan model chat atas nama pengguna, jadi memakai kunci pengguna
- * sendiri — beda dengan embedding yang fungsi internal. Tanpa `x-byok-*`,
- * ditolak. Setiap pemakaian punya pemiliknya.
- */
 
 const MAKS_KARAKTER = 2000;
 
@@ -89,7 +44,6 @@ export async function handleJudgeConflictRequest(
     return jawab({ error: 'EMPTY_INPUT', message: 'Field `existing` dan `incoming` wajib diisi.' }, 400, corsHeaders);
   }
 
-  // BYOK: panggilan model chat harus memakai kunci pengguna (Item 51).
   const byok: Record<string, string> = {
     openrouter: (request.headers.get('x-byok-openrouter') || '').trim(),
     openai: (request.headers.get('x-byok-openai') || '').trim(),
@@ -122,12 +76,6 @@ export async function handleJudgeConflictRequest(
       gemini: provider === 'gemini' ? byok.gemini : '',
       allGemini: provider === 'gemini' ? [byok.gemini] : []
     },
-    // Model dikirim klien dari BrainService — model yang memang dipakai Owner
-    // sehari-hari dan terbukti hidup. Sengaja TIDAK menebak nama model di sini;
-    // katalog penyedia berubah lebih cepat daripada kode (Item 41, 53).
-    // `pemilih: 'sistem'` (Item 126): hakim bayangan dipanggil sistem, bukan dipilih Owner —
-    // modelnya pun model Coordinator, bukan model yang Owner set di Settings. Menandainya di sini
-    // membuat biaya hakim tidak ikut mencemari metrik "biaya saat Owner yang memilih".
     model: { model: typeof body?.model === 'string' ? body.model : '', provider, thinking: false, pemilih: 'sistem' },
     policy: {},
     stream: { isStream: false, desktopOSMode: false, auditMode: 'OFF' },
@@ -146,7 +94,6 @@ export async function handleJudgeConflictRequest(
     if (adapters.length === 0) throw new Error(`Tidak ada adapter aktif untuk provider "${provider}".`);
 
     let mentah = '';
-    // Bahan pencatatan biaya dari jawaban adapter — lihat blok `logApiUsage` di bawah.
     let biayaAsliUsd: number | undefined;
     let modelTercatat = '';
     for (const adapter of adapters) {
@@ -167,13 +114,6 @@ export async function handleJudgeConflictRequest(
     }
     if (!mentah) throw new Error('Semua adapter gagal menjawab.');
 
-    // `api_usage` (ditambahkan 24 September 2026). Adapter hanya menulis `cost_ledger`, yang dibaca
-    // circuit breaker. `api_usage` dibaca RPC pemakaian DAN oleh anggaran jendela konteks di klien —
-    // tanpa baris ini, panggilan hakim konflik adalah pengeluaran yang tak terlihat oleh keduanya.
-    // Celah yang sama ditemukan dan diperbaiki di `padatkan_endpoint.ts` pada hari yang sama.
-    //
-    // Argumen kelima adalah biaya sesungguhnya dari penyedia; tanpa itu `logApiUsage` jatuh ke
-    // tabel tarif dan mencatat terlalu murah (terukur 2,6x pada uji Padatkan 24 September 01:11).
     rctx.logger.logApiUsage(
       provider,
       modelTercatat || rctx.model.model || '',
@@ -182,7 +122,6 @@ export async function handleJudgeConflictRequest(
       biayaAsliUsd
     );
 
-    // Model kadang membungkus JSON dengan ```json — ambil objek pertamanya.
     const cocok = mentah.match(/\{[\s\S]*\}/);
     if (!cocok) throw new Error(`Jawaban bukan JSON: ${mentah.slice(0, 200)}`);
     const parsed = JSON.parse(cocok[0]);
@@ -196,16 +135,7 @@ export async function handleJudgeConflictRequest(
     return jawab({ putusan, alasan: String(parsed?.alasan || '').slice(0, 300) }, 200, corsHeaders);
 
   } catch (err: any) {
-    // GAGAL KE ARAH TIDAK MENANDAI.
-    //
-    // Kalau hakimnya tidak bisa memutuskan, jangan menebak. Menandai konflik
-    // secara keliru berarti memori Owner yang benar dilempar ke antrian review —
-    // persis keluhan yang melahirkan Item 55. Melewatkan satu pertentangan jauh
-    // lebih murah daripada mengarantina fakta yang sah.
     console.error(`[Judge] ⚠️ Tidak dapat memutuskan (user ${user.id}): ${err.message}. Dianggap TIDAK berkonflik.`);
-    // Tugas latar ditunggu JUGA di jalur gagal. Tanpa `EdgeRuntime.waitUntil`, satu-satunya yang
-    // menahan proses adalah `awaitAll` — putusan yang gagal diparse tetap panggilan model yang
-    // sudah dibayar, dan barisnya tidak boleh hilang bersama prosesnya.
     await tasks.awaitAll();
     return jawab({
       putusan: null,

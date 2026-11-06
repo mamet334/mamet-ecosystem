@@ -6,8 +6,6 @@ import {
   type HasilBerita,
 } from '../lib/web/pencarian_berita.ts';
 
-// Bahan deep research (instruksi ±700 + daftar 8 hasil ±2.500 + isi 4 artikel × 2.500) masuk ke konteks jawaban akhir.
-// 12.500 lalu 14.000 sama-sama memotong ekor artikel ke-4 (uji 2026-09-15: 12.540 dan 14.040 huruf).
 const MAX_OUTPUT_CHARS = 15000;
 
 export default {
@@ -17,8 +15,6 @@ export default {
     try {
       const query = cleanTask || task;
 
-      // 1. Google Search via Gemini — hanya dengan kunci Gemini BYOK. Kunci server Gemini dihapus (2026-09-15): tanpa
-      //    BYOK daftar ini kosong dan langsung ke pencarian berita di bawah.
       const keys = (env.allGeminiKeys && env.allGeminiKeys.length > 0 ? env.allGeminiKeys : [env.GEMINI_API_KEY])
         .filter((k: string) => typeof k === 'string' && k.trim());
       const searchPayload = {
@@ -51,9 +47,7 @@ export default {
         }
       }
 
-      // 2. Pencarian berita (Bing News RSS → Google News RSS), menggantikan DuckDuckGo Lite yang kosong dari server.
       if (hasil.length === 0) {
-        // Pesan asli pengguna ikut dicari: tugas dari Coordinator sering diperluas hingga Bing hanya memberi 1–2 hasil.
         const pesanAsli = String(task || '').match(/Permintaan Asli User: "([\s\S]*?)"\n/)?.[1];
         const cari = await cariBerita(query, { signal, batasTotalMs: 8000, kueriLain: pesanAsli ? [pesanAsli] : [] });
         console.log(`[DeepResearch] pencarian: ${cari.catatan.join(' | ')}`);
@@ -68,14 +62,9 @@ export default {
         kueri = cari.kueri;
       }
 
-      // 3. Baca isi 4 artikel teratas secara paralel (dulu berurutan lewat r.jina.ai, 5–8 detik per artikel).
       const baca = await bacaBeberapaArtikel(hasil, { signal, jumlah: 4, kandidat: 7, batasMs: 5000, maksHuruf: 2500 });
       console.log(`[DeepResearch] baca artikel: ${baca.catatan.join(' | ')}`);
 
-      // 4. Laporan ditulis oleh jawaban akhir, bukan di sini. Dulu sub-agent memanggil LLM untuk laporan panjang; dengan
-      //    model pengguna (OpenRouterAdapter mengabaikan `model` sub-agent) rangkuman 392 token saja makan 16,8 detik
-      //    (uji live v441), jadi laporan ribuan token pasti melewati batas. Bahan bernomor + instruksi laporan diserahkan
-      //    ke jawaban akhir yang bernalar dengan model pengguna.
       let output = `Bahan DEEP RESEARCH (${penyedia}, kata kunci "${kueri}", ${baca.artikel.length} artikel dibaca utuh) — BAHAN MENTAH.
 Pengguna menyalakan Deep Research: susun LAPORAN RISET terstruktur dari bahan ini — ringkasan, temuan utama per sumber,
 tabel perbandingan bila datanya mendukung, dan kesimpulan. Setiap fakta diberi nomor sumber [n] beserta situsnya. ISI ARTIKEL

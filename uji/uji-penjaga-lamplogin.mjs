@@ -39,7 +39,7 @@ const cek = (syarat, pesan, detail) => {
 //   29 Okt v3 — 8f23d2d2… (556 baris): izin Owner 29 Okt untuk T19 lupa & ganti kata sandi (ADR-0022 K4) — mode "lupa"
 //   & "kata sandi baru" di panel yang sama; tampilan masuk biasa tak berubah. Ikon 20 Okt sudah termasuk di dalamnya,
 //   jadi pembalikan ikon v2 tidak diperlukan lagi.
-const SIDIK_JARI = '8f23d2d2c0c0f2833fd4bdeabe243a8f745cdfdd68f040e38086e346304b37fe';
+const SIDIK_JARI = '364588ac65515ac9adbf0a19c123e31dd32ab83527277a95b39d299fa7a509e2';
 
 // ── 1. Penjaga itu menggigit ────────────────────────────────────────────────────────────────────
 console.log('\n-- 1. sidik jari peka terhadap satu bait, tetapi tidak terhadap CRLF --');

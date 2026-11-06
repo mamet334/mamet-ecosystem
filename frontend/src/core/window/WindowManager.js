@@ -1,14 +1,7 @@
-/**
- * Phase 5: Window Manager Foundation
- * Level 5 in Mamet OS Architecture.
- * Responsible for managing the UI layout tree (Docking, Floating, Split Screen)
- * independently of the Workspace logic.
- */
 export class WindowManager {
   constructor(serviceManager) {
     this.serviceManager = serviceManager;
-    this.eventBus = serviceManager.get('EventBus'); // Use global EventBus from ServiceManager
-    // The window tree state (Foundation for future GoldenLayout-like engine)
+    this.eventBus = serviceManager.get('EventBus');
     this.state = {
       floatingWindows: new Map(),
       splitPanes: new Map(),
@@ -16,11 +9,7 @@ export class WindowManager {
     };
   }
 
-  // --- Foundation APIs ---
 
-  /**
-   * Spawns a globally floating window (unbound from specific workspace layout)
-   */
   spawnFloatingWindow(config) {
     const windowId = `win_${Date.now()}`;
     const windowDef = {
@@ -47,17 +36,12 @@ export class WindowManager {
     }
   }
 
-  /**
-   * Foundation for split-screen layouts
-   */
   createSplitPane(direction, children) {
     const paneId = `split_${Date.now()}`;
     this.state.splitPanes.set(paneId, { direction, children });
-    // Future implementation: integrate with layout engine
     return paneId;
   }
 
-  // --- Observability ---
   subscribe(listener) {
     return this.eventBus.on('Window:StateChanged', listener);
   }

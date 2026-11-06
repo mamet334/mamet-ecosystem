@@ -31,7 +31,6 @@ export function parseCoordinatorPlan(planText: string): CoordinatorPlanParseResu
     }
   }
 
-  // --- MAMET HEALER: Fallback Layer ---
   if (plan && !Array.isArray(plan) && typeof plan === 'object') {
     healerTriggered = true;
     plan = [plan];
@@ -53,7 +52,6 @@ export function parseCoordinatorPlan(planText: string): CoordinatorPlanParseResu
     });
   }
 
-  // 🧱 STEP 1: EXECUTION CONTRACT LAYER
   let validation: ContractValidationResult = {
     step: "VALIDATION",
     status: "OK",

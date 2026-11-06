@@ -7,7 +7,6 @@ export default function MaefExecutionMonitorWidget() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Check for pre-injected data (if widget mounted too slow to catch the event)
     const wsManager = kernel.serviceManager?.has('WorkspaceManager') ? kernel.serviceManager.get('WorkspaceManager') : null;
     if (wsManager && typeof wsManager.getWidgetData === 'function') {
       const preInjectedData = wsManager.getWidgetData('widget:maef-monitor');
@@ -18,7 +17,6 @@ export default function MaefExecutionMonitorWidget() {
       }
     }
 
-    // 2. Subscribe to EventBus for future dynamic injections
     const eventBus = kernel.serviceManager?.has('EventBus') ? kernel.serviceManager.get('EventBus') : null;
     let unsub = null;
 
@@ -33,7 +31,6 @@ export default function MaefExecutionMonitorWidget() {
       });
     }
 
-    // If no trace is injected within 1s, just show waiting state
     const timeout = setTimeout(() => {
       setLoading(false);
     }, 1000);
@@ -66,7 +63,6 @@ export default function MaefExecutionMonitorWidget() {
   return (
     <div className="space-y-4 p-1">
       
-      {/* Header Status */}
       <div className="bg-slate-900 border border-emerald-500/30 rounded-lg p-3">
         <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2 text-emerald-400">
@@ -88,7 +84,6 @@ export default function MaefExecutionMonitorWidget() {
         </div>
       </div>
 
-      {/* Execution Pipeline Steps */}
       <div className="space-y-2">
         <h4 className="text-[12px] text-slate-400 uppercase tracking-wider font-semibold mb-2 flex items-center gap-2">
           <Ikon nama="lan" ukuran={12} /> Runtime Pipeline
@@ -108,7 +103,6 @@ export default function MaefExecutionMonitorWidget() {
              </div>
            ))}
            
-           {/* If no steps array was provided but there is general telemetry */}
            {(!activeTrace.processingSteps && !activeTrace.logs) && (
               <div className="flex gap-3 relative z-10">
                 <div className="mt-0.5 shrink-0 w-4 h-4 rounded-full bg-slate-950 border border-emerald-500/50 flex items-center justify-center">
@@ -122,7 +116,6 @@ export default function MaefExecutionMonitorWidget() {
         </div>
       </div>
       
-      {/* Evidence Payload */}
       {activeTrace.groundingSources && activeTrace.groundingSources.length > 0 && (
         <div className="space-y-2 mt-4">
           <h4 className="text-[12px] text-slate-400 uppercase tracking-wider font-semibold mb-2 flex items-center gap-2">

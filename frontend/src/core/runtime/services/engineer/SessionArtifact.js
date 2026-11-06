@@ -1,19 +1,12 @@
-/**
- * SessionArtifact — Melacak konteks sesi Engineer untuk handoff antar model AI.
- * Diinisialisasi sekali saat Engineer.initialize() dan diperbarui per task.
- *
- * Diekstrak dari engineer.js (Fase 1, ADR-0017) — struktur data murni,
- * tidak ada dependency ke instance Engineer atau service lain.
- */
 export class SessionArtifact {
   constructor(sessionId) {
     this.sessionId = sessionId;
-    this.decisions = [];          // Riwayat keputusan
-    this.analyzedFiles = [];      // File yang dianalisis
-    this.modifiedFiles = [];      // File yang diubah
-    this.maefViolations = [];     // Pelanggaran MAEF yang ditemukan
-    this.reasoningReports = [];   // Riwayat reasoning report
-    this.executedCommands = [];   // Audit trail terminal commands [MAMET_CMD:]
+    this.decisions = [];
+    this.analyzedFiles = [];
+    this.modifiedFiles = [];
+    this.maefViolations = [];
+    this.reasoningReports = [];
+    this.executedCommands = [];
     this.startedAt = new Date().toISOString();
     this.lastActivity = new Date().toISOString();
     this.taskCount = 0;
@@ -53,12 +46,11 @@ export class SessionArtifact {
     this.lastActivity = new Date().toISOString();
   }
 
-  // Catat setiap terminal command yang dijalankan via [MAMET_CMD:]
   addCommand(cmd, status, output = '') {
     this.executedCommands.push({
       command: cmd,
-      status,          // 'success' | 'error' | 'skipped'
-      outputSnippet: output.slice(0, 300), // simpan max 300 char
+      status,
+      outputSnippet: output.slice(0, 300),
       executedAt: new Date().toISOString()
     });
     this.lastActivity = new Date().toISOString();
@@ -90,10 +82,6 @@ export class SessionArtifact {
     };
   }
 
-  /**
-   * Menghasilkan string konteks untuk di-inject ke prompt LLM.
-   * Berguna untuk handoff antar model AI.
-   */
   toPromptContext() {
     const summary = this.getSummary();
     let context = `=== SESSION ARTIFACT ===\n`;
@@ -106,7 +94,6 @@ export class SessionArtifact {
     context += `Pelanggaran MAEF: ${summary.violationsFound}\n`;
     context += `Terminal Commands: ${summary.commandsExecuted}\n`;
 
-    // Inject 5 command terakhir ke konteks LLM — Engineer tahu apa yang sudah dijalankan
     if (this.executedCommands.length > 0) {
       context += `\n=== TERMINAL AUDIT TRAIL (5 terakhir) ===\n`;
       this.executedCommands.slice(-5).forEach((c, i) => {

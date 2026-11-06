@@ -1,17 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
-// Dipakai kalau plafon sistem belum diset di system_config — mempertahankan perilaku lama.
 const FALLBACK_DAILY_LIMIT = 1;
 
-/**
- * Batas harian efektif = nilai TERKECIL antara batas pribadi user dan plafon sistem.
- *
- * Batas pribadi disimpan di user_metadata (bisa diubah Owner sendiri dari Settings, pola sama
- * seperti model_tiers). Plafon sistem ada di tabel system_config yang HANYA bisa ditulis service
- * role — ini yang mencegah pengguna menaikkan sendiri jatah belanjanya, penting karena pengguna
- * mametlite tanpa BYOK key memakai API key sistem milik Owner. Jadi tombol di UI hanya bisa
- * membuat batas lebih ketat, tidak pernah melewati plafon.
- */
 async function resolveDailyLimit(supClient: any, userId: string): Promise<number> {
   let systemCap = FALLBACK_DAILY_LIMIT;
   let userCap: number | null = null;
@@ -40,11 +30,6 @@ async function resolveDailyLimit(supClient: any, userId: string): Promise<number
   return effective;
 }
 
-/**
- * Membangun respons penolakan, seragam untuk jalur stream maupun non-stream.
- * Sebelumnya kedua bentuk ini ditulis dua kali dengan kalimat yang disalin
- * tangan, sehingga menambah satu jenis penolakan berarti menyalinnya lagi.
- */
 function bangunPenolakan(pesan: string, stream: boolean, corsHeaders: HeadersInit): Response {
   if (!stream) {
     return new Response(JSON.stringify({ message: pesan }), {
@@ -61,31 +46,6 @@ function bangunPenolakan(pesan: string, stream: boolean, corsHeaders: HeadersIni
   return new Response(streamRes, { headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' } });
 }
 
-/**
- * Penjaga belanja harian. GAGAL-TERTUTUP.
- *
- * Sebelum 2026-09-10 fungsi ini gagal-TERBUKA lewat dua celah sekaligus:
- *
- *   1. `catch { console.error("Quota check failed, bypassing...") }` lalu
- *      `return null` — permintaan diteruskan. Kodenya jujur menyebut dirinya
- *      sendiri "bypassing".
- *   2. Seluruh penjagaan dibungkus `if (!quotaError && currentCost !== null)`,
- *      jadi kalau RPC mengembalikan error, pemeriksaan dilewati diam-diam
- *      tanpa satu pun log peringatan.
- *
- * Akibatnya satu gangguan sesaat di database membuat penjaga ini lenyap tanpa
- * jejak — padahal inilah satu-satunya kontrol yang melindungi saldo Owner, dan
- * pengguna mametlite tanpa BYOK membelanjakan API key Owner.
- *
- * Sekarang: kalau kuota tidak bisa dipastikan, permintaan DITOLAK. Ini memang
- * menukar ketersediaan dengan keamanan biaya, dan itu pertukaran yang disengaja
- * — pola yang sama sudah dipakai `resolveDailyLimit`, yang jatuh ke batas paling
- * ketat ($1) saat plafon sistem tidak terbaca.
- *
- * Pesan penolakannya sengaja dibedakan supaya Owner bisa membedakan "jatah saya
- * memang habis" dari "pemeriksaannya yang rusak" — dua keadaan yang menuntut
- * tindakan berbeda.
- */
 export async function checkQuota(userId: string, supabaseUrl: string, supabaseServiceKey: string, stream: boolean, corsHeaders: HeadersInit): Promise<Response | null> {
   const PESAN_GAGAL_PERIKSA =
     '**[PENGAMAN BIAYA AKTIF]** Pemakaian harian Anda tidak bisa dipastikan saat ini, ' +

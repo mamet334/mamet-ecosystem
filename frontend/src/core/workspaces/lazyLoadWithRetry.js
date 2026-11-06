@@ -21,10 +21,8 @@ export function lazyLoadWithRetry(importFn, widgetId) {
           throw new Error(`Module Load Failure: ${widgetId} - ${error.message}`);
         }
         
-        // Wait before retrying
         await new Promise(resolve => setTimeout(resolve, 1500));
         
-        // Attempt to cache bust or force reload on the last retry if it's a ChunkLoadError
         if (retries === 1 && error.message.match(/dynamically imported module/i)) {
              console.warn(`[ModuleLoader] Critical chunk failure detected. This is typically due to a new Vercel deployment replacing older assets. Recovery requires a hard refresh or fallback.`);
         }

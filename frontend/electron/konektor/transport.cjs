@@ -1,26 +1,8 @@
-// TRANSPORT KONEKTOR UMUM (Item 129 Tahap G1, 2026-11-03) — satu tugas: entri server → cara tersambung ke server MCP.
-//
-// Dua jenis (K4):
-//   - stdio: program .exe yang ditunjuk Owner, dijalankan TANPA shell, folder kerja = folder program, lingkungan =
-//     lingkungan bersih dari pemanggil (`lingkunganServer` konektorMcp.cjs — nama berbau rahasia sudah dibuang) +
-//     variabel biasa dari resep + kredensial dari brankas.
-//   - http: Streamable HTTP; kredensial menjadi header (mis. `Authorization: Bearer …`). OAuth tetap Tahap F.
-//
-// Titik sambung S5: penyaring rahasia membuang semua variabel bernama TOKEN/KEY/…; kredensial dari brankas karena itu
-// ditambahkan SESUDAH penyaringan, dan hanya untuk server pemiliknya. Kredensial yang diminta resep tetapi kosong →
-// server tidak dinyalakan (pesan jelas), bukan dinyalakan lalu ditolak layanan dengan galat samar.
-//
-// `rencanaTransport` murni (diuji tanpa proses); `buatTransport` hanya membungkus SDK.
 
 const path = require('path');
 
 const tolak = (alasan) => ({ ok: false, alasan });
 
-/**
- * @param {object} entri entri sah dari daftarServer.cjs
- * @param {Record<string, string>} kredensial id kredensial → nilai (brankas.ambil)
- * @param {{lingkungan?: Record<string, string>, ada?: (alamat: string) => boolean}} opsi
- */
 function rencanaTransport(entri, kredensial = {}, { lingkungan = {}, ada = () => true } = {}) {
   if (!entri || typeof entri !== 'object') return tolak('entri server tidak ada');
   const kosong = (entri.kredensial || []).filter((k) => typeof kredensial[k.id] !== 'string' || !kredensial[k.id]);
@@ -42,16 +24,11 @@ function rencanaTransport(entri, kredensial = {}, { lingkungan = {}, ada = () =>
       if (/[\r\n\0]/.test(nilai)) return tolak(`kredensial ${k.label} memuat baris baru`);
       headers[k.header] = nilai;
     }
-    // Tahap F1: `oauth` — token diberikan penyedia OAuth (authProvider) di transport, bukan header tetap.
     return { ok: true, jenis: 'http', url: entri.http.url, headers, oauth: entri.oauth === true };
   }
   return tolak(`jenis server tidak dikenal: ${entri.jenis}`);
 }
 
-/**
- * Rencana → transport SDK. Pustaka dimuat saat dipakai (uji `rencanaTransport` tidak butuh SDK).
- * `authProvider` (Tahap F1) wajib untuk rencana `oauth` — tanpa itu server OAuth hanya akan menjawab 401.
- */
 function buatTransport(rencana, { authProvider = null, fetchJaringan = null } = {}) {
   if (rencana.jenis === 'stdio') {
     const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
@@ -59,8 +36,6 @@ function buatTransport(rencana, { authProvider = null, fetchJaringan = null } = 
   }
   const { StreamableHTTPClientTransport } = require('@modelcontextprotocol/sdk/client/streamableHttp.js');
   if (rencana.oauth && !authProvider) throw new Error('server OAuth tanpa penyedia login');
-  // GH3: semua lalu lintas HTTP konektor lewat jaringanKonektor (net.fetch, tanpa cookie) — bukan fetch() Node bawaan
-  // SDK. Untuk OAuth, galat ber-status 200 (GitHub) dinormalkan juga saat token diperbarui (fetchOAuthJujur.cjs).
   const ambil = fetchJaringan && rencana.oauth ? require('./fetchOAuthJujur.cjs').buatFetchOAuthJujur(fetchJaringan) : fetchJaringan;
   return new StreamableHTTPClientTransport(new URL(rencana.url), {
     requestInit: { headers: rencana.headers },
@@ -69,7 +44,6 @@ function buatTransport(rencana, { authProvider = null, fetchJaringan = null } = 
   });
 }
 
-/** Ringkasan rencana untuk log/layar: tanpa nilai kredensial dan tanpa isi lingkungan. */
 function ringkasRencana(rencana) {
   if (!rencana?.ok) return rencana;
   return rencana.jenis === 'stdio'

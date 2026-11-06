@@ -3,16 +3,6 @@ import { supabase } from '../../supabase';
 import Ikon from '../Ikon';
 import { kernel } from '../../core/runtime/Kernel';
 
-/**
- * ChatHistory - Sidebar riwayat percakapan
- * Menampilkan daftar chat dari Supabase, memungkinkan user memilih, membuat, dan menghapus chat.
- *
- * @param {Object} props
- * @param {Function} props.onSelectChat - Callback saat user memilih chat. Menerima chatId.
- * @param {Function} props.onNewChat - Callback saat user klik "Percakapan Baru"
- * @param {string} props.activeChatId - ID chat yang sedang aktif (untuk highlight)
- * @param {boolean} props.collapsed - Apakah sidebar dalam mode collapsed (hanya ikon)
- */
 export default function ChatHistory({ onSelectChat, onNewChat, activeChatId,  activeWorkspace, collapsed = false }) {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,9 +10,6 @@ export default function ChatHistory({ onSelectChat, onNewChat, activeChatId,  ac
   const [deletingId, setDeletingId] = useState(null);
 
   const fetchChats = useCallback(async () => {
-    // [FIX: Cross-workspace leak] Jangan fetch jika activeWorkspace belum terisi dari
-    // WorkspaceManager.switchWorkspace() — tanpa guard ini, semua 3 instance chat akan
-    // menggunakan fallback 'ws-assistant' dan menampilkan data yang sama.
     if (!activeWorkspace) return;
 
     setLoading(true);
@@ -52,24 +39,16 @@ export default function ChatHistory({ onSelectChat, onNewChat, activeChatId,  ac
     }
   }, [activeWorkspace]);
 
-  // Fetch awal + langganan EventBus Chat:Updated untuk realtime sync
   useEffect(() => {
-    // [FIX: Cross-workspace leak] Jangan jalankan fetch atau langganan EventBus
-    // selama activeWorkspace masih belum tersedia dari WorkspaceManager
     if (!activeWorkspace) return;
 
     fetchChats();
 
-    // [FIX: ChatHistory realtime] Langganan ke EventBus kernel untuk menerima notifikasi
-    // saat AssistantService.saveChatToDB() berhasil menyimpan percakapan baru/update.
-    // Menggantikan window.addEventListener('storage') yang tidak berfungsi di jendela
-    // yang sama dengan pemanggil localStorage.setItem() (sesuai spesifikasi W3C Web API).
     const eventBus = kernel.serviceManager?.get('EventBus');
     if (!eventBus) return;
 
     const unsubscribe = eventBus.on('Chat:Updated', (wrappedPayload) => {
       const payload = wrappedPayload?.data || wrappedPayload;
-      // Refresh jika event berasal dari workspace yang sama
       if (payload?.workspaceId === activeWorkspace) {
         fetchChats();
       }
@@ -80,14 +59,11 @@ export default function ChatHistory({ onSelectChat, onNewChat, activeChatId,  ac
     };
   }, [activeWorkspace, fetchChats]);
 
-  // Refresh saat activeChatId berubah — pastikan chat yang baru aktif ada di daftar
   useEffect(() => {
     if (activeChatId) {
       setChats(prev => {
         const exists = prev.some(c => c.id === activeChatId);
         if (!exists) {
-          // Chat baru belum ada di daftar (race condition antara save & highlight)
-          // Trigger fetch untuk memuat ulang daftar terbaru dari DB
           fetchChats();
           return prev;
         }
@@ -103,19 +79,15 @@ export default function ChatHistory({ onSelectChat, onNewChat, activeChatId,  ac
       const { error } = await supabase.from('chats').delete().eq('id', chatId);
       if (error) throw error;
 
-      // Jika chat yang dihapus adalah chat aktif, trigger new chat
       if (activeChatId === chatId && onNewChat) {
         onNewChat();
       }
 
-      // Hapus dari state lokal tanpa fetch ulang
       setChats(prev => prev.filter(c => c.id !== chatId));
 
-      // Trigger refresh di tab lain
       localStorage.setItem('mamet_chat_update', Date.now().toString());
     } catch (err) {
       console.error('[ChatHistory] Gagal menghapus:', err);
-      // Refresh untuk memastikan state konsisten
       fetchChats();
     } finally {
       setDeletingId(null);
@@ -139,7 +111,6 @@ export default function ChatHistory({ onSelectChat, onNewChat, activeChatId,  ac
     }
   };
 
-  // Mode collapsed: hanya tampilkan tombol baru chat + ikon
   if (collapsed) {
     return (
       <div className="flex flex-col items-center h-full bg-surface-container-low border-r border-outline-variant py-3 px-1 space-y-3 w-16 shrink-0">
@@ -176,10 +147,8 @@ export default function ChatHistory({ onSelectChat, onNewChat, activeChatId,  ac
     );
   }
 
-  // Mode penuh: tampilkan judul, tombol baru, daftar chat lengkap
   return (
     <div className="flex flex-col h-full bg-surface-container-low border-r border-outline-variant w-64 shrink-0 font-body-base">
-      {/* Header */}
       <div className="p-4 border-b border-outline-variant">
         <button
           onClick={onNewChat}
@@ -190,7 +159,6 @@ export default function ChatHistory({ onSelectChat, onNewChat, activeChatId,  ac
         </button>
       </div>
 
-      {/* Daftar Chat */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-1">
         {loading ? (
           <div className="flex items-center justify-center py-8 text-on-surface-variant">
@@ -256,7 +224,6 @@ export default function ChatHistory({ onSelectChat, onNewChat, activeChatId,  ac
         )}
       </div>
 
-      {/* Footer */}
       <div className="p-3 border-t border-outline-variant text-center">
         <p className="text-label-mono text-[12px] text-on-surface-variant tracking-widest uppercase">
           {chats.length} Percakapan

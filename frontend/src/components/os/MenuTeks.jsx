@@ -3,56 +3,29 @@ import { useService } from '../../core/runtime/hooks/useService';
 import { useKeadaanTersimpan } from '../../core/runtime/hooks/useKeadaanTersimpan.js';
 import { supabase } from '../../supabase';
 
-/**
- * MenuTeks — menu utama bergaya menu game (Item 127, K2 — PERCOBAAN 19 Okt, menunggu penilaian Owner).
- *
- * Bentuk: KOTAK MELAYANG + TOMBOL (pilihan Owner 19 Okt, sesudah versi kolom penuh dinilai "terlalu banyak
- * memotong layar" dan "kaku saat riwayat dibuka"). Menu TIDAK mengambil kolom apa pun: tombol MENU adalah kotak
- * kecil melayang yang bisa DIGESER, bawaannya pojok KIRI BAWAH (versi jalur 48px pun dinilai "tidak menyatu dengan temanya"; kiri atas
- * setiap halaman sudah terisi, kiri bawah kosong di semuanya). Kotak menu terbuka ke arah yang lapang (mengikuti posisi tombol), setinggi isinya:
- *   - TERTUTUP di semua halaman, termasuk Home (Item 130 Tahap A, keputusan Owner 2 Nov — membalik "lobi game" Item 127
- *     yang membukanya di Home: Home harus rapi saat dibuka); MENU membukanya; memilih aplikasi menutupnya; klik di luar
- *     menutupnya.
- *
- * Isinya dari `NavigationService` (= public/metadata/navigation.json), sama dengan sumber bilah samping lama —
- * MUS §21. Grup membuka sub-menu di tempat yang sama dengan "‹ Kembali" (VIDEO · AUDIO · CONTROLS · BACK di
- * gambar referensi Owner). Esc: sub-menu → menu → tutup.
- *
- * Gaya huruf = usul K4 (judul LampLogin: mono krem bercahaya), BELUM diputuskan Owner. Warna dari palet
- * LampLogin, bukan token Material. Kontras setiap teks ≥ 4,5:1 (WCAG 2.2 AA), dihitung dari warna di bawah.
- *
- * "Lanjutkan" hanya muncul bila memang ada percakapan terakhir (MUS §4.2): aplikasi chat yang terakhir dibuka
- * DAN punya chat aktif di PenyimpanKeadaan.
- */
 
 const APP_CHAT = ['app:assistant', 'app:mametlite', 'app:engineer'];
-const KUNCI_CHAT_TERAKHIR = 'mamet_menu_chat_terakhir';   // hanya id aplikasi, bukan isi percakapan
-// Warna menu = variabel tema (Item 128 Tahap B) — nilai Ruangan kayu SAMA dengan sebelumnya (krem #fff8ec, cahaya
-// lampu, latar #0b0806, garis #3a2113), tetapi kini ikut berganti tema. Gelap netral: krem → abu terang, tanpa cahaya.
+const KUNCI_CHAT_TERAKHIR = 'mamet_menu_chat_terakhir';
 const KREM = 'rgb(var(--warna-menu-teks))';
 const CAHAYA = '0 0 10px rgb(var(--warna-menu-cahaya-1) / 0.55), 0 0 22px rgb(var(--warna-menu-cahaya-2) / 0.25)';
 
 const bacaChatTerakhir = () => {
-  // localStorage bisa diblokir (profil terkunci) — diperlakukan "belum ada chat terakhir": "Lanjutkan" sekadar
-  // tidak tampil, dan tak ada yang lebih buruk dari itu.
-  try { return localStorage.getItem(KUNCI_CHAT_TERAKHIR); } catch { /* diblokir → belum ada */ return null; }
+  try { return localStorage.getItem(KUNCI_CHAT_TERAKHIR); } catch {  return null; }
 };
 
 const KUNCI_POSISI = 'mamet_menu_posisi';
 const TEPI = 16;
-// Bawaan: pojok kiri bawah — satu-satunya pojok yang kosong di semua halaman.
 const posisiBawaan = () => ({ x: TEPI, y: Math.max(TEPI, window.innerHeight - TEPI - 40) });
 const bacaPosisi = () => {
   try {
     const p = JSON.parse(localStorage.getItem(KUNCI_POSISI));
     if (Number.isFinite(p?.x) && Number.isFinite(p?.y)) return p;
-  } catch { /* rusak atau diblokir */ }
+  } catch {  }
   return posisiBawaan();
 };
 const simpanPosisi = (p) => {
-  try { localStorage.setItem(KUNCI_POSISI, JSON.stringify({ x: Math.round(p.x), y: Math.round(p.y) })); } catch { /* diblokir */ }
+  try { localStorage.setItem(KUNCI_POSISI, JSON.stringify({ x: Math.round(p.x), y: Math.round(p.y) })); } catch {  }
 };
-/** Jepit posisi ke dalam jendela, memakai ukuran tombol yang sebenarnya bila sudah ada. */
 const jepit = (p, el) => {
   const w = el?.offsetWidth || 72, h = el?.offsetHeight || 40;
   return {
@@ -71,7 +44,6 @@ function ItemMenu({ label, keterangan, aktif, onClick, judul, akhiran }) {
       className={`group flex items-baseline gap-2 w-full text-left py-1.5 font-mono uppercase tracking-[0.12em] text-[14px] whitespace-nowrap transition-opacity ${aktif ? 'opacity-100' : 'opacity-70 hover:opacity-100'}`}
       style={{ color: KREM, textShadow: aktif ? CAHAYA : 'none' }}
     >
-      {/* Kursor menu game: tampil pada pilihan aktif, dan saat ditunjuk */}
       <span aria-hidden="true" className={aktif ? '' : 'invisible group-hover:visible'}>▸</span>
       <span>
         <span className="block">{label}{akhiran}</span>
@@ -92,9 +64,6 @@ export default function MenuTeks() {
   const kotakRef = useRef(null);
   const tombolRef = useRef(null);
 
-  // ── Tombol MENU yang bisa DIGESER (permintaan Owner 19 Okt) ──────────────────────────────────────────
-  // Posisinya disimpan di localStorage — kenyamanan per mesin, bukan data. Selalu dijepit ke dalam layar (juga
-  // saat jendela diubah ukurannya), supaya tombol tak pernah hilang di luar jendela.
   const [posisi, setPosisi] = useState(bacaPosisi);
   const geserRef = useRef({ aktif: false, bergeser: false, x0: 0, y0: 0, px: 0, py: 0 });
   useEffect(() => {
@@ -112,7 +81,6 @@ export default function MenuTeks() {
     const g = geserRef.current;
     if (!g.aktif) return;
     const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
-    // Ambang 5px: di bawahnya ini KLIK (membuka menu), bukan geser.
     if (!g.bergeser && Math.abs(dx) + Math.abs(dy) < 5) return;
     g.bergeser = true;
     setPosisi(jepit({ x: g.px + dx, y: g.py + dy }, tombolRef.current));
@@ -124,7 +92,6 @@ export default function MenuTeks() {
     if (g.bergeser) setPosisi((p) => { simpanPosisi(p); return p; });
   };
 
-  // Berpindah halaman selalu menutup kotak menu — juga ke Home (dulu "lobi": terbuka di Home; dibalik Item 130 Tahap A).
   const ikutiHalaman = () => {
     setTerbuka(false);
     setGrupTerbuka(null);
@@ -151,12 +118,11 @@ export default function MenuTeks() {
       if (st.activeAppId !== terakhir) { terakhir = st.activeAppId; ikutiHalaman(st); }
       if (APP_CHAT.includes(st.activeAppId)) {
         setChatTerakhir(st.activeAppId);
-        try { localStorage.setItem(KUNCI_CHAT_TERAKHIR, st.activeAppId); } catch { /* penyimpanan diblokir */ }
+        try { localStorage.setItem(KUNCI_CHAT_TERAKHIR, st.activeAppId); } catch {  }
       }
     });
   }, [applicationManager, navigationService]);
 
-  // Esc: sub-menu → menu → tutup. Klik di luar kotak (dan di luar tombol MENU) menutupnya.
   useEffect(() => {
     if (!terbuka) return;
     const tombol = (e) => {
@@ -192,10 +158,6 @@ export default function MenuTeks() {
 
   return (
     <>
-      {/* Tombol MENU — kotak kecil melayang tanpa kolom apa pun (versi jalur 48px dinilai Owner "terlalu panjang
-          ke bawah… tidak menyatu dengan temanya"), bisa DIGESER ke mana saja (permintaan Owner). Bertuliskan
-          "MENU", bukan ☰ — ☰ tertukar dengan tombol riwayat `≡` di bilah chat. Bawaannya kiri bawah: pojok yang
-          kosong di semua halaman. z-50: laci riwayat (z-[60]) menutupinya dengan rapi, tidak ditimpa. */}
       <button
         ref={tombolRef}
         type="button"
@@ -204,7 +166,6 @@ export default function MenuTeks() {
         onPointerUp={selesaiGeser}
         onPointerCancel={selesaiGeser}
         onClick={() => {
-          // Klik sesudah menggeser bukan permintaan membuka menu.
           if (geserRef.current.bergeser) { geserRef.current.bergeser = false; return; }
           setTerbuka((t) => !t);
           setGrupTerbuka(null);
@@ -219,8 +180,6 @@ export default function MenuTeks() {
       </button>
 
       {terbuka && (() => {
-        // Arah buka mengikuti posisi tombol: separuh bawah → ke atas, separuh kanan → rata kanan. Tanpa ini kotak
-        // terpotong di tepi layar begitu tombolnya digeser.
         const w = tombolRef.current?.offsetWidth || 72, h = tombolRef.current?.offsetHeight || 40;
         const keAtas = posisi.y + h / 2 > window.innerHeight / 2;
         const keKiri = posisi.x + w / 2 > window.innerWidth / 2;
@@ -235,9 +194,6 @@ export default function MenuTeks() {
           ref={kotakRef}
           aria-label="Menu utama"
           style={letak}
-          // Bilah gulir DISEMBUNYIKAN, guliran tetap jalan (roda, touchpad, seret) — bilah putih bawaan Chromium
-          // dinilai Owner "tidak nyaman" di kotak gelap ini. Dua aturan karena Chromium punya dua jalur gambar:
-          // `scrollbar-width` (standar) dan `::-webkit-scrollbar` (lama).
           className="fixed z-[70] w-max min-w-[12rem] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden bg-[rgb(var(--warna-menu-latar))] border border-[rgb(var(--warna-menu-garis))] rounded-lg px-5 py-5 shadow-2xl select-none"
         >
           <div

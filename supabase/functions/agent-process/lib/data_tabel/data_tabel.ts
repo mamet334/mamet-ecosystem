@@ -7,14 +7,6 @@ import {
   samarkanNipKarangan, KELOMPOK, BIDANG, OPERATOR, KELOMPOKKAN,
 } from '../../../../../shared/dataTabelAsnSaring.js';
 
-/**
- * Penutup jawaban non-stream saat data tabel dijalankan — dikerjakan KODE, karena uji live 2026-09-21 membuktikan
- * perintah ke model tidak cukup (NIP karangan, arti angka terbalik, tabel karangan saat perencana gagal):
- *   1. angka berbentuk NIP di teks model disamarkan (model tidak pernah menerima NIP → pasti karangan);
- *   2. status gagal → VERIFIED diturunkan ke HYPOTHESIS;
- *   3. kalimat hasil dari kode di baris paling atas (sesudah blok <think> bila ada);
- *   4. tabel ber-NIP dari database ditempel di bawah.
- */
 export function tutupJawabanDataTabel(jawaban: string, dt: { status: string; judul: string; lampiran: string }): { teks: string; nipDisamarkan: number } {
   let teks = String(jawaban || '');
   const akhirNalar = teks.trimStart().startsWith('<think>') ? teks.indexOf('</think>') : -1;
@@ -28,20 +20,6 @@ export function tutupJawabanDataTabel(jawaban: string, dt: { status: string; jud
   return { teks, nipDisamarkan: samar.jumlah };
 }
 
-/**
- * DATA TABEL REKONSILIASI ASN — jalur chat (Item 92 Tahap 3, 2026-09-21)
- *
- * Hanya jalan bila pengguna menyalakan tombol "Data Tabel" (bendera `dataTabel`), supaya kosakata yang sama dengan buku
- * Kepbup di RAG ("jabatan", "pelatihan", "struktural") tidak memicu jalur ini tanpa diminta.
- *
- *   1. Perencana (model murah, kunci OpenRouter pengguna) mengubah pertanyaan menjadi RENCANA saringan. Ia hanya melihat
- *      daftar nama OPD & nama kolom — TIDAK melihat data pegawai.
- *   2. KODE menyaring & menghitung baris asn_pegawai milik pengguna dari berkas aktif (dataTabelAsnSaring.js, diuji di
- *      Node dengan 53 berkas).
- *   3. Model penjawab menerima jumlah + ≤30 nama TANPA NIP (sebagai dokumen bukti "Data Tabel Rekonsiliasi ASN", jadi
- *      label VERIFIED & pemeriksa angka bekerja seperti dokumen RAG).
- *   4. Tabel lengkap DENGAN NIP ditempel kode di bawah jawaban (synthesis_handler / stream_handler) — tidak lewat model.
- */
 
 export const JUDUL_DATA_TABEL = 'Data Tabel Rekonsiliasi ASN';
 const HALAMAN = 1000;
@@ -62,10 +40,8 @@ Contoh: "berapa pejabat struktural di RSUD yang belum ikut PIM?" → {"relevan":
 
 type Pegawai = Record<string, any>;
 
-/** Baris asn_pegawai milik pengguna dari berkas AKTIF, ditambah nama OPD. Dibaca per halaman (batas 1.000 baris). */
 async function ambilPegawaiAktif(userId: string, rctx: RuntimeContext): Promise<{ pegawai: Pegawai[]; daftarOpd: string[] }> {
   const sb = createClient(rctx.env.supabaseUrl, rctx.env.supabaseServiceKey);
-  // Kunci service melewati RLS → saringan user_id WAJIB ditulis sendiri di setiap kueri.
   const { data: berkas, error } = await sb.from('asn_berkas').select('id, opd').eq('user_id', userId).is('digantikan_oleh', null);
   if (error) throw new Error(`asn_berkas: ${error.message}`);
   if (!berkas?.length) return { pegawai: [], daftarOpd: [] };
@@ -83,11 +59,6 @@ async function ambilPegawaiAktif(userId: string, rctx: RuntimeContext): Promise<
   return { pegawai, daftarOpd: [...new Set(berkas.map((b: any) => b.opd))] };
 }
 
-/**
- * Pertanyaan → rencana mentah (JSON). null bila gagal — pemanggil menandai hasil GAGAL (label tidak boleh VERIFIED).
- * Uji live 2026-09-21: "per tingkat PIM" → jawaban terpotong ("Unexpected end of JSON input") pada max_tokens 400.
- * Kini batas 1.000 token dan satu kali ulang bila JSON tidak utuh.
- */
 async function rencanakan(pesan: string, daftarOpd: string[], rctx: RuntimeContext): Promise<{ mentah: any; ms: number; biaya?: number; percobaan: number } | null> {
   const kunci = (rctx?.keys?.openRouterByok || '').trim();
   if (!kunci) return null;
@@ -127,19 +98,12 @@ async function rencanakan(pesan: string, daftarOpd: string[], rctx: RuntimeConte
   return null;
 }
 
-/**
- * status: 'ok' = dihitung kode; 'gagal' = data tabel diminta tetapi TIDAK dihitung (tanpa data / perencana gagal /
- * galat) → kode menurunkan VERIFIED & menaruh peringatan (uji live: model tetap mengarang tabel PIM walau diberi tahu
- * gagal); 'lewat' = pertanyaan bukan tentang data pegawai.
- * judul = kalimat dari KODE di baris paling atas jawaban.
- */
 export type HasilDataTabel = {
   status: 'ok' | 'gagal' | 'lewat';
   dokumen: { title: string; content: string; source_type: string; similarity: number } | null;
   judul: string; lampiran: string; langkah: string;
 };
 
-/** Jalankan jalur data tabel untuk satu pesan. Tidak pernah melempar: kegagalan dijelaskan ke model lewat dokumen. */
 export async function jalankanDataTabel(pesan: string, userId: string, rctx: RuntimeContext): Promise<HasilDataTabel> {
   const dok = (isi: string) => ({ title: JUDUL_DATA_TABEL, content: `[Dari file "${JUDUL_DATA_TABEL}"]\n${isi}`, source_type: 'local', similarity: 1 });
   const gagal = (alasan: string, langkah: string): HasilDataTabel => ({

@@ -1,30 +1,14 @@
-// DATA TABEL REKONSILIASI ASN — pengenal struktur (Item 92 Tahap 1, 2026-09-21)
-//
-// Membaca sheet Excel kiriman OPD menjadi SATU BENTUK BAKU per orang, tanpa AI dan tanpa vektor. RAG tidak bisa
-// menjawab "berapa" / "siapa yang belum" (butuh semua baris & sel kosong) — jalur ini yang menghitung, dengan kode.
-//
-// Murni: tidak mengimpor pustaka apa pun. Pembaca berkas (SheetJS dll.) diubah dulu ke bentuk
-// { nama, baris: string[][], gabungan: [{s:{r,c}, e:{r,c}}] } lewat adaptor (dariSheetJS di bawah), supaya pustakanya
-// bisa diganti tanpa menyentuh aturan, dan modul ini bisa diuji di Node dengan 53 berkas ukur.
-//
-// Aturan disusun dari pengukuran 53 xlsx `D:\REKONSIALISASI 2026` (roadmap Item 92 §3): 0 gagal, 48/48 baris JUMLAH
-// cocok, 5/5 total kunci cocok. Setiap aturan di bawah ada karena satu berkas nyata membutuhkannya.
 
 const rapat = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
 const kecil = (s) => rapat(s).toLowerCase();
 const NOMOR = /^\d+\.?$/;
-// "=" dan "_" juga berarti kosong: Ulu Ogan mengetik "=" di xlsx-nya, dan OCR membaca tanda strip sebagai "=" (Tahap 5).
-// "Tidak ada" / "belum" juga kosong: Perdagangan menulis "Tidak ada" di sel PIM — dulu terhitung SUDAH PIM.
 const KOSONG_ISI = (v) => !v || /^[-–—=_]+$/.test(v) || /^(tidak ada|tdk ada|belum ada|belum|nihil)\.?$/i.test(v);
-// Tingkat PIM yang ditulis di sel ("PIM IV", "Diklatpim Tk. III", "IV") — urutan romawi panjang dulu.
 const tingkatTertulis = (v) => {
   if (/^(iv|iii|ii)$/i.test(v)) return [v.toUpperCase()];
   return [...String(v).matchAll(/(?:pim|diklatpim|kepemimpinan|tingkat|tk\.?)\s*(iv|iii|ii)\b/gi)].map((m) => m[1].toUpperCase());
 };
-// Isi sel jenis kelamin yang berupa huruf/kata (bukan tanda √/v/1).
 const hurufJk = (v) => (/^(l|lk|l\.|laki[\s-]*laki|pria)$/i.test(v) ? 'L' : /^(p|pr|p\.|perempuan|wanita)$/i.test(v) ? 'P' : '');
 
-// Judul kolom (gabungan baris judul bertingkat, huruf kecil) → bidang baku. Urutan penting: aturan pertama menang.
 const ATURAN_KOLOM = [
   ['no', (l) => /^no\.?$|^nomor$/.test(l)],
   ['nama_nip', (l) => /nama/.test(l) && /nip/.test(l)],
@@ -35,9 +19,7 @@ const ATURAN_KOLOM = [
   ['jk', (l) => /jenis kelamin|^l\/p$|^jk$/.test(l)],
   ['status', (l) => /status|pns\/|pppk/.test(l) && !/jabatan|pendidikan/.test(l)],
   ['pendidikan_cpns', (l) => /(pendidikan|pendidkan).*(cpns|awal)/.test(l)],
-  // DPRD: "KUALIFIKASI PENDIDIKAN" dengan subjudul "PENDIDIKAN" / "TAHUN" → label gabungan berulang kata.
   ['tahun_lulus', (l) => /(pendidikan|kualifikasi).*\btahun( lulus)?$/.test(l)],
-  // "AKHIR" sendirian: hasil OCR kehilangan sel gabungan "PENDIDIKAN" di atas CPNS | AKHIR (Baturaja Lama hal. 3–4).
   ['pendidikan_akhir', (l) => /(pendidikan|pendidkan).*(akhir|ahkir|terakhir)/.test(l) || /^(kualifikasi )?pendidikan( pendidikan| terakhir)?$/.test(l) || /^(akhir|ahkir|terakhir)$/.test(l)],
   ['pim2', (l) => /pim\s*(ii|2)$/.test(l)],
   ['pim3', (l) => /pim\s*(iii|3)$/.test(l)],
@@ -48,7 +30,6 @@ const ATURAN_KOLOM = [
   ['jabatan', (l) => /jabatan|\bjft\b|pelaksana|struktural|fungsional/.test(l)],
   ['pangkat', (l) => /pangkat|gol/.test(l)],
 ];
-// Bidang yang boleh muncul di lebih dari satu kolom (isinya digabung).
 const BIDANG_JAMAK = new Set(['pelatihan', 'pim']);
 
 export function kelompokSheet(nama) {
@@ -62,7 +43,6 @@ export function kelompokSheet(nama) {
   return 'tidak_dikenal';
 }
 
-/** NIP 18 digit dari teks (spasi di tengah diabaikan). */
 export function cariNip(...teks) {
   for (const t of teks) {
     const m = rapat(t).replace(/\s/g, '').match(/(?:^|\D)(\d{18})(?!\d)/);
@@ -71,10 +51,8 @@ export function cariNip(...teks) {
   return '';
 }
 
-// Baris kaki: tanggal surat & blok tanda tangan ("Baturaja, 29 April 2026", "NIP. 1976…", "an. DIREKTUR").
 const POLA_KAKI = [/^[a-z .]+,\s*\d{1,2}\s+[a-z]+\s+20\d{2}$/i, /^nip[.\s:]/i, /^(an|a\.n)\.?\s/i, /^mengetahui\b/i];
 
-/** Salin nilai sel gabungan ke seluruh rentangnya; kembalikan set "r,c" sel hasil salinan. */
 function isiGabungan(baris, gabungan) {
   const salinan = new Set();
   for (const m of gabungan || []) {
@@ -97,15 +75,8 @@ function cariBarisJudul(baris) {
   return -1;
 }
 
-/** Huruf kolom Excel (0 → A, 26 → AA). */
 export function hurufKolom(i) { let s = ''; for (let n = i + 1; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + ((n - 1) % 26)) + s; return s; }
 
-/**
- * Baca satu sheet.
- * @param {{nama:string, baris:string[][], gabungan?:Array}} sheet  baris = sel sebagai teks, indeks 0 = baris pertama rentang
- * @param {{barisAwal?:number, kolomAwal?:number}} [opsi]  nomor baris Excel dari baris[0] (untuk baris_asal) dan indeks
- *   kolom Excel dari kolom ke-0 (untuk huruf kolom di pratinjau); bawaan 1 dan 0
- */
 export function bacaSheetAsn(sheet, { barisAwal = 1, kolomAwal = 0 } = {}) {
   const baris = (sheet.baris || []).map((b) => (b || []).map((x) => (x === null || x === undefined ? '' : String(x))));
   const hasil = {
@@ -119,7 +90,6 @@ export function bacaSheetAsn(sheet, { barisAwal = 1, kolomAwal = 0 } = {}) {
   const hj = cariBarisJudul(baris);
   if (hj < 0) { hasil.status = 'GAGAL'; janggal('struktur', 'baris judul (NO / NAMA / JABATAN) tidak ditemukan'); return hasil; }
 
-  // Judul bertingkat: baris kelompok di atas (bila ada), baris judul, 0–2 baris subjudul.
   const barisSub = (b) => b && !NOMOR.test(rapat(b[0])) && b.some((x) => /^(l|p|pim|cpns|akhir|ahkir|terakhir|ii|iii|iv|pendidikan|tahun)\b/i.test(rapat(x)));
   const judul = [];
   const atas = baris[hj - 1];
@@ -141,7 +111,7 @@ export function bacaSheetAsn(sheet, { barisAwal = 1, kolomAwal = 0 } = {}) {
     let bidang = hit[0];
     if (peta[bidang] !== undefined) {
       if (BIDANG_JAMAK.has(bidang)) { peta[bidang + '_lain'] = [...(peta[bidang + '_lain'] || []), c]; hasil.pemetaan.push({ kolom: c, huruf, label, bidang }); continue; }
-      if (bidang === 'nama_nip' && peta.nip === undefined) bidang = 'nip'; // "NAMA /NIP" digabung di atas dua kolom
+      if (bidang === 'nama_nip' && peta.nip === undefined) bidang = 'nip';
       else { hasil.kolomTakTerpeta.push({ kolom: c, huruf, label: `${label} (ganda: ${bidang})` }); continue; }
     }
     peta[bidang] = c;
@@ -165,18 +135,13 @@ export function bacaSheetAsn(sheet, { barisAwal = 1, kolomAwal = 0 } = {}) {
     if (/^(jumlah|total)\b/i.test(noteks) || /^(jumlah|total)\b/i.test(rapat(b[1]))) {
       const tl = rapat(b[peta.jk_l]), tp = rapat(b[peta.jk_p]);
       if (peta.jk_l !== undefined && peta.jk_p !== undefined && /^\d+$/.test(tl)) {
-        // Sel JUMLAH digabung melintasi kolom L & P (Sosoh Buay Rayap, INSPEKTORAT, SETDA…) = satu total, bukan L dan P.
         if (salinan.has(`${i},${peta.jk_p}`) || !/^\d+$/.test(tp)) hasil.jumlahTertulis = { l: null, p: null, total: Number(tl), baris: barisExcel };
         else hasil.jumlahTertulis = { l: Number(tl), p: Number(tp), total: Number(tl) + Number(tp), baris: barisExcel };
       }
       break;
     }
-    // Nama "-" / "=" = baris templat (Semidang Aji JFT "1. | - | - …", Ulu Ogan "="), bukan orang.
     const namaMentah = KOSONG_ISI(rapat(b[kolomNama])) ? '' : rapat(b[kolomNama]);
-    // Baris ini sudah dipakai sebagai baris-NIP orang di atasnya (nomor "dipinjam" ke baris nama) → bukan orang baru.
     if (dipinjam.has(i)) continue;
-    // Nomor di baris NIP, nama di baris atasnya tanpa nomor (DPRD Struktural no. 3): baris ini = awal orang, nomornya
-    // dipinjam dari baris bawah. Syarat: nama di sini tanpa NIP, dan sel nama baris bawah hanya berisi NIP.
     let nomorPinjaman = '';
     if (!NOMOR.test(noteks) && namaMentah && !cariNip(namaMentah)) {
       const nb = baris[i + 1];
@@ -190,15 +155,10 @@ export function bacaSheetAsn(sheet, { barisAwal = 1, kolomAwal = 0 } = {}) {
 
     if (nomorBaru) {
       if (!namaMentah) { hasil.dilewati.push({ baris: barisExcel, alasan: 'baris bernomor tanpa nama (templat kosong)' }); continue; }
-      // Baris bawah milik orang yang sama bila nomornya kosong ATAU hasil salinan sel gabungan (DPRD: "NIP. …" di bawah
-      // nama) ATAU nomornya baru saja dipinjam ke baris ini.
       const nb = baris[i + 1];
       const berikut = nb && (nomorPinjaman || !NOMOR.test(rapat(nb[peta.no])) || salinan.has(`${i + 1},${peta.no}`)) ? nb : [];
       const nip = cariNip(namaMentah, peta.nip !== undefined ? b[peta.nip] : '', ...b) || cariNip(...berikut);
       const nama = rapat(namaMentah.replace(/(?:nip\.?\s*[:.]?\s*)?\d[\d\s]{16,}\d/i, '').replace(/[\/|,;]\s*$/, '').replace(/\s*\/\s*$/, ''));
-      // Jenis kelamin: HURUF yang ditulis menang atas posisi kolom. PU PR, Diskominfo, Sosoh Buay Rayap… menulis "L"/"P"
-      // di sel yang digabung melintasi kolom L & P (dulu terbaca "keduanya terisi", jk kosong) atau menulis "P" di
-      // kolom L (dulu terbaca L). Salinan sel gabungan bukan isian kedua. Tanda (√, v, 1) tetap menurut kolomnya.
       const selJk = (c) => (c === undefined || salinan.has(`${i},${c}`) ? '' : rapat(b[c]));
       const vl = selJk(peta.jk_l), vp = selJk(peta.jk_p);
       const hl = hurufJk(vl), hp = hurufJk(vp);
@@ -212,12 +172,7 @@ export function bacaSheetAsn(sheet, { barisAwal = 1, kolomAwal = 0 } = {}) {
         if (jl && jp) janggal('jenis_kelamin', `L dan P sama-sama terisi: ${nama}`, barisExcel);
       }
       if (!jk && peta.jk !== undefined) jk = hurufJk(rapat(b[peta.jk])) || (/^l/.test(kecil(b[peta.jk])) ? 'L' : /^p/.test(kecil(b[peta.jk])) ? 'P' : '');
-      // Nilai bidang dari baris orang; bila kosong, dari baris bawah milik orang yang sama (DPRD menaruh pendidikan &
-      // tahun di baris NIP).
       const ambil = (bidang) => { const c = peta[bidang]; if (c === undefined) return ''; const v = rapat(b[c]); return v || rapat(berikut[c]); };
-      // Tingkat PIM yang TERTULIS menang atas kolomnya: OCR menggeser "PIM IV" ke kolom PIM II (Semidang Aji), dan
-      // satu sel bisa memuat dua tingkat ("PIM III TAHUN 2017 / PIM IV TAHUN 2004"). Tanda (√, 1, tahun) → kolomnya.
-      // Salinan sel gabungan dilewati: satu sel "PIM IV" yang digabung melintasi kolom II–IV = satu isian, bukan tiga.
       const pim = [...new Set(kolomPim.filter(([, c]) => !salinan.has(`${i},${c}`) && !KOSONG_ISI(rapat(b[c])))
         .flatMap(([t, c]) => { const d = tingkatTertulis(rapat(b[c])); return d.length ? d : [t]; }))];
       if (peta.pim !== undefined) { const v = rapat(b[peta.pim]); if (!KOSONG_ISI(v)) pim.push(v); }
@@ -230,16 +185,12 @@ export function bacaSheetAsn(sheet, { barisAwal = 1, kolomAwal = 0 } = {}) {
       continue;
     }
     if (!hasil.orang.length) continue;
-    // Baris kaki (tanda tangan) → data selesai; jangan sampai masuk ke pelatihan orang terakhir. Hanya sel asli di
-    // luar kolom pelatihan yang dinilai: nama pelatihan sering memuat tempat & tanggal ("…Jakarta, 28 Agustus 2023").
     const selKaki = b.some((x, c) => !kolomPelatihan.includes(c) && !salinan.has(`${i},${c}`) && POLA_KAKI.some((p) => p.test(rapat(x))));
     if (!namaMentah && selKaki) break;
-    // Baris lanjutan orang sebelumnya: pelatihan tambahan — kecuali salinan sel gabungan (isinya sudah diambil).
     const pel = kolomPelatihan.filter((c) => !salinan.has(`${i},${c}`)).map((c) => rapat(b[c])).filter((x) => !KOSONG_ISI(x));
     if (pel.length) hasil.orang[hasil.orang.length - 1].pelatihan.push(...pel);
   }
 
-  // Kejanggalan data (bahan rekonsiliasi)
   const o = hasil.orang;
   if (!o.length) hasil.status = hasil.dilewati.length ? 'KOSONG' : 'GAGAL';
   const tanpaJabatan = o.filter((x) => !x.jabatan);
@@ -257,7 +208,6 @@ export function bacaSheetAsn(sheet, { barisAwal = 1, kolomAwal = 0 } = {}) {
     if (t.total !== o.length)
       janggal('jumlah_salah', `baris JUMLAH tertulis ${tertulis}, terbaca ${o.length} orang (L${l} P${p})`, t.baris);
     else if (t.l !== null && (t.l !== l || t.p !== p))
-      // Total cocok tetapi pembagian L/P tidak: tanda L/P per orang tak sejalan dengan rumus JUMLAH di Excel.
       janggal('jumlah_lp_beda', `total ${t.total} cocok, tetapi JUMLAH tertulis L${t.l} P${t.p} sedangkan tanda per orang L${l} P${p}`, t.baris);
   }
   const berat = hasil.kejanggalan.some((k) => ['struktur', 'jabatan_kosong', 'nomor_ganda', 'jumlah_salah'].includes(k.jenis));
@@ -265,7 +215,6 @@ export function bacaSheetAsn(sheet, { barisAwal = 1, kolomAwal = 0 } = {}) {
   return hasil;
 }
 
-/** Baca semua sheet satu berkas + ringkasan. */
 export function bacaWorkbookAsn(sheets) {
   const hasil = sheets.map((s) => bacaSheetAsn(s, { barisAwal: s.barisAwal || 1, kolomAwal: s.kolomAwal || 0 }));
   const orang = hasil.flatMap((h) => h.orang);
@@ -282,10 +231,6 @@ export function bacaWorkbookAsn(sheets) {
   };
 }
 
-/**
- * Adaptor SheetJS → bentuk masukan modul ini. Pustaka diberikan pemanggil (tidak diimpor di sini).
- * Indeks baris & kolom digeser dari awal rentang `!ref` (sheet tidak selalu mulai di A1 — DPRD).
- */
 export function dariSheetJS(wb, XLSX) {
   return wb.SheetNames.map((nama) => {
     const ws = wb.Sheets[nama];
@@ -299,15 +244,7 @@ export function dariSheetJS(wb, XLSX) {
   });
 }
 
-// ---------------------------------------------------------------------------------------------------------------------
-// TAHAP 2 — simpan & versi (murni; akses database ada di dataTabelAsnDb.js)
-// ---------------------------------------------------------------------------------------------------------------------
 
-/**
- * Usulan nama OPD dari nama berkas — Owner tetap bisa membetulkannya di pratinjau sebelum menyimpan.
- * "2. Bappleitbangda.xlsx" → "Bappleitbangda"; "REKONSILIASI RENCANA PENGEMBANGAN KOMPETENSI ASN KEL.TJ.AGUNG.xlsx" →
- * "KEL.TJ.AGUNG"; "DATA RPK KEC. LENGKITI.xlsx" → "KEC. LENGKITI". Awalan "revisi/rekon/data/edaran" dibuang.
- */
 export function opdDariNamaBerkas(nama = '') {
   let s = rapat(String(nama).replace(/\.(xlsx|xls|xlsm|pdf)$/i, '')).replace(/^\d+[.)]\s*/, '');
   const buang = [
@@ -323,7 +260,6 @@ export function opdDariNamaBerkas(nama = '') {
   return s || rapat(String(nama).replace(/\.(xlsx|xls|xlsm|pdf)$/i, ''));
 }
 
-/** Bentuk masukan fungsi database asn_simpan_berkas dari hasil bacaWorkbookAsn. */
 export function siapkanSimpan(hasil, opd) {
   const pegawai = hasil.sheets.flatMap((s) => s.orang.map((o) => ({
     sheet: s.sheet, kelompok: s.kelompok, baris_asal: o.baris_asal, no: o.no, nama: o.nama,
@@ -335,25 +271,16 @@ export function siapkanSimpan(hasil, opd) {
     sheet: s.sheet, kelompok: s.kelompok, status: s.status, jumlah: s.orang.length,
     jumlah_tertulis: s.jumlahTertulis, kejanggalan: s.kejanggalan,
     pemetaan: s.pemetaan.map((p) => ({ huruf: p.huruf, bidang: p.bidang })),
-    // PDF pindaian (Tahap 5): baris_asal negatif = halaman/baris PDF; laporan & chat menampilkannya sebagai "hal. …".
     ...(s.sumber ? { sumber: s.sumber, halaman: s.halaman } : {}),
   }));
   return { p_berkas: { opd: rapat(opd), nama_berkas: hasil.berkas, ringkasan_sheet }, p_pegawai: pegawai };
 }
 
-// Kolom yang dibandingkan antar-versi (baris_asal/no TIDAK: posisi baris bergeser antar revisi — INSPEKTORAT senin
-// JUMLAH Pelaksana di baris 26, selasa di baris 27).
 const KOLOM_BANDING = ['kelompok', 'nama', 'jenis_kelamin', 'status', 'pendidikan_cpns', 'pendidikan_akhir', 'tahun_lulus', 'jabatan', 'pangkat', 'pim', 'pelatihan', 'nilai_ipa'];
 const NAMA_KOLOM = { kelompok: 'kelompok', nama: 'nama', jenis_kelamin: 'L/P', status: 'status', pendidikan_cpns: 'pend. CPNS', pendidikan_akhir: 'pend. akhir', tahun_lulus: 'tahun lulus', jabatan: 'jabatan', pangkat: 'pangkat', pim: 'PIM', pelatihan: 'pelatihan', nilai_ipa: 'nilai IPA' };
 const nilaiBanding = (p, k) => (Array.isArray(p[k]) ? [...p[k]].map(rapat).sort().join('|') : rapat(p[k] ?? ''));
 const kunciOrang = (p) => (p.nip ? `nip:${p.nip}` : `nama:${kecil(p.sheet)}|${kecil(p.nama)}`);
 
-/**
- * Bandingkan isi berkas baru dengan berkas tersimpan — per orang (kunci NIP, atau sheet+nama bila tanpa NIP), per kolom.
- * NIP yang sama belum tentu isi sama: INSPEKTORAT senin & selasa berbagi 59/59 NIP, tetapi satu pejabat struktural
- * berbeda PIM-nya. `identik` = tidak ada orang yang berbeda, bertambah, atau berkurang.
- * @returns {{identik:boolean, berubah:Array<{sheet,nama,kolom:string[]}>, hanyaBaru:number, hanyaLama:number}}
- */
 export function bandingkanIsi(pegawaiBaru, pegawaiLama) {
   const lama = new Map(pegawaiLama.map((p) => [kunciOrang(p), p]));
   const berubah = []; let hanyaBaru = 0;
@@ -369,7 +296,6 @@ export function bandingkanIsi(pegawaiBaru, pegawaiLama) {
   return { identik: !berubah.length && !hanyaBaru && !hanyaLama, berubah, hanyaBaru, hanyaLama };
 }
 
-/** Ringkasan perbedaan untuk kotak versi: "1 orang berubah (STRUKTURAL: PIM) · 2 hanya di berkas ini". */
 export function uraiPerbedaan(b) {
   if (b.identik) return 'isi sama persis';
   const bagian = [];
@@ -383,17 +309,8 @@ export function uraiPerbedaan(b) {
   return bagian.join(' · ');
 }
 
-// Ambang dugaan versi, diukur pada 53 berkas: 5 pasangan revisi berbagi 15–60 NIP (≥ 40% dari berkas yang lebih
-// kecil); kebetulan terbesar di antara OPD berbeda hanya 1 NIP (PERKIM ↔ EDARAN susulan). Minimal 3 NIP DAN 30%.
 export const AMBANG_VERSI = { minSama: 3, minRasio: 0.3 };
 
-/**
- * Berkas aktif mana yang tampaknya versi lama dari berkas yang akan disimpan.
- * @param {string[]} nipBaru  NIP di berkas baru
- * @param {Array<{id, opd, nama_berkas, nips:string[]}>} berkasAktif
- * @param {string} [namaBerkasBaru]  nama berkas sama persis juga dianggap versi (berkas tanpa NIP, mis. PPPK PW)
- * @returns {Array<{id, opd, nama_berkas, sama:number, rasio:number, alasan:string}>}  urut dari yang paling mirip
- */
 export function dugaVersi(nipBaru, berkasAktif, namaBerkasBaru = '', ambang = AMBANG_VERSI) {
   const baru = new Set(nipBaru.filter(Boolean));
   const hasil = [];

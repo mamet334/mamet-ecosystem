@@ -1,55 +1,16 @@
-/**
- * PERAPIAN RIWAYAT PERCAKAPAN (Item 68, 2026-09-11)
- *
- * Menggantikan "Cognitive Memory Compressor" yang meringkas riwayat dengan AI begitu riwayat
- * melebihi 4.000 huruf. Terukur di produksi (Item 67, chat "apa itu inflasi"):
- *   - 36,5 detik menunggu ringkasan SEBELUM pencarian dokumen dan jawaban dimulai;
- *   - $0,00022 (1.038 token masuk, 867 keluar + 552 token penalaran) untuk menghemat ±700 token
- *     yang di model flash bernilai ±$0,00005 — lebih mahal daripada yang dihemat. Ia memakai model
- *     pesan itu sendiri, jadi di tingkat THINKING (`deepseek-v4-pro`) biayanya ±$0,002;
- *   - diulang dari nol di setiap pesan setelah riwayat melewati ambang.
- *
- * Kini tanpa AI: dua pesan terakhir utuh, pesan yang lebih lama dipangkas ke awalnya. Tanpa biaya,
- * tanpa jeda. Awal jawaban cukup untuk mengenali topik — tulis ulang pertanyaan lanjutan (Item 67)
- * terbukti benar dengan jawaban asisten dipotong 800 huruf. Fakta di tengah jawaban lama bisa
- * hilang; untuk pertanyaan tentang dokumen, isinya diambil lagi lewat pencarian dokumen.
- */
 const AMBANG_HURUF = 4000;
 const PESAN_UTUH = 2;
 const MAKS_HURUF_PESAN_LAMA = 800;
 
-/**
- * SISIPAN DIPATOK — tidak pernah dipangkas (2026-10-01).
- *
- * Catatan akar repo, peta repo, dan ingatan temuan disisipkan di DEPAN riwayat oleh klien. Aturan
- * "dua pesan terakhir utuh, sisanya dipangkas 800 huruf" memperlakukan mereka sebagai pesan paling
- * lama — padahal justru merekalah konteks yang tidak boleh hilang.
- *
- * Terbukti di log, dua kiriman berurutan di percakapan yang sama:
- *   [Riwayat] 3 pesan, 16999 → 16999 huruf   kiriman ke-1: peta masih termasuk "dua terakhir"
- *   [Riwayat] 5 pesan, 17311 →  2065 huruf   kiriman ke-2: peta 16.059 huruf dipotong jadi 800
- *
- * Akibatnya Engineer kehilangan peta repo dan ingatan temuan mulai kiriman KEDUA, tanpa satu pun
- * tanda di layar. Empat teori meleset sebelum instrumen `[Sisipan]` di klien mempersempitnya ke
- * sini, dan baris `[Riwayat]` di atas yang memastikannya.
- *
- * Penandanya datang dari klien (`PATOK` di KonteksChat.js). Sebelum hari ini penanda itu sengaja
- * DIBUANG sebelum dikirim — dan itulah yang membuat pemangkas ini buta.
- */
 const adalahPatok = (m: any) => m?._patok === true;
 
 export function rapikanRiwayat(history: any[], pesanSaatIni: string): any[] {
-  // Nalar `<think>…</think>` jawaban lama ditampilkan di chat tetapi TIDAK dikirim ulang ke model: memboroskan
-  // token dan mengundang model meniru nalar lama sebagai fakta (2026-09-14, nalar OpenRouter diteruskan).
   let riwayat = (Array.isArray(history) ? history : []).map((m) =>
     typeof m?.content === 'string' && /<think>/i.test(m.content)
       ? { ...m, content: m.content.replace(/<think>[\s\S]*?<\/think>\s*/gi, '').trim() }
       : m
   );
 
-  // ConversationEngine mengirim riwayat yang SUDAH memuat pesan saat ini di ujungnya, lalu pesan yang
-  // sama dikirim lagi sebagai prompt — model menerimanya dua kali (Item 66). Dibuang di sini hanya
-  // bila benar-benar sama, supaya klien lain yang tak menyertakannya tidak kehilangan pesan.
   const terakhir = riwayat[riwayat.length - 1];
   if (terakhir?.role === 'user' && typeof terakhir.content === 'string'
       && pesanSaatIni && terakhir.content.trim() === pesanSaatIni.trim()) {
@@ -61,7 +22,6 @@ export function rapikanRiwayat(history: any[], pesanSaatIni: string): any[] {
 
   const batas = riwayat.length - PESAN_UTUH;
   const hasil = riwayat.map((m, i) => {
-    // Sisipan dipatok dilewati berapa pun panjangnya — lihat catatan `adalahPatok` di atas.
     if (adalahPatok(m) || i >= batas || typeof m?.content !== 'string' || m.content.length <= MAKS_HURUF_PESAN_LAMA) return m;
     return { ...m, content: `${m.content.slice(0, MAKS_HURUF_PESAN_LAMA)}… [dipangkas]` };
   });

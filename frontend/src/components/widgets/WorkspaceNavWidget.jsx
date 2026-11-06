@@ -13,8 +13,6 @@ export default function WorkspaceNavWidget() {
     { id: 'ws-engineer', name: 'Engineer', icon: 'code', type: 'ENGINEER' }
   ];
 
-  // Phase 3: Context Isolation.
-  // Prevent cross-app navigation that traps the user by hiding workspaces that belong to other Apps.
   if (manager.appId === 'app:assistant') {
     workspaces = workspaces.filter(w => w.id === 'ws-assistant');
   } else if (manager.appId === 'app:mametlite') {

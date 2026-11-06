@@ -1,40 +1,11 @@
-/**
- * WebComparisonService.js — Tier 3 Web Search Comparison (PR#9 Fase 3)
- *
- * Bertanggung jawab tunggal untuk pencarian pengetahuan eksternal dari web
- * sebagai pembanding (Tier 3) pada arsitektur retrieval berjenjang.
- *
- * Prinsip:
- * 1. One File One Responsibility: Hanya mengurus eksekusi Tier 3, timeout, dan fallback.
- * 2. Human-in-Command (PR#9 §6 Open Question 2):
- *    Web search wajib melalui konfirmasi Owner terlebih dahulu (tidak otomatis).
- * 3. Batas Waktu Eksplisit (PR#9 §6 Open Question 3):
- *    Timeout 8-10 detik (default 8000ms) menggunakan AbortController.
- * 4. Kejujuran Atribusi:
- *    Hasil web ditandai secara eksplisit dengan source_type: 'web' dan
- *    disclaimer "akurasi tidak terverifikasi". Jika gagal/timeout, sistem
- *    tidak menyembunyikan kegagalan.
- * 5. Kontrak Seragam PR#9 §3:
- *    Mengembalikan data seragam dengan field chunks, strategy, sufficiency, tier: 3.
- */
 
 import { supabase } from '../../../supabase.js';
-// Modul bersama klien & server (ADR-0021 #6): aturan yang sama dipakai sub-agent researcher di agent-process.
 import { ringkasKueri } from '../../../../../shared/kueri_pencarian.js';
-// Pembersih teks RSS bersama server (29 Okt 2026): URL asli dari tautan pengalih Bing, entitas sebelum tag.
 import { entitas, tanpaTag, urlAsliBing } from '../../../../../shared/teks_rss.js';
 
-export const WEB_SEARCH_TIMEOUT_MS = 8000; // 8 detik batas waktu standar
-export const WEB_SUFFICIENCY_SCORE = 0.7; // Skor kecukupan bila web comparison berhasil
+export const WEB_SEARCH_TIMEOUT_MS = 8000;
+export const WEB_SUFFICIENCY_SCORE = 0.7;
 
-/**
- * `<pubDate>` RSS ("Tue, 28 Oct 2026 07:15:00 GMT") → "2026-10-28" menurut jam lokal; null bila tak terbaca.
- *
- * Kenapa (ADR-0021 §7, 29 Okt 2026): dulu tanggal terbit dibuang di sini, sehingga model — yang tahu tanggal hari ini
- * (`waktu_pengguna.ts`) — menerima berita berumur 6 tahun sebagai jawaban "terbaru" tanpa bisa membedakannya (uji live
- * "terbaru OKU": 2 dari 8 hasil Bing berumur >2.100 hari). Mengubah KUERI tidak menolong: urut-tanggal, jendela 7 hari,
- * dan "Oktober 2026" masing-masing merusak relevansi pada topik yang berbeda. Tanggal ditunjukkan; model yang menilai.
- */
 function tanggalTerbit(pubDate) {
   const t = Date.parse(pubDate || '');
   if (!Number.isFinite(t)) return null;
@@ -47,8 +18,8 @@ export class WebComparisonService {
     this.serviceManager = serviceManager;
     this.eventBus = null;
     this.isInitialized = false;
-    this.pendingConfirmations = new Map(); // requestId -> { query, traceId, resolve, reject, createdAt }
-    this.customSearchHandler = null; // Memungkinkan injeksi handler pencarian (untuk testing/adaptor)
+    this.pendingConfirmations = new Map();
+    this.customSearchHandler = null;
   }
 
   async initialize() {
@@ -62,26 +33,11 @@ export class WebComparisonService {
     console.log('[WebComparisonService] Initialized & Ready (Tier 3 Active, Human-in-Command Enabled)');
   }
 
-  /**
-   * Set kustom handler pencarian (misal untuk testing atau provider DuckDuckGo/Google/Serper kustom).
-   * @param {Function} handler - async (query, signal) => Array<{ title, link, snippet }>
-   */
   setSearchHandler(handler) {
     this.customSearchHandler = handler;
   }
 
-  // =========================================================================
-  // HUMAN-IN-COMMAND CONFIRMATION GATE (PR#9 §6 Open Question 2)
-  // =========================================================================
 
-  /**
-   * Meminta konfirmasi Owner sebelum melakukan web search.
-   * @param {Object} params
-   * @param {string} params.query - Kata kunci pencarian
-   * @param {string} [params.traceId] - Trace ID
-   * @param {string} [params.reason] - Alasan mengapa web comparison dibutuhkan
-   * @returns {Promise<boolean>} Resolves true jika diizinkan, false jika ditolak
-   */
   async requestConfirmation({ query, traceId, reason }) {
     const requestId = `CONF-WEB-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
@@ -125,11 +81,6 @@ export class WebComparisonService {
     });
   }
 
-  /**
-   * Selesaikan keputusan Owner terhadap konfirmasi web search.
-   * @param {string} requestId
-   * @param {boolean} isApproved
-   */
   resolveConfirmation(requestId, isApproved) {
     const actualId = (typeof requestId === 'object' && requestId !== null)
       ? (requestId.requestId || requestId.id)
@@ -168,31 +119,7 @@ export class WebComparisonService {
     return true;
   }
 
-  // =========================================================================
-  // CORE EXECUTION: TIER 3 WEB SEARCH (PR#9 §3 & §6)
-  // =========================================================================
 
-  /**
-   * Eksekusi pencarian web comparison sesuai kontrak PR#9.
-   *
-   * @param {string} query - Query pencarian
-   * @param {Object} [options]
-   * @param {string} [options.traceId]
-   * @param {boolean} [options.autoConfirm=false] - Jika true, lewati antrean konfirmasi (sudah disetujui sebelumnya)
-   * @param {string} [options.reason]
-   * @param {number} [options.timeoutMs=8000]
-   * @returns {Promise<{
-   *   chunks: Array<{ content: string, source_type: 'web', source_url: string, title?: string, retrieved_at: string }>,
-   *   strategy: string,
-   *   sufficiency: number,
-   *   tier: 3,
-   *   isFallback: boolean,
-   *   status: 'SUCCESS' | 'FAILED' | 'TIMEOUT' | 'REJECTED',
-   *   timeoutMs: number,
-   *   error?: string,
-   *   fallbackDisclaimer?: string
-   * }>}
-   */
   async searchWeb(query, options = {}) {
     if (!this.isInitialized) {
       await this.initialize();
@@ -215,7 +142,6 @@ export class WebComparisonService {
       };
     }
 
-    // 1. Gerbang Konfirmasi Owner (Human-in-Command)
     if (!options.autoConfirm) {
       const isApproved = await this.requestConfirmation({
         query,
@@ -238,7 +164,6 @@ export class WebComparisonService {
       }
     }
 
-    // 2. Eksekusi Pencarian dengan Batas Waktu (Timeout 8-10 Detik)
     const abortController = new AbortController();
     const timeoutId = setTimeout(() => {
       abortController.abort();
@@ -246,10 +171,6 @@ export class WebComparisonService {
 
     const startTime = Date.now();
 
-    // KUERI = kata kunci, bukan pesan mentah (Item 126 Fase 1, ADR-0021 #6, 2026-10-28). Dulu pesan Owner dikirim
-    // utuh ke Bing/Google News; server sudah membuktikan kalimat perintah → 0 hasil, kata kunci → 5–8 (15 Sep). Urutan
-    // sama dengan server: kata kunci dulu, kalimat asli bila kosong. Kueri yang benar-benar dipakai dikembalikan
-    // (`kueriDicari`) supaya tampil satu baris di langkah proses (ADR-0021 §2.3).
     const kueriRingkas = ringkasKueri(query);
     let kueriDicari = kueriRingkas.length >= 2 ? kueriRingkas : query.trim();
 
@@ -293,7 +214,6 @@ export class WebComparisonService {
         };
       }
 
-      // Format ke kontrak PR#9 seragam
       const chunks = rawResults.map((item) => ({
         content: item.snippet || item.title || '',
         title: item.title || 'Web Result',
@@ -364,13 +284,7 @@ export class WebComparisonService {
     }
   }
 
-  /**
-   * Safe Fetch: Menggunakan Electron IPC (jaringan Chromium di proses utama, electron/ambilWeb.cjs) jika tersedia,
-   * atau native fetch jika berjalan di browser/environment test CLI.
-   * Ini menghindari masalah CORS dan header restriction (User-Agent/Referer) di Chromium.
-   */
   async _safeFetch(url, options = {}) {
-    // 1. Electron IPC (Desktop Native Bridge)
     if (typeof window !== 'undefined' && window.electronAPI && typeof window.electronAPI.fetchWeb === 'function') {
       try {
         const res = await window.electronAPI.fetchWeb(url, options);
@@ -388,8 +302,6 @@ export class WebComparisonService {
       }
     }
 
-    // 2. Web Browser Environment (Vercel / Browser):
-    // Gunakan Supabase Edge Function proxy bridge untuk membypass batasan CORS Chromium pada Google News & RSS
     if (typeof window !== 'undefined') {
       try {
         if (supabase?.functions) {
@@ -423,13 +335,11 @@ export class WebComparisonService {
         console.warn('[WebComparisonService] Proxy bridge exception:', proxyErr.message);
       }
 
-      // Jika di browser dan bukan URL Wikipedia origin=*, jangan paksa fetch langsung yang pasti kena CORS
       if (!url.includes('origin=*')) {
         return { ok: false, status: 403, text: async () => '', json: async () => ({}) };
       }
     }
 
-    // 3. Fallback standard fetch (Node.js test CLI / CORS-friendly endpoints)
     const headers = {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
       'Accept': 'application/rss+xml, application/xml, text/xml, text/html, application/json;q=0.9,*/*;q=0.8',
@@ -439,16 +349,6 @@ export class WebComparisonService {
     return await fetch(url, { ...options, headers });
   }
 
-  /**
-   * Internal fetcher abstraction (Multi-provider resilient search).
-   * Mendukung:
-   * 1. Injected handler (mock/custom)
-   * 2. Provider 1: Bing News RSS (Query-based News Engine — Teruji sangat handal, realtime & akurat)
-   * 3. Provider 2: Google News RSS (Bahasa Indonesia & Global)
-   * 4. Provider 3: Antara News Tekno (dengan filter kata kunci relevansi)
-   * 5. Provider 4: Wikipedia (Hanya untuk kueri faktual/non-temporal)
-   * 6. Provider 5: DuckDuckGo Fallback
-   */
   async _executeFetch(query, signal, options = {}) {
     if (this.customSearchHandler) {
       return await this.customSearchHandler(query, signal, options);
@@ -456,7 +356,6 @@ export class WebComparisonService {
 
     const isTemporal = Boolean(options.isTemporal);
 
-    // Provider 1: Bing News RSS (Query-based News Engine — Teruji sangat handal & akurat)
     try {
       const bingUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(query)}&format=rss`;
       const response = await this._safeFetch(bingUrl, { signal });
@@ -473,7 +372,6 @@ export class WebComparisonService {
       console.warn('[WebComparisonService] Bing News RSS fetch warning:', bingErr.message);
     }
 
-    // Provider 2: Google News RSS (Bahasa Indonesia & Global)
     try {
       const gnewsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=id&gl=ID&ceid=ID:id`;
       const response = await this._safeFetch(gnewsUrl, { signal });
@@ -505,14 +403,12 @@ export class WebComparisonService {
       console.warn('[WebComparisonService] Google News Global warning:', globalErr.message);
     }
 
-    // Provider 3: Antara News Tekno (Hanya ambil jika ada artikel yang relevan dengan kata kunci kueri)
     try {
       const antaraUrl = `https://www.antaranews.com/rss/tekno`;
       const responseAntara = await this._safeFetch(antaraUrl, { signal });
       if (responseAntara && responseAntara.ok) {
         const xml = await responseAntara.text();
         const rawResults = this._parseRssResults(xml);
-        // Guard relevansi: filter agar hanya menyertakan artikel yang mengandung kata kunci query
         const queryTerms = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
         const matchingResults = rawResults.filter(item => {
           const text = (item.title + ' ' + item.snippet).toLowerCase();
@@ -529,14 +425,11 @@ export class WebComparisonService {
     }
 
 
-    // Provider 3: Wikipedia Search API
-    // KEBIJAKAN GOVERNANCE: JIKA QUERY ADALAH TEMPORAL / BERITA, WIKIPEDIA DIBLOKIR PENUH!
     if (isTemporal) {
       console.log('[WebComparisonService] 🛑 Query temporal/berita terdeteksi. Wikipedia DIBLOKIR sebagai fallback untuk menjaga keaslian berita terkini.');
-      return []; // Mengembalikan array kosong agar sistem jujur melaporkan hasil kosong, bukan mengganti dengan ensiklopedia
+      return [];
     }
 
-    // Kueri faktual/non-temporal: Wikipedia diizinkan dengan penanda eksplisit ensiklopedia statis
     try {
       const wikiUrl = `https://id.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&origin=*`;
       const response = await this._safeFetch(wikiUrl, {
@@ -563,7 +456,6 @@ export class WebComparisonService {
       console.warn('[WebComparisonService] Wikipedia search warning:', wikiErr.message);
     }
 
-    // Provider 4: DuckDuckGo Fallback
     try {
       const endpoint = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
       const response = await this._safeFetch(endpoint, {
@@ -582,9 +474,6 @@ export class WebComparisonService {
     return [];
   }
 
-  /**
-   * Parser ringan untuk Google News RSS.
-   */
   _parseRssResults(xml) {
     const results = [];
     const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
@@ -592,8 +481,6 @@ export class WebComparisonService {
 
     while ((match = itemRegex.exec(xml)) !== null && results.length < 5) {
       const itemXml = match[1];
-      // Urutan sama dengan server (`uraiRss`): entitas DULU, baru tag dibuang — deskripsi Google News berisi HTML yang
-      // dikodekan; dulu tag dibuang lebih dulu sehingga "<a href=…>" hasil penguraian ikut ke cuplikan.
       const ambil = (re) => entitas(itemXml.match(re)?.[1] || '');
       const title = tanpaTag(ambil(/<title>([\s\S]*?)<\/title>/i));
       const link = urlAsliBing(ambil(/<link>([\s\S]*?)<\/link>/i).trim());
@@ -613,9 +500,6 @@ export class WebComparisonService {
     return results;
   }
 
-  /**
-   * Parser ringan regex untuk hasil HTML search engine tanpa dependency cheerio.
-   */
   _parseHtmlResults(html) {
     const results = [];
     const linkRegex = /<a[^>]+class="[^"]*result__url[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;

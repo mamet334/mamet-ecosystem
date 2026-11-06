@@ -6,16 +6,9 @@ import {
   PANJANG_MINIMAL_SANDI, PESAN_TAUTAN_TERKIRIM, alamatKembaliPemulihan, periksaSandiBaru, pesanGalatSandi,
 } from '../../../shared/kata_sandi.js';
 
-// Tautan pemulihan dari email harus membuka halaman WEB — aplikasi desktop (mamet://) tak bisa dibuka dari email.
 const WEB_ECOSYSTEM = 'https://mamet-ecosystem.vercel.app/';
 
-/**
- * `modeAwal` (T19, 29 Okt 2026): 'akun' = masuk/daftar seperti dulu · 'lupa' = minta tautan pemulihan ·
- * 'sandiBaru' = dibuka dari tautan pemulihan (App.jsx). Mode selain 'akun' menyalakan lampu sejak awal supaya panelnya
- * langsung terlihat.
- */
 export default function LampLogin({ onLoginSuccess, modeAwal = 'akun', adaSesi = false, onSandiBaruSelesai }) {
-  // State lampu dan login
   const [lampOn, setLampOn] = useState(modeAwal !== 'akun');
   const [mode, setMode] = useState(modeAwal);
   const [email, setEmail] = useState('');
@@ -91,7 +84,6 @@ export default function LampLogin({ onLoginSuccess, modeAwal = 'akun', adaSesi =
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#0b0806] isolate flex items-center justify-center">
 
-      {/* CSS Khusus untuk mengatasi Auto-fill Chrome */}
       <style>{`
         input:-webkit-autofill,
         input:-webkit-autofill:hover, 
@@ -103,11 +95,6 @@ export default function LampLogin({ onLoginSuccess, modeAwal = 'akun', adaSesi =
         }
       `}</style>
 
-      {/* =========================================================
-          LAYER 0: BACKDROP PENUH LAYAR — mengisi SELURUH viewport,
-          tidak dibatasi aspect-ratio, sehingga tidak ada lagi
-          gap/letterbox hitam di atas-bawah pada layar HP.
-          ========================================================= */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_62%_72%_at_39%_56%,rgba(119,70,35,.68)_0%,rgba(78,43,23,.48)_32%,rgba(42,24,15,.72)_64%,#0b0705_100%),linear-gradient(180deg,#21140c,#3a2113_50%,#17100b)]" />
       <div 
         className="absolute inset-0 pointer-events-none opacity-10 mix-blend-overlay"
@@ -119,21 +106,7 @@ export default function LampLogin({ onLoginSuccess, modeAwal = 'akun', adaSesi =
       />
       <div className="absolute inset-0 bg-gradient-to-r from-black/43 via-transparent via-78% to-black/52" />
 
-      {/* =========================================================
-          SCENE CONTAINER — mengisi penuh viewport (bukan lagi
-          dipaksa 16:9), supaya tidak ada gap hitam kosong di
-          layar HP yang rasionya jauh lebih tinggi/sempit.
-          Elemen di dalamnya tetap diposisikan pakai % relatif
-          terhadap container ini, jadi tetap proporsional dan
-          tidak akan terpotong di layar mana pun.
-          ========================================================= */}
       <div className="relative w-full h-full">
-        {/* =========================================================
-            ✨ HANGING LAMP — rantai + kabel dari atas layar,
-            menggantung di area tengah-kiri. Ukuran membesar di
-            layar sempit (HP) dan mengecil di layar lebar (laptop),
-            agar tetap jadi focal point yang jelas di kedua kondisi.
-            ========================================================= */}
         <div
           className="absolute left-1/2 top-0 z-[11] -translate-x-1/2"
           style={{
@@ -164,7 +137,6 @@ export default function LampLogin({ onLoginSuccess, modeAwal = 'akun', adaSesi =
               <filter id="softGlowHang"><feGaussianBlur stdDeviation="4" /></filter>
             </defs>
 
-            {/* Rantai penggantung — 5 link, lebih dekat langit-langit */}
             {Array.from({ length: 5 }).map((_, i) => (
               <ellipse
                 key={i}
@@ -177,7 +149,6 @@ export default function LampLogin({ onLoginSuccess, modeAwal = 'akun', adaSesi =
                 strokeWidth="3.5"
               />
             ))}
-            {/* Kabel listrik melilit rantai */}
             <path
               d="M150 8 C165 22 135 38 150 54 C165 70 135 86 150 80"
               fill="none"
@@ -186,16 +157,13 @@ export default function LampLogin({ onLoginSuccess, modeAwal = 'akun', adaSesi =
               strokeLinecap="round"
             />
 
-            {/* Dudukan atas kap lampu */}
             <rect x="136" y="80" width="28" height="18" rx="5" fill="#24150b" />
             <rect x="141" y="83" width="18" height="14" rx="4" fill="url(#chainMetal)" />
 
-            {/* Kap lampu */}
             <path d="M82 98 Q150 78 218 98 L232 240 Q150 264 68 240 Z" fill="#120b07" stroke="#060504" strokeWidth="7" />
             <path d="M88 104 Q150 86 212 104 L221 232 Q151 252 79 232 Z" fill="url(#shadeHang)" stroke="#5d3218" strokeWidth="2" />
             <path d="M100 108 L93 228 M114 104 L110 233 M129 101 L128 237 M146 99 L146 240 M163 99 L165 240 M181 101 L185 237 M197 104 L205 233" stroke="rgba(255,214,155,.18)" strokeWidth="2" />
 
-            {/* Bohlam & cahaya */}
             <ellipse cx="150" cy="242" rx="76" ry="14" fill="#5b3218" />
             <ellipse cx="150" cy="239" rx="71" ry="10" fill="#fff0bc" />
             <ellipse cx="150" cy="239" rx="54" ry="7" fill="#fffbe9" />
@@ -206,12 +174,6 @@ export default function LampLogin({ onLoginSuccess, modeAwal = 'akun', adaSesi =
           </svg>
         </div>
 
-        {/* =========================================================
-            ✨ BRANDING + SAKELAR — dibungkus satu flex-column agar
-            sakelar SELALU jatuh tepat di bawah teks apa pun tinggi
-            teks yang sebenarnya dirender (tidak lagi pakai top-%
-            terpisah yang bisa menyebabkan tumpang tindih).
-            ========================================================= */}
         <div
           className="absolute left-[6%] top-[40%] flex flex-col items-start gap-[3%] pointer-events-none z-10 select-none"
         >
@@ -235,8 +197,6 @@ export default function LampLogin({ onLoginSuccess, modeAwal = 'akun', adaSesi =
             ))}
           </div>
 
-          {/* Sakelar — sekarang bagian dari flex yang sama,
-              otomatis menempel di bawah teks tanpa tabrakan */}
           <div
             className="pointer-events-auto"
             style={{ width: 'clamp(34px, 4.5vw, 52px)' }}
@@ -262,11 +222,8 @@ export default function LampLogin({ onLoginSuccess, modeAwal = 'akun', adaSesi =
                   <stop offset="1" stopColor="#070605" />
                 </radialGradient>
               </defs>
-              {/* Plat dinding sakelar */}
               <rect x="4" y="4" width="52" height="52" rx="10" fill="url(#wallPlate)" stroke="#3a2412" strokeWidth="1.5" />
-              {/* Hit-area lebih besar dari tombol visual */}
               <circle cx="30" cy="30" r="26" fill="transparent" />
-              {/* Tombol bulat */}
               <circle cx="30" cy="30" r="14" fill="#080604" />
               <circle cx="30" cy="30" r="11" fill="url(#switchMetalWall)" stroke="#6e3d18" strokeWidth="1" className="transition-transform active:translate-y-[1px]" />
               <ellipse cx="27" cy="26" rx="3.5" ry="2" fill="rgba(255,220,150,.55)" />
@@ -277,27 +234,14 @@ export default function LampLogin({ onLoginSuccess, modeAwal = 'akun', adaSesi =
           </div>
         </div>
 
-        {/* =========================================================
-            LIGHT FIELD (Pantulan Cahaya) — sekarang berpusat dari
-            lampu gantung, menjangkau ke bawah (teks & sakelar) dan
-            melebar ke kanan menuju area panel login.
-            ========================================================= */}
         <div className={`absolute left-0 top-0 w-full h-[75%] pointer-events-none z-[2] transition-all duration-900 ${lampOn ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
           <div className="absolute left-[2%] top-[8%] w-[85%] h-[65%] bg-[radial-gradient(ellipse_at_45%_30%,rgba(255,191,88,.28)_0%,rgba(231,143,52,.16)_28%,rgba(190,100,31,.06)_52%,transparent_75%)] blur-[30px]" />
           <div className="absolute left-[4%] top-[20%] w-[80%] h-[55%] bg-[radial-gradient(ellipse_at_48%_20%,rgba(255,188,82,.22),rgba(215,119,37,.08)_46%,transparent_76%)] blur-[20px]" />
         </div>
 
-        {/* =========================================================
-            DESK & HORIZON — strip tipis dekoratif di bagian paling
-            bawah layar, bukan lagi pembatas besar yang memotong scene.
-            ========================================================= */}
         <div className="absolute inset-x-0 bottom-[10%] h-[7%] bg-[radial-gradient(ellipse_42%_70%_at_32%_0%,rgba(202,126,58,.27),transparent_72%),linear-gradient(180deg,#63391d,#3b2112_15%,#1a0e08_55%,#080605)] shadow-[inset_0_5px_13px_rgba(255,184,91,.08),inset_0_-20px_35px_rgba(0,0,0,.46)] transition-all duration-900" />
         <div className="absolute inset-x-0 bottom-[17%] h-[0.3%] z-[6] bg-[#0d0805] shadow-[0_-1px_3px_rgba(255,178,86,.09),0_3px_14px_#000]" />
 
-        {/* =========================================================
-            KAKI MEJA — mengisi sisa ruang di bawah permukaan meja,
-            dengan sela-sela gelap antar kaki agar terlihat natural.
-            ========================================================= */}
         <div className="absolute inset-x-0 bottom-0 h-[10%] bg-[#050403]" />
         <div className="absolute inset-x-[10%] bottom-0 h-[10%] flex justify-between pointer-events-none">
           <div
@@ -309,13 +253,6 @@ export default function LampLogin({ onLoginSuccess, modeAwal = 'akun', adaSesi =
         </div>
 
 
-        {/* =========================================================
-            LOGIN PANEL — TERUKIR DI DINDING
-            Efek: ceruk/cekungan di permukaan dinding.
-            Inset shadow di semua sisi = kesan tertekan ke dalam.
-            Warna background = sama dengan dinding (bukan kaca).
-            Border = bingkai kayu/plester, bukan golden glow.
-            ========================================================= */}
         <div
           className={`absolute z-[15] right-[5%] w-[38%] min-w-[240px] max-w-[430px] rounded-[4px] transition-all duration-600 ${lampOn ? 'opacity-100 scale-100 visible pointer-events-auto' : 'opacity-0 scale-95 invisible pointer-events-none'}`}
           style={{
@@ -323,24 +260,21 @@ export default function LampLogin({ onLoginSuccess, modeAwal = 'akun', adaSesi =
             bottom: 'max(22%, 130px)',
             overflowY: 'auto',
             padding: 'min(5%, 28px)',
-            /* Ceruk di dinding: inset shadow kuat di semua sisi */
             background: 'radial-gradient(ellipse at 60% 30%, rgba(42,27,14,.82) 0%, rgba(20,12,7,.92) 100%)',
             boxShadow: [
-              'inset 0 4px 14px rgba(0,0,0,.9)',   /* atas — kedalaman ceruk */
-              'inset 0 -3px 10px rgba(0,0,0,.7)',  /* bawah */
-              'inset 4px 0 12px rgba(0,0,0,.8)',   /* kiri */
-              'inset -4px 0 12px rgba(0,0,0,.8)',  /* kanan */
-              '0 0 0 1.5px rgba(45,28,14,.95)',    /* groove border luar — seperti alur ukiran */
-              '0 0 0 3px rgba(65,42,20,.5)',        /* trim kayu luar */
-              '0 0 0 4px rgba(30,18,8,.8)',         /* shadow tepi terluar */
+              'inset 0 4px 14px rgba(0,0,0,.9)',
+              'inset 0 -3px 10px rgba(0,0,0,.7)',
+              'inset 4px 0 12px rgba(0,0,0,.8)',
+              'inset -4px 0 12px rgba(0,0,0,.8)',
+              '0 0 0 1.5px rgba(45,28,14,.95)',
+              '0 0 0 3px rgba(65,42,20,.5)',
+              '0 0 0 4px rgba(30,18,8,.8)',
             ].join(',')
           }}
         >
-          {/* Highlight tipis di sisi atas ceruk — pantulan cahaya lampu */}
           <div className="absolute inset-x-0 top-0 h-[2px] rounded-t-[4px]"
             style={{ background: 'linear-gradient(90deg, transparent, rgba(255,190,90,.12) 30%, rgba(255,210,120,.18) 50%, rgba(255,190,90,.12) 70%, transparent)' }}
           />
-          {/* Sudut bingkai — molding kayu, bukan paku */}
           <div className="absolute top-0 left-0 w-4 h-4 border-t border-l border-[rgba(90,58,25,.6)] rounded-tl-[4px]" />
           <div className="absolute top-0 right-0 w-4 h-4 border-t border-r border-[rgba(90,58,25,.6)] rounded-tr-[4px]" />
           <div className="absolute bottom-0 left-0 w-4 h-4 border-b border-l border-[rgba(90,58,25,.6)] rounded-bl-[4px]" />
@@ -356,8 +290,6 @@ export default function LampLogin({ onLoginSuccess, modeAwal = 'akun', adaSesi =
                 : isSignUp ? 'Daftar untuk memulai ruang kerja Anda' : 'Masuk ke ruang kerja pribadi Anda'}
             </p>
 
-            {/* T19 (29 Okt 2026): lupa kata sandi — isian email → tautan pemulihan. Pesan sesudahnya sama untuk email
-                terdaftar maupun tidak (PESAN_TAUTAN_TERKIRIM), supaya formulir ini tak bisa dipakai mengecek akun. */}
             {mode === 'lupa' && (
               <form className="space-y-4" onSubmit={handleLupa}>
                 <div className="space-y-2">
@@ -399,7 +331,6 @@ export default function LampLogin({ onLoginSuccess, modeAwal = 'akun', adaSesi =
               </form>
             )}
 
-            {/* T19: dibuka dari tautan pemulihan (App.jsx menahan desktop sampai kata sandi baru disimpan). */}
             {mode === 'sandiBaru' && (
               <form className="space-y-4" onSubmit={handleSandiBaru}>
                 {!adaSesi ? (
@@ -536,8 +467,6 @@ export default function LampLogin({ onLoginSuccess, modeAwal = 'akun', adaSesi =
                 </p>
               </div>
 
-              {/* Unduh aplikasi desktop — SEBELUM login, karena inilah yang dicari orang yang baru
-                  diberi alamat webnya. Tidak muncul bila Mamet dibuka dari aplikasi desktop. */}
               <div className="text-center mt-4 pt-4 border-t border-[rgba(255,236,207,.12)]">
                 <TombolUnduhDesktop ringkas />
                 <p className="text-[11px] text-[rgba(255,236,207,.45)] mt-1.5">Untuk Windows · tidak perlu masuk dulu</p>
@@ -548,7 +477,6 @@ export default function LampLogin({ onLoginSuccess, modeAwal = 'akun', adaSesi =
         </div>
       </div>
 
-      {/* FINAL VIGNETTE — di atas semua layer, mencakup seluruh layar */}
       <div className="absolute inset-0 z-[20] pointer-events-none bg-[radial-gradient(ellipse_82%_82%_at_47%_47%,transparent_40%,rgba(0,0,0,.08)_65%,rgba(0,0,0,.40)_100%)]" />
     </div>
   );

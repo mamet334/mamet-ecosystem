@@ -12,8 +12,6 @@ export const ExecutionPlannerHandler = {
         return { accumulatedContext, subagentRuns };
     }
 
-    // T1 (K5): izin diperiksa DI SINI — satu-satunya pemancar `Tool.Requested`, jadi satu-satunya jalan ke
-    // `plugin.execute`. Aturan & alasannya di izin_subagent.ts.
     const pemilik = adalahPemilik(ctx.auth?.userId, Deno.env.get('MAMET_PEMILIK_IDS'));
     plan = plan.filter((p: any) => {
         const alasan = alasanTolakSubagent(p?.subagent, { tools: ctx.request?.tools, appSource: ctx.auth?.appSource, pemilik });
@@ -86,7 +84,6 @@ export const ExecutionPlannerHandler = {
                   GROQ_API_KEY: rctx.keys.groq, 
                   OPENAI_API_KEY: rctx.keys.openAI, 
                   OPENROUTER_API_KEY: rctx.keys.openRouter, 
-                  // Token Apify server = biaya Owner → hanya diteruskan untuk akun pemilik (TM-003).
                   APIFY_API_TOKEN: pemilik ? rctx.env.apifyApiToken : '',
                   allGeminiKeys: rctx.keys.allGemini 
                };
@@ -97,7 +94,6 @@ export const ExecutionPlannerHandler = {
                        
                        const res = event.payload;
                        if (res.status === 'COMPLETED') {
-                           // Kata kunci yang BENAR-BENAR dikirim researcher/deep_research ke mesin berita (ADR-0021 §2.3).
                            const dicari = barisDicariSubagent(subagent, res.subagentToolExec);
                            if (dicari) ctx.state.processingSteps.push(dicari);
                            const outputPreview = (res.subagentResText || '').substring(0, 80).replace(/\n/g, ' ');
@@ -118,8 +114,6 @@ export const ExecutionPlannerHandler = {
                    }
                };
 
-               // Subscribe using a standard subscription. Note that EventBus might not have `unsubscribe`.
-               // We will filter it manually inside the handler.
                eventBus.subscribe('Tool.Completed', handler);
 
                eventBus.emit({

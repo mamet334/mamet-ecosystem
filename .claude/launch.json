@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "preview", "--prefix", "mametlite", "--", "--port", "4173"],
       "port": 4173
+    },
+    {
+      "name": "graphify-graf",
+      "runtimeExecutable": "capability/ecosystem-crawler/.venv/Scripts/python.exe",
+      "runtimeArgs": ["-m", "http.server", "8765", "--bind", "127.0.0.1", "--directory", "graphify-out"],
+      "port": 8765
     }
   ]
 }

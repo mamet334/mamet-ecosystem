@@ -3,49 +3,15 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { chunkText, embedLewatOpenRouter, EmbedGagal } from '../agent-process/lib/vector_utils.ts'
 import { tolakKarenaVolume } from './batas_volume.ts'
 
-/**
- * rag-process — memotong dokumen, memvektorkan, dan menyimpannya ke RAG.
- *
- * DITULIS ULANG 2026-09-10 (Item 64), setelah uji unggah HCDP di Item 63 gagal:
- *  - Embedding lewat OpenRouter dengan KUNCI PENGGUNA (header x-byok-openrouter),
- *    bukan kunci Gemini sistem. Tanpa kunci → ditolak dengan pesan jelas.
- *  - Potongan dikirim BERKELOMPOK, bukan satu per satu dengan jeda 0,6 detik. Dulu
- *    33 potongan gagal setelah 44 detik; berkelompok selesai ±3,4 detik.
- *  - Identitas pengguna diambil dari TOKEN SESI. Fungsi ini di-deploy verify_jwt=false
- *    dan memakai service role; dulu `userId` dari body dipercaya begitu saja, sehingga
- *    siapa pun bisa menulis dokumen ke akun orang lain. `spaceId` kiriman klien juga
- *    wajib milik pengguna itu.
- *  - Berkas PDF/Word yang dibaca mentah (mametlite memanggil file.text() untuk .pdf dan
- *    .docx) ditolak — kalau tidak, pengguna membayar untuk memvektorkan sampah biner.
- *
- * UNGGAH BERTAHAP (K1 langkah 2, 2026-11-05 — keputusan Owner: satu berkas mentah = satu dokumen; yang gagal di tengah
- * jalan menjadi cache, dilanjutkan dengan berkas yang sama tanpa embedding ulang dari awal). 5 Nov buku umum Owner
- * berhenti di 1.856/1.986 potongan sesudah 105 detik dan SELURUHNYA dibuang — embedding 58 kelompok tetap dibayar.
- *  - Dokumen dibuat `selesai = false`; setiap kelompok 32 potongan disimpan begitu vektornya jadi. Pencarian chat
- *    hanya membaca dokumen `selesai` (migrasi 20261105000000), jadi buku setengah jadi tak pernah dipakai menjawab.
- *  - Satu panggilan bekerja ±80 detik lalu menjawab `selesai: false` + jumlah tersimpan; klien memanggil lagi dengan
- *    teks yang sama. Titik lanjut dihitung SERVER dari potongan yang sudah tersimpan, bukan dipercaya dari klien.
- *  - Teks yang sama dikenali dari SHA-256-nya (dihitung di sini). Potongan ke-N hanya bermakna untuk teks dan aturan
- *    pemotongan yang sama — sidik atau jumlah potongan berbeda → ditolak dengan pesan, bukan disambung acak.
- *  - Gagal di tengah (penolakan penyedia, galat simpan) → dokumen DIPERTAHANKAN sebagai cache, kecuali belum satu pun
- *    potongan tersimpan. Penghapusan dokumen tertunda diputuskan pengguna (dari daftar dokumen), bukan otomatis.
- *  - Karakter NUL dibuang sebelum dipotong: Postgres menolaknya ("unsupported Unicode escape sequence") — 5 Nov satu
- *    changelog ber-UTF-16 campuran gagal karenanya.
- */
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-byok-openrouter',
 };
 
-// 32 potongan per panggilan embedding (dulu 12, saat potongan 4.500 huruf). Potongan kini 800 huruf (Item 70).
 const UKURAN_KELOMPOK = 32;
-// Kelompok baru tidak dimulai lewat 80 detik; satu kelompok yang sedang berjalan masih boleh selesai sampai 110 detik
-// (batas wall-clock edge function 150 s — dihentikan platform berarti tak sempat menjawab).
 export const ANGGARAN_PANGGILAN_MS = 80_000;
 const BATAS_KERAS_MS = 110_000;
-// Kunci sementara per dokumen (migrasi 20261105010000): di atas batas keras, supaya panggilan yang masih berjalan tak
-// pernah kehilangan kuncinya; kunci yang tak sempat dilepas (fungsi dihentikan platform) kedaluwarsa sendiri.
 export const SEWA_KUNCI_MS = 130_000;
 const kunciSampai = () => new Date(Date.now() + SEWA_KUNCI_MS).toISOString();
 
@@ -56,9 +22,6 @@ function jawab(isi: unknown, status: number): Response {
   });
 }
 
-// PDF mentah diawali "%PDF-", DOCX adalah arsip ZIP ("PK" + byte 0x03 0x04 — lengkap dengan
-// dua byte kontrolnya, supaya teks biasa yang dibuka dengan "PKH ..." tidak ikut tertolak).
-// Biner lain yang dibaca sebagai UTF-8 menghasilkan banyak karakter pengganti U+FFFD.
 function tampakBiner(text: string): boolean {
   const awal = text.trimStart();
   if (awal.startsWith('%PDF-') || awal.startsWith('PK\u0003\u0004')) return true;
@@ -83,17 +46,16 @@ serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
   let documentId: string | null = null;
-  let versiLamaId: string | null = null;    // perbarui dokumen: versi selesai yang diganti versi ini
-  let disalin = 0;                          // potongan yang vektornya disalin dari versi lama (panggilan ini)
+  let versiLamaId: string | null = null;
+  let disalin = 0;
   let memegangKunci = false;
   let dibuatSekarang = false;
-  let sudahAda = 0;        // potongan yang tersimpan sebelum panggilan ini
-  let sudahAdaDiketahui = true; // false selama hitungan potongan unggahan tertunda belum terbaca (5 Nov: timeout)
-  let tersimpan = 0;       // potongan yang tersimpan di panggilan ini
+  let sudahAda = 0;
+  let sudahAdaDiketahui = true;
+  let tersimpan = 0;
   let totalPotongan = 0;
 
   try {
-    // 1. Identitas dari token sesi — bukan dari body.
     const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
     const { data: authData, error: authError } = token
       ? await supabase.auth.getUser(token)
@@ -113,7 +75,6 @@ serve(async (req) => {
       return jawab({ error: 'Judul dan isi dokumen wajib ada.', code: 'MISSING_FIELDS' }, 400);
     }
 
-    // 2. Kunci OpenRouter pengguna — pengguna membayar embedding-nya sendiri (Item 63).
     const kunci = (req.headers.get('x-byok-openrouter') ?? '').replace(/[^\x00-\x7F]/g, '').trim();
     if (!kunci) {
       return jawab({
@@ -122,8 +83,6 @@ serve(async (req) => {
       }, 400);
     }
 
-    // 3. Tolak berkas biner sebelum ada biaya. Sejak Item 69 aplikasi mengambil teks PDF/DOCX di
-    //    browser, jadi yang sampai ke sini hanya dari aplikasi versi lama yang masih termuat.
     if (tampakBiner(text)) {
       return jawab({
         error: `"${title}" terkirim sebagai berkas PDF/Word mentah, bukan teks. Muat ulang aplikasi (versi lama belum bisa membaca PDF/Word), lalu unggah lagi.`,
@@ -131,7 +90,6 @@ serve(async (req) => {
       }, 400);
     }
 
-    // 4. Space: milik pengguna ini, atau space CORE-nya.
     let targetSpaceId: string | null = null;
     if (spaceId) {
       const { data: space } = await supabase
@@ -149,16 +107,14 @@ serve(async (req) => {
       targetSpaceId = core.id;
     }
 
-    // 5. Potong teks (NUL dibuang lebih dulu) dan hitung sidiknya.
     const bersih = String(text).replace(/\u0000/g, '');
-    const chunks = chunkText(bersih).filter(c => c.trim() !== ''); // 800 / 100 — vector_utils (Item 70)
+    const chunks = chunkText(bersih).filter(c => c.trim() !== '');
     totalPotongan = chunks.length;
     if (chunks.length === 0) {
       return jawab({ error: `Dokumen "${title}" kosong atau tidak memiliki teks yang bisa dibaca.`, code: 'EMPTY_DOCUMENT' }, 400);
     }
     const sidik = await sidikTeks(bersih);
 
-    // 6. Unggahan tertunda dengan judul sama di ruang yang sama? Lanjutkan bila teksnya sama.
     const { data: tertunda, error: errTertunda } = await supabase
       .from('documents').select('id, sidik, total_potongan, menggantikan')
       .eq('user_id', userId).eq('title', title).eq('space_id', targetSpaceId).eq('selesai', false)
@@ -173,8 +129,6 @@ serve(async (req) => {
           code: 'TERTUNDA_BERBEDA'
         }, 409);
       }
-      // Kunci sementara: panggilan lama (mis. sesudah Ctrl+R di aplikasi) mungkin masih menyimpan potongan. Dua panggilan
-      // yang menghitung titik lanjut yang sama akan menyimpan potongan yang sama dua kali.
       const { data: terkunci, error: errKunci } = await supabase
         .from('documents').update({ diproses_sampai: kunciSampai() })
         .eq('id', lama.id).or(`diproses_sampai.is.null,diproses_sampai.lt.${new Date(Date.now()).toISOString()}`)
@@ -188,7 +142,7 @@ serve(async (req) => {
       }
       documentId = lama.id;
       memegangKunci = true;
-      versiLamaId = lama.menggantikan ?? null;   // versi baru yang belum selesai mengingat versi yang ia gantikan
+      versiLamaId = lama.menggantikan ?? null;
       sudahAdaDiketahui = false;
       const { count, error: errHitung } = await supabase
         .from('document_chunks').select('id', { count: 'exact', head: true }).eq('document_id', documentId);
@@ -203,7 +157,6 @@ serve(async (req) => {
       sudahAda = count;
       sudahAdaDiketahui = true;
     } else if (perbarui === true) {
-      // 6a. PERBARUI DOKUMEN (5 Nov 2026, permintaan Owner): versi selesai berjudul sama di ruang yang sama.
       const { data: versi, error: errVersi } = await supabase
         .from('documents').select('id, sidik, total_potongan')
         .eq('user_id', userId).eq('title', title).eq('space_id', targetSpaceId).eq('selesai', true)
@@ -211,7 +164,6 @@ serve(async (req) => {
       if (errVersi) throw new Error(`DB Error: ${errVersi.message}`);
       const v = Array.isArray(versi) ? versi[0] : null;
       if (v && v.sidik === sidik && v.total_potongan === chunks.length) {
-        // Isi sama persis — tidak ada yang perlu dibangun, tidak ada biaya.
         return jawab({
           success: true, selesai: true, diperbarui: false, sama: true, documentId: v.id,
           message: `"${title}" isinya sama persis dengan yang tersimpan — tidak ada yang diperbarui.`,
@@ -221,8 +173,6 @@ serve(async (req) => {
       versiLamaId = v?.id ?? null;
     }
 
-    // 6b. Batas volume (K5, TM-004) — sebelum embedding: penolakan tanpa biaya. Hanya potongan yang BELUM tersimpan.
-    //     Hitungan tak terbaca → DITOLAK dengan pesan jelas, bukan diloloskan diam-diam (K2: jujur saat gagal).
     const baru = chunks.length - sudahAda;
     if (baru > 0) {
       const [milik, semua] = await Promise.all([
@@ -241,7 +191,6 @@ serve(async (req) => {
       }
     }
 
-    // 7. Dokumen induk baru — belum selesai sampai potongan terakhir masuk.
     if (!documentId) {
       const docPayload: Record<string, unknown> = {
         title, user_id: userId, space_id: targetSpaceId, selesai: false, sidik, total_potongan: chunks.length,
@@ -262,14 +211,11 @@ serve(async (req) => {
 
     console.log(`[rag-process] ${chunks.length} potongan untuk "${title}" (user ${userId}), ${sudahAda ? `lanjut dari ${sudahAda}, ` : ''}kelompok ${UKURAN_KELOMPOK}`);
 
-    // 8. Vektorkan berkelompok, simpan per kelompok — setiap kelompok yang tersimpan adalah cache.
     for (let i = sudahAda; i < chunks.length; i += UKURAN_KELOMPOK) {
       if (Date.now() - mulai > ANGGARAN_PANGGILAN_MS) break;
       const kelompok = chunks.slice(i, i + UKURAN_KELOMPOK);
 
       if (versiLamaId) {
-        // Perbarui dokumen: potongan yang isinya sama dengan versi lama menyalin vektornya (tanpa OpenRouter);
-        // hanya sisanya di-embed. Satu kelompok disimpan dalam SATU perintah (atomik) — lihat migrasi 20261105030000.
         const { data: ada, error: errAda } = await supabase.rpc('potongan_lama_ada', { p_dok_baru: documentId, p_dok_lama: versiLamaId, p_isi: kelompok });
         if (errAda) throw new Error(`DB Error: ${errAda.message}`);
         const salin = new Set((Array.isArray(ada) ? ada : []).map((x: any) => Number(typeof x === 'object' ? Object.values(x)[0] : x) - 1));
@@ -317,8 +263,6 @@ serve(async (req) => {
 
     const { error: errSelesai } = await supabase.from('documents').update({ selesai: true }).eq('id', documentId);
     if (errSelesai) throw new Error(`DB Error: ${errSelesai.message}`);
-    // Perbarui dokumen: versi lama dihapus SESUDAH versi baru selesai (sesaat keduanya terbaca — lebih baik daripada
-    // sesaat tak ada sama sekali). Gagal menghapus → dilaporkan; versi baru tetap sah.
     let catatanLama = '';
     if (versiLamaId) {
       const { data: terhapus, error: errHapusLama } = await supabase
@@ -341,18 +285,14 @@ serve(async (req) => {
 
   } catch (error: any) {
     const kini = sudahAda + tersimpan;
-    // Belum satu pun potongan tersimpan dan dokumennya baru dibuat → tak ada yang layak disimpan sebagai cache.
     const dibatalkan = Boolean(documentId) && dibuatSekarang && kini === 0;
     if (dibatalkan) {
       const { error: hapusError } = await supabase.from('documents').delete().eq('id', documentId);
       if (hapusError) console.error(`[rag-process] Gagal membatalkan dokumen ${documentId}: ${hapusError.message}`);
     }
-    // Dokumen tertunda dari unggahan sebelumnya tetap ada walau panggilan ini belum menambah apa pun.
     const disimpan = Boolean(documentId) && !dibatalkan;
     const status = error instanceof EmbedGagal ? error.status : 500;
     const code = error instanceof EmbedGagal ? error.kode : 'INTERNAL';
-    // Hitungan potongan unggahan tertunda gagal dibaca (5 Nov: statement timeout) → jangan menulis "0 dari N": yang
-    // tersimpan sebelumnya tetap ada, hanya jumlahnya yang tak terbaca.
     const pesan = totalPotongan > 0
       ? (!sudahAdaDiketahui
         ? `Proses terhenti sebelum potongan baru disimpan — potongan dari unggahan sebelumnya tetap ada; unggah berkas yang sama lagi untuk melanjutkan. ${error.message}`
@@ -367,8 +307,6 @@ serve(async (req) => {
       ...(disimpan ? { documentId } : {})
     }, status);
   } finally {
-    // Kunci dilepas di SETIAP jalan keluar (selesai, jeda anggaran, ditolak, gagal) — panggilan lanjutan klien tak perlu
-    // menunggu kedaluwarsanya. Dokumen yang dibatalkan sudah terhapus; update ke baris yang tak ada tak berbuat apa-apa.
     if (memegangKunci && documentId) {
       const { error: errLepas } = await supabase.from('documents').update({ diproses_sampai: null }).eq('id', documentId);
       if (errLepas) console.error(`[rag-process] Kunci dokumen ${documentId} gagal dilepas (kedaluwarsa sendiri): ${errLepas.message}`);

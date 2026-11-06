@@ -2,11 +2,6 @@ import { CapabilityAdapter } from './capability_adapter.ts';
 import { GeminiAdapter, GroqAdapter, OpenRouterAdapter, OpenAIAdapter } from './ai_adapter.ts';
 import { RuntimeContext } from '../runtime_context.ts';
 
-// Embedding TIDAK lagi lewat registry ini (Item 65, 2026-09-11). Registry memakai Map statis
-// yang dikosongkan dan diisi ulang setiap permintaan — dipakai bersama oleh permintaan yang
-// berjalan bersamaan, jadi bukan tempat untuk kunci milik pengguna. Embedding kini lewat
-// generateEmbedding (rag/embedding.ts) → embedLewatOpenRouter, dengan kunci sebagai argumen.
-// GeminiEmbeddingAdapter (kunci Gemini sistem) dan OpenAIEmbeddingAdapter (Item 62) dihapus.
 
 export class CapabilityRegistry {
   private static adapters = new Map<string, CapabilityAdapter>();
@@ -33,7 +28,6 @@ export class CapabilityRegistry {
   }
 
   public static async initializeAdapters(rctx: RuntimeContext) {
-    // Re-initialize for each execution context to ensure keys are fresh
     this.adapters.clear();
     
     const gemini = new GeminiAdapter(rctx);

@@ -2,11 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import KartuServerUmum from './KartuServerUmum';
 import TambahServer from './TambahServer';
 
-/**
- * Settings › Konektor — server MCP umum (Item 129 Tahap G2). Tampil di bawah konektor bawaan (crawler).
- * Hanya di desktop: tanpa `electronAPI.konektorUmum` (web) bagian ini tidak dirender — pesan "hanya di desktop" sudah
- * ditampilkan BagianKonektor.
- */
 const SELANG_SEGAR_MS = 3000;
 
 export default function KonektorUmum() {
@@ -16,7 +11,7 @@ export default function KonektorUmum() {
 
   const segarkan = useCallback(async () => {
     if (!api) return;
-    try { setStatus(await api.status()); } catch { /* proses utama sibuk — dicoba lagi pada selang berikutnya */ }
+    try { setStatus(await api.status()); } catch {  }
   }, [api]);
 
   const segarkanResep = useCallback(async () => {
@@ -28,7 +23,7 @@ export default function KonektorUmum() {
     if (!api) return undefined;
     segarkan();
     segarkanResep();
-    const t = setInterval(segarkan, SELANG_SEGAR_MS); // "berhenti sendiri" muncul tanpa muat ulang
+    const t = setInterval(segarkan, SELANG_SEGAR_MS);
     return () => clearInterval(t);
   }, [api, segarkan, segarkanResep]);
 

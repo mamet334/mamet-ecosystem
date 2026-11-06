@@ -1,9 +1,3 @@
-/**
- * VaultService
- * Manages secure storage and retrieval of credentials (API keys).
- * In a full production OS, this would use encryption/WebCrypto with a user PIN.
- * For now, it acts as a secure facade over localStorage.
- */
 class VaultService {
   constructor(serviceManager) {
     this.serviceManager = serviceManager;
@@ -13,7 +7,6 @@ class VaultService {
   }
 
   async initialize() {
-    // Load existing keys from OS storage
     const storedKeys = localStorage.getItem('maef_secure_vault');
     if (storedKeys) {
       try {
@@ -27,12 +20,11 @@ class VaultService {
       }
     }
     
-    // Migration from old Settings
     const oldKey = localStorage.getItem('maef_ai_key');
     const oldProvider = localStorage.getItem('maef_ai_provider');
     if (oldKey && oldProvider && !this._vault.has(oldProvider)) {
       this.setKey(oldProvider, oldKey);
-      localStorage.removeItem('maef_ai_key'); // Secure the migration
+      localStorage.removeItem('maef_ai_key');
     }
 
     this.isInitialized = true;

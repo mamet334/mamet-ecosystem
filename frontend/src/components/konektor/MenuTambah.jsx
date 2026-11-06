@@ -4,15 +4,6 @@ import { useService } from '../../core/runtime/hooks/useService';
 import { susunMenuKonektor, penandaKonektor } from './menuKonektor';
 import { mintaBagianSettings } from './arahSettings';
 
-/**
- * Tombol + di bilah chat (Item 129 Tahap G5, keputusan Owner 3 Nov): dulu hanya "percakapan baru"; kini menu kecil —
- * "Percakapan baru" di baris pertama, lalu konektor workspace ini dengan sakelarnya (K3). Titik di tombol + menandai
- * konektor yang menyala (atau yang dinyalakan tetapi bermasalah), supaya terlihat tanpa membuka menu.
- *
- * Pemasangan, kredensial, dan tinjau alat tetap HANYA di Settings › Konektor — menu ini hanya menyalakan/mematikan
- * konektor yang sudah siap, lewat jalur yang sama dengan Settings (`atur`). Di web (tanpa Electron) menu hanya berisi
- * "Percakapan baru" dan keterangan bahwa konektor hanya di desktop.
- */
 const SELANG_SEGAR_MS = 5000;
 
 export default function MenuTambah({ onNewChat, workspaceId }) {
@@ -33,7 +24,7 @@ export default function MenuTambah({ onNewChat, workspaceId }) {
         api.konektorUmum?.status ? api.konektorUmum.status() : [],
       ]);
       setDaftar(susunMenuKonektor(bawaan, umum, workspaceId));
-    } catch { /* proses utama sibuk — dicoba lagi pada selang berikutnya; penanda tetap keadaan terakhir */ }
+    } catch {  }
   }, [api, desktop, workspaceId]);
 
   useEffect(() => {
@@ -61,7 +52,7 @@ export default function MenuTambah({ onNewChat, workspaceId }) {
         : await api.konektorUmum.atur(workspaceId, k.id, !k.diaktifkan);
       if (h && !h.ok) setGalat(`${k.nama}: ${h.alasan || 'gagal'}`);
     } catch (e) {
-      setGalat(`${k.nama}: ${e.message}`); // tidak ditelan: tampil di bawah daftar konektor
+      setGalat(`${k.nama}: ${e.message}`);
     } finally {
       setSedang(null);
       segarkan();
@@ -111,7 +102,7 @@ export default function MenuTambah({ onNewChat, workspaceId }) {
           {!desktop && <p className="px-2 py-1 text-xs text-on-surface-variant">Konektor hanya tersedia di aplikasi desktop.</p>}
           {desktop && daftar.length === 0 && <p className="px-2 py-1 text-xs text-on-surface-variant">Belum ada konektor terpasang.</p>}
           {daftar.map((k) => {
-            const bisa = k.siap || k.diaktifkan; // yang sudah menyala selalu bisa dimatikan
+            const bisa = k.siap || k.diaktifkan;
             return (
               <button
                 key={k.id}

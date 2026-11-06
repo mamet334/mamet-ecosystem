@@ -16,7 +16,6 @@ export default {
       console.log(`Cron Manager: Memproses tugas untuk userId=${userId}`);
       console.log(`Cron Manager: Task="${task}"`);
 
-      // Analyze the task to determine the action
       const analysisPrompt = `Anda adalah parser JSON untuk sistem Cron. Analisis permintaan berikut.
 Permintaan: "${task}"
 
@@ -37,7 +36,6 @@ KELUARKAN HANYA JSON MURNI berikut (TANPA markdown, TANPA backtick, TANPA teks l
       try {
         analysis = JSON.parse(cleanedJson);
       } catch (e) {
-        // Coba ekstrak JSON dari teks
         const jsonMatch = cleanedJson.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           try {

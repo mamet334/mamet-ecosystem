@@ -1,23 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, net, protocol, session, shell, safeStorage } = require('electron');
-// MATIKAN AKSELERASI GPU SEAWAL MUNGKIN UNTUK MENCEGAH CRASH GPU
 app.disableHardwareAcceleration();
 app.commandLine.appendSwitch('disable-gpu');
 app.commandLine.appendSwitch('disable-software-rasterizer');
-// `no-sandbox` DICABUT 2026-10-06 (TMN-0009). Ia mematikan sandbox RENDERER secara global,
-// sementara `sandbox: true` di webPreferences menyatakan sebaliknya — dan sakelar baris perintah
-// yang menang. Jadi konfigurasinya membantah dirinya sendiri: siapa pun yang mengaudit
-// webPreferences akan menyimpulkan renderer ber-sandbox, padahal tidak.
-//
-// Alasan aslinya adalah crash GPU, dan untuk itu tiga baris di atas sudah menanganinya:
-// `disableHardwareAcceleration()`, `disable-gpu`, dan `disable-gpu-sandbox` di bawah. `no-sandbox`
-// jauh lebih luas daripada yang dibutuhkan — ia kelebihan tangkap.
-//
-// Aman bagi preload: `preload.cjs` hanya `require('electron')` ({contextBridge, ipcRenderer,
-// webUtils}), ketiganya tersedia di preload ber-sandbox.
-//
-// BILA APLIKASI GAGAL START sesudah perubahan ini, kembalikan SATU baris ini saja —
-//     app.commandLine.appendSwitch('no-sandbox');
-// — lalu laporkan, karena berarti ada sebab lain yang belum diketahui.
 app.commandLine.appendSwitch('disable-gpu-sandbox');
 
 const path = require('path');
@@ -37,7 +21,6 @@ process.on('unhandledRejection', (reason, promise) => {
   } catch (e) {}
 });
 
-// Daftarkan skema protokol kusto
 protocol.registerSchemesAsPrivileged([
   { scheme: 'mamet', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } }
 ]);
@@ -45,7 +28,6 @@ protocol.registerSchemesAsPrivileged([
 const isDev = process.env.NODE_ENV === 'development';
 let mainWindow;
 
-// ===== AUTO-UPDATER (Delta OTA Patching) =====
 function setupAutoUpdater() {
   if (isDev) return;
 
@@ -102,8 +84,6 @@ function setupAutoUpdater() {
     autoUpdater.on('update-downloaded', (info) => {
       console.log('[Auto-Updater] Pembaruan selesai diunduh:', info.version);
       if (mainWindow) {
-        // Dulu keadaan ini TIDAK pernah sampai ke layar — hanya dialog & konsol. Akibatnya panel
-        // Pengaturan berhenti di "Mengunduh… 100%" selamanya, padahal unduhannya sudah selesai.
         mainWindow.webContents.send('update-status', {
           status: 'downloaded',
           version: info.version,
@@ -125,9 +105,6 @@ function setupAutoUpdater() {
 
     autoUpdater.on('error', (err) => {
       console.error('[Auto-Updater] Error:', err.message);
-      // Kegagalan pembaruan dulu hanya masuk konsol — tak ada yang melihatnya. Justru kegagalan
-      // inilah yang harus terlihat: token rilis kedaluwarsa (29 Sep) membuat rilis tak pernah
-      // sampai, dan tak ada satu pun gejala di aplikasi.
       if (mainWindow) {
         mainWindow.webContents.send('update-status', {
           status: 'error',
@@ -160,61 +137,17 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
-      // ── webSecurity: false DIPERTAHANKAN DENGAN SENGAJA (TMN-0009, diperiksa 2026-10-06) ──
-      //
-      // Ia TAMPAK seperti kelalaian, dan sudah hampir dinyalakan. Jangan: ia LOAD-BEARING.
-      //
-      // `WebComparisonService.js:405` memanggil `fetch()` langsung DARI RENDERER ke RSS pihak
-      // ketiga — `news.google.com`, `www.bing.com/news`, `www.antaranews.com`. Tak satu pun
-      // mengirim `Access-Control-Allow-Origin`, jadi menyalakan webSecurity akan membuat
-      // pencarian/pembanding web gagal diam-diam karena CORS.
-      //
-      // Protokol `mamet://` SENDIRI sudah benar (`standard: true, secure: true, corsEnabled: true`
-      // di `registerSchemesAsPrivileged`), jadi bukan protokolnya yang menghalangi.
-      //
-      // Yang menguranginya bukan menyalakan ini, melainkan PENJAGA NAVIGASI di `createWindow()`:
-      // tanpa same-origin policy, bahaya baru muncul kalau konten jauh sampai TERMUAT di dalam
-      // cangkang ini — dan itulah pintu yang sudah ditutup.
-      //
-      // Bila suatu hari pengambilan RSS dipindah ke proses utama atau ke edge function, baris ini
-      // boleh dinyalakan — periksa dulu `WebComparisonService` dan origin lain di renderer.
       webSecurity: false,
       allowRunningInsecureContent: false,
       preload: path.join(__dirname, 'preload.cjs')
     }
   });
 
-  // ── PEMULIHAN MUATAN PERTAMA + KETERANGANNYA (8 Oktober 2026) ───────────────────────────
-  //
-  // 4.2.15 terpasang membuka jendela PUTIH permanen. Dibuktikan lewat DevTools Protocol pada
-  // aplikasi terpasang itu sendiri, dan urutannya penting karena ia membalik dugaan pertama:
-  //
-  //   1. penangan `mamet://` MENGEMBALIKAN `200 text/html` — berkasnya ada dan terkirim;
-  //   2. target halamannya menjawab `Target crashed` — proses renderer-nya MATI;
-  //   3. dokumennya lalu `net::ERR_ABORTED (canceled)`, dan `loadURL` menolak `ERR_FAILED`;
-  //   4. satu `Page.reload` memulihkannya sampai `Kernel Boot Complete — SYSTEM READY`.
-  //
-  // Jadi renderer pertama bisa mati SEBELUM satu baris JS jalan, dan yang kedua sehat. Itu
-  // balapan saat start, bukan ketidakcocokan — dan `--no-sandbox` membuat muatan pertama lolos,
-  // yang menunjuk ke sandbox renderer sebagai pihak yang kalah balapan. `--no-sandbox` TIDAK
-  // dipakai sebagai jalan keluar: ia baru saja dicabut dengan sengaja (TMN-0009).
-  //
-  // Dua hal yang sebenarnya kurang, dan keduanya ada di sini:
-  //
-  //   PEMULIHAN  — tak ada satu pun yang mencoba lagi. Satu kematian sesaat = jendela putih
-  //                selamanya, padahal muat ulang memulihkannya.
-  //   KETERANGAN — tak ada `render-process-gone` mau pun `did-fail-load`, jadi satu-satunya
-  //                jejak adalah `[FATAL] … ERR_FAILED (-2)`: ia menyebutkan AKIBAT (navigasi
-  //                gagal) dan menyembunyikan SEBAB (renderer mati, dengan kode keluarnya).
-  //                Tanpa itu, diagnosisnya menebak berkas hilang — dan berkasnya tidak hilang.
-  //
-  // Batasnya 3, dan itu bukan angka hiasan: pengulangan tanpa batas pada kerusakan yang NYATA
-  // (mis. berkas benar-benar hilang) akan memutar jendela putih selamanya tanpa jejak.
   const catat = (baris) => {
     try {
       console.error(baris);
       fs.appendFileSync(path.join(os.tmpdir(), 'mamet-renderer.log'), baris.endsWith('\n') ? baris : `${baris}\n`);
-    } catch (_) { /* log tak bisa ditulis: jangan jatuhkan aplikasi karena catatannya */ }
+    } catch (_) {  }
   };
 
   const ALAMAT_AWAL = isDev ? 'http://localhost:5173' : 'mamet://app/index.html';
@@ -223,9 +156,6 @@ function createWindow() {
   let sedangPulih = false;
 
   const coba = (sebab) => {
-    // Satu kematian renderer menyalakan DUA penangan (`render-process-gone` lalu `did-fail-load`
-    // ERR_FAILED). Tanpa penjaga ini, satu kejadian memakan dua dari tiga percobaan — dan yang
-    // kedua memuat ulang jendela yang sedang dimuat ulang.
     if (sedangPulih) return;
     if (percobaanMuat >= BATAS_MUAT_ULANG) {
       catat(`[FATAL] ${sebab} — sudah ${percobaanMuat}x dicoba, berhenti. Jendela akan tetap kosong; lihat baris di atas untuk sebabnya.`);
@@ -234,8 +164,6 @@ function createWindow() {
     percobaanMuat += 1;
     sedangPulih = true;
     catat(`[PULIH] ${sebab} — memuat ulang (percobaan ${percobaanMuat}/${BATAS_MUAT_ULANG})`);
-    // Jeda kecil: renderer yang baru mati butuh waktu untuk diganti, dan memuat ulang di dalam
-    // penangan kematiannya sendiri membuat Electron memakai webContents yang sudah tak ada.
     setTimeout(() => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.loadURL(ALAMAT_AWAL).catch((err) => catat(`[FATAL] muat ulang gagal: ${err.message}`));
@@ -243,9 +171,6 @@ function createWindow() {
     }, 400);
   };
 
-  // Renderer mati: SEBAB-nya di sini, beserta kode keluarnya. `reason` 'crashed'/'killed'/'oom'/
-  // 'launch-failed'; `exitCode` angka Windows (mis. 0xC0000005 pelanggaran akses, 0xC0000428
-  // DLL asing ditolak code integrity). Inilah yang hilang saat 4.2.15 pertama diselidiki.
   mainWindow.webContents.on('render-process-gone', (_e, rincian) => {
     const kode = rincian?.exitCode ?? 0;
     const hex = (kode >>> 0).toString(16).toUpperCase();
@@ -253,59 +178,33 @@ function createWindow() {
     if (rincian?.reason !== 'clean-exit') coba(`renderer mati (${rincian?.reason})`);
   });
 
-  // Muatan berhasil: penjaga dilepas supaya kematian BERIKUTNYA (kalau ada) tetap dipulihkan.
-  // Hitungannya TIDAK direset — tiga percobaan adalah plafon seumur jendela, supaya aplikasi yang
-  // muat-lalu-mati berulang tidak berputar tanpa henti.
   mainWindow.webContents.on('did-finish-load', () => { sedangPulih = false; });
 
   mainWindow.webContents.on('did-fail-load', (_e, kode, uraian, alamat, bingkaiUtama) => {
-    if (!bingkaiUtama) return;            // sub-bingkai yang gagal bukan layar putih
-    if (kode === -3) return;              // ERR_ABORTED: dibatalkan navigasi lain, bukan kegagalan
+    if (!bingkaiUtama) return;
+    if (kode === -3) return;
     catat(`[MUAT GAGAL] ${kode} ${uraian} ${String(alamat).slice(0, 120)}`);
     coba(`muat gagal (${uraian})`);
   });
 
   mainWindow.loadURL(ALAMAT_AWAL).catch(err => {
-    // Tetap dicatat seperti sebelumnya supaya log lama tetap bisa dibandingkan — tetapi sekarang
-    // ia didahului baris [RENDERER MATI]/[MUAT GAGAL] yang menyebut sebabnya.
     catat(`[FATAL] loadURL ${isDev ? 'dev' : 'mamet://'} gagal: ${err.message}`);
   });
 
-  // ── PENJAGA NAVIGASI (TMN-0009, 2026-10-06) ─────────────────────────────────────────────
-  //
-  // Sebelum ini TIDAK ADA satu pun penjaga: tanpa `setWindowOpenHandler`, jendela yang dibuka
-  // `window.open()` MEWARISI webPreferences induknya — termasuk `preload.cjs`. Artinya halaman
-  // mana pun yang sempat terbuka di jendela baru akan memegang `window.electronAPI`, dan di
-  // dalamnya ada `engineer.jalankan`.
-  //
-  // Penjaga ini penting justru KARENA `webSecurity: false` sengaja dipertahankan (lihat catatan
-  // di webPreferences): kalau konten jauh sampai termuat di dalam cangkang ini, ia termuat tanpa
-  // same-origin policy DAN tanpa sandbox-renderer. Di sinilah ketiganya akan bekerja bersama —
-  // jadi yang ditutup adalah PINTUNYA.
-  //
-  // Belum ada jalan masuk yang diketahui hari ini (jawaban model dirender sebagai simpul teks
-  // React, bukan markdown ber-tautan), tetapi jaraknya ke "ada" hanya satu fitur. Penjaga yang
-  // dipasang sebelum pintunya terbuka jauh lebih murah daripada sesudahnya.
   const asalSendiri = (u) => {
     try {
       const { protocol: p, host } = new URL(u);
-      // `host === …` BUKAN `startsWith`: `localhost:51730` berawalan sama tetapi port berbeda,
-      // dan dengan `startsWith` ia akan ikut diizinkan. Ditemukan lewat uji mutasi 6 Okt.
       return p === 'mamet:' || (p === 'http:' && host === 'localhost:5173') || p === 'devtools:';
     } catch { return false; }
   };
 
-  // Tak ada jendela baru yang boleh lahir dari dalam renderer. Tautan luar dibuka di peramban
-  // SISTEM — di luar cangkang ini, jadi ia tidak membawa preload apa pun.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:$/.test((() => { try { return new URL(url).protocol; } catch { return ''; } })())) {
-      shell.openExternal(url).catch(() => { /* peramban tak tersedia: diamkan, jangan jatuhkan app */ });
+      shell.openExternal(url).catch(() => {  });
     }
     return { action: 'deny' };
   });
 
-  // Navigasi KELUAR dari asal sendiri dibatalkan. Ini yang menjaga agar jendela utama — yang
-  // memang membawa preload — tidak pernah berisi halaman orang lain.
   mainWindow.webContents.on('will-navigate', (e, url) => {
     if (asalSendiri(url)) return;
     e.preventDefault();
@@ -363,7 +262,6 @@ app.whenReady().then(() => {
     }
   });
 
-  // Konfigurasi CSP Header: izinkan domain Tier 3 Web Retrieval (Google News RSS, Wikipedia, DuckDuckGo)
   if (session && session.defaultSession) {
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
       const responseHeaders = { ...details.responseHeaders };
@@ -396,25 +294,10 @@ app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit();
 });
 
-// ========== IPC HANDLERS ==========
 
-// 0a. Tier 3 Web Retrieval Fetcher (jaringan Chromium di proses utama — bebas CORS & batasan header).
-// Lewat `net.fetch`, BUKAN `fetch()` Node: Brotli Node bawaan Electron ini rentan CVE-2026-111497 — lihat ambilWeb.cjs.
 const { ambilWeb } = require('./ambilWeb.cjs');
 ipcMain.handle('net:fetchWeb', (event, permintaan) => ambilWeb(net.fetch, permintaan));
 
-// 0b. Konversi Word -> PDF (tool `word_to_pdf`)
-//
-// Mesinnya adalah Word itu sendiri, mencetak ke printer virtual "Microsoft Print to PDF"
-// (lihat header electron/scripts/word_to_pdf.ps1 untuk alasannya dan jebakan 0 KB).
-//
-// Sengaja memakai PowerShell 32-BIT (SysWOW64): mesin Owner punya Word 2007 berlisensi DAN
-// Word 365 tanpa lisensi. COM "Word.Application" dari proses 64-bit membuka Word 365, yang
-// memunculkan dialog tersembunyi "Save to OneDrive to enable editing" dan menahan Word
-// selamanya. Dari proses 32-bit, COM membuka Word 2007. Keduanya dibuktikan 2026-09-10.
-//
-// Tidak memakai `run-terminal-command`: perintahnya tetap (bukan teks bebas dari AI), dan
-// argumen dikirim lewat spawn tanpa shell sehingga nama berkas tidak bisa disisipi perintah.
 let wordToPdfSedangBerjalan = false;
 
 function pathTanpaBentrok(dir, namaDasar, ekstensi) {
@@ -441,16 +324,12 @@ ipcMain.handle('doc:word-to-pdf', async (event, { filePath }) => {
   if (!fs.existsSync(filePath)) {
     return { ok: false, stage: 'input', error: `Berkas tidak ditemukan: ${filePath}` };
   }
-  // Satu per satu: skrip mengenali job cetaknya lewat nama dokumen di antrian printer.
   if (wordToPdfSedangBerjalan) {
     return { ok: false, stage: 'sibuk', error: 'Masih ada konversi lain yang berjalan. Tunggu sampai selesai.' };
   }
 
-  // PDF ditaruh di sebelah dokumen aslinya. Berkas yang sudah ada TIDAK ditimpa.
   const outputPath = pathTanpaBentrok(path.dirname(filePath), path.basename(filePath, ext), '.pdf');
 
-  // Di build terpaket, electron/ ada di dalam app.asar yang tidak bisa dibaca PowerShell.
-  // package.json → build.asarUnpack mengeluarkan folder scripts/ ke app.asar.unpacked.
   const scriptPath = path.join(__dirname, 'scripts', 'word_to_pdf.ps1').replace('app.asar', 'app.asar.unpacked');
   const ps32 = path.join(process.env.SystemRoot || 'C:\\Windows', 'SysWOW64', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
   const powershell = fs.existsSync(ps32) ? ps32 : 'powershell.exe';
@@ -478,8 +357,6 @@ ipcMain.handle('doc:word-to-pdf', async (event, { filePath }) => {
       });
       child.stderr.on('data', (d) => { stderr += d.toString('utf8'); });
 
-      // Batas keras di atas batas tunggu skrip (600 dtk). Kalau terlewati, hentikan juga Word
-      // milik skrip — tanpa ini, WINWORD.EXE tersembunyi akan tertinggal di latar belakang.
       const batas = setTimeout(() => {
         try { child.kill(); } catch (_) {}
         if (wordPid) { try { process.kill(wordPid); } catch (_) {} }
@@ -510,12 +387,6 @@ ipcMain.handle('doc:word-to-pdf', async (event, { filePath }) => {
   }
 });
 
-// 0b-2. Berkas sementara untuk konversi dari HP (Item 57).
-//
-// Pekerja di renderer mengunduh .docx dari Supabase Storage, tapi Word hanya bisa membuka
-// berkas di disk. Tiga IPC ini menjembatani, dan SEMUANYA dikurung di satu folder:
-// %TEMP%\mamet-konversi\<jobId>\. jobId divalidasi sebagai UUID dan nama berkas dibersihkan,
-// jadi renderer tidak bisa menulis atau membaca di luar folder itu ("..\..\" dsb).
 const TEMP_KONVERSI = path.join(os.tmpdir(), 'mamet-konversi');
 const POLA_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -534,7 +405,6 @@ ipcMain.handle('doc:temp-save', async (event, { jobId, fileName, bytes }) => {
     const dir = folderJob(jobId);
     const ext = path.extname(String(fileName || '')).toLowerCase();
     if (!['.doc', '.docx'].includes(ext)) return { ok: false, error: `Hanya .doc/.docx, bukan "${ext || 'tanpa ekstensi'}".` };
-    // Nama asli dipertahankan (PDF hasilnya ikut bernama sama), karakter terlarang Windows dibuang.
     const aman = path.basename(String(fileName)).replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').slice(0, 150);
     fs.mkdirSync(dir, { recursive: true });
     const tujuan = path.join(dir, aman);
@@ -565,11 +435,6 @@ ipcMain.handle('doc:temp-cleanup', async (event, { jobId }) => {
   }
 });
 
-// 0c. Buka hasil konversi — tombol "Buka PDF" / "Tampilkan di folder" di chat.
-//
-// HANYA berkas .pdf yang benar-benar ada. shell.openPath() membuka berkas dengan program
-// bawaannya — untuk .exe atau .bat itu berarti MENJALANKANNYA. Tanpa batas ekstensi, jalur
-// ini bisa dipakai renderer untuk mengeksekusi apa saja di disk.
 ipcMain.handle('doc:open-result', async (event, { filePath, mode }) => {
   if (typeof filePath !== 'string' || !path.isAbsolute(filePath)) {
     return { ok: false, error: 'Path berkas tidak valid.' };
@@ -584,32 +449,19 @@ ipcMain.handle('doc:open-result', async (event, { filePath, mode }) => {
     shell.showItemInFolder(filePath);
     return { ok: true };
   }
-  const galat = await shell.openPath(filePath); // '' berarti berhasil
+  const galat = await shell.openPath(filePath);
   return galat ? { ok: false, error: galat } : { ok: true };
 });
 
 const { runAirdropTask } = require('./airdropEngine.cjs');
 
-// AKAR REPO (ROADMAP-ENGINEER-MANDIRI Tahap 5, 2026-09-28)
-//
-// Dulu di sini: `const AKAR_DEV_X = path.resolve(__dirname, '..', '..')`. Itu BENAR di
-// `npm run desktop` — main.cjs memang di dalam repo. Di build `npm run dist` ia menunjuk folder
-// instalasi: `git` gagal "not a git repository" dan patch akan menulis ke folder aplikasi.
-//
-// Sekarang akarnya ditentukan `akarRepo.cjs`: di pengembangan pakai folder induk apa adanya; di
-// aplikasi terpasang HANYA pilihan Owner. Belum dipilih → `null`, dan alat repo mati dengan pesan
-// jelas. Yang penting: ia tidak pernah lagi diam-diam jatuh ke folder instalasi.
 const { akarRepoSah, akarRepoAktif } = require('./akarRepo.cjs');
 const AKAR_DEV = path.resolve(__dirname, '..', '..');
 let repoPilihanOwner = null;
 
 const infoAkarRepo = () => akarRepoAktif({ dev: isDev, akarDev: AKAR_DEV, tersimpan: repoPilihanOwner });
-/** Akar repo aktif, atau null bila Owner belum memilih di aplikasi terpasang. */
 const akarRepo = () => infoAkarRepo().akar;
 
-// Pilihan disimpan di %APPDATA% (bukan di repo — repo bisa dipindah/dihapus Owner) dan DISAHKAN
-// ULANG tiap aplikasi dibuka, pola yang sama dengan folder kerja Assistant (Item 85): folder yang
-// sudah dihapus, dipindah, atau kehilangan `.git` tidak dipakai diam-diam.
 const berkasAkarRepo = () => path.join(app.getPath('userData'), 'repo-engineer.json');
 const folderInstalasi = () => {
   try { return path.dirname(app.getPath('exe')); } catch { return ''; }
@@ -625,30 +477,21 @@ function pulihkanAkarRepo() {
     const sah = akarRepoSah(akar, { folderInstalasi: folderInstalasi() });
     if (sah.ok) { repoPilihanOwner = sah.akar; console.log(`[REPO] Akar repo dipulihkan: "${sah.nama}"`); }
     else console.warn(`[REPO] Akar repo tersimpan tidak dipakai: ${sah.alasan}`);
-  } catch { /* belum pernah dipilih */ }
+  } catch {  }
 }
 app.whenReady().then(pulihkanAkarRepo);
 
-/**
- * Alamat relatif → absolut terhadap akar repo. MELEMPAR bila akar belum dipilih, bukan menebak.
- *
- * Dulu baris ini `path.resolve(PROJECT_ROOT, filePath)`, dan di aplikasi terpasang `PROJECT_ROOT`
- * menunjuk folder instalasi — sehingga alamat relatif diam-diam menunjuk berkas aplikasi. Itu
- * kerugian tanpa suara: tidak ada galat, hanya berkas yang salah. Sekarang ia berhenti dengan alasan.
- */
 function alamatRepoRelatif(relatif) {
   const akar = akarRepo();
   if (!akar) throw new Error(infoAkarRepo().alasan);
   return path.resolve(akar, relatif);
 }
 
-/** Dipakai di awal tiap handler repo: hasil siap dikembalikan bila akar belum ada. */
 function butuhAkarRepo() {
   const info = infoAkarRepo();
   return info.akar ? null : { success: false, error: info.alasan, galat: info.alasan, akarBelumDipilih: true };
 }
 
-// 0. Airdrop Stealth Engine
 ipcMain.handle('run-airdrop-stealth', async (event, { taskName, params }) => {
   try {
     const response = await dialog.showMessageBox(mainWindow, {
@@ -669,27 +512,12 @@ ipcMain.handle('run-airdrop-stealth', async (event, { taskName, params }) => {
   }
 });
 
-// 1–2. `edit-file-surgical` (tulis ke alamat absolut mana pun) dan `run-terminal-command` (kalimat shell bebas +
-// blocklist) DIHAPUS 2026-09-22 (T8): satu-satunya pemakainya CommandRegistry yang merakit PowerShell dari alamat
-// mentah — dan jalur itu rusak (tombol [MAMET_CMD] selalu "tidak terdaftar"). Perintah Engineer kini lewat
-// `engineer:jalankan` (tanpa shell, daftar izin, dialog) — lihat di bawah blok folder kerja.
 
-// =============================================
-// ENGINEER ROLLBACK SYSTEM — salinan berkas, BUKAN git stash (T10 uji Engineer, 2026-09-22)
-//
-// Dulu: checkpoint = `git stash push` SELURUH working tree. Live TUGAS-01: 5 berkas pekerjaan Owner yang belum
-// di-commit (tak berhubungan dengan patch) lenyap dari disk ke stash, Vite memuat ulang aplikasi, patch terputus.
-// Repo bersih → tak ada checkpoint (Undo mustahil); Undo = `git stash pop` stash TERATAS (bisa stash yang salah);
-// label dirakit jadi kalimat shell (`exec`). Kini: proses utama membaca sendiri isi asli HANYA berkas yang akan
-// di-patch (byte persis) ke userData/eng-checkpoint/<label>.json; Undo menulis kembali tepat berkas-berkas itu.
-// Git tidak disentuh; alamat lewat pagar repo (alamatDalamPagar).
-// =============================================
 const { alamatDalamPagar: pagarRepo } = require('./pagarFolder.cjs');
 const BATAS_CHECKPOINT = { berkas: 10, byte: 5 * 1024 * 1024 };
 const folderCheckpoint = () => path.join(app.getPath('userData'), 'eng-checkpoint');
 const labelAman = (s) => String(s || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 80);
 
-// 2a. Checkpoint — dipanggil SEBELUM patch apply (tanpa dialog). files = alamat relatif repo.
 ipcMain.handle('eng:git-checkpoint', async (_event, { taskId, files } = {}) => {
   const belum = butuhAkarRepo();
   if (belum) return belum;
@@ -703,7 +531,7 @@ ipcMain.handle('eng:git-checkpoint', async (_event, { taskId, files } = {}) => {
       const p = pagarRepo(akarRepo(), rel);
       if (!p.ok) return { success: false, error: `"${rel}": ${p.alasan}` };
       let st = null;
-      try { st = fs.statSync(p.alamat); } catch { /* belum ada */ }
+      try { st = fs.statSync(p.alamat); } catch {  }
       if (st && !st.isFile()) return { success: false, error: `"${rel}" bukan berkas` };
       if (st && st.size > BATAS_CHECKPOINT.byte) return { success: false, error: `"${rel}" lebih dari 5 MB` };
       berkas.push({ alamat: p.relatif, ada: !!st, isi: st ? fs.readFileSync(p.alamat).toString('base64') : null });
@@ -718,21 +546,12 @@ ipcMain.handle('eng:git-checkpoint', async (_event, { taskId, files } = {}) => {
   }
 });
 
-/** Checkpoint terbaru bila label tidak disebut. */
 function labelCheckpointTerbaru() {
   const semua = fs.existsSync(folderCheckpoint()) ? fs.readdirSync(folderCheckpoint()).filter((n) => n.endsWith('.json')) : [];
   semua.sort((a, b) => fs.statSync(path.join(folderCheckpoint(), b)).mtimeMs - fs.statSync(path.join(folderCheckpoint(), a)).mtimeMs);
   return semua.length ? semua[0].replace(/\.json$/, '') : '';
 }
 
-/**
- * Menulis kembali isi asli tepat berkas yang di-checkpoint. TANPA dialog.
- *
- * Dipakai dua pihak dengan syarat yang berbeda: tombol Undo Owner (`eng:git-rollback`) BERTANYA dulu,
- * sedangkan pemulihan otomatis Tahap 6 (`eng:verifikasi-patch`) tidak boleh bertanya — kalau ia menunggu
- * klik, berkas yang merusak uji tetap di disk selama Owner tidak melihat layar, dan di mode pengembangan
- * layarnya bahkan sudah dimuat ulang oleh Vite.
- */
 async function pulihkanDariCheckpoint(label) {
   const berkasCp = label ? path.join(folderCheckpoint(), `${label}.json`) : '';
   if (!berkasCp || !fs.existsSync(berkasCp)) return { success: false, error: 'Checkpoint tidak ditemukan. Rollback tidak bisa dilakukan.' };
@@ -759,14 +578,12 @@ async function pulihkanDariCheckpoint(label) {
   return { success: !gagal, output: hasil.join('\n'), error: gagal ? hasil.filter((h) => h.startsWith('❌')).join('\n') : undefined };
 }
 
-/** Isi checkpoint untuk ditampilkan di dialog — Owner tidak bisa menilai yang tidak ia lihat. */
 function isiCheckpoint(label) {
   const berkasCp = label ? path.join(folderCheckpoint(), `${label}.json`) : '';
   if (!berkasCp || !fs.existsSync(berkasCp)) return null;
   try { return JSON.parse(fs.readFileSync(berkasCp, 'utf8')); } catch { return null; }
 }
 
-// 2b. Rollback — Owner mengembalikan patch: menulis ulang isi asli tepat berkas yang di-checkpoint.
 ipcMain.handle('eng:git-rollback', async (_event, { checkpointLabel } = {}) => {
   const belum = butuhAkarRepo();
   if (belum) return belum;
@@ -794,7 +611,6 @@ ipcMain.handle('eng:git-rollback', async (_event, { checkpointLabel } = {}) => {
   }
 });
 
-// 3. Folder Selection
 ipcMain.handle('select-folder', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory']
@@ -802,15 +618,10 @@ ipcMain.handle('select-folder', async () => {
   return result.canceled ? null : result.filePaths[0];
 });
 
-// 3b. FOLDER KERJA ASSISTANT (Item 85 Tahap 0, 2026-09-21). Akar dicatat DI SINI saat dipilih lewat dialog —
-// tidak pernah diterima dari layar — dan layar hanya menerima namanya. Alat folder (Tahap 1+) wajib memakai
-// alamatDalamPagar(folderKerjaAkar, relatif); jalur `fs:*` & `edit-file-surgical` tidak berpagar dan bukan untuk ini.
 const { akarFolderSah } = require('./pagarFolder.cjs');
 const { jalankanAlat } = require('./alatFolder.cjs');
 let folderKerjaAkar = null;
 
-// Tahap 1: pilihan folder diingat di berkas pengaturan proses utama (bukan StorageManager — kunci bertitik dua) dan
-// DISAHKAN ULANG lewat akarFolderSah saat aplikasi dibuka: folder yang sudah dihapus/dipindah tidak dipakai diam-diam.
 const berkasFolderKerja = () => path.join(app.getPath('userData'), 'folder-kerja.json');
 function simpanFolderKerja() {
   try { fs.writeFileSync(berkasFolderKerja(), JSON.stringify({ akar: folderKerjaAkar }), 'utf8'); }
@@ -823,7 +634,7 @@ function pulihkanFolderKerja() {
     const sah = akarFolderSah(akar);
     if (sah.ok) { folderKerjaAkar = sah.akar; console.log(`[FOLDER] Folder kerja dipulihkan: "${sah.nama}"`); }
     else console.warn(`[FOLDER] Folder kerja tersimpan tidak dipakai: ${sah.alasan}`);
-  } catch { /* belum pernah dipilih */ }
+  } catch {  }
 }
 app.whenReady().then(pulihkanFolderKerja);
 
@@ -847,12 +658,7 @@ ipcMain.handle('folder:lepas', () => {
   return { aktif: false, nama: null };
 });
 
-// Alat BACA (folder_list / folder_read / folder_search). Akar diambil dari variabel proses utama — permintaan dari
-// layar hanya membawa alamat relatif. Setiap panggilan dicatat (bukti penolakan di luar pagar).
-// Tahap 2: alat TULIS lewat modul terpisah; izin = dialog ASLI proses utama (tak bisa dipalsukan/dilewati layar
-// maupun model), hapus = Recycle Bin (shell.trashItem).
 const { jalankanAlatTulis, ALAT_TULIS } = require('./alatFolderTulis.cjs');
-// Tahap 3: folder_run — program dari daftar izin, tanpa shell, folder asal = folder kerja, dialog izin yang sama.
 const { jalankanAlatJalan } = require('./alatFolderJalan.cjs');
 const { indeksKonstitusi } = require('./indeksKonstitusi.cjs');
 const depsTulis = {
@@ -890,11 +696,6 @@ ipcMain.handle('folder:alat', async (_event, permintaan) => {
   return hasil;
 });
 
-// ENGINEER — tombol [MAMET_CMD: …] (T8, keputusan Owner B1 2026-09-22). Menggantikan CommandRegistry (PowerShell
-// dirakit dari alamat mentah) & run-terminal-command (shell bebas + blocklist). Kalimat perintah dipecah TANPA shell
-// (pecahPerintah) lalu dijalankan pelaksana yang sama dengan folder_run: daftar izin program, .exe dicari di luar
-// repo, lingkungan tanpa rahasia, batas waktu, dialog izin. Folder asal = repo Mamet (Engineer bekerja di repo).
-// Kuasa Engineer ditentukan PROFIL (alatFolderJalan.cjs): git baca saja, tanpa pemasang paket, batas 180 s.
 const { pecahPerintah, PROFIL, tanpaPersetujuan } = require('./alatFolderJalan.cjs');
 const depsEngineer = {
   profil: PROFIL.engineer,
@@ -912,45 +713,12 @@ const depsEngineer = {
     return response === 1;
   },
 };
-// MESIN UJI KLAIM (ROADMAP-ENGINEER-MANDIRI Tahap 2, 2026-09-23). Klaim Engineer tentang perilaku kode dijalankan
-// terhadap kode NYATA di repo, di proses node TERPISAH: bila modul yang diuji punya efek samping, efeknya mati
-// bersama proses itu — tidak menyentuh aplikasi. Tanpa dialog izin karena tidak ada teks model yang jadi kode:
-// alamat berkas & nama fungsi disaring UjiKlaim.alamatSah, argumen ditanam lewat JSON.stringify.
 const { jalankanProses, cariExe, envBersih } = require('./alatFolderJalan.cjs');
-// Akar repo dibutuhkan penyusun skrip uji di layar (UjiKlaim.susunSkripUji) untuk menyusun alamat absolut modul.
 ipcMain.handle('engineer:akar-repo', () => akarRepo());
 
-// =============================================
-// PETA REPO ENGINEER (1 Oktober 2026)
-//
-// DIUKUR dari chat Engineer Owner hari itu — komposisi satu permintaan nyata:
-//
-//   aturan & identitas  21.756 huruf  (62% prompt)
-//   RAG dokumen tugas    6.566
-//   riwayat percakapan   4.807        ← SATU-SATUNYA tempat kode bisa muncul
-//
-// Engineer menerima ±5.400 token aturan dan ±1.200 token kode. Tidak ada satu pun blok khusus untuk
-// kode sumber. Owner: "dimana engineer yang seharusnya tau code source system mamet ecosystem?" —
-// jawabannya: belum ada. Yang ada Engineer yang bisa MENCARI potongan, bukan yang TAHU apa yang ada.
-//
-// Peta ini menutup bagian termurahnya: daftar berkas kode + jumlah barisnya, 270 berkas,
-// 15.494 huruf (±3.870 token) — lebih kecil daripada blok aturan, dan anggaran konteks 60.000 token
-// baru terpakai ±10.000.
-//
-// Jumlah barisnya bukan hiasan: ia mengajari bahwa `ConversationEngine.jsx` 2.195 baris TIDAK akan
-// muat lewat `git show` (keluaran perintah dipotong 20 KB) — jadi pakai `git grep`.
-//
-// Satu perintah git, 0,13 detik. Di-cache per sesi aplikasi karena daftar berkas jarang berubah;
-// yang berubah isinya, bukan daftarnya.
-// =============================================
 const PETA_SASARAN = ['frontend/src', 'frontend/electron', 'supabase/functions', 'mametlite/src'];
 let petaRepoCache = null;
 
-// Perintah baca tidak perlu diklik "Jalankan" (keputusan Owner, 2026-10-01). Layar bertanya ke SINI,
-// tidak menebak sendiri: teks perintahnya berasal dari model, jadi penentuannya harus di tempat yang
-// sama dengan yang menegakkannya. Kalaupun jawaban ini dipalsukan di layar, `tanpaPersetujuan` di
-// proses utama tetap yang memutuskan dialognya muncul atau tidak — layar hanya memakainya untuk tahu
-// apakah perlu menunggu Owner.
 ipcMain.handle('engineer:perintah-aman', async (_e, teks) => {
   try {
     const p = pecahPerintah(String(teks || ''));
@@ -959,34 +727,6 @@ ipcMain.handle('engineer:perintah-aman', async (_e, teks) => {
   } catch { return false; }
 });
 
-// ── INDEKS KONSTITUSI (2026-10-05) ────────────────────────────────────────────────────────────
-//
-// DUA CACAT YANG SALING MENYEMBUNYIKAN, diukur 5 Okt 2026:
-//
-//   1. `_loadStaticKnowledge()` di `engineer.js` membaca 33 berkas konstitusi tiap boot
-//      (168.299 huruf ≈ 43.942 token) ke `brain.static.raw` — dan `raw` punya NOL pemakai di
-//      seluruh repo. Yang mengalir hanya `loadedFiles.length`, dan angka itu pun berhenti di
-//      `brain.dynamic` yang hanya ditugaskan, tak pernah dibaca. Jadi Engineer melaporkan
-//      "Coverage BRAIN 1 ✓" tanpa pernah membaca satu pun aturan yang Owner tulis.
-//
-//   2. Daftar 32 jalurnya DIPAKU di `engineer.js`, dan sudah melenceng:
-//      `constitution/28_PROSEDUR_KERJA_ENGINEER.md` ADA di folder tetapi TIDAK di daftar —
-//      justru berkas yang mengatur cara Engineer bekerja. Tak ada yang menyadarinya karena
-//      isinya toh dibuang; cacat kedua bersembunyi di balik cacat pertama.
-//
-// Handler ini menutup keduanya sekaligus: folder DIPINDAI (tidak ada daftar yang bisa melenceng),
-// dan yang menyeberangi IPC hanya alamat + judul — ±1,5 KB, bukan 168 KB.
-//
-// Judul diambil dari tajuk `# ` pertama, dan HANYA disertakan bila ia menambah sesuatu di luar
-// nama berkasnya: terukur, cuma 7 dari 33 yang begitu ("01_VISION.md — 01_VISION.md" tidak
-// menambah apa pun). Itu menurunkan indeks dari 565 token menjadi 384.
-//
-// Membaca ISI tetap bisa dan murah: `git show HEAD:constitution/NN_....md` sudah jalan tanpa
-// dialog sejak 4.2.5. Pola yang sama dengan peta repo jadi indeks (item 120).
-// Logikanya ada di `indeksKonstitusi.cjs` — modul tersendiri supaya BISA DIJALANKAN uji.
-// `main.cjs` menyalakan Electron saat diimpor, jadi apa pun yang tinggal di sini hanya bisa
-// diuji lewat teksnya. Untuk perbaikan yang menutup kelencengan diam-diam selama berbulan-bulan,
-// itu tidak cukup: ia bisa melenceng lagi dengan cara yang sama tanpa ada yang tahu.
 ipcMain.handle('engineer:indeks-konstitusi', async () => {
   const belum = butuhAkarRepo();
   if (belum) return [];
@@ -1006,8 +746,6 @@ ipcMain.handle('engineer:peta-repo', async () => {
   const git = cariExe('git', akarRepo());
   if (!git) return '';
   try {
-    // `git grep -c ""` mencetak "berkas:jumlah_baris" untuk tiap berkas terlacak — satu proses,
-    // bukan 270. Kode keluar 1 bila tak ada yang cocok; itu bukan galat di sini.
     const h = await jalankanProses(git, ['grep', '-c', '', '--', ...PETA_SASARAN], {
       cwd: akarRepo(), env: envBersih(process.env), waktuS: 30,
     });
@@ -1022,8 +760,6 @@ ipcMain.handle('engineer:peta-repo', async () => {
   }
 });
 
-// Tahap 5 — akar repo dipilih Owner. Polanya sama dengan `folder:pilih` (Item 85): dialog asli
-// proses utama, disahkan `akarRepoSah`, alamatnya saja yang disimpan.
 const statusAkarRepo = () => {
   const info = infoAkarRepo();
   return {
@@ -1083,29 +819,15 @@ ipcMain.handle('engineer:uji-klaim', async (_event, permintaan) => {
   } catch (e) {
     return { galat: `gagal menjalankan uji: ${e.code || e.message}` };
   } finally {
-    try { fs.unlinkSync(alamatSkrip); } catch { /* berkas sementara — abaikan */ }
+    try { fs.unlinkSync(alamatSkrip); } catch {  }
   }
 });
 
-// =============================================
-// TAHAP 6 — VERIFIKASI PATCH YANG DIJALANKAN (ROADMAP-ENGINEER-MANDIRI, 2026-09-28)
-//
-// Seluruh langkahnya ada DI SINI, satu panggilan, dengan sengaja: di `npm run desktop`, menulis berkas
-// aplikasi memicu Vite memuat ulang halaman, dan layar yang menunggu hasil uji mati di tengah jalan —
-// persis laporan patch yang hilang 24 September. Yang tidak boleh ikut mati adalah PEMULIHANNYA. Jadi
-// jalankan-uji → pulihkan → jalankan-ulang-yang-gagal selesai di proses utama, apa pun nasib layarnya.
-//
-// Langkah terakhir (menjalankan ULANG berkas yang gagal sesudah pemulihan) bukan kemewahan: tanpa itu,
-// satu berkas uji yang sudah merah sebelum patch akan memulihkan SETIAP patch yang benar, selamanya.
-// `uji-folder-label` merah diam-diam empat hari — itu keadaan nyata, bukan kemungkinan teoretis.
-// =============================================
 const BATAS_UJI_S = { semua: 300, ulang: 120 };
 
 async function jalankanBerkasUji(node, daftar, waktuS) {
   const runner = path.join(akarRepo(), 'uji', 'jalankan-semua.mjs');
   if (!fs.existsSync(runner)) return { galat: 'uji/jalankan-semua.mjs tidak ada di akar repo yang dipilih' };
-  // JSON lewat berkas, bukan keluaran: keluaran perintah dipotong pada 20 KB, dan JSON terpotong akan
-  // terbaca sebagai "verifikasi gagal" untuk patch yang sebenarnya selamat.
   const alamatHasil = path.join(app.getPath('temp'), `mamet-uji-${Date.now()}.json`);
   try {
     const h = await jalankanProses(node, [runner, `--keluar=${alamatHasil}`, ...daftar], {
@@ -1117,7 +839,7 @@ async function jalankanBerkasUji(node, daftar, waktuS) {
     try { return JSON.parse(fs.readFileSync(alamatHasil, 'utf8')); }
     catch (e) { return { galat: `hasil uji tidak terbaca: ${e.message}` }; }
   } finally {
-    try { fs.unlinkSync(alamatHasil); } catch { /* berkas sementara — abaikan */ }
+    try { fs.unlinkSync(alamatHasil); } catch {  }
   }
 }
 
@@ -1152,7 +874,6 @@ ipcMain.handle('engineer:jalankan', async (_event, perintah) => {
   if (p.galat) {
     hasil = { ok: false, alat: 'folder_run', perintah: teks, alasan: p.galat };
   } else {
-    // Batas waktu dari profil Engineer (180 s — build/test butuh lebih dari bawaan Assistant 60 s).
     try { hasil = await jalankanAlatJalan(akarRepo(), { alat: 'folder_run', program: p.program, argumen: p.argumen }, depsEngineer); }
     catch (e) { hasil = { ok: false, alat: 'folder_run', perintah: teks, alasan: `galat: ${e.code || e.message}` }; }
   }
@@ -1163,18 +884,8 @@ ipcMain.handle('engineer:jalankan', async (_event, perintah) => {
   return hasil;
 });
 
-// KONEKTOR MCP (Item 129 Tahap B, 2026-10-23) — Mamet sebagai klien MCP; rincian di konektorMcp.cjs.
-// Satu proses server per (workspace, konektor) — keputusan Owner K3. Akar repo = dua tingkat di atas berkas ini
-// (`npm run desktop`); di aplikasi terpasang crawler belum ada di sana → status "tidak tersedia" sampai Tahap E.
-// Layar melihat status dan memakai sakelar Settings (Tahap C). Pemanggilan alat (tools/call) dari layar HANYA lewat
-// gerbang persetujuan di proses ini (Tahap D): K2 — setiap alat menunggu persetujuan Owner; K8 — sekali per misi.
-// Setelan sakelar disimpan di perangkat (K7: tidak ikut akun) dan dinyalakan lagi saat aplikasi dibuka.
 const { buatPengelolaKonektor, buatGerbangKonektor } = require('./konektorMcp.cjs');
 const { akarBrowser } = require('./komponenKonektor.cjs');
-// Tahap E (K10): aplikasi terpasang menjalankan crawler dari runtime yang dibundel pemasang (extraResources), dengan
-// data crawler di <userData>\crawler — userData dinamai `name` package.json, jadi %APPDATA%\ai-agent-frontend\crawler
-// (BUKAN "Mamet AI": koreksi 26 Okt, terlihat di 4.3.0 terpasang). Teks untuk Owner memakai alamat ini, bukan tulisan
-// tangan. `npm run desktop` tetap memakai capability/ecosystem-crawler/.venv.
 const FOLDER_DATA_CRAWLER = path.join(app.getPath('userData'), 'crawler');
 const pengelolaKonektor = buatPengelolaKonektor({
   akarRepo: path.resolve(__dirname, '..', '..'),
@@ -1205,7 +916,6 @@ const gerbangKonektor = buatGerbangKonektor({
 });
 ipcMain.handle('konektor:panggil', (_event, { workspace, konektor, alat, argumen } = {}) =>
   gerbangKonektor.panggil(workspace, konektor, alat, argumen));
-// Tahap E2 (K14): komponen tingkat stealth dipasang HANYA sesudah Owner menyetujui unduhannya di dialog ini.
 ipcMain.handle('konektor:pasang-stealth', async () => {
   const { response } = await dialog.showMessageBox(mainWindow, {
     type: 'question',
@@ -1227,17 +937,13 @@ ipcMain.handle('konektor:pasang-stealth', async () => {
   if (response !== 1) return { ok: false, ditolakOwner: true, alasan: 'dibatalkan Owner' };
   return pengelolaKonektor.pasangStealth();
 });
-// Tahap E3: Settings ⑦ "Yang terpasang di perangkat ini" + tombol "Buka folder". Layar mengirim KUNCI folder
-// (bawaan/data/stealth/browser); alamatnya disusun di proses ini dari daftar yang sama — bukan alamat dari layar.
 ipcMain.handle('konektor:komponen', (_event, { konektor } = {}) => pengelolaKonektor.komponen(konektor));
 ipcMain.handle('konektor:buka-folder', async (_event, { konektor, kunci } = {}) => {
   const lokasi = pengelolaKonektor.lokasiFolder(konektor, kunci);
   if (!lokasi) return { ok: false, alasan: 'folder tidak dikenal atau belum ada' };
-  const galat = await shell.openPath(lokasi); // '' berarti berhasil
+  const galat = await shell.openPath(lokasi);
   return galat ? { ok: false, alasan: galat } : { ok: true };
 });
-// KONEKTOR UMUM (Item 129 Tahap G2, 2026-11-03) — server MCP apa saja yang dipasang Owner dari resep; seluruh
-// salurannya di konektor/ipcUmum.cjs. Kredensial dienkripsi safeStorage (K18), alat ditinjau & dipaku (K16).
 const { daftarkanKonektorUmum } = require('./konektor/ipcUmum.cjs');
 const { lingkunganServer } = require('./konektorMcp.cjs');
 const konektorUmum = daftarkanKonektorUmum({
@@ -1247,8 +953,6 @@ const konektorUmum = daftarkanKonektorUmum({
   lingkungan: () => lingkunganServer(),
   versi: app.getVersion(),
   log: (pesan) => console.log(pesan),
-  // GH3: lalu lintas HTTP konektor (MCP jarak jauh, OAuth) lewat jaringan Chromium, bukan fetch() Node — lihat
-  // konektor/jaringanKonektor.cjs & ambilWeb.cjs ("Black October").
   ambil: net.fetch,
 });
 app.whenReady().then(() => pengelolaKonektor.pulihkan().then((h) => {
@@ -1256,7 +960,6 @@ app.whenReady().then(() => pengelolaKonektor.pulihkan().then((h) => {
 }).then(() => konektorUmum.pulihkan()).then((h) => {
   if (h?.length) console.log(`[KONEKTOR-UMUM] dipulihkan: ${h.map((x) => `${x.workspace}::${x.konektor}=${x.ok ? 'nyala' : x.alasan}`).join(', ')}`);
 }));
-// Server konektor adalah proses anak — tanpa ini ia tetap hidup sesudah Mamet ditutup.
 let konektorSudahDimatikan = false;
 app.on('will-quit', (event) => {
   if (konektorSudahDimatikan) return;
@@ -1265,7 +968,6 @@ app.on('will-quit', (event) => {
   Promise.allSettled([pengelolaKonektor.matikanSemua(), konektorUmum.matikanSemua()]).finally(() => app.quit());
 });
 
-// 4. Check for updates manually
 ipcMain.handle('check-for-updates', async () => {
   if (isDev) return { status: 'dev-mode', message: 'Auto-updater dinonaktifkan dalam mode development.' };
   try {
@@ -1277,18 +979,11 @@ ipcMain.handle('check-for-updates', async () => {
   }
 });
 
-// 5. Dapatkan versi aplikasi saat ini
 ipcMain.handle('get-app-version', () => {
   return app.getVersion();
 });
 
-// 6–7. IPC Docker sandbox (check-docker-status, run-docker-sandbox) dihapus 2026-09-15 (Item 85):
-// pemakainya hanya interceptor OS lama yang ikut dihapus.
 
-// =============================================
-// 8. FILE SYSTEM HANDLERS (StorageManager Backend)
-// =============================================
-// ✅ Semua handler menggunakan akarRepo() untuk resolusi path relatif
 
 ipcMain.handle('fs:readFile', async (event, filePath) => {
   try {
@@ -1367,7 +1062,7 @@ ipcMain.handle('fs:listFiles', async (event, dirPath) => {
         if (entry.isFile()) {
           size = fs.statSync(fullPath).size;
         }
-      } catch (e) { /* abaikan */ }
+      } catch (e) {  }
       return {
         name: entry.name,
         path: path.join(dirPath, entry.name).replace(/\\/g, '/'),
@@ -1430,9 +1125,6 @@ ipcMain.handle('fs:fileExists', async (event, filePath) => {
   }
 });
 
-// =============================================
-// 9. RECURSIVE FILE LISTING (untuk FileIndexService)
-// =============================================
 
 ipcMain.handle('fs:listFilesRecursive', async (event, dirPath) => {
   try {

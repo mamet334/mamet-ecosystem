@@ -1,22 +1,3 @@
-/**
- * Knowledge Health Monitor — Mamet AI Knowledge OS Phase 2 (Priority 10)
- * ========================================================================
- * API endpoint untuk dashboard kesehatan knowledge.
- *
- * GET /knowledge-health → return health report JSON
- *
- * Response:
- * {
- *   health_score: 87,
- *   active_knowledge: 28,
- *   deprecated: 4,
- *   open_conflicts: 1,
- *   orphan_knowledge: 6,
- *   missing_verification: 2,
- *   version_status: { current: 25, outdated: 3 },
- *   recommendations: [...]
- * }
- */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
@@ -32,7 +13,6 @@ serve(async (req) => {
   }
 
   try {
-    // Auth check
     const authHeader = req.headers.get("Authorization");
     const token = authHeader?.replace("Bearer ", "");
     if (!token) {
@@ -60,7 +40,6 @@ serve(async (req) => {
     const userId = user.id;
     const results: Record<string, any> = {};
 
-    // ── 1. Knowledge Governance Status ──
     const { data: govData } = await supabase
       .from('project_memory_entries')
       .select('id, governance_status, is_current, entry_type, version_major, version_minor, version_patch')
@@ -96,7 +75,6 @@ serve(async (req) => {
       outdated: outdatedCount,
     };
 
-    // ── 2. Knowledge Conflicts ──
     let conflictsData: any[] | null = [];
     if (entryIds.length > 0) {
       const { data } = await supabase
@@ -117,7 +95,6 @@ serve(async (req) => {
       resolved: conflicts.filter(c => c.resolution_status === 'RESOLVED').length,
     };
 
-    // ── 3. Knowledge Relationships (Graph coverage) ──
     const { data: relData } = await supabase
       .from('knowledge_relationships')
       .select('from_id, to_id, relation_type')
@@ -143,7 +120,6 @@ serve(async (req) => {
       orphan_entries: orphanCount,
     };
 
-    // ── 4. Engineering Tasks & Verification ──
     const { data: tasksData } = await supabase
       .from('engineering_tasks')
       .select('status')
@@ -172,7 +148,6 @@ serve(async (req) => {
       pending: vers.filter(v => v.result === 'PENDING').length,
     };
 
-    // ── 5. Evidence Audit Summary (last 7 days) ──
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const { data: auditData } = await supabase
       .from('evidence_audit_logs')
@@ -194,10 +169,9 @@ serve(async (req) => {
       }
     };
 
-    // ── 6. Health Score Calculation ──
     let healthScore = 100;
     healthScore -= openConflicts * 10;
-    healthScore -= criticalConflicts * 10; // double penalty for critical
+    healthScore -= criticalConflicts * 10;
     healthScore -= orphanCount * 5;
     healthScore -= (statusCounts['DRAFT'] || 0) * 2;
     healthScore += Math.min((statusCounts['ACTIVE'] || 0) * 2, 20);
@@ -209,7 +183,6 @@ serve(async (req) => {
       healthScore >= 60 ? 'C' :
       healthScore >= 45 ? 'D' : 'F';
 
-    // ── 7. Recommendations ──
     const recommendations: string[] = [];
 
     if (openConflicts > 0) {
@@ -234,7 +207,6 @@ serve(async (req) => {
       recommendations.push('[OK] Knowledge base dalam kondisi sehat. Tidak ada aksi yang diperlukan saat ini.');
     }
 
-    // ── FINAL RESPONSE ──
     const response = {
       health_score: healthScore,
       health_grade: healthGrade,

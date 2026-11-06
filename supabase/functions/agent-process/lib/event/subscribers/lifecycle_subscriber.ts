@@ -14,7 +14,6 @@ export const registerLifecycleSubscribers = () => {
               metadata: { trace_id: event.trace_id, source: event.source, ...event.payload }
           }));
       } else {
-          // Fallback console log for instances where rctx is not explicitly attached
           console.log(`[LIFECYCLE_TELEMETRY_FALLBACK] ${event.type}: ${message}`, event.payload);
       }
   };

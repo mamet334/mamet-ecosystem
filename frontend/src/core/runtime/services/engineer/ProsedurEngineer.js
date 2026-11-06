@@ -1,42 +1,22 @@
-/**
- * ProsedurEngineer.js — penjaga prosedur kerja Engineer (constitution/28_PROSEDUR_KERJA_ENGINEER.md), 2026-09-23.
- *
- * Aturan yang hanya ditulis di prompt akan dilanggar ketika model lupa. Tiga langkah prosedur yang bisa diperiksa
- * secara deterministik dijaga di sini, masing-masing lahir dari kegagalan live TUGAS-02 (23 September 2026):
- *
- *  [0.1] umumkan tugas + kutip kalimat sumbernya → diminta TUGAS-02, yang dikerjakan isi TUGAS-04;
- *  [0.3] baca berkas dengan `git show HEAD:<alamat>` → `git show <alamat>` kosong & keluar 0, dikira berkas hilang;
- *  [0.4] satu cara gagal → ganti cara            → perintah identik diulang dua kali, hasil sama-sama kosong.
- *
- * Semua fungsi murni (tanpa efek samping) supaya bisa diuji tanpa merender aplikasi.
- */
 
-/** Perintah dianggap sama bila hanya berbeda spasi. Huruf besar/kecil TETAP dibedakan (alamat berkas peka huruf). */
 export function bakukanPerintah(perintah) {
   return String(perintah ?? '').trim().replace(/\s+/g, ' ');
 }
 
-/** `git show <alamat>` tanpa revisi: git memperlakukan alamat sebagai penyaring commit → keluaran kosong, keluar 0. */
 export function gitShowTanpaRevisi(perintah) {
   const p = bakukanPerintah(perintah);
   const m = /^git show (?:--\S+ )*([^\s]+)$/.exec(p);
   if (!m) return null;
   const arg = m[1];
-  if (arg.includes(':') || /^[0-9a-f]{7,40}$/i.test(arg) || arg === 'HEAD') return null; // sudah menyebut revisi
-  if (!/[./\\]/.test(arg)) return null;                                                  // bukan alamat berkas
+  if (arg.includes(':') || /^[0-9a-f]{7,40}$/i.test(arg) || arg === 'HEAD') return null;
+  if (!/[./\\]/.test(arg)) return null;
   return arg;
 }
 
-/** Keluaran perintah kosong (hanya kaki "Kode keluar …"), bukan gagal. */
 export function keluaranKosong(keluaran) {
   return /\(tanpa keluaran\)/.test(String(keluaran ?? ''));
 }
 
-/**
- * Petunjuk jujur setelah perintah berjalan tapi tidak menghasilkan apa-apa. TIDAK mengubah perintah Owner —
- * hanya memberi tahu bentuk yang benar, supaya model tidak menyimpulkan "berkasnya tidak ada".
- * @returns {string|null} teks tambahan untuk keluaran, atau null
- */
 export function petunjukHasilKosong(perintah, keluaran) {
   if (!keluaranKosong(keluaran)) return null;
   const alamat = gitShowTanpaRevisi(perintah);
@@ -44,20 +24,6 @@ export function petunjukHasilKosong(perintah, keluaran) {
   return `PETUNJUK SISTEM: "git show ${alamat}" tanpa revisi TIDAK menampilkan isi berkas — git membacanya sebagai penyaring commit, jadi kosong itu normal dan BUKAN tanda berkas hilang. Untuk melihat isinya: git show HEAD:${alamat}`;
 }
 
-/**
- * Catatan akar repo untuk model — disisipkan ke tiap kiriman Engineer.
- *
- * Kejadian live 2026-09-28: model menulis *"Keduanya dijalankan dari direktori kerja yang berbeda"*
- * lalu mengarang perintah `python` untuk menelusuri filesystem mencari berkas yang **alamatnya sudah
- * ia ketahui**. Perintahnya memang dijalankan dengan `cwd = akarRepo()`, tetapi tidak ada satu pun
- * tempat yang memberitahukan itu kepadanya — jadi ia menebak, dan menebak ke arah yang salah.
- *
- * Sebelum Tahap 5 catatan ini mustahil ditulis: akarnya sendiri tidak pasti. Sesudah Owner memilih
- * folder repo, akarnya eksplisit dan tinggal disebutkan.
- *
- * @param {string} akar alamat absolut akar repo, atau kosong bila belum dipilih / bukan desktop
- * @returns {string} blok catatan, atau string kosong bila tidak ada yang bisa disebutkan
- */
 export function catatanAkarRepo(akar) {
   const alamat = String(akar || '').trim();
   if (!alamat) return '';
@@ -71,50 +37,9 @@ export function catatanAkarRepo(akar) {
   ].join('\n');
 }
 
-/**
- * Peta repo: daftar berkas kode beserta jumlah barisnya.
- *
- * ── Kenapa ada, diukur 1 Oktober 2026 ───────────────────────────────────────────────────────
- * Komposisi satu permintaan Engineer nyata: aturan & identitas 21.756 huruf (62% prompt), RAG
- * dokumen tugas 6.566, riwayat percakapan 4.807 — dan riwayat itulah SATU-SATUNYA tempat kode
- * sumber bisa muncul. Artinya Engineer menerima ±5.400 token aturan dan ±1.200 token kode, tanpa
- * satu pun blok khusus untuk kode.
- *
- * Owner: *"di mana Engineer yang seharusnya tahu kode sumber Mamet?"* Jawabannya saat itu: belum
- * ada. Yang ada Engineer yang bisa **mencari** potongan, bukan yang **tahu apa yang ada**.
- *
- * ── Kenapa jumlah barisnya ikut ────────────────────────────────────────────────────────────
- * Bukan hiasan. Keluaran perintah dipotong pada 20 KB, jadi `git show` pada berkas besar terpotong
- * DIAM-DIAM. Dengan tahu `ConversationEngine.jsx` 2.195 baris, model bisa memilih `git grep` sejak
- * awal — bukan mencoba membaca utuh lalu gagal tanpa tahu sebabnya (live 28 September).
- *
- * ── Harga: diubah jadi INDEKS 2026-10-04 (permintaan Owner) ─────────────────────────────────
- * Daftar LENGKAP dulu dikirim ulang di SETIAP pesan — 273 berkas, 15.670 huruf. Terukur di
- * produksi lewat `[PROMPT_KOMPOSISI]`: bersama catatan akar repo ia jadi `riwayat=2 pesan/16.557
- * huruf`, IDENTIK di lima kali jalan termasuk di percakapan berbeda, karena sisipan ini memang
- * disematkan ulang tiap kiriman. Itu 30% dari seluruh prompt, untuk pertanyaan apa pun.
- *
- * Owner: *"pemangkasan peta repo dengan metode sama seperti skill, yaitu memuat judul atau kata
- * kunci saja, bukan keseluruhan peta maupun penjelasan."*
- *
- * Jadi yang dikirim kini INDEKS: folder + jumlah berkas, ditambah daftar berkas besar yang
- * `git show`-nya pasti terpotong. Daftar berkasnya diambil SAAT PERLU — dan itu murah karena
- * `git grep` sudah jalan tanpa dialog izin sejak 4.2.5.
- *
- *   sebelum : 15.670 huruf, tiap pesan
- *   sesudah : ±2.200 huruf, tiap pesan   (−86%, ≈3.500 token per pesan)
- *
- * Yang HILANG dan disadari: model tak lagi tahu alamat tiap berkas tanpa bertanya. Karena itu
- * perintah pengambilnya ditulis di indeksnya sendiri, bukan diserahkan pada ingatan model.
- *
- * @param {string} peta keluaran `git grep -c ""`, bentuk "berkas:jumlah_baris" per baris
- * @returns {string} blok indeks, atau kosong bila peta tidak ada
- */
 
-/** Berkas di atas ini pasti terpotong `git show` (keluaran dibatasi 20 KB). */
 export const BARIS_BERKAS_BESAR = 600;
 
-/** Kedalaman folder yang diindeks. Lebih dalam = lebih tepat, tetapi lebih panjang. */
 export const DALAM_INDEKS = 3;
 
 export function catatanPetaRepo(peta) {
@@ -128,11 +53,10 @@ export function catatanPetaRepo(peta) {
   }).filter((f) => f.alamat);
   if (!berkas.length) return '';
 
-  // Folder → jumlah berkas. Yang lebih dalam dilebur ke induknya pada DALAM_INDEKS.
   const perFolder = new Map();
   for (const f of berkas) {
     const bagian = f.alamat.split('/');
-    bagian.pop();                                   // buang nama berkasnya
+    bagian.pop();
     const folder = bagian.slice(0, DALAM_INDEKS).join('/') || '(akar)';
     perFolder.set(folder, (perFolder.get(folder) || 0) + 1);
   }
@@ -145,7 +69,6 @@ export function catatanPetaRepo(peta) {
     .sort((a, b) => b.jumlah - a.jumlah)
     .map((f) => `  ${f.alamat} ${f.jumlah}`);
 
-  // Peta UTUH, bentuk lama. Tetap disusun supaya bisa DIBANDINGKAN, bukan diandaikan.
   const petaUtuh = [
     '[PETA REPO — SELURUH BERKAS KODE, dengan jumlah barisnya]',
     `${berkas.length} berkas. Bentuk tiap baris: alamat:jumlah_baris`,
@@ -175,34 +98,11 @@ export function catatanPetaRepo(peta) {
     ] : []),
   ].join('\n');
 
-  // PENJAGA, dan sengaja TEPAT alih-alih nisbah tebakan: indeks hanya berguna bila ia benar-benar
-  // lebih kecil. Pada repo yang tiap berkasnya punya folder sendiri, pengelompokan tak memampatkan
-  // apa pun dan indeksnya justru LEBIH BESAR — ditemukan oleh ujinya sendiri (12.808 huruf untuk
-  // peta 8.729 huruf). Rancangan pertama memakai ambang `folder * 3 > berkas`, dan angka 3 itu
-  // sewenang-wenang: ia langsung salah menilai peta kecil. Membandingkan panjang keduanya tidak
-  // perlu ditebak sama sekali, dan membuat janji "lebih kecil" berlaku tanpa syarat.
   return indeks.length < petaUtuh.length ? indeks : petaUtuh;
 }
 
-/** `git show HEAD:<alamat>` / `git show <sha>:<alamat>` — pembacaan berkas utuh, satu-satunya yang bisa terpotong diam-diam. */
 const POLA_BACA_UTUH = /^git\s+show\s+[^\s:]*:(\S+)\s*$/i;
 
-/**
- * Keluaran terpotong pada pembacaan berkas utuh → beri jalan keluarnya, bukan sekadar menandai.
- *
- * Kejadian nyata 2026-09-28: TMN-0001 menunjuk komentar di `engineer.js` sekitar baris 1035. Engineer
- * menjalankan `git show HEAD:…`, menerima 20 KB pertama dari 47.767 bita, TAHU keluarannya terpotong —
- * ia menuliskannya sendiri — lalu mengarang perintah `python` untuk menelusuri filesystem mencari berkas
- * yang alamatnya sudah ia ketahui. Yang kurang bukan kesadaran, melainkan **jalan keluarnya**:
- * `git grep` dan `git blame` sudah diizinkan sejak lama, hanya tidak pernah disebutkan kepadanya.
- *
- * Sejalan dengan `petunjukHasilKosong`: saat sistem tahu bentuk perintahnya yang keliru, ia menyebut
- * bentuk yang benar — bukan membiarkan model menebak.
- *
- * @param {string} perintah perintah yang dijalankan
- * @param {{terpotong?: boolean, byteKeluaran?: number}} hasil hasil dari penjalan perintah
- * @returns {string|null} petunjuk untuk model, atau null bila tidak berlaku
- */
 export function petunjukKeluaranTerpotong(perintah, hasil) {
   if (!hasil?.terpotong) return null;
   const cocok = POLA_BACA_UTUH.exec(String(perintah || '').trim());
@@ -218,41 +118,16 @@ export function petunjukKeluaranTerpotong(perintah, hasil) {
   ].join('\n');
 }
 
-/**
- * `git grep` mengembalikan BARIS YANG COCOK, bukan isi berkas — dan hasilnya terlihat lengkap.
- *
- * Owner, 2 Oktober 2026: *"kenapa engineer terlalu cepat mengambil kesimpulan? padahal grep yang
- * dijalankan hanya menghasilkan separuh isinya."*
- *
- * Ini BUKAN pemotongan. Tidak ada yang hilang, tidak ada catatan kaki "dipotong", dan karena itu
- * `petunjukKeluaranTerpotong` diam — keluarannya memang utuh menurut ukurannya sendiri. Yang keliru
- * adalah cara membacanya: pandangan TERSARING disangka KESELURUHAN. Hasil yang rapi tanpa tanda
- * apa pun justru paling meyakinkan, dan itulah yang membuat kesimpulan diambil terlalu cepat.
- *
- * Penjaga ketiga, sejajar dengan dua yang sudah ada: `petunjukHasilKosong` (keluaran kosong yang
- * menyesatkan) dan `petunjukKeluaranTerpotong` (20 KB). Pola yang sama: sebut batasnya, lalu beri
- * CARA keluarnya — jangan hanya melarang menyimpulkan.
- *
- * Diam bila model sudah meminta konteks (`-A/-B/-C`) atau memang hanya ingin menghitung/mendaftar
- * (`-c`, `-l`, `-L`): di situ ia sudah tahu yang dilihatnya sebagian, dan catatan ini akan jadi
- * gangguan yang lama-lama diabaikan.
- *
- * @param {string} perintah perintah yang dijalankan
- * @param {{ok?: boolean, keluaran?: string}} hasil hasil dari penjalan perintah
- * @returns {string|null} petunjuk untuk model, atau null bila tidak berlaku
- */
 export function petunjukGrepSebagian(perintah, hasil) {
   const teks = String(perintah || '').trim();
   if (!/^git\s+grep\b/i.test(teks)) return null;
   if (!hasil?.ok) return null;
 
-  // Sudah meminta konteks sekitarnya → model tahu ia sedang melihat cuplikan.
   if (/(^|\s)-(A|B|C)\b|(^|\s)-(A|B|C)\d|--(after|before)-context\b|--context\b/.test(teks)) return null;
-  // Hanya menghitung atau mendaftar nama berkas → tidak ada isi yang bisa disalahpahami.
   if (/(^|\s)-(c|l|L)\b|--count\b|--files-with-matches\b|--files-without-match\b/.test(teks)) return null;
 
   const baris = String(hasil.keluaran || '').split('\n').filter((b) => b.trim()).length;
-  if (!baris) return null;   // keluaran kosong sudah ditangani petunjukHasilKosong
+  if (!baris) return null;
 
   return [
     `PETUNJUK SISTEM: perintah di atas mengembalikan ${baris} BARIS YANG COCOK, bukan isi berkasnya.`,
@@ -264,14 +139,6 @@ export function petunjukGrepSebagian(perintah, hasil) {
   ].join('\n');
 }
 
-/**
- * Penjaga langkah [0.4]: perintah yang sama persis sudah pernah dijalankan pada percakapan ini.
- * Mengulangnya tidak akan memberi hasil berbeda, jadi perintahnya tidak dijalankan lagi.
- *
- * @param {string} perintah perintah yang akan dijalankan
- * @param {Array<{perintah: string, keluaran: string}>} riwayat perintah yang sudah dijalankan di chat ini
- * @returns {{ulang: boolean, pesan: string|null}}
- */
 export function cekPerintahBerulang(perintah, riwayat = []) {
   const baku = bakukanPerintah(perintah);
   if (!baku) return { ulang: false, pesan: null };
@@ -290,40 +157,6 @@ export function cekPerintahBerulang(perintah, riwayat = []) {
   };
 }
 
-/**
- * Catatan INDEKS KONSTITUSI untuk sisipan Engineer.
- *
- * ── Kenapa ini ada ──────────────────────────────────────────────────────────────────────────
- *
- * `AGENTS.md` memerintahkan: *"DO NOT start analyzing or modifying the source code immediately.
- * The Source Code is NOT the Source of Truth. Before doing any engineering task, you MUST read
- * constitution/README.md."* Selama ini Engineer tidak bisa mematuhinya — bukan karena membangkang,
- * melainkan karena **ia tidak pernah diberi tahu berkas-berkas itu ada**.
- *
- * Terukur 5 Okt 2026: 33 berkas (168.299 huruf ≈ 43.942 token) dibaca tiap boot ke
- * `brain.static.raw`, dan `raw` punya NOL pemakai. Yang mengalir cuma jumlahnya. Engineer
- * melaporkan "Coverage BRAIN 1 ✓" tanpa pernah membaca satu pun aturan yang Owner tulis — dan
- * "BRAIN 1" yang dilaporkannya sebenarnya 7 baris dari `project_memory_entries`, bukan konstitusi.
- *
- * ── ARAH BIAYANYA BERLAWANAN dengan item 120, dan itu disengaja ─────────────────────────────
- *
- * Peta repo bisa DIPANGKAS karena ia sudah dikirim. Konstitusi **tidak dikirim sama sekali**,
- * jadi indeks di sini **MENAMBAH** ±384 token per pesan. Itu bukan penghematan, dan tidak boleh
- * disamakan dengan item 120. Owner memutuskannya dengan sadar sesudah angka ini disodorkan dua
- * kali.
- *
- * Yang ditukar: 384 token per pesan, melawan 43.942 token yang dibaca lalu dibuang tiap boot —
- * dan melawan Engineer yang mengaku punya cakupan yang tak pernah ia punya.
- *
- * ── Kenapa INDEKS, bukan isinya ─────────────────────────────────────────────────────────────
- *
- * Mengirim isinya mustahil (43.942 token), dan tidak perlu: `git show HEAD:<alamat>` sudah jalan
- * tanpa dialog izin sejak 4.2.5. Yang hilang selama ini bukan kemampuan membaca, melainkan
- * **pengetahuan bahwa ada yang bisa dibaca** — persis pola item 120.
- *
- * @param {Array<{alamat: string, judul?: string}>} daftar dari `engineer:indeks-konstitusi`
- * @returns {string} catatan untuk sisipan, atau '' bila tak ada apa pun
- */
 export function catatanKonstitusi(daftar) {
   const isi = Array.isArray(daftar) ? daftar.filter((d) => d && typeof d.alamat === 'string' && d.alamat) : [];
   if (!isi.length) return '';
@@ -349,47 +182,10 @@ export function catatanKonstitusi(daftar) {
   ].join('\n');
 }
 
-/**
- * Anggaran keluaran perintah yang dikirim ke model.
- *
- * KEJADIAN NYATA 5 Oktober 2026, 01:33. Satu `git grep -n -B2 -A4 "402"` di TIGA folder sekaligus
- * mengembalikan 15.671 huruf, dan seluruhnya dikirim balik utuh. `[PROMPT_KOMPOSISI]` giliran
- * berikutnya: `pesan=15.769` dari total 49.993 huruf — permintaannya ditolak 402 varian prompt
- * kebesaran (12.910 token dikirim, saldo menanggung 1.682).
- *
- * Perlu dikatakan terus terang: sehari sebelumnya peta repo dipangkas 13.870 huruf dari TIAP
- * pesan (item 120), lalu satu perintah tanpa anggaran mengembalikan 15.671. Pemangkasan itu tetap
- * benar — ia permanen dan berlaku di setiap pesan — tetapi ia tidak menyentuh kelas biaya ini.
- *
- * Batas 20 KB yang sudah ada (`alatFolderJalan.cjs`) adalah batas TERMINAL, bukan batas prompt:
- * ia menjaga proses, bukan anggaran token. 15.671 lolos darinya dengan mudah.
- *
- * KENAPA 8.000: ini pilihan anggaran, bukan hasil pengukuran, dan dasarnya disebutkan supaya bisa
- * dinilai. Ia ditambatkan ke blok terbesar yang tersisa di prompt — `konteks_engineer` 17.687
- * huruf: keluaran satu perintah tidak boleh jadi bagian terbesar, dan 8.000 menaruhnya tegas di
- * bawah itu sambil tetap memuat ratusan baris grep.
- */
 export const BATAS_KELUARAN_MODEL = 8000;
 
-/** Bagian yang disisakan dari AWAL keluaran; sisanya dari ekornya. */
 const PORSI_KEPALA = 0.7;
 
-/**
- * Memotong keluaran perintah untuk model — KEPALA dan EKOR disimpan, tengahnya dibuang.
- *
- * Bukan potong-di-ujung. Pada keluaran `git grep` tiap baris adalah satu kecocokan, dan kecocokan
- * TERAKHIR sering ada di berkas yang berbeda dari yang pertama. Membuang ekornya berarti model
- * menyimpulkan dari satu sudut repo saja — persis kelas kesalahan yang dijaga `petunjukGrepSebagian`.
- *
- * Dipotong pada batas BARIS, karena baris grep yang terpenggal di tengah ("supabase/func") terbaca
- * seperti alamat berkas yang sebenarnya tidak ada.
- *
- * Mengikuti pola keluarga `petunjuk*`: sebut batasnya dengan angka, lalu beri CARA keluarnya.
- *
- * @param {string} keluaran keluaran mentah dari perintah
- * @param {number} [batas] anggaran huruf
- * @returns {{teks: string, dipotong: boolean, asli: number}}
- */
 export function potongKeluaranUntukModel(keluaran, batas = BATAS_KELUARAN_MODEL) {
   const teks = String(keluaran ?? '');
   if (teks.length <= batas) return { teks, dipotong: false, asli: teks.length };
@@ -424,20 +220,11 @@ export function potongKeluaranUntukModel(keluaran, batas = BATAS_KELUARAN_MODEL)
   return { teks: kepala.join('\n') + '\n' + catatan + ekor.join('\n'), dipotong: true, asli: teks.length };
 }
 
-/**
- * Pesan hasil perintah untuk model — SATU titik rakit, dipakai jalur otomatis maupun tombol manual.
- *
- * Disatukan 2026-10-05: sebelumnya kedua jalur merakit teksnya sendiri-sendiri di
- * `ConversationEngine.jsx`, jadi anggaran yang dipasang di satu jalur akan dilewati jalur lain
- * tanpa suara. Bentuk teksnya TIDAK berubah — `riwayatPerintahDariPesan` mengurainya kembali
- * dengan pola yang sama.
- */
 export function pesanKeluaranPerintah(perintah, keluaran) {
   const { teks } = potongKeluaranUntukModel(keluaran);
   return `[TERMINAL OUTPUT for: ${perintah}]\n${teks}`;
 }
 
-/** Riwayat perintah dari pesan chat: pesan hasil berbentuk "[TERMINAL OUTPUT for: <perintah>]\n<keluaran>". */
 export function riwayatPerintahDariPesan(pesan = []) {
   const hasil = [];
   for (const m of pesan || []) {
@@ -448,11 +235,6 @@ export function riwayatPerintahDariPesan(pesan = []) {
   return hasil;
 }
 
-// PENANDA PATCH sebagai SINYAL, bukan sebutan (live 2026-09-23 TUGAS-04): Engineer menulis kalimat
-// "ini analisis, bukan permintaan patch — jadi saya tidak menandai `[MAMET_PATCH_READY]`", dan jalur patch tetap
-// dimulai karena penanda dicari dengan includes() di mana saja. Akibatnya tugas ANALISIS masuk ke pipeline patch,
-// lalu gagal ("Provider returned empty response"), dan penandanya dibuang dari kalimat sehingga tersisa "saya tidak
-// menandai ``". Penanda hanya dihitung bila BERDIRI SENDIRI di satu baris, di luar blok kode dan di luar <think>.
 const PENANDA_PATCH = '[MAMET_PATCH_READY]';
 const POLA_PENANDA_BARIS = /^[ \t>*-]*\[MAMET_PATCH_READY\][ \t]*$/m;
 
@@ -461,12 +243,10 @@ const tanpaKodeDanNalar = (teks) => String(teks ?? '')
   .replace(/```[\s\S]*?```/g, '')
   .replace(/`[^`\n]*`/g, '');
 
-/** Apakah jawaban benar-benar MENANDAI patch siap (bukan sekadar menyebut penandanya)? */
 export function adaPenandaPatch(teks) {
   return POLA_PENANDA_BARIS.test(tanpaKodeDanNalar(teks));
 }
 
-/** Buang HANYA baris penanda; sebutan di dalam kalimat/backtick dibiarkan utuh agar kalimatnya tidak rusak. */
 export function buangPenandaPatch(teks) {
   const t = String(teks ?? '');
   if (!adaPenandaPatch(t)) return t;
@@ -474,32 +254,13 @@ export function buangPenandaPatch(teks) {
 }
 
 const POLA_MINTA_TUGAS = /\bTUGAS[-\s]?\d+/i;
-// Baris wajib: TUGAS YANG DIKERJAKAN: <id> — "<kutipan kalimat sumber>" (kutip lurus atau melengkung).
-// Isi kutipan BOLEH memuat backtick: kalimat dokumen sering menyebut nama fungsi/berkas dalam backtick, dan versi
-// pertama pola ini menolaknya sehingga pengumuman yang sah dikira tidak ada (live 2026-09-23 09:00:
-// `TUGAS YANG DIKERJAKAN: TASK-0014 — "Baca \`detectIntent\`, lalu jelaskan …"` tidak terdeteksi).
 const POLA_UMUMKAN = /TUGAS YANG DIKERJAKAN\s*:[^\n]*?["“]([^"“”\n]{15,})["”]/i;
 
-/**
- * Penjaga langkah [0.1]: pengguna meminta tugas bernama, jawaban Engineer wajib menyebut tugas yang dikerjakan
- * beserta KUTIPAN kalimat sumbernya. Peringatan ini hanya dipasang bila pengguna benar-benar menyebut "TUGAS-xx",
- * jadi obrolan biasa tak pernah kena. Isinya selalu benar saat dipasang: barisnya memang tidak ada.
- *
- * @param {string} pesanPengguna pesan yang dijawab
- * @param {string} jawaban jawaban Engineer
- * @returns {string|null}
- */
 export function peringatanTugasTakDiumumkan(pesanPengguna, jawaban) {
   const p = String(pesanPengguna ?? '');
   if (!POLA_MINTA_TUGAS.test(p)) return null;
-  if (/^\[TERMINAL OUTPUT for: /.test(p)) return null; // putaran lanjutan, bukan permintaan tugas baru
+  if (/^\[TERMINAL OUTPUT for: /.test(p)) return null;
 
-  // MENOLAK BUKAN PELANGGARAN. Bila Engineer justru berhenti karena tugasnya tidak ada di sumbernya, itu langkah 0.1
-  // yang dijalankan dengan BENAR — menuntut baris pengumuman di situ adalah peringatan palsu.
-  // Live 2026-09-23 10:40 (deepseek-v4-pro): TUGAS-04 belum terunggah, Engineer mendaftar dokumen yang ia punya,
-  // menolak mengerjakan tugas terdekat, dan melabeli jawabannya INSUFFICIENT — lalu tetap kena peringatan.
-  // Risiko yang saya terima sadar: model bisa "kabur" dari penjaga dengan mengaku tugasnya tak ditemukan. Klaim itu
-  // terlihat Owner di layar dan label INSUFFICIENT diperiksa sistem label server, jadi bukan jalan sunyi.
   const t0 = String(jawaban ?? '');
   if (/\[STATUS:\s*INSUFFICIENT/i.test(t0)) return null;
   if (/tidak ada di sumber|tidak ditemukan di (?:sumber|dokumen)|tidak ada di dokumen|belum (?:ter)?unggah|tidak tersedia di konteks/i.test(t0)) return null;
@@ -511,8 +272,6 @@ export function peringatanTugasTakDiumumkan(pesanPengguna, jawaban) {
     return `⚠️ **Peringatan sistem:** jawaban di atas tidak mengumumkan tugas yang dikerjakan beserta kutipan kalimat sumbernya, padahal prosedur kerja Engineer langkah 0.1 mewajibkannya — baris \`TUGAS YANG DIKERJAKAN: ${diminta} — "<kutipan kalimat dari dokumen>"\` tidak ada. Tanpa kutipan itu, tidak ada cara memastikan Engineer mengerjakan tugas yang benar (23 September 2026: diminta TUGAS-02, yang dikerjakan isi TUGAS-04). Minta Engineer mengumumkan tugasnya lebih dulu sebelum menerima hasil di atas.`;
   }
 
-  // Pengumumannya ada, tapi tugas yang disebut harus tugas yang DIMINTA. Live 2026-09-23 01:53: diminta TUGAS-02,
-  // yang diumumkan "TASK-0014" (nomor tugas internal Brain 2) dengan kutipan milik TUGAS-04 — format benar, isi salah.
   const barisUmumkan = umumkan[0];
   const nomorDiminta = (/\d+/.exec(diminta) || [''])[0];
   const cocok = new RegExp(`TUGAS[-\\s]?0*${nomorDiminta}\\b`, 'i').test(barisUmumkan);

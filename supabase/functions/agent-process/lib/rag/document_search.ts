@@ -18,19 +18,8 @@ export const searchDocuments = async (
     rctx.env.supabaseServiceKey
   );
 
-  // Batasi ke satu space HANYA bila space itu dipilih eksplisit (scope WORKSPACE: UUID dari UI
-  // atau nama space disebut di pesan). Selain itu cari di SEMUA space milik pengguna (Item 65).
-  // Dulu `routing_decider` mengisi workspace_id dengan space CORE setiap kali klien tak mengirim
-  // workspaceTarget — jalur LOOKUP — sehingga dokumen di space lain tak pernah ditemukan, sementara
-  // jalur chat biasa mencari di semua space. Hasilnya bergantung pada cara bertanya. Research App
-  // pun otomatis memilih space terbaru saat mengunggah, jadi dokumen jarang berada di CORE.
   const spaceId = routingDecision?.scope === 'WORKSPACE' ? routingDecision.workspace_id : null;
 
-  // PENCARIAN GABUNGAN (Item 90 Tahap B, 2026-09-17): peringkat vektor + peringkat kata kunci (RRF k=60)
-  // di dalam database, SEBELUM dipotong ke batas jumlah potongan. Vektor saja menaruh tabel persyaratan
-  // Kepbup di #15 untuk "tingkat kepentingan pelatihan teknis Sekretaris DPRD" (hanya 8 diambil); gabungan
-  // #3, set uji 13/14 → 14/14. Ambang & batas tidak berubah. Kata kunci dibatasi 30 karena finalMessage
-  // bisa memuat isi lampiran. Bila RPC gabungan gagal, jatuh ke match_documents (vektor saja).
   const kataKunci = kataKunciPencarian(finalMessage).slice(0, 30);
   const argumenDasar = {
     query_embedding: queryEmbedding,
@@ -54,19 +43,7 @@ export const searchDocuments = async (
     throw new Error(`RAG_DB_FAIL: ${matchError.message}`);
   }
 
-  // PENCARIAN LEWAT JUDUL (2026-10-01). Diukur: 221 dokumen Kepbup, kata "kepbup" muncul di 0 dari
-  // 3.629 potongan, dan 221 dari 221 tidak memuat nomornya sendiri di teks terindeks. Judul memuat
-  // keduanya tetapi tidak pernah ikut dicari. RRF tak bisa menolong — ambang kemiripan VEKTOR
-  // membuang potongannya sebelum RRF bekerja. Jalur ini berdiri sendiri; `match_documents_hybrid`
-  // TIDAK disentuh supaya patokan 14/14 (Item 90) tetap sebanding.
-  //
-  // Kegagalannya tidak boleh menggagalkan pencarian biasa: dibungkus, dan bila gagal hasilnya apa adanya.
   try {
-    // Kata kunci TERPISAH untuk jalur judul (2026-10-05): `kataKunci` membuang token ≤2 huruf,
-    // sehingga "kepbup 17" tiba sebagai satu kata saja dan penjaga `array_length >= 2` memulangkan
-    // kosong — 99 dari 221 dokumen (45%) tak bisa ditemukan lewat nomor alaminya. Daftar ini
-    // menambah varian angka berpadding; `kataKunci` sengaja TIDAK diubah supaya patokan 14/14
-    // milik `match_documents_hybrid` tetap sebanding. Lihat `kataKunciJudul`.
     const kataJudul = kataKunciJudul(finalMessage, kataKunci);
     const { data: lewatJudul, error: galatJudul } = await supabaseClient.rpc('match_documents_judul', {
       query_words: kataJudul,
@@ -91,7 +68,6 @@ export const searchDocuments = async (
     return [];
   }
 
-  // 1. DEDUPLICATION LAYER (POST-RAG)
   const calculateCosineSimilarity = (strA: string, strB: string) => {
     const getWords = (s: string) => s.toLowerCase().match(/\w+/g) || [];
     const wordsA = getWords(strA);
@@ -134,7 +110,6 @@ export const searchDocuments = async (
     if (!isDuplicate) deduplicatedDocs.push(doc);
   }
 
-  // 2. CONTEXT RE-RANKING LAYER
   const queryWords = finalMessage.toLowerCase().match(/\w+/g) || [];
   const validQueryWords = queryWords.filter((w: string) => w.length > 3);
   

@@ -1,31 +1,7 @@
-/**
- * PatchApplier — Menerapkan patch yang sudah disetujui ke file sungguhan:
- * blokir file IMMUTABLE, buat git checkpoint untuk rollback, tulis tiap file
- * (dengan safety-check anti-truncation), simpan ringkasan ke Project Memory,
- * lalu finalisasi sesi.
- *
- * Diekstrak dari engineer.js (Fase 8/8, ADR-0017 — TERAKHIR & RISIKO TERTINGGI).
- * Ini hard gate: bug di sini berarti patch tidak pernah benar-benar ter-apply
- * ke file sungguhan. Dikerjakan paling akhir, setelah 7 modul lain stabil.
- *
- * `this.suspiciousAttempts` (primitif number) dan `this.capability` (primitif
- * string) di instance Engineer TIDAK BISA diteruskan by-reference seperti Map
- * atau object (`metrics`/`brain`) di fase-fase sebelumnya — primitif di JS
- * bukan reference type. Sebagai gantinya, mutasi keamanan (increment percobaan
- * mencurigakan + downgrade capability + emit lockdown) tetap tinggal sebagai
- * closure di `engineer.js` dan diteruskan sebagai satu callback
- * `onImmutableFileBlocked` — modul ini tidak perlu tahu apa pun soal `this`.
- */
 import { isImmutableFile, isProtectedFile } from './CapabilityGuard.js';
 import { simpanCatatanPatch, hapusCatatanPatch } from './CatatanPatch.js';
 import { laporanVerifikasi, putusanVerifikasi } from './VerifikasiPatch.js';
 
-/**
- * @param {Object} patch
- * @param {string[]} approvedFiles
- * @param {Object} deps - { metrics, eventBus, storageManager, serviceManager,
- *   emitRecommendation, finalizeSession, onImmutableFileBlocked }
- */
 export async function executePatchApplication(patch, approvedFiles = [], deps) {
   const { metrics, eventBus, storageManager, serviceManager, emitRecommendation, finalizeSession, onImmutableFileBlocked } = deps;
 
@@ -55,11 +31,6 @@ export async function executePatchApplication(patch, approvedFiles = [], deps) {
     let failCount = 0;
     let skippedCount = 0;
 
-    // =============================================
-    // ROLLBACK CHECKPOINT — salinan isi asli berkas target (proses utama, eng:git-checkpoint), sekali sebelum menulis.
-    // Dulu `git stash` seluruh working tree dan "non-blocking": live TUGAS-01 (2026-09-22) pekerjaan Owner yang belum
-    // di-commit lenyap ke stash. Kini checkpoint WAJIB berhasil — tanpanya Undo mustahil, jadi tak ada yang ditulis.
-    // =============================================
     let checkpointRef = null;
     if (window.electronAPI?.gitCheckpoint) {
       let cp = null;
@@ -85,7 +56,6 @@ export async function executePatchApplication(patch, approvedFiles = [], deps) {
       console.log(`[Engineer] 💾 Checkpoint dibuat: ${checkpointRef}`);
     }
 
-    // Menulis berkas aplikasi memicu muat ulang Vite (mode pengembangan) — catatan ini melaporkan hasil setelahnya.
     simpanCatatanPatch({
       patchId: patch.id,
       checkpointRef,
@@ -105,7 +75,6 @@ export async function executePatchApplication(patch, approvedFiles = [], deps) {
           console.warn(`[Engineer] ⚠️ WARNING: Modifying PROTECTED file: ${file.path}`);
         }
 
-        // Safety Check: Cegah LLM truncation overwrite file
         const originalSize = file.originalContent ? file.originalContent.length : 0;
         const newSize = file.newContent.length;
         if (originalSize > 500 && newSize < originalSize * 0.5) {
@@ -144,30 +113,7 @@ export async function executePatchApplication(patch, approvedFiles = [], deps) {
       }
     }
 
-    // CATATAN PATCH TIDAK LAGI DITULIS KE MEMORI PENGGUNA (keputusan Owner, 2026-10-01).
-    //
-    // Dulu tiap patch menulis `"Patch PATCH-1790841319400 applied"` ke memori pribadi Owner. Tak ada
-    // yang pernah membacanya kembali — `engineer_patch` hanya muncul di tempat penulisannya — dan
-    // isinya nomor mesin tanpa keterangan apa pun. Ia tumbuh satu baris tiap patch, selamanya.
-    //
-    // Yang ditanyakan orang tentang patch ("apa yang berubah, kapan, kenapa") dijawab jauh lebih
-    // baik oleh `git log` dan checkpoint: selalu benar, tidak membeku jadi potret satu saat, dan
-    // sejak 4.2.5 bisa dijalankan Engineer sendiri tanpa persetujuan. Baris memori ini hanya
-    // menyalin sebagian kecilnya dalam bentuk yang lebih buruk.
-    //
-    // Alasan lengkap & ukurannya ada di catatan yang sama di `engineer.js` (_finalizeSession).
 
-    // =============================================
-    // TAHAP 6 — VERIFIKASI YANG DIJALANKAN (2026-09-28)
-    //
-    // Pertanyaannya berubah dari "apakah patch ini TAMPAK aman" menjadi "apakah sistem ini MASIH BENAR
-    // sesudah patch". Itu baru mungkin karena checkpoint sudah wajib di atas: patch boleh diterapkan
-    // dulu, lalu diputuskan. Seluruh langkahnya (jalankan uji → pulihkan → jalankan ulang yang gagal)
-    // dikerjakan proses utama dalam satu panggilan, supaya muat ulang Vite tidak membatalkan pemulihan.
-    //
-    // Dilewati bila tidak ada satu berkas pun yang benar-benar ditulis — tidak ada yang perlu dijaga —
-    // dan di luar Electron (web/Mametlite) tempat node tidak ada.
-    // =============================================
     let verifikasi = null;
     let dipulihkan = false;
     if (successCount > 0 && window.electronAPI?.verifikasiPatch) {
@@ -191,18 +137,14 @@ export async function executePatchApplication(patch, approvedFiles = [], deps) {
       skippedCount,
       failCount,
       files: patch.files,
-      // Checkpoint SUDAH TERPAKAI bila berkas dipulihkan otomatis — berkasnya dihapus proses utama,
-      // jadi tombol Undo tidak boleh ditawarkan lagi untuk sesuatu yang sudah dikembalikan.
       checkpointRef: dipulihkan ? null : checkpointRef,
       verifikasi
     };
 
-    // Selesai tanpa muat ulang → alur biasa melapor sendiri; catatan tak diperlukan lagi.
     hapusCatatanPatch();
     eventBus.emit('Engineer:PatchApplied', result);
     console.log(`[Engineer] 🎯 Patch selesai: ${successCount} applied, ${skippedCount} skipped, ${failCount} failed`);
 
-    // [FASE 1] Finalisasi sesi: verifikasi ringkasan memori terhadap golden source
     try {
       await finalizeSession(patch);
     } catch (e) {

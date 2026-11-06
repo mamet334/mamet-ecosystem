@@ -13,22 +13,19 @@ export const coreEngine = {
     initializeEventSubscribers();
     const maef = new MAEFStateMachine();
 
-    // Default Fallbacks
     let model = rctx.model.model;
     let tools = ctx.request.tools;
 
-    // RFC-014: Self Engineering Lifecycle Filter (Only for ENGINEER mode)
     if (ctx.request.mode === 'ENGINEER' || ctx.policy.mode === 'ENGINEER') {
-      const prevState = rctx.state.engineeringState; // Passed from frontend session context
+      const prevState = rctx.state.engineeringState;
       
-      // Step 5 Wiring: Support both text prompt and structured UI button command
       const intentCommand = ctx.request.command || ctx.request.action || ctx.request.finalMessage;
       const currentTraceId = ctx.request.trace_id || ctx.traceId || (rctx.tasks ? rctx.tasks.traceId : undefined);
       
       const newState = EngineeringLifecycleManager.determineState(intentCommand, prevState, currentTraceId);
       rctx.state.engineeringState = newState;
       tools = EngineeringLifecycleManager.filterTools(tools, newState);
-      ctx.request.tools = tools; // Propagate filtered tools to downstream handlers
+      ctx.request.tools = tools;
     }
 
     let groundingSources: any[] = [];
@@ -37,7 +34,6 @@ export const coreEngine = {
     let contractValidation = ctx.request.contractValidation;
     let routingDecision = ctx.request.routingDecision;
 
-    // --- PHASE 1: CONTEXT BUILDER ---
     const contextResult = await ContextBuilderHandler.handle(ctx, rctx, maef);
     
     if (contextResult.isBlocked) {
@@ -47,17 +43,9 @@ export const coreEngine = {
     const { fullSystemContext, evidenceReport, confidenceReport } = contextResult;
     routingDecision = contextResult.routingDecision || routingDecision;
 
-    // --- LANJUTAN JAWABAN TERPOTONG (2026-09-15) ---
-    // "lanjutkan" sesudah jawaban yang dipotong batas waktu: Intent Router, Coordinator, dan sub-agent dilewati —
-    // bahan riset diambil dari metadata pesan yang terpotong, jadi riset tidak diulang dan tidak dibayar dua kali.
-    // Hanya jalur JSON/hybrid (desktop); jalur SSE penuh tidak memakai tenggat.
     const lanjutan = !ctx.request.stream ? temukanLanjutan(ctx.request.finalMessage, ctx.request.history) : null;
 
-    // --- PHASE 2: INTENT ROUTING ---
     let routerResult: any;
-    // DATA TABEL berhasil dihitung (Item 92 Tahap 3): jawabannya sudah ada dari kode — Coordinator & sub-agent dilewati.
-    // Uji live 2026-09-21: Coordinator menugaskan knowledge_manager yang rusak (T9); pesan galatnya masuk konteks dan
-    // model menulis "tidak bisa menjawab" + INSUFFICIENT tepat di bawah angka yang benar.
     const dataTabelSelesai = (ctx.state as any).dataTabel?.status === 'ok';
     if (lanjutan || dataTabelSelesai) {
       maef.evaluatePhaseResult('CONTEXT_BUILD', { skipPhases: ['ORCHESTRATION', 'TOOL_EXECUTION'] });
@@ -69,7 +57,6 @@ export const coreEngine = {
     const { isChatBiasa, plan } = routerResult;
     contractValidation = routerResult.contractValidation || contractValidation;
 
-    // --- PHASE 3: EXECUTION PLANNER ---
     let accumulatedContext = `Permintaan awal user: "${ctx.request.finalMessage}"\n\n`;
     
     if (plan && plan.length > 0 && maef.shouldExecutePhase('ORCHESTRATION')) {
@@ -78,7 +65,6 @@ export const coreEngine = {
         subagentRuns = executionResult.subagentRuns;
     }
 
-    // --- PHASE 4 & 5: SYNTHESIS & VERIFICATION ---
     const synthesisState = {
       isChatBiasa,
       fullSystemContext,

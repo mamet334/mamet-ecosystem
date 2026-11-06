@@ -29,8 +29,6 @@ function escapeHtml(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// Aturan pewarnaan per jenis berkas. Berkas yang tidak terdaftar (md, txt, ...) tampil polos —
-// prosa penuh kata "if"/"for" dan apostrof yang bukan kode.
 const C_LIKE = { line: '//', block: ['/*', '*/'], quotes: '"\'`', keywords: true };
 const HASH = { line: '#', quotes: '"\'', keywords: true };
 const SYNTAX = {
@@ -54,13 +52,8 @@ function warnaiKataKunci(s, pakai) {
     .join('');
 }
 
-// Dibaca SEKALI dari kiri ke kanan, sehingga tiap karakter hanya punya satu peran:
-// `//` di dalam "https://..." tetap bagian string, kata kunci di dalam komentar tidak diwarnai.
-// (Versi lama menjalankan beberapa regex berurutan di atas hasil regex sebelumnya.)
 function highlightCode(code, path) {
   if (!code) return '';
-  // Samakan akhir baris dulu. Berkas Windows (\r\n) yang komentarnya dipotong sebelum \n
-  // menyisakan \r di dalam span — browser membacanya sebagai baris baru kedua.
   code = code.replace(/\r\n?/g, '\n');
   const aturan = SYNTAX[path?.split('.').pop()?.toLowerCase()];
   if (!aturan) return escapeHtml(code);
@@ -84,8 +77,6 @@ function highlightCode(code, path) {
       const tutup = code.indexOf('\n', i);
       ambil(CLS_KOMENTAR, tutup === -1 ? n : tutup);
     } else if (aturan.quotes.includes(c)) {
-      // String berakhir di kutip penutup atau di akhir baris (kecuali backtick yang boleh
-      // multi-baris) — kutip yang tak tertutup tidak mewarnai sisa berkas.
       let j = i + 1;
       while (j < n && code[j] !== c && !(code[j] === '\n' && c !== '`')) j += code[j] === '\\' ? 2 : 1;
       if (j < n && code[j] === c) j++;
@@ -125,7 +116,6 @@ export default function FileExplorer() {
   const [expandedFolders, setExpandedFolders] = useState({});
   const searchTimer = useRef(null);
 
-  // ── Ambil RepositoryReaderService dari Kernel ──
   useEffect(() => {
     let interval = null;
     const getService = () => {
@@ -142,7 +132,6 @@ export default function FileExplorer() {
     return () => { if (interval) clearInterval(interval); };
   }, []);
 
-// ── Muat direktori ──
   const loadDirectory = useCallback(async (dirPath = '') => {
     if (!service) {
       setDirError('Service RepositoryReader belum tersedia.');
@@ -150,11 +139,9 @@ export default function FileExplorer() {
     }
     setLoadingDir(true);
     setDirError(null);
-    // Reset entries agar UI tidak menampilkan file dari folder sebelumnya
     setEntries([]);
     try {
       const result = await service.listDirectory(dirPath);
-      // Normalisasi tipe: pastikan ada field 'type' yang valid ('dir'/'file')
       const normalized = (result || []).map(item => {
         const type = item.type === 'dir' || item.type === 'file' ? item.type : 'file';
         return { ...item, type };
@@ -166,7 +153,6 @@ export default function FileExplorer() {
       });
       setEntries(sorted);
     } catch (e) {
-      // Jangan silent fail — set error state agar UI menampilkan pesan
       setDirError(e.message || 'Gagal memuat direktori');
       setEntries([]);
     } finally {
@@ -178,7 +164,6 @@ export default function FileExplorer() {
     if (service) loadDirectory('');
   }, [service, loadDirectory]);
 
-  // ── Muat file ──
   const loadFile = useCallback(async (filePath) => {
     if (!service) return;
     setLoadingFile(true);
@@ -202,7 +187,6 @@ export default function FileExplorer() {
     }
   }, [service]);
 
-  // ── Pencarian debounce ──
   useEffect(() => {
     if (!service) return;
     if (searchTimer.current) clearTimeout(searchTimer.current);
@@ -224,7 +208,6 @@ export default function FileExplorer() {
     return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
   }, [searchQuery, service]);
 
-  // ── Navigasi ──
   const breadcrumbs = currentPath ? currentPath.split('/').map((seg, i) => ({ name: seg, path: currentPath.split('/').slice(0, i + 1).join('/') })) : [];
 
   const navigateTo = (path) => {
@@ -239,7 +222,6 @@ const toggleFolder = (item) => {
     setExpandedFolders(prev => ({ ...prev, [item.path]: true }));
     setCurrentPath(item.path);
     loadDirectory(item.path);
-    // ✅ LOGIKA FOLDER: buka folder, kosongkan panel preview (ini bukan file)
     setSelectedFilePath(null);
     setFileContent(null);
     setFileMeta(null);
@@ -286,7 +268,6 @@ const toggleFolder = (item) => {
 
   return (
     <div className="flex flex-col h-full w-full text-slate-200 overflow-hidden font-sans relative">
-      {/* Header */}
       <div className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-800 bg-slate-900/70 shrink-0">
         <div className="flex items-center gap-2 shrink-0">
           <Ikon nama="folder_open" ukuran={16} className="text-purple-400" />
@@ -302,7 +283,6 @@ const toggleFolder = (item) => {
         <button onClick={() => loadDirectory(currentPath)} className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-400 hover:text-slate-200 shrink-0" title="Refresh"><Ikon nama="refresh" ukuran={14} className={`${loadingDir ? 'animate-spin' : ''}`} /></button>
       </div>
 
-      {/* Dropdown search */}
       {searchQuery.trim() && (
         <div className="absolute top-[52px] left-1/2 -translate-x-1/2 z-40 w-full max-w-md px-4">
           <div className="bg-slate-900 border border-slate-700 rounded-lg shadow-2xl max-h-72 overflow-y-auto custom-scrollbar">
@@ -331,7 +311,6 @@ const toggleFolder = (item) => {
         </div>
       )}
 
-      {/* Breadcrumb */}
       <div className="flex items-center gap-1 px-4 py-1.5 bg-slate-900/50 border-b border-slate-800 text-[12px] font-mono overflow-x-auto custom-scrollbar shrink-0">
         <button onClick={() => navigateTo('')} className={`flex items-center gap-1 px-1.5 py-0.5 rounded hover:text-purple-400 whitespace-nowrap ${currentPath === '' ? 'text-purple-400 font-semibold' : 'text-slate-400'}`}><Ikon nama="folder_open" ukuran={12} /> root</button>
         {breadcrumbs.map((crumb, idx) => (
@@ -342,9 +321,7 @@ const toggleFolder = (item) => {
         ))}
       </div>
 
-      {/* Body split */}
       <div className="flex flex-1 min-h-0 flex-col md:flex-row">
-        {/* Panel kiri: tree */}
         <div className="w-full md:w-72 md:max-w-72 shrink-0 border-b md:border-b-0 md:border-r border-slate-800 flex flex-col min-h-0 bg-slate-900/30">
           <div className="px-4 py-2 text-[12px] font-semibold uppercase tracking-widest text-slate-500 border-b border-slate-800/70 shrink-0">Direktori {isElectron ? '(Lokal)' : '(GitHub)'}</div>
           <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
@@ -387,7 +364,6 @@ const toggleFolder = (item) => {
           </div>
         </div>
 
-        {/* Panel kanan: preview */}
         <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-slate-950">
           <div className="flex items-center justify-between px-4 py-2 border-b border-slate-800 shrink-0 bg-slate-900/50">
             {selectedFilePath ? (

@@ -19,7 +19,6 @@ export class MAEFStateMachine {
       phase: 'INIT',
       steps: []
     };
-    // Bootstrap initialization step
     this.snapshot.steps.push({
       id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(7),
       phase: 'INIT',
@@ -27,11 +26,9 @@ export class MAEFStateMachine {
       timestamp: Date.now()
     });
     
-    // By default, the engine assumes a full lifecycle until instructed otherwise.
     this.allowedNextPhases = new Set(['CONTEXT_BUILD', 'ORCHESTRATION', 'TOOL_EXECUTION', 'POST_PROCESSING', 'STREAMING_READY', 'COMPLETED']);
   }
 
-  // --- CONTROL PLANE: Lifecycle Decision Authority ---
   public evaluatePhaseResult(phase: MAEFPhase, result: any): void {
     if (result && Array.isArray(result.skipPhases)) {
         for (const phaseToSkip of result.skipPhases) {
@@ -44,7 +41,6 @@ export class MAEFStateMachine {
     return this.allowedNextPhases.has(phase);
   }
 
-  // --- CONTROL PLANE: State Transitions ---
   public requestTransition(newPhase: MAEFPhase, description: string): void {
     const currentPhase = this.snapshot.phase;
     

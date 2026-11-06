@@ -1,14 +1,3 @@
-// Pulihkan berkas cadangan Mamet (tombol "Cadangkan data", format mamet-cadangan v1) ke Postgres LOKAL.
-// Item 93 Tahap 2 (2026-09-22). Hanya menyentuh database lokal yang disebut; database itu DIBUAT ULANG dari nol.
-//
-// Pakai:
-//   node scripts/kedaulatan/pulih-cadangan.mjs --berkas <cadangan.json> --pg-bin <folder psql.exe>
-//        [--port 55432] [--db mamet_pulih] [--user mamet] [--sandi-file <berkas berisi kata sandi>]
-// Kata sandi dibaca dari berkas (atau PGPASSWORD) dan tidak pernah dicetak.
-//
-// Cara kerja: tiap tabel ditulis sebagai JSON per baris → \copy ke tabel sementara (kolom jsonb) →
-// jsonb_populate_record ke tabel asli, kolom GENERATED (fts) dilewati dan dibangun ulang dari teks. Sesudah semua
-// data masuk, kunci asing antar-tabel ditambahkan (menguji keutuhan) lalu jumlah baris dicocokkan dengan daftar isi.
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -40,14 +29,12 @@ if (berkas.format !== 'mamet-cadangan' || berkas.versi !== 1) throw new Error('B
 const tabel = Object.keys(berkas.tabel);
 console.log(`berkas: ${path.basename(berkasPath)} · dibuat ${berkas.dibuat} · ${tabel.length} tabel`);
 
-// 1. Database baru + skema
 const t0 = Date.now();
 jalankan('postgres', ['-c', `drop database if exists ${db}`]);
 jalankan('postgres', ['-c', `create database ${db}`]);
 const skema = path.join(path.dirname(fileURLToPath(import.meta.url)), 'skema-pulih.sql');
 jalankan(db, ['-f', skema]);
 
-// 2. Data per tabel (urutan berkas = induk sebelum anak)
 const kerja = fs.mkdtempSync(path.join(os.tmpdir(), 'mamet-pulih-'));
 try {
   const baris = [];
@@ -55,7 +42,6 @@ try {
     const f = path.join(kerja, `${t}.ndjson`);
     fs.writeFileSync(f, berkas.data[t].map((r) => JSON.stringify(r)).join('\n') + (berkas.data[t].length ? '\n' : ''), 'utf8');
     const fSql = f.replace(/\\/g, '/').replace(/'/g, "''");
-    // Pemisah & kutip = karakter kendali 0x01/0x02: JSON.stringify tidak pernah menulisnya mentah.
     baris.push(String.raw`create temp table _stg_${t} (j jsonb);`);
     baris.push(String.raw`\copy _stg_${t} (j) from '${fSql}' with (format csv, delimiter E'\x02', quote E'\x01')`);
     baris.push(String.raw`select _pulih_isi('${t}');`);
@@ -80,7 +66,6 @@ create or replace function _pulih_isi(t text) returns void language sql as $$ se
   fs.rmSync(kerja, { recursive: true, force: true });
 }
 
-// 3. Kunci asing (menguji keutuhan: setiap anak punya induk di berkas)
 jalankan(db, ['-c', [
   'alter table documents add foreign key (space_id) references knowledge_spaces(id)',
   'alter table document_chunks add foreign key (document_id) references documents(id)',
@@ -89,7 +74,6 @@ jalankan(db, ['-c', [
   'alter table asn_berkas add foreign key (digantikan_oleh) references asn_berkas(id)',
 ].join('; ')]);
 
-// 4. Cocokkan jumlah
 const hitung = jalankan(db, ['-At', '-c', tabel.map((t) => `select '${t}', count(*) from public.${t}`).join(' union all ')]);
 const di = Object.fromEntries(hitung.trim().split(/\r?\n/).map((l) => l.split('|')).map(([t, n]) => [t, Number(n)]));
 let cocok = true;

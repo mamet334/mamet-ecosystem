@@ -1,21 +1,6 @@
-/**
- * KONTEKS WAKTU untuk prompt — dari jam server dan zona waktu yang dikirim browser pengguna.
- *
- * Sebab (2026-09-13): "saat ini jam berapa?" di chat baru hanya bisa dijawab dengan jam server UTC.
- * Satu chat sebelumnya menjawab "20:03 WIB untuk Anda di Indonesia" — padahal log server
- * menunjukkan riwayat 0 pesan dan tanpa memori: model MENEBAK dari bahasa pertanyaan dan tabel zona
- * waktu ebook, dan tabel itu mencatat waktu standar sehingga Dublin serta Bahamas meleset satu jam
- * (musim panas). Setelah aturan data sistem, model berhenti menebak tetapi juga berhenti membantu.
- *
- * Browser tahu zona waktunya sendiri (Intl, mis. "Asia/Jakarta"). Dengan nama zona itu server bisa
- * menghitung jam lokal yang benar — termasuk waktu musim panas — sebagai DATA, bukan tebakan.
- *
- * Tanpa impor sehingga bisa diuji langsung.
- */
 
 const PANJANG_MAKS = 64;
 
-/** Nama zona IANA yang sah, atau null. Menolak nilai aneh sebelum disentuh Intl. */
 export function zonaWaktuSah(zona: unknown): string | null {
   if (typeof zona !== 'string') return null;
   const z = zona.trim();
@@ -34,13 +19,11 @@ function bagian(sekarang: Date, zona: string, opsi: Intl.DateTimeFormatOptions) 
   return hasil;
 }
 
-/** "UTC+07:00", "UTC+01:00", "UTC+00:00". */
 export function selisihUtc(sekarang: Date, zona: string): string {
   const nilai = bagian(sekarang, zona, { timeZoneName: 'longOffset' }).timeZoneName || 'GMT';
   return nilai === 'GMT' ? 'UTC+00:00' : nilai.replace('GMT', 'UTC');
 }
 
-/** Tanggal YYYY-MM-DD menurut zona pengguna — bisa berbeda dengan tanggal UTC menjelang tengah malam. */
 export function tanggalLokal(sekarang: Date, zona: string): string {
   const b = bagian(sekarang, zona, { year: 'numeric', month: '2-digit', day: '2-digit' });
   return `${b.year}-${b.month}-${b.day}`;

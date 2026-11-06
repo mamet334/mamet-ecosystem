@@ -13,19 +13,16 @@ from crawler.sumber import buat_registri
 
 log = logging.getLogger(__name__)
 
-
 class EcosystemCrawler:
     name = NAMA
     version = __version__
-    capability_type = "search"  # mengisi Search Port dan bagian pengumpulan Research Port (ADR-CRW-0001)
+    capability_type = "search"
     description = "Indra dan tangan: mencari, mengambil, menormalkan, dan menyimpan data mentah. Tanpa analisis."
 
     def __init__(self, data_dir=None):
         self.data_dir = data_dir or konfig.DATA_DIR
         self.gudang: Gudang | None = None
         self.registri = buat_registri()
-
-    # ---- siklus hidup -----------------------------------------------------------------------------------------
 
     def initialize(self) -> "EcosystemCrawler":
         self.gudang = Gudang(self.data_dir, konfig.garam())
@@ -41,8 +38,6 @@ class EcosystemCrawler:
 
     def __exit__(self, *_):
         self.shutdown()
-
-    # ---- kontrak ----------------------------------------------------------------------------------------------
 
     def health_check(self) -> dict:
         sumber = {s.id: s.kesehatan() for s in self.registri.values()}

@@ -15,9 +15,8 @@ export default function EngineerApprovalDialog() {
     try {
       const eventBus = kernel.serviceManager.get('EventBus');
       unsubscribe = eventBus.on('Engineer:RequestApproval', (payload) => {
-        setPendingApproval(payload.data || payload); // Handle wrapped/unwrapped payload
+        setPendingApproval(payload.data || payload);
         setIsVisible(true);
-        // Default: select all mutable files
         const mutableFiles = (payload.data?.files || payload.files || [])
           .filter(f => !f.isImmutable)
           .map(f => f.path);
@@ -54,7 +53,7 @@ export default function EngineerApprovalDialog() {
     eventBus.emit('Engineer:ApprovalResponse', {
       patchId: pendingApproval.patchId,
       approved: true,
-      approvedFiles: Array.from(selectedFiles), // Granular approval
+      approvedFiles: Array.from(selectedFiles),
       timestamp: new Date().toISOString()
     });
     setIsVisible(false);
@@ -74,7 +73,6 @@ export default function EngineerApprovalDialog() {
     setPendingApproval(null);
   };
 
-  // Compute Alerts
   const alerts = useMemo(() => {
     if (!pendingApproval) return { critical: [], warnings: [] };
     const files = pendingApproval.files || [];
@@ -110,7 +108,6 @@ export default function EngineerApprovalDialog() {
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
       <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
         
-        {/* HEADER & METRICS */}
         <div className="bg-slate-800/50 px-6 py-4 border-b border-slate-700 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <Ikon nama="verified_user" ukuran={24} className="text-emerald-400" />
@@ -124,16 +121,13 @@ export default function EngineerApprovalDialog() {
           </div>
         </div>
 
-        {/* SCROLLABLE BODY */}
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 custom-scrollbar">
           
-          {/* SUMMARY */}
           <div className="bg-slate-800/30 p-4 rounded-xl border border-slate-700/50">
             <p className="text-xs text-slate-500 uppercase font-semibold mb-1">Executive Summary</p>
             <p className="text-sm text-slate-200 leading-relaxed">{pendingApproval.summary || 'No summary provided by Engineer.'}</p>
           </div>
 
-          {/* CRITICAL ALERTS (CORE PROTECTION & MAEF VIOLATIONS) */}
           {alerts.critical.length > 0 && (
             <div className="bg-red-950/40 border border-red-500/50 p-4 rounded-xl flex items-start gap-3">
               <Ikon nama="gpp_maybe" ukuran={20} className="text-red-400 shrink-0 mt-0.5" />
@@ -143,7 +137,6 @@ export default function EngineerApprovalDialog() {
             </div>
           )}
 
-          {/* WARNINGS */}
           {alerts.warnings.length > 0 && (
             <div className="bg-yellow-950/30 border border-yellow-500/30 p-4 rounded-xl flex items-start gap-3">
               <Ikon nama="warning" ukuran={20} className="text-yellow-400 shrink-0 mt-0.5" />
@@ -153,7 +146,6 @@ export default function EngineerApprovalDialog() {
             </div>
           )}
 
-          {/* METRICS BAR */}
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50 text-center">
               <p className="text-[12px] text-slate-500 uppercase">Coverage</p>
@@ -169,7 +161,6 @@ export default function EngineerApprovalDialog() {
             </div>
           </div>
 
-          {/* GRANULAR FILE LIST & DIFF VIEWER */}
           <div>
             <p className="text-xs text-slate-500 uppercase font-semibold mb-2">Proposed Changes (Select to Approve)</p>
             <div className="space-y-2">
@@ -181,7 +172,6 @@ export default function EngineerApprovalDialog() {
                 return (
                   <div key={idx} className={`border rounded-xl overflow-hidden transition-all ${isImmutable ? 'border-red-500/50 bg-red-950/10' : isSelected ? 'border-emerald-500/50 bg-slate-800/40' : 'border-slate-700 bg-slate-800/20'}`}>
                     
-                    {/* File Header */}
                     <div className="flex items-center gap-3 p-3 cursor-pointer" onClick={() => !isImmutable && toggleFileSelection(file.path)}>
                       {!isImmutable ? (
                         isSelected ? <Ikon nama="check_box" ukuran={20} className="text-emerald-400 shrink-0" /> : <Ikon nama="check_box_outline_blank" ukuran={20} className="text-slate-500 shrink-0" />
@@ -204,7 +194,6 @@ export default function EngineerApprovalDialog() {
                       </div>
                     </div>
 
-                    {/* Expanded Code Viewer */}
                     {isExpanded && (
                       <div className="border-t border-slate-700/50 bg-slate-950 p-4 max-h-64 overflow-auto custom-scrollbar">
                         <p className="text-[12px] text-slate-500 uppercase mb-2">Proposed New Content:</p>
@@ -220,7 +209,6 @@ export default function EngineerApprovalDialog() {
           </div>
         </div>
 
-        {/* FOOTER ACTIONS */}
         <div className="bg-slate-800/80 px-6 py-4 border-t border-slate-700 flex items-center justify-between shrink-0">
           <p className="text-xs text-slate-400">
             {selectedFiles.size} dari {pendingApproval.files?.filter(f => !f.isImmutable).length} file dipilih.

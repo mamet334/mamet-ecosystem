@@ -1,23 +1,5 @@
 import { supabase } from '../../../supabase.js';
 
-/**
- * MemoryGovernorService — Anti-Bias & Memory Maintenance (Fase 1)
- *
- * Tujuan:
- * - Mencegah AI menjadi bias akibat "ringkasan dari ringkasan".
- * - Golden Source: Data mentah (raw content) disimpan di tabel terpisah
- *   (`raw_memory_content`). Ringkasan hanya pointer/metadata ke raw content.
- * - Verifikasi Otomatis: Saat sesi Engineering berakhir, membandingkan ringkasan
- *   lama dengan raw content. Jika file/konteks asli berubah, panggil AI murah
- *   untuk membuat ulang ringkasan.
- * - Metadata Wajib: Setiap memori/ringkasan memiliki tag:
- *   `source_reference`, `timestamp`, `version_code`, `chat_id`.
- *
- * Backward Compatibility:
- * - Semua kolom baru di `user_memories` nullable → data lama tanpa metadata
- *   tetap berfungsi dan tidak crash.
- * - `raw_content_id` null ditangani dengan fallback regenerasi langsung.
- */
 export class MemoryGovernorService {
   constructor(serviceManager) {
     this.serviceManager = serviceManager;
@@ -32,31 +14,6 @@ export class MemoryGovernorService {
     console.log('[MemoryGovernorService] Initialized and Ready');
   }
 
-  /**
-   * Meminta vektor embedding ke `agent-process` untuk sebuah teks.
-   *
-   * KENAPA LEWAT SERVER (Item 46, 2026-09-10)
-   * Sampai hari ini `storeGoldenMemory` menyimpan memori TANPA embedding, dan
-   * karena kolomnya nullable, Postgres menerimanya tanpa protes. Akibatnya
-   * `match_memories` tidak pernah bisa menemukan apa pun — pencarian memori
-   * berbasis makna tidak pernah hidup sejak awal.
-   *
-   * Embedding dibuat di server, bukan di sini, supaya model dan dimensi vektor
-   * ditentukan di SATU tempat saja. Menghitungnya di klien berarti menyalin
-   * logika provider ke frontend — itu yang dulu membuat penjaga dimensi 768
-   * tercecer di dua berkas dan bertahan berbulan-bulan tanpa ketahuan.
-   * Sejak Item 63–65 embedding dibayar pengguna: kunci OpenRouter dari Vault
-   * dikirim sebagai header x-byok-openrouter; tanpanya server menjawab gagal.
-   *
-   * GAGAL-LUNAK, TAPI BERSUARA. Kalau embedding gagal, memorinya TETAP
-   * disimpan — memori tanpa vektor masih ditemukan lewat pencarian SQL (Tahap 1,
-   * Item 36), jadi menolak menyimpan justru merugikan. Yang tidak boleh adalah
-   * gagal dalam diam, maka kegagalannya dicatat keras dan dipancarkan sebagai
-   * event supaya bisa dihitung.
-   *
-   * @param {string} text - teks yang akan divektorkan
-   * @returns {Promise<number[]|null>} vektor, atau null bila gagal
-   */
   async _requestEmbedding(text) {
     if (!text || !text.trim()) return null;
 
@@ -72,7 +29,6 @@ export class MemoryGovernorService {
         const vault = this.serviceManager?.has('VaultService') ? this.serviceManager.get('VaultService') : null;
         kunciOpenRouter = (vault?.getKey('openrouter') || '').replace(/[^\x00-\x7F]/g, '');
       } catch {
-        // Vault belum siap — server akan menjawab EMBEDDING_FAILED.
       }
 
       const { data, error } = await supabase.functions.invoke('agent-process', {
@@ -81,18 +37,14 @@ export class MemoryGovernorService {
       });
 
       if (error) {
-        // Alasan sebenarnya ada di body jawaban (Item 64), bukan di error.message yang umum.
         let pesan = error.message;
         try {
           const isi = await error.context?.json?.();
           if (isi?.message || isi?.error) pesan = isi.message || isi.error;
         } catch {
-          // Body bukan JSON.
         }
         throw new Error(pesan);
       }
-      // Endpoint menjawab 502 dengan { error } saat semua adapter gagal;
-      // supabase-js tidak selalu melemparnya, jadi diperiksa sendiri.
       if (data?.error) throw new Error(data.message || data.error);
 
       const vektor = data?.embedding;
@@ -115,23 +67,6 @@ export class MemoryGovernorService {
     }
   }
 
-  /**
-   * Mengisi embedding untuk memori lama yang tersimpan sebelum vektorisasi ada.
-   *
-   * Item 46 mencatat ini sebagai pekerjaan terpisah, dan memang seharusnya
-   * terpisah: memperbaiki jalur maju dan mengisi ulang data lama adalah dua
-   * risiko yang berbeda. Jalur majunya dibuktikan lebih dulu (2026-09-10,
-   * `match_memories` mengembalikan similarity 1,0 untuk memori pertama yang
-   * bervektor) — baru sesudah itu pengisian ini layak dijalankan.
-   *
-   * Aman dijalankan berulang: hanya menyentuh baris yang `embedding`-nya NULL.
-   *
-   * Dijalankan manual dari konsol:
-   *   await window.__mamet.serviceManager.get('MemoryGovernorService').backfillMissingEmbeddings()
-   *
-   * @param {number} batas - maksimal baris yang diproses dalam satu panggilan
-   * @returns {Promise<{diperiksa:number, berhasil:number, gagal:number}>}
-   */
   async backfillMissingEmbeddings(batas = 50) {
     if (!this.isInitialized) throw new Error('MemoryGovernorService not initialized');
 
@@ -156,9 +91,6 @@ export class MemoryGovernorService {
     let gagal = 0;
 
     for (const row of rows) {
-      // Yang divektorkan HARUS `summary`, sama seperti di storeGoldenMemory —
-      // kalau berbeda, memori lama dan memori baru akan hidup di ruang vektor
-      // yang tidak sebanding dan kecocokannya meleset tanpa sebab yang terlihat.
       const vektor = await this._requestEmbedding(row.summary);
       if (!vektor) {
         gagal++;
@@ -179,40 +111,25 @@ export class MemoryGovernorService {
         console.log(`[Backfill] ✓ ${row.id} — "${(row.summary || '').substring(0, 40)}"`);
       }
 
-      // Jeda kecil untuk menghormati batas laju penyedia embedding, sama
-      // alasannya dengan jeda 600ms di rag-process.
       await new Promise(r => setTimeout(r, 400));
     }
 
-    // Dilaporkan apa adanya, termasuk yang gagal. Melaporkan "selesai" tanpa
-    // menyebut kegagalan adalah pola yang justru sedang diperbaiki Item 46.
     console.log(`[Backfill] Selesai — ${berhasil} berhasil, ${gagal} gagal, dari ${rows.length} diperiksa.`);
     this.eventBus?.emit('MemoryGovernor:BackfillDone', { diperiksa: rows.length, berhasil, gagal });
     return { diperiksa: rows.length, berhasil, gagal };
   }
 
-  /**
-   * Menghasilkan hash sederhana dari sebuah string (deterministik).
-   * Digunakan untuk membandingkan apakah raw content berubah.
-   * @param {string} content
-   * @returns {string} hash 32-hex
-   */
   _computeHash(content) {
     const str = typeof content === 'string' ? content : JSON.stringify(content);
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
       hash = ((hash << 5) - hash) + char;
-      hash |= 0; // Convert to 32bit integer
+      hash |= 0;
     }
-    // Return hex (deterministic)
     return (hash >>> 0).toString(16).padStart(8, '0');
   }
 
-  /**
-   * Mendapatkan BrainService untuk memanggil AI murah (regenerasi ringkasan).
-   * @returns {Object|null} BrainService instance
-   */
   _getBrainService() {
     try {
       return this.serviceManager.has('BrainService')
@@ -223,24 +140,6 @@ export class MemoryGovernorService {
     }
   }
 
-  /**
-   * Menyimpan Golden Memory: raw content ke `raw_memory_content` + ringkasan
-   * ke `user_memories` (dengan metadata golden source).
-   *
-   * @param {Object} params
-   * @param {string} params.user_id
-   * @param {string} params.content     - Raw content (golden source)
-   * @param {string} [params.summary]   - Ringkasan (opsional, default dari content)
-   * @param {string} [params.source_type] - 'fact' | 'preference' | 'location' | 'engineer_session' | 'assistant_chat'
-   * @param {string} [params.source_reference] - Reference ke file/sumber asli
-   * @param {string} [params.chat_id]   - Chat ID terkait
-   * @param {string} [params.version_code] - Kode versi
-   * @param {string} [params.category='general'] - Kategori memori ('general' | 'engineering' | 'preference')
-   * @param {'generic'|'sensitive'} [params.access_tier] - Access tier (auto-detect fallback: 'generic')
-   * @param {'active'|'archived'|'pending_purge'|'CONFLICT_PENDING_REVIEW'} [params.status='active'] - Status lifecycle
-   * @param {number} [params.version_sequence=1] - Nomor urutan versi
-   * @returns {Promise<Object|null>} inserted memory row atau null
-   */
   async storeGoldenMemory({
     user_id,
     content,
@@ -261,7 +160,6 @@ export class MemoryGovernorService {
     const contentHash = this._computeHash(content);
     const resolvedSummary = summary || (typeof content === 'string' ? content.substring(0, 500) : JSON.stringify(content));
 
-    // Auto-detect access tier jika tidak dikirim eksplisit
     let resolvedAccessTier = access_tier;
     if (!resolvedAccessTier) {
       const contentStr = (typeof content === 'string' ? content : JSON.stringify(content)).toLowerCase();
@@ -270,15 +168,6 @@ export class MemoryGovernorService {
     }
 
     try {
-      // 0. GUARD DUPLIKAT — sebelumnya tidak ada sama sekali: isi yang identik selalu jadi baris
-      // baru. detectAndMarkConflict() pun tidak menangkapnya karena justru mensyaratkan isi
-      // BERBEDA (existingHash !== newHash). Akibatnya fakta yang diberitahukan Owner berulang
-      // kali menumpuk sebagai salinan identik, dan tiap salinan ikut disuntikkan ke prompt di
-      // setiap permintaan — token terbuang untuk kalimat yang sama.
-      // Dicek langsung ke kolom `summary` di user_memories, TANPA join ke raw_memory_content:
-      // kedua tabel itu tidak punya foreign key (satu-satunya FK user_memories mengarah ke
-      // knowledge_spaces), sehingga embed PostgREST akan gagal — dan gagalnya senyap. Lagipula
-      // `summary` justru kolom yang benar-benar disuntikkan ke prompt, jadi itu yang relevan.
       const { data: duplicates, error: duplicateError } = await supabase
         .from('user_memories')
         .select('*')
@@ -297,13 +186,9 @@ export class MemoryGovernorService {
           contentHash,
           timestamp: new Date().toISOString()
         });
-        // Bentuk kembalian tetap baris memori (sama seperti jalur normal) supaya kontraknya
-        // konsisten, ditambah penanda supaya pemanggil bisa memberi tahu Owner dengan jujur
-        // bahwa tidak ada penyimpanan baru — bukan mengklaim "sudah disimpan".
         return { ...existingMemory, _duplicateSkipped: true };
       }
 
-      // 1. INSERT raw content ke tabel golden source
       const { data: rawRow, error: rawError } = await supabase
         .from('raw_memory_content')
         .insert([{
@@ -323,32 +208,15 @@ export class MemoryGovernorService {
         return null;
       }
 
-      // 1b. Vektorkan ringkasannya (Item 46).
-      //
-      // Yang divektorkan adalah `summary`, BUKAN `content` mentah — karena
-      // `summary` pula yang disuntikkan ke prompt dan yang dibandingkan oleh
-      // `match_memories`. Memvektorkan teks yang berbeda dari teks yang dicari
-      // akan menghasilkan kecocokan yang meleset tanpa ada yang tahu sebabnya.
       const embedding = await this._requestEmbedding(resolvedSummary);
 
-      // 1c. Deteksi konflik — memakai ULANG vektor di atas (Item 55).
-      //
-      // Dulu dipanggil terpisah dari AssistantService SEBELUM fungsi ini. Sejak
-      // deteksinya berbasis vektor, memanggilnya di sana berarti menghitung
-      // embedding dua kali untuk teks yang sama. Ditaruh di sini supaya satu
-      // memori = satu embedding, dan supaya SETIAP jalur yang menyimpan memori
-      // golden ikut terperiksa — bukan hanya jalur chat.
       await this.detectAndMarkConflict({ userId: user_id, newContent: resolvedSummary, newEmbedding: embedding });
 
-      // 2. INSERT summary di user_memories dengan metadata lengkap
       const { data: memRow, error: memError } = await supabase
         .from('user_memories')
         .insert([{
           user_id,
           summary: resolvedSummary,
-          // null bila embedding gagal — kolomnya nullable dan memori tanpa vektor
-          // masih ditemukan lewat pencarian SQL. Kegagalannya sudah bersuara di
-          // _requestEmbedding, jadi ia tidak lagi hilang dalam diam.
           embedding,
           memory_type: source_type,
           category: category || 'general',
@@ -386,18 +254,10 @@ export class MemoryGovernorService {
     }
   }
 
-  /**
-   * Memverifikasi sebuah ringkasan terhadap raw content-nya.
-   * Jika raw content berubah (hash berbeda), panggil AI murah untuk regenerasi.
-   *
-   * @param {string} memoryId - ID memori di user_memories
-   * @returns {Promise<Object>} { status: 'UNCHANGED'|'REGENERATED'|'NO_RAW'|'ERROR', memoryId }
-   */
   async verifyMemorySummary(memoryId) {
     if (!this.isInitialized) throw new Error('MemoryGovernorService not initialized');
 
     try {
-      // Ambil ringkasan + raw_content_id
       const { data: mem, error: memErr } = await supabase
         .from('user_memories')
         .select('id, summary, raw_content_id, source_reference, version_code, chat_id')
@@ -409,12 +269,10 @@ export class MemoryGovernorService {
         return { status: 'ERROR', memoryId, message: 'memory_not_found' };
       }
 
-      // Data lama tanpa raw_content_id → tidak punya golden source
       if (!mem.raw_content_id) {
         return { status: 'NO_RAW', memoryId, message: 'no_raw_content_reference' };
       }
 
-      // Ambil raw content
       const { data: raw, error: rawErr } = await supabase
         .from('raw_memory_content')
         .select('id, content, content_hash')
@@ -426,20 +284,16 @@ export class MemoryGovernorService {
         return { status: 'ERROR', memoryId, message: 'raw_content_not_found' };
       }
 
-      // Hitung ulang hash dari raw content saat ini
       const currentHash = this._computeHash(raw.content);
       if (currentHash === raw.content_hash) {
-        // Tidak berubah → aman
         return { status: 'UNCHANGED', memoryId, message: 'content_unchanged' };
       }
 
-      // Berubah → regenerasi ringkasan dengan AI murah
       const newSummary = await this._regenerateSummary(raw.content, mem.source_reference);
       if (!newSummary) {
         return { status: 'ERROR', memoryId, message: 'regeneration_failed' };
       }
 
-      // Update ringkasan + hash baru + timestamp
       const { error: updErr } = await supabase
         .from('user_memories')
         .update({
@@ -453,7 +307,6 @@ export class MemoryGovernorService {
         return { status: 'ERROR', memoryId, message: 'update_failed' };
       }
 
-      // Update hash raw sebagai sinkronisasi (menandai sudah diverifikasi)
       await supabase
         .from('raw_memory_content')
         .update({ content_hash: currentHash })
@@ -473,14 +326,6 @@ export class MemoryGovernorService {
     }
   }
 
-  /**
-   * Memverifikasi sesi Engineering: mengiterasi file yang dimodifikasi di
-   * SessionArtifact dan memastikan ringkasan memori tetap sinkron dengan
-   * versi file yang berubah.
-   *
-   * @param {Object} sessionArtifact - Instance SessionArtifact dari Engineer
-   * @returns {Promise<Object>} hasil verifikasi
-   */
   async verifyEngineeringSession(sessionArtifact) {
     if (!this.isInitialized) throw new Error('MemoryGovernorService not initialized');
     if (!sessionArtifact) {
@@ -490,7 +335,6 @@ export class MemoryGovernorService {
     const modifiedFiles = sessionArtifact.modifiedFiles || [];
     const results = [];
 
-    // Untuk setiap file yang dimodifikasi, cari memori yang mereferensikannya
     for (const filePath of modifiedFiles) {
       try {
         const { data: memories, error } = await supabase
@@ -499,7 +343,6 @@ export class MemoryGovernorService {
           .eq('source_reference', filePath);
 
         if (error) {
-          // source_reference mungkin belum ada di DB (data lama) → skip
           continue;
         }
 
@@ -526,15 +369,6 @@ export class MemoryGovernorService {
     return { status: 'DONE', verified: results.length, regenerated, unchanged };
   }
 
-  /**
-   * Memverifikasi memori sesi Assistant (golden source alignment).
-   * Dipanggil saat sesi Assistant disimpan/diakhiri.
-   *
-   * @param {Object} params
-   * @param {string} params.userId
-   * @param {string} [params.chatId]
-   * @returns {Promise<Object>} hasil verifikasi
-   */
   async verifyAssistantSession({ userId, chatId }) {
     if (!this.isInitialized) throw new Error('MemoryGovernorService not initialized');
     if (!userId) return { status: 'NO_USER', verified: 0, regenerated: 0, unchanged: 0 };
@@ -549,10 +383,6 @@ export class MemoryGovernorService {
       if (chatId) {
         query = query.eq('chat_id', chatId);
       } else {
-        // Pencocokan awalan, bukan nilai persis: memori chat lama memakai
-        // 'assistant_chat_trigger', sedangkan yang baru memakai 'assistant_chat:<kategori>'
-        // (lihat AssistantService goldenMeta — kategori disertakan supaya deteksi konflik
-        // tidak lagi menuduh fakta yang tidak berhubungan). Keduanya harus tetap terjaring.
         query = query.like('source_reference', 'assistant_chat%');
       }
 
@@ -587,14 +417,6 @@ export class MemoryGovernorService {
     }
   }
 
-  /**
-   * Memanggil AI murah untuk membuat ulang ringkasan dari raw content.
-   * Jika BrainService tidak tersedia, fallback ke ringkasan deterministik.
-   *
-   * @param {string} rawContent
-   * @param {string|null} sourceReference
-   * @returns {Promise<string|null>} ringkasan baru atau null
-   */
   async _regenerateSummary(rawContent, sourceReference) {
     const brainService = this._getBrainService();
 
@@ -610,48 +432,16 @@ export class MemoryGovernorService {
       }
     }
 
-    // Fallback deterministik
     const content = typeof rawContent === 'string' ? rawContent : JSON.stringify(rawContent);
     return content.substring(0, 200);
   }
 
-  // ===========================================================================
-  // ADDENDUM FASE 1 — Two-Stage Retrieval
-  // ===========================================================================
 
-  /**
-   * Ambil memori dengan Two-Stage Filter sesuai kontrak Addendum Fase 1.
-   *
-   * Tahap 1 — Category + status + access_tier filter (SQL, bukan vector search)
-   *   → Batasi candidate pool terlebih dahulu, WAJIB sebelum Tahap 2.
-   * Tahap 2 — Ranking dalam candidate pool berdasarkan recency + confidence.
-   *
-   * @param {Object} params
-   * @param {string} params.userId
-   * @param {boolean} [params.includeSensitive=false] - Hanya true jika ada flag eksplisit dari user
-   * @param {number} [params.candidatePoolSize=30] - Batas Tahap 1
-   * @param {number} [params.topK=10] - Hasil akhir setelah ranking Tahap 2
-   * @returns {Promise<Array>} Memori yang sudah di-ranking
-   */
   async retrieveMemory({ userId, includeSensitive = false, candidatePoolSize = 30, topK = 10 }) {
     if (!this.isInitialized) throw new Error('MemoryGovernorService not initialized');
     if (!userId) throw new Error('MemoryGovernorService.retrieveMemory: userId required');
 
     try {
-      // TAHAP 1: status + access_tier filter, pool dibatasi (tidak boleh full-table scan)
-      //
-      // Filter `.in('category', categories)` SENGAJA DIHAPUS (2026-09-09). Kategori kandidat
-      // ditebak dari kata-kata di PERTANYAAN (`MemoryService._inferCategories`), sedangkan
-      // kategori memori ditetapkan saat PENYIMPANAN — dua sumber yang tidak pernah sinkron.
-      // Akibatnya memori jadi tak terlihat kecuali Owner kebetulan memakai kata kunci yang
-      // benar: "nama panggilan saya adalah pak slamet" tersimpan sebagai 'preference', tapi
-      // pertanyaan "siapa nama panggilan saya?" hanya menghasilkan ['general'] karena tidak
-      // memuat kata "suka"/"ingin"/"preferens" — memorinya tidak pernah masuk kandidat.
-      // Itulah sebabnya AI berulang kali "lupa" fakta yang jelas-jelas ada di database.
-      //
-      // Semangat kontrak Addendum Fase 1 tetap dijaga: pool tetap dibatasi (candidatePoolSize),
-      // hanya status aktif, dan access_tier tetap menyaring memori sensitif. Yang dilepas cuma
-      // pembuangan berbasis tebakan kata kunci — relevansi diserahkan ke Tahap 2.
       let query = supabase
         .from('user_memories')
         .select('id, summary, memory_type, category, confidence, access_tier, status, created_at, source_reference, last_verified_at')
@@ -660,7 +450,6 @@ export class MemoryGovernorService {
         .order('created_at', { ascending: false })
         .limit(candidatePoolSize);
 
-      // Access tier: default exclude sensitive — hanya include jika flag eksplisit
       if (!includeSensitive) {
         query = query.eq('access_tier', 'generic');
       }
@@ -677,10 +466,8 @@ export class MemoryGovernorService {
         return [];
       }
 
-      // TAHAP 2: Ranking dalam candidate pool
-      // Formula: recency_score (0–1) + confidence_score (0–1), dinormalisasi
       const now = Date.now();
-      const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 hari = recency_score 0
+      const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
       const ranked = candidates
         .map(mem => {
@@ -688,7 +475,7 @@ export class MemoryGovernorService {
           const ageMs = timestamp ? Math.max(0, now - new Date(timestamp).getTime()) : MAX_AGE_MS;
           const recencyScore = Math.max(0, 1 - ageMs / MAX_AGE_MS);
           const confidenceScore = typeof mem.confidence === 'number' ? mem.confidence : 0.5;
-          const totalScore = recencyScore * 0.4 + confidenceScore * 0.6; // bobot: confidence lebih berat
+          const totalScore = recencyScore * 0.4 + confidenceScore * 0.6;
           return { ...mem, _score: totalScore };
         })
         .sort((a, b) => b._score - a._score)
@@ -703,55 +490,8 @@ export class MemoryGovernorService {
     }
   }
 
-  // ===========================================================================
-  // ADDENDUM FASE 1 — Conflict Resolution
-  // ===========================================================================
 
 
-  /**
-   * Deteksi konflik memori — DUA TAHAP (Item 55, 2026-09-10).
-   *
-   * ATURAN LAMA DAN KENAPA IA SELALU SALAH
-   * Sebelumnya: "source_reference sama + isi berbeda + versi tidak sekuensial"
-   * = konflik. Dua dari tiga syarat itu runtuh di praktik:
-   *   - Setiap fakta chat dalam satu kategori memakai `source_reference` yang
-   *     sama (`assistant_chat:preference`), jadi syarat pertama selalu benar.
-   *   - SETIAP baris `user_memories` punya `version_sequence = 1` (pemanggil
-   *     mengirim 1, default-nya juga 1), sehingga `newSeq !== existingSeq + 1`
-   *     berbunyi `1 !== 2` — selalu benar. Syarat itu tidak menyaring apa pun.
-   * Sisanya tinggal "dua fakta berbeda = konflik". Dijamin positif palsu:
-   * "saya suka menggunakan ai" ditandai berbenturan dengan "saya lebih suka
-   * penjelasan dengan tabel", padahal keduanya benar.
-   *
-   * KENAPA KEMIRIPAN VEKTOR SAJA TIDAK CUKUP
-   * Diukur pada 12 pasang kalimat nyata (2026-09-10). Celah antara pasangan
-   * BERTENTANGAN terendah dan pasangan BEBAS tertinggi ternyata -0,091 —
-   * NEGATIF. "kuliah di UT" vs "kuliah di ITB" bertentangan tapi hanya 0,6353,
-   * di BAWAH "suka kopi" vs "suka teh" yang bebas di 0,7263. Dan penajaman
-   * ("suka kopi" vs "suka kopi hitam tanpa gula", 0,8323) duduk persis di tengah
-   * rentang pertentangan (0,789-0,878). Tidak ada satu ambang pun yang memisah.
-   *
-   * Sebabnya mendasar: vektor mengukur KEMIRIPAN TOPIK, bukan PERTENTANGAN.
-   * Kata "tidak" nyaris tidak menggeser vektor; dua nama berbeda justru
-   * menjauhkannya meski maknanya bertabrakan.
-   *
-   * MAKA DUA TAHAP
-   *   Tahap 1 — SARINGAN (gratis): kemiripan vektor >= AMBANG_SARING.
-   *             Untuk 7 memori Owner, pasangan tak berhubungan tertinggi 0,7263,
-   *             jadi saringan 0,78 hampir tidak pernah menyala untuk fakta bebas.
-   *   Tahap 2 — HAKIM (berbayar): model kecil memutuskan BERTENTANGAN /
-   *             PENAJAMAN / INDEPENDEN. Hanya yang lolos saringan sampai sini,
-   *             jadi panggilannya jarang. Memakai BYOK key Owner (Item 51).
-   *
-   * Hanya putusan BERTENTANGAN yang menandai memori lama sebagai
-   * CONFLICT_PENDING_REVIEW. Aturan wajib tetap: DILARANG auto-resolve.
-   *
-   * @param {Object} params
-   * @param {string} params.userId
-   * @param {string} params.newContent - isi baru yang akan disimpan
-   * @param {number[]} [params.newEmbedding] - vektor isi baru; dihitung sendiri bila kosong
-   * @returns {Promise<{ hasConflict: boolean, conflictedIds: string[] }>}
-   */
   async detectAndMarkConflict({ userId, newContent, newEmbedding = null }) {
     if (!this.isInitialized) throw new Error('MemoryGovernorService not initialized');
 
@@ -760,8 +500,6 @@ export class MemoryGovernorService {
     try {
       const vektorBaru = newEmbedding || await this._requestEmbedding(newContent);
       if (!Array.isArray(vektorBaru) || vektorBaru.length === 0) {
-        // Tanpa vektor tidak ada saringan. Memilih TIDAK menandai apa pun —
-        // menebak di sini persis yang melahirkan keluhan positif palsu.
         console.warn('[MemoryGovernorService] Deteksi konflik dilewati — tidak ada embedding untuk isi baru.');
         return { hasConflict: false, conflictedIds: [] };
       }
@@ -779,9 +517,6 @@ export class MemoryGovernorService {
 
       const kandidat = [];
       for (const mem of existing) {
-        // PostgREST mengembalikan kolom vector sebagai STRING "[0.1,0.2,...]",
-        // bukan array. Tanpa parse ini cosine-nya menghasilkan NaN dan seluruh
-        // saringan diam-diam tidak pernah menyala.
         const vektorLama = this._parseVector(mem.embedding);
         if (!vektorLama) continue;
 
@@ -797,7 +532,6 @@ export class MemoryGovernorService {
       for (const { mem, kemiripan } of kandidat) {
         const putusan = await this._judgeConflict(mem.summary || '', newContent);
 
-        // null = hakim tidak dapat memutuskan. Tidak menandai apa pun.
         if (putusan?.putusan !== 'BERTENTANGAN') {
           console.log(`[MemoryGovernorService] ${putusan?.putusan || 'TIDAK DIPUTUS'} (mirip ${kemiripan.toFixed(4)}) — "${(mem.summary || '').substring(0, 40)}" dibiarkan aktif.`);
           continue;
@@ -840,7 +574,6 @@ export class MemoryGovernorService {
     }
   }
 
-  /** Kemiripan kosinus dua vektor. */
   _cosine(a, b) {
     if (!a || !b || a.length !== b.length) return 0;
     let d = 0, na = 0, nb = 0;
@@ -849,7 +582,6 @@ export class MemoryGovernorService {
     return d / (Math.sqrt(na) * Math.sqrt(nb));
   }
 
-  /** Kolom `vector` datang sebagai string JSON dari PostgREST — ubah ke array angka. */
   _parseVector(v) {
     if (Array.isArray(v)) return v;
     if (typeof v !== 'string') return null;
@@ -861,10 +593,6 @@ export class MemoryGovernorService {
     }
   }
 
-  /**
-   * Tahap 2: minta model kecil memutuskan hubungan dua pernyataan.
-   * Mengembalikan null bila tidak bisa memutuskan — pemanggil TIDAK menandai apa pun.
-   */
   async _judgeConflict(existing, incoming) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -898,13 +626,6 @@ export class MemoryGovernorService {
     }
   }
 
-  /**
-   * Resolve konflik — HANYA dipanggil via aksi eksplisit user, tidak ada jalur otomatis.
-   *
-   * @param {string} memoryId - ID memori yang berstatus CONFLICT_PENDING_REVIEW
-   * @param {'keep'|'discard'} resolution - Keputusan user
-   * @returns {Promise<{ success: boolean, newStatus: string }>}
-   */
   async resolveConflict(memoryId, resolution) {
     if (!this.isInitialized) throw new Error('MemoryGovernorService not initialized');
     if (!['keep', 'discard'].includes(resolution)) {
@@ -918,7 +639,7 @@ export class MemoryGovernorService {
         .from('user_memories')
         .update({ status: newStatus })
         .eq('id', memoryId)
-        .eq('status', 'CONFLICT_PENDING_REVIEW'); // Hanya resolve yang memang berkonflik
+        .eq('status', 'CONFLICT_PENDING_REVIEW');
 
       if (error) {
         console.error('[MemoryGovernorService] resolveConflict error:', error.message);
@@ -941,18 +662,7 @@ export class MemoryGovernorService {
     }
   }
 
-  // ===========================================================================
-  // ADDENDUM FASE 1 — Soft-Delete Lifecycle
-  // ===========================================================================
 
-  /**
-   * Soft-delete: set status memori dari 'active' ke 'archived'.
-   * Record tetap ada di database (fungsi kotak sampah).
-   * Di-exclude dari retrieval normal (retrieveMemory hanya ambil status='active').
-   *
-   * @param {string} memoryId
-   * @returns {Promise<{ success: boolean }>}
-   */
   async archiveMemory(memoryId) {
     if (!this.isInitialized) throw new Error('MemoryGovernorService not initialized');
 
@@ -961,7 +671,7 @@ export class MemoryGovernorService {
         .from('user_memories')
         .update({ status: 'archived' })
         .eq('id', memoryId)
-        .eq('status', 'active'); // Hanya archive yang masih active
+        .eq('status', 'active');
 
       if (error) {
         console.error('[MemoryGovernorService] archiveMemory error:', error.message);
@@ -982,14 +692,6 @@ export class MemoryGovernorService {
     }
   }
 
-  /**
-   * Tandai memori untuk dihapus permanen (tahap 1 dari 2).
-   * Hanya bisa dari status 'archived'. Hard-delete via executePurge().
-   * Tidak ada jalur otomatis ke hard-delete.
-   *
-   * @param {string} memoryId
-   * @returns {Promise<{ success: boolean }>}
-   */
   async requestPurge(memoryId) {
     if (!this.isInitialized) throw new Error('MemoryGovernorService not initialized');
 
@@ -998,7 +700,7 @@ export class MemoryGovernorService {
         .from('user_memories')
         .update({ status: 'pending_purge' })
         .eq('id', memoryId)
-        .eq('status', 'archived'); // Hanya bisa dari archived, bukan langsung dari active
+        .eq('status', 'archived');
 
       if (error) {
         console.error('[MemoryGovernorService] requestPurge error:', error.message);
@@ -1014,18 +716,10 @@ export class MemoryGovernorService {
     }
   }
 
-  /**
-   * Hard-delete permanen (tahap 2 dari 2). Hanya bisa setelah requestPurge().
-   * HANYA dipanggil via command eksplisit owner — tidak ada cron/background job.
-   *
-   * @param {string} memoryId
-   * @returns {Promise<{ success: boolean }>}
-   */
   async executePurge(memoryId) {
     if (!this.isInitialized) throw new Error('MemoryGovernorService not initialized');
 
     try {
-      // Pastikan record benar-benar di status pending_purge sebelum hard-delete
       const { data: mem, error: checkErr } = await supabase
         .from('user_memories')
         .select('id, status')
@@ -1062,11 +756,6 @@ export class MemoryGovernorService {
     }
   }
 
-  /**
-   * Pulihkan memori dari status 'archived' atau 'pending_purge' kembali ke 'active'.
-   * @param {string} memoryId
-   * @returns {Promise<{ success: boolean }>}
-   */
   async restoreMemory(memoryId) {
     if (!this.isInitialized) throw new Error('MemoryGovernorService not initialized');
 
@@ -1095,11 +784,6 @@ export class MemoryGovernorService {
     }
   }
 
-  /**
-   * Ambil semua record memori yang berstatus CONFLICT_PENDING_REVIEW untuk keperluan UI.
-   * @param {string} userId
-   * @returns {Promise<Array>}
-   */
   async getConflicts(userId) {
     if (!this.isInitialized) throw new Error('MemoryGovernorService not initialized');
     if (!userId) return [];
@@ -1123,11 +807,6 @@ export class MemoryGovernorService {
     }
   }
 
-  /**
-   * Ambil semua record memori yang berstatus 'archived' atau 'pending_purge' untuk Trash Bin UI.
-   * @param {string} userId
-   * @returns {Promise<Array>}
-   */
   async getTrashMemories(userId) {
     if (!this.isInitialized) throw new Error('MemoryGovernorService not initialized');
     if (!userId) return [];
@@ -1151,14 +830,6 @@ export class MemoryGovernorService {
     }
   }
 
-  /**
-   * Ambil daftar memori aktif untuk keperluan tampilan Memory Context Panel (Display Only).
-   * Menampilkan top-N memori aktif lintas seluruh kategori tanpa penyempitan heuristik retrieval.
-   * @param {string} userId
-   * @param {Object} [options]
-   * @param {number} [options.limit=50]
-   * @returns {Promise<Array>}
-   */
   async getActiveMemories(userId, { limit = 50 } = {}) {
     if (!this.isInitialized) throw new Error('MemoryGovernorService not initialized');
     if (!userId) return [];

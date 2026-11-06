@@ -14,7 +14,6 @@ from crawler.kanal import SesiSopan
 
 URL = "https://news.google.com/rss/search"
 
-
 class GoogleNews(Sumber):
     id = "google_news"
     kanal = "tv"
@@ -22,7 +21,7 @@ class GoogleNews(Sumber):
     kemampuan = ("cari", "feed")
     bahasa = ("id", "en", "semua")
     cocok_untuk = ("berita", "isu_publik", "tren")
-    pseudonim_penulis = False  # nama media (byline publik), bukan individu
+    pseudonim_penulis = False
     batas_laju = "jeda 1-2 detik per permintaan; maks ±100 artikel per kata kunci"
     alat = (
         {"nama": "feedparser", "repo": "github.com/kurtmckee/feedparser", "lisensi": "BSD-2-Clause"},
@@ -48,14 +47,13 @@ class GoogleNews(Sumber):
             for e in feed.entries[:jatah]:
                 media = e.get("source") or {}
                 judul = bersihkan(e.get("title"))
-                # Judul Google News berakhiran " - Nama Media"; nama media disimpan terpisah.
                 if media.get("title") and judul.endswith(f" - {media['title']}"):
                     judul = judul[: -len(media["title"]) - 3]
                 yield Temuan(
                     jenis="artikel",
                     id_asli=e.get("id", ""),
                     judul=judul,
-                    teks=judul,  # RSS hanya memuat judul; isi lengkap lewat sumber `web`
+                    teks=judul,
                     url=e.get("link", ""),
                     waktu_terbit=ke_iso(e.get("published_parsed")),
                     bahasa=hl,

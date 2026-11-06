@@ -3,15 +3,12 @@ import { parseCognitiveIntent, bindCognitiveExecution } from '../lib/context_opt
 import { compressCognitiveContext } from './context_compressor.ts';
 import { generateEmbedding, EMBEDDING_DIMENSIONS } from '../lib/rag/embedding.ts';
 
-// Helper to log audits asynchronously
 const logMemoryAudit = (supabaseUrl, supabaseKey, payload, rctx) => {
   try {
     const supabase = createClient(supabaseUrl, supabaseKey);
     const promise = supabase.from('memory_audit_logs').insert([payload]).then(({error}) => {
       if (error) console.error("Audit log insert error:", error);
     });
-    // Pelacak tugas (runtime_context.ts BackgroundTaskTracker) hanya punya fire()/awaitAll(). Dulu `.add()` →
-    // TypeError; di retrieveMemories galat itu jatuh ke catch dan memori yang SUDAH ditemukan dibuang (return []).
     if (rctx?.tasks?.fire) rctx.tasks.fire('MemoryAuditLog', promise);
   } catch(e) {
     console.error("Audit log setup error:", e);
@@ -27,18 +24,6 @@ export const saveFactDirectly = async (
   const supabase = createClient(supabaseUrl, supabaseKey);
   console.log('[V1_CLEAN_INGESTION] Menerima structured payload:', payload);
 
-  // 0. EMBEDDING
-  //
-  // Kolom ini sebelumnya di-hardcode `null` di sini — satu-satunya jalur insert
-  // memori — sehingga tidak ada apa pun di sistem yang pernah menulis embedding
-  // memori. `match_memories` karena itu mustahil menemukan apa pun, dan ketujuh
-  // baris NULL di produksi bukan kebetulan melainkan perilaku yang dikodekan.
-  // Butuh migrasi 20260910003000 (kolom 768 -> 3072) supaya insert ini diterima.
-  //
-  // Sengaja GAGAL-LUNAK: kalau embedding gagal dibuat, memorinya tetap disimpan.
-  // Kehilangan seluruh memori lebih buruk daripada kehilangan kemampuan mencarinya
-  // secara semantik — pencarian SQL tetap menemukannya. Tapi kegagalannya dicatat
-  // keras, karena diam adalah cara cacat ini bertahan selama ini.
   let embedding: number[] | null = null;
   if (rctx) {
     try {
@@ -56,7 +41,6 @@ export const saveFactDirectly = async (
     console.warn('[V1_CLEAN_INGESTION] ⚠️ Tanpa rctx — embedding tidak dibuat. Memori hanya bisa ditemukan lewat pencarian SQL.');
   }
 
-  // 1. INSERT DATA
   const { data: insertData, error: insertError } = await supabase.from('user_memories').insert([{
     user_id: payload.user_id,
     summary: payload.content,
@@ -67,13 +51,11 @@ export const saveFactDirectly = async (
     embedding: embedding
   }]).select('id').single();
 
-  // RULE BARU: IF INSERT FAIL -> THROW ERROR (NO SILENT FAIL)
   if (insertError) {
     console.error('[V1_CLEAN_INGESTION_ERROR] Insert gagal:', insertError);
     throw new Error(`DB Write Failed: ${insertError.message}`);
   }
 
-  // 2. EXPLICIT SELECT CONFIRM (WRITE GUARANTEE CONTRACT)
   const { data: confirmData, error: confirmError } = await supabase
     .from('user_memories')
     .select('id, summary, memory_type')
@@ -94,12 +76,11 @@ export const MEMORY_V2_ENABLED = Deno.env.get('MEMORY_V2_ENABLED') === 'true';
 export const retrieveMemoriesV2 = async (userPrompt: string, userId: string, supabaseUrl: string, supabaseKey: string, rctx?: any) => {
   const startTime = Date.now();
   
-  // UUID VALIDATION - Fix for "SUPABASE" string error
   console.log('[MemoryManagerV2] userId received:', userId);
   const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
   if (!isValidUUID) {
     console.warn('[MemoryManagerV2] Invalid userId, skipping query:', userId);
-    return null; // Return null to trigger fallback to V1
+    return null;
   }
   
   if (!userId || userPrompt.trim().length < 4) return null;
@@ -108,14 +89,12 @@ export const retrieveMemoriesV2 = async (userPrompt: string, userId: string, sup
     const supabase = createClient(supabaseUrl, supabaseKey);
     console.log('[COST LEAK DETECTION] memoryFetchCount: 1 (V2 Subgraph)');
     
-    // 1. PIPELINE: Intent Filter (Control Plane)
     const intentSpec = parseCognitiveIntent(userPrompt);
     const contract = bindCognitiveExecution(intentSpec);
     
     const promptLower = userPrompt.toLowerCase();
     const keywords = promptLower.split(/[\s\p{P}]+/).filter(w => w.length > 3);
     
-    // 2. PIPELINE: Graph Traversal (Execution Engine)
     const { data: subgraph, error } = await supabase.rpc('extract_cognitive_subgraph', {
       p_user_id: userId,
       p_keywords: keywords,
@@ -131,7 +110,6 @@ export const retrieveMemoriesV2 = async (userPrompt: string, userId: string, sup
     
     if (!subgraph.nodes || subgraph.nodes.length === 0) return [];
     
-    // 3. PIPELINE: Context Compression (Deterministic & Synthesized)
     const compressedContext = await compressCognitiveContext({
       intent: intentSpec,
       nodes: subgraph.nodes,
@@ -157,7 +135,6 @@ export const retrieveMemoriesV2 = async (userPrompt: string, userId: string, sup
       metadata: { source_nodes: compressedContext.source_nodes }
     };
     
-    // Asynchronous hit tracker
     if (compressedContext.source_nodes.length > 0) {
        const promise = supabase.rpc('update_memory_stats', { memory_ids: compressedContext.source_nodes })
          .then(({error}) => { if (error) console.error("Update memory stats error:", error) });
@@ -167,12 +144,11 @@ export const retrieveMemoriesV2 = async (userPrompt: string, userId: string, sup
     return [finalMemoryObject];
   } catch (e) {
     console.error('[MEMORY_V2_ERROR] Fallback triggered', e);
-    return null; // Null indicates failure, triggering fallback to V1
+    return null;
   }
 };
 
 export const retrieveMemories = async (userPrompt: string, userId: string, supabaseUrl: string, supabaseKey: string, rctx?: any, workspaceId?: string | null) => {
-  // FEATURE FLAG & FALLBACK MECHANISM
   if (MEMORY_V2_ENABLED) {
      const v2Result = await retrieveMemoriesV2(userPrompt, userId, supabaseUrl, supabaseKey, rctx);
      if (v2Result !== null && v2Result.length > 0) {
@@ -182,7 +158,6 @@ export const retrieveMemories = async (userPrompt: string, userId: string, supab
 
   const startTime = Date.now();
   
-  // UUID VALIDATION - Fix for "SUPABASE" string error
   console.log('[MemoryManager] userId received:', userId);
   const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
   if (!isValidUUID) {
@@ -202,7 +177,6 @@ export const retrieveMemories = async (userPrompt: string, userId: string, supab
     const isTemporalQuery = ['sebelum', 'dulu', 'pernah', 'awal', 'terakhir'].some(w => promptLower.includes(w));
     const dbLimit = isTemporalQuery ? 50 : 15;
     
-    // Safe select to avoid missing column PostgREST errors (PGRST204)
     let memoryQuery = supabase.from('user_memories').select('*').eq('user_id', userId);
     
     const isUuid = Boolean(workspaceId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(workspaceId).trim()));
@@ -210,21 +184,17 @@ export const retrieveMemories = async (userPrompt: string, userId: string, supab
 
     try {
         if (validWorkspaceId) {
-           // Fetch memories that belong to this workspace OR are global
            memoryQuery = memoryQuery.or(`workspace_id.eq.${validWorkspaceId},workspace_id.is.null`);
         } else {
-           // If no workspace is specified (or global context), fetch global memories only
            memoryQuery = memoryQuery.is('workspace_id', null);
         }
     } catch (e) {
         console.log('[MemoryManager] workspace_id column not found, skipping filter');
     }
     
-    // PERUBAHAN 2: Tingkatkan limit ke 50 (hapus limit 15 yang menyebabkan amnesia data lama)
     let { data, error } = await memoryQuery.order('created_at', { ascending: false }).limit(50);
     
     if (error) {
-       // PERUBAHAN 1 (Fallback): Jika benar terjadi PGRST204 saat await, ulangi tanpa filter workspace_id
        if (error.code === 'PGRST204' || (error.message && error.message.includes('workspace_id'))) {
            console.warn('[MemoryManager] workspace_id column missing in DB, falling back to base query');
            const fallbackResult = await supabase.from('user_memories').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50);
@@ -240,13 +210,10 @@ export const retrieveMemories = async (userPrompt: string, userId: string, supab
     
     if (!data || data.length === 0) return [];
     
-    // Filter out Level 5 deprecated memories safely
     data = data.filter(d => d.is_deprecated !== true);
     
-    // Lightweight Scoring System (NO AI)
     const keywords = promptLower.split(/[\s\p{P}]+/).filter(w => w.length > 3);
     
-    // Deduplikasi berdasar isi teks
     const uniqueMemoriesMap = new Map();
     for (const d of data) {
        const dSumLower = (d.summary || d.content || '').toLowerCase();
@@ -260,17 +227,14 @@ export const retrieveMemories = async (userPrompt: string, userId: string, supab
        let score = 0;
        const memLower = (mem.summary || mem.content || '').toLowerCase();
        
-       // Exact match (+5)
        if (promptLower.includes(memLower) || memLower.includes(promptLower)) {
           score += 5;
        }
        
-       // Keyword match (+2 per keyword)
        for (const kw of keywords) {
           if (memLower.includes(kw)) score += 2;
        }
        
-       // Recent memory (+1) - index 0 is most recent
        if (index < 3) score += 1;
        
        const relevanceScore = score;
@@ -279,29 +243,25 @@ export const retrieveMemories = async (userPrompt: string, userId: string, supab
        let recencyScore = Math.max(0, 100 - (ageDays * 2));
        const frequencyScore = Math.min(100, (mem.memory_hits || 0) * 10);
        
-       // STRICT COGNITIVE STATE ENFORCEMENT
        let stateModifier = 0;
        if (mem.memory_state === 'STABILIZED') stateModifier = 15.0;
        else if (mem.memory_state === 'CONFLICTED') stateModifier = -20.0;
-       else if (mem.memory_state === 'HISTORICAL') stateModifier = isTemporalQuery ? 20.0 : -10.0; // Boost historical for temporal queries
+       else if (mem.memory_state === 'HISTORICAL') stateModifier = isTemporalQuery ? 20.0 : -10.0;
 
        if (isTemporalQuery) {
-           recencyScore = Math.min(100, ageDays * 2); // Reverse decay: older is better
+           recencyScore = Math.min(100, ageDays * 2);
        }
        
        const cognitiveDepth = (mem.reasoning_depth_score || 0) * 10.0;
        const truthVerification = (mem.truth_verification_score || 0) * 10.0;
 
-       // DETERMINISTIC FORMULA: Gabungan relevansi, kepercayaan, kemutakhiran, frekuensi, dan evaluasi kognitif yang direstui Level 5
        const finalScore = (relevanceScore * 0.4) + (confidenceScore * 30.0) + (recencyScore * 0.2) + (frequencyScore * 0.1) + stateModifier + cognitiveDepth + truthVerification;
        
        return { ...mem, score: finalScore, decayScore: recencyScore, frequencyScore, finalScore };
     });
     
-    // Sort by score (descending) and take dynamic top K
     scoredMemories.sort((a, b) => b.score - a.score);
     
-    // DYNAMIC TOP-K
     let dynamicTopK = 5;
     if (isTemporalQuery) dynamicTopK = 10;
     else if (['suka', 'favorit', 'makanan', 'minuman'].some(w => promptLower.includes(w))) dynamicTopK = 8;
@@ -309,12 +269,10 @@ export const retrieveMemories = async (userPrompt: string, userId: string, supab
 
     const topMemories = scoredMemories.slice(0, dynamicTopK);
     
-    // No legacy score===0 fallback anymore. Adaptive formula guarantees >0 score for any valid memory.
     
     let currentLen = 0;
     const finalMemories = [];
     for (const d of topMemories) {
-      // STRICT SCORING GATE ENFORCEMENT: No score = no entry
       if (typeof d.finalScore !== 'number' || isNaN(d.finalScore)) continue;
       
       let enrichedContent = d.summary || d.content || '';
@@ -337,7 +295,6 @@ export const retrieveMemories = async (userPrompt: string, userId: string, supab
       currentLen += d.summary.length;
     }
     
-    // Asynchronously update memory_hits to ensure adaptive consistency on next retrieval
     if (finalMemories.length > 0) {
        const memoryIds = finalMemories.map(m => m.id).filter(id => id);
        if (memoryIds.length > 0) {
@@ -350,7 +307,6 @@ export const retrieveMemories = async (userPrompt: string, userId: string, supab
     
     const latencyMs = Date.now() - startTime;
     
-    // DETECT INTENT UNTUK REPORTING/LOOKUP (Rule-based)
     if (promptLower.includes('deadline')) {
       logMemoryAudit(supabaseUrl, supabaseKey, { user_id: userId, event_type: 'deadline_lookup', status: 'SUCCESS', query: userPrompt, matched_memories: topMemories.length, execution_time_ms: latencyMs }, rctx);
     } else if (promptLower.includes('tugas')) {
@@ -368,4 +324,3 @@ export const retrieveMemories = async (userPrompt: string, userId: string, supab
   }
 };
 
-// (Dihapus: Logika lama processAndSaveMemory, extractStructuredMemory, idempotency, applyUserCorrection)

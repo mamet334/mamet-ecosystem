@@ -36,20 +36,17 @@ CREATE INDEX IF NOT EXISTS ix_tangkapan_kunci ON tangkapan (kunci, revisi);
 CREATE INDEX IF NOT EXISTS ix_misi_tangkapan ON misi_tangkapan (misi_id, urut);
 """
 
-# Kolom yang dikeluarkan lewat baca()/ekspor. Kolom `penulis` (username asli) sengaja tidak termasuk.
 KOLOM_PUBLIK = (
     "id", "sumber", "kanal", "jenis_akses", "jenis", "id_asli", "url", "url_induk", "parent_id", "judul", "teks",
     "bahasa", "penulis_hash", "waktu_terbit", "waktu_ambil", "metrik", "confidence", "hash_isi", "revisi",
     "status_knowledge",
 )
 
-
 def url_kanonis(url: str) -> str:
     """Buang fragmen dan parameter pelacak agar URL yang sama dikenali sama."""
     s = urlsplit(url.strip())
     query = [(k, v) for k, v in parse_qsl(s.query) if not k.lower().startswith(("utm_", "fbclid", "gclid"))]
     return urlunsplit((s.scheme.lower(), s.netloc.lower(), s.path.rstrip("/") or "/", urlencode(query), ""))
-
 
 class Gudang:
     def __init__(self, data_dir: Path, garam: str):
@@ -58,7 +55,6 @@ class Gudang:
         self.garam = garam
         self.db = sqlite3.connect(self.data_dir / "gudang.db")
         self.db.row_factory = sqlite3.Row
-        # WAL + synchronous NORMAL: commit per item tetap aman tetapi tidak menunggu fsync penuh setiap kali.
         self.db.execute("PRAGMA journal_mode = WAL")
         self.db.execute("PRAGMA synchronous = NORMAL")
         self.db.executescript(SKEMA)
@@ -68,8 +64,6 @@ class Gudang:
 
     def ukuran_byte(self) -> int:
         return sum(p.stat().st_size for p in self.data_dir.rglob("*") if p.is_file())
-
-    # ---- misi -------------------------------------------------------------------------------------------------
 
     def catat_misi(self, misi: Misi, status: str, ringkasan: dict | None = None) -> None:
         selesai = sekarang_iso() if status not in ("antri", "berjalan") else None
@@ -95,8 +89,6 @@ class Gudang:
         rows = self.db.execute("SELECT id, dibuat, status, spesifikasi FROM misi ORDER BY id DESC LIMIT ?", (batas,))
         return [{**dict(r), "spesifikasi": json.loads(r["spesifikasi"])} for r in rows]
 
-    # ---- tangkapan --------------------------------------------------------------------------------------------
-
     def simpan(self, misi: Misi, sumber: str, kanal: str, jenis_akses: str, confidence: float, t: Temuan,
                pseudonim_penulis: bool = True) -> str:
         """Simpan satu Temuan. Status: 'baru', 'revisi', 'sama', atau 'ulang' (sudah tercatat di misi ini).
@@ -109,7 +101,6 @@ class Gudang:
 
         if lama and lama["hash_isi"] == hash_isi:
             tangkapan_id, status = lama["id"], "sama"
-            # Isi tidak berubah; metrik (suka, balasan) diperbarui ke angka terbaru.
             self.db.execute("UPDATE tangkapan SET metrik = ? WHERE id = ?",
                             (json.dumps(t.metrik, ensure_ascii=False), tangkapan_id))
         else:
@@ -192,8 +183,6 @@ class Gudang:
             if not bagian:
                 return semua
             semua += bagian
-
-    # ---- peristiwa (observabilitas) ---------------------------------------------------------------------------
 
     def catat_peristiwa(self, misi: Misi, nama: str, sumber: str = "", **detail) -> None:
         self.db.execute(

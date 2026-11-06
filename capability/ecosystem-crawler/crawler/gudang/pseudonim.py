@@ -3,7 +3,6 @@
 import hashlib
 import hmac
 
-
 def pseudonim(garam: str, sumber: str, username: str) -> str:
     if not username:
         return ""

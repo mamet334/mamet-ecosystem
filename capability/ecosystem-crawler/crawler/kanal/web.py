@@ -25,19 +25,15 @@ from crawler import NAMA, konfig
 
 log = logging.getLogger(__name__)
 
-# Penanda halaman tantangan anti-bot (Cloudflare, DDoS-Guard, dll.), dicari di awal halaman.
 PENANDA_BLOKIR = ("checking your browser", "just a moment...", "cf-chl", "cf-browser-verification",
                   "ddos-guard", "attention required! | cloudflare")
 STATUS_BLOKIR = (403, 429, 503)
 
-
 class DilarangRobots(Exception):
     pass
 
-
 class Terblokir(Exception):
     pass
-
 
 def _terblokir(status: int, html: str) -> bool:
     if status in STATUS_BLOKIR:
@@ -45,14 +41,12 @@ def _terblokir(status: int, html: str) -> bool:
     awal = html[:6000].lower()
     return any(p in awal for p in PENANDA_BLOKIR)
 
-
 class AksesWeb:
     def __init__(self, user_agent: str, jeda: tuple[float, float] = (1.0, 2.0), timeout: int = 25,
                  proxy: str | None = None, patuhi_robots: bool | None = None, stealth: bool | None = None):
         self.user_agent = user_agent
         self.jeda = jeda
         self.timeout = timeout
-        # proxy=None -> pakai CRAWLER_PROXY dari .env; proxy="" -> paksa koneksi langsung.
         self.proxies = konfig.proxies(proxy)
         self.proxy = (proxy if proxy is not None else konfig.PROXY).strip()
         self.patuhi_robots = konfig.PATUHI_ROBOTS if patuhi_robots is None else patuhi_robots
@@ -65,7 +59,7 @@ class AksesWeb:
         self._terakhir = 0.0
 
     def boleh(self, url: str) -> bool:
-        if not self.patuhi_robots:  # sakelar Owner (ADR-CRW-0010): default tidak dipatuhi
+        if not self.patuhi_robots:
             return True
         s = urlsplit(url)
         akar = f"{s.scheme}://{s.netloc}"
@@ -74,7 +68,6 @@ class AksesWeb:
             rp = RobotFileParser()
             try:
                 resp = self.session.get(f"{akar}/robots.txt", timeout=self.timeout)
-                # RFC 9309: 4xx = robots.txt tidak tersedia (boleh); 5xx = tidak terjangkau (anggap dilarang).
                 if resp.status_code >= 500:
                     rp.disallow_all = True
                 elif resp.status_code >= 400:
@@ -82,7 +75,7 @@ class AksesWeb:
                 else:
                     rp.parse(resp.text.splitlines())
             except requests.RequestException:
-                rp.allow_all = True  # robots.txt tidak terjangkau: perlakukan seperti tidak ada
+                rp.allow_all = True
             self._robots[akar] = rp
         return rp.can_fetch(NAMA, url)
 
@@ -132,12 +125,12 @@ class AksesWeb:
                 url,
                 headless=True,
                 network_idle=True,
-                timeout=self.timeout * 1000,  # Scrapling pakai milidetik
-                google_search=True,            # referer Google, seperti pengunjung dari pencarian
-                solve_cloudflare=False,        # TIDAK menjawab tantangan/CAPTCHA (ADR-CRW-0010 butir 4)
+                timeout=self.timeout * 1000,
+                google_search=True,
+                solve_cloudflare=False,
                 proxy=self.proxy or None,
             )
-        except Exception as exc:  # browser belum diunduh, timeout, dll.
+        except Exception as exc:
             pesan = str(exc)
             if "scrapling install" in pesan.lower() or "executable" in pesan.lower():
                 raise Terblokir("browser stealth belum diunduh: jalankan 'scrapling install'") from None

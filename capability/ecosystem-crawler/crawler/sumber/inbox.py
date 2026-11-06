@@ -27,11 +27,9 @@ PLATFORM_BY_PREFIX = {
 }
 _HEADER_RE = re.compile(r"^(url|tanggal|judul|penulis)\s*:\s*(.+)$", re.IGNORECASE)
 
-
 def _platform_for(path: Path) -> str:
     prefix = re.split(r"[_\-\s]", path.stem.lower(), maxsplit=1)[0]
     return PLATFORM_BY_PREFIX.get(prefix, path.stem.split("_")[0].title())
-
 
 def _make(platform: str, berkas: str, teks: str, url: str = "", tanggal: str = "", judul: str = "",
           penulis: str = "") -> Temuan | None:
@@ -45,7 +43,6 @@ def _make(platform: str, berkas: str, teks: str, url: str = "", tanggal: str = "
         waktu_terbit=ke_iso(tanggal), metrik={"platform": platform, "berkas": berkas},
         mentah={"teks": teks, "url": url, "tanggal": tanggal, "judul": judul, "berkas": berkas},
     )
-
 
 def _read_txt(path: Path) -> list[Temuan]:
     platform, out = _platform_for(path), []
@@ -63,7 +60,6 @@ def _read_txt(path: Path) -> list[Temuan]:
             out.append(t)
     return out
 
-
 def _read_csv(path: Path) -> list[Temuan]:
     default_platform, out = _platform_for(path), []
     with path.open(encoding="utf-8-sig", newline="") as f:
@@ -74,7 +70,6 @@ def _read_csv(path: Path) -> list[Temuan]:
             if t:
                 out.append(t)
     return out
-
 
 class Inbox(Sumber):
     id = "inbox"

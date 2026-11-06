@@ -1,16 +1,7 @@
-// Workspace (knowledge_spaces) dari UI Research App — buat, ganti nama, hapus bila kosong (2026-09-21).
-//
-// Sebelum ini tidak ada tombol untuk membuat workspace; satu-satunya pembuat adalah sub-agent knowledge_manager, yang
-// menamai workspace dengan kalimat chat ("Observasi Pasar Freelance dan tampilkan hasilnya saja", "Berapa pejabat
-// struktural …?") — lalu Research App memilih space terbaru sebagai bawaan, jadi unggahan RAG mendarat di sana (T9).
-//
-// Catatan pencarian: chat mencari di SEMUA workspace milik pengguna (document_search.ts, Item 65). Workspace hanya
-// membatasi pencarian bila namanya disebut lengkap bersama kata "workspace"/"ruang"/"space" (routing_decider.ts).
 
 export const PANJANG_NAMA_MAKS = 60;
 const KUNCI_TERPILIH = 'research_space_terpilih';
 
-// Nama dirapikan (spasi ganda, tepi) lalu diperiksa. kecualiId: workspace yang sedang diganti namanya.
 export function periksaNamaRuang(mentah, daftar = [], kecualiId = null) {
     const nama = String(mentah ?? '').replace(/\s+/g, ' ').trim();
     if (!nama) return { ok: false, nama, pesan: 'Nama workspace belum diisi.' };
@@ -21,18 +12,15 @@ export function periksaNamaRuang(mentah, daftar = [], kecualiId = null) {
     return { ok: true, nama, pesan: '' };
 }
 
-// Workspace bawaan saat Research App dibuka: pilihan terakhir pengguna bila masih ada; bila tidak, yang pertama di
-// daftar (terbaru) — sama seperti sebelumnya.
 export function pilihRuangAwal(daftar = [], idTersimpan = null) {
     if (idTersimpan && daftar.some((s) => s.id === idTersimpan)) return idTersimpan;
     return daftar[0]?.id ?? null;
 }
 
-// CORE dipakai rag-process bila tak ada workspace dipilih — tidak boleh dihapus dari UI.
 export const bolehDihapus = (ruang) => !!ruang && ruang.space_type !== 'CORE';
 
 export function ingatRuangTerpilih(id) {
-    try { if (id) localStorage.setItem(KUNCI_TERPILIH, id); } catch { /* penyimpanan browser tak tersedia */ }
+    try { if (id) localStorage.setItem(KUNCI_TERPILIH, id); } catch {  }
 }
 export function ruangTerpilihTersimpan() {
     try { return localStorage.getItem(KUNCI_TERPILIH); } catch { return null; }
@@ -56,8 +44,6 @@ export async function gantiNamaRuang(supabase, id, nama) {
     if (!data?.length) throw new Error('Workspace tidak ditemukan di server — daftar dimuat ulang.');
 }
 
-// Dokumen ikut terhapus bila workspace dihapus (FK ON DELETE CASCADE) — maka jumlah dokumen diperiksa di server
-// tepat sebelum menghapus, bukan dari daftar di layar yang bisa basi.
 export async function hapusRuangKosong(supabase, ruang) {
     if (!bolehDihapus(ruang)) throw new Error('Workspace inti (CORE) tidak bisa dihapus.');
     const { count, error: errHitung } = await supabase.from('documents')

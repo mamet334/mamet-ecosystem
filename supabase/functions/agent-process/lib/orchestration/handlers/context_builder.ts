@@ -18,16 +18,12 @@ import { runLLM } from '../../llm_orchestrator.ts';
 import { KnowledgeService } from '../../../../../../shared/KnowledgeService.js';
 import { RetrievalStrategyService } from '../../../../../../shared/RetrievalStrategyService.js';
 
-// [PR#6 TOKEN EFFICIENCY] Web Search Summarization Guard
-// Membatasi total chars web search yang masuk ke context utama.
-// Threshold: jika total chars externalDocs > 6.000, ringkas setiap artikel
-// secara individual dengan batas 800 chars/artikel.
 const WEB_CONTEXT_TOTAL_THRESHOLD = 6000;
 const WEB_CONTEXT_PER_ARTICLE_MAX = 800;
 
 async function summarizeWebDoc(doc: any, rctx: any): Promise<any> {
   const contentLen = (doc.content || '').length;
-  if (contentLen <= WEB_CONTEXT_PER_ARTICLE_MAX) return doc; // Sudah kecil, tidak perlu diringkas
+  if (contentLen <= WEB_CONTEXT_PER_ARTICLE_MAX) return doc;
 
   const summaryPrompt = `Ringkas artikel web berikut menjadi maksimal 3 kalimat padat yang mempertahankan fakta kunci dan URL sumber. Jangan tambahkan kalimat pengantar.
 
@@ -37,7 +33,6 @@ Konten:
 ${(doc.content || '').substring(0, 4000)}`;
 
   try {
-    // Gunakan model ringan (tidak mengikuti model pilihan user) untuk efisiensi biaya
     const summarized = await runLLM(summaryPrompt, 'Anda adalah peringkas konten web yang objektif dan ringkas.', [], rctx);
     const trimmed = (summarized || '').trim().substring(0, WEB_CONTEXT_PER_ARTICLE_MAX);
     console.log(`[PR#6 WebSummarizer] Artikel "${doc.title || 'untitled'}" diringkas: ${contentLen} -> ${trimmed.length} chars`);
@@ -47,7 +42,6 @@ ${(doc.content || '').substring(0, 4000)}`;
     };
   } catch (err: any) {
     console.warn(`[PR#6 WebSummarizer] Gagal meringkas artikel, menggunakan truncate: ${err.message}`);
-    // Fallback: truncate paksa dengan header dipertahankan
     const header = doc.content?.match(/^(---\s*Konteks[^\n]*\n(?:Judul:[^\n]*\n)?(?:\[Sumber:[^\n]*\]\n)?)/)?.[0] || '';
     const body = (doc.content || '').substring(header.length, WEB_CONTEXT_PER_ARTICLE_MAX - header.length);
     return { ...doc, content: header + body + '...[diringkas]' };
@@ -62,15 +56,12 @@ export const ContextBuilderHandler = {
     eventBus.emit({ type: 'Intent.Received', source: 'Orchestrator', payload: { intent: ctx.request.finalMessage }, trace_id: rctx?.tasks?.traceId || 'unknown' });
     maef.requestTransition('CONTEXT_BUILD', 'Starting Context Building Phase');
 
-    // 1. ROUTING DECIDER
     let routingDecision = await executeRoutingDecision(ctx.request.finalMessage, ctx.auth.userId, rctx, ctx.request.workspaceTarget);
     if (ctx.request.routingDecision) {
-       routingDecision = ctx.request.routingDecision; // explicit override
+       routingDecision = ctx.request.routingDecision;
     }
     ctx.state.processingSteps.push(`🔍 [Routing Decider] Scope: ${routingDecision.scope} (${routingDecision.reason_code})`);
 
-    // T10 Tahap 1: Engineer hanya mencari di space "Pengetahuan Engineer" (atau bertanda `engineer`) — bukan di semua
-    // space (buku Kepbup ikut masuk prompt Engineer). Tak ada space itu → RAG Engineer dilewati, dicatat apa adanya.
     let ragEngineerTanpaSpace = false;
     if (ctx.policy.mode === 'ENGINEER' && ctx.request.isRagEnabled) {
       const idSpace = await cariSpaceEngineer(ctx.auth.userId, rctx);
@@ -87,10 +78,7 @@ export const ContextBuilderHandler = {
       console.log(`[MEMORY_GATEWAY] Edge Function hanya validasi auth dan memproses LLM. Tidak ada auto-save sembunyi.`);
     }
 
-    // 2. SCATTER: Trigger independent services in parallel (Phase 1 Event-Driven Gatherer)
     const TIER1_RETRIEVAL_TIMEOUT_MS = 5000;
-    // Tulis ulang (≤4 s) + embedding + pencarian kedua. Hanya berlaku saat pencarian pertama kosong
-    // dan ada riwayat — pesan biasa tetap dibatasi 5 detik.
     const TULIS_ULANG_ANGGARAN_MS = 6000;
     const ragPromise = (async () => {
         if (!ctx.auth.userId || !ctx.request.isRagEnabled || ragEngineerTanpaSpace) return [];
@@ -99,34 +87,8 @@ export const ContextBuilderHandler = {
         let tenggatTier1 = mulaiTier1 + TIER1_RETRIEVAL_TIMEOUT_MS;
 
         const executeTier1 = async () => {
-            // PENCARIAN DOKUMEN BERDASARKAN MAKNA UNTUK SEMUA MODE (Item 65, 2026-09-11).
-            //
-            // Dulu hanya ENGINEER yang memakai vektor; ASSISTANT dan LITE (mametlite) memakai
-            // KnowledgeService — pencocokan KATA pada judul/isi — lalu RetrievalStrategyService
-            // Kasus A menyeret SELURUH potongan dokumen yang judulnya cocok. Terbukti di Item 64:
-            // satu pertanyaan tentang HCDP = 33 potongan, prompt=90116t, $0,0112. Dokumen yang
-            // pertanyaannya tak memuat kata dari judul tidak ditemukan sama sekali, sementara
-            // pengguna membayar untuk memvektorkannya.
-            //
-            // Kini: vektor pertanyaan (dipakai ulang dari pencarian memori di request_pipeline bila
-            // ada) → match_documents → potongan teratas, sudah terurut relevansi. Hasil vektor
-            // TIDAK dilewatkan RetrievalStrategyService: Kasus B membatasi potongan per dokumen
-            // (membuang jawaban yang sama-sama dari satu dokumen), dan pengurutan ulangnya tak perlu.
             const pesan = ctx.request.finalMessage || '';
             const vektorSiap = Array.isArray(ctx.request.queryEmbedding) && ctx.request.queryEmbedding.length === EMBEDDING_DIMENSIONS;
-            // Sebab kegagalan ikut dicatat: tanpa ini, penurunan ke pencocokan kata di bawah
-            // hanya terbaca sebagai "✅ RAG TIER 1 OK" dengan nama strategi internal.
-            //
-            // `gagalDiHulu` menutup PANGGILAN GANDA. `request_pipeline` sudah mencoba membuat
-            // vektor untuk pesan yang sama; bila gagal ia melempar, sehingga `queryEmbedding` tak
-            // pernah disetel dan baris di bawah ini dulu memanggil pintu embedding SEKALI LAGI —
-            // gagal untuk alasan yang sama, milidetik kemudian. Terekam di log 1 Okt: dua
-            // `[Embedding] Gagal (SALDO_HABIS)` berjarak 183 ms untuk satu pesan.
-            //
-            // Ini bukan kebijakan ulang-coba yang dihapus. Jarak 183 ms bukan ulang-coba: kedua
-            // panggilan berada dalam SATU permintaan, dan tak ada kegagalan yang sembuh dalam
-            // waktu itu — 402 saldo habis maupun ketiadaan kunci jelas tidak. Yang diperbaiki
-            // adalah dua titik panggil yang tidak saling tahu.
             const gagalDiHulu = ctx.request.embeddingGagal;
             const jejakVektor = { ...(gagalDiHulu || {}) } as JejakEmbedding;
             const queryEmbedding: number[] = vektorSiap
@@ -147,10 +109,6 @@ export const ContextBuilderHandler = {
                 );
                 let vectorDocs = await cari(queryEmbedding, pesan);
 
-                // PERTANYAAN LANJUTAN (Item 67): "Lanjutkan, apa kendalanya?" tak menyebut topiknya,
-                // jadi pencarian di atas kosong walau dokumennya ada. Bila kosong DAN ada riwayat,
-                // model murah menulis ulang pesan menjadi pertanyaan mandiri lalu dicari sekali lagi.
-                // Pesan yang sudah mandiri / ganti topik dikembalikan apa adanya → tidak dicari ulang.
                 let catatanUlang = '';
                 if (vectorDocs.length === 0) {
                     const riwayat = riwayatSebelumPesan(ctx.request.history, pesan);
@@ -176,21 +134,10 @@ export const ContextBuilderHandler = {
                 return { chunks: vectorDocs, strategy: 'vector_topk', sufficiency: +skorTeratas.toFixed(3), caseType: 'NONE' };
             }
 
-            // CADANGAN tanpa vektor (pengguna tanpa kunci OpenRouter, atau OpenRouter gagal):
-            // pencocokan kata. Kasus A di RetrievalStrategyService tidak lagi menyeret seluruh
-            // dokumen, jadi hasilnya dibatasi `effectiveRagMatchCount`.
-            //
-            // PENURUNAN INI HARUS TERLIHAT. Pencocokan kata adalah justru perilaku yang Item 64/65
-            // buktikan jauh lebih buruk: dokumen yang pertanyaannya tak memuat kata dari judulnya
-            // TIDAK DITEMUKAN SAMA SEKALI. Sebelum ini, satu-satunya jejaknya adalah console.log
-            // di sisi server, sementara `processingSteps` — yang sampai ke pengguna — tetap
-            // melaporkan "✅ [RAG TIER 1 OK]" dengan nama strategi internal. Jawabannya tampak
-            // normal, mutunya tidak, dan tak ada yang memberi tahu.
             const sebabTurun = vektorSiap
                 ? 'vektor yang dipakai ulang tak sesuai dimensi'
                 : kalimatSebabEmbedding(jejakVektor);
             console.log(`[RAG] Mode: ${ctx.policy.mode} — vektor tidak tersedia (${sebabTurun}${gagalDiHulu ? ', sudah gagal di hulu — TIDAK diulang' : ''}), cadangan pencocokan kata (KnowledgeService).`);
-            // K2/U8b: sebabnya ikut ke jawaban sebagai "Catatan sistem" (synthesis_handler / stream_handler).
             ctx.state.ragTurunKeKata = sebabTurun;
             ctx.state.processingSteps.push(
                 `⚠️ [RAG TURUN KE PENCOCOKAN KATA] Pencarian makna tidak jalan: ${sebabTurun}. ` +
@@ -215,8 +162,6 @@ export const ContextBuilderHandler = {
 
         let pengaturWaktu: number | undefined;
         try {
-            // Batas waktu 5 detik, diperpanjang oleh executeTier1 lewat `tenggatTier1` hanya saat
-            // menulis ulang pertanyaan lanjutan (Item 67).
             const timeoutPromise = new Promise((_, reject) => {
                 const periksa = () => {
                     const sisa = tenggatTier1 - Date.now();
@@ -249,7 +194,6 @@ export const ContextBuilderHandler = {
                 _sufficiency: adaptiveResult.sufficiency
             }));
         } catch (err: any) {
-            // Mekanisme Fallback Eksplisit — tandai kegagalan di processingSteps & state (bukan silent fail)
             console.warn('[RAG] Tier 1 Retrieval failed or timed out:', err.message);
             ctx.state.tier1Retrieval = {
                 success: false,
@@ -276,10 +220,8 @@ export const ContextBuilderHandler = {
 
     const engineerPromise = loadEngineerContext(ctx.policy.mode, ctx.request.finalMessage, rctx);
 
-    // 3. GATHER: Await all parallel executions
     const [ragArray, projectMemResult, engineerCtx] = await Promise.all([ragPromise, memoryPromise, engineerPromise]);
 
-    // Ekstraksi dokumen referensi eksternal / Web Retrieval dari globalMemory jika ada
     const externalDocs: any[] = [];
     let cleanPersonalMemory = '';
 
@@ -328,8 +270,6 @@ export const ContextBuilderHandler = {
       }
     }
 
-    // [PR#6 TOKEN EFFICIENCY] Web Search Summarization Guard
-    // Cek total chars dari externalDocs. Jika melebihi threshold, ringkas per artikel.
     let processedExternalDocs = externalDocs;
     if (externalDocs.length > 0) {
       const totalWebChars = externalDocs.reduce((acc: number, d: any) => acc + (d.content || '').length, 0);
@@ -349,13 +289,8 @@ export const ContextBuilderHandler = {
       }
     }
 
-    // DATA TABEL (Item 92 Tahap 3): hanya bila tombol Data Tabel menyala. Hasil hitungan kode masuk sebagai dokumen bukti
-    // PERTAMA (tidak terpotong batas potongan), jadi label VERIFIED & pemeriksa angka memperlakukannya seperti dokumen RAG.
-    // Tabel ber-NIP disimpan terpisah dan ditempel kode di akhir jawaban — tidak pernah masuk prompt.
     const dokumenDataTabel: any[] = [];
     if (ctx.request.dataTabel && rctx.stream?.isStream) {
-      // Jalur streaming mengirim teks model huruf demi huruf — NIP karangan tidak bisa disamarkan sebelum sampai ke
-      // pengguna. Desktop selalu non-stream; klien stream yang mengirim bendera ini tidak dilayani jalur data tabel.
       ctx.state.processingSteps.push('📊 [DATA TABEL] dilewati: permintaan streaming (penyamaran NIP butuh jawaban utuh)');
     } else if (ctx.request.dataTabel) {
       const dt = await jalankanDataTabel(ctx.request.finalMessage || '', ctx.auth.userId, rctx);
@@ -364,9 +299,6 @@ export const ContextBuilderHandler = {
       if (dt.status !== 'lewat') (ctx.state as any).dataTabel = { status: dt.status, judul: dt.judul, lampiran: dt.lampiran };
     }
 
-    // Data tabel BERHASIL dihitung → hanya dokumen itu yang dikirim. Uji live 2026-09-21: 5–6 potongan buku Kepbup tentang
-    // PERSYARATAN PIM ikut masuk, dan model mencampur persyaratan jabatan dengan data pegawai ("dokumen tidak memuat siapa
-    // yang belum PIM"). Bila data tabel gagal / tidak relevan, jalur biasa (RAG + web) tetap utuh.
     const dataTabelSelesai = (ctx.state as any).dataTabel?.status === 'ok';
     if (dataTabelSelesai && ((ragArray || []).length || processedExternalDocs.length)) {
       ctx.state.processingSteps.push(`📊 [DATA TABEL] ${(ragArray || []).length + processedExternalDocs.length} potongan RAG/web tidak dikirim — jawaban dari data tabel`);
@@ -395,7 +327,6 @@ export const ContextBuilderHandler = {
     ctx.state.processingSteps.push(`[RAG CONTEXT GENERATED] ragArray size=${ctx.state.ragArray.length} (termasuk ${externalDocs.length} web/external chunks)`);
     ctx.state.processingSteps.push(`[MEMORY PROMPT GENERATED] memoryPrompt="${memoryPrompt.trim()}" memoryArray size=${projectMemResult.memoryArray.length}`);
 
-    // 4. FUSION — inject semanticContext from frontend if present
     const semanticContextPrompt = ctx.request.semanticContext
         ? `\n\n[SEMANTIC CONTEXT — Entity & Intent dari UI]:\n${ctx.request.semanticContext}`
         : '';
@@ -534,9 +465,6 @@ export const ContextBuilderHandler = {
     if (brain2Verifications.length > 0) brain2ContextText += `Recent Verifications: ${brain2Verifications.join(', ')}\n`;
 
     let systemBasePrompt = (ctx.request.agentIdentityPrompt || '') + (ctx.request.userContextPrompt || '') + memoryPrompt;
-    // Aturan Engineer (identitas, RULE 1–6 termasuk [MAMET_CMD], Two-Brain) — sejak refactor Wave 5.4 (c310141) prompt
-    // dasar kontrak disusun ulang TANPA ini, dan kontrak menimpa finalContext yang memuatnya: Engineer tak pernah
-    // menerima aturannya (live 2026-09-22: "cek status git" → "saya tidak memiliki akses", tanpa [MAMET_CMD]).
     if (ctx.policy.mode === 'ENGINEER' && engineerCtx?.engineerContextPrompt) {
       systemBasePrompt += engineerCtx.engineerContextPrompt;
     }
@@ -564,9 +492,7 @@ export const ContextBuilderHandler = {
       policyForbidden: forbidden,
       systemBasePrompt,
       activeConflicts: activeConflictsCount,
-      // Item 85 Tahap 3: putaran lanjutan folder kerja membawa pesan [HASIL ALAT FOLDER] — sumber label yang sah.
       hasilAlatFolder: ((ctx.request as any).folderKerja?.putaran || 0) > 0,
-      // 2026-09-23: pesan yang dijawab adalah keluaran perintah Engineer — perintahnya boleh disebut di baris Sumber.
       keluaranPerintah: /^\[TERMINAL OUTPUT for: /.test(String(ctx.request.originalMessage || ctx.request.finalMessage || ''))
     });
 

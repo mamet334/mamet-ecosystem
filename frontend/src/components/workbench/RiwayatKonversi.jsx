@@ -3,17 +3,6 @@ import { daftarRiwayat, tautanUnduh, hapusKonversi, KUOTA_CACHE_BYTE, KUOTA_CACH
 import { blokGalat } from '../../core/runtime/services/pesanGalat.js';
 import { ukuranMB } from '../../core/runtime/services/formatAngka.js';
 
-/**
- * Panel "Riwayat konversi" (Item 58) — isi cache Word → PDF milik akun ini.
- *
- * Tanpa panel ini PDF hanya bisa diunduh dari tombol di pesan chat tempat konversi dilakukan;
- * cache yang disimpan sampai 200 MB jadi tak terlihat dan tak bisa dikelola. Bentuknya dropdown
- * seperti panel Tools, supaya toolbar chat tidak bertambah penuh.
- *
- * Yang tercantum hanya konversi lewat antrian (dikirim dari versi web, dikerjakan laptop).
- * Konversi langsung di aplikasi desktop (Item 56) menyimpan PDF di sebelah dokumen aslinya
- * dan tidak masuk cache.
- */
 
 const mb = (n) => ukuranMB(n);
 
@@ -39,7 +28,6 @@ export default function RiwayatKonversi() {
       setTerpakai(r.terpakai);
       setPesan(null);
     } catch (err) {
-      // Tabel belum ada (migrasi belum dijalankan) atau jaringan putus — katakan, jangan kosong diam.
       setPesan(blokGalat({ kode: 'RIWAYAT_KONVERSI', teknis: err.message }));
     }
   }, []);
@@ -50,7 +38,6 @@ export default function RiwayatKonversi() {
     muat().finally(() => setMemuat(false));
   }, [buka, muat]);
 
-  // Selama ada yang menunggu/diproses dan panel terbuka, segarkan tiap 4 detik.
   const adaYangBerjalan = jobs.some(j => j.status === 'pending' || j.status === 'processing');
   useEffect(() => {
     if (!buka || !adaYangBerjalan) return;
@@ -122,13 +109,6 @@ export default function RiwayatKonversi() {
             </p>
           </div>
 
-          {/* `whitespace-pre-line`: baris "(teknis: …)" dari `blokGalat` harus turun ke bawah,
-              bukan menempel di belakang saran — ia yang dikutip Owner saat melapor. Komentarnya di
-              SINI, bukan di dalam `{pesan && ( … )}`: di dalam tanda kurung itu posisinya ekspresi,
-              dan komentar JSX di posisi ekspresi dibaca sebagai literal objek — build gagal.
-              (Komentar ini dulu MENULIS contoh pembuka-penutup komentar di dalam dirinya; penutupnya
-              mengakhiri komentar lebih awal dan sisa kalimatnya tampil sebagai teks di layar, 8–19 Okt.
-              Dijaga uji-komentar-jsx.) */}
           {pesan && (
             <div className="mx-2 mb-2 px-2 py-1.5 rounded-lg bg-error/10 border border-error/30 text-[12px] text-error leading-snug whitespace-pre-line">
               {pesan}

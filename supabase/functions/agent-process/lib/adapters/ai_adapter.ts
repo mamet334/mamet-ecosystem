@@ -3,13 +3,10 @@ import { RuntimeContext } from '../runtime_context.ts';
 import { checkGuardrails, recordUsage } from '../cost/costTracker.ts';
 import { kirimOpenRouterDenganReasoning, teksNalar, pembungkusNalarStream, bacaSseOpenRouter, MAKS_TOKEN_JAWABAN, pesanSaldoTakCukup, terpotongKarenaPlafon, pesanTerpotongPlafon } from './reasoning_openrouter.ts';
 
-// `info` opsional: OpenRouter menyertakan `provider` (penyedia hulu yang benar-benar melayani,
-// mis. "DeepInfra") di setiap chunk. Groq/OpenAI tidak mengirimnya dan tidak perlu mengoper info.
 async function* processOpenAIStream(res: Response, info?: { provider?: string; sebabSelesai?: string }, tampilkanNalar = false): AsyncGenerator<string, void, unknown> {
   const reader = res.body?.getReader();
   if (!reader) throw new Error("No body");
   let buffer = '';
-  // Nalar (delta.reasoning_details) dibungkus <think> di depan jawaban — hanya bila diminta (Thinking ON).
   const bungkus = pembungkusNalarStream();
   while (true) {
     const { done, value } = await reader.read();
@@ -22,7 +19,6 @@ async function* processOpenAIStream(res: Response, info?: { provider?: string; s
         try {
           const data = JSON.parse(line.substring(6));
           if (info && !info.provider && typeof data.provider === 'string' && data.provider) info.provider = data.provider;
-          // `finish_reason` tiba di bingkai terakhir; 'length' berarti plafon token habis.
           const fr = data.choices?.[0]?.finish_reason;
           if (info && typeof fr === 'string' && fr) info.sebabSelesai = fr;
           const delta = data.choices?.[0]?.delta;
@@ -37,75 +33,11 @@ async function* processOpenAIStream(res: Response, info?: { provider?: string; s
   if (penutup) yield penutup;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PARAMETER REASONING / THINKING PER-PROVIDER
-// ─────────────────────────────────────────────────────────────────────────────
-// Tiap provider menamai parameter ini berbeda-beda. Nama & nilai di bawah
-// DIVERIFIKASI LANGSUNG dari dokumentasi provider pada 2026-09-09 — jangan
-// diubah berdasarkan ingatan, buka dokumentasinya lagi:
-//   OpenRouter : reasoning: { enabled: true }        (openrouter.ai/docs/use-cases/reasoning-tokens)
-//   OpenAI     : reasoning_effort: 'medium'          (developers.openai.com/api/docs/guides/reasoning)
-//   Groq       : reasoning_effort: 'medium'          (console.groq.com/docs/reasoning)
-//   Gemini 3.x : generationConfig.thinkingConfig.thinkingLevel: 'high'
-//   Gemini 2.5 : generationConfig.thinkingConfig.thinkingBudget: -1 (dinamis)
-//   (ai.google.dev/gemini-api/docs/generate-content/thinking)
-//
-// KENAPA HANYA MENYALAKAN, TIDAK PERNAH MEMATIKAN:
-// Kalau thinking tidak diminta, kita TIDAK mengirim apa pun — bukan mengirim
-// nilai "off". Dua alasan keras:
-//   1. OpenRouter menolak dengan HTTP 400 kalau parameter reasoning dikirim ke
-//      model yang tidak mendukungnya. Mengirim nilai "off" tetap berarti
-//      mengirim parameternya, jadi tetap 400.
-//   2. Gemini 2.5 Pro sama sekali tidak bisa dimatikan thinking-nya.
-//
-// CATATAN PERILAKU NYATA (uji live 2026-09-09): alasan #1 di atas berasal dari dokumentasi
-// OpenRouter, tapi tidak terbukti untuk semua model. openai/gpt-4o-mini — yang bukan model
-// reasoning — menerima `reasoning: { enabled: true }` dan menjawab HTTP 200, bukan 400.
-// Jadi penolakannya tampaknya bergantung model, bukan berlaku menyeluruh. Desain asimetris
-// ini tetap dipertahankan: risikonya nyata untuk sebagian model, dan tidak mengirim apa pun
-// tetap satu-satunya jalur yang dijamin tidak mengubah perilaku siapa pun.
-// File ini dilewati SEMUA panggilan LLM — Assistant, Engineer, Lite, dan
-// pengguna eksternal mametlite. Perilaku bawaan wajib tidak berubah sedikit pun
-// bagi siapa pun yang tidak menyalakan toggle ini.
-//
-// PEMBARUAN 2026-09-13 — OPENROUTER KINI TIGA KEADAAN (lib/adapters/reasoning_openrouter.ts):
-// thinking === false dari tier Owner kini MENGIRIM reasoning: { enabled: false }, sebab model yang
-// mampu bernalar menyalakannya otomatis bila tak dikirim apa pun (terukur: 1.491 token nalar ditagih
-// di tier SEDANG yang Thinking-nya mati). Klien yang tidak mengirim thinking (undefined, mis.
-// mametlite) tetap tidak dikirimi apa pun. Model yang menolak (400 "Reasoning is mandatory") diulang
-// sekali tanpa parameter. Groq, OpenAI, dan Gemini tidak berubah.
 
-/**
- * Model Gemini bawaan, dipakai kapan pun pemanggil tidak menentukan model Gemini.
- *
- * DISENTRALKAN 2026-09-09. Sebelumnya 'gemini-2.0-flash' di-hardcode terpisah di
- * jalur execute() dan stream(), dan Google sudah MEMENSIUNKANNYA. Terbukti dari
- * jawaban API-nya sendiri di log produksi 15:56:
- *   "This model models/gemini-2.0-flash is no longer available.
- *    Please update your code to use models/gemini-3.6-flash"
- * Dokumentasi resmi (ai.google.dev/gemini-api/docs/models, dicek 2026-09-09)
- * mencantumkannya di bagian "Previous models" dengan status "(Shut down)".
- *
- * Akibatnya Intent Router mati total tanpa gejala yang terlihat Owner — lihat Item 38.
- * Perbaikan pertama Item 38 sudah menghentikan model provider LAIN masuk ke
- * GeminiAdapter, tapi model cadangannya sendiri ternyata sudah mati.
- *
- * Dipilih 'gemini-2.5-flash' karena masih aktif dan SUDAH dipakai beberapa tempat lain
- * di repo ini (deep_research, cron-agent, context_compressor, tool_subscriber) —
- * konsisten, bukan menambah variasi baru. (`check-keys` dulu ikut di daftar ini;
- * fungsinya dihapus 2026-09-29, T11.) Keluarga 3.x
- * (gemini-3.5-flash-lite dan seterusnya) tersedia kalau nanti ingin lebih murah.
- *
- * SATU tempat saja yang perlu diubah saat migrasi berikutnya. Itulah gunanya.
- */
 const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
 
 type ThinkingProvider = 'openrouter' | 'openai' | 'groq';
 
-/**
- * Menambahkan parameter reasoning ke body request bergaya OpenAI.
- * Mengembalikan body apa adanya kalau thinking tidak diminta eksplisit.
- */
 function applyThinking(
   body: Record<string, any>,
   provider: ThinkingProvider,
@@ -117,20 +49,9 @@ function applyThinking(
   return { ...body, reasoning_effort: 'medium' };
 }
 
-/**
- * Versi Gemini — parameternya bersarang di generationConfig, dan nama fieldnya
- * berbeda antara keluarga 3.x (thinkingLevel) dan 2.5 (thinkingBudget).
- */
 function applyGeminiThinking(payload: any, model: string, enabled?: boolean): any {
   if (enabled !== true || !payload) return payload;
 
-  // Penjaga: GeminiAdapter bisa menerima model ID milik provider lain. Jalur execute()
-  // memakai `input.model` apa adanya sebagai targetModel tanpa memeriksa apakah itu model
-  // Gemini, jadi pemanggil yang mengirim mis. "deepseek/deepseek-v4-flash-0731" akan sampai
-  // ke sini. Terbukti di log produksi 2026-09-09. Menyuntikkan thinkingConfig ke request
-  // seperti itu jelas keliru — parameternya khas Gemini. Kalau namanya bukan model Gemini,
-  // kembalikan payload apa adanya. (Akar masalahnya sendiri — kenapa model non-Gemini bisa
-  // sampai ke GeminiAdapter — dicatat terpisah, di luar cakupan Item 35.)
   if (!/gemini/i.test(model || '')) {
     console.log(`[Thinking] Dilewati — "${model}" bukan model Gemini, thinkingConfig tidak disuntikkan`);
     return payload;
@@ -167,25 +88,6 @@ export class GroqAdapter implements CapabilityAdapter {
     }
     messages.push({ role: 'user', content: promptText });
     
-    // MODEL GROQ (diperbarui 2026-09-10, Item 53).
-    //
-    // `llama-3.1-8b-instant` dan `llama-3.3-70b-versatile` DIPENSIUNKAN Groq pada
-    // 16 Agustus 2026. Sejak itu setiap panggilan Groq menjawab 404 — bukan 401,
-    // jadi bukan soal key. Dibuktikan dengan bertanya langsung ke
-    // `GET /openai/v1/models` memakai key sistem: statusnya 200 (key sehat) dan
-    // ketiga model yang dirujuk kode kita TIDAK ADA di daftar 14 model yang
-    // dikembalikan. Pesan galat Groq sendiri: "The model `llama-3.1-8b-instant`
-    // does not exist or you do not have access to it."
-    //
-    // Penggantinya diambil dari rekomendasi resmi Groq di halaman deprecations,
-    // dan keberadaannya dipastikan ada di daftar server:
-    //   llama-3.1-8b-instant   → openai/gpt-oss-20b
-    //   llama-3.3-70b-versatile → openai/gpt-oss-120b
-    //
-    // Ini provider KETIGA yang jatuh pada pola Item 38 (model dipensiunkan diam-
-    // diam), setelah Gemini dan DeepSeek. Nama alias `groq-llama-*` sengaja
-    // dipertahankan agar preferensi model yang sudah tersimpan di user_metadata
-    // tidak mendadak tak dikenali — yang berubah hanya model yang ditunjuknya.
     let groqModel = 'openai/gpt-oss-20b';
     if (this.rctx.model.model && this.rctx.model.model.startsWith('groq/')) {
       groqModel = this.rctx.model.model.replace('groq/', '');
@@ -242,7 +144,6 @@ export class GroqAdapter implements CapabilityAdapter {
 
   async *stream(input: any, context: AdapterContext): AsyncGenerator<string, void, unknown> {
     const { promptText, systemPromptText, chatHistory } = input;
-    // Lihat catatan pensiun model Groq di execute() di atas (Item 53).
     let groqModel = 'openai/gpt-oss-20b';
     if (this.rctx.model.model && this.rctx.model.model.startsWith('groq/')) groqModel = this.rctx.model.model.replace('groq/', '');
     
@@ -327,10 +228,6 @@ export class OpenRouterAdapter implements CapabilityAdapter {
     }
     messages.push({ role: 'user', content: promptText });
     
-    // OpenRouter model:
-    // - UI bisa mengirim model dalam format: "openai/gpt-4o-mini" (HARUS dikirim apa adanya ke OpenRouter)
-    // - Jika UI mengirim "openrouter/xxx", strip prefix "openrouter/" saja
-    // - Jika UI mengirim key legacy (mis. "gpt-4o-mini"), lakukan mapping minimal
     const rawModel = this.rctx.model.model;
 
     let openRouterModel: string;
@@ -339,22 +236,15 @@ export class OpenRouterAdapter implements CapabilityAdapter {
     } else if (!rawModel) {
       openRouterModel = 'meta-llama/llama-3.1-8b-instruct';
     } else if (rawModel.includes('/')) {
-      // BUGFIX (per your report):
-      // If rawModel contains "/" (e.g. "openai/gpt-4o-mini"), DO NOT map to fallback.
-      // Pass as-is to OpenRouter.
       openRouterModel = rawModel;
     } else if (rawModel.startsWith('openrouter/')) {
       openRouterModel = rawModel.replace('openrouter/', '');
     } else {
       const modelMap: Record<string, string> = {
-        // legacy keys (tanpa provider prefix)
         'gpt-4o-mini': 'openai/gpt-4o-mini',
         'gpt-4o': 'openai/gpt-4o',
         'openrouter-llama-3': 'meta-llama/llama-3.1-8b-instruct',
-        // Model lama sudah hilang dari katalog OpenRouter (dicek 2026-09-09) — dipetakan
-        // ke penerus termurah yang tersedia agar key lawas tidak menghasilkan 404.
         'openrouter-google-gemini-2.0-flash-exp': 'google/gemini-3.5-flash-lite',
-        // mametlite mengirim model 'gemini-2.5-flash'; tanpa BYOK Gemini penyedianya menjadi OpenRouter.
         'gemini-2.5-flash': 'google/gemini-2.5-flash',
         'claude-3.5-sonnet': 'anthropic/claude-3.5-sonnet:beta',
       };
@@ -372,14 +262,10 @@ export class OpenRouterAdapter implements CapabilityAdapter {
       context.trace_id
     );
 
-    // Hybrid: bila pemanggil meminta nalar dialirkan (onNalar), permintaan dikirim sebagai stream lalu dirakit ulang.
-    // Tenggat (2026-09-15): jawaban akhir juga dikirim sebagai stream agar bisa dipotong sebelum batas waktu dinding
-    // Supabase — respons non-stream tidak bisa dibaca sebagian, sehingga semua token yang sudah dibayar ikut hilang.
     const pakaiStream = typeof input.onNalar === 'function' || typeof input.tenggat === 'number';
     const jejakPlafon: { plafonDipakai?: number } = {};
     const res = await kirimOpenRouterDenganReasoning(
       { model: openRouterModel, messages, temperature: 0.1, max_tokens: MAKS_TOKEN_JAWABAN, ...(pakaiStream ? { stream: true } : {}) },
-      // Pemanggil boleh menimpa pilihan nalar untuk satu panggilan (Intent Router/Coordinator/peringkas: false).
       typeof input.thinking === 'boolean' ? input.thinking : this.rctx.model.thinking,
       (body) => fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -395,9 +281,6 @@ export class OpenRouterAdapter implements CapabilityAdapter {
     );
     if (!res.ok) {
       const teks = await res.text();
-      // 402 sudah dicoba diulang dengan plafon terjangkau di `kirimOpenRouterDenganReasoning`;
-      // sampai di sini berarti pengulangannya tidak mungkin atau ikut gagal. Badan JSON mentah
-      // tidak bisa ditindaklanjuti Owner, jadi diganti kalimat yang menyebut angkanya.
       if (res.status === 402) throw new Error(pesanSaldoTakCukup(teks, MAKS_TOKEN_JAWABAN));
       throw new Error(`OpenRouter API Error: ${res.status} ${teks}`);
     }
@@ -408,10 +291,6 @@ export class OpenRouterAdapter implements CapabilityAdapter {
       const m = data.choices?.[0]?.message || {};
       console.warn(`[BATAS_WAKTU] jawaban OpenRouter dipotong pada tenggat: isi ${String(m.content || '').length} huruf, nalar ${String(m.reasoning || '').length} huruf (token sudah ditagih, tidak dibuang)`);
     }
-    // TERPOTONG KARENA PLAFON (2026-10-05) — sebab yang BERBEDA dari `terpotong` di atas (batas
-    // waktu dinding). Ini yang menggantikan lantai 512: dulu permintaan berplafon kecil ditolak
-    // supaya jawaban terpotong tak menyamar jadi model gagal; sekarang boleh dikirim, karena bila
-    // benar terpotong hal itu DIKATAKAN. Labelnya ditempel di luar suara model.
     const terpotongPlafon = terpotongKarenaPlafon(data);
     let answer = data.choices?.[0]?.message?.content || '';
     if (terpotongPlafon) {
@@ -425,29 +304,11 @@ export class OpenRouterAdapter implements CapabilityAdapter {
     const completionTokens = usage.completion_tokens || Math.ceil(answer.length / 4);
     const cachedTokens = usage.prompt_tokens_details?.cached_tokens || usage.cache_read_input_tokens || 0;
 
-    // Biaya SESUNGGUHNYA yang ditagihkan OpenRouter. Selalu dikirim di setiap respons
-    // tanpa parameter tambahan (docs: openrouter.ai/docs/use-cases/usage-accounting,
-    // diverifikasi 2026-09-09) — tidak menambah biaya maupun latensi.
-    //
-    // Ini menggantikan DUA lapis tebakan yang sebelumnya dipakai dan sama-sama meleset:
-    // tabel tarif hardcoded di runtime_context.ts (yang menagih gpt-4o-mini dengan tarif
-    // gpt-4o, 28x lipat) dan tabel model_pricing di database (yang tidak punya baris
-    // DeepSeek sama sekali, sehingga DeepSeek tercatat nol). Lihat Item 42.
     const actualCostUsd = typeof usage.cost === 'number' ? usage.cost : undefined;
 
-    // Token reasoning ditagih tapi tidak muncul di teks jawaban — inilah sebab perkiraan
-    // berbasis panjang teks selalu terlalu kecil untuk model yang bernalar.
     const reasoningTokens = usage.completion_tokens_details?.reasoning_tokens || 0;
 
-    // Penyedia hulu yang BENAR-BENAR melayani permintaan ini. Satu nama model di OpenRouter bisa
-    // dilayani beberapa penyedia (kuantisasi, cache, dan perilakunya bisa berbeda). Item 73: dua
-    // permintaan identik ke deepseek-v4-flash menghasilkan satu jawaban melantur dan satu benar,
-    // dengan selisih hanya di token/cache/biaya — dugaan penyedia berbeda tak bisa dibuktikan karena
-    // field ini dulu dibuang.
     const penyediaHulu = typeof data.provider === 'string' && data.provider ? data.provider : '(tidak dilaporkan)';
-    // T14 (keputusan Owner 28 Sep): nama penyedia ikut DISIMPAN per pesan, bukan hanya dicatat di log.
-    // Tanpa ini, kaitan "gaya jawaban ↔ penyedia" tak bisa diuji surut — log hilang, pesan tetap ada.
-    // Penyedianya TIDAK dikunci: mengunci menaikkan biaya dan membuat jawaban gagal saat penyedia sibuk.
     if (typeof data.provider === 'string' && data.provider) this.rctx.penyediaHulu = data.provider;
 
     console.log(
@@ -485,10 +346,6 @@ export class OpenRouterAdapter implements CapabilityAdapter {
 
   async *stream(input: any, context: AdapterContext): AsyncGenerator<string, void, unknown> {
     const { promptText, systemPromptText, chatHistory } = input;
-    // --- PERBAIKAN: HAPUS HARCODE CLAUDE, GUNAKAN MODEL DARI UI ---
-    // Stream model selection:
-    // - If rawModel contains "/" pass as-is to OpenRouter (no mapping/fallback).
-    // - If rawModel is legacy key like "gpt-4o-mini", map it to "openai/gpt-4o-mini".
     let orModel: string;
     const rawModel = this.rctx.model.model;
 
@@ -553,9 +410,6 @@ export class OpenRouterAdapter implements CapabilityAdapter {
       accumulatedText += chunk;
       yield chunk;
     }
-    // Jalur ini mengalirkan potongan langsung ke layar, jadi labelnya hanya bisa menyusul di akhir
-    // — tetapi tetap harus ada: tanpa ia, jawaban yang terputus di tengah kalimat tampak seperti
-    // model berhenti sendiri. Sebab berhentinya baru diketahui dari bingkai terakhir.
     if (terpotongKarenaPlafon(infoStream)) {
       const plafon = jejakPlafonStream.plafonDipakai || MAKS_TOKEN_JAWABAN;
       console.warn(`[Saldo] aliran TERPOTONG pada plafon ${plafon} token (finish_reason=length): ${accumulatedText.length} huruf terkirim.`);
@@ -567,8 +421,6 @@ export class OpenRouterAdapter implements CapabilityAdapter {
     const promptTokens = Math.ceil(JSON.stringify(messages || []).length / 4);
     const completionTokens = Math.ceil(accumulatedText.length / 4);
     console.log(`[PR#6 TOKEN METRICS] OpenRouter stream (${orModel}): prompt_est=${promptTokens}t completion_est=${completionTokens}t penyedia=${infoStream.provider || '(tidak dilaporkan)'}`);
-    // T14 — lihat catatan di jalur non-stream. Di jalur ini penyedianya baru diketahui SESUDAH aliran
-    // selesai (dibaca dari bingkai pertama yang menyebutkannya), jadi ia dikirim ke layar belakangan.
     if (infoStream.provider) this.rctx.penyediaHulu = infoStream.provider;
 
     this.rctx.tasks.fire('RecordUsageStream', recordUsage({
@@ -705,17 +557,10 @@ export class GeminiAdapter implements CapabilityAdapter {
   async *stream(input: any, context: AdapterContext): AsyncGenerator<string, void, unknown> {
     const { promptText, systemPromptText, chatHistory, image } = input;
 
-    // [PR#6 TOKEN EFFICIENCY] Pisahkan system prompt menjadi dua lapisan:
-    // - Static Layer  → systemInstruction (agar Implicit Caching Gemini aktif otomatis)
-    // - Dynamic Layer → pesan 'user' pertama di contents (RAG, MEMORY — berubah per request)
-    // Struktur ini memungkinkan Gemini mengenali prefix identik antar request
-    // dan meng-cache bagian statis tanpa memerlukan explicit caching API.
     let staticSystemPrompt = systemPromptText || '';
     let dynamicContextInject = '';
 
     if (systemPromptText) {
-      // Ekstrak blok dinamis: <RAG>...</RAG>, <MEMORY>...</MEMORY>, <EXECUTION_TRACE ... />
-      // Blok-blok ini berubah setiap request sehingga harus dipisah dari system instruction
       const dynamicBlockRegex = /(<RAG>[\s\S]*?<\/RAG>|<MEMORY>[\s\S]*?<\/MEMORY>|<EXECUTION_TRACE[^/]*\/>)/g;
       const dynamicBlocks: string[] = [];
       staticSystemPrompt = systemPromptText.replace(dynamicBlockRegex, (match: string) => {
@@ -730,7 +575,6 @@ export class GeminiAdapter implements CapabilityAdapter {
 
     const geminiContents: any[] = [];
 
-    // Injeksikan dynamic context sebagai pesan 'user' pertama (sebelum history)
     if (dynamicContextInject) {
       geminiContents.push({ role: 'user', parts: [{ text: dynamicContextInject }] });
       geminiContents.push({ role: 'model', parts: [{ text: 'Baik, saya telah membaca konteks referensi tersebut.' }] });
@@ -751,7 +595,6 @@ export class GeminiAdapter implements CapabilityAdapter {
     };
     if (staticSystemPrompt) geminiPayload.systemInstruction = { parts: [{ text: staticSystemPrompt }] };
 
-    // Log payload size estimate untuk token metrics (PR#6 Exit Criteria)
     const estimatedPromptChars = staticSystemPrompt.length + dynamicContextInject.length + (promptText || '').length;
     console.log(`[PR#6 TOKEN] Payload stream: static=${staticSystemPrompt.length}c dynamic=${dynamicContextInject.length}c prompt=${(promptText||'').length}c estimasi~${Math.round(estimatedPromptChars/4)} token`);
 
@@ -832,15 +675,10 @@ export class GeminiAdapter implements CapabilityAdapter {
       yield '\n</think>\n\n';
     }
     
-    // [PR#6 TOKEN METRICS] Estimasi token untuk verifikasi dampak caching
-    // estimatedPromptChars = static + dynamic + prompt (dihitung sebelum fetch)
     const promptTokens = Math.ceil(estimatedPromptChars / 4);
     const completionTokens = Math.ceil(accumulatedText.length / 4);
-    // Gemini stream SSE tidak mengembalikan usageMetadata per chunk —
-    // cachedContentTokenCount hanya tersedia di non-stream response.
-    // Untuk stream, kita log estimasi penghematan berdasarkan dynamic vs static split.
     const cachedCandidateTokens = dynamicContextInject.length > 0
-      ? Math.round(staticSystemPrompt.length / 4) // kandidat token yang berpotensi di-cache
+      ? Math.round(staticSystemPrompt.length / 4)
       : 0;
     console.log(`[PR#6 TOKEN METRICS] Stream selesai: prompt_est=${promptTokens}t completion=${completionTokens}t static_cacheable=${cachedCandidateTokens}t`);
     

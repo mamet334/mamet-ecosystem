@@ -9,12 +9,7 @@ import deepResearch from './deep_research.ts';
 import youtubeAnalyst from './youtube_analyst.ts';
 import cronManager from './cron_manager.ts';
 import shopeeNinja from './shopee_ninja.ts';
-// knowledge_manager DIHAPUS (T9, keputusan Owner 2026-09-21): rpc get_workspace_stats tidak ada, filter mutunya butuh
-// kunci Groq yang sudah dihapus (0 dokumen pernah tersimpan dari chat, 0 ringkasan workspace), dan ia MEMBUAT
-// knowledge_space bernama pertanyaan pengguna. Uji live: jawaban RAG Kepbup menjadi "dokumen tidak ditemukan" karena
-// galat/daftar workspace-nya masuk konteks. Workspace kini dikelola dari UI Research App. Kode lama ada di riwayat git.
 
-// Daftarkan semua plugin di sini
 export const plugins = [
   researcher,
   scraper,
@@ -29,7 +24,6 @@ export const plugins = [
   shopeeNinja
 ];
 
-// Fungsi helper untuk membangun daftar tool otomatis bagi LLM
 export const getPluginPromptList = (requestedTools?: string[]) => {
   const toolAliases: Record<string, string> = {
     'web_search': 'researcher',
@@ -42,7 +36,6 @@ export const getPluginPromptList = (requestedTools?: string[]) => {
 
   return plugins
     .filter(p => {
-      // Strict Whitelisting
       if (resolvedTools && resolvedTools.length > 0) {
         if (!resolvedTools.includes(p.name)) return false;
       }

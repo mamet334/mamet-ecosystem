@@ -6,49 +6,9 @@ import {
   type RuntimeContext
 } from '../runtime_context.ts';
 
-/**
- * ENDPOINT PADATKAN KONTEKS — `{ action: 'padatkan', pesan: [{role, content}], model }`
- *
- * Dibuat 2026-09-24 (ROADMAP-ENGINEER-MANDIRI Tahap 3a, sisa pekerjaan "tombol Padatkan").
- *
- * KENAPA ADA
- * "Bersihkan konteks" membuang seluruh ingatan percakapan sekaligus: murah, tapi pada tugas panjang
- * Engineer kehilangan benang merah persis seperti sebelum Tahap 3a. "Padatkan" adalah jalan tengah —
- * pesan lama diringkas jadi SATU pesan yang tetap dikirim, sehingga jendela konteks kosong kembali
- * tanpa percakapannya hilang dari ingatan model.
- *
- * KENAPA DI SERVER, BUKAN PANGGILAN LANGSUNG DARI KLIEN
- * Ini panggilan model berbayar, dan biayanya harus terlihat. Klien tidak boleh menulis tabel biaya
- * mana pun (RLS hanya mengizinkan SELECT), jadi panggilan langsung dari klien (pola `pdfOcrService`)
- * akan jadi pengeluaran yang tak tercatat sama sekali. Itu titik buta yang sama dengan Item 42.
- *
- * DUA TABEL BIAYA, DAN KEDUANYA HARUS DIISI (diperbaiki 24 September 2026)
- * Proyek ini punya DUA pencatat biaya yang berbeda pembacanya:
- *   - `cost_ledger` — ditulis `recordUsage` DI DALAM adapter, dibaca `checkGuardrails` (circuit breaker).
- *   - `api_usage`   — ditulis `logger.logApiUsage`, dibaca RPC pemakaian DAN oleh
- *                     `bahanAnggaranKonteks` di klien untuk menghitung anggaran jendela konteks.
- * Adapter hanya mengisi yang PERTAMA. Uji live pertama endpoint ini (24 September, 01:04) membuktikannya:
- * `cost_ledger` menerima barisnya ($0,013407) sementara `api_usage` tidak menerima apa pun — jadi biaya
- * memadatkan tidak terlihat oleh anggaran yang justru dipakai fitur ini sendiri. Maka logger-nya
- * dipanggil di sini, sama seperti yang dilakukan pipeline chat.
- *
- * BYOK WAJIB (Item 51)
- * Panggilan model chat atas nama pengguna memakai kunci pengguna sendiri. Sama seperti hakim konflik.
- *
- * GAGAL KE ARAH TIDAK MENGUBAH APA PUN
- * Kalau peringkasan gagal, endpoint menjawab galat dan klien TIDAK menggeser batas konteks. Konteks
- * yang gagal dipadatkan harus tetap utuh — lebih baik jendela penuh daripada percakapan yang hilang
- * karena diganti ringkasan yang tidak pernah jadi.
- */
 
-/** Batas bahan yang dikirim ke peringkas. Di atas ini pesan paling lama dipotong lebih dulu. */
 const MAKS_KARAKTER_BAHAN = 240_000;
 
-/**
- * Panjang ringkasan dibatasi lewat PROMPT, bukan lewat `max_tokens`.
- * Adapter mengunci `max_tokens: 8192` di dalam dirinya dan tidak membaca field apa pun dari input,
- * jadi mengirim `maxTokens` dari sini hanya akan diabaikan diam-diam — kelihatan berpagar padahal tidak.
- */
 const MAKS_HURUF_RINGKASAN = 6000;
 
 const SISTEM = `Anda meringkas SATU percakapan kerja teknis agar pekerjaannya bisa DILANJUTKAN setelah percakapan lamanya berhenti dikirim ke model.
@@ -76,7 +36,6 @@ Bentuk jawaban: Bahasa Indonesia, poin-poin bertajuk, sepadat mungkin, di bawah 
 
 type PesanRingkas = { role: string; content: string };
 
-/** Ambil pesan yang layak diringkas, potong dari yang PALING LAMA bila bahannya kelewat panjang. */
 export function siapkanBahan(pesan: unknown, maksKarakter = MAKS_KARAKTER_BAHAN): PesanRingkas[] {
   const semua = Array.isArray(pesan) ? pesan : [];
   const bersih: PesanRingkas[] = [];
@@ -86,7 +45,6 @@ export function siapkanBahan(pesan: unknown, maksKarakter = MAKS_KARAKTER_BAHAN)
     const role = (p as any)?.role === 'user' ? 'user' : 'model';
     bersih.push({ role, content: isi });
   }
-  // Dipotong dari depan: pesan TERBARU yang paling menentukan kelanjutan pekerjaan.
   let total = bersih.reduce((t, p) => t + p.content.length, 0);
   let mulai = 0;
   while (mulai < bersih.length - 1 && total > maksKarakter) {
@@ -96,7 +54,6 @@ export function siapkanBahan(pesan: unknown, maksKarakter = MAKS_KARAKTER_BAHAN)
   return bersih.slice(mulai);
 }
 
-/** Bahan percakapan jadi satu teks berlabel peran — supaya model tahu siapa berkata apa. */
 export function susunPrompt(bahan: PesanRingkas[]): string {
   const isi = bahan
     .map((p) => `[${p.role === 'user' ? 'OWNER' : 'ASISTEN'}]\n${p.content}`)
@@ -104,7 +61,6 @@ export function susunPrompt(bahan: PesanRingkas[]): string {
   return `Berikut percakapan yang harus diringkas (${bahan.length} pesan):\n\n${isi}`;
 }
 
-/** Buang pagar markdown yang kadang dipasang model di sekeliling seluruh jawaban. */
 export function bersihkanRingkasan(mentah: string): string {
   let t = String(mentah || '').trim();
   const pagar = t.match(/^```[a-zA-Z]*\n([\s\S]*?)\n?```$/);
@@ -169,10 +125,6 @@ export async function handlePadatkanRequest(
       gemini: provider === 'gemini' ? byok.gemini : '',
       allGemini: provider === 'gemini' ? [byok.gemini] : []
     },
-    // Model dikirim klien dari BrainService — model utama yang memang dipakai Owner. Sengaja TIDAK
-    // menebak nama model di sini; katalog penyedia berubah lebih cepat daripada kode (Item 41, 53).
-    // `pemilih: 'sistem'` (Item 126): pemadatan konteks dijalankan sistem saat jendela model
-    // hampir penuh — Owner tidak memintanya dan tidak memilih modelnya.
     model: { model: typeof body?.model === 'string' ? body.model : '', provider, thinking: false, pemilih: 'sistem' },
     policy: {},
     stream: { isStream: false, desktopOSMode: false, auditMode: 'OFF' },
@@ -190,10 +142,6 @@ export async function handlePadatkanRequest(
 
     const prompt = susunPrompt(bahan);
     let mentah = '';
-    // Bahan pencatatan biaya, diambil dari jawaban adapter — BUKAN ditebak di sini.
-    // `usageCostUsd` = biaya sesungguhnya yang dilaporkan penyedia; `modelUsed` = model yang
-    // BENAR-BENAR dipakai (bisa berbeda dari yang diminta saat kaskade jatuh ke adapter lain,
-    // dan nama model yang salah berarti tarif yang salah — Item 41).
     let biayaAsliUsd: number | undefined;
     let modelTercatat = '';
     for (const adapter of adapters) {
@@ -219,19 +167,6 @@ export async function handlePadatkanRequest(
     }
     if (!mentah) throw new Error('Semua adapter gagal menjawab.');
 
-    // `api_usage` — TANPA ini, biaya memadatkan tidak terlihat oleh anggaran jendela konteks yang
-    // dihitung klien dari tabel ini. Adapter hanya menulis `cost_ledger`; lihat catatan di kepala berkas.
-    //
-    // DICATAT SEBELUM PEMERIKSAAN MUTU DI BAWAH, bukan sesudahnya. Begitu model menjawab, uangnya
-    // sudah keluar — entah ringkasannya nanti diterima atau ditolak. Menaruhnya sesudah pemeriksaan
-    // berarti setiap penolakan adalah pengeluaran yang hilang dari catatan.
-    //
-    // ARGUMEN KELIMA WAJIB. Tokennya memang perkiraan (`panjang/4`), tapi BIAYANYA tidak perlu:
-    // `usageCostUsd` adalah angka yang dilaporkan penyedia, dan `logApiUsage` memakainya mengalahkan
-    // tabel tarif. Putaran uji 24 September 01:11 membuktikan akibat melewatkannya — `api_usage`
-    // mencatat $0,006647 untuk panggilan yang oleh penyedia ditagih $0,017196 (2,6x terlalu murah),
-    // sehingga batas harian Owner jadi jauh lebih longgar daripada yang ia kira. Jalur chat biasa
-    // (`llm_orchestrator.ts`) selalu meneruskannya; ini yang tertinggal.
     rctx.logger.logApiUsage(
       provider,
       modelTercatat || rctx.model.model || '',
@@ -244,8 +179,6 @@ export async function handlePadatkanRequest(
     if (ringkasan.length < 40) {
       throw new Error(`Ringkasan terlalu pendek untuk dipercaya (${ringkasan.length} huruf).`);
     }
-    // Ringkasan yang tidak lebih pendek dari bahannya tidak memadatkan apa pun — lebih baik gagal
-    // terus terang daripada menggeser batas konteks dan menukar percakapan dengan teks seukurannya.
     const hurufBahan = bahan.reduce((t, p) => t + p.content.length, 0);
     if (ringkasan.length >= hurufBahan) {
       throw new Error(`Ringkasan (${ringkasan.length} huruf) tidak lebih pendek dari percakapannya (${hurufBahan} huruf).`);
@@ -256,11 +189,7 @@ export async function handlePadatkanRequest(
     return jawab({ ringkasan, jumlahPesan: bahan.length }, 200, corsHeaders);
 
   } catch (err: any) {
-    // GAGAL KE ARAH TIDAK MENGUBAH APA PUN — klien tidak menggeser batas konteks kalau ini galat.
     console.error(`[Padatkan] ⚠️ Gagal (user ${user.id}): ${err.message}`);
-    // Tugas latar ditunggu JUGA di jalur gagal. Tanpa `EdgeRuntime.waitUntil`, satu-satunya yang
-    // menahan proses adalah `awaitAll` — kalau jawabannya langsung dikembalikan, baris `api_usage`
-    // untuk panggilan yang sudah terlanjur dibayar bisa hilang bersama prosesnya.
     await tasks.awaitAll();
     return jawab({ error: 'PADATKAN_GAGAL', message: err.message }, 200, corsHeaders);
   }

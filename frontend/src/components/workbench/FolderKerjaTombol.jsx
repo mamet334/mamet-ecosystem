@@ -1,10 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Ikon from '../Ikon';
 
-// TOMBOL 📁 FOLDER KERJA ASSISTANT (Item 85 Tahap 1, 2026-09-22). Menggantikan FolderSelector: folder dipilih lewat
-// IPC berpagar `folder:pilih` — akarnya dicatat & diingat di PROSES UTAMA, layar hanya menerima NAMA folder. Pesan
-// chat membaca status langsung dari proses utama (AssistantService), jadi komponen ini hanya tampilan & tombol.
-// Tanpa Electron (web/Mametlite) tombol tidak tampil.
 
 export default function FolderKerjaTombol() {
   const api = typeof window !== 'undefined' ? window.electronAPI?.folderKerja : null;

@@ -1,12 +1,10 @@
-// ProcessManager.js - Evolusi dari process.js
-// Runtime Contract: Process management dengan PID tracking untuk Mamet OS
 export class ProcessManager {
   constructor(bus) {
     this.bus = bus;
     this.tasks = new Map();
-    this.processes = new Map(); // Process Registry dengan PID
-    this.defaultTimeoutMs = 15000; // 15 detik timeout untuk mencegah blocking
-    this.nextPID = 1; // PID counter
+    this.processes = new Map();
+    this.defaultTimeoutMs = 15000;
+    this.nextPID = 1;
     
     this.bus.on('Process:Execute', (payload) => {
       const data = payload?.data || payload;
@@ -14,13 +12,11 @@ export class ProcessManager {
     });
   }
 
-  // PID Management
   generatePID() {
     const pid = this.nextPID++;
     return pid;
   }
 
-  // Start new process with PID tracking
   async start(taskName, fn, ...args) {
     const pid = this.generatePID();
     const processInfo = {
@@ -51,7 +47,6 @@ export class ProcessManager {
     }
   }
 
-  // Stop process by PID
   async stop(pid) {
     const process = this.processes.get(pid);
     if (!process) {
@@ -64,7 +59,6 @@ export class ProcessManager {
     return true;
   }
 
-  // Restart process by PID
   async restart(pid) {
     const process = this.processes.get(pid);
     if (!process) {
@@ -75,12 +69,10 @@ export class ProcessManager {
     return await this.start(process.taskName, process.fn, ...process.args);
   }
 
-  // Get process info by PID
   getProcess(pid) {
     return this.processes.get(pid) || null;
   }
 
-  // List all running processes
   listProcesses() {
     return Array.from(this.processes.values()).map(p => ({
       pid: p.pid,
@@ -92,7 +84,6 @@ export class ProcessManager {
     }));
   }
 
-  // Kill all processes
   async killAll() {
     const pids = Array.from(this.processes.keys());
     for (const pid of pids) {
@@ -103,12 +94,10 @@ export class ProcessManager {
     return true;
   }
 
-  // Original execute method (backward compatibility)
   async execute(taskName, fn, ...args) {
     return await this.start(taskName, fn, ...args);
   }
 
-  // Internal: execute with timeout
   async _executeWithTimeout(taskName, fn, ...args) {
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => {

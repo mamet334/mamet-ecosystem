@@ -11,15 +11,13 @@ from crawler import konfig
 
 log = logging.getLogger(__name__)
 
-TUNGGU_ULANG = (15, 45)  # detik; setelah itu menyerah
-
+TUNGGU_ULANG = (15, 45)
 
 class SesiSopan:
     def __init__(self, user_agent: str, jeda: tuple[float, float] = (0.5, 1.5), timeout: int = 20,
                  proxy: str | None = None):
         self.session = requests.Session()
         self.session.headers["User-Agent"] = user_agent
-        # proxy=None -> pakai CRAWLER_PROXY dari .env; proxy="" -> paksa koneksi langsung.
         proksi = konfig.proxies(proxy)
         if proksi:
             self.session.proxies.update(proksi)

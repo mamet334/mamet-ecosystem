@@ -1,15 +1,4 @@
-/**
- * === MAMET SUB-AGENT: CODE EXECUTOR PRO ===
- * Kemampuan:
- * 1. Eksekusi kode Python & JavaScript di Dockerized Sandbox (Piston API)
- * 2. Mendukung library populer: pandas, numpy, csv, json, math, statistics, collections, itertools, re
- * 3. Self-Repair: Jika kode gagal, AI otomatis memperbaiki dan mencoba lagi (maks 2 kali)
- * 4. Data Injection: Bisa memproses data CSV/tabel yang dikirim user langsung di dalam chat
- * 5. Multi-Language: Python (utama untuk data), JavaScript (untuk logika web/JSON)
- * 6. Output terformat: Tabel, grafik teks, dan hasil kalkulasi yang rapi
- */
 
-// === HELPER: Eksekusi kode via Piston Sandbox ===
 async function executePiston(code: string, lang: string, version: string): Promise<{ success: boolean; output: string; error: string }> {
   try {
     const pistonRes = await fetch('https://emkc.org/api/v2/piston/execute', {
@@ -53,9 +42,7 @@ async function executePiston(code: string, lang: string, version: string): Promi
   }
 }
 
-// === HELPER: Ekstrak kode dari respons LLM ===
 function extractCode(llmOutput: string): { code: string; lang: string; version: string } {
-  // Deteksi bahasa
   let lang = 'python';
   let version = '3.10.0';
 
@@ -64,7 +51,6 @@ function extractCode(llmOutput: string): { code: string; lang: string; version: 
     version = '18.15.0';
   }
 
-  // Ekstrak kode dari blok markdown
   const patterns = [
     /```(?:python|py)([\s\S]*?)```/,
     /```(?:javascript|js)([\s\S]*?)```/,
@@ -78,15 +64,12 @@ function extractCode(llmOutput: string): { code: string; lang: string; version: 
     }
   }
 
-  // Jika tidak ada blok kode, gunakan seluruh output sebagai kode
   return { code: llmOutput.trim(), lang, version };
 }
 
-// === HELPER: Deteksi apakah user mengirimkan data mentah (CSV/tabel) ===
 function extractInlineData(task: string, context: string): string | null {
   const combined = task + '\n' + context;
 
-  // Deteksi pola data CSV (minimal 2 baris dengan koma atau tab)
   const lines = combined.split('\n');
   let csvLikeLines = 0;
   for (const line of lines) {
@@ -96,7 +79,6 @@ function extractInlineData(task: string, context: string): string | null {
   }
 
   if (csvLikeLines >= 3) {
-    // Ekstrak baris-baris data saja
     const dataLines = lines.filter(l => 
       (l.includes(',') && l.split(',').length >= 2) || 
       (l.includes('\t') && l.split('\t').length >= 2) ||
@@ -115,10 +97,8 @@ export default {
   description: 'Eksekusi kode pemrograman (Python atau JavaScript) secara aman di Dockerized Sandbox. Mampu memproses data CSV/tabel, melakukan kalkulasi matematika/statistik, parsing JSON, manipulasi string, dan algoritma kompleks. Dilengkapi Self-Repair: otomatis memperbaiki kode jika gagal.',
   execute: async ({ task, accumulatedContext, runLLM }) => {
     try {
-      // Deteksi apakah ada data inline (CSV/tabel) yang dikirim user
       const inlineData = extractInlineData(task, accumulatedContext);
 
-      // Bangun prompt yang lebih kaya
       let dataInjectionNote = '';
       if (inlineData) {
         dataInjectionNote = `\n\nDATA YANG DIBERIKAN USER (sudah diekstrak otomatis, masukkan sebagai string dalam kode Anda):\n\`\`\`\n${inlineData.substring(0, 5000)}\n\`\`\`\nGunakan io.StringIO atau split('\\n') untuk memparsing data ini di dalam kode.`;
@@ -138,7 +118,6 @@ ATURAN KETAT:
 9. Untuk kalkulasi statistik, gunakan modul statistics (mean, median, stdev, dll).
 10. Format output menggunakan print() dengan rapi dan terstruktur agar mudah dibaca oleh user.${dataInjectionNote}`;
 
-      // === FASE 1: Generate kode ===
       let llmOutput = await runLLM(`Konteks Tugas:\n${accumulatedContext}\n\nSelesaikan.`, coderPrompt);
       let { code, lang, version } = extractCode(llmOutput);
 
@@ -146,10 +125,8 @@ ATURAN KETAT:
         return { output: '⚠️ AI tidak menghasilkan kode yang valid. Coba ulangi perintah Anda dengan lebih spesifik.' };
       }
 
-      // === FASE 2: Eksekusi pertama ===
       let result = await executePiston(code, lang, version);
 
-      // === FASE 3: Self-Repair (jika gagal, coba perbaiki otomatis maks 2x) ===
       let attempts = 0;
       const maxRepairs = 2;
 
@@ -185,11 +162,10 @@ INSTRUKSI:
           version = repaired.version;
           result = await executePiston(code, lang, version);
         } else {
-          break; // LLM tidak menghasilkan perbaikan yang valid
+          break;
         }
       }
 
-      // === FASE 4: Format output akhir ===
       const statusEmoji = result.success ? '✅' : '❌';
       const repairNote = attempts > 0 
         ? `\n\n🔧 *Self-Repair: Kode diperbaiki otomatis ${attempts}x ${result.success ? '→ Berhasil!' : '→ Tetap gagal.'}*` 
@@ -205,7 +181,6 @@ INSTRUKSI:
         finalOutput += `\n\n**Tips:**\n1. Pastikan perintah Anda cukup jelas untuk dikonversi ke kode.\n2. Coba ulangi dengan instruksi yang lebih spesifik.\n3. Jika membutuhkan library khusus (pandas, numpy), hasilnya mungkin perlu disesuaikan menggunakan library bawaan Python.`;
       }
 
-      // Jika berhasil, gunakan LLM untuk merangkum/menjelaskan hasil
       if (result.success && result.output.length > 50) {
         try {
           const explanation = await runLLM(
@@ -214,7 +189,6 @@ INSTRUKSI:
           );
           finalOutput += `\n\n---\n📝 **Penjelasan Hasil:**\n${explanation}`;
         } catch (_e) {
-          // Jika LLM gagal merangkum, tampilkan output mentah saja
         }
       }
 

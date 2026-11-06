@@ -1,26 +1,7 @@
-/**
- * Confidence Engine — Mamet AI Knowledge OS Phase 2 (Priority 8 + 9)
- * ====================================================================
- * Menghitung confidence dari BACKEND — bukan dari LLM.
- * Ini jauh lebih objektif: deterministic, traceable, auditable.
- *
- * Priority 8: Backend Confidence Scoring
- *   evidence + conflict + version + verification → score 0-100
- *
- * Priority 9: Source Trace
- *   Setiap jawaban Engineer bisa ditelusuri ke evidence sumbernya.
- *   Seperti debugger — "Jawaban ini berdasarkan ADR-0006, TASK-042, dll."
- */
 
-// ============================================================
-// TYPES
-// ============================================================
 
 import { SourceTraceItem, ConfidenceReport, ConfidenceInput } from './types.ts';
 
-// ============================================================
-// FUNGSI UTAMA: HITUNG CONFIDENCE
-// ============================================================
 
 export function calculateConfidence(input: ConfidenceInput): ConfidenceReport {
   const {
@@ -45,23 +26,17 @@ export function calculateConfidence(input: ConfidenceInput): ConfidenceReport {
     ragDocs.length +
     memoryCount;
 
-  // === FORMULA DETERMINISTIC ===
   const baseScore = 50;
 
-  // Evidence bonus: +8 per evidence, max +40
   const evidenceBonus = Math.min(40, evidenceCount * 8);
 
-  // Conflict penalty: -15 per konflik aktif
   const conflictPenalty = -(activeConflicts * 15);
 
-  // Version bonus/penalty
   const versionBonus = allCurrent ? 10 : -15;
   const versionStatus = allCurrent ? 'CURRENT' : 'OUTDATED';
 
-  // Verification bonus
   const verificationBonus = hasVerification ? 10 : 0;
 
-  // Engineer brain penalty: jika Engineer tapi brain kosong
   const isEngineer = mode === 'ENGINEER';
   const brainEmpty = brain1Ids.length === 0 && brain2Tasks.length === 0;
   const engineerBrainPenalty = (isEngineer && brainEmpty) ? -20 : 0;
@@ -69,24 +44,20 @@ export function calculateConfidence(input: ConfidenceInput): ConfidenceReport {
   const rawScore = baseScore + evidenceBonus + conflictPenalty + versionBonus + verificationBonus + engineerBrainPenalty;
   const score = Math.max(0, Math.min(100, rawScore));
 
-  // Grade
   const grade: ConfidenceReport['grade'] =
     score >= 90 ? 'A' :
     score >= 75 ? 'B' :
     score >= 60 ? 'C' :
     score >= 45 ? 'D' : 'F';
 
-  // Label
   const label =
     score >= 90 ? 'Sangat Tinggi' :
     score >= 75 ? 'Tinggi' :
     score >= 60 ? 'Sedang' :
     score >= 45 ? 'Rendah' : 'Sangat Rendah';
 
-  // Build source trace
   const sourceTrace = buildSourceTrace(input);
 
-  // Build summary text untuk system prompt
   const summaryText = buildConfidenceSummary({
     score, grade, label, evidenceCount, activeConflicts, versionStatus, hasVerification, mode
   });
@@ -115,14 +86,10 @@ export function calculateConfidence(input: ConfidenceInput): ConfidenceReport {
   };
 }
 
-// ============================================================
-// SOURCE TRACE BUILDER (Priority 9)
-// ============================================================
 
 export function buildSourceTrace(input: ConfidenceInput): SourceTraceItem[] {
   const trace: SourceTraceItem[] = [];
 
-  // Brain 1: Static knowledge
   if (input.brain1Entries && input.brain1Entries.length > 0) {
     for (const entry of input.brain1Entries) {
       const version = entry.version_major !== undefined
@@ -141,7 +108,6 @@ export function buildSourceTrace(input: ConfidenceInput): SourceTraceItem[] {
       });
     }
   } else if (input.brain1Ids.length > 0) {
-    // Fallback jika hanya punya title
     for (const title of input.brain1Ids) {
       trace.push({
         type: title.startsWith('ADR') ? 'ADR' : title.startsWith('Lesson') ? 'LESSON' : 'OTHER',
@@ -152,7 +118,6 @@ export function buildSourceTrace(input: ConfidenceInput): SourceTraceItem[] {
     }
   }
 
-  // Brain 2: Dynamic context
   for (const task of input.brain2Tasks) {
     trace.push({ type: 'TASK', id: task, title: task, relationship: 'supporting' });
   }
@@ -163,7 +128,6 @@ export function buildSourceTrace(input: ConfidenceInput): SourceTraceItem[] {
     trace.push({ type: 'VERIFICATION', id: ver, title: ver, relationship: 'supporting' });
   }
 
-  // RAG Documents
   for (let i = 0; i < input.ragDocs.length; i++) {
     const doc = input.ragDocs[i];
     const id = (typeof doc === 'object' && doc?.id) ? doc.id : (typeof doc === 'string' && doc.match(/^[A-Z]{2,3}-\d{4}/) ? doc : `DOC-${String(i + 1).padStart(4, '0')}`);
@@ -171,7 +135,6 @@ export function buildSourceTrace(input: ConfidenceInput): SourceTraceItem[] {
     trace.push({ type: 'RAG', id, title, relationship: 'referenced' });
   }
 
-  // Memory
   if (input.memoryCount > 0) {
     trace.push({
       type: 'MEMORY',
@@ -196,9 +159,6 @@ function mapEntryTypeToTraceType(entryType: string): SourceTraceItem['type'] {
   return map[entryType] || 'OTHER';
 }
 
-// ============================================================
-// TEKS SUMMARY UNTUK SYSTEM PROMPT
-// ============================================================
 
 function buildConfidenceSummary(params: {
   score: number;
@@ -236,9 +196,6 @@ function buildConfidenceSummary(params: {
   return text;
 }
 
-// ============================================================
-// SOURCE TRACE TEXT (untuk response ke user)
-// ============================================================
 
 export function buildSourceTraceText(trace: SourceTraceItem[]): string {
   if (trace.length === 0) return '';

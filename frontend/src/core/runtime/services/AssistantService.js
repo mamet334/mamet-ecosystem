@@ -1,21 +1,3 @@
-/**
- * AssistantService.js — Assistant Brain Mamet AI
- *
- * Peran:
- * - Memproses pesan user (handleSend logic)
- * - Inject memory & semantic context ke payload AI
- * - Memanggil Supabase Edge Function (agent-process) dengan streaming/JSON
- * - Menyimpan dan memuat riwayat chat ke/dari Supabase
- * - Menjadi "rumah arsitektur" resmi untuk PR#2 (CognitiveMemoryGovernor), PR#5 (RetrievalStrategy), PR#6 (TokenEfficiency)
- *
- * Prinsip: Satu file, satu tanggung jawab — tidak ada JSX, tidak ada useState.
- * Komponen React (ConversationEngine) hanya memanggil service ini dan menampilkan hasil.
- *
- * Mengikuti pola engineer.js:
- * - Constructor menerima serviceManager
- * - initialize() async untuk setup
- * - Terdaftar resmi di Kernel.js Phase 3
- */
 
 const AGENT_ENDPOINT = 'https://uuyzdjifhdfyyvpxsofu.supabase.co/functions/v1/agent-process';
 
@@ -29,37 +11,25 @@ import { peringatanKlaimTakTeruji } from './engineer/UjiKlaim.js';
 import { anggaranKonteks, pilihPesanKonteks, bacaMulaiDari } from './KonteksChat.js';
 import { rampingkanPesan, pesanUntukServer } from './pesanRamping.js';
 
-// Folder kerja (Item 85 Tahap 1): batas total isi berkas yang dibaca per pertanyaan (semua putaran) — riwayat ikut
-// membawa hasil putaran sebelumnya, jadi tanpa batas ini 4 putaran × 5 berkas × 60 KB bisa ±1,2 MB ke model.
 const FOLDER_BATAS_BACA_BYTE = 150 * 1024;
 
-// Pembatalan oleh pemakai dibedakan dari kegagalan di `pembatalan.js` — modul tersendiri supaya
-// bisa diimpor berkas uji (AssistantService sendiri tidak bisa dimuat di baris perintah).
 import { dibatalkanPemakai } from './pembatalan.js';
 
-// PR#2: Import governor dari versi JS lokal (bukan cross-boundary ke lib/ TypeScript)
 import {
   runCognitiveMemoryGovernor,
   LEGACY_COGNITION_ENABLED
 } from './CognitiveMemoryGovernorService.js';
 
-// PR#6: Token estimator sederhana (~4 chars per token, standar Anthropic/OpenAI approximation)
-// Dipakai untuk logging before/after context optimization
 function estimateTokens(text = '') {
   return Math.ceil(text.length / 4);
 }
 
-// Zona waktu browser (mis. "Asia/Jakarta"), dikirim bersama pesan supaya server tahu jam lokal pengguna
-// sebagai DATA, bukan tebakan model. undefined bila browser tak mendukung — server lalu menyatakan
-// jam lokal tidak diketahui.
 function zonaWaktuBrowser() {
   try { return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined; } catch (_) { return undefined; }
 }
 
-// PR#6: Batas maksimal karakter untuk RAG/memory context yang dikirim ke Edge Function
-// Cegah bloat — context besar tidak selalu = jawaban lebih baik
-const MAX_RAG_CONTEXT_CHARS = 4000;   // ~1000 token
-const MAX_SEMANTIC_CONTEXT_CHARS = 2000; // ~500 token
+const MAX_RAG_CONTEXT_CHARS = 4000;
+const MAX_SEMANTIC_CONTEXT_CHARS = 2000;
 
 export class AssistantService {
   constructor(serviceManager) {
@@ -72,15 +42,7 @@ export class AssistantService {
     console.log('[AssistantService] Initialized');
   }
 
-  // =============================================
-  // MODE RESOLUTION
-  // =============================================
 
-  /**
-   * Resolusi mode berdasarkan workspaceId aktif.
-   * @param {string} workspaceId
-   * @returns {{ resolvedMode: string, resolvedAppSource: string }}
-   */
   resolveMode(workspaceId) {
     if (workspaceId === 'ws-engineer' || workspaceId === 'ENGINEER') {
       return { resolvedMode: 'ENGINEER', resolvedAppSource: 'engineer' };
@@ -91,15 +53,7 @@ export class AssistantService {
     return { resolvedMode: 'ASSISTANT', resolvedAppSource: 'assistant' };
   }
 
-  // =============================================
-  // FILE PATH EXTRACTION (untuk Engineer mode)
-  // =============================================
 
-  /**
-   * Extract file path dari pesan user untuk Engineer mode.
-   * @param {string} message
-   * @returns {string|null}
-   */
   extractFilePathFromMessage(message) {
     if (!message) return null;
     const pattern1 = /(?:di\s+)?(?:file|berkas)\s+([a-zA-Z0-9_\-\/\.]+\.(jsx?|tsx?|ts|js))/i;
@@ -115,15 +69,7 @@ export class AssistantService {
     return null;
   }
 
-  // =============================================
-  // MEMORY: Store Handler (PR#8 Unification)
-  // =============================================
 
-  /**
-   * Handle intent MEMORY_STORE dari RequestClassifierService.
-   * Menyimpan teks memori bersih ke MemoryGovernorService / MemoryService.
-   * @private
-   */
   async _handleMemoryStore({ userMsg, contentToStore, category, workspaceId, userId, onDone }) {
     if (!contentToStore || contentToStore.length === 0) {
       onDone?.('⚠️ Konten memori tidak valid atau terlalu pendek.', [], null);
@@ -137,14 +83,6 @@ export class AssistantService {
 
     const goldenMeta = {
       source_type: 'assistant_chat',
-      // Dulu semua memori chat memakai satu nilai konstan 'assistant_chat_trigger'. Karena
-      // detectAndMarkConflict() menganggap "source_reference sama + isi beda + versi tidak
-      // berurutan" sebagai konflik, SETIAP fakta baru menendang fakta lama yang sama sekali
-      // tidak berhubungan ke CONFLICT_PENDING_REVIEW (mis. "nama panggilan pak slamet"
-      // dianggap berbenturan dengan "menyukai clean architecture"). Aturan itu memang
-      // dirancang untuk memori turunan file (satu path = satu isi kanonik), bukan untuk
-      // fakta chat yang saling independen. Dengan menyertakan kategori, benturan hanya
-      // mungkin terjadi antar fakta sejenis.
       source_reference: `assistant_chat:${category || 'general'}`,
       chat_id: workspaceId || null,
       version_code: `AST-${Date.now()}`,
@@ -154,13 +92,6 @@ export class AssistantService {
 
     try {
       if (governor && userId && typeof governor.storeGoldenMemory === 'function') {
-        // Deteksi konflik TIDAK lagi dipanggil di sini (Item 55).
-        //
-        // Sejak deteksinya berbasis vektor, ia dijalankan di dalam
-        // storeGoldenMemory memakai embedding yang memang sudah dihitung di sana.
-        // Memanggilnya terpisah berarti dua embedding untuk teks yang sama, dan
-        // membuat jalur penyimpanan lain (mis. MemoryService) luput dari
-        // pemeriksaan. Satu memori = satu embedding = satu pemeriksaan.
         const stored = await governor.storeGoldenMemory({
           user_id: userId,
           content: contentToStore,
@@ -173,8 +104,6 @@ export class AssistantService {
         });
 
         if (stored?._duplicateSkipped) {
-          // Jujur: tidak ada yang disimpan. Mengklaim "sudah disimpan" untuk sesuatu yang
-          // dilewati adalah over-claiming yang dilarang 24_ANTI_HALLUCINATION_PROTOCOL.
           onDone?.(`ℹ️ Info itu sudah ada di memori saya, jadi tidak saya simpan lagi: "${contentToStore}"`, [], null);
           return;
         }
@@ -196,17 +125,7 @@ export class AssistantService {
     onDone?.(`⚠️ Gagal menyimpan ke memori. Silakan coba lagi.`, [], null);
   }
 
-  // =============================================
-  // CONTEXT INJECTION: Memory + Semantic
-  // =============================================
 
-  /**
-   * Bangun localContext (memory) dan semanticContext untuk payload.
-   * @param {string} userMsg
-   * @param {string} resolvedMode
-   * @param {string} userId
-   * @returns {Promise<{ localContext: string, semanticContext: string }>}
-   */
   async buildContextInjection(userMsg, resolvedMode, userId, memoryEnabled = true) {
     let localContext = '';
     let semanticContext = '';
@@ -216,11 +135,9 @@ export class AssistantService {
       return { localContext, semanticContext };
     }
 
-    // Cek apakah kueri adalah pertanyaan berita/temporal murni
     const retrievalOrchestrator = this.serviceManager?.get('RetrievalOrchestrator');
     const isTemporal = retrievalOrchestrator?.isTemporalQuery?.(userMsg) || false;
 
-    // Memory injection — dilewati bila tombol Memory mati (2026-09-15); server juga memutus baca & tulis memorinya.
     let memoryService = memoryEnabled ? this.serviceManager.get('MemoryService') : null;
     if (!memoryEnabled) {
       console.log('[AssistantService] Tombol Memory mati — memori tidak diambil.');
@@ -233,7 +150,6 @@ export class AssistantService {
       try {
         const memories = await memoryService.getMemory(userMsg);
         if (memories && memories.length > 0) {
-          // Jika kueri temporal/berita eksternal, cegah pencemaran kueri dengan memori profil/preferensi personal yang tidak relevan
           const filteredMemories = isTemporal
             ? memories.filter(m => (m.similarity && m.similarity >= 0.8) || m.category === 'knowledge')
             : memories;
@@ -247,7 +163,6 @@ export class AssistantService {
       }
     }
 
-    // Semantic context injection
     try {
       const semanticContextService = this.serviceManager.get('SemanticContextService');
       if (semanticContextService && userId) {
@@ -265,17 +180,7 @@ export class AssistantService {
     return { localContext, semanticContext };
   }
 
-  // =============================================
-  // BUILD REQUEST HEADERS
-  // =============================================
 
-  /**
-   * Bangun headers untuk fetch ke Edge Function.
-   * @param {string} token - Supabase access token
-   * @param {string} aiProvider - 'gemini' | 'openai' | 'openrouter' | 'groq'
-   * @param {string} aiKey - BYOK key
-   * @returns {Object}
-   */
   buildHeaders(token, aiProvider, aiKey) {
     const headers = {
       'Content-Type': 'application/json',
@@ -289,17 +194,12 @@ export class AssistantService {
       else if (aiProvider === 'groq') headers['x-byok-groq'] = cleanKey;
       else if (aiProvider === 'gemini') headers['x-byok-gemini'] = cleanKey;
 
-      // Embedding (pencarian dokumen & memori di server) memakai kunci OpenRouter pengguna
-      // (Item 63–65), apa pun provider chat-nya. Hanya ditambahkan bila kunci provider chat ada,
-      // supaya request_pipeline tetap memakai provider pilihan pengguna — ia jatuh ke
-      // x-byok-openrouter hanya saat kunci provider kosong.
       if (!headers['x-byok-openrouter']) {
         try {
           const vault = this.serviceManager?.has('VaultService') ? this.serviceManager.get('VaultService') : null;
           const kunciOpenRouter = vault?.getKey('openrouter');
           if (kunciOpenRouter) headers['x-byok-openrouter'] = kunciOpenRouter.replace(/[^\x00-\x7F]/g, '');
         } catch {
-          // Vault belum siap — server jatuh ke pencocokan kata untuk dokumen.
         }
       }
     }
@@ -307,15 +207,7 @@ export class AssistantService {
     return headers;
   }
 
-  // =============================================
-  // FILE ATTACHMENT: konversi ke base64
-  // =============================================
 
-  /**
-   * Konversi File object ke payload base64 untuk dikirim ke API.
-   * @param {File|null} attachedFile
-   * @returns {Promise<Object|null>}
-   */
   async buildFileData(attachedFile) {
     if (!attachedFile) return null;
     const buffer = await attachedFile.arrayBuffer();
@@ -330,16 +222,7 @@ export class AssistantService {
     };
   }
 
-  // =============================================
-  // CORE: processMessage
-  // =============================================
 
-  /**
-   * Proses pesan user — PR#8: Thin dispatcher (Linux-style).
-   * Hanya: resolve mode → memory trigger → classify → dispatch.
-   * Logic berat ada di _handleLookup() dan _handleConversation().
-   */
-  /** Folder kerja aktif dari proses utama Electron: {nama} atau null (bukan Assistant / bukan desktop / tidak dipilih). */
   async _statusFolderKerja(workspaceId) {
     if (workspaceId !== 'ws-assistant' || typeof window === 'undefined' || !window.electronAPI?.folderKerja) return null;
     try {
@@ -351,10 +234,6 @@ export class AssistantService {
     }
   }
 
-  /**
-   * Konektor yang menyala di workspace ini (Item 129 Tahap D; G3: crawler + server MCP umum) — dibaca dari PROSES UTAMA
-   * setiap pesan. Per workspace (K3). Rinciannya di `konektorAktif.js`.
-   */
   async _statusKonektor(workspaceId) {
     return bacaKonektorAktif(workspaceId);
   }
@@ -365,55 +244,38 @@ export class AssistantService {
     workspaceId,
     userId,
     token,
-    // Pembatalan (2026-10-01). Sebelum ini tidak ada AbortController di mana pun: sekali pesan
-    // terkirim, pemakai terkunci sampai model selesai. Untuk Engineer itu paling berat — permintaannya
-    // panjang dan mahal, dan salah arah baru ketahuan setelah menunggu lama. Owner mengalaminya
-    // sendiri dan hanya bisa lepas dengan memuat ulang jendela.
     signal = null,
     attachedFile = null,
     workspaceManager,
     onChunk,
     onDone,
     onError,
-    onNalar, // hybrid: nalar mengalir sebelum jawaban (hanya jalur CONVERSATION dengan Thinking menyala)
+    onNalar,
     modelTierOverride = null,
-    chatId = null,            // jendela konteks berdiri sendiri per percakapan (Tahap 3a)
+    chatId = null,
     _isPostHocWebRetry = false,
     _injectedKnowledgeContext = '',
-    // Folder kerja (Item 85 Tahap 1) — diisi putaran alat sendiri, bukan pemanggil luar.
     _folderPutaran = 0,
     _folderPertanyaan = null,
     _folderDibaca = null,
     _folderDiubah = null,
     _folderByte = 0,
     _folderKoreksi = false,
-    // Konektor (Item 129 Tahap D) — diisi putaran alat konektor sendiri.
     _konektorPutaran = 0,
     _konektorPertanyaan = null,
     _konektorCatatan = null
   }) {
     if (!userMsg || !token) {
-      // Tanda TERSTRUKTUR, bukan teks tampilan: kalimat yang dibaca manusia disusun di satu tempat
-      // (`services/pesanGalat.js`, dipakai `ConversationEngine`). Sebelum ini sebelas tempat di
-      // berkas ini mengarang teksnya sendiri — itu akar kenapa setiap jalur baru mengarang lagi.
       onError?.({ kode: 'PESAN_KOSONG', teknis: !userMsg ? 'pesan kosong' : 'token tidak ada' });
       return;
     }
 
-    // Dicegat SEBELUM klasifikasi, embedding, dan RAG — ketiganya berbayar dan berjalan sebelum
-    // `fetch`. Penjaga ini juga yang menghentikan putaran alat folder kerja: tiap putaran masuk
-    // lewat pintu yang sama, jadi Berhenti menutup putaran berikutnya tanpa biaya.
     if (signal?.aborted) return;
 
     console.log('[LIFECYCLE] Chat request sent');
 
-    // 1. Resolve mode
     const { resolvedMode, resolvedAppSource } = this.resolveMode(workspaceId);
 
-    // KONEKTOR (Item 129 Tahap D): pola sama dengan folder kerja di bawah. Pembungkus ini dipasang LEBIH DULU, jadi
-    // folder kerja (bila juga aktif) menyelesaikan tag-nya dulu lalu menyerahkan jawaban akhirnya ke sini. Alat
-    // dijalankan lewat GERBANG proses utama (dialog persetujuan, sekali per misi — K2/K8); yang dicatat di kaki jawaban
-    // berasal dari HASIL gerbang, bukan dari kata model.
     const konektor = await this._statusKonektor(workspaceId);
     const infoKonektor = konektor ? { ...konektor, putaran: _konektorPutaran, tingkat: null } : null;
     if (konektor) {
@@ -421,7 +283,6 @@ export class AssistantService {
       const pertanyaanKonektor = _konektorPertanyaan || userMsg;
       const catatanKonektor = _konektorCatatan || [];
       onDone = async (finalText, steps, jsonMetadata, extras = {}) => {
-        // G3: crawler + server umum yang menyala; alat yang boleh diminta = yang tercantum di prompt (konektorAktif.js).
         const { permintaan, galat, teksTanpaTag } = ambilPermintaanKonektor(finalText, petaAlatAktif(konektor));
         if (permintaan.length && _konektorPutaran < MAKS_PUTARAN_KONEKTOR) {
           const putaran = _konektorPutaran + 1;
@@ -430,7 +291,6 @@ export class AssistantService {
             const label = labelAlat(p);
             onChunk?.(`${label}…`, `_${label}… (putaran konektor ${putaran}/${MAKS_PUTARAN_KONEKTOR})_`, steps || []);
             let h;
-            // Server umum: id percakapan ikut, untuk izin "selama percakapan ini" (K17, titik sambung S6).
             try { h = await panggilKonektor(workspaceId, p, chatId); }
             catch (e) { h = { ok: false, alasan: `alat gagal: ${e.message || e}` }; }
             h = { ...h, konektor: p.konektor, alat: p.alat, argumen: p.argumen };
@@ -441,7 +301,6 @@ export class AssistantService {
           return this.processMessage({
             userMsg: pesanHasil,
             history: [...(history || []), { role: 'model', content: finalText }, { role: 'user', content: pesanHasil }],
-            // `signal` ikut: Berhenti memutus putaran konektor berikutnya juga (lihat penjaga di awal processMessage).
             workspaceId, userId, token, signal, attachedFile: null, workspaceManager, chatId,
             onChunk, onDone: onDoneKonektor, onError, onNalar,
             modelTierOverride: modelTierOverride || infoKonektor.tingkat || null,
@@ -457,14 +316,10 @@ export class AssistantService {
       };
     }
 
-    // FOLDER KERJA (Item 85 Tahap 1): status dibaca dari PROSES UTAMA setiap pesan (bukan dari layar). Hanya
-    // Assistant & hanya di Electron. Server menerima NAMA folder saja.
     const folderKerja = await this._statusFolderKerja(workspaceId);
     const pertanyaanAsli = _folderPertanyaan || userMsg;
     const dibaca = _folderDibaca || [];
     const diubah = _folderDiubah || [];
-    // Diisi handler dengan tingkat model yang dipakai putaran ini — putaran lanjutan DIKUNCI ke tingkat itu (keputusan
-    // Owner 2026-09-22): tanpa ini pesan hasil alat yang panjang membuat Auto memilih Besar (±5× biaya per pertanyaan).
     const infoFolder = folderKerja ? { nama: folderKerja.nama, putaran: _folderPutaran, tingkat: null } : null;
     if (folderKerja) {
       const onDoneAsli = onDone;
@@ -495,11 +350,9 @@ export class AssistantService {
               catch (e) { h = { ok: false, alat: p.alat, alamat: p.alamat, alasan: `alat gagal: ${e.message || e}` }; }
             }
             if (h?.ok && h.alat === 'folder_read') { byte += (h.isi || '').length; if (!dibaca.includes(h.alamat)) dibaca.push(h.alamat); }
-            // Tahap 2: yang diubah dicatat dari HASIL proses utama (bukan dari klaim model) — ditolak Owner pun dicatat.
             if (h && ['folder_write', 'folder_edit', 'folder_mkdir', 'folder_rename', 'folder_delete'].includes(h.alat)) {
               diubah.push(`${h.ok ? '✅' : h.ditolakOwner ? '🚫 ditolak' : '⚠️ gagal'} \`${h.alamat}\``);
             }
-            // Tahap 3: perintah dicatat dari hasil proses utama — kode keluar & habis waktu apa adanya.
             if (h?.alat === 'folder_run') {
               const ket = h.ok ? (h.habisWaktu ? '⏱️ dihentikan (batas waktu)' : h.kodeKeluar === 0 ? '▶️ kode 0' : `⚠️ kode ${h.kodeKeluar}`) : h.ditolakOwner ? '🚫 ditolak' : '⚠️ tidak dijalankan';
               diubah.push(`${ket} \`${h.perintah || h.alamat}\``);
@@ -511,28 +364,20 @@ export class AssistantService {
           return this.processMessage({
             userMsg: pesanHasil,
             history: [...(history || []), { role: 'model', content: finalText }, { role: 'user', content: pesanHasil }],
-            // `signal` WAJIB ikut: tanpa ini Berhenti hanya memutus satu putaran, lalu putaran alat
-            // berikutnya berangkat lagi — persis kasus Engineer yang panjang dan mahal.
             workspaceId, userId, token, signal, attachedFile: null, workspaceManager,
             onChunk, onDone: onDoneAsli, onError, onNalar,
             modelTierOverride: modelTierOverride || infoFolder.tingkat || null,
             _folderPutaran: putaran, _folderPertanyaan: pertanyaanAsli, _folderDibaca: dibaca, _folderDiubah: diubah, _folderByte: byte,
-            _folderKoreksi, // koreksi hanya sekali per pertanyaan, termasuk sesudah putaran alat berikutnya
+            _folderKoreksi,
           });
         }
-        // Jawaban akhir: tag yang tersisa (putaran habis) dibuang, berkas yang benar-benar dibaca disebut apa adanya.
-        // Catatan kaki tiruan buatan model dibuang dulu — hanya catatan kaki di bawah ini yang berasal dari proses utama.
         let teks = buangKakiTiruan(permintaan.length ? ambilPermintaanAlat(finalText).teksTanpaTag : finalText);
         if (permintaan.length) teks += `\n\n_⚠️ Batas ${MAKS_PUTARAN} putaran alat folder tercapai — sebagian permintaan alat tidak dijalankan._`;
-        // Klaim menjalankan/mengubah tanpa catatan proses utama untuk pertanyaan INI (bukan riwayat).
         const tercatat = {
           jalan: diubah.some((d) => /^(▶️|⚠️ kode|⏱️)/.test(d)),
           ubah: diubah.some((d) => d.startsWith('✅')),
         };
         const peringatan = peringatanKlaimTanpaAlat(teks, tercatat);
-        // Live Tahap 3: aturan prompt saja kalah oleh kebiasaan meniru riwayat ("saya jalankan lagi… 27" tanpa tag,
-        // dua kali). Maka SEKALI per pertanyaan jawaban karangan itu tidak ditampilkan: model diberi putaran koreksi
-        // untuk benar-benar meminta alat (dialog izin muncul). Gagal lagi → jawaban ditampilkan dengan peringatan.
         if (peringatan && !_folderKoreksi && _folderPutaran < MAKS_PUTARAN) {
           const putaran = _folderPutaran + 1;
           onChunk?.('🔁 koreksi…', `_🔁 Jawaban mengaku menjalankan/mengubah tanpa alat — meminta model mengulang dengan alat (putaran ${putaran}/${MAKS_PUTARAN})…_`, steps || []);
@@ -548,8 +393,6 @@ export class AssistantService {
           });
         }
         if (peringatan) teks += `\n\n${peringatan}`;
-        // Putaran koreksi bukan putaran alat: tanpa pengurangan ini jawaban tanpa alat apa pun bercatatan "(1 putaran):
-        // daftar/pencarian saja" (live Tahap 3).
         const putaranAlat = _folderPutaran - (_folderKoreksi ? 1 : 0);
         if (putaranAlat > 0) {
           teks += `\n\n---\n📂 _Dibaca dari folder **${folderKerja.nama}** (${putaranAlat} putaran alat${_folderKoreksi ? ' + 1 koreksi sistem' : ''}): ${dibaca.length ? dibaca.map((d) => `\`${d}\``).join(', ') : 'daftar/pencarian saja'}_`;
@@ -561,21 +404,16 @@ export class AssistantService {
       };
     }
 
-    // ENGINEER (T8): klaim "sudah menjalankan" tanpa keluaran terminal dari proses utama → peringatan sistem. Usulan
-    // patch (extras.hasPatch) dan jawaban yang masih mengusulkan [MAMET_CMD] tidak dinilai (peringatanKlaimEngineer).
     if (resolvedMode === 'ENGINEER') {
       const onDoneEngineer = onDone;
       onDone = (finalText, steps, jsonMetadata, extras = {}) => {
         let teks = finalText;
         if (!extras?.hasPatch && typeof teks === 'string') {
-          // Blok ```bash satu baris → [MAMET_CMD: …] (disimpan begitu, jadi tombol tetap ada saat chat dibuka ulang).
           teks = blokKodeKeMametCmd(teks);
           const peringatan = peringatanKlaimEngineer(teks, userMsg);
           if (peringatan) teks += `\n\n${peringatan}`;
-          // Prosedur langkah 0.1: tugas bernama wajib diumumkan + dikutip sumbernya.
           const peringatanTugas = peringatanTugasTakDiumumkan(userMsg, teks);
           if (peringatanTugas) teks += `\n\n${peringatanTugas}`;
-          // Tahap 2 Engineer Mandiri: klaim perilaku tanpa blok <uji_klaim> berarti tidak ada yang mengujinya.
           const peringatanKlaim = peringatanKlaimTakTeruji(teks);
           if (peringatanKlaim) teks += `\n\n${peringatanKlaim}`;
         }
@@ -583,8 +421,6 @@ export class AssistantService {
       };
     }
 
-    // 2. PR#8: Classify request type (deterministic, 0 LLM cost). Putaran lanjutan folder kerja selalu CONVERSATION:
-    // pesannya berisi hasil alat, bukan perintah pengguna (tidak boleh terbaca sebagai "ingat …" atau DOC_CONVERT).
     const classifier = this.serviceManager.has('RequestClassifierService')
       ? this.serviceManager.get('RequestClassifierService')
       : null;
@@ -594,7 +430,6 @@ export class AssistantService {
     const requestType = classifiedResult.type;
     const classifierMeta = classifiedResult.metadata || {};
 
-    // 3. Dispatch ke handler yang sesuai
     const handlerParams = {
       userMsg, history, workspaceId, userId, token, signal,
       attachedFile, workspaceManager, onChunk, onDone, onError, onNalar,
@@ -604,28 +439,9 @@ export class AssistantService {
       _konektor: infoKonektor
     };
 
-    // ENGINEER TIDAK BOLEH PERNAH JATUH KE JALUR RINGAN (keputusan Owner, 2026-10-01).
-    //
-    // `RequestClassifierService` sudah menjaganya di hulu: begitu resolvedMode === 'ENGINEER' ia
-    // langsung mengembalikan type 'ENGINEER' dan tidak pernah sampai ke cabang LOOKUP. Penjaga di
-    // bawah ini BUKAN pengganti itu — ia menutup satu-satunya jalan yang tersisa: `resolvedMode`
-    // yang meleset.
-    //
-    // Jalan itu nyata. `resolveMode()` membaca `workspaceId`, dan ConversationEngine mengirim
-    // `workspaceManager?.activeWorkspaceId || 'ws-assistant'` — sementara layar menentukan dirinya
-    // Engineer dari `osState?.workspaceId`. DUA sumber kebenaran untuk pertanyaan yang sama, dan
-    // yang satu jatuh diam-diam ke assistant.
-    //
-    // Akibatnya kalau sampai terjadi, tidak terlihat sama sekali di layar: `_handleLookup` memakai
-    // `history.slice(-3)` (sisipan ada di DEPAN, jadi catatan akar repo & peta repo terbuang —
-    // patokan `_patok` pun tak menolong, jalur itu tidak memanggil `pilihPesanKonteks`), mengirim
-    // `mode: 'LOOKUP'` yang menimpa ENGINEER sehingga seluruh kontrak Engineer hilang, dan memaksa
-    // tier model KECIL. Tiga kehilangan sekaligus, tanpa satu pun tanda.
     const jalurRinganTerlarang = resolvedMode === 'ENGINEER';
 
-    // Dispatch MEMORY_STORE (PR#8 Intent Unification)
     if (requestType === 'MEMORY_STORE' && !jalurRinganTerlarang) {
-      // Tombol Memory mati (2026-09-15): perintah "ingat …" tidak disimpan, dan pengguna diberi tahu alasannya.
       const preferensiTool = this.serviceManager?.get('ToolPreferencesService');
       if (preferensiTool && !preferensiTool.getEffective(workspaceId, 'memory_manager')) {
         console.log('[AssistantService] Tombol Memory mati — MEMORY_STORE tidak disimpan.');
@@ -647,7 +463,6 @@ export class AssistantService {
       return this._handleLookup(handlerParams);
     }
 
-    // Dispatch SKILL → _handleSkill()
     if (requestType === 'SKILL' && !jalurRinganTerlarang) {
       const skillReg = this.serviceManager.has('SkillRegistry')
         ? this.serviceManager.get('SkillRegistry')
@@ -656,28 +471,13 @@ export class AssistantService {
       if (skill) {
         return this._handleSkill({ ...handlerParams, skill });
       }
-      // Fallback ke CONVERSATION jika skill tidak ditemukan
       console.warn(`[processMessage] Skill "${classifierMeta?.skillId}" tidak ditemukan — fallback ke CONVERSATION`);
     }
 
-    // COMMAND, ENGINEER, CONVERSATION → semua lewat ConversationHandler
     return this._handleConversation(handlerParams);
   }
 
-  // =============================================
-  // DOC_CONVERT — tool word_to_pdf
-  // =============================================
 
-  /**
-   * Jalankan konversi dokumen langsung lewat ToolRegistry, tanpa LLM.
-   *
-   * Sengaja deterministik: perintahnya jelas, dan menyerahkannya ke LLM hanya membuka
-   * peluang model MENGAKU sudah mengonversi tanpa berkas apa pun tercipta. Setiap klaim
-   * berhasil di sini bersandar pada bukti dari skrip: berkas selesai ditulis dan jumlah
-   * halaman PDF sama dengan jumlah halaman menurut Word.
-   *
-   * @private
-   */
   async _handleDocConvert({ direction, attachedFile, workspaceId, onChunk, onDone }) {
     if (direction === 'pdf_to_word') {
       onDone?.(
@@ -703,8 +503,6 @@ export class AssistantService {
       return;
     }
 
-    // Versi WEB (mamet-ecosystem.vercel.app, termasuk dari HP): tidak ada Word di sini, jadi
-    // dokumennya dikirim ke laptop lewat antrian Supabase (Item 57).
     if (typeof window === 'undefined' || typeof window.electronAPI?.wordToPdf !== 'function') {
       return this._handleDocConvertLewatLaptop({ attachedFile, onChunk, onDone });
     }
@@ -740,7 +538,6 @@ export class AssistantService {
       return;
     }
 
-    // Gagal atau tidak terbukti — sebutkan tahap dan alasannya apa adanya.
     const tahap = {
       platform: 'aplikasi', input: 'berkas', sibuk: 'antrian', printer: 'printer',
       word: 'Microsoft Word', tunggu: 'penulisan PDF', selesai: 'pemeriksaan hasil',
@@ -754,15 +551,7 @@ export class AssistantService {
     onDone?.(pesan, [], { toolsUsed: ['word_to_pdf'], toolExecution: { name: 'word_to_pdf', result: hasil } });
   }
 
-  /**
-   * Word → PDF dari versi web: kirim ke laptop-pekerja lewat antrian Supabase (Item 57).
-   * Laptop harus online (aplikasi desktop terbuka); kalau tidak, katakan apa adanya — jangan
-   * membuat antrian yang tidak akan dikerjakan siapa pun tanpa memberi tahu pengguna.
-   * @private
-   */
   async _handleDocConvertLewatLaptop({ attachedFile, onChunk, onDone }) {
-    // CACHE DULU (Item 58), SEBELUM memeriksa laptop: dokumen yang isinya pernah dikonversi
-    // langsung diberikan — tanpa antre, tanpa Word, dan tetap berhasil walau laptop mati.
     onChunk?.(`🔍 Memeriksa apakah **${attachedFile.name}** pernah dikonversi...`, `🔍 Memeriksa apakah **${attachedFile.name}** pernah dikonversi...`, []);
     let hash = null;
     try {
@@ -794,7 +583,6 @@ export class AssistantService {
         return;
       }
     } catch (err) {
-      // Cache hanya jalan pintas: gagal di sini tidak boleh menggagalkan konversi.
       console.warn('[AssistantService] Pemeriksaan cache konversi gagal, lanjut ke laptop:', err.message);
     }
 
@@ -851,47 +639,28 @@ export class AssistantService {
     );
   }
 
-  // =============================================
-  // PR#8 — LOOKUP HANDLER (ringan, cepat, murah)
-  // =============================================
 
-  /**
-   * Handle pesan tipe LOOKUP — pertanyaan faktual singkat.
-   * SKIP: memory retrieval, RAG, semantic context, CMG validation.
-   * Hanya: get AI provider → build minimal payload → fetch → handle response.
-   *
-   * @private
-   */
   async _handleLookup({
     userMsg, history, workspaceId, userId, token, workspaceManager, signal = null,
     resolvedMode, resolvedAppSource, onChunk, onDone, onError, _folderKerja = null, _konektor = null
   }) {
     console.log('[AssistantService] PR#8 → _handleLookup (skip memory/semantic; dokumen dicari server bila RAG nyala)');
 
-    // LOOKUP tetap ringan, tapi TIDAK lagi buta dokumen (Item 65). Dulu ragEnabled selalu false,
-    // sehingga pertanyaan faktual pendek — "berapa jumlah desa …", jenis pertanyaan yang paling
-    // sering diajukan ke dokumen — tak pernah mencari di dokumen walau tombol RAG menyala.
-    // Pencarian makna di server murah: satu embedding pertanyaan + potongan teratas.
     const toolPreferencesService = this.serviceManager?.get('ToolPreferencesService');
     const ragToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'rag') : true;
-    // LOOKUP tidak mengambil memori di klien, tetapi server tetap membaca/menulis memori — tombol Memory ikut dikirim.
     const memoryToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'memory_manager') : true;
-    // Data Tabel (Item 92 Tahap 3): pertanyaan pendek "berapa … / siapa …" sering lewat LOOKUP — bendera wajib ikut.
     const dataTabelToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'data_tabel') : false;
     const lookupLite = resolvedMode === 'LITE';
 
-    // Get AI provider config
-    // LOOKUP selalu memakai tier KECIL tanpa classifier: jalur ini memang sudah dirancang ringan
-    // (tanpa memory/RAG/semantic) dan tidak menuntut penalaran berat — keputusan Owner 2026-09-09.
     let aiProvider = 'gemini';
     let formattedModel = '';
     let aiKey = '';
-    let aiThinking; // undefined bila BrainService tak tersedia → server memakai bawaan model
+    let aiThinking;
     try {
       const brainService = this.serviceManager.get('BrainService');
       if (brainService) {
         const context = await brainService.getActiveBrainContext('KECIL');
-        if (_folderKerja) _folderKerja.tingkat = 'KECIL'; // LOOKUP selalu Kecil → putaran lanjutan folder ikut Kecil
+        if (_folderKerja) _folderKerja.tingkat = 'KECIL';
         if (_konektor) _konektor.tingkat = 'KECIL';
         aiProvider = context.provider || 'gemini';
         formattedModel = context.model || '';
@@ -903,35 +672,26 @@ export class AssistantService {
       console.warn('[AssistantService] BrainService not available:', e);
     }
 
-    // Payload minimal — tidak ada globalMemory atau semanticContext
-    // Item 126 (👍/👎): jalur ini dulu TIDAK mengirim traceId — baris cost_ledger-nya ber-trace_id kosong dan jawabannya
-    // tak bisa disambungkan ke umpan balik. Server memakai traceId klien apa adanya (request_parser.ts).
     const traceId = crypto.randomUUID();
     const payload = {
       message: userMsg,
-      mode: 'LOOKUP',              // flag ke Edge Function
+      mode: 'LOOKUP',
       traceId,
-      // Item 126: jalur LOOKUP memaku tier 'KECIL' di kode (lihat getActiveBrainContext di atas) —
-      // SISTEM yang memutuskan model murah untuk pertanyaan faktual pendek, bukan Owner.
       pemilihModel: 'tier-auto',
       appSource: resolvedAppSource,
       workspaceTarget: null,
-      history: history.slice(-3).map(pesanUntukServer),  // hanya 3 pesan terakhir (bukan 10), tanpa langkah proses
-      globalMemory: '',            // sengaja kosong — konteks klien tidak dibangun di jalur ringan
-      semanticContext: '',         // sengaja kosong
+      history: history.slice(-3).map(pesanUntukServer),
+      globalMemory: '',
+      semanticContext: '',
       stream: false,
-      ragEnabled: ragToolEnabled,  // dokumen dicari di server (Item 65)
+      ragEnabled: ragToolEnabled,
       memoryEnabled: memoryToolEnabled,
       model: formattedModel || undefined,
-      thinking: aiThinking, // true/false tier dikirim apa adanya; false kini mematikan nalar di OpenRouter (2026-09-13)
-      clientTimezone: zonaWaktuBrowser(), // mis. "Asia/Jakarta" — server menghitung jam lokal (2026-09-13)
-      // Data Tabel (Item 92 Tahap 3): bendera tersendiri, BUKAN lewat `tools` — daftar tools juga menyaring sub-agent
-      // Coordinator, jadi ['data_tabel'] akan diam-diam mematikan pencarian web.
+      thinking: aiThinking,
+      clientTimezone: zonaWaktuBrowser(),
       dataTabel: dataTabelToolEnabled && !lookupLite ? true : undefined,
-      // Folder kerja (Item 85 Tahap 1): NAMA saja — alamat lengkap tetap di proses utama desktop.
       folderKerja: _folderKerja || undefined,
-      // Konektor (Item 129 Tahap D): id, putaran, sumber siap, sakelar akses — disaring lagi di server.
-      ...muatanKonektor(_konektor), // G3: `konektor` (crawler) + `konektorUmum` (server MCP umum)
+      ...muatanKonektor(_konektor),
       cache_hint: true,
       _request_type: 'LOOKUP'
     };
@@ -951,10 +711,6 @@ export class AssistantService {
     console.log(`[LIFECYCLE] LOOKUP response received (HTTP ${response.status})`);
 
     if (!response.ok) {
-      // Kode mesin DAN kalimat manusia dibaca KEDUANYA. Sebelum ini jalur ini menulis
-      // `errorText = e.error || errorText` — mengambil kodenya (`NO_API_KEY`) dan membuang
-      // `e.message`, padahal `request_pipeline.ts:140-158` mengirim kalimat Indonesia yang menyebut
-      // tindakannya. Yang terbaca Owner dulu: "⚠️ Error: NO_API_KEY".
       let kode = null, pesan = null, teknis = null;
       try { const e = await response.json(); kode = e?.error || null; pesan = e?.message || null; }
       catch (_) { teknis = (await response.text()) || null; }
@@ -963,36 +719,16 @@ export class AssistantService {
       return;
     }
 
-    // Reuse response handler yang sama dengan ConversationHandler
     await this._handleResponseStream(response, { userMsg, isEngineerMode: false, workspaceManager, onChunk, onDone, onError, signal, traceId });
   }
 
-  // =============================================
-  // PR#8 / Skill Impl — SKILL HANDLER
-  // =============================================
 
-  /**
-   * Handle pesan tipe SKILL — eksekusi prosedur multi-step yang didefinisikan Owner.
-   *
-   * Alur:
-   * 1. Ambil skill dari SkillRegistry
-   * 2. Validasi via SkillGuardService
-   * 3. Eksekusi steps berurutan:
-   *    - 'ask'      → kirim prompt sebagai pesan AI, tunggu jawaban Owner
-   *    - 'generate' → kirim ke Edge Function dengan context dari jawaban sebelumnya
-   *    - 'write'    → belum didukung: dilaporkan apa adanya, tidak ada berkas yang ditulis
-   *    - 'read'     → baca file (stub, dikembangkan berikutnya)
-   * 4. Log ke AuditLogService
-   *
-   * @private
-   */
   async _handleSkill({
     skill, userMsg, history, userId, token, workspaceManager, signal = null,
     resolvedMode, resolvedAppSource, onChunk, onDone, onError
   }) {
     console.log(`[AssistantService] Skill → _handleSkill("${skill.id}")`);
 
-    // 1. Validasi via SkillGuardService
     const guard = this.serviceManager.has('SkillGuardService')
       ? this.serviceManager.get('SkillGuardService')
       : null;
@@ -1009,16 +745,14 @@ export class AssistantService {
     this.eventBus.emit('Skill:Started', { skillId: skill.id, skillName: skill.name });
     const startedAt = Date.now();
 
-    // 2. Context yang diakumulasi selama eksekusi multi-step
     const skillContext = {
       skillId: skill.id,
       skillName: skill.name,
-      answers: [],    // Jawaban dari Owner untuk step 'ask'
-      outputs: [],    // Output generate dari setiap step
+      answers: [],
+      outputs: [],
       currentStep: 0
     };
 
-    // 3. Eksekusi steps berurutan
     for (let i = 0; i < skill.steps.length; i++) {
       const step = skill.steps[i];
       const stepPolicy = validation.stepPolicies?.[i]?.policy || 'ALLOW';
@@ -1026,21 +760,13 @@ export class AssistantService {
 
       console.log(`[SkillHandler] Step ${i + 1}/${skill.steps.length}: action=${step.action}`);
 
-      // — STEP: ask — kirim prompt, tunggu jawaban di pesan berikutnya
       if (step.action === 'ask') {
-        // Format pesan tanya yang jelas — sertakan progress step
         const askMsg = `**[Skill: ${skill.name} — Langkah ${i + 1}/${skill.steps.length}]**\n\n${step.prompt}`;
 
-        // Simpan jawaban dari history jika sudah ada (multi-turn skill)
-        // Untuk sekarang: kirim pertanyaan pertama, berikutnya lewat history
         if (i === 0) {
-          // Step pertama: kirim pertanyaan ke Owner
           onDone?.(askMsg, [], null, { isSkillStep: true, skillId: skill.id, stepIndex: i });
           this.eventBus.emit('Skill:StepDone', { skillId: skill.id, step: i + 1, action: 'ask' });
-          // Skill multi-turn akan dilanjutkan di pesan berikutnya via history
-          // Untuk versi ini, selesaikan skill sampai di sini dan beri tahu Owner
           const continueMsg = `\n\n_Jawab pertanyaan di atas, kemudian saya akan melanjutkan ke langkah berikutnya._`;
-          // Simpan state skill ke EventBus untuk dilanjutkan
           this.eventBus.emit('Skill:AwaitingAnswer', {
             skillId: skill.id,
             stepIndex: i,
@@ -1048,15 +774,12 @@ export class AssistantService {
           });
           return;
         } else {
-          // Step berikutnya: ambil jawaban dari history terakhir
           const lastUserMsg = history.slice().reverse().find(m => m.role === 'user')?.content || '';
           skillContext.answers.push({ step: i + 1, answer: lastUserMsg });
         }
       }
 
-      // — STEP: generate — kirim ke LLM dengan context terkumpul
       if (step.action === 'generate') {
-        // Bangun prompt yang menyertakan semua jawaban yang terkumpul
         let contextSummary = '';
         if (skillContext.answers.length > 0) {
           contextSummary = skillContext.answers
@@ -1068,15 +791,12 @@ export class AssistantService {
           ? `${step.prompt}\n\nKonteks dari jawaban sebelumnya:\n${contextSummary}`
           : step.prompt;
 
-        // Kirim ke Edge Function dengan payload minimal
         const { aiProvider, formattedModel, aiKey } = await this._resolveAIProvider();
-        const traceIdLangkah = crypto.randomUUID(); // Item 126: satu traceId per langkah (tiap langkah = satu panggilan model)
+        const traceIdLangkah = crypto.randomUUID();
         const payload = {
           message: generatePrompt,
           mode: resolvedMode || 'STANDARD',
           traceId: traceIdLangkah,
-          // Item 126: skill memakai `_resolveAIProvider()` → `getActiveBrainContext()` TANPA tier,
-          // yaitu model utama yang Owner set di Settings. Jadi pemilihnya Owner, bukan sistem.
           pemilihModel: 'owner-settings',
           appSource: resolvedAppSource,
           history: history.slice(-5).map(pesanUntukServer),
@@ -1096,8 +816,6 @@ export class AssistantService {
         try {
           response = await fetch(AGENT_ENDPOINT, { method: 'POST', headers, body: JSON.stringify(payload), signal });
         } catch (fetchErr) {
-          // Dibatalkan pemakai bukan kegagalan skill — jangan catat ke Skill:Error, nanti riwayat
-          // kegagalan skill terisi oleh tombol Berhenti yang bekerja sebagaimana mestinya.
           if (dibatalkanPemakai(fetchErr, signal)) return;
           onError?.({ kode: 'JARINGAN_SKILL', teknis: fetchErr.message });
           this.eventBus.emit('Skill:Error', { skillId: skill.id, step: i + 1, reason: fetchErr.message });
@@ -1125,7 +843,6 @@ export class AssistantService {
         this.eventBus.emit('Skill:StepDone', { skillId: skill.id, step: i + 1, action: 'generate' });
       }
 
-      // — STEP: write — butuh konfirmasi (PR#1 flow)
       if (step.action === 'write') {
         if (stepPolicy === 'REQUIRE_CONFIRMATION') {
           const confirmMsg = `⚠️ Skill "${skill.name}" ingin menulis file — menulis dari skill belum didukung, jadi TIDAK ada berkas yang ditulis.`;
@@ -1134,7 +851,6 @@ export class AssistantService {
         }
       }
 
-      // — STEP: read — stub (belum implementasi penuh)
       if (step.action === 'read') {
         console.log(`[SkillHandler] Step read — stub, path: ${step.path || '(tidak ada)'}`);
         skillContext.answers.push({ step: i + 1, answer: `[read: ${step.path || 'tidak ada path'}]` });
@@ -1142,7 +858,6 @@ export class AssistantService {
       }
     }
 
-    // 4. Skill selesai
     const duration = Date.now() - startedAt;
     this.eventBus.emit('Skill:Completed', {
       skillId: skill.id,
@@ -1151,7 +866,6 @@ export class AssistantService {
     });
     console.log(`[SkillHandler] Skill "${skill.id}" selesai dalam ${duration}ms`);
 
-    // 5. Log ke AuditLogService jika tersedia
     const auditLog = this.serviceManager.has('AuditLogService')
       ? this.serviceManager.get('AuditLogService')
       : null;
@@ -1167,11 +881,6 @@ export class AssistantService {
     }
   }
 
-  /**
-   * Helper: resolve AI provider dari BrainService.
-   * Dipakai oleh _handleSkill dan _handleLookup.
-   * @private
-   */
   async _resolveAIProvider() {
     let aiProvider = 'gemini';
     let formattedModel = '';
@@ -1190,40 +899,24 @@ export class AssistantService {
     return { aiProvider, formattedModel, aiKey };
   }
 
-  // =============================================
-  // PR#8 — CONVERSATION HANDLER (alur penuh)
-  // =============================================
 
-  /**
-   * Handle pesan tipe CONVERSATION/ENGINEER/COMMAND — alur lengkap.
-   * Ini adalah logika yang sebelumnya ada di processMessage().
-   *
-   * @private
-   */
   async _handleConversation({
     userMsg, history, workspaceId, userId, token, signal = null,
     attachedFile, workspaceManager, resolvedMode, resolvedAppSource,
     onChunk, onDone, onError, onNalar, modelTierOverride = null,
-    chatId = null,            // jendela konteks berdiri sendiri per percakapan (Tahap 3a)
+    chatId = null,
     _isPostHocWebRetry = false, _injectedKnowledgeContext = '', _folderKerja = null, _konektor = null
   }) {
     const isEngineerMode = resolvedMode === 'ENGINEER';
-    // Putaran lanjutan folder kerja: pesannya = hasil alat (bisa puluhan KB) — RAG & Data Tabel tidak dijalankan ulang
-    // atasnya (embedding & perencana atas isi berkas tak berguna dan berbayar). Konektor (Item 129): sama — data
-    // tangkapan crawler bukan pertanyaan.
     const folderLanjutan = (_folderKerja?.putaran || 0) > 0 || (_konektor?.putaran || 0) > 0;
     const isLiteMode = resolvedMode === 'LITE';
 
     console.log(`[AssistantService] Mode check: workspace=${workspaceId}, resolvedMode=${resolvedMode}`);
 
-    // 3. Get AI provider config dari BrainService
-    // Adaptive Model Tiering: tingkat (KECIL/SEDANG/THINKING) ditentukan TierClassifierService
-    // secara deterministik (0 biaya token). Engineer dikecualikan sepenuhnya — jalur BYOK-nya
-    // tetap memakai model utama (getActiveBrainContext tanpa tier), lihat roadmap §3.
     let aiProvider = 'gemini';
     let formattedModel = '';
     let aiKey = '';
-    let aiThinking; // undefined bila BrainService tak tersedia → server memakai bawaan model
+    let aiThinking;
     let selectedTier = null;
     let tierReason = '';
     try {
@@ -1231,7 +924,6 @@ export class AssistantService {
       if (brainService) {
         if (!isEngineerMode) {
           if (modelTierOverride) {
-            // Owner mengunci tingkat lewat pil di kolom chat — classifier dilewati sepenuhnya.
             selectedTier = modelTierOverride;
             tierReason = 'override manual Owner';
           } else {
@@ -1244,7 +936,6 @@ export class AssistantService {
           }
         }
         const context = await brainService.getActiveBrainContext(selectedTier);
-        // Folder kerja: tingkat putaran ini dicatat untuk dikunci di putaran lanjutan (lihat processMessage).
         if (_folderKerja && selectedTier) _folderKerja.tingkat = selectedTier;
         if (_konektor && selectedTier) _konektor.tingkat = selectedTier;
         aiProvider = context.provider || 'gemini';
@@ -1253,8 +944,6 @@ export class AssistantService {
         aiThinking = context.thinking === true;
 
         if (selectedTier) {
-          // Model ikut dicetak supaya Owner bisa memverifikasi tier benar-benar mengganti model,
-          // bukan cuma mengganti label tingkat.
           console.log(`[AssistantService] Model tier: ${selectedTier} (${tierReason}) → ${aiProvider}/${formattedModel || '(default)'}${aiThinking === true ? ' [thinking: ON]' : aiThinking === false ? ' [thinking: OFF]' : ''}`);
         }
       }
@@ -1262,55 +951,28 @@ export class AssistantService {
       console.warn('[AssistantService] BrainService not available:', e);
     }
 
-    // ── SIAPA YANG MEMILIH MODEL (Item 126, Data Flywheel Fase 0) ──────────────────────────────
-    //
-    // Jawabannya hanya diketahui DI SINI, dan sebelum ini tidak pernah meninggalkan konsol: blok
-    // di atas tahu persis apakah Owner menekan pil tier, apakah classifier yang memutuskan, atau
-    // apakah tier dilewati sama sekali (mode Engineer / BrainService tak tersedia). Server tak
-    // punya cara menebaknya — yang ia terima hanya nama model jadi.
-    //
-    // Kenapa ini penting sampai perlu kolom basis data sendiri: diukur 18 Okt 2026, **74,3%**
-    // seluruh biaya berasal dari model yang Owner pilih sendiri, dan harganya 7x per token
-    // dibanding tier murah. Tanpa membedakan pemilihnya, "biaya per jawaban" mengukur selera Owner,
-    // bukan kepintaran sistem — dan roda gila akan mengejar angka yang salah.
-    //
-    // Urutan cabang sengaja sama dengan urutan keputusan di atas, supaya keduanya tak bisa
-    // menyimpang diam-diam.
     const pemilihModel = isEngineerMode
-      ? 'owner-settings'            // Engineer dikecualikan dari tier: selalu model utama Settings
+      ? 'owner-settings'
       : modelTierOverride
-        ? 'owner-override'          // Owner menekan pil tier; classifier dilewati sepenuhnya
+        ? 'owner-override'
         : selectedTier
-          ? 'tier-auto'             // TierClassifierService yang memutuskan (0 token)
-          : 'owner-settings';       // tier tak aktif → model utama Settings, tetap pilihan Owner
+          ? 'tier-auto'
+          : 'owner-settings';
 
-    // Tombol Memory (2026-09-15): kunci 'memory_manager' dari chip Tools; tanpa pilihan tersimpan bernilai nyala.
     const toolPreferencesService = this.serviceManager?.get('ToolPreferencesService');
     const memoryToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'memory_manager') : true;
 
-    // PESAN HASIL MESIN (T8, live 2026-09-22): keluaran terminal Engineer "[TERMINAL OUTPUT for: …]" dan hasil alat
-    // folder "[HASIL ALAT FOLDER]" (isi berkas!) BUKAN pertanyaan — tidak pernah dijadikan kueri Web (log: URL DuckDuckGo
-    // memuat daftar berkas `git status`), RAG, maupun memori (memory_audit_log menyimpan 30 pesan hasil folder utuh, s.d.
-    // 12 ribu huruf isi berkas). Pengetahuan putaran pertama tetap terbawa lewat riwayat percakapan.
     const pesanHasilMesin = folderLanjutan || /^\s*\[(TERMINAL OUTPUT for: |HASIL ALAT FOLDER\]|HASIL ALAT KONEKTOR\])/.test(userMsg || '');
     const memoryAktif = memoryToolEnabled && !pesanHasilMesin;
 
-    // 4. Inject memory + semantic context
     const { localContext, semanticContext } = await this.buildContextInjection(
       userMsg, resolvedMode, userId, memoryAktif
     );
 
-    // 4b. PR#9: 3-Tier Retrieval Orchestrator — ambil knowledge/RAG context (terpisah dari memory)
-    // Toggle per-tool (ToolPreferencesService): RAG & Web Search independen. retrieve() tetap
-    // dipanggil kalau salah satu nyala; RAG mati diteruskan sebagai skipLocalKnowledge supaya
-    // Tier 1 (dokumen lokal) dilewati tapi Tier 3 (web) tetap bisa jalan kalau Web nyala.
     const ragToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'rag') : true;
     const webSearchToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'web_search') : true;
     const deepResearchToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'deep_research') : false;
     const dataTabelToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'data_tabel') : false;
-    // "lanjutkan" untuk jawaban yang terpotong batas waktu server (2026-09-15): server meneruskan dari bahan & nalar yang
-    // tersimpan di metadata pesan. Mencari web/RAG untuk teks "lanjutkan" hanya memasukkan dokumen tak relevan ke prompt
-    // (live v444: berita saham & sepak bola membingungkan model). Pola sama dengan POLA_LANJUTKAN di server (batas_waktu.ts).
     const pesanModelTerakhir = [...(history || [])].reverse().find((m) => m?.role === 'model');
     const lanjutanTerpotong = pesanModelTerakhir?.metadata?.terpotong === true &&
       /^\s*(tolong\s+|mohon\s+)?(lanjut(kan|in)?|teruskan|terusin|continue)(\s+(lagi|jawaban(nya)?|laporan(nya)?|tulisan(nya)?))?\s*[.!]*\s*$/i.test(userMsg || '');
@@ -1318,14 +980,6 @@ export class AssistantService {
     const requestTraceId = crypto.randomUUID();
     let knowledgeContext = _injectedKnowledgeContext || '';
     const retrievalOrchestrator = this.serviceManager?.get('RetrievalOrchestrator');
-    // DOKUMEN DICARI DI SERVER (Item 65, 2026-09-11): agent-process kini mencari dokumen
-    // berdasarkan makna (ragEnabled di payload). Tier 1 di sini — pencocokan kata lewat
-    // KnowledgeService — hanya menggandakan dokumen ke prompt, jadi selalu dilewati; orkestrator
-    // dipanggil hanya untuk Web (Tier 3). Selama RAG menyala, panduan Tier 2 ("tidak ada dokumen
-    // lokal") juga dilewati karena hanya server yang tahu apakah dokumen ditemukan.
-    // PRIVASI: pesan hasil mesin (lihat pesanHasilMesin di atas) tidak dicari ke web sama sekali.
-    // Langkah proses dari KLIEN (ADR-0021 §2.3, 2026-10-28): kueri web yang benar-benar dipakai tampil satu baris di awal
-    // daftar langkah — sebelum langkah server — dan ikut tersimpan di metadata pesan.
     const langkahKlien = [];
     if (!knowledgeContext && retrievalOrchestrator && !isLiteMode && webSearchToolEnabled && !lanjutanTerpotong && !pesanHasilMesin) {
       try {
@@ -1351,8 +1005,6 @@ export class AssistantService {
       }
     }
 
-    // Gabungkan localContext (Memory) + knowledgeContext (RAG Knowledge & Berita Web)
-    // Beri demarkasi tegas agar konteks berita tidak tertukar dengan preferensi personal
     let combinedContext = '';
     if (localContext && knowledgeContext) {
       combinedContext = `[PREFERENSI PERSONAL PENGGUNA (Gunakan hanya jika relevan dengan konteks)]:\n${localContext}\n\n[DOKUMEN PENGETAHUAN & REFERENSI BERITA/WEB]:\n${knowledgeContext}`;
@@ -1364,7 +1016,6 @@ export class AssistantService {
 
     let enhancedRagContext = combinedContext;
 
-    // 4c. PR#2: Cognitive Memory Governor — validasi memory sebelum dikirim ke LLM
     if (enhancedRagContext && LEGACY_COGNITION_ENABLED) {
       try {
         const governorResult = runCognitiveMemoryGovernor({
@@ -1385,10 +1036,8 @@ export class AssistantService {
       }
     }
 
-    // 5. Build file data
     const fileData = await this.buildFileData(attachedFile);
 
-    // 6. PR#6: Context trimming
     const rawRagLen = (enhancedRagContext || '').length;
     const rawSemLen = (semanticContext || '').length;
 
@@ -1410,57 +1059,43 @@ export class AssistantService {
     console.log(`[PR#6 TokenEfficiency] RAG: ${rawRagLen}→${trimmedRagContext.length} chars | Semantic: ${rawSemLen}→${trimmedSemanticContext.length} chars`);
     console.log(`[PR#6 TokenEfficiency] Estimasi token: ${tokensBefore} → ${tokensAfter} (hemat ~${tokensSaved} token)`);
 
-    // JENDELA KONTEKS PER PERCAKAPAN (Tahap 3a, 2026-09-23). Dulu `history.slice(-10)`: sepuluh pesan terakhir
-    // tanpa memandang panjangnya, sehingga pada tugas panjang Engineer kehilangan benang merah dan keluaran perintah
-    // lama lenyap. Kini percakapan ITULAH konteksnya, dibatasi anggaran token yang diturunkan dari batas biaya harian
-    // Owner (Settings) — konteks besar dibayar SETIAP pesan. Pesan sebelum batas "Bersihkan konteks" tidak dikirim,
-    // tetapi TIDAK dihapus (keputusan Owner: riwayat tetap utuh untuk dibaca).
     const biaya = await this.bahanAnggaranKonteks(formattedModel);
     const ang = anggaranKonteks({ ...biaya, porsi: isLiteMode ? 0.02 : undefined });
     const konteks = pilihPesanKonteks(history, { anggaranToken: ang.token, mulaiDari: bacaMulaiDari(chatId) });
     this.konteksTerakhir = { ...konteks, ...ang, chatId, dikirim: undefined };
     console.log(`[Konteks] ${konteks.tokenTerpakai} / ${ang.token} token (${konteks.dikirim.length} pesan dikirim, ${konteks.dilewati} dilewati) — ${ang.alasan}`);
 
-    // 7. Build payload
     const payload = {
       message: userMsg,
       mode: resolvedMode,
-      pemilihModel,                 // Item 126 — dihitung di blok tier di atas, bukan ditebak di sini
+      pemilihModel,
       appSource: resolvedAppSource,
       workspaceTarget: workspaceId,
       traceId: requestTraceId,
-      history: konteks.dikirim.map(pesanUntukServer),   // tanpa langkah proses — server tak membacanya (pesanRamping.js)
+      history: konteks.dikirim.map(pesanUntukServer),
       globalMemory: trimmedRagContext,
       semanticContext: trimmedSemanticContext,
       stream: false,
-      // Hybrid (2026-09-14): nalar dialirkan lebih dulu, jawaban tetap JSON utuh — hanya bila Thinking menyala.
       streamNalar: aiThinking === true,
       ragEnabled: ragToolEnabled && !lanjutanTerpotong && !pesanHasilMesin,
-      memoryEnabled: memoryAktif, // false → server tidak membaca/menulis memori & blok kesadaran menyesuaikan (juga untuk pesan hasil mesin)
+      memoryEnabled: memoryAktif,
       model: formattedModel || undefined,
-      thinking: aiThinking, // true/false tier dikirim apa adanya; false kini mematikan nalar di OpenRouter (2026-09-13)
-      clientTimezone: zonaWaktuBrowser(), // mis. "Asia/Jakarta" — server menghitung jam lokal (2026-09-13)
+      thinking: aiThinking,
+      clientTimezone: zonaWaktuBrowser(),
       file: fileData || undefined,
       requestedFilePath: isEngineerMode ? this.extractFilePathFromMessage(userMsg) : undefined,
-      // Tombol Deep Research (2026-09-15): dikirim ke server tanpa 'web_search' — pencarian web desktop tetap jalan di
-      // perangkat — sehingga server mengalihkan tugas riset Coordinator ke sub-agent deep_research.
       tools: isLiteMode
         ? ['rag_search', 'web_search', 'deep_research']
         : (deepResearchToolEnabled && !isEngineerMode ? ['deep_research'] : undefined),
-      // Data Tabel (Item 92 Tahap 3): bendera tersendiri, BUKAN lewat `tools` — daftar tools juga menyaring sub-agent
-      // Coordinator, jadi ['data_tabel'] akan diam-diam mematikan pencarian web.
       dataTabel: dataTabelToolEnabled && !isLiteMode && !isEngineerMode && !folderLanjutan ? true : undefined,
-      // Folder kerja (Item 85 Tahap 1): NAMA saja — alamat lengkap tetap di proses utama desktop.
       folderKerja: _folderKerja || undefined,
-      // Konektor (Item 129 Tahap D): id, putaran, sumber siap, sakelar akses — disaring lagi di server.
-      ...muatanKonektor(_konektor), // G3: `konektor` (crawler) + `konektorUmum` (server MCP umum)
+      ...muatanKonektor(_konektor),
       cache_hint: true,
       _token_meta: { estimated_before: tokensBefore, estimated_after: tokensAfter, saved: tokensSaved },
       _request_type: 'CONVERSATION'
     };
     Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
 
-    // 8. Build headers & fetch
     const headers = this.buildHeaders(token, aiProvider, aiKey);
     let response;
     try {
@@ -1474,7 +1109,6 @@ export class AssistantService {
     console.log(`[LIFECYCLE] LLM response received (HTTP Status: ${response.status})`);
 
     if (!response.ok) {
-      // Sama dengan jalur LOOKUP di atas: `message` dari server tidak lagi dibuang.
       let kode = null, pesan = null, teknis = null;
       try { const e = await response.json(); kode = e?.error || null; pesan = e?.message || null; }
       catch (_) { teknis = (await response.text()) || null; }
@@ -1491,12 +1125,6 @@ export class AssistantService {
     });
   }
 
-  /**
-   * HYBRID — baca aliran dari agent-process: event `nalar` (potongan nalar), `nalar_selesai` (jawaban mulai
-   * ditulis), lalu `hasil` (isi Response JSON yang biasa) atau `galat`. Baris `: detak` diabaikan.
-   * Mengembalikan data JSON jawaban, atau null bila gagal (onError sudah dipanggil).
-   * @private
-   */
   async _bacaAliranHybrid(response, { onNalar, onError, signal = null }) {
     const reader = response.body.getReader();
     const decoder = new TextDecoder('utf-8');
@@ -1512,9 +1140,6 @@ export class AssistantService {
       else if (ev.tipe === 'hasil') hasil = ev;
       else if (ev.tipe === 'galat') hasil = { galat: ev.pesan || 'galat tidak diketahui' };
     };
-    // Pemutusan di TENGAH aliran melempar dari reader.read(), bukan dari fetch. Tanpa tangkapan ini
-    // tombol Berhenti akan memunculkan "Aliran jawaban terputus sebelum selesai" — kalimat yang
-    // benar secara harfiah tetapi menuduh sambungan atas sesuatu yang diperintahkan pemakai.
     try {
       while (true) {
         const { value, done } = await reader.read();
@@ -1529,7 +1154,6 @@ export class AssistantService {
       throw bacaErr;
     }
     if (buffer.trim()) olah(buffer.trim());
-    // Dibatalkan sesudah aliran berhenti tetapi sebelum `hasil` datang: tetap diam.
     if (!hasil && signal?.aborted) return null;
     if (!hasil) { onError?.({ kode: 'ALIRAN_TERPUTUS', teknis: 'aliran berakhir tanpa blok hasil' }); return null; }
     if (hasil.galat) { onError?.({ teknis: hasil.galat }); return null; }
@@ -1540,25 +1164,16 @@ export class AssistantService {
     return hasil.data;
   }
 
-  // =============================================
-  // SHARED — Response Stream Handler
-  // =============================================
 
-  /**
-   * Handle JSON/streaming response dari Edge Function.
-   * Dipakai bersama oleh _handleLookup dan _handleConversation.
-   * @private
-   */
   async _handleResponseStream(response, {
     userMsg, isEngineerMode, workspaceManager, onChunk, onDone, onError, userId,
     history, workspaceId, token, attachedFile, resolvedMode, resolvedAppSource,
     _isPostHocWebRetry = false, onNalar, hybrid = false, signal = null,
-    traceId = null, // Item 126: ID permintaan yang dikirim di payload — dibawa ke onDone supaya pesan jawaban menyimpannya (👍/👎)
-    langkahAwal = [], // langkah proses dari klien (mis. "🔍 Dicari (web): …") — ditaruh sebelum langkah server
+    traceId = null,
+    langkahAwal = [],
   }) {
     const contentType = response.headers.get('content-type') || '';
 
-    // HYBRID: nalar dialirkan lebih dulu; jawaban (event `hasil`) diproses PERSIS seperti jalur JSON di bawah.
     let jsonHybrid = null;
     if (hybrid && contentType.includes('text/event-stream')) {
       jsonHybrid = await this._bacaAliranHybrid(response, { onNalar, onError, signal });
@@ -1572,25 +1187,18 @@ export class AssistantService {
         ? (jsonData.message || jsonData)
         : JSON.stringify(jsonData.message || jsonData);
 
-      // Penanda dihitung hanya bila BERDIRI SENDIRI di satu baris — menyebutnya dalam kalimat bukan sinyal (2026-09-23).
       const hasPatch = isEngineerMode && adaPenandaPatch(rawContent);
       const cleanContent = hasPatch ? buangPenandaPatch(rawContent) : rawContent;
 
       onDone?.(cleanContent, [...langkahAwal, ...(jsonData.processingSteps || [])], jsonData, { hasPatch, patchOriginalTask: hasPatch ? userMsg : undefined, traceId });
 
-      // MAEF Monitor TIDAK lagi dibuka otomatis di sini — dulu tiap respons AI memaksa panel
-      // ini terbuka kembali walau Owner baru saja menutupnya (minimize jadi terasa tidak
-      // berfungsi). Sekarang murni dikendalikan manual lewat tombol "Monitor" di toolbar chat
-      // (ConversationEngine.jsx handleToggleMaefMonitor).
 
-      // Verifikasi integritas memori sesi Assistant (golden source alignment) tepat 1x di akhir turn
       if (userId) {
         await this.finalizeAssistantSession({ userId });
       }
       return;
     }
 
-    // Streaming path
     let reader, decoder;
     try {
       reader = response.body.getReader();
@@ -1605,9 +1213,6 @@ export class AssistantService {
     let aiResponseText = '';
     let processingSteps = [...langkahAwal];
     let buffer = '';
-    // T14: nama penyedia hulu tiba sebagai bingkai tersendiri di akhir aliran (stream_handler.ts).
-    // Disimpan di metadata pesan supaya kaitan "gaya jawaban ↔ penyedia" bisa diperiksa surut —
-    // log berumur pendek, pesan tersimpan selamanya.
     let penyedia = null;
 
     console.log('[LIFECYCLE] Stream started');
@@ -1655,22 +1260,15 @@ export class AssistantService {
     const hasPatch = isEngineerMode && adaPenandaPatch(aiResponseText);
     const finalText = hasPatch ? buangPenandaPatch(aiResponseText) : aiResponseText;
 
-    // Dulu metadata jalur stream SELALU null, jadi tidak ada satu pun keterangan jawaban yang ikut
-    // tersimpan di sini. Kini metadata dikirim hanya bila memang ada isinya — null dipertahankan saat
-    // kosong supaya perilaku lama (dan pemeriksaan `metadata?.`) tidak berubah tanpa alasan.
     onDone?.(finalText, processingSteps, penyedia ? { penyedia } : null, {
       hasPatch,
       patchOriginalTask: hasPatch ? userMsg : undefined,
       traceId,
     });
 
-    // Post-Hoc Re-Evaluation (PR#9 Fase 3):
-    // Jika jawaban LLM mengandung [STATUS: INSUFFICIENT] atau menyatakan tidak tahu/kurang info terkini,
-    // eskalasikan konfirmasi Tier 3 Web Comparison ke Owner
     const isInsufficient = /\[STATUS:\s*INSUFFICIENT\]/i.test(finalText) ||
       /\b(saya tidak dapat memberikan informasi terbaru|tidak ditemukan di database.*tidak memiliki informasi|informasi.*tidak cukup.*\[STATUS:\s*INSUFFICIENT\])\b/i.test(finalText);
 
-    // Pesan hasil mesin (isi berkas folder / keluaran terminal) tidak pernah dijadikan kueri web, termasuk lewat tawaran ini.
     if (isInsufficient && !_isPostHocWebRetry && !isEngineerMode && !/^\s*\[(TERMINAL OUTPUT for: |HASIL ALAT FOLDER\]|HASIL ALAT KONEKTOR\])/.test(userMsg || '')) {
       const webService = this.serviceManager?.get('WebComparisonService');
       if (webService && typeof webService.requestConfirmation === 'function') {
@@ -1704,35 +1302,12 @@ export class AssistantService {
       }
     }
 
-    // Verifikasi integritas memori sesi Assistant (golden source alignment) tepat 1x di akhir turn
     if (userId) {
       await this.finalizeAssistantSession({ userId });
     }
-    // Interceptor OS lama (<terminal>/<edit_file>/<search_disk>/<run_airdrop>) dihapus 2026-09-15 (Item 85):
-    // tidak pernah aktif (butuh cap:code-execution) dan tanpa pagar folder. Folder kerja Assistant dibangun ulang,
-    // lihat docs/roadmap/ROADMAP-FOLDER-KERJA-ASSISTANT.md.
   }
 
-  // =============================================
-  // CHAT PERSISTENCE
-  // =============================================
 
-  /**
-   * Simpan riwayat chat ke Supabase.
-   * @param {Object} params
-   * @param {Array}  params.messages
-   * @param {string|null} params.chatId - null untuk INSERT baru
-   * @param {string} params.userId
-   * @param {string} params.workspaceId
-   * @param {Function} params.onNewChatId - callback(newId) saat INSERT berhasil
-   * @returns {Promise<void>}
-   */
-  /**
-   * Bahan anggaran jendela konteks: batas biaya harian Owner (Settings), pemakaian hari ini, harga token masuk
-   * model aktif, dan jendela model. Di-cache 2 menit — dipanggil tiap kirim pesan, jadi tidak boleh menambah
-   * satu putaran jaringan penuh setiap kali.
-   * @param {string} model id model aktif (mis. "deepseek/deepseek-v4-pro-0813")
-   */
   async bahanAnggaranKonteks(model) {
     const sekarang = Date.now();
     if (this._anggaranCache && this._anggaranCache.model === model && sekarang - this._anggaranCache.waktu < 120000) {
@@ -1749,8 +1324,6 @@ export class AssistantService {
           .select('input_price_per_1m, context_length').eq('model', model).maybeSingle();
         const h = Number(harga?.input_price_per_1m);
         if (Number.isFinite(h) && h > 0) nilai.hargaInput1M = h;
-        // Jendela model. NULL di tabel berarti "belum diketahui" — biarkan undefined supaya anggaran
-        // jatuh ke perilaku lama (hanya biaya yang membatasi), BUKAN diisi angka tebakan.
         const j = Number(harga?.context_length);
         if (Number.isFinite(j) && j > 0) nilai.batasModel = j;
       }
@@ -1767,24 +1340,10 @@ export class AssistantService {
     return nilai;
   }
 
-  /**
-   * Padatkan konteks: minta server meringkas pesan-pesan yang masih dikirim jadi satu ringkasan.
-   *
-   * Lewat `agent-process` (bukan panggilan langsung ke OpenRouter) supaya `recordUsage` menuliskan
-   * biayanya ke `api_usage` — panggilan ini berbayar, dan anggaran jendela konteks dihitung dari tabel
-   * itu. Klien tidak boleh menulis `api_usage` sendiri (RLS hanya SELECT), jadi panggilan langsung
-   * akan jadi pengeluaran yang tak terlihat oleh batas hariannya sendiri.
-   *
-   * @param {Array<{role: string, content: string}>} pesan
-   * @param {string|null} model
-   * @returns {Promise<{ringkasan: string, jumlahPesan: number}>} melempar Error bila gagal
-   */
   async padatkanKonteks(pesan, model) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) throw new Error('Sesi tidak aktif — masuk ulang lalu coba lagi.');
 
-    // getActiveBrainContext() tanpa tier = MODEL UTAMA, jalur yang sama dengan Engineer — dan ia yang
-    // membawa kunci dari VaultService. getBrainConfig() tidak memuat kuncinya sama sekali.
     const brain = this.serviceManager?.has('BrainService') ? this.serviceManager.get('BrainService') : null;
     const cfg = (await brain?.getActiveBrainContext?.()) || {};
     if (!cfg.key) throw new Error('Memadatkan konteks memerlukan API Key Anda sendiri. Buka Settings → AI Provider.');
@@ -1795,16 +1354,13 @@ export class AssistantService {
       headers,
     });
     if (error) {
-      // Alasan sebenarnya ada di body jawaban (Item 64), bukan di error.message yang umum.
       let alasan = error.message;
       try {
         const isi = await error.context?.json?.();
         if (isi?.message || isi?.error) alasan = isi.message || isi.error;
-      } catch { /* body bukan JSON */ }
+      } catch {  }
       throw new Error(alasan);
     }
-    // Endpoint menjawab 200 dengan { error } saat peringkasannya gagal — diperiksa sendiri,
-    // karena supabase-js tidak melemparnya.
     if (data?.error) throw new Error(data.message || data.error);
     if (!data?.ringkasan) throw new Error('Server tidak mengembalikan ringkasan.');
     return { ringkasan: String(data.ringkasan), jumlahPesan: Number(data.jumlahPesan) || 0 };
@@ -1814,12 +1370,11 @@ export class AssistantService {
     if (!messages || messages.length === 0) return;
     if (!userId) return;
 
-    // Gunakan supabase client statis
     const title = messages[0]?.content?.substring(0, 50) || 'Percakapan Baru';
     const payload = {
       user_id: userId,
       title,
-      messages: messages.map(rampingkanPesan),   // langkah proses tersimpan sekali, bukan dua kali (pesanRamping.js)
+      messages: messages.map(rampingkanPesan),
       updated_at: new Date().toISOString(),
       workspace_type: workspaceId || 'ws-assistant'
     };
@@ -1841,27 +1396,16 @@ export class AssistantService {
       return;
     }
 
-    // [FIX: ChatHistory realtime] Pancarkan event Chat:Updated via EventBus agar
-    // ChatHistory.jsx langsung memanggil fetchChats() tanpa mengandalkan
-    // window.addEventListener('storage') yang hanya berfungsi antar-tab/jendela.
     try {
       const eventBus = this.serviceManager?.get('EventBus');
       if (eventBus && finalChatId) {
         eventBus.emit('Chat:Updated', { chatId: finalChatId, workspaceId: workspaceId || 'ws-assistant', title });
       }
     } catch (e) {
-      // EventBus opsional — jangan gagalkan operasi save jika emit gagal
       console.warn('[AssistantService] Gagal emit Chat:Updated:', e.message);
     }
   }
 
-  /**
-   * Finalisasi sesi Assistant: memverifikasi integritas golden memory yang disimpan selama sesi.
-   * @param {Object} params
-   * @param {string} params.userId
-   * @param {string} [params.chatId]
-   * @returns {Promise<Object|null>}
-   */
   async finalizeAssistantSession({ userId, chatId }) {
     try {
       const governor = this.serviceManager.has('MemoryGovernorService')
@@ -1879,18 +1423,6 @@ export class AssistantService {
     return null;
   }
 
-  /**
-   * Muat riwayat chat dari Supabase.
-   * @param {string} chatId
-   * @returns {Promise<Array|null>} - array messages atau null jika tidak ditemukan
-   */
-  /**
-   * Baca satu chat. Membedakan "baris memang tidak ada" dari "gagal membaca" — dulu keduanya sama-sama
-   * mengembalikan null, dan pemanggilnya menghapus penunjuk chat di localStorage karena mengira chatnya hilang
-   * (perbaikan 2026-09-23). `.maybeSingle()` supaya baris kosong bukan error.
-   *
-   * @returns {Promise<{ messages: object[]|null, hilang: boolean, error: string|null }>}
-   */
   async loadChat(chatId) {
     if (!chatId) return { messages: null, hilang: true, error: null };
     const { data, error } = await supabase
@@ -1907,26 +1439,12 @@ export class AssistantService {
     return { messages: data.messages || [], hilang: false, error: null };
   }
 
-  // =============================================
-  // ENGINEER COMMAND — tombol [MAMET_CMD: …] (T8, 2026-09-22)
-  // =============================================
 
-  /**
-   * Jalankan SATU perintah dari penanda [MAMET_CMD: …] Engineer lewat proses utama: kalimat dipecah tanpa shell,
-   * program dari daftar izin, folder asal = repo Mamet, dialog izin asli (bawaan Tolak). Menggantikan CommandRegistry
-   * (PowerShell dirakit dari alamat mentah; selalu "tidak terdaftar" untuk perintah nyata) dan jalur cadangan yang
-   * meneruskan kalimat mentah ke shell.
-   *
-   * @param {string} perintah - mis. "npm test", "git status"
-   * @returns {Promise<{ output: string, success: boolean, ditolakOwner?: boolean }>}
-   */
   async runCommand(perintah, riwayatPerintah = []) {
     if (!window.electronAPI?.engineer?.jalankan) {
       return { output: 'Menjalankan perintah hanya tersedia di aplikasi desktop.', success: false };
     }
 
-    // Prosedur kerja langkah 0.4: perintah identik yang sudah dijalankan di percakapan ini tidak dijalankan lagi —
-    // hasilnya pasti sama, dan live TUGAS-02 (2026-09-23) model mengulang `git show <alamat>` yang kosong.
     const berulang = cekPerintahBerulang(perintah, riwayatPerintah);
     if (berulang.ulang) {
       return { output: berulang.pesan, success: false, ditolakOwner: false, ditolakAturan: false, ditolakProsedur: true };
@@ -1941,18 +1459,10 @@ export class AssistantService {
         ? `⏱️ Dihentikan — melewati batas waktu ${h.waktuBatasS} detik.`
         : `Kode keluar ${h.kodeKeluar} (${((h.waktuMs || 0) / 1000).toFixed(1).replace('.', ',')} s)${h.terpotong ? ` — keluaran dipotong dari ${h.byteKeluaran} byte` : ''}.`;
       output = `${h.keluaran || '(tanpa keluaran)'}\n\n${kaki}`;
-      // Prosedur langkah 0.3: keluaran kosong yang menyesatkan diberi petunjuk bentuk perintah yang benar.
-      // Perintah Owner TIDAK diubah diam-diam — hanya ditambahi keterangan.
       const petunjuk = petunjukHasilKosong(perintah, output);
       if (petunjuk) output += `\n\n${petunjuk}`;
-      // Prosedur langkah 3a: pembacaan berkas utuh yang terpotong diberi jalan keluarnya (git grep / git blame),
-      // bukan sekadar ditandai "dipotong". Live 2026-09-28: Engineer tahu keluarannya terpotong, tetapi tidak
-      // tahu ada perintah lain — lalu mengarang jalan memutar lewat python.
       const petunjukPotong = petunjukKeluaranTerpotong(perintah, h);
       if (petunjukPotong) output += `\n\n${petunjukPotong}`;
-      // `git grep` mengembalikan baris yang COCOK, bukan isi berkas — dan hasilnya terlihat lengkap,
-      // jadi tidak ada penjaga lain yang menyala. Owner 2 Okt: "kenapa engineer terlalu cepat
-      // mengambil kesimpulan, padahal grep hanya menghasilkan separuh isinya."
       const petunjukGrep = petunjukGrepSebagian(perintah, h);
       if (petunjukGrep) output += `\n\n${petunjukGrep}`;
     } else if (h?.ditolakOwner) {
@@ -1962,23 +1472,12 @@ export class AssistantService {
     }
     const success = !!h?.ok && !h.habisWaktu && h.kodeKeluar === 0;
 
-    // Jejak audit Engineer (SessionArtifact) — dari hasil proses utama, bukan dari kata model.
     try {
       this.serviceManager.get('EventBus')?.emit('Engineer:CommandExecuted', {
         command: perintah, status: success ? 'success' : 'error', output
       });
     } catch (_) {}
 
-    // JEJAK AUDIT YANG BERTAHAN (2026-10-04). Yang di atas hanya event dalam memori: ia mengisi
-    // SessionArtifact dan state UI, dan keduanya hilang saat jendela dimuat ulang.
-    //
-    // Dicatat DI SINI, bukan di pemanggil, karena `runCommand` satu-satunya pintu semua perintah
-    // Engineer — kedua pemanggil di UI (tombol manual & jalan-sendiri) ikut tercakup, begitu pula
-    // pemanggil baru nanti, tanpa masing-masing perlu ingat mencatat.
-    //
-    // `tanpaIzin` datang dari PROSES UTAMA (`alatFolderJalan.cjs`), satu-satunya pihak yang tahu
-    // dialognya ditampilkan atau dilewati. Tidak disimpulkan ulang di sini: menyimpulkannya dari
-    // teks perintah berarti menebak aturan yang justru ingin diaudit.
     try {
       const auditLog = this.serviceManager.has('AuditLogService')
         ? this.serviceManager.get('AuditLogService')
@@ -1986,32 +1485,24 @@ export class AssistantService {
       if (auditLog) {
         const { data: sesi } = await supabase.auth.getSession();
         await auditLog.logCommand({
-          userMsg: '',                       // pesan pemicu tidak dibawa ke jalur ini
+          userMsg: '',
           commandName: String(perintah || ''),
           targetPath: h?.alamat || '(akar repo Engineer)',
-          inWorkspace: true,                 // folder asalnya akar repo pilihan Owner
-          isDestructive: false,              // tidak diklasifikasikan — lihat catatan di logCommand
+          inWorkspace: true,
+          isDestructive: false,
           success,
-          output,                            // hanya PANJANGNYA yang disimpan
+          output,
           tanpaPersetujuan: h?.tanpaIzin === true,
           alasan: h?.ditolakOwner ? 'Ditolak Owner di dialog izin.' : (h?.alasan || ''),
           userId: sesi?.session?.user?.id || null,
         });
       }
     } catch (err) {
-      // Audit yang gagal tidak boleh menggagalkan perintahnya — tetapi juga tidak boleh senyap.
       console.warn('[AssistantService] Jejak audit perintah gagal disimpan:', err?.message || err);
     }
-    // ditolakAturan: pecahPerintah/daftar izin/profil menolak SEBELUM dialog — hasilnya pasti sama tiap kali, jadi UI
-    // tidak mengirimnya balik ke model (live: "npm install lodash" diusulkan ulang 3× setelah tiap penolakan).
     return { output, success, ditolakOwner: !!h?.ditolakOwner, ditolakAturan: !h?.ok && !h?.ditolakOwner };
   }
 
-  /**
-   * Rollback patch via git stash.
-   * @param {string|null} checkpointRef
-   * @returns {Promise<{ success: boolean, output?: string, error?: string, cancelled?: boolean }>}
-   */
   async rollback(checkpointRef) {
     if (!window.electronAPI?.gitRollback) {
       return { success: false, error: 'Rollback tidak tersedia (bukan desktop mode).' };
@@ -2024,11 +1515,6 @@ export class AssistantService {
     }
   }
 
-  /**
-   * Refresh memory untuk query tertentu.
-   * @param {string} query
-   * @returns {Promise<Array>}
-   */
   async refreshMemory(query) {
     const memoryService = this.serviceManager.get('MemoryService');
     if (!memoryService || !query) return [];

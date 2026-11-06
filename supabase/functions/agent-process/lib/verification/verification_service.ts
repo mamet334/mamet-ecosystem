@@ -4,10 +4,6 @@ import { EvidenceReport } from './types.ts';
 import { VerificationReport, VerificationAuditRecord } from './verification_engine.ts';
 import { saringMetadata, samarkanTeks } from '../saring_rahasia.ts';
 
-/**
- * Verification Service — Infrastructure Layer
- * Menangani semua external side-effects (Database, Audit, Logging).
- */
 
 export async function getActiveConflictsCount(
   rctx: RuntimeContext,
@@ -122,7 +118,6 @@ export async function persistTelemetryLog(
       event_type: params.eventType,
       provider: params.provider,
       message: samarkanTeks(params.message || ''),
-      // Payload event bisa membawa rctx/env berisi kunci API — selalu disaring (saring_rahasia.ts).
       metadata: saringMetadata(params.metadata)
     }]);
   } catch (err) {

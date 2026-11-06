@@ -3,12 +3,6 @@ import Ikon from '../Ikon';
 import { supabase } from '../../supabase';
 import { kernel } from '../../core/runtime/Kernel';
 
-/**
- * MemoryContextPanel - Panel "Memory Context" yang menampilkan:
- * 1. Active Memories (Retrieved / Active) dengan opsi Soft-Delete
- * 2. Conflict Resolver (Review item CONFLICT_PENDING_REVIEW + visual diff)
- * 3. Trash Bin / Purge Lifecycle Manager (Soft-delete -> Pending Purge -> Hard Delete)
- */
 export default function MemoryContextPanel({
   memories = [],
   query = '',
@@ -35,13 +29,11 @@ export default function MemoryContextPanel({
   });
   const [filter, setFilter] = useState('ALL');
   
-  // State data konflik & trash & active DB memories
   const [conflicts, setConflicts] = useState([]);
   const [trashItems, setTrashItems] = useState([]);
   const [dbActiveMemories, setDbActiveMemories] = useState([]);
   const [isLoadingExtras, setIsLoadingExtras] = useState(false);
   
-  // Action states
   const [processingId, setProcessingId] = useState(null);
   const [confirmPurgeId, setConfirmPurgeId] = useState(null);
 
@@ -52,7 +44,6 @@ export default function MemoryContextPanel({
       : null;
   }, [serviceManager]);
 
-  // Muat data konflik, trash, dan active memories dari governor / database
   const loadExtras = useCallback(async () => {
     setIsLoadingExtras(true);
     try {
@@ -71,7 +62,6 @@ export default function MemoryContextPanel({
         setTrashItems(trashData || []);
         setDbActiveMemories(activeData || []);
       } else {
-        // Fallback langsung ke query Supabase
         const [{ data: cData }, { data: tData }, { data: aData }] = await Promise.all([
           supabase.from('user_memories').select('*').eq('user_id', userId).eq('status', 'CONFLICT_PENDING_REVIEW'),
           supabase.from('user_memories').select('*').eq('user_id', userId).in('status', ['archived', 'pending_purge']),
@@ -92,7 +82,6 @@ export default function MemoryContextPanel({
     loadExtras();
   }, [loadExtras]);
 
-  // Listener event bus untuk update real-time
   useEffect(() => {
     const bus = serviceManager?.get?.('EventBus') || kernel?.serviceManager?.get?.('EventBus');
     if (!bus) return;
@@ -127,7 +116,6 @@ export default function MemoryContextPanel({
     };
   }, [serviceManager, loadExtras]);
 
-  // === Helper Tipe & Label ===
   const getMemoryType = (m) => {
     const type = (m?.memory_type || m?.type || '').toUpperCase();
     const source = (m?.source || '').toUpperCase();
@@ -166,11 +154,8 @@ export default function MemoryContextPanel({
     return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   };
 
-  // Tentukan memori efektif untuk tampilan: gunakan memories prop jika ada hasil retrieval,
-  // atau tampilkan seluruh memori aktif sistem jika belum ada query / query generik
   const effectiveMemories = (memories && memories.length > 0) ? memories : dbActiveMemories;
 
-  // Filter Active
   const filteredMemories = effectiveMemories.filter((m) => {
     if (filter === 'ALL') return true;
     if (filter === 'USER_MEMORY') return getMemoryType(m) === 'USER_MEMORY';
@@ -181,7 +166,6 @@ export default function MemoryContextPanel({
   const countUser = effectiveMemories.filter((m) => getMemoryType(m) === 'USER_MEMORY').length;
   const countKnowledge = effectiveMemories.filter((m) => getMemoryType(m) === 'PERSONAL_KNOWLEDGE').length;
 
-  // Handlers Aksi
   const handleResolve = async (memoryId, resolution) => {
     setProcessingId(memoryId);
     try {
@@ -262,7 +246,6 @@ export default function MemoryContextPanel({
 
   return (
     <div className="w-80 shrink-0 border-l border-outline-variant bg-surface-container-low/80 backdrop-blur-md flex flex-col h-full min-h-0 overflow-hidden animate-in fade-in slide-in-from-right-2 z-10 text-on-surface">
-      {/* Header Utama */}
       <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-outline-variant bg-surface-container-low">
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-lg bg-primary/15 border border-primary/30">
@@ -308,7 +291,6 @@ export default function MemoryContextPanel({
         </div>
       </div>
 
-      {/* Navigasi Tab Utama */}
       <div className="flex items-center border-b border-outline-variant bg-surface-container-lowest/50 text-[12px] font-medium">
         <button
           onClick={() => setActiveTab('ACTIVE')}
@@ -357,12 +339,8 @@ export default function MemoryContextPanel({
         </button>
       </div>
 
-      {/* ========================================================================= */}
-      {/* TAB 1: ACTIVE MEMORIES */}
-      {/* ========================================================================= */}
       {activeTab === 'ACTIVE' && (
         <>
-          {/* Query terakhir */}
           {query && (
             <div className="px-3 py-2 border-b border-outline-variant bg-surface-container-low/40">
               <div className="flex items-center gap-1.5 text-[12px] text-on-surface-variant mb-1">
@@ -373,7 +351,6 @@ export default function MemoryContextPanel({
             </div>
           )}
 
-          {/* Filter Subtabs */}
           <div className="flex items-center gap-1 px-2.5 py-1.5 border-b border-outline-variant">
             <button
               onClick={() => setFilter('ALL')}
@@ -401,7 +378,6 @@ export default function MemoryContextPanel({
             </button>
           </div>
 
-          {/* List Item Aktif */}
           <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2">
             {loading ? (
               <div className="flex items-center justify-center py-8 text-on-surface-variant">
@@ -441,7 +417,6 @@ export default function MemoryContextPanel({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-1">
                         <p className="text-[12px] text-on-surface break-words leading-snug">{content}</p>
-                        {/* Tombol Soft-Delete (Arsipkan) */}
                         {m.id && !isConflict && (
                           <button
                             disabled={processingId === m.id}
@@ -474,9 +449,6 @@ export default function MemoryContextPanel({
         </>
       )}
 
-      {/* ========================================================================= */}
-      {/* TAB 2: CONFLICT RESOLVER (REVIEW & DIFF VIEW) */}
-      {/* ========================================================================= */}
       {activeTab === 'CONFLICTS' && (
         <div className="flex-1 overflow-y-auto custom-scrollbar p-2.5 space-y-3">
           {conflicts.length === 0 ? (
@@ -499,7 +471,6 @@ export default function MemoryContextPanel({
                   key={conf.id}
                   className="border border-red-500/40 bg-red-950/20 rounded-xl p-3 space-y-2.5 shadow-sm"
                 >
-                  {/* Header Konflik */}
                   <div className="flex items-center justify-between text-[12px] text-red-400 font-semibold border-b border-red-500/20 pb-1.5">
                     <div className="flex items-center gap-1.5">
                       <Ikon nama="warning" ukuran={14} className="shrink-0" />
@@ -510,11 +481,6 @@ export default function MemoryContextPanel({
                     </span>
                   </div>
 
-                  {/* Metadata Deteksi.
-                      Kemiripan dan alasan hakim hanya ada pada konflik yang
-                      dideteksi cara baru (SEMANTIC_CONTRADICTION, Item 55).
-                      Konflik lama tidak punya keduanya — jangan tampilkan
-                      kolom kosong yang seolah-olah bermakna. */}
                   <div className="text-[12px] text-on-surface-variant space-y-0.5">
                     <div><span className="font-semibold text-on-surface">Alasan:</span> {info.reason || 'KONTEN BERBEDA / VERSI TIDAK SEKUENSIAL'}</div>
                     {info.similarity != null && (
@@ -525,17 +491,11 @@ export default function MemoryContextPanel({
                     )}
                   </div>
 
-                  {/* Keterangan yang menjelaskan apa yang SUDAH terjadi.
-                      Tanpa ini, "Pertahankan Lama" terbaca seolah membatalkan
-                      memori baru — padahal memori baru selalu tersimpan dan
-                      yang diputuskan di sini hanya nasib memori lama. */}
                   <div className="text-[12px] leading-relaxed rounded-lg p-2 bg-surface-container-lowest/50 border border-outline-variant text-on-surface-variant">
                     Memori baru <span className="font-semibold text-on-surface">sudah tersimpan</span>. Yang Anda putuskan di sini hanya apakah memori lama masih berlaku.
                   </div>
 
-                  {/* Diff Container */}
                   <div className="space-y-1.5 text-[12px]">
-                    {/* Memori Lama — inilah yang nasibnya diputuskan */}
                     <div className="rounded-lg p-2 bg-red-900/20 border border-red-500/30">
                       <div className="flex items-center gap-1 text-[12px] font-bold text-red-400 mb-0.5 uppercase tracking-wide">
                         <span>🔴 Memori Lama — menunggu keputusan Anda</span>
@@ -543,7 +503,6 @@ export default function MemoryContextPanel({
                       <p className="text-on-surface break-words leading-relaxed">{previousContent}</p>
                     </div>
 
-                    {/* Memori Baru — sudah masuk, tidak diputuskan di sini */}
                     <div className="rounded-lg p-2 bg-emerald-900/20 border border-emerald-500/30">
                       <div className="flex items-center gap-1 text-[12px] font-bold text-emerald-400 mb-0.5 uppercase tracking-wide">
                         <span>🟢 Memori Baru — sudah tersimpan</span>
@@ -552,12 +511,6 @@ export default function MemoryContextPanel({
                     </div>
                   </div>
 
-                  {/* Tombol Keputusan Owner.
-                      Label lama ("Pertahankan Lama" / "Buang / Arsipkan")
-                      menyesatkan: yang pertama terdengar seperti menolak memori
-                      baru, padahal artinya kedua memori dibiarkan hidup
-                      berdampingan. Label diganti agar menyebut akibatnya, bukan
-                      tindakannya. */}
                   <div className="pt-1 flex items-center gap-2">
                     <button
                       disabled={processingId === conf.id}
@@ -584,9 +537,6 @@ export default function MemoryContextPanel({
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* TAB 3: TRASH & PURGE LIFECYCLE */}
-      {/* ========================================================================= */}
       {activeTab === 'TRASH' && (
         <div className="flex-1 overflow-y-auto custom-scrollbar p-2.5 space-y-2.5">
           {trashItems.length === 0 ? (
@@ -624,7 +574,6 @@ export default function MemoryContextPanel({
 
                   <p className="text-[12px] text-on-surface break-words leading-snug">{content}</p>
 
-                  {/* Modal / Inline Konfirmasi Hard Delete */}
                   {confirmPurgeId === item.id ? (
                     <div className="bg-red-950/50 border border-red-500/40 rounded-lg p-2 space-y-1.5 animate-in fade-in">
                       <p className="text-[12px] text-red-300 font-semibold leading-tight">
@@ -647,9 +596,7 @@ export default function MemoryContextPanel({
                       </div>
                     </div>
                   ) : (
-                    /* Tombol Aksi Normal */
                     <div className="flex items-center gap-1.5 pt-1">
-                      {/* Tombol Pulihkan */}
                       <button
                         disabled={processingId === item.id}
                         onClick={() => handleRestore(item.id)}
@@ -660,7 +607,6 @@ export default function MemoryContextPanel({
                         <span>Pulihkan</span>
                       </button>
 
-                      {/* Tombol Aksi Purge */}
                       {!isPendingPurge ? (
                         <button
                           disabled={processingId === item.id}
@@ -691,7 +637,6 @@ export default function MemoryContextPanel({
         </div>
       )}
 
-      {/* Footer Statistik */}
       <div className="px-3 py-2 border-t border-outline-variant text-center bg-surface-container-low/50">
         <p className="text-[12px] text-on-surface-variant tracking-widest uppercase">
           {effectiveMemories.length} Aktif • {conflicts.length} Konflik • {trashItems.length} Trash

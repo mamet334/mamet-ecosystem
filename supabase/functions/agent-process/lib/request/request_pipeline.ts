@@ -18,15 +18,6 @@ import { blokPromptKonektor } from '../../../../../shared/konektorAlat.js';
 import { blokPromptKonektorUmum } from '../../../../../shared/konektorUmum.js';
 
 
-/**
- * Embedding untuk pencarian memori — lewat generateEmbedding (rag/embedding.ts), pintu
- * embedding satu-satunya beserta penjaga dimensinya.
- *
- * Sampai 2026-09-10 (Item 62) di sini ada salinan kaskade adapter sendiri yang menerima
- * vektor sepanjang APA PUN. Bila Gemini gagal dan pengguna chat dengan BYOK openai, ia
- * memakai kunci pengguna itu untuk vektor OpenAI 768 dimensi, yang lalu ditolak
- * match_memories (kolom 3072).
- */
 async function generateEmbeddingThroughAdapter(
   text: string,
   rctx: RuntimeContext,
@@ -54,21 +45,9 @@ export async function executeRequestPipeline(
     supabaseAnonKey: Deno.env.get('SUPABASE_ANON_KEY') || '',
     apifyApiToken: Deno.env.get('APIFY_API_TOKEN') || '',
     enableAsyncMemoryWrite: Deno.env.get('ENABLE_ASYNC_MEMORY_WRITE') !== 'false',
-    // Bawaan MATI: tanpa variabel ini tak ada panggilan hakim, tak ada biaya, tak ada tambahan waktu tunggu.
     hakimBayangan: Deno.env.get('HAKIM_BAYANGAN') || ''
   };
 
-  // Kunci SERVER Gemini & Groq tidak lagi dibaca (keputusan Owner 2026-09-15, fokus OpenRouter): ketiga kunci
-  // Gemini gratis mati (403/429) sehingga Intent Router & Coordinator gagal di setiap pesan, dan kunci gratis pihak
-  // lain berisiko berubah kebijakan/biaya. Secret-nya sudah dihapus dari Supabase. Gemini/Groq hanya dengan BYOK.
-  //
-  // OPENAI_API_KEY ikut berhenti dibaca di sini (2026-10-04). Ia satu-satunya penyedia yang TERLEWAT saat
-  // keputusan BYOK 2026-09-10 menutup cadangan kunci sistem: `openAI` masih diisi kunci server bagi setiap
-  // pengguna yang penyedianya BUKAN openai. Ditelusuri sampai habis — tak ada yang memakainya hari ini
-  // (`getAdapter()` nol pemanggil, satu-satunya kaskade memakai ['openrouter','gemini','groq'], dan
-  // `env.OPENAI_API_KEY` yang dititipkan ke sub-agent tidak pernah dibaca), jadi ini pistol terisi tanpa
-  // pelatuk: menambahkan 'openai' ke satu daftar preferredOrder sudah cukup membuat kunci Owner membayari
-  // pengguna luar — akibat nomor 1 yang justru dilarang keputusan itu. Ditutup sebelum pelatuknya terpasang.
 
   const bypassCooldown = request.headers.get('x-bypass-cooldown') === 'true';
   if (bypassCooldown) {
@@ -79,7 +58,6 @@ export async function executeRequestPipeline(
   const { user, authErrorResponse } = await handleAuth(request, runtimeEnv.supabaseUrl, runtimeEnv.supabaseAnonKey, corsHeaders);
   if (authErrorResponse) return { ctx: {} as any, rctx: {} as any, response: authErrorResponse };
 
-  // UUID Validation - Fix for "SUPABASE" string error
   const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.id);
   if (!isValidUUID) {
     console.error('[RequestPipeline] Invalid user.id:', user.id);
@@ -98,36 +76,14 @@ export async function executeRequestPipeline(
       }) };
   }
 
-  // Dynamic provider handling
   const provider = parsed.provider || 'openrouter';
   const providerHeaderKey = `x-byok-${provider}`;
   const byokProviderKey = request.headers.get(providerHeaderKey);
-  // [BYOK WAJIB — keputusan Owner 2026-09-10]
-  //
-  // Key sistem dari environment SENGAJA tidak lagi dipakai sebagai cadangan untuk
-  // provider chat. Sebelumnya, pengguna tanpa key sendiri diam-diam dialihkan ke
-  // `OPENROUTER_API_KEY` milik Owner. Dua akibatnya buruk sekaligus:
-  //
-  //   1. Belanja pengguna eksternal ditanggung Owner tanpa jejak kepemilikan, dan
-  //      ikut memakan plafon harian Owner sendiri.
-  //   2. Ketika key sistem itu mati — terbukti 2026-09-10, OpenRouter menjawab
-  //      401 "User not found" — SETIAP pengguna tanpa BYOK langsung tertutup
-  //      total, dengan galat mentah alih-alih penjelasan. Tidak ada yang tahu,
-  //      karena Owner selalu punya key sendiri sehingga tak pernah menyentuh
-  //      jalur itu.
-  //
-  // Aturannya kini sama untuk semua mode, menggeneralisasi penjagaan yang sudah
-  // lebih dulu ada untuk mode ENGINEER (2026-07-30): pemakaian harus punya
-  // pemiliknya. (Key sistem Gemini untuk fungsi internal sudah dihapus 2026-09-15 —
-  // Intent Router/Coordinator kini memakai kunci OpenRouter pengguna.)
   const providerApiKey = (byokProviderKey || '').trim();
 
   const finalProvider = providerApiKey ? provider : 'openrouter';
   const finalApiKey = providerApiKey || (request.headers.get('x-byok-openrouter') || '').trim();
 
-  // [SECURITY FIX 2026-07-30] GUARD: Mode ENGINEER wajib menggunakan BYOK key dari user.
-  // Jika tidak ada BYOK key, TOLAK request. Engineer TIDAK BOLEH menggunakan API key sistem.
-  // Ini mencegah Engineer menghabiskan saldo owner tanpa izin eksplisit.
   if (parsed.mode === 'ENGINEER' || parsed.appSource === 'engineer') {
     const byokOpenrouter = request.headers.get('x-byok-openrouter') || '';
     const byokGemini    = request.headers.get('x-byok-gemini')     || '';
@@ -149,8 +105,6 @@ export async function executeRequestPipeline(
     }
   }
 
-  // Gerbang BYOK umum. Ditaruh SESUDAH penjagaan ENGINEER supaya mode itu tetap
-  // memberi pesannya sendiri yang lebih spesifik.
   if (!finalApiKey) {
     console.warn(`[RequestPipeline] ⛔ Permintaan ditolak: tidak ada BYOK API key dari user (mode: ${parsed.mode || 'default'}, appSource: ${parsed.appSource || 'unknown'}).`);
     return { ctx: {} as any, rctx: {} as any, response: new Response(JSON.stringify({
@@ -167,7 +121,6 @@ export async function executeRequestPipeline(
 
   console.log(`[RequestPipeline] Provider: ${finalProvider}, Key source: BYOK header`);
 
-  // Hapus duplikasi ctx yang error!
   const ctx = buildUnifiedExecutionContext({
       message: parsed.message,
       desktopOSMode: parsed.desktopOSMode,
@@ -196,15 +149,9 @@ export async function executeRequestPipeline(
   const rctx: RuntimeContext = {
     traceId,
     keys: {
-      // Semua kunci LLM kini milik PENGGUNA (2026-09-15). Dulu `gemini`/`allGemini`/`groq` diisi kunci server dan
-      // DITULIS SESUDAH `[finalProvider]`, sehingga BYOK Gemini pengguna tertimpa kunci server; dan `openRouter`
-      // jatuh ke `OPENROUTER_API_KEY` sistem bila pengguna memilih penyedia lain — Intent Router/Coordinator yang
-      // kini lewat OpenRouter akan diam-diam memakai saldo Owner. Tanpa kunci OpenRouter pengguna, adapter tidak
-      // tersedia dan Coordinator dilewati.
       openRouter: finalProvider === 'openrouter'
         ? finalApiKey
         : (request.headers.get('x-byok-openrouter') || '').replace(/[^\x00-\x7F]/g, '').trim(),
-      // Embedding memakai kunci OpenRouter PENGGUNA saja (Item 63–65).
       openRouterByok: (request.headers.get('x-byok-openrouter') || '').replace(/[^\x00-\x7F]/g, '').trim(),
       gemini: finalProvider === 'gemini' ? finalApiKey : '',
       allGemini: finalProvider === 'gemini' && finalApiKey ? [finalApiKey] : [],
@@ -212,17 +159,8 @@ export async function executeRequestPipeline(
       openAI: finalProvider === 'openai' ? finalApiKey : '',
     },
 
-    // thinking TIGA keadaan (2026-09-13): true/false dari tier Owner diteruskan apa adanya — false kini
-    // benar-benar mematikan nalar di OpenRouter (reasoning_openrouter.ts). undefined = klien tidak
-    // mengirim (mis. mametlite) → bawaan model, perilaku lama.
-    // `pemilih` (Item 126): siapa yang memilih model — klien yang tahu, karena hanya klien yang
-    // melihat Owner menekan pil tier atau classifier yang memutuskan. Tidak ditebak di sini:
-    // tanpa kiriman klien nilainya undefined dan tercatat NULL, lalu metrik "cakupan penanda
-    // pemilih" yang menampakkan sisanya. Menebak di server akan membuat baseline berbohong.
     model: { model: parsed.model, provider: finalProvider, thinking: parsed.thinking === true ? true : parsed.thinking === false ? false : undefined, pemilih: parsed.pemilihModel },
     policy: {},
-    // streamNalar (hybrid, 2026-09-14): jawaban tetap JSON utuh, tetapi nalar dialirkan lebih dulu lewat SSE —
-    // hanya bila Thinking dinyalakan (tanpa nalar tak ada yang dialirkan). Lihat index.ts.
     stream: { isStream: !!parsed.stream, extractedImage: parsed.extractedImage, desktopOSMode: !!parsed.desktopOSMode, auditMode: parsed.auditMode || 'OFF', streamNalar: !parsed.stream && parsed.streamNalar === true && parsed.thinking === true },
     env: runtimeEnv,
     logger: createRuntimeLogger(ctx.auth.userId, backgroundTasks, !!parsed.stream, runtimeEnv),
@@ -231,80 +169,23 @@ export async function executeRequestPipeline(
     tasks: backgroundTasks
   };
 
-  // =============================================
-  // [BACKEND RAG: Generate Embedding + Vector Search]
-  // =============================================
-  //
-  // `parsed.globalMemory` TIDAK ditimpa lagi (Item 65). Nilainya — konteks kiriman frontend —
-  // sudah tersalin ke ctx.request.globalMemory di atas dan dipakai context_builder; di sini ia
-  // hanya menentukan penanda "SISTEM RETRIEVAL AKTIF". Dulu penanda itu dihitung dari teks
-  // "Tidak ada memori yang relevan." sehingga model diberi tahu pengetahuannya berhenti di 2024
-  // walau dokumen/web sudah disuntikkan. Memori hasil pencarian vektor disimpan terpisah.
   let memoriVektor = '';
-  // Diisi di tempat oleh pintu embedding; dibaca di `catch` di bawah supaya kegagalan vektor
-  // bisa dibedakan dari galat RAG lain, dan supaya SEBABNYA sampai ke pengguna.
   const jejakVektorMemori: JejakEmbedding = {};
   try {
-    // Only run RAG if the message is non-empty and RAG is enabled
     if (parsed.finalMessage && parsed.finalMessage.trim().length > 0 && parsed.ragEnabled !== false) {
       console.log('🔍 [RAG] Generating embedding for vector search...');
 
-      // 1. Vektor kueri lewat pintu embedding tunggal (OpenRouter, kunci pengguna, 768 dimensi — Item 70).
-      //    Disimpan di ctx.request supaya pencarian DOKUMEN di context_builder memakai vektor yang
-      //    sama — satu embedding per pesan, bukan dua.
       const userEmbedding = await generateEmbeddingThroughAdapter(parsed.finalMessage, rctx, jejakVektorMemori);
       ctx.request.queryEmbedding = userEmbedding;
 
-      // 2. Query vector database via Supabase RPC
-      //
-      // WAJIB memakai overload 4-argumen `match_memories(..., target_user_id)`.
-      // Overload 3-argumen tidak memfilter user sama sekali; dipanggil dengan
-      // klien service-role seperti di bawah, ia memindai `user_memories` milik
-      // SELURUH akun lalu menyuntikkan hasilnya ke prompt user ini (Item 45).
       const ragUserId = ctx.auth?.userId;
 
       if (parsed.memoryEnabled === false) {
-        // Tombol Memory mati (2026-09-15): vektor pertanyaan tetap dibuat di atas karena pencarian DOKUMEN memakainya,
-        // tetapi tabel memori tidak disentuh.
         console.log('[RAG] Tombol Memory mati — pencarian memori dilewati.');
       } else if (!ragUserId) {
-        // Gagal ke arah TERTUTUP. Tanpa identitas pemilik, satu-satunya
-        // pencarian yang mungkin adalah pencarian lintas pengguna — jadi lebih
-        // baik tidak mencari sama sekali daripada membocorkan memori orang lain.
         console.warn('[RAG] ⚠️ Pencarian memori dilewati — userId tidak tersedia. Menolak mencari lintas pengguna.');
       } else {
         const supabase = createClient(runtimeEnv.supabaseUrl, runtimeEnv.supabaseServiceKey);
-        // AMBANG 0,70 — diturunkan dari 0,8 pada 2026-09-10 (Item 46).
-        //
-        // Angka 0,8 tidak pernah teruji, karena sampai hari ini tidak ada satu
-        // pun memori yang punya embedding sehingga pencarian ini mustahil
-        // mengembalikan apa pun. Begitu ketujuh memori Owner bervektor, ambang
-        // itu langsung terbukti terlalu ketat.
-        //
-        // Diukur dengan memakai vektor "saya suka kopi" sebagai kueri:
-        //   saya suka kopi                     1,0000
-        //   saya juga suka teh                 0,7263   ← berhubungan
-        //   ya, saya suka menggunakan ai       0,5728
-        //   Menyukai clean architecture...     0,5256
-        //   dan saya kuliah di UT              0,5138
-        //   saya lebih suka penjelasan tabel   0,5117
-        //   nama panggilan saya pak slamet     0,5083
-        //
-        // Yang benar-benar berhubungan duduk di 0,73 dan yang tidak berhubungan
-        // mengumpul rapat di 0,51–0,57. Ambang 0,8 memotong TEPAT DI ATAS
-        // pasangan yang benar, jadi ia hanya akan meloloskan teks yang nyaris
-        // identik — pencarian semantiknya akan tetap terasa mati meski datanya
-        // sudah benar.
-        //
-        // 0,70 ditaruh di celah lebar antara 0,73 dan 0,57. Ini juga menyelaraskan
-        // memori dengan pencarian DOKUMEN, yang sejak lama memakai 0,60–0,68
-        // secara dinamis (execution_context.ts). Angka 0,8 rupanya penyimpangan,
-        // bukan kebijakan.
-        //
-        // Konsekuensi biaya disadari: lebih banyak memori lolos berarti prompt
-        // lebih panjang, dan Item 44 mencatat 99,3% belanja Owner ada di prompt.
-        // `match_count: 5` yang membatasinya — paling banyak 5 memori, apa pun
-        // ambangnya. Diputuskan Owner secara eksplisit, bukan diam-diam.
         const { data: memories, error } = await supabase
           .rpc('match_memories', {
             query_embedding: userEmbedding,
@@ -317,7 +198,6 @@ export async function executeRequestPipeline(
           console.error('[RAG] Vector search error:', error);
         }
 
-        // 3. Build RAG context from matched memories
         const ragContext = memories?.map((m: any) => (m.summary || m.content || '')).join('\n') || '';
         if (ragContext) {
           console.log(`✅ [RAG] Found ${memories?.length || 0} relevant memories untuk user ${ragUserId}`);
@@ -328,17 +208,8 @@ export async function executeRequestPipeline(
       }
     }
   } catch (ragError: any) {
-    // Don't crash the pipeline if RAG fails — just log and continue
     console.error('[RAG] Error during vector search:', ragError.message || ragError);
-    // Pencarian memori TIDAK punya cadangan pencocokan kata seperti pencarian dokumen: memori
-    // hanya bisa ditemukan lewat vektor. Jadi kegagalan di sini berarti memori DILEWATI SELURUHNYA,
-    // dan sebelum ini satu-satunya jejaknya adalah console.error di sisi server.
     if (jejakVektorMemori.sebab) {
-      // Diteruskan ke context_builder supaya pencarian DOKUMEN tidak memanggil pintu embedding
-      // sekali lagi untuk gagal dengan alasan yang sama. Syaratnya `jejakVektorMemori.sebab`,
-      // bukan sekadar "ada galat": galat non-embedding (mis. RPC match_memories) tiba di `catch`
-      // yang sama padahal vektornya SUDAH jadi, dan menandainya gagal akan membuang vektor yang
-      // baik serta menurunkan pencarian dokumen tanpa sebab.
       ctx.request.embeddingGagal = { sebab: jejakVektorMemori.sebab, pesan: jejakVektorMemori.pesan };
       ctx.state.processingSteps.push(
         `⚠️ [MEMORI DILEWATI] Pencarian memori butuh vektor dan vektornya gagal: ` +
@@ -349,10 +220,7 @@ export async function executeRequestPipeline(
       ctx.state.processingSteps.push(`⚠️ [MEMORI DILEWATI] Galat saat pencarian vektor: ${String(ragError?.message || ragError).slice(0, 160)}`);
     }
   }
-  // =============================================
-  // [SELESAI] LOGIKA RAG
 
-  // --- PROMPT INITIALIZATION ---
   const teksPenanda = [typeof parsed.globalMemory === 'string' ? parsed.globalMemory : '', memoriVektor].join('\n');
   const hasInjectedKnowledge = Boolean(
     teksPenanda.includes('[DOKUMEN PENGETAHUAN') ||
@@ -362,10 +230,7 @@ export async function executeRequestPipeline(
     teksPenanda.trim().length > 80
   );
 
-  // Jam lokal pengguna dihitung dari zona waktu yang dikirim browser (lib/request/waktu_pengguna.ts).
-  // Dulu hanya tanggal UTC server + tahun yang ditulis tetap "2026": jam lokal harus DITEBAK model.
   let agentIdentityPrompt = `\n${konteksWaktuPengguna(new Date(), parsed.clientTimezone)}\n`;
-  // Bukti dua ujung: jawaban yang menyebut WIB belum membuktikan zona waktunya sampai — model bisa menebak.
   console.log(`[Waktu] Zona waktu pengguna: ${zonaWaktuSah(parsed.clientTimezone) ?? '(tidak dikirim / tidak sah)'}`);
   if (hasInjectedKnowledge) {
     agentIdentityPrompt += `SISTEM RETRIEVAL AKTIF: Anda telah dibekali dengan dokumen referensi pengetahuan / hasil pencarian web terkini pada konteks. Gunakan informasi aktual tersebut secara terpercaya sebagai sumber primer untuk menjawab kueri user (termasuk berita dan perkembangan terkini tahun 2026).\n`;
@@ -378,8 +243,6 @@ IDENTITAS ANDA: Anda adalah "Mamet", asisten cerdas buatan yang merupakan hak pa
 MODEL AI YANG ANDA GUNAKAN SAAT INI: ${parsed.model || 'gemini-2.5-flash'}. Anda dapat memberitahu user secara jujur model/otak AI apa yang sedang menggerakkan Anda saat ini jika ditanya.
 `;
 
-  // Blok kesadaran memori mengikuti tombol Memory (2026-09-15). Teks lama selalu menyatakan memori AKTIF menyimpan —
-  // bila tombolnya mati, model akan mengaku menyimpan/mengingat padahal jalur baca & tulis sudah diputus.
   if (parsed.memoryEnabled === false) {
     agentIdentityPrompt += `
 KESADARAN SISTEM MEMORI (MEMORI SEDANG DIMATIKAN):
@@ -437,34 +300,21 @@ Wajib ikuti struktur persis seperti contoh di atas!`;
 
   ctx.request.agentIdentityPrompt = agentIdentityPrompt;
 
-  // FOLDER KERJA ASSISTANT (Item 85 Tahap 1): desktop hanya mengirim NAMA folder; blok ini memberi tahu AI cara meminta
-  // alat baca (<alat_folder>{…}</alat_folder>). Alat dijalankan desktop di proses utama Electron (berpagar), bukan di sini.
   if (parsed.folderKerja) {
     ctx.request.agentIdentityPrompt += blokPromptFolder(parsed.folderKerja.nama, parsed.folderKerja.putaran);
     console.log(`[FolderKerja] aktif "${parsed.folderKerja.nama}" · putaran alat ${parsed.folderKerja.putaran}`);
   }
 
-  // KONEKTOR (Item 129 Tahap D): desktop mengirim konektor yang MENYALA di workspace ini (per workspace, K3). Blok
-  // promptnya statis per konektor yang dikenal — deskripsi alat dari server MCP tidak masuk prompt. Alat dijalankan
-  // desktop lewat gerbang persetujuan di proses utama Electron (K2/K8), bukan di sini.
   if (parsed.konektor) {
     ctx.request.agentIdentityPrompt += blokPromptKonektor(parsed.konektor);
     console.log(`[Konektor] aktif "${parsed.konektor.id}" · putaran alat ${parsed.konektor.putaran} · ${parsed.konektor.sumberSiap.length} sumber siap`);
   }
 
-  // KONEKTOR UMUM (Item 129 Tahap G3): server MCP yang dipasang Owner (mis. GitHub). Alatnya ditinjau & dipaku Owner
-  // (K16); deskripsinya tetap tulisan pihak luar → dinetralkan & ditandai di blok. Log hanya hitungan, bukan deskripsi.
   if (parsed.konektorUmum) {
     ctx.request.agentIdentityPrompt += blokPromptKonektorUmum(parsed.konektorUmum);
     console.log(`[KonektorUmum] aktif ${parsed.konektorUmum.daftar.map((k: any) => `${k.id}(${k.alat.length} alat)`).join(', ')} · putaran alat ${parsed.konektorUmum.putaran}`);
   }
 
-  // =============================================
-  // [ENGINEER MODE] Tambahkan instruksi khusus patch proposal
-  // =============================================
-  // Frontend (ConversationEngine.jsx) mendeteksi marker [MAMET_PATCH_READY] di response
-  // untuk menampilkan tombol "Apply Patch". Tanpa instruksi ini, LLM tidak pernah
-  // menambahkan marker dan tombol Apply tidak muncul.
   if (parsed.mode === 'ENGINEER' || parsed.appSource === 'engineer') {
     ctx.request.agentIdentityPrompt += `\n\n[ENGINEER MODE — INSTRUKSI WAJIB]
 Anda adalah Mamet Engineer, AI yang membantu merencanakan dan mengeksekusi perubahan kode.
@@ -502,9 +352,6 @@ Instruksi ENGINEER lain (RULE 1-6 di konteks Two-Brain) merujuk ke sini, tidak m
   ctx.request.effectiveRagThreshold = ctx.policy.ragThreshold;
 
   ctx.request.history = rapikanRiwayat(ctx.request.history || [], parsed.message);
-  // DATA TABEL (Item 92 Tahap 3): jawaban lama bisa memuat tabel ber-NIP asli. Uji live 2026-09-21 — tabel itu ikut
-  // riwayat, NIP sampai ke model, dan model meniru tabelnya dengan 30 NIP KARANGAN. Dibersihkan untuk SEMUA permintaan
-  // (tombol Data Tabel boleh sudah mati, riwayatnya tetap memuat tabel).
   ctx.request.history = (ctx.request.history || []).map((m: any) =>
     m && m.role !== 'user' && typeof m.content === 'string' ? { ...m, content: bersihkanRiwayatDataTabel(m.content) } : m);
 

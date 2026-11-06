@@ -1,28 +1,3 @@
-/**
- * BrainService
- * Manages the AI Brain configuration (Provider & Model).
- * Interfaces with VaultService for credentials.
- * 
- * FIX: Model sekarang disimpan bersamaan dengan provider agar pilihan dari
- * Settings UI tidak hilang saat pesan dikirim ke backend.
- * 
- * UPGRADE: executeLLM() ditambahkan agar Engineer.js dapat memanggil LLM
- * langsung tanpa harus melewati ConversationEngine.
- *
- * SECURITY FIX (2026-07-30): executeLLM() sekarang WAJIB memiliki API key eksplisit
- * dari user (via VaultService/Settings). Jika tidak ada, request DITOLAK dengan error
- * informatif. Ini mencegah fallback ke Supabase yang akan memakai API key sistem
- * dan menghabiskan saldo tanpa izin user.
- *
- * DEFAULT PROVIDER diubah dari 'openrouter' (berbayar, model mahal) ke 'gemini'
- * untuk mencegah saldo habis saat settings belum dikonfigurasi.
- *
- * ADAPTIVE MODEL TIERING (2026-09-09, ROADMAP-ADAPTIVE-MODEL-TIERING.md):
- * `state.provider`/`state.model` TETAP ADA dan tetap jadi model utama untuk jalur non-tier
- * (Engineer lewat executeLLM(), dan pemanggil getActiveBrainContext() tanpa argumen) — sesuai
- * roadmap §3 yang menegaskan Engineer di luar sistem tiering. Yang baru adalah `state.tiers`:
- * 3 slot kurasi Owner (KECIL/SEDANG/THINKING) yang hanya dipakai jalur Assistant.
- */
 import { supabase } from '../../../supabase';
 
 const TIER_NAMES = ['KECIL', 'SEDANG', 'THINKING'];
@@ -34,9 +9,9 @@ class BrainService {
     this.serviceManager = serviceManager;
     this.eventBus = serviceManager.get('EventBus');
     this.state = {
-      provider: 'gemini',         // [SECURITY FIX] Default ke Gemini (free tier tersedia), bukan OpenRouter yang berbayar
-      model: 'gemini-2.5-flash',  // [SECURITY FIX] Model ringan sebagai default aman. 2.0-flash dipensiunkan Google 2026-09-09.
-      tiers: null                 // Diisi saat initialize(): { KECIL: {...}, SEDANG: {...}, THINKING: {...} }
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      tiers: null
     };
   }
 
@@ -49,17 +24,9 @@ class BrainService {
     this.state.tiers = this._loadTiersFromLocalStorage() || this._seedTiersFromMainModel();
     console.log(`[BrainService] Initialized with provider: ${this.state.provider}, model: ${this.state.model}`);
 
-    // Sinkron lintas device: user_metadata menang atas localStorage kalau ada (Owner bisa
-    // mengubah config dari device lain). Sengaja tidak di-await di jalur boot supaya kegagalan
-    // jaringan tidak pernah memblokir Kernel — hasilnya diumumkan lewat event kalau berubah.
     this._hydrateTiersFromSupabase();
   }
 
-  /**
-   * Slot tier awal = salinan model utama untuk ketiganya. Konsekuensinya perilaku Assistant
-   * TIDAK berubah sama sekali sampai Owner benar-benar mengisi slot berbeda di Settings —
-   * tiering yang aktif tapi belum dikurasi tidak boleh diam-diam mengganti model Owner.
-   */
   _seedTiersFromMainModel() {
     const seed = {};
     for (const tier of TIER_NAMES) {
@@ -79,7 +46,6 @@ class BrainService {
     }
   }
 
-  /** Pastikan ketiga slot selalu ada & terisi, apa pun bentuk data yang tersimpan sebelumnya. */
   _normalizeTiers(rawTiers) {
     const normalized = {};
     for (const tier of TIER_NAMES) {
@@ -109,17 +75,11 @@ class BrainService {
     }
   }
 
-  /**
-   * Versi debounced — Settings UI memanggil setTier() tiap ketikan, tanpa ini setiap karakter
-   * jadi satu request updateUser ke Supabase (pola masalah yang sama sudah pernah ditangani
-   * WorkspaceManager._debouncedSyncLayoutToSupabase saat resize/drag).
-   */
   _debouncedSyncTiersToSupabase() {
     clearTimeout(this._tierSyncTimeout);
     this._tierSyncTimeout = setTimeout(() => this._syncTiersToSupabase(), 1500);
   }
 
-  /** Pola identik dengan WorkspaceManager._syncLayoutToSupabase() yang sudah terbukti jalan. */
   async _syncTiersToSupabase() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -135,10 +95,6 @@ class BrainService {
     return { ...(this.state.tiers || this._seedTiersFromMainModel()) };
   }
 
-  /**
-   * Simpan satu slot tier (dipakai Settings UI). Menulis ke localStorage untuk device ini,
-   * lalu menyinkronkan ke user_metadata supaya device lain ikut terbarui.
-   */
   setTier(tierName, { provider, model, thinking, note } = {}) {
     if (!TIER_NAMES.includes(tierName)) {
       console.warn(`[BrainService] Tier tidak dikenal: ${tierName}`);
@@ -174,14 +130,6 @@ class BrainService {
     return { ...this.state };
   }
 
-  /**
-   * Retrieves the active brain context (provider, model, apiKey) for an API call.
-   * API key diambil dari VaultService yang terisi saat user Save di Settings.
-   *
-   * @param {'KECIL'|'SEDANG'|'THINKING'} [tierName] - Kalau diisi, ambil dari slot tier hasil
-   *   kurasi Owner (jalur Assistant). Kalau kosong, pakai model utama seperti sebelumnya —
-   *   inilah yang dipakai Engineer (executeLLM) supaya jalurnya tidak tersentuh tiering.
-   */
   async getActiveBrainContext(tierName) {
     const vault = this.serviceManager.get('VaultService');
     const slot = (tierName && this.state.tiers?.[tierName]) || null;
@@ -195,39 +143,16 @@ class BrainService {
       model,
       key,
       tier: slot ? tierName : null,
-      // Tersambung penuh ke LLM sejak Item 35 (2026-09-09): AssistantService mengirimnya di
-      // payload sebagai `thinking`, request_parser meneruskannya ke RuntimeContext.model.thinking,
-      // dan ai_adapter.ts menerjemahkannya ke parameter reasoning masing-masing provider.
-      // Catatan penting: true = nyalakan reasoning; false = TIDAK mengirim apa pun (bukan
-      // "matikan reasoning"). Lihat komentar di ai_adapter.ts untuk alasannya.
       thinking: slot?.thinking === true
     };
   }
 
-  /**
-   * Memanggil LLM via backend lokal (localhost:3000/api/chat).
-   * Digunakan oleh Engineer untuk membuat patch.
-   * 
-   * PENTING: Menggunakan backend lokal karena Supabase edge function memiliki
-   * verification layer yang menolak prompt berisi kode sumber / instruksi modifikasi file.
-   * Backend lokal menerima: { message, provider, model, apiKey }
-   * Backend lokal mengembalikan: { reply: "..." }
-   * 
-   * Jika backend lokal tidak tersedia, fallback ke Supabase (dengan risiko verification).
-   * 
-   * @param {string} prompt - Prompt lengkap untuk dikirim ke LLM
-   * @param {object} options - Opsi override (model, dll)
-   * @returns {Promise<string>} - Raw text response dari LLM
-   */
   async executeLLM(prompt, options = {}) {
     const context = await this.getActiveBrainContext();
     const model = options.model || context.model || this.state.model;
     const provider = context.provider || this.state.provider;
     const apiKey = context.key || '';
 
-    // === [SECURITY FIX] GUARD: WAJIB ADA API KEY EKSPLISIT DARI USER ===
-    // Jika tidak ada apiKey dari VaultService/Settings, TOLAK langsung.
-    // Ini mencegah fallback ke Supabase yang memakai API key sistem (saldo habis).
     if (!apiKey) {
       const errorMsg = [
         `[BrainService:executeLLM] 🚫 DITOLAK: Tidak ada API Key untuk provider "${provider}".`,
@@ -243,8 +168,6 @@ class BrainService {
 
     console.log(`[BrainService:executeLLM] 🧠 Memanggil LLM: provider=${provider}, model=${model}`);
 
-    // === COBA BACKEND LOKAL DULU (localhost:3000/api/chat) ===
-    // Backend lokal tidak memiliki verification layer seperti Supabase
     const localEndpoint = 'http://localhost:3000/api/chat';
     const localPayload = {
       message: prompt,
@@ -252,7 +175,7 @@ class BrainService {
       model: model,
       history: [],
       userName: 'Engineer',
-      max_tokens: 16000,    // Pastikan output tidak terpotong untuk patch file besar
+      max_tokens: 16000,
     };
     if (apiKey) localPayload.apiKey = apiKey;
 
@@ -266,7 +189,6 @@ class BrainService {
 
       if (response.ok) {
         const result = await response.json();
-        // Local backend mengembalikan field 'reply'
         const rawText = result?.reply || result?.message || result?.content || result?.text || JSON.stringify(result);
         console.log(`[BrainService:executeLLM] ✅ Local backend response: ${rawText.length} chars`);
         console.log(`[BrainService:executeLLM] 🔍 First 200 chars: ${rawText.substring(0, 200)}`);
@@ -279,7 +201,6 @@ class BrainService {
       console.warn(`[BrainService:executeLLM] ⚠️ Local backend tidak tersedia: ${localErr.message}. Fallback ke Supabase...`);
     }
 
-    // === FALLBACK KE SUPABASE (jika local backend tidak jalan) ===
     let token = '';
     try {
       if (typeof window !== 'undefined') {
@@ -338,7 +259,6 @@ class BrainService {
       const result = await response.json();
       const rawText = result?.message || result?.reply || result?.content || result?.text || JSON.stringify(result);
 
-      // Deteksi "Verification Failed" atau respons singkat yang mengindikasikan penolakan
       if (rawText.length < 50 && (rawText.includes('Failed') || rawText.includes('Verification') || rawText.includes('Error'))) {
         throw new Error(`Supabase menolak prompt (verification): "${rawText}". Pastikan backend lokal berjalan.`);
       }

@@ -2,10 +2,6 @@ import React, { useState } from 'react';
 import Ikon from '../Ikon';
 import TinjauAlat from './TinjauAlat';
 
-/**
- * Satu server MCP yang dipasang Owner (Item 129 Tahap G2): kredensial, tinjau alat, sakelar per workspace (K3), hapus.
- * Nilai kredensial hanya DIKIRIM ke proses utama; layar tidak pernah menerimanya kembali (hanya "terisi/kosong").
- */
 const WORKSPACE = [
   { id: 'ws-assistant', label: 'Assistant' },
   { id: 'ws-engineer', label: 'Engineer' },
@@ -14,7 +10,6 @@ const WORKSPACE = [
 const TOMBOL = 'flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all active:scale-95 font-semibold text-sm disabled:opacity-60';
 const TOMBOL_BIASA = `${TOMBOL} border-outline-variant bg-surface-container-low text-on-surface-variant hover:text-on-surface`;
 
-/** Teks status satu workspace dari status proses utama. */
 export function teksStatusUmum(w, sedang) {
   if (sedang) return { teks: 'menyalakan…', kelas: 'text-on-surface-variant' };
   if (w?.status === 'nyala') return { teks: `● menyala — ${w.alat.length} alat dipakai`, kelas: 'text-primary' };
@@ -34,7 +29,7 @@ function IsiKredensial({ k, onSimpan }) {
     setHasil(null);
     const h = await onSimpan(k.id, nilai);
     setHasil(h);
-    if (h?.ok) setNilai(''); // nilai tidak disimpan di layar sesudah terkirim
+    if (h?.ok) setNilai('');
   };
   return (
     <div className="flex items-center gap-2 flex-wrap">
@@ -58,15 +53,11 @@ function IsiKredensial({ k, onSimpan }) {
   );
 }
 
-/**
- * Akun server OAuth (Tahap F2): login di BROWSER SISTEM — akun & halaman dipilih Owner di halaman penyedia. Mamet tidak
- * pernah melihat password maupun token; layar hanya tahu terhubung/belum.
- */
 function KodePerangkat({ login, onBatal }) {
   const [disalin, setDisalin] = useState(false);
   const salin = async () => {
     try { await navigator.clipboard.writeText(login.kodePengguna); setDisalin(true); }
-    catch { setDisalin(false); /* papan klip ditolak — kode tetap terbaca di layar untuk diketik */ }
+    catch { setDisalin(false);  }
   };
   return (
     <div className="basis-full rounded-lg border border-primary/50 bg-primary/10 p-3 flex flex-col gap-2">
@@ -126,12 +117,9 @@ export default function KartuServerUmum({ s, api, onBerubah }) {
   const [tinjauan, setTinjauan] = useState(null);
   const [sedangTinjau, setSedangTinjau] = useState(false);
   const [sedangLogin, setSedangLogin] = useState(false);
-  // Akses siap: kredensial ketik terisi (stdio/http berkunci) DAN — untuk server OAuth — akun terhubung.
   const aksesSiap = s.kredensial.every((k) => k.terisi) && (!s.oauth || s.terhubung === true);
   const siap = aksesSiap && s.alatDisetujui.length > 0;
 
-  // GH2: penyedia tanpa alamat pencabutan (mis. GitHub) — token di laptop sudah dihapus, tetapi izinnya masih ada di
-  // sana sampai dicabut di situs penyedia. Dikatakan apa adanya, bukan "terputus" saja.
   const [info, setInfo] = useState(null);
   const putuskan = async () => {
     setInfo(null);
@@ -144,7 +132,7 @@ export default function KartuServerUmum({ s, api, onBerubah }) {
   const hubungkan = async () => {
     setInfo(null);
     setSedangLogin(true);
-    await jalankan(() => api.hubungkan(s.id)); // `jalankan` didefinisikan di bawah; dipanggil saat tombol ditekan
+    await jalankan(() => api.hubungkan(s.id));
     setSedangLogin(false);
   };
 
@@ -155,7 +143,7 @@ export default function KartuServerUmum({ s, api, onBerubah }) {
       if (h && !h.ok && !h.dibatalkan) setGalat(h.alasan || 'gagal');
       return h;
     } catch (e) {
-      setGalat(e.message); // tidak ditelan: tampil di kartu
+      setGalat(e.message);
       return { ok: false, alasan: e.message };
     } finally {
       onBerubah();

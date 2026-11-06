@@ -1,63 +1,11 @@
-/**
- * LABEL VERIFIED WAJIB MENYEBUT SUMBERNYA (Item 71, 2026-09-12)
- *
- * Sebelum item ini, `[BLOK 6]` memerintahkan label `[STATUS: VERIFIED]` **tanpa syarat** setiap kali
- * Evidence Gate berstatus PASSED — dan PASSED hanya berarti "ada dokumen yang dilampirkan".
- * Perintah itu bertentangan dengan panduan identitas (`request_pipeline.ts`), yang menulis VERIFIED
- * hanya "jika didukung oleh dokumen". Akibatnya terbukti di Item 70: satu chat menerima potongan
- * yang TIDAK memuat jawabannya (skor 0,552), jawabannya datang dari pengetahuan umum model, tapi
- * labelnya `VERIFIED`. Label itu justru menghapus tanda bahaya yang seharusnya dilihat Owner.
- *
- * Kini VERIFIED wajib disertai baris `Sumber: "<judul dokumen>"`, dan kode ini memeriksanya:
- * judul yang disebut harus benar-benar ada di antara dokumen yang dilampirkan. Kalau tidak,
- * labelnya diturunkan menjadi HYPOTHESIS — keputusan kode, bukan kesopanan model.
- *
- * ANGKA JUGA DIPERIKSA (Item 77, 2026-09-14). Menyebut judul yang benar belum berarti isinya benar:
- * HCDP ditanya "target rasio JF bersertifikat tahun 3", model menjawab 35,0% (seharusnya 20,0%)
- * dengan `Sumber: "DOKUMEN HCDP 2025-2026.docx"` yang cocok → tetap VERIFIED. Semua angkanya ADA di
- * dokumen; yang salah pasangannya — potongan yang dibaca memuat baris
- * `| 5 | Rasio … | % | 5,93% | 12,0% | 20,0% | 35,0% | … |` TANPA judul kolom, lalu model menebak
- * `Tahun 1 = 12,0%`. Maka bila isi dokumen yang dilampirkan diberikan, VERIFIED juga mensyaratkan:
- *  1. setiap angka berdesimal/persen di jawaban ada di dokumen;
- *  2. setiap angka yang ditulis jawaban bersama labelnya (baris tabel, `Label: angka`) cocok dengan
- *     tabel sumber: tak ada label yang sama dengan judul kolom LAIN, dan minimal satu label = judul
- *     kolom sel itu atau disebut di baris yang sama. Bila judul kolom sumber tidak ada di konteks dan
- *     labelnya tidak ada di baris itu, pasangan tidak bisa dibuktikan.
- * Pasangan di kalimat bebas ("tahun ke-3 adalah 20,0%") diperiksa sejak uji mutu RAG putaran 5 — lihat
- * `periksaPasanganKalimat`.
- *
- * NOMOR HALAMAN JUGA DIPERIKSA (Item 77, uji live web 2026-09-14). Jawaban benar HCDP ditulis
- * `Sumber: "DOKUMEN HCDP 2025-2026.docx" [Halaman 1]` — padahal .docx tidak punya penanda halaman dan
- * potongan yang dibaca model tidak memuat `[Halaman …]`; "Halaman 1" dikarang. Nomor halaman yang
- * disebut jawaban kini harus ada sebagai penanda `[Halaman N]` di potongan, atau tertulis "halaman N"
- * di teks dokumen itu sendiri.
- *
- * JAWABAN TANPA LABEL (Item 77, uji live web 2026-09-14 07.33 UTC). Sesudah pemeriksaan halaman dideploy,
- * jawaban benar HCDP tersimpan TANPA label status sama sekali, walau BLOK 6 mewajibkannya dan kontrak
- * dipasang untuk semua mode. Semua pemeriksaan di atas hanya bekerja bila ada `[STATUS: VERIFIED]`, jadi
- * TIDAK menulis label adalah jalan lolos. Kini: bila dokumen dilampirkan dan jawaban tanpa label apa pun,
- * sistem menambahkan HYPOTHESIS + catatan (VERIFIED tidak pernah ditambahkan otomatis). Varian penulisan
- * label VERIFIED (`[Status: Verified]`) disamakan dulu agar tidak lolos dari pemeriksaan.
- */
 import { putuskanKlaim, ringkasTakBersandar } from './klaim_sumber.ts';
 
 export const LABEL_VERIFIED = '[STATUS: VERIFIED]';
 export const LABEL_HIPOTESIS = '[STATUS: HYPOTHESIS - Rekomendasi AI]';
-/**
- * Label ketiga (T13, 2026-09-28). Sistem yang menambahkannya, bukan model — sama seperti HYPOTHESIS,
- * jadi tidak ada perubahan prompt: BLOK 6 tetap hanya mengenal VERIFIED dan HYPOTHESIS.
- * Dipakai ketika sebagian pernyataan bersandar dokumen dan sebagian lain tidak.
- */
 export const LABEL_PARSIAL = '[STATUS: PARTIAL - Sebagian Bersandar Dokumen]';
 export const CATATAN_KOREKSI = '_Catatan sistem: label VERIFIED diturunkan — jawaban ini tidak mengutip dokumen yang tersedia._';
 export const CATATAN_TANPA_LABEL = '_Catatan sistem: model tidak menulis label status — jawaban ini belum diverifikasi sistem terhadap dokumen yang tersedia._';
 
-/**
- * RAG turun ke pencocokan kata (K2/U8b, ADR-0022, 30 Okt 2026). Sejak 2 Okt penurunannya hanya tampil di langkah
- * proses — Mametlite tidak menampilkan langkah proses, jadi pengguna awam tidak pernah tahu. Satu baris "Catatan
- * sistem" di akhir jawaban tampil di kotak label Mametlite (`labelRamah.js` POLA_CATATAN) dan di Ecosystem.
- * Satu baris saja (pola catatan per baris); `_` dibuang dari sebab supaya cetak miringnya tak pecah.
- */
 export function catatanRagTurun(sebab: unknown): string {
   if (!sebab) return '';
   const s = String(sebab).replace(/[\r\n_]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 160);
@@ -66,25 +14,18 @@ export function catatanRagTurun(sebab: unknown): string {
 
 const rapikan = (s: string) => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 
-/** Judul dianggap disebut bila 30 huruf pertamanya (setelah dirapikan) muncul di baris Sumber. */
 function judulDisebut(baris: string, judul: string): boolean {
   const j = rapikan(judul);
   if (j.length < 4) return false;
   const b = rapikan(baris);
   if (b.includes(j.slice(0, 30)) || (j.length <= 60 && j.includes(b) && b.length >= 4)) return true;
-  // Akhiran berkas tidak wajib ditulis (uji chat 2026-09-14): `Sumber: Dokumen HCDP 2025-2026 Kabupaten OKU.`
-  // untuk berkas "DOKUMEN HCDP 2025-2026.docx" diturunkan hanya karena ".docx". Nama tanpa akhiran minimal
-  // 8 huruf, supaya berkas pendek ("Laporan.pdf") tidak cocok dengan sembarang kalimat.
   const tanpaAkhiran = rapikan(String(judul || '').replace(/\.(docx?|pdf|xlsx?|pptx?|txt|md|csv|rtf|odt)\s*$/i, ''));
   return tanpaAkhiran.length >= 8 && tanpaAkhiran !== j && b.includes(tanpaAkhiran.slice(0, 30));
 }
 
-// ── Angka ────────────────────────────────────────────────────────────────────────────────────
-// Hanya angka berdesimal/berpemisah atau berpersen: nomor urut, "tahun 3", dan "2025-2026" tidak.
 const POLA_ANGKA = /\d+(?:[.,]\d+)+(?:\s?%)?|\d+\s?%/g;
 const ANGKA_PENUH = /^\d+(?:[.,]\d+)+(?:\s?%)?$|^\d+\s?%$/;
 
-/** Kunci pembanding: `47,60%` = `47,6%`, `12,0%` = `12%`, titik dan koma disamakan. */
 export function kunciAngka(s: string): string {
   let t = String(s).replace(/\s+/g, '');
   const persen = t.endsWith('%');
@@ -100,20 +41,17 @@ export function kunciAngka(s: string): string {
 
 const bersihMarkdown = (s: string) => String(s || '').replace(/[*_`]/g, '').trim();
 
-/** Kata label: huruf/angka ≥2 atau digit tunggal; "ke-3" dianggap "3". */
 function kataLabel(s: string): string[] {
   return rapikan(bersihMarkdown(s).replace(/\bke-(?=\d)/gi, ''))
     .split(' ')
     .filter((w) => w.length >= 2 || /^\d$/.test(w));
 }
 const samaKata = (a: string[], b: string[] | null) => !!b && a.length > 0 && a.length === b.length && a.every((w) => b.includes(w));
-/** Label "disebut" di baris sumber bila ≥60% katanya ada di baris itu. */
 function labelDiBaris(label: string[], barisKata: Set<string>): boolean {
   if (!label.length) return false;
   return label.filter((w) => barisKata.has(w)).length / label.length >= 0.6;
 }
 
-// Baris tabel boleh berawalan pembungkus pendek (`: "| No |` di tampilan konteks) dan diakhiri kutip.
 const barisTabel = (baris: string) => /^[^|\n]{0,4}\|/.test(baris);
 const polosTabel = (baris: string) => baris.replace(/^[^|\n]{0,4}(?=\|)/, '').replace(/\|\s*"\s*$/, '|').trim();
 const selTabel = (baris: string) => polosTabel(baris).replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
@@ -121,7 +59,6 @@ const barisPemisah = (baris: string) => /^\|(\s*:?-{3,}:?\s*\|)+$/.test(polosTab
 
 type Kemunculan = { judulKolom: string[] | null; semuaJudul: string[][]; barisKata: Set<string> };
 
-/** Peta kunciAngka → tempat angka itu muncul sebagai SEL tabel Markdown di dokumen. */
 function petaSelAngka(isiDokumen: string[]): Map<string, Kemunculan[]> {
   const peta = new Map<string, Kemunculan[]>();
   for (const isi of isiDokumen) {
@@ -153,7 +90,6 @@ function petaSelAngka(isiDokumen: string[]): Map<string, Kemunculan[]> {
 
 type Pasangan = { label: string[]; teksLabel: string; angka: string };
 
-/** Angka yang ditulis jawaban beserta labelnya: sel tabel Markdown (label = sel teks sebaris + judul kolom tabel jawaban) dan baris `Label: angka`. */
 function pasanganJawaban(teks: string): Pasangan[] {
   const hasil: Pasangan[] = [];
   const baris = teks.split('\n');
@@ -179,11 +115,9 @@ function pasanganJawaban(teks: string): Pasangan[] {
   return hasil.filter((p) => p.label.length);
 }
 
-/** null = angka sah; string = alasan penurunan. */
 export function periksaAngkaSumber(jawaban: string, isiDokumen: string[]): string | null {
   const isi = (isiDokumen || []).filter((t) => typeof t === 'string' && t.trim());
   if (!isi.length) return null;
-  // Baris Sumber tidak ikut diperiksa (judul berkas bisa memuat angka versi).
   const teks = String(jawaban || '').split('\n').filter((b) => !/sumber\s*:/i.test(b)).join('\n');
 
   const kunciDokumen = new Set((isi.join('\n').match(POLA_ANGKA) || []).map(kunciAngka));
@@ -191,7 +125,6 @@ export function periksaAngkaSumber(jawaban: string, isiDokumen: string[]): strin
   if (hilang.length) return `angka ${hilang.slice(0, 3).join(', ')} tidak ada di dokumen yang dilampirkan`;
 
   const peta = petaSelAngka(isi);
-  // Satu angka di jawaban dinilai bersama SEMUA labelnya: sel teks sebaris + judul kolom tabel jawaban.
   const barisJawaban = teks.split('\n');
   let judulJawaban: string[] | null = null;
   const kelompok: { angka: string; label: Pasangan[] }[] = [];
@@ -218,12 +151,9 @@ export function periksaAngkaSumber(jawaban: string, isiDokumen: string[]): strin
 
   for (const { angka, label } of kelompok) {
     const tempat = peta.get(kunciAngka(angka));
-    if (!tempat?.length) continue; // angka hanya ada di teks biasa, bukan sel tabel — tak ada kolom untuk dicocokkan
+    if (!tempat?.length) continue;
     let sah = false; let bentrok: Pasangan | null = null; let takTerbukti: Pasangan | null = null;
     for (const t of tempat) {
-      // Tabel sumber tanpa judul kolom: label berangka ("Tahun 1", "2025", "Semester 2") biasanya menunjuk
-      // KOLOM. Bila tak disebut di baris itu, posisinya hanya tebakan — walau label lain (mis. judul kolom
-      // tabel jawaban "Target Rasio …") cocok dengan nama baris. Kasus produksi 35,0% lolos tanpa aturan ini.
       if (!t.judulKolom) {
         const tebakan = label.find((p) => /\d/.test(p.teksLabel) && !labelDiBaris(p.label, t.barisKata));
         if (tebakan) { takTerbukti = takTerbukti || tebakan; continue; }
@@ -241,13 +171,6 @@ export function periksaAngkaSumber(jawaban: string, isiDokumen: string[]): strin
   return periksaPasanganKalimat(teks, isi, peta);
 }
 
-// ── Pasangan angka–tahun di kalimat bebas ────────────────────────────────────────────────────
-// Uji mutu RAG putaran 5 (HCDP-03 #1): "Target IP-ASN pada tahun 5 adalah 80%." tetap VERIFIED. Tabel program menulis
-// 80,0 poin di kolom "Tahun 5"; "80%" di dokumen ada di tabel IKU kolom "Target". Semua pemeriksaan di atas hanya membaca
-// tabel dan `Label: angka`, jadi kalimat biasa lolos. Keputusan Owner: pasangan di kalimat bebas ikut diperiksa.
-// Sengaja sempit agar jawaban benar tidak turun: hanya kalimat yang memuat TEPAT SATU periode dan SATU angka, dan hanya
-// diturunkan bila dokumen PUNYA kolom periode itu tetapi angkanya tidak ada di sana. Angka yang juga tertulis di teks
-// biasa atau di baris tabel tanpa judul kolom tidak bisa dibuktikan salah → dibiarkan.
 const URUTAN: Record<string, string> = {
   pertama: '1', kedua: '2', ketiga: '3', keempat: '4', kelima: '5',
   keenam: '6', ketujuh: '7', kedelapan: '8', kesembilan: '9', kesepuluh: '10'
@@ -255,7 +178,6 @@ const URUTAN: Record<string, string> = {
 const POLA_PERIODE = /\b(?:tahun|thn\.?)\s*(?:ke\s*-?\s*)?(\d{1,4}|pertama|kedua|ketiga|keempat|kelima|keenam|ketujuh|kedelapan|kesembilan|kesepuluh)\b/gi;
 const KATA_KOLOM_PERIODE = new Set(['tahun', 'thn', 'th', 'ke', 'target']);
 
-/** Judul kolom menunjuk periode itu: memuat nomornya dan selebihnya kata periode ("Tahun 5", "Thn 5", "2025", "Target 2025"). */
 function kolomPeriode(nomor: string, judul: string[] | null): boolean {
   return !!judul && judul.includes(nomor) && judul.every((w) => w === nomor || KATA_KOLOM_PERIODE.has(w));
 }
@@ -283,10 +205,8 @@ function periksaPasanganKalimat(teks: string, isi: string[], peta: Map<string, K
   return null;
 }
 
-// `[Halaman 12]`, `Halaman 12–14`, `hlm. 12`, `hal. 12`, `page 12` — "hal ini" tidak (butuh titik + angka).
 const POLA_HALAMAN = /\b(?:halaman|hlm\.?|hal\.|page)\s*(\d{1,4})(?:\s*[-–—]\s*(\d{1,4}))?/gi;
 
-/** null = kutipan halaman sah (atau tidak ada); string = alasan penurunan. */
 export function periksaHalamanSumber(jawaban: string, isiDokumen: string[]): string | null {
   const isi = (isiDokumen || []).filter((t) => typeof t === 'string' && t.trim());
   if (!isi.length) return null;
@@ -306,13 +226,8 @@ export function periksaHalamanSumber(jawaban: string, isiDokumen: string[]): str
     : `nomor halaman ${karangan.join(', ')} disebut, padahal dokumen yang dilampirkan tidak memuat penanda halaman`;
 }
 
-// ── Rujukan peraturan ────────────────────────────────────────────────────────────────────────
-// "Nomor 19 Tahun 2026" bukan desimal/persen, jadi lolos pemeriksaan angka. Uji chat 2026-09-14: potongan
-// berita web terpotong `(PermenPANRB) Nomor 19 Tahun ...`, model melengkapinya menjadi "Nomor 19 Tahun 2026"
-// dan tetap VERIFIED. Kini setiap "Nomor N Tahun YYYY" di jawaban wajib tertulis persis di potongan.
 const POLA_RUJUKAN = /\b(?:nomor|no\.?)\s*(\d{1,4}[a-z]?)\s+tahun\s+(\d{4})\b/gi;
 
-/** null = rujukan sah (atau tidak ada); string = alasan penurunan. */
 export function periksaRujukanSumber(jawaban: string, isiDokumen: string[]): string | null {
   const isi = (isiDokumen || []).filter((t) => typeof t === 'string' && t.trim());
   if (!isi.length) return null;
@@ -326,16 +241,9 @@ export function periksaRujukanSumber(jawaban: string, isiDokumen: string[]): str
   return `rujukan ${[...karangan].slice(0, 3).join(', ')} tidak tertulis di dokumen yang dilampirkan`;
 }
 
-// ── Sumber berupa parafrase judul ────────────────────────────────────────────────────────────
-// Uji mutu RAG putaran 5 (HCDP-07 #1): `Sumber: Dokumen Perencanaan Pengembangan Kompetensi ASN (Human Capital Development
-// Plan/HCDP) Kabupaten Ogan Komering Ulu Tahun 2025–2026.` diturunkan walau isinya benar — 11 dari 17 katanya tertulis
-// berurutan di dokumen, sisanya disusun model. Keputusan Owner: parafrase diterima bila SEBAGIAN BESAR teksnya cocok.
-// Ukurannya deret kata BERURUTAN terpanjang (bukan kata tersebar, supaya kata-kata umum dokumen tak bisa dirangkai
-// menjadi judul karangan): minimal 6 kata dan minimal 60% kata kutipan.
 const PARAFRASE_MIN_KATA = 6;
 const PARAFRASE_MIN_PORSI = 0.6;
 
-/** q dan teks sudah dirapikan. */
 export function parafraseDiIsi(q: string, teks: string): boolean {
   const kata = q.split(' ').filter(Boolean);
   const perlu = Math.max(PARAFRASE_MIN_KATA, Math.ceil(kata.length * PARAFRASE_MIN_PORSI));
@@ -347,21 +255,11 @@ export function parafraseDiIsi(q: string, teks: string): boolean {
   return false;
 }
 
-// ── Tabel centang PDF (Item 88) ──────────────────────────────────────────────────────────────
-// Uji live Item 87 (2026-09-16): "Ketiganya memiliki tingkat kepentingan 'Perlu'" berlabel VERIFIED, padahal
-// koordinat PDF membuktikan "Penting" — tabel OCR menggeser kolom centang. Sejak Tahap 1 ekstraktor browser
-// menempelkan blok fakta `[TABEL CENTANG — …] Kolom: A | B | C  - <baris> → B [/TABEL CENTANG]` dan penanda
-// `[TABEL CENTANG TIDAK PASTI — …]`. Dua aturan:
-//  1. BERTENTANGAN: jawaban menyebut nilai kolom (mis. "Perlu") untuk baris yang blok nyatakan bernilai lain.
-//     Pasangan dinilai per JAWABAN, bukan per baris: model sungguhan menulis butir di baris-baris terpisah lalu
-//     satu kalimat "Ketiganya … 'Perlu'". Baris blok dianggap dibahas bila ≥60% kata labelnya ada di jawaban.
-//  2. TIDAK PASTI: potongan memuat penanda tidak pasti dan jawaban menyebut nilai kolom → tidak bisa VERIFIED.
 const TANDA_BLOK_CENTANG = '[TABEL CENTANG';
 const TANDA_TIDAK_PASTI = '[TABEL CENTANG TIDAK PASTI';
 
 type EntriCentang = { kata: string[]; nilai: string[] };
 
-/** Blok centang di potongan → nama kolom, entri (label → nilai), dan halaman bertanda tidak pasti. */
 export function bacaBlokCentang(isiDokumen: string[]) {
   const kolom = new Set<string>();
   const entri: EntriCentang[] = [];
@@ -390,7 +288,6 @@ export function bacaBlokCentang(isiDokumen: string[]) {
       if (!e) continue;
       const nilai = e[2].split(',').map((s) => s.trim()).filter(Boolean);
       nilai.forEach((s) => kolom.add(s));
-      // Nomor butir ("2.", "1") bukan kata label.
       const kata = kataLabel(e[1]).filter((w) => !/^\d+$/.test(w));
       if (kata.length >= 2) entri.push({ kata, nilai });
     }
@@ -398,35 +295,27 @@ export function bacaBlokCentang(isiDokumen: string[]) {
   return { kolom: [...kolom], entri, adaTidakPasti, halamanTidakPasti };
 }
 
-/** null = sah; string = alasan penurunan. */
 export function periksaTabelCentang(jawaban: string, isiDokumen: string[]): string | null {
   const { kolom, entri, adaTidakPasti, halamanTidakPasti } = bacaBlokCentang(isiDokumen);
   if (!kolom.length) return null;
-  // Nama kolom dicari PERSIS hurufnya ("Perlu", bukan "perlu") dan bukan di awal kalimat — "Anda perlu
-  // mengecek…" / "Penting dicatat…" adalah kalimat biasa, bukan nilai kolom.
   const polaKolom = new Map(kolom.map((k) => [k, new RegExp(
     `(?<![\\p{L}\\p{N}])${k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}])`, 'gu')]));
   const menyebut = (baris: string, k: string) => [...baris.matchAll(polaKolom.get(k)!)].some((m) => {
     const depan = baris.slice(0, m.index);
     const awalKalimat = /(^|[.!?]\s+)[\s>#\-•\d.)]*$/.test(bersihMarkdown(depan));
-    return !awalKalimat || /["“'*]\s*$/.test(depan);   // "Perlu" / **Perlu** di awal tetap nilai kolom
+    return !awalKalimat || /["“'*]\s*$/.test(depan);
   });
-  // Dinilai PER KALIMAT (uji live v453, 2026-09-17): "wajib eselon III (mutlak), berbeda dengan persyaratan
-  // pelatihan yang hanya berstatus 'Penting' atau 'Perlu'" — versi per-jawaban menyalahkan "Penting" juga,
-  // karena baris yang dibahas jawaban hanya eselon III (Mutlak), padahal "Penting" milik pelatihan.
   const kalimat = String(jawaban || '').split('\n').flatMap((b) => b.split(/(?<=[.!?])\s+/));
   const kataJawaban = new Set(kataLabel(jawaban));
   const dibahasJawaban = entri.filter((e) => e.kata.filter((w) => kataJawaban.has(w)).length / e.kata.length >= 0.6);
   const semuaNilai = new Set(entri.flatMap((e) => e.nilai));
   const nilaiDari = (daftar: EntriCentang[]) => new Set(daftar.flatMap((e) => e.nilai));
-  // Kata khas: ≥5 huruf, bukan kata umum tabel persyaratan, bukan nama kolom.
   const UMUM = new Set(['jabatan', 'pernah', 'memiliki', 'tingkat', 'kepentingan', 'persyaratan', 'dengan', 'untuk', 'sesuai', 'bidang', 'terhadap']);
   const kataNamaKolom = new Set(kolom.flatMap(kataLabel));
   const khas = (w: string) => w.length >= 5 && !UMUM.has(w) && !kataNamaKolom.has(w);
 
   for (const s of kalimat) {
     const ada = kolom.filter((k) => menyebut(s, k));
-    // Menyebut SEMUA nama kolom sekaligus ("terdiri dari Mutlak, Penting, Perlu") = menjelaskan skala.
     if (!ada.length || (kolom.length >= 2 && ada.length === kolom.length)) continue;
     if (entri.length) {
       const asing = ada.filter((k) => !semuaNilai.has(k));
@@ -454,30 +343,14 @@ export function periksaTabelCentang(jawaban: string, isiDokumen: string[]): stri
   return null;
 }
 
-/**
- * `label` = label pengganti yang dipakai. Jalur stream tidak bisa menarik teks yang sudah terkirim,
- * jadi ia MENAMBAHKAN label ini di akhir — dulu nilainya dipaku ke HYPOTHESIS di `stream_handler.ts`.
- * Sejak adanya PARTIAL, label itu wajib dibaca dari sini supaya kedua jalur tidak berbeda vonis.
- */
 export type HasilLabel ={ jawaban: string; dikoreksi: boolean; alasan: string; catatan: string; label: string };
 
-/**
- * @param jawaban teks jawaban model
- * @param judulDokumen judul dokumen/artikel yang BENAR-BENAR dilampirkan ke prompt
- * @param isiDokumen isi potongan yang dilampirkan (opsional) — bila ada, angka dan pasangannya ikut diperiksa
- */
 export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiDokumen: string[] = []): HasilLabel {
-  // Varian huruf/spasi label VERIFIED disamakan dulu — kalau tidak, `[Status: Verified]` lolos dari semua pemeriksaan.
   const teks = String(jawaban || '').replace(/\[\s*status\s*:\s*verified\s*\]/gi, LABEL_VERIFIED);
   const diam: HasilLabel = { jawaban: teks, dikoreksi: false, alasan: '', catatan: '', label: '' };
   const judul = (judulDokumen || []).filter((j) => typeof j === 'string' && j.trim());
-  // Blok <think>…</think> SENGAJA ditampilkan di chat (transparansi, keputusan Owner 2026-09-14), tetapi label
-  // menilai JAWABAN AKHIR saja: label, Sumber, halaman, rujukan, dan angka dibaca di LUAR nalar. Keputusan Owner
-  // (uji mutu RAG putaran 4) menggantikan `0a50452` yang ikut memeriksa nalar: HCDP-07 #1 diturunkan hanya karena
-  // model mengecek di nalar "3.548 + 1.164 = 4.712, tidak sama dengan 4.828" — jawaban akhirnya bersih.
   const tampil = teks.replace(/<think>[\s\S]*?<\/think>/gi, '');
 
-  // Dokumen dilampirkan → kontrak BLOK 6 mewajibkan label. Tanpa label apa pun → HYPOTHESIS ditambahkan sistem.
   const adaLabel = /\[\s*status\s*:/i.test(tampil) || tampil.includes('[Pengetahuan umum AI');
   if (!adaLabel) {
     if (!judul.length) return diam;
@@ -488,23 +361,12 @@ export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiD
   const turunkan = (alasan: string, catatan: string): HasilLabel => ({
     jawaban: teks.split(LABEL_VERIFIED).join(LABEL_HIPOTESIS), dikoreksi: true, alasan, catatan, label: LABEL_HIPOTESIS
   });
-  // Kutipan sumber dicari di MANA SAJA, bukan hanya di awal baris: pada uji produksi pertama
-  // (2026-09-12) model menulis `[STATUS: VERIFIED] — Sumber: "judul…"` di SATU baris dengan label,
-  // dan aturan "baris harus dimulai dengan Sumber" menurunkan label yang sebenarnya sah.
-  // Tiap kemunculan kata "sumber" dibuka 300 huruf ke depan, lalu dicari judul yang cocok di sana.
   const JANGKAUAN = 300;
   const kutipan: string[] = [];
   const pola = /sumber/gi;
   let temu: RegExpExecArray | null;
   while ((temu = pola.exec(tampil)) !== null) kutipan.push(tampil.slice(temu.index, temu.index + JANGKAUAN));
-  // Judul di DALAM dokumen juga sah (uji mutu RAG 2026-09-14): model menulis
-  // `Sumber: "DOKUMEN PERENCANAAN PENGEMBANGAN KOMPETENSI ASN … (HCDP) …"` atau
-  // `Sumber: "Katalog Kurikulum FEB, FHISIP, FKIP …"` — judul sampul/tajuk halaman, bukan nama berkas —
-  // dan 5 jawaban benar diturunkan. Teks yang dikutip dianggap cocok bila tertulis di isi potongan yang
-  // dilampirkan (≥20 huruf setelah dirapikan). Pemeriksaan halaman & angka tetap berjalan sesudahnya.
   const isiRapi = (isiDokumen || []).filter((t) => typeof t === 'string' && t.trim()).map(rapikan);
-  // Tanpa tanda kutip juga diterima (uji mutu RAG putaran 4, KAT-02 #2): `Sumber: Katalog Kurikulum FEB, FHISIP, …`
-  // — sisa baris sesudah "Sumber:" harus tertulis utuh di isi potongan (≥20 huruf setelah dirapikan).
   const kutipanDiIsi = isiRapi.length > 0 && [
     ...[...tampil.matchAll(/sumber\s*:?\s*["“]([^"”\n]{8,300})["”]/gi)].map((m) => m[1]),
     ...[...tampil.matchAll(/sumber\s*:\s*([^"“”\n]{20,300})$/gim)].map((m) => m[1].replace(/[.\s]+$/, ''))
@@ -531,42 +393,8 @@ export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiD
   const alasanCentang = periksaTabelCentang(tampil, isiDokumen);
   if (alasanCentang) return turunkan(alasanCentang, `_Catatan sistem: label VERIFIED diturunkan — ${alasanCentang}. Periksa tingkat/kolom ini langsung di dokumen asli._`);
 
-  // ── Lapisan terakhir: PER-KLAIM (T13, 2026-09-28) — DIMATIKAN hari yang sama ───────────────
-  // Dimatikan atas keputusan Owner sesudah uji live, BUKAN karena gagal dibangun. Angkanya:
-  //
-  //   • 11 dari 12 kalimat penutup NYATA di jawaban VERIFIED Owner akan dituduh "tidak ditemukan
-  //     sandarannya" — termasuk "Semoga membantu, Pak Slamet." (porsi 0,00).
-  //   • 20 dari 83 jawaban VERIFIED (24,1%) memuat kalimat percakapan semacam itu, jadi kira-kira
-  //     satu dari empat jawaban BENAR akan turun ke PARTIAL dengan catatan yang konyol.
-  //   • Sebaliknya, ekstrapolasi yang sesungguhnya (paragraf "Rekomendasi saya: …" pada jawaban live
-  //     28 Sep 02:58) mendarat di porsi 0,17–0,21 — di dalam zona diam, jadi LOLOS.
-  //
-  // Akar salahnya satu kalimat: lapisan ini menganggap setiap kalimat pernyataan adalah klaim
-  // tentang dokumen. Sebagian besar jawaban chat adalah PERCAKAPAN — sapaan, tawaran bantuan,
-  // pengantar, penutup — yang memang tidak punya sandaran dokumen dan memang tidak perlu punya.
-  //
-  // Menambalnya dengan daftar kata ("semoga", "silakan", "beri tahu") adalah jebakan yang sama yang
-  // membuat CHIMERA gagal di T13. Tumpang-tindih kata juga tidak bisa memisahkan "klaim tentang
-  // kompetensi ASN yang bersandar dokumen" dari "saran umum tentang kompetensi ASN": keduanya
-  // sekosakata. Instrumennya yang salah, bukan setelannya.
-  //
-  // Modul, uji, dan seluruh angka di atas sengaja DITINGGALKAN di repo supaya kerja ini tidak hilang
-  // dan tidak diulang buta. Sebelum bendera ini dinyalakan lagi, dua hal harus benar dan dibuktikan
-  // uji — lihat `uji/uji-klaim-sumber.mjs` bagian "syarat menyalakan kembali":
-  //   1. kalimat percakapan tidak pernah dituduh;
-  //   2. ekstrapolasi sekosakata (porsi ~0,20) tertangkap.
-  // Arah yang lebih menjanjikan bukan menebak dari kata, melainkan memakai penandaan model sendiri
-  // (`[Pengetahuan umum AI…]`) — model membuktikan ia TAHU mana pendapatnya, tanpa diminta.
   const LAPISAN_KLAIM_AKTIF = false;
   if (!LAPISAN_KLAIM_AKTIF) return diam;
-  // Letaknya di sini, SESUDAH semua pemeriksaan di atas lolos, dan itu disengaja: di titik ini
-  // jawaban hari ini dilepas apa adanya sebagai VERIFIED. Karena lapisan ini hanya bekerja pada
-  // jalur `diam`, ia cuma bisa MEMPERKETAT — tak ada satu pun jawaban yang hari ini diturunkan
-  // bisa menjadi lebih longgar karenanya. Arah gagal-aman berkas ini tetap utuh.
-  //
-  // Celah yang ditutup: jawaban yang menyebut Sumber dengan benar, angka dan halamannya sah, tetapi
-  // menyelipkan satu-dua kalimat dari pengetahuan umum model — bentuk Item 70 pada tingkat kalimat.
-  // `periksaLabelSumber` menilai jawaban sebagai satu gumpalan, jadi kalimat itu ikut terstempel.
   const putusan = putuskanKlaim(tampil, isiDokumen);
   if (putusan.putusan === 'diam') return diam;
 
@@ -583,7 +411,6 @@ export function periksaLabelSumber(jawaban: string, judulDokumen: string[], isiD
   };
 }
 
-/** Dipakai jalur non-stream: mengoreksi teks sekaligus mencatat alasannya. */
 export function koreksiLabel(jawaban: string, judulDokumen: string[], mode: string, isiDokumen: string[] = []): string {
   const hasil = periksaLabelSumber(jawaban, judulDokumen, isiDokumen);
   if (hasil.dikoreksi) {

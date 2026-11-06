@@ -11,7 +11,6 @@ export function WorkspaceProvider({ appId, defaultWorkspaceId, children }) {
   useEffect(() => {
     let isMounted = true;
     const unsubscribe = manager.subscribe((payload) => {
-      // Defer state update to microtask queue to prevent updating state during render phase
       queueMicrotask(() => {
         if (isMounted) {
           setOsState(payload?.data || payload);

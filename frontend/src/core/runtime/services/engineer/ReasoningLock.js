@@ -1,24 +1,6 @@
-/**
- * ReasoningLock — "Tidak ada kode yang dihasilkan tanpa analisis yang ditunjukkan."
- * Menghasilkan laporan reasoning sebelum eksekusi patch, lalu menunggu konfirmasi
- * eksplisit dari Owner (dengan timeout) sebelum lanjut ke generate patch.
- *
- * Diekstrak dari engineer.js (Fase 5, ADR-0017). `pendingConfirmations` (Map)
- * tetap jadi state di instance Engineer — diteruskan lewat `deps` by-reference,
- * sehingga mutasi (`set`/`delete`) tetap terlihat di Map yang sama, perilaku
- * identik dengan sebelum diekstrak.
- */
 
-export const CONFIRMATION_TIMEOUT_MS = 10 * 60 * 1000; // 10 menit
+export const CONFIRMATION_TIMEOUT_MS = 10 * 60 * 1000;
 
-/**
- * Menghasilkan laporan reasoning komprehensif sebelum eksekusi patch.
- * @param {Object} task - Task yang sedang diproses
- * @param {Object} analysis - Hasil analisis dari _analyze()
- * @param {Object} options - Opsi tambahan (intent, capabilityCheck, modelName)
- * @param {Object} deps - { calculateConfidence, eventBus, capability, extractFileNamesFromTask }
- * @returns {Object} Reasoning report object
- */
 export function emitReasoningReport(task, analysis, options = {}, deps) {
   const { calculateConfidence, eventBus, capability, extractFileNamesFromTask } = deps;
   const { intent = 'MODIFY_CODE', capabilityCheck = null, modelName = 'unknown' } = options;
@@ -48,25 +30,17 @@ export function emitReasoningReport(task, analysis, options = {}, deps) {
     ...report,
     from: 'Engineer',
     capability: capability,
-    requiresApproval: false, // Reasoning report hanya perlu konfirmasi, bukan approval
+    requiresApproval: false,
   });
 
   return report;
 }
 
-/**
- * Menunggu konfirmasi eksplisit dari user sebelum melanjutkan ke generasi patch.
- * Timeout otomatis 10 menit untuk mencegah memory leak.
- * @param {Object} report - Reasoning report yang akan dikonfirmasi
- * @param {Object} deps - { pendingConfirmations, eventBus }
- * @returns {Promise<boolean>} true jika user mengkonfirmasi, false jika dibatalkan atau timeout
- */
 export function waitForUserConfirmation(report, deps) {
   const { pendingConfirmations, eventBus } = deps;
   return new Promise((resolve) => {
     const confirmationId = report.taskId || `CONFIRM-${Date.now()}`;
 
-    // Timeout otomatis untuk mencegah memory leak
     const timeout = setTimeout(() => {
       if (pendingConfirmations.has(confirmationId)) {
         console.warn(`[Engineer] ⏰ Confirmation timeout for ID: ${confirmationId}. Auto-cancelling.`);
@@ -75,16 +49,14 @@ export function waitForUserConfirmation(report, deps) {
       }
     }, CONFIRMATION_TIMEOUT_MS);
 
-    // Simpan resolver + timeout di Map
     pendingConfirmations.set(confirmationId, {
       report,
       resolver: (result) => {
-        clearTimeout(timeout); // Bersihkan timeout saat user merespons
+        clearTimeout(timeout);
         resolve(result);
       }
     });
 
-    // Emit event ke UI untuk menampilkan tombol konfirmasi
     eventBus.emit('Engineer:RequestConfirmation', {
       confirmationId: confirmationId,
       report: report,
@@ -103,12 +75,6 @@ export function waitForUserConfirmation(report, deps) {
   });
 }
 
-/**
- * Handler untuk response konfirmasi dari user.
- * Dipanggil dari event listener Engineer:UserConfirmation.
- * @param {Object} response - { confirmationId, confirmed }
- * @param {Object} deps - { pendingConfirmations }
- */
 export function handleUserConfirmation(response, deps) {
   const { pendingConfirmations } = deps;
   const { confirmationId, confirmed } = response;

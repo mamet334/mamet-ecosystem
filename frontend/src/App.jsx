@@ -12,8 +12,6 @@ import './App.css'
 export default function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
-  // T19 (29 Okt 2026): tautan pemulihan dari email langsung membuat sesi — tanpa penahan ini pengguna masuk ke desktop
-  // tanpa pernah diminta kata sandi baru. Dibaca dari alamat awal (supabase.js) DAN dari peristiwa PASSWORD_RECOVERY.
   const [pemulihan, setPemulihan] = useState(jenisTautanAwal === 'pemulihan')
 
   useEffect(() => {
@@ -30,11 +28,6 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Keadaan layar kini hidup di luar layarnya (PenyimpanKeadaan, Item 127 Tahap 1), jadi logout TIDAK
-  // lagi menghapusnya dengan sendirinya. Pengguna berganti (keluar, atau akun lain masuk) = semua keadaan
-  // dilupakan — tanpa ini orang berikutnya di aplikasi yang sama melihat percakapan orang sebelumnya.
-  // Penyegaran token (pengguna sama) tidak menghapus apa pun. Selama sesi masih diperiksa (`loading`),
-  // `session` memang null — itu bukan "keluar", jadi belum dicatat sebagai pengguna sebelumnya.
   const penggunaSebelumnyaRef = useRef(undefined)
   useEffect(() => {
     if (loading) return
@@ -45,7 +38,6 @@ export default function App() {
     penggunaSebelumnyaRef.current = id
   }, [session, loading])
 
-  // Tema (Item 128): sesudah masuk, setelan tampilan di akun menjadi sumber kebenaran — tema ikut ke desktop & web.
   useEffect(() => {
     if (session?.user) temaService.sinkronDariAkun(session.user)
   }, [session])
@@ -68,9 +60,6 @@ export default function App() {
     )
   }
 
-  // Layar masuk SELALU memakai ruangannya sendiri, apa pun tema pilihan (Item 128): pembungkus ini mengembalikan
-  // variabel tema & warna dasar ke Ruangan kayu untuk LampLogin dan isinya (mis. TombolUnduhDesktop). LampLogin.jsx
-  // sendiri tidak disentuh — kecuali T19 (29 Okt, izin Owner): mode "lupa" & "kata sandi baru" di panel yang sama.
   if (!session || pemulihan) {
     return (
       <div data-tema="ruangan-kayu" data-dasar="gelap" className="contents">

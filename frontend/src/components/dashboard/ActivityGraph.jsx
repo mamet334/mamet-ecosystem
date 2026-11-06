@@ -5,14 +5,8 @@ import { temaService } from '../../core/runtime/services/TemaService';
 import { simpulDirektori, labelTooltipAman, ambangLabelData, prioritasLabel, bolehLabel, kotakLabel, jangkarLabel, garisMenyala } from '../../core/runtime/hooks/grafHome.js';
 
 const FALLBACK_COLOR = '#475569';
-// [ROADMAP-KNOWLEDGE-GALAXY-COSMIC-ORBITS §3.A] Lengkungan orbit gravitasi kosmik
-// menggantikan garis lurus polygonal — nilai 0.12-0.16 sesuai spesifikasi desain.
 const ORBIT_CURVATURE = 0.14;
 
-// Warna terang kanvas (label, jalur aktif, partikel) — dari variabel tema (Item 128 Tahap D3). Kanvas menggambar
-// dengan string warna, bukan kelas CSS, jadi variabelnya dibaca langsung. Di tema gelap nilainya sama dengan dulu
-// (#ffffff, rgba(226,232,240,.85), #fca5a5); di tema terang menjadi gelap supaya terbaca. Warna SIMPUL (makna,
-// konstitusi 23) tidak ikut tema.
 function bacaWarnaKanvas() {
   if (typeof document === 'undefined') return { putih: '#ffffff', label: 'rgba(226, 232, 240, 0.85)', konflik: '#fca5a5', partikel: 'rgba(255,255,255,0.5)', putihRgb: '255, 255, 255' };
   const gaya = getComputedStyle(document.documentElement);
@@ -42,19 +36,12 @@ export default function ActivityGraph({
   onNodeDragEnd,
   onEngineStop
 }) {
-  // Tertutup di awal (keputusan Owner 2 Nov, Item 130 Tahap A) — dibuka dengan klik "Tampilkan".
   const [isExplorerOpen, setIsExplorerOpen] = useState(false);
-  const [activeFilter, setActiveFilter] = useState('ALL'); // 'ALL' | 'CONFLICTS' | 'RAG' | 'MEMORY' | 'CHAT'
+  const [activeFilter, setActiveFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  // [ROADMAP-KNOWLEDGE-GALAXY-COSMIC-ORBITS §3.B] Simpul memori yang sedang "dipikirkan"
-  // AI di percakapan aktif — didorong dari event Brain:ActiveThoughts (ConversationEngine.jsx).
   const [activeThoughtIds, setActiveThoughtIds] = useState(() => new Set());
 
-  // Handler event di bawah dipasang sekali (deps []), jadi tidak boleh membaca prop graphData
-  // langsung — nilainya akan terkunci pada saat mount (kemungkinan besar masih kosong).
-  // Dibaca ulang setiap tema berganti — fungsi gambar kanvas membaca ref ini, bukan variabel saat mount.
   const warnaKanvasRef = useRef(null);
-  // Label yang diantrekan selama satu bingkai, dilukis di onRenderFramePost (Tahap E).
   const antreanLabelRef = useRef([]);
   if (!warnaKanvasRef.current) warnaKanvasRef.current = bacaWarnaKanvas();
   useEffect(() => temaService.langgan(() => { warnaKanvasRef.current = bacaWarnaKanvas(); }), []);
@@ -68,14 +55,9 @@ export default function ActivityGraph({
     const eventBus = kernel.serviceManager?.get('EventBus');
     if (!eventBus) return;
     const handler = (payload) => {
-      // EventBus.emit() selalu membungkus payload asli di dalam payload.data
-      // (lihat EventBus.js:73-77, "Anti-Spoofing: Wrap payload with metadata").
       const memoryIds = payload?.data?.memoryIds || [];
       const nextIds = new Set(memoryIds.map(id => `mem-${id}`));
 
-      // Diagnostik: bandingkan langsung dengan ID simpul yang benar-benar ada di kanvas.
-      // Tanpa ini, kegagalan "denyut tidak muncul" tidak bisa dibedakan antara event tidak
-      // sampai, ID tidak cocok, atau simpulnya memang di luar layar.
       if (nextIds.size > 0) {
         const existingNodeIds = new Set((graphDataRef.current?.nodes || []).map(n => n.id));
         const matched = [...nextIds].filter(id => existingNodeIds.has(id));
@@ -91,7 +73,6 @@ export default function ActivityGraph({
     return unsubscribe;
   }, []);
 
-  // Hanya simpul DATA — dulu sub-cluster statis & layanan ikut terdaftar berlencana MEMORI (lihat grafHome.js).
   const leafNodes = useMemo(() => simpulDirektori(graphData?.nodes), [graphData?.nodes]);
 
   const counts = useMemo(() => {
@@ -152,7 +133,6 @@ export default function ActivityGraph({
             const pulse = Math.abs(Math.sin(time / 250));
 
             if (isConflict) {
-              // High-visibility pulsing red alert ring for memory conflicts
               ctx.beginPath();
               ctx.arc(node.x, node.y, size * (1.6 + pulse * 0.8), 0, 2 * Math.PI, false);
               ctx.fillStyle = `rgba(239, 68, 68, ${0.3 + pulse * 0.4})`;
@@ -169,7 +149,6 @@ export default function ActivityGraph({
               ctx.fillStyle = '#ff4444';
               ctx.fill();
             } else if (isOrphan) {
-              // Subtle outer halo for orphan/isolated nodes while retaining semantic color
               ctx.beginPath();
               ctx.arc(node.x, node.y, size * (1.2 + pulse * 0.2), 0, 2 * Math.PI, false);
               ctx.fillStyle = `rgba(${warnaKanvasRef.current.putihRgb}, 0.08)`;
@@ -182,11 +161,6 @@ export default function ActivityGraph({
               ctx.stroke();
             }
 
-            // [ROADMAP-KNOWLEDGE-GALAXY-COSMIC-ORBITS §3.B] LIVE THOUGHT PULSING —
-            // Cincin pendaran semantik pada simpul yang sedang aktif dipikirkan AI
-            // (memori yang baru dipanggil ke Memory Context percakapan). Digambar
-            // TERPISAH dari cabang konflik/orphan di atas supaya tetap tampil
-            // bersamaan dengan status lain (mis. memori konflik yang juga aktif).
             if (activeThoughtIds.has(node.id)) {
               const thoughtPulseScale = 1.3 + 0.35 * Math.sin(time / 200);
               const ringColor = getNodeColor(node) || '#38bdf8';
@@ -197,16 +171,13 @@ export default function ActivityGraph({
               ctx.shadowColor = ringColor;
               ctx.shadowBlur = 12;
               ctx.stroke();
-              ctx.shadowBlur = 0; // reset agar tidak bocor ke elemen kanvas berikutnya
+              ctx.shadowBlur = 0;
             }
 
-            // Label TIDAK dilukis di sini (Item 130 Tahap E): diantrekan, lalu dilukis di akhir bingkai menurut prioritas
-            // dengan penghindar tabrakan (onRenderFramePost) — pasti di atas semua titik, dan tak pernah saling tindih.
             if (node.name) {
               const isCategory = node.isCategory || node.group === 'core';
               if (globalScale >= ambangLabelData(skalaPas) || isCategory || isConflict) {
                 const maxLen = isCategory ? 26 : 18;
-                // Tahap F: planet/fondasi/satelit berlabel di luar sistem bulannya (`labelGeser`), lainnya di bawah simpul.
                 const j = jangkarLabel(node, size, 2.5 / globalScale);
                 antreanLabelRef.current.push({
                   teks: node.name.length > maxLen ? node.name.substring(0, maxLen) + '…' : node.name,
@@ -235,7 +206,6 @@ export default function ActivityGraph({
               ctx.fillText(l.teks, l.x, l.y);
             }
           }}
-          // Jaring laba-laba (Tahap F): garis relasi selalu tampil, lurus; hanya jalur pesan Desktop ⇄ Server melengkung.
           linkCurvature={(link) => (link?.jalurPesan ? ORBIT_CURVATURE : 0)}
           linkColor={(link) => {
             if (!link || !link.source || !link.target) return `rgba(${warnaKanvasRef.current.putihRgb}, 0.35)`;
@@ -246,9 +216,7 @@ export default function ActivityGraph({
               if (activePath.links.has(`${sourceId}->${targetId}`)) return '#00ffcc';
               return `rgba(${warnaKanvasRef.current.putihRgb}, 0.02)`;
             }
-            // Simpul dipilih: garisnya menyala, jaring lain meredup.
             if (simpulTerpilih) return garisMenyala(link, simpulTerpilih) ? `rgba(${warnaKanvasRef.current.putihRgb}, 0.9)` : `rgba(${warnaKanvasRef.current.putihRgb}, 0.06)`;
-            // Garis berlampu (jalur pesan, fondasi → belahan) ikut status TERKINI (Item 130 Tahap B–C).
             if (link.statusKeys && warnaLampu) return warnaLampu(link.statusKeys);
             return link.color || `rgba(${warnaKanvasRef.current.putihRgb}, 0.35)`;
           }}
@@ -295,7 +263,6 @@ export default function ActivityGraph({
             }
           }}
           backgroundColor="#00000000"
-          // Posisi dipaku tata surya (Tahap F) — tak ada yang perlu "dicari"; mesin berhenti cepat, tak memantul.
           cooldownTicks={30}
           d3AlphaDecay={0.02}
           d3VelocityDecay={0.3}
@@ -312,7 +279,6 @@ export default function ActivityGraph({
         </div>
       )}
 
-      {/* Title Overlay & Semantic Legend (Constitution 23) */}
       <div className="absolute top-8 left-8 z-20 pointer-events-none">
         <h1 className="font-display-lg text-[32px] md:text-[38px] text-white font-black tracking-widest leading-none drop-shadow-2xl font-mono">
           MAMET KNOWLEDGE GRAPH
@@ -331,10 +297,8 @@ export default function ActivityGraph({
         </div>
       </div>
 
-      {/* Top-Right Floating Knowledge Explorer */}
       <div className="absolute top-8 right-8 z-20 w-72 md:w-80 font-mono select-none">
         <div className="bg-black/35 hover:bg-black/50 backdrop-blur-2xl border border-white/10 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] overflow-hidden transition-all duration-300">
-          {/* Header */}
           <div 
             onClick={() => setIsExplorerOpen(prev => !prev)}
             className="px-3.5 py-2.5 bg-white/[0.03] hover:bg-white/[0.06] border-b border-white/5 flex items-center justify-between cursor-pointer transition-colors"
@@ -349,8 +313,6 @@ export default function ActivityGraph({
             </button>
           </div>
 
-          {/* Lapisan Kemampuan (Item 130 Tahap D, Konstitusi 23 "lingkar 2"): alat chat, alat folder, MCP berekor,
-              sub-agent — tidak selalu tampil (layar Owner 1366×768), dibuka di sini. */}
           {onToggleKemampuan && (
             <div
               onClick={onToggleKemampuan}
@@ -365,7 +327,6 @@ export default function ActivityGraph({
 
           {isExplorerOpen && (
             <div className="p-3">
-              {/* Search Bar */}
               <div className="relative mb-2.5">
                 <input
                   type="text"
@@ -384,7 +345,6 @@ export default function ActivityGraph({
                 )}
               </div>
 
-              {/* Filter Tabs (Horizontal scrollbar hidden) */}
               <div className="flex items-center gap-1 overflow-x-auto pb-1.5 mb-2 border-b border-white/5 text-[12px] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 <button
                   onClick={() => setActiveFilter('ALL')}
@@ -424,7 +384,6 @@ export default function ActivityGraph({
                 </button>
               </div>
 
-              {/* Entity Items List (Dark sleek scrollbar) */}
               <div className="space-y-1 max-h-56 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.2)_transparent] [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/40">
                 {filteredNodes.length === 0 ? (
                   <div className="py-4 text-center text-[12px] text-slate-500 font-mono">Tidak ada entitas ditemukan.</div>

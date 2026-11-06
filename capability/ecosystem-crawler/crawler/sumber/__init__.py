@@ -19,7 +19,6 @@ from .web import Web
 from .wikipedia import Wikipedia
 from .youtube import YouTube
 
-
 def buat_registri() -> dict[str, Sumber]:
     return {s.id: s for s in (
         GoogleNews(), RssMedia(), TurnBackHoax(), MediaKonsumen(), Reddit(), ArcticShift(), Bluesky(), YouTube(),

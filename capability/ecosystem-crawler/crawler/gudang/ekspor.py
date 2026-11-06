@@ -12,7 +12,6 @@ KOLOM_CSV = (
 )
 FORMAT = ("csv", "jsonl", "md")
 
-
 def ekspor(gudang, misi_id: str, formats: list[str], folder: Path) -> list[Path]:
     misi = gudang.misi(misi_id)
     if not misi:
@@ -34,9 +33,7 @@ def ekspor(gudang, misi_id: str, formats: list[str], folder: Path) -> list[Path]
         keluar.append(_md(misi, rows, folder / "daftar.md"))
     return keluar
 
-
 def _csv(rows: list[dict], path: Path) -> Path:
-    # utf-8-sig agar Excel membaca huruf non-ASCII dengan benar.
     with path.open("w", encoding="utf-8-sig", newline="") as f:
         w = csv.DictWriter(f, fieldnames=KOLOM_CSV, extrasaction="ignore")
         w.writeheader()
@@ -45,14 +42,12 @@ def _csv(rows: list[dict], path: Path) -> Path:
                         "kata_kunci_cocok": ", ".join(r["kata_kunci_cocok"])})
     return path
 
-
 def _jsonl(rows: list[dict], path: Path) -> Path:
     with path.open("w", encoding="utf-8") as f:
         for r in rows:
             r = {k: v for k, v in r.items() if k not in ("urut", "penulis_hash")}
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
     return path
-
 
 def _md(misi: dict, rows: list[dict], path: Path) -> Path:
     spec = misi["spesifikasi"]
@@ -78,7 +73,6 @@ def _md(misi: dict, rows: list[dict], path: Path) -> Path:
         "",
     ]
     ids = {r["id"] for r in rows}
-    # Urut sesuai misi, termasuk sumber tanpa hasil, agar Owner tahu sumber itu sudah dicoba.
     for sumber in dict.fromkeys([*spec["payload"]["sumber"], *per_sumber]):
         items = per_sumber.get(sumber, [])
         info = (ringkasan.get("per_sumber") or {}).get(sumber, {})
@@ -96,7 +90,6 @@ def _md(misi: dict, rows: list[dict], path: Path) -> Path:
         baris.append("")
     path.write_text("\n".join(baris), encoding="utf-8")
     return path
-
 
 def _item_md(r: dict, level: int) -> list[str]:
     indent = "  " * level

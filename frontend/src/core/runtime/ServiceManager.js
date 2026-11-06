@@ -23,5 +23,4 @@ export class ServiceManager {
   }
 }
 
-// Global Singleton for the DI Container
 export const serviceManager = new ServiceManager();

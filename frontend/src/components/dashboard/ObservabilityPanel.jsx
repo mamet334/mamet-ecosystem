@@ -63,7 +63,6 @@ export default function ObservabilityPanel({
       </h2>
 
       <div className="space-y-5">
-        {/* Execution Trace Timeline */}
         <div className="group pt-2 border-t border-white/5">
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -149,7 +148,6 @@ export default function ObservabilityPanel({
           )}
         </div>
 
-        {/* Pipeline Execution */}
         {executionTrace?.pipeline?.steps && executionTrace.pipeline.steps.length > 0 && (
           <div className="group pt-4 border-t border-white/5">
             <div className="text-[12px] text-slate-500 uppercase tracking-wider font-mono mb-3">
@@ -184,7 +182,6 @@ export default function ObservabilityPanel({
           </div>
         )}
 
-        {/* Metrics Grid */}
         <div className="grid grid-cols-2 gap-4">
           <div className="group">
             <div className="text-[12px] text-slate-500 mb-1 uppercase tracking-wider font-mono group-hover:text-green-400 transition-colors">Memory Reads</div>
@@ -215,7 +212,6 @@ export default function ObservabilityPanel({
           </div>
         </div>
 
-        {/* Ecosystem Health */}
         <div className="group pt-4 border-t border-white/5">
           <div className="flex items-center justify-between mb-4">
             <div className="text-[12px] text-slate-500 uppercase tracking-wider font-mono">Ecosystem Health</div>
@@ -246,7 +242,6 @@ export default function ObservabilityPanel({
 
           <div className="space-y-2 text-[12px] font-mono tracking-widest text-slate-300 border-t border-white/5 pt-4">
             {Object.entries(vitals).map(([key, val]) => (
-              // Alasan lampu (Item 130 Tahap B) tampil saat disorot — atribut `title` = teks, bukan HTML.
               <div key={key} className="flex items-center gap-2" title={keteranganLampu[key] || undefined}>
                 <span className={
                   val === 'DOWN' ? 'text-red-400'
@@ -260,7 +255,6 @@ export default function ObservabilityPanel({
           </div>
         </div>
 
-        {/* Bottleneck Panel */}
         <div className="group pt-4 border-t border-white/5">
           <div className="text-[12px] text-slate-500 mb-2 uppercase tracking-wider font-mono">Bottleneck (P50 / P95 / P99)</div>
           <div className="grid grid-cols-3 gap-2 mb-3">
@@ -291,7 +285,6 @@ export default function ObservabilityPanel({
           )}
         </div>
 
-        {/* Recent Failures */}
         <div className="group pt-4 border-t border-white/5">
           <div className="text-[12px] text-slate-500 mb-2 uppercase tracking-wider font-mono">Recent Known Failures</div>
           {observability.recentFailures.length === 0 ? (
@@ -318,7 +311,6 @@ export default function ObservabilityPanel({
           )}
         </div>
 
-        {/* Orphan Nodes */}
         <div className="group pt-4 border-t border-white/5" title="Nodes that exist but are not connected to the Mamet knowledge graph.">
           <div className="text-[12px] text-slate-500 mb-1 uppercase tracking-wider font-mono">Orphan Nodes</div>
           {(() => {
@@ -330,7 +322,6 @@ export default function ObservabilityPanel({
           })()}
         </div>
 
-        {/* Connected Nodes */}
         <div className="group pt-4 border-t border-white/5" title="Nodes with at least one active relation.">
           <div className="text-[12px] text-slate-500 mb-1 uppercase tracking-wider font-mono">Connected Nodes</div>
           {(() => {
@@ -342,7 +333,6 @@ export default function ObservabilityPanel({
           })()}
         </div>
 
-        {/* Memory Governance Conflicts */}
         <div className="group pt-4 border-t border-white/5" title="Memories with status CONFLICT_PENDING_REVIEW requiring user resolution.">
           <div className="flex items-center justify-between mb-1">
             <div className="text-[12px] text-slate-500 uppercase tracking-wider font-mono">Memory Conflicts</div>
@@ -387,7 +377,6 @@ export default function ObservabilityPanel({
           })()}
         </div>
 
-        {/* System Governor: Session Digest & Level 4 Approval Gate (Tahap 2) */}
         <div className="group pt-4 border-t border-white/5">
           <div className="flex items-center justify-between mb-2">
             <div className="text-[12px] text-slate-500 uppercase tracking-wider font-mono">System Governor Digest</div>
@@ -398,7 +387,6 @@ export default function ObservabilityPanel({
             )}
           </div>
 
-          {/* Level 4 Approval Gate Banner */}
           {pendingApproval && (
             <div className="mb-3 p-2.5 rounded-lg bg-red-950/40 border border-red-500/50 space-y-2 animate-in fade-in">
               <div className="flex items-center justify-between text-[12px] text-red-400 font-bold">
@@ -428,7 +416,6 @@ export default function ObservabilityPanel({
             </div>
           )}
 
-          {/* Session Digest Grid */}
           <div className="grid grid-cols-2 gap-2 text-center text-[12px] font-mono">
             <div className="p-2 rounded bg-white/5 border border-white/5">
               <div className="text-slate-400 text-[12px] uppercase">LOW Queue</div>

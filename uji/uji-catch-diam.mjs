@@ -75,26 +75,26 @@ function pindai() {
   for (const d of DIR) { const p = join(AKAR, d); if (existsSync(p)) jalan(p); }
 
   const hasil = {};
-  let total = 0, bersuara = 0, sengaja = 0;
+  let total = 0, bersuara = 0, berlogika = 0;
   for (const f of berkas) {
     const s = readFileSync(f, 'utf8');
     let n = 0;
     for (const m of s.matchAll(/catch\s*(?:\([^)]*\))?\s*\{([^{}]*)\}/g)) {
       total++;
-      const isi = m[1];
+      const isi = m[1].trim();
       if (BERSUARA.test(isi)) { bersuara++; continue; }
-      if (/\/\/|\/\*/.test(isi)) { sengaja++; continue; }   // diam, tapi alasannya tertulis
+      if (isi.length > 0 && !/^[\s;]*$/.test(isi)) { berlogika++; continue; }
       n++;
     }
     if (n > 0) hasil[f.replace(AKAR + sep, '').split(sep).join('/')] = n;
   }
-  return { hasil, total, bersuara, sengaja, jumlahBerkas: berkas.length };
+  return { hasil, total, bersuara, berlogika, jumlahBerkas: berkas.length };
 }
 
-const { hasil, total, bersuara, sengaja, jumlahBerkas } = pindai();
+const { hasil, total, bersuara, berlogika, jumlahBerkas } = pindai();
 const diam = Object.values(hasil).reduce((a, b) => a + b, 0);
 
-console.log(`\nberkas sumber ${jumlahBerkas} · blok catch ${total} · bersuara ${bersuara} · diam-berkomentar ${sengaja} · DIAM ${diam}`);
+console.log(`\nberkas sumber ${jumlahBerkas} · blok catch ${total} · bersuara ${bersuara} · berlogika ${berlogika} · DIAM (kosong) ${diam}`);
 
 // ── Mode perbarui ───────────────────────────────────────────────────────────────────────────
 if (perbarui) {

@@ -3,18 +3,15 @@ import { eventBus } from './event/event_bus.ts';
 import { CapabilityRegistry } from './adapters/adapter_registry.ts';
 import { pesanSemuaPenyediaGagal } from './streaming/pesan_gagal_stream.ts';
 
-// API Key state moved to Adapters
 
 
 
-// === COOLDOWN CONFIGURATION ===
 const PROVIDER_COOLDOWN_DURATIONS: Record<string, number> = {
-  'gemini': 60000,        // 60 seconds for Gemini
-  'openrouter': 60000,    // 60 seconds for OpenRouter
-  'groq': 3600000         // 1 hour for Groq (rentan rate limit)
+  'gemini': 60000,
+  'openrouter': 60000,
+  'groq': 3600000
 };
 
-// Cooldown state moved to CapabilityRegistry
 
 export const callLLMWithMetadata = async (
   promptText: string,
@@ -24,14 +21,11 @@ export const callLLMWithMetadata = async (
   extractedImage: { mimeType: string; data: string } | null = null,
   rctx: RuntimeContext,
   tools: string[] = [],
-  // thinking: menimpa rctx.model.thinking untuk panggilan ini saja (Intent Router/Coordinator: false).
-  // tenggat: waktu (ms epoch) berhenti membaca jawaban — hasil sebagian dikembalikan dengan terpotong=true (batas_waktu.ts).
   opsi: { onNalar?: (teks: string) => void; onIsiMulai?: () => void; thinking?: boolean; tenggat?: number } = {}
 ): Promise<{ result: string; metadata?: any; reasoning?: string; terpotong?: boolean }> => {
   await CapabilityRegistry.initializeAdapters(rctx);
 
   const buildPayload = (tools: string[] = []) => {
-    // [PR#6 TOKEN EFFICIENCY] Static/Dynamic split untuk Implicit Caching Gemini non-stream
     let staticSystemPrompt = systemPromptText || '';
     let dynamicContextInject = '';
 
@@ -75,23 +69,19 @@ export const callLLMWithMetadata = async (
       payload.tools = [{ googleSearch: {} }];
     }
     
-    // Batasi output tokens agar tidak melampaui limit/kredit 
     payload.generationConfig = { maxOutputTokens: 8192 };
     
     return payload;
   };
 
-  // Disable cascade - only use the provider selected by user
   let cascadeOrder: Array<string> = [];
   
   if (preferredProvider) {
     cascadeOrder = [preferredProvider];
   } else {
-    // Fallback to default only if no provider specified
     cascadeOrder = ['openrouter'];
   }
 
-  // Filter available via cooldown check in Registry
   const availableAdapters = CapabilityRegistry.getAvailableAIAdapters(cascadeOrder);
 
   console.log(`🎯 Using provider: ${availableAdapters.map(a => a.name).join(' -> ')}`);
@@ -107,19 +97,6 @@ export const callLLMWithMetadata = async (
     console.log(`📍 Executing Capability Adapter: ${adapter.name}`);
     
     try {
-      // Model pilihan Owner belum tentu cocok dengan adapter yang sedang dicoba.
-      // Pola penjagaan ini sudah ada untuk OpenRouterAdapter lewat `forceDefaultModel`
-      // (baris di bawah), tapi GeminiAdapter tidak punya padanannya — sehingga model ID
-      // provider lain ikut terkirim ke endpoint Google.
-      //
-      // Akibatnya terukur di log produksi 2026-09-09: runCoordinatorLLM() mematok
-      // provider 'gemini' tapi tetap meneruskan model Owner, jadi GeminiAdapter menembak
-      // .../models/deepseek%2Fdeepseek-v4-flash-0731:generateContent → 404, diulang
-      // 3 key × 3 percobaan × 2 panggilan koordinator = 18 request gagal per pesan,
-      // membuang ±6,5 detik sebelum panggilan utama jalan. Lihat Item 38.
-      //
-      // GeminiAdapter.execute() memakai DEFAULT_GEMINI_MODEL kalau model undefined —
-      // sama seperti yang sudah dilakukan jalur stream()-nya.
       const modelCocokUntukAdapter =
         adapter.name === 'GeminiAdapter' && rctx.model.model && !/gemini/i.test(rctx.model.model)
           ? undefined
@@ -144,22 +121,8 @@ export const callLLMWithMetadata = async (
 
         const result = await adapter.execute(adapterInput, { trace_id: rctx.traceId || rctx.tasks?.traceId || 'unknown' });
       
-      // Jawaban terpotong pada tenggat tetap diterima walau isinya kosong (terhenti saat bernalar): nalarnya sudah dibayar.
       if (result && (result.result || result.terpotong)) {
         if (!rctx.stream.isStream) {
-          // result.usageCostUsd = biaya sesungguhnya dari provider kalau dilaporkan.
-          // Kalau undefined, logApiUsage jatuh ke perkiraan tabel tarif.
-          //
-          // Modelnya diambil dari `result.modelUsed` — model yang BENAR-BENAR
-          // dipakai adapter — bukan `rctx.model.model` yang hanya model yang
-          // diminta. Saat kaskade jatuh ke adapter lain, keduanya berbeda, dan
-          // mencatat model yang diminta menghasilkan baris mustahil di
-          // `api_usage` seperti provider `gemini` dengan model `deepseek/...`.
-          //
-          // Ini bukan sekadar label: kalau provider tidak melaporkan biaya,
-          // `logApiUsage` mencocokkan nama model ini ke tabel tarif. Nama yang
-          // salah berarti tarif yang salah — kelas kesalahan yang sama persis
-          // dengan Item 41.
           const modelTercatat = result.modelUsed || rctx.model.model || 'auto';
           rctx.logger.logApiUsage(result.source, modelTercatat, promptText + systemPromptText, result.result, result.usageCostUsd);
         }
@@ -204,14 +167,6 @@ export const callLLMWithCascade = async (
   return res.result;
 };
 
-/**
- * [PROMPT_KOMPOSISI] — ukuran tiap bagian prompt JAWABAN UTAMA, dalam huruf (Item 44/66).
- *
- * Token tak bisa dibandingkan antar model — tokenizer gpt-4o-mini dan deepseek menghitung teks
- * yang sama berbeda — jadi yang dicatat jumlah huruf. Hanya untuk prompt yang memuat Universal
- * Evidence Contract (jawaban utama), bukan panggilan kecil (peringkas, router). Penanda dicari
- * SESUDAH awal kontrak, karena teks panduan identitas juga menyebut "<RAG>" dan "[BLOK 4: …]".
- */
 export function catatKomposisiPrompt(promptText: string, systemPromptText: string, chatHistory: any[]) {
   const s = systemPromptText || '';
   const awalKontrak = s.indexOf('[UNIVERSAL EVIDENCE CONTRACT');
@@ -221,20 +176,6 @@ export function catatKomposisiPrompt(promptText: string, systemPromptText: strin
   const segmen = ([
     ['dasar_identitas_panduan', 0],
     ['memori_personal_klien', s.search(/\[MEMORI & (PREFERENSI PERSONAL|KONTEKS SISTEM)\]/)],
-    // DITAMBAHKAN 2026-10-04. Tanpa penanda ini, `engineerContextPrompt` TIDAK punya segmennya
-    // sendiri — dan karena ukuran tiap segmen dihitung sebagai jarak ke segmen berikutnya, ia
-    // ikut terhitung ke dalam `memori_personal_klien`.
-    //
-    // Akibatnya terukur: segmen itu tercatat 18.195 huruf dan IDENTIK di empat kali jalan, tak
-    // peduli pertanyaannya maupun berapa potongan RAG yang ditemukan — padahal `user_memories`
-    // yang sebenarnya hanya 10 baris / 316 huruf, dan `globalMemory` dari klien dibatasi 4.000
-    // huruf (`MAX_RAG_CONTEXT_CHARS`). Sisanya, belasan ribu huruf, adalah konteks Engineer.
-    //
-    // Jadi biaya terbesar mode Engineer selama ini TERSEMBUNYI di bawah label "memori personal".
-    // Urutannya di `context_pipeline.ts:24`: identitas + userContext + memori + ENGINEER + kontrak.
-    // `s.indexOf` dari awal, BUKAN `cari()`: `cari` sengaja mulai dari awal kontrak (lihat JSDoc),
-    // sedangkan blok Engineer berada SEBELUM kontrak — memakai `cari` akan selalu -1 dan segmennya
-    // diam-diam tak pernah muncul, persis kebisuan yang ingin dihentikan di sini.
     ['konteks_engineer', s.indexOf('[MAMET ENGINEER CONTEXT')],
     ['kontrak_blok1_2', awalKontrak],
     ['blok3_memori', cari('[BLOK 3:')],
@@ -255,14 +196,12 @@ export function catatKomposisiPrompt(promptText: string, systemPromptText: strin
   console.log(`[PROMPT_KOMPOSISI] sistem=${s.length} ${JSON.stringify(ukuran)} | riwayat=${riwayat.length} pesan/${hurufRiwayat} huruf | pesan=${hurufPesan} | total=${s.length + hurufRiwayat + hurufPesan} huruf`);
 }
 
-/** Seperti runLLM, tetapi ikut mengembalikan nalar model (`reasoning`) — dipakai jawaban akhir di synthesis_handler. */
 export const runLLMDenganNalar = async (
   promptText: string, systemPromptText = '', chatHistory: any[] = [], rctx: RuntimeContext,
   opsi: { onNalar?: (teks: string) => void; onIsiMulai?: () => void; tenggat?: number; thinking?: boolean } = {}
 ): Promise<{ result: string; metadata?: any; reasoning?: string; terpotong?: boolean }> => {
   catatKomposisiPrompt(promptText, systemPromptText, chatHistory);
 
-  // === PRIORITAS USER-EXPLICIT MODEL SELECTION via UI provider (if provided) ===
   let preferredProvider = 'openrouter';
 
   const uiProviderRaw =
@@ -273,17 +212,12 @@ export const runLLMDenganNalar = async (
 
   const uiProvider = typeof uiProviderRaw === 'string' ? uiProviderRaw.toLowerCase() : null;
 
-  // If UI explicitly chose provider, honor it first (prevents "openai" heuristic from hijacking OpenRouter).
   if (uiProvider === 'openrouter') preferredProvider = 'openrouter';
   else if (uiProvider === 'openai') preferredProvider = 'openai';
   else if (uiProvider === 'groq') preferredProvider = 'groq';
   else if (uiProvider === 'gemini') preferredProvider = 'gemini';
   else {
-    // fallback logic
     if (!rctx.stream.extractedImage && rctx.model.model) {
-      // CRITICAL FIX:
-      // If UI provider is null BUT model id looks like "openai/xxx" (contains '/'),
-      // force OpenRouter so we don't accidentally route to OpenAIAdapter.
       if (typeof rctx.model.model === 'string' && rctx.model.model.includes('/')) {
         preferredProvider = 'openrouter';
       } else {
@@ -322,15 +256,11 @@ export const runStreamLLM = async function*(promptText: string, systemPromptText
   const uiProvider = typeof uiProviderRaw === 'string' ? uiProviderRaw.toLowerCase() : null;
 
   if (!input.image) {
-    // honor UI provider first
     if (uiProvider === 'openrouter') preferredAdapters.push('openrouter');
     else if (uiProvider === 'openai') preferredAdapters.push('openai');
     else if (uiProvider === 'groq') preferredAdapters.push('groq');
 
-    // fallback inference if uiProvider not provided
     if (preferredAdapters.length === 0) {
-      // CRITICAL FIX (stream path):
-      // model like "openai/gpt-4o-mini" must route to openrouter adapter.
       if (rctx.model.model && typeof rctx.model.model === 'string' && rctx.model.model.includes('/')) {
         preferredAdapters.push('openrouter');
       } else {
@@ -343,7 +273,6 @@ export const runStreamLLM = async function*(promptText: string, systemPromptText
 
   console.log('[DEBUG][runStreamLLM] rctx.model=', (rctx as any)?.model, ' uiProvider=', uiProvider, ' preferredAdapters=', preferredAdapters);
 
-  // Append cascade
   for (const p of ['gemini', 'groq', 'openrouter']) {
      if (!preferredAdapters.includes(p)) preferredAdapters.push(p);
   }
@@ -360,17 +289,14 @@ export const runStreamLLM = async function*(promptText: string, systemPromptText
      try {
        console.log(`📍 Streaming via Capability Adapter: ${adapter.name}`);
        const streamIter = adapter.stream(input, { trace_id: rctx.traceId || rctx.tasks?.traceId || 'unknown' });
-       // Peek the first chunk to catch connection errors early
        const firstResult = await streamIter.next();
        
        if (!firstResult.done && firstResult.value) {
           yield firstResult.value;
        }
        
-       // If no error on first chunk, we are connected and locked in. 
-       // Yield the rest.
        yield* streamIter;
-       return; // Success, end cascade
+       return;
      } catch(err: any) {
        const msg = err.message || String(err);
        console.warn(`❌ Adapter ${adapter.name} stream failed: ${msg}`);
@@ -379,28 +305,14 @@ export const runStreamLLM = async function*(promptText: string, systemPromptText
            return;
        }
        lastError += ` [${adapter.name}]: ${msg};`;
-       // K4 (30 Okt 2026): dulu "*(Fallback Note: … failed, cascading...)*" ikut ditulis ke ISI jawaban — teks teknis
-       // bagi pengguna awam, juga saat penyedia berikutnya berhasil. Kini hanya di log (console.warn di atas).
      }
   }
 
-  // Penanda untuk stream_handler: jawaban ini pesan kegagalan, bukan jawaban model — jangan diberi label/catatan RAG.
   (rctx as any).semuaPenyediaGagal = true;
   yield `\n\n${pesanSemuaPenyediaGagal(lastError)}`;
 };
 
-// --- OTAK KHUSUS KEPALA AGENT (HEMAT KUOTA) + ANTI-LIMIT ---
 export const runCoordinatorLLM = async (promptText: string, systemPromptText = '', preferFast = false, rctx: RuntimeContext) => {
-  // === NOTE: Groq is temporarily disabled, so preferFast will use default cascade ===
-  // if (preferFast && rctx.keys.groq && !isProviderLocked('groq')) {
-  //   try {
-  //     console.log("Mamet Traffic Light: Memutar tugas ringan (Intent Router) ke Groq...");
-  //     return await callGroq(promptText, systemPromptText, [], rctx);
-  //   } catch(e) { console.warn('Traffic Light Groq failed, cascading to Gemini...', e); }
-  // }
 
-  // OpenRouter dengan model & kunci PENGGUNA, nalar dimatikan (tugasnya pendek: satu kata / rencana JSON).
-  // Sampai 2026-09-15 dipatok ke 'gemini' (kunci server gratis) tanpa cadangan — ketiga kunci 403/429 sehingga
-  // Intent Router & Coordinator gagal di SETIAP pesan dan sub-agent tidak pernah jalan (uji mutu RAG putaran 1–7).
   return (await callLLMWithMetadata(promptText, systemPromptText, [], 'openrouter', null, rctx, [], { thinking: false })).result;
 };

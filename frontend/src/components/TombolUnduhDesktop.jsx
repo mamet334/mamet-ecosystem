@@ -1,20 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ambilRilisTerbaru, teksUnduh, alamatUnduh } from '../core/runtime/services/unduhAplikasi';
 
-/**
- * TombolUnduhDesktop — tautan unduh aplikasi desktop, untuk pengguna yang membuka Mamet lewat web.
- *
- * Dipasang di DUA tempat dengan alasan berbeda:
- *   • layar masuk (`LampLogin`) — rekan kantor mendarat di sana, dan bisa mengunduh TANPA login dulu.
- *     Inilah yang menghapus pekerjaan mengirim berkas 190 MB satu per satu.
- *   • Pengaturan — untuk yang sudah masuk lewat web dan baru kemudian ingin versi desktopnya.
- *
- * TIDAK dirender di aplikasi desktop: di sana pembaruan datang sendiri lewat auto-updater, dan tombol
- * "unduh aplikasi" hanya akan membingungkan orang yang sudah memakainya.
- *
- * Versi & ukurannya ditampilkan SEBELUM diklik. 190 MB bukan angka yang pantas mengejutkan orang
- * sesudah unduhannya berjalan — apalagi di jaringan kantor.
- */
 export default function TombolUnduhDesktop({ ringkas = false }) {
   const [info, setInfo] = useState(null);
   const diDesktop = typeof window !== 'undefined' && !!window.electronAPI?.checkForUpdates;
@@ -26,7 +12,6 @@ export default function TombolUnduhDesktop({ ringkas = false }) {
     return () => { batal = true; };
   }, [diDesktop]);
 
-  // Sudah memakai aplikasi desktopnya — tak ada yang perlu diunduh.
   if (diDesktop) return null;
 
   const alamat = alamatUnduh(info);

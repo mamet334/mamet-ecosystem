@@ -1,22 +1,3 @@
-// ALAT JALANKAN FOLDER KERJA (Item 85 Tahap 3, 2026-09-22) — folder_run.
-//
-// KENYATAAN YANG MENENTUKAN RANCANGAN: pagar folder hanya menjaga alamat yang disentuh ALAT Mamet. Program yang
-// dijalankan (python app.py, npm run build) TIDAK terpagar — ia bisa membaca/mengubah apa pun di laptop. Maka penjaga
-// utama di sini adalah DIALOG IZIN yang menampilkan perintah persis (dan isi skrip/script npm yang akan jalan);
-// pemeriksaan lain adalah penahan kecerobohan, bukan pengaman mutlak. Prinsip:
-//   - TANPA SHELL: program + argumen sebagai daftar (spawn shell:false) — & | ; > tidak bisa menyisipkan perintah
-//     kedua. Kebalikan dari CommandRegistry lama yang merakit kalimat PowerShell (T8).
-//   - Program hanya dari DAFTAR IZIN, dicari sendiri di PATH sebagai alamat absolut .exe. Folder kerja & isinya
-//     TIDAK ikut dicari: Windows (libuv) mencari folder asal lebih dulu, jadi "python.exe" palsu di folder kerja akan
-//     terjalankan bila nama pendek diserahkan ke spawn.
-//   - npm/npx (berupa .cmd) dijalankan lewat node + npm-cli.js/npx-cli.js — .cmd butuh shell.
-//   - Sub-perintah yang menerbitkan/masuk akun (npm publish, git push, cargo publish, …) ditolak; yang mengunduh dari
-//     internet diberi peringatan di dialog.
-//   - Argumen berupa alamat absolut atau ".." ditolak (termasuk nilai --opsi=nilai).
-//   - Lingkungan dibersihkan dari variabel rahasia (KEY/TOKEN/SECRET/…): skrip di folder tak bisa membaca kunci API
-//     dari proses Electron.
-//   - Batas waktu (bawaan 60 s, maks 300 s) → seluruh pohon proses dimatikan; keluaran maks 20 KB; stdin ditutup;
-//     satu perintah pada satu waktu.
 
 const fs = require('fs');
 const path = require('path');
@@ -32,8 +13,6 @@ const BATAS_JALAN = {
   pratinjauHuruf: 1200,
 };
 
-// tolak = sub-perintah (argumen pertama) yang tidak boleh; internet = diberi peringatan "mengunduh dari internet";
-// izinSub = HANYA sub-perintah ini yang boleh (git: dibatasi ke kerja lokal).
 const PROGRAM = {
   python: { exe: 'python' },
   py: { exe: 'py' },
@@ -67,19 +46,13 @@ const PROGRAM = {
 };
 const DAFTAR_PROGRAM = Object.keys(PROGRAM);
 
-// PROFIL PERAN (T8, keputusan Owner 2026-09-22): MESIN satu (spawn tanpa shell, cariExe, envBersih, batas waktu,
-// dialog) — KUASA per peran. Assistant bekerja di folder pilihan; Engineer bekerja di repo Mamet SENDIRI, jadi lebih
-// sempit: git hanya baca (perubahan kode lewat jalur patch dengan checkpoint & rollback, commit di tangan Owner) dan
-// tanpa perintah yang mengunduh dari internet (npm/pip install, npx — cukup diusulkan, Owner yang menjalankan).
 const GIT_BACA = ['status', 'log', 'diff', 'show', 'blame', 'grep', 'ls-files', 'rev-parse', 'branch', 'shortlog', 'describe'];
 const PROFIL = {
   assistant: { nama: 'assistant', tempat: 'folder kerja', waktuBawaanS: BATAS_JALAN.waktuBawaanS, gitSub: PROGRAM.git.izinSub, tanpaInternet: false },
   engineer: { nama: 'engineer', tempat: 'repo Mamet', waktuBawaanS: 180, gitSub: GIT_BACA, tanpaInternet: true },
 };
 
-// git branch hanya untuk melihat daftar.
 const GIT_BRANCH_UBAH = new Set(['-d', '-D', '--delete', '-m', '-M', '--move', '-c', '-C', '--copy', '-f', '--force', '--set-upstream-to', '-u', '--unset-upstream']);
-// Opsi yang menulis ke berkas di luar keluaran biasa / menjalankan alat luar.
 const OPSI_TERLARANG = /^--(output|ext-diff|exec|upload-pack|receive-pack|config-env|git-dir|work-tree)\b/i;
 
 const RAHASIA_ENV = /(KEY|TOKEN|SECRET|PASSW|CREDENTIAL|AUTH|COOKIE|SESSION|SUPABASE|OPENROUTER|APIFY|MISTRAL|GROQ|GEMINI|ANTHROPIC|OPENAI)/i;
@@ -96,11 +69,10 @@ const samaAtauDiDalam = (induk, anak) => {
   return a === i || a.startsWith(i.endsWith(path.sep) ? i : i + path.sep);
 };
 
-/** Cari .exe di PATH — hanya folder absolut, BUKAN folder kerja/isinya, bukan stub Microsoft Store. */
 function cariExe(nama, akar, env = process.env) {
   const jalur = String(env.PATH || env.Path || '').split(path.delimiter).map((d) => d.trim().replace(/^"|"$/g, '')).filter(Boolean);
   let akarAsli = akar;
-  try { akarAsli = fs.realpathSync.native(akar); } catch { /* akar tak ada → pagar menolak lebih dulu */ }
+  try { akarAsli = fs.realpathSync.native(akar); } catch {  }
   for (const d of jalur) {
     if (!path.isAbsolute(d)) continue;
     if (/\\WindowsApps\\?$/i.test(d)) continue;
@@ -112,7 +84,6 @@ function cariExe(nama, akar, env = process.env) {
   return null;
 }
 
-/** Program + argumen awal yang benar-benar dijalankan. */
 function rakitProgram(program, akar, env) {
   const def = PROGRAM[program];
   if (def.lewatNode) {
@@ -127,7 +98,6 @@ function rakitProgram(program, akar, env) {
   return { exe, awal: [] };
 }
 
-/** Periksa satu argumen: bukan alamat absolut, tidak keluar lewat "..". */
 function periksaArgumen(akar, a, tempat = 'folder kerja') {
   if (typeof a !== 'string') return 'argumen harus teks';
   if (a.length > BATAS_JALAN.argumenHurufMaks) return `argumen lebih dari ${BATAS_JALAN.argumenHurufMaks} huruf`;
@@ -142,13 +112,10 @@ function periksaArgumen(akar, a, tempat = 'folder kerja') {
   return null;
 }
 
-/** Sub-perintah (argumen pertama yang bukan opsi) → aturan program. */
 function periksaSub(program, argumen, profil = PROFIL.assistant) {
   const def = PROGRAM[program];
   const sub = (argumen.find((x) => !x.startsWith('-')) || '').toLowerCase();
   if (def.izinSub) {
-    // git: argumen PERTAMA wajib sub-perintah — mencegah opsi global (-c, -C, --exec-path) yang mengubah perilaku git.
-    // Daftar sub-perintah dari PROFIL (Engineer: baca saja).
     const izin = program === 'git' ? profil.gitSub : def.izinSub;
     const pertama = (argumen[0] || '').toLowerCase();
     if (!izin.includes(pertama)) return { galat: `${program} ${pertama || '(kosong)'} tidak diizinkan untuk ${profil.tempat} — yang boleh: ${izin.join(', ')}` };
@@ -165,13 +132,12 @@ function periksaSub(program, argumen, profil = PROFIL.assistant) {
   return { sub, internet };
 }
 
-/** Pratinjau yang ikut di dialog: isi skrip dari folder, atau script npm yang akan jalan. */
 function pratinjau(akar, program, argumen, sub) {
   const bagian = [];
   if (program === 'npm') {
     const pkgAlamat = path.join(akar, 'package.json');
     let scripts = null;
-    try { scripts = JSON.parse(fs.readFileSync(pkgAlamat, 'utf8')).scripts || {}; } catch { /* tak ada package.json */ }
+    try { scripts = JSON.parse(fs.readFileSync(pkgAlamat, 'utf8')).scripts || {}; } catch {  }
     if (scripts && (sub === 'run' || sub === 'run-script' || sub === 'test' || sub === 'start')) {
       const nama = sub === 'test' || sub === 'start' ? sub : argumen[argumen.indexOf(argumen.find((x) => x.toLowerCase() === sub)) + 1];
       const jalan = ['pre' + nama, nama, 'post' + nama].filter((n) => scripts[n]).map((n) => `  ${n}: ${scripts[n]}`);
@@ -182,7 +148,6 @@ function pratinjau(akar, program, argumen, sub) {
       if (siklus.length) bagian.push(`Script package.json yang ikut jalan saat install:\n${siklus.join('\n')}`);
     }
   }
-  // Berkas di folder yang disebut sebagai argumen (skrip yang akan dijalankan) → cuplikan isinya.
   for (const a of argumen) {
     if (a.startsWith('-') || !/\.(py|js|mjs|cjs|ts|php|rb|go|rs|java|sh|c|cpp)$/i.test(a)) continue;
     const p = alamatDalamPagar(akar, a);
@@ -196,9 +161,6 @@ function pratinjau(akar, program, argumen, sub) {
   return bagian.join('\n\n');
 }
 
-// Tanda skrip MENULIS/MENGHAPUS berkas atau menghubungi jaringan. Dipakai hanya untuk MENANDAI di dialog izin —
-// bukan daftar larangan: daftar semacam itu selalu bisa dilewati, dan melarangnya akan memblokir pekerjaan sah
-// (live 2026-09-23: `node -e` membaca berkas dengan nomor baris ditolak, padahal hanya membaca).
 const TANDA_TULIS = [
   [/writefile|appendfile|createwritestream|\bftruncate\b/i, 'menulis berkas'],
   [/\bunlink|\brmdir|\brm\b|\brmtree|shutil\.rmtree|os\.remove/i, 'menghapus berkas'],
@@ -209,11 +171,6 @@ const TANDA_TULIS = [
   [/\bfetch\s*\(|https?:\/\/|urllib|requests\.|axios/i, 'menghubungi jaringan'],
 ];
 
-/**
- * Skrip sebaris (`node -e`, `python -c`) isinya tidak terlihat dari nama perintah. Fungsi ini menyiapkan baris
- * peringatan untuk dialog: apa saja yang tampak dilakukan skrip itu. Kalau hanya membaca, tidak ada peringatan.
- * @returns {string} baris peringatan, atau '' bila tidak ada tanda menulis
- */
 function peringatanSkripSebaris(argumen) {
   const i = argumen.findIndex((a) => /^-(e|c|p|ep|pe)$/.test(a));
   if (i === -1) return '';
@@ -224,7 +181,6 @@ function peringatanSkripSebaris(argumen) {
   return `⚠️ SKRIP SEBARIS INI TAMPAK: ${[...new Set(temuan)].join(', ')}. Skrip berjalan dengan hak penuh Anda dan TIDAK dibatasi pagar folder — perubahan di luar repo tidak terlihat di git. Baca skripnya di bawah sebelum mengizinkan.`;
 }
 
-/** Isi skrip sebaris ditampilkan UTUH di dialog — Owner tidak bisa menilai apa yang tidak ia lihat. */
 function skripSebarisPenuh(argumen) {
   const i = argumen.findIndex((a) => /^-(e|c|p|ep|pe)$/.test(a));
   if (i === -1) return '';
@@ -232,7 +188,6 @@ function skripSebarisPenuh(argumen) {
   return skrip ? `Isi skrip yang akan dijalankan (${skrip.length} huruf):\n${potong(skrip, 1200)}` : '';
 }
 
-/** Lingkungan tanpa rahasia; keluaran dipaksa UTF-8 dan tanpa pertanyaan interaktif. */
 function envBersih(env = process.env) {
   const hasil = {};
   for (const [k, v] of Object.entries(env)) {
@@ -250,10 +205,9 @@ function envBersih(env = process.env) {
 function matikanPohon(pid) {
   if (!pid) return;
   const taskkill = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'taskkill.exe');
-  try { execFile(taskkill, ['/PID', String(pid), '/T', '/F'], { windowsHide: true }, () => {}); } catch { /* */ }
+  try { execFile(taskkill, ['/PID', String(pid), '/T', '/F'], { windowsHide: true }, () => {}); } catch {  }
 }
 
-/** Jalankan dan kumpulkan keluaran (stdout+stderr berurutan kedatangan), dengan batas waktu & ukuran. */
 function jalankanProses(exe, argumen, { cwd, env, waktuS }) {
   return new Promise((selesai) => {
     const mulai = Date.now();
@@ -291,10 +245,6 @@ function jalankanProses(exe, argumen, { cwd, env, waktuS }) {
 
 let sedangJalan = false;
 
-/**
- * Satu pintu untuk IPC. permintaan = {alat:'folder_run', program:'python', argumen:['app.py'], waktu?:60}.
- * deps = { mintaIzin(permintaan) → Promise<boolean>, profil? (PROFIL.assistant bawaan | PROFIL.engineer), env? (uji) }.
- */
 async function jalankanAlatJalan(akar, permintaan = {}, deps) {
   const program = typeof permintaan.program === 'string' ? permintaan.program.trim().toLowerCase().replace(/\.exe$/, '') : '';
   const argumen = Array.isArray(permintaan.argumen) ? permintaan.argumen : permintaan.argumen == null ? [] : null;
@@ -317,7 +267,6 @@ async function jalankanAlatJalan(akar, permintaan = {}, deps) {
   if (r.galat) return gagal(teks, r.galat);
   const waktuS = Math.min(BATAS_JALAN.waktuMaksS, Math.max(1, Number.isInteger(permintaan.waktu) ? permintaan.waktu : profil.waktuBawaanS));
   if (sedangJalan) return gagal(teks, 'perintah lain masih berjalan — tunggu selesai');
-  // Kunci dipasang SEBELUM dialog: dua permintaan tidak bisa sama-sama lolos selagi dialog pertama terbuka.
   sedangJalan = true;
   try {
     return await izinLaluJalankan(akar, { program, argumen, teks, s, r, env, waktuS, profil }, deps);
@@ -326,36 +275,14 @@ async function jalankanAlatJalan(akar, permintaan = {}, deps) {
   }
 }
 
-/**
- * Perintah yang TIDAK perlu persetujuan Owner (keputusan Owner, 2026-10-01).
- *
- * Owner: *"perintah yang krusial saja yang perlu persetujuan saya… ini seperti membuat ribet dengan
- * hal yang sebenarnya aman."* Dan ia benar: sampai hari ini satu `git grep` menuntut DUA persetujuan
- * (tombol Jalankan di chat, lalu dialog asli), jadi lima perintah baca = sepuluh kali menyetujui.
- *
- * Yang membuat ini aman bukan aturan baru, melainkan yang SUDAH ada:
- *   · `PROFIL.engineer.gitSub` = GIT_BACA — Engineer memang hanya boleh git yang membaca
- *   · `GIT_BRANCH_UBAH` — `git branch` yang membuat/menghapus/memindah ditolak
- *   · `OPSI_TERLARANG` — opsi yang menulis berkas atau memanggil alat luar ditolak
- *
- * Jadi untuk git, dialog itu tidak menambah perlindungan apa pun — hanya gesekan.
- *
- * Yang TETAP meminta izin: `node -e`, `python -c`, dan program lain. Profil Engineer memang
- * mengizinkannya, dan itu KODE BEBAS yang tidak dibatasi pagar folder. Di situlah garisnya:
- * membaca repo itu aman, menjalankan kode karangan model tidak.
- *
- * Fungsi ini hanya MENYEMPITKAN. Seluruh pemeriksaan lain tetap berjalan sesudahnya — ia memutuskan
- * siapa yang perlu ditanya, bukan apa yang boleh jalan.
- */
 function tanpaPersetujuan({ program, argumen, profil }) {
   if (program !== 'git') return false;
-  if (!profil || profil.nama !== 'engineer') return false;   // hanya peran yang memang dibatasi git-baca
+  if (!profil || profil.nama !== 'engineer') return false;
 
   const bagian = (argumen || []).map(String);
   const sub = bagian.find((a) => !a.startsWith('-'));
   if (!sub || !GIT_BACA.includes(sub)) return false;
 
-  // `git -c core.pager=… log` menyisipkan konfigurasi: argumen pertama tidak boleh berupa opsi.
   if (bagian.length && bagian[0] !== sub) return false;
   if (bagian.some((a) => OPSI_TERLARANG.test(a))) return false;
   if (sub === 'branch' && bagian.some((a) => GIT_BRANCH_UBAH.has(a))) return false;
@@ -364,13 +291,7 @@ function tanpaPersetujuan({ program, argumen, profil }) {
 }
 
 async function izinLaluJalankan(akar, { program, argumen, teks, s, r, env, waktuS, profil }, deps) {
-  // Perintah baca tidak ditanyakan — lihat tanpaPersetujuan().
   if (tanpaPersetujuan({ program, argumen, profil })) {
-    // `tanpaIzin: true` diteruskan ke hasil supaya jejak audit bisa membedakan perintah yang
-    // Owner lihat di dialog dari yang jalan sendiri. Sebelum 4.2.5 pembedaan ini tak diperlukan:
-    // setiap eksekusi punya gerbang manusia, dan DIALOGNYA SENDIRI adalah catatannya. Sejak
-    // gerbang itu dilonggarkan untuk git-baca, sebagian jalan tanpa saksi — dan hanya proses
-    // utama ini yang tahu yang mana.
     return jalankanSesudahIzin(akar, { program, argumen, teks, s, r, env, waktuS, profil, tanpaIzin: true });
   }
   const setuju = await (async () => {
@@ -394,33 +315,16 @@ async function izinLaluJalankan(akar, { program, argumen, teks, s, r, env, waktu
   return jalankanSesudahIzin(akar, { program, argumen, teks, s, r, env, waktuS, profil, tanpaIzin: false });
 }
 
-/** Pelaksanaan sesudah gerbang izin — satu badan untuk kedua jalur (ditanyakan & tanpa persetujuan). */
 async function jalankanSesudahIzin(akar, { argumen, teks, r, env, waktuS, tanpaIzin = false }) {
   const h = await jalankanProses(r.exe, [...r.awal, ...argumen], { cwd: akar, env, waktuS });
   if (h.galat) return gagal(teks, h.galat);
-  // `tanpaIzin` ditaruh SESUDAH `...h` supaya tidak bisa tertimpa diam-diam oleh hasil proses:
-  // ia pernyataan tentang GERBANGNYA, bukan tentang hasil eksekusinya.
   return { ok: true, alat: 'folder_run', alamat: teks, perintah: teks, waktuBatasS: waktuS, ...h, tanpaIzin };
 }
 
-/**
- * T8 (2026-09-22): tombol [MAMET_CMD: npm install] Engineer menulis perintah sebagai SATU kalimat. Dipecah di sini
- * menjadi program + argumen TANPA shell: spasi memisah, tanda kutip "…"/'…' mengelompokkan (tanpa escape).
- * Metakarakter shell ditolak — model yang menulis "&&", "|", ">" atau "$(…)" berharap shell, dan tanpa shell
- * perintahnya tidak akan berarti seperti yang dimaksud; lebih jujur ditolak dengan alasan daripada dijalankan lain.
- * @returns {{program: string, argumen: string[]} | {galat: string}}
- */
 function pecahPerintah(teks) {
   const t = String(teks ?? '').trim();
   if (!t) return { galat: 'perintah kosong' };
   if (t.length > 2000) return { galat: 'perintah lebih dari 2000 huruf' };
-  // Live 2026-09-22: `git log --pretty=format:"%h - %s"` ditolak karena "%" — padahal tanpa shell %, $, ^ hanya teks
-  // (HEAD^, format git). Yang ditolak hanya penyambung/pengalih perintah & baris baru: tanda model berharap shell.
-  //
-  // Live 2026-09-23: `node -e "const fs=require('fs');const p='…';…"` ditolak karena ";" — padahal titik-koma itu ADA
-  // DI DALAM tanda kutip, yaitu isi skrip yang diteruskan apa adanya sebagai SATU argumen. Karena program dijalankan
-  // langsung tanpa shell, tanda di dalam kutip tidak bisa menyambung perintah apa pun; menolaknya hanya memblokir
-  // pemakaian yang sah. Karena itu penyambung/pengalih diperiksa per huruf, HANYA di luar tanda kutip.
   const PENYAMBUNG = new Set(['&', '|', ';', '<', '>', '`']);
   const hasil = [];
   let kini = '';

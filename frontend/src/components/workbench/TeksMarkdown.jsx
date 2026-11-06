@@ -2,28 +2,9 @@ import React, { useState } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-// Teks polos sebuah simpul hast — isi blok kode persis seperti ditulis model, untuk ditampilkan dan disalin.
 const teksSimpul = (n) => (n?.type === 'text' ? n.value : (n?.children || []).map(teksSimpul).join(''));
 
-// Blok kode (Owner 19 Okt: "pikirkan juga kalau yang ditampilkan sebuah code"). Kode dibaca berbeda dari prosa:
-//   - baris TIDAK dipatahkan (`whitespace-pre`) — patahan otomatis memalsukan struktur kode; baris panjang digulir
-//     mendatar di dalam kotaknya sendiri, kolom chat tidak ikut melebar;
-//   - huruf mono 14px, jarak baris 1,6 — lekuk (indent) tetap sejajar;
-//   - kepala kotak: nama bahasa (bila model menyebutkannya) + tombol Salin berupa teks (gaya menu teks, tanpa ikon),
-//     karena kode memang untuk disalin;
-//   - tanpa pewarnaan sintaks: proyek belum punya pustakanya, dan menambah paket butuh izin Owner.
-// Selama jawaban masih mengalir, pagar ``` yang belum ditutup tetap dirender sebagai blok kode (perilaku remark).
-// Kotak kode — dipakai blok kode di jawaban model DAN keluaran terminal Engineer (yang dulu tampil sebagai teks biasa
-// di gelembung, sehingga baris panjang tanpa spasi menjebol tepi gelembung). `tinggiMaks`: keluaran terminal bisa
-// ratusan baris — digulir di dalam kotaknya, tidak memanjangkan percakapan.
-//
-// Bentuknya = KOLOM ISIAN SETTINGS (Owner 20 Okt: "kolom code sama dengan kolom bertulisan gemini"): kelas kotaknya
-// sama dengan isian Provider/Model ID di Settings (latar surface-container-lowest, garis outline-variant, px-5 py-4,
-// rounded-lg — dijaga uji-markdown-chat), dan labelnya di ATAS kotak seperti label "MODEL ID" di sana. Label jenis
-// (`kode`, nama bahasa, `terminal`) ditulis kapital; `perintah` terminal TIDAK — huruf besar-kecil perintah bermakna.
 export function KotakKode({ isi, label, perintah = '', tinggiMaks = false }) {
-  // Hasil salin DITAMPILKAN di tombolnya, berhasil atau tidak — tombol yang diam saat gagal membuat Owner mengira
-  // kodenya sudah tersalin lalu menempel isi papan klip yang lama.
   const [hasilSalin, setHasilSalin] = useState(null);
   const salin = () => {
     const tampilkan = (h) => { setHasilSalin(h); setTimeout(() => setHasilSalin(null), 2000); };
@@ -59,16 +40,6 @@ function BlokKode({ node }) {
   return <KotakKode isi={teksSimpul(kode || node).replace(/\n$/, '')} label={bahasa || 'kode'} />;
 }
 
-// Jawaban model ditulis dalam Markdown; dulu ditampilkan sebagai teks polos, jadi Owner membaca `**`, `| … |`, dan
-// `|---|` mentah di sela isinya (Item 127, kenyamanan mata, 19 Okt). Komponen ini merendernya: tebal jadi tebal,
-// daftar jadi daftar, tabel jadi tabel — susunan meniru gambar rujukan Owner.
-//
-// Aman tanpa daftar putih buatan sendiri: react-markdown TIDAK pernah menyuntik HTML (tag mentah jadi teks biasa,
-// tanpa rehype-raw) dan menolak skema tautan selain http/https/mailto/… (`javascript:` jadi tautan kosong).
-// Tautan dibuka di peramban luar oleh setWindowOpenHandler di electron/main.cjs.
-//
-// Jarak baris 1,75 (leading-7 di 16px): kolom chat sengaja lebar (±134 karakter, keputusan Owner), dan baris
-// panjang butuh jarak lebih supaya mata tidak salah pindah baris.
 const KOMPONEN = {
   p: ({ node, ...p }) => <p className="my-3 first:mt-0 last:mb-0" {...p} />,
   strong: ({ node, ...p }) => <strong className="font-semibold text-on-surface-strong" {...p} />,
@@ -83,7 +54,6 @@ const KOMPONEN = {
   h4: ({ node, ...p }) => <h4 className="mt-4 mb-1.5 first:mt-0 text-[16px] leading-7 font-semibold opacity-80" {...p} />,
   blockquote: ({ node, ...p }) => <blockquote className="my-3 pl-4 border-l-2 border-outline-variant opacity-80" {...p} />,
   hr: ({ node, ...p }) => <hr className="my-5 border-outline-variant" {...p} />,
-  // Kode sebaris = label kecil (seperti gambar rujukan). Kode di dalam blok dirender oleh BlokKode lewat `pre`.
   code: ({ node, className, children, ...p }) => {
     const blok = /language-/.test(className || '') || String(children).includes('\n');
     return blok
@@ -111,8 +81,4 @@ function TeksMarkdown({ teks }) {
   );
 }
 
-// DI-MEMO. Saat jawaban mengalir, setiap potongan memanggil setMessages dan SELURUH daftar pesan dirender ulang;
-// tanpa memo, Markdown setiap jawaban LAMA ikut diurai ulang tiap token — diukur 19 Okt: ±6,7 ms per jawaban
-// panjang, jadi chat 30 jawaban ±200 ms per token (anggaran satu bingkai 16 ms) → jawaban tampak tersendat.
-// Prop-nya hanya `teks` (string), jadi jawaban yang teksnya tak berubah dilewati; yang diurai hanya yang mengalir.
 export default React.memo(TeksMarkdown);

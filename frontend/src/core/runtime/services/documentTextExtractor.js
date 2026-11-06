@@ -1,24 +1,3 @@
-/**
- * EKSTRAKSI TEKS PDF / WORD DI BROWSER (Item 69, 2026-09-11)
- *
- * `rag-process` hanya menerima teks. Dulu PDF/DOCX dibaca mentah dengan file.text() — isi
- * berkasnya (kode biner, data terkompresi) ikut dikirim, dan sejak Item 64 ditolak sebagai
- * BINARY_FILE. Di sini teksnya diambil DI BROWSER sebelum dikirim:
- *   - bebas biaya dan tak terkena batas CPU edge function (buku 436 halaman: 4,1 detik di laptop);
- *   - berkas asli tidak pernah disimpan di Supabase — hanya teksnya.
- *
- * Diuji dengan kode ini sendiri (Node + pdfjs legacy) sebelum dipasang:
- *   HCDP DOCX / PDF Word 365 / PDF Word 2007 → 6.269 / 6.635 / 6.438 kata, frasa khas tepat sekali;
- *   ebook "Operator Handbook" 436 halaman → 645 ribu huruf, 0 huruf rusak; PDF CamScanner → 0 huruf.
- *
- * SALINAN: mametlite/src/lib/documentTextExtractor.js memuat logika yang sama (proyek terpisah,
- * di-deploy sendiri). Ubah keduanya bersamaan.
- *
- * DETEKSI TABEL PDF (Item 76b, 2026-09-14): `deteksiTabelHalaman` menandai halaman yang tampak
- * bertabel (aturan B′ dari riset di changelog 2026-09-14-tabel-docx-jadi-markdown.md) supaya bisa
- * ditawarkan OCR opsional lewat `pdfOcrService.js` — pdf.js sendiri tidak bisa merapikan tabel PDF
- * seperti tabel DOCX karena tak ada struktur HTML untuk direkonstruksi, hanya posisi teks.
- */
 
 import { bacaTabelCentang, tulisCentangDiItems, tulisCentangDiTeks } from './tabelCentang.js';
 
@@ -26,27 +5,17 @@ export const EKSTENSI_TEKS =['.txt', '.md', '.csv', '.json', '.html', '.xml'];
 export const EKSTENSI_DIDUKUNG = [...EKSTENSI_TEKS, '.pdf', '.docx'];
 export const ACCEPT_UNGGAH = EKSTENSI_DIDUKUNG.join(',');
 
-// Berkas besar biasanya buku penuh gambar — teksnya sedikit, tapi browser HP bisa kehabisan memori.
 const MAKS_MB = 60;
-const AMBANG_HALAMAN_KOSONG = 25;     // huruf; di bawah ini halaman dianggap gambar/scan
-const PORSI_BERULANG = 0.3;           // baris tepi yang muncul di ≥30% halaman = judul/nomor halaman
-const PORSI_SCAN = 0.5;               // ≥50% halaman tanpa teks = PDF hasil scan
+const AMBANG_HALAMAN_KOSONG = 25;
+const PORSI_BERULANG = 0.3;
+const PORSI_SCAN = 0.5;
 
-// Deteksi halaman bertabel (Item 76b, aturan B′ dari riset 2026-09-14): pdf.js meratakan kolom
-// tabel jadi satu baris tanpa jeda, jadi tabel dideteksi dari POSISI, bukan struktur (tak ada
-// struktur tabel di teks PDF seperti HTML DOCX). Dua sinyal digabung DAN supaya sampul, poin
-// berindentasi, dan kode menjorok tidak salah terpilih (aturan tunggal C di riset salah pilih itu):
-//   - "multi-kolom": ada jeda horizontal antar potongan teks dalam satu baris > 25pt (kolom tabel).
-//   - "yatim": baris mulai > 60pt di sebelah kanan margin kiri halaman (lanjutan sel kolom kanan).
 const JARAK_MULTI_KOLOM = 25;
 const JARAK_BARIS_YATIM = 60;
 const PORSI_MULTI_KOLOM = 0.3;
 const PORSI_BARIS_YATIM = 0.1;
-const TOLERANSI_Y_BARIS = 3;          // pt; potongan teks dengan y (dibulatkan per 3 pt) sama = satu baris visual
+const TOLERANSI_Y_BARIS = 3;
 
-// Perkiraan biaya embedding (Item 63): google/gemini-embedding-2 ±$0,20 per juta token,
-// ±4 huruf per token (HCDP: 11 potongan ≈ 12 ribu token). Potongan 800 huruf, tumpang 100
-// (Item 70, sama dengan chunkText di rag-process) → maju 700 huruf per potongan.
 const DOLAR_PER_TOKEN = 0.20 / 1e6;
 const HURUF_PER_TOKEN = 4;
 const LANGKAH_POTONGAN = 700;
@@ -61,7 +30,6 @@ export class GagalEkstrak extends Error {
 
 export function perkiraanUnggah(huruf) {
   const potongan = Math.max(1, Math.ceil(huruf / LANGKAH_POTONGAN));
-  // Tumpang ikut divektorkan dua kali.
   return { potongan, dolar: ((huruf + potongan * TUMPANG_POTONGAN) / HURUF_PER_TOKEN) * DOLAR_PER_TOKEN };
 }
 
@@ -70,7 +38,6 @@ const ekstensi = (nama) => {
   return i >= 0 ? nama.slice(i).toLowerCase() : '';
 };
 
-// ─── Penyusunan teks halaman PDF (murni, tanpa browser — diuji di Node) ─────────────────────
 
 const kunciBaris = (s) => s.toLowerCase().replace(/\d+/g, '#').replace(/\s+/g, ' ').trim();
 
@@ -80,14 +47,12 @@ function gabungBaris(bagian, buangTumpang) {
   let ujung = null;
   for (const p of bagian) {
     if (buangTumpang && ujung !== null && p.x < ujung - 1.5) {
-      // Salinan cetak ulang yang dipecah di titik berbeda dan bertumpuk dengan teks yang sudah ada.
-      if (p.x + p.lebar <= ujung + 1.5) continue;               // seluruhnya sudah tertutup
-      // Sambung lewat bagian yang sama: akhir `teks` = awal `p.s` → tambahkan sisanya saja.
+      if (p.x + p.lebar <= ujung + 1.5) continue;
       let tumpang = 0;
       for (let k = Math.min(p.s.length, teks.length); k >= 3; k--) {
         if (teks.endsWith(p.s.slice(0, k))) { tumpang = k; break; }
       }
-      if (tumpang === 0) continue;                               // tak bisa diselaraskan → salinan
+      if (tumpang === 0) continue;
       teks += p.s.slice(tumpang);
       ujung = p.x + p.lebar;
       continue;
@@ -99,15 +64,7 @@ function gabungBaris(bagian, buangTumpang) {
   return teks.replace(/\s+/g, ' ').trim();
 }
 
-/**
- * Item `getTextContent()` satu halaman → baris dikelompokkan per-y (dipakai `susunBarisHalaman`
- * untuk dirangkai jadi teks, dan `deteksiTabelHalaman` untuk diperiksa posisinya).
- */
 export function kelompokkanBaris(items) {
-  // Sebagian pembuat PDF mencetak teks yang sama 2–3 kali di koordinat yang sama (efek tebal /
-  // bayangan). Terbukti di PDF HCDP asli dari Word 2007: tiap kalimat 3 salinan, dipecah di titik
-  // berbeda — tanpa penanganan ini teksnya 133 ribu huruf berantakan, bukan ±60 ribu. HCDP yang
-  // tersimpan di RAG sebelum Item 69 memuat setiap bagian 3 kali karena hal ini.
   const potongan = [];
   const terlihat = new Set();
   let salinan = 0;
@@ -124,9 +81,6 @@ export function kelompokkanBaris(items) {
   }
 
   if (salinan > 0) {
-    // Halaman bercetak ulang: urutan aliran tak bisa dipercaya → susun menurut POSISI (atas ke
-    // bawah, kiri ke kanan). Spasi dibuang — di PDF itu spasi berlebar ±8,8 px yang menumpuk ke
-    // kata berikutnya dan membuatnya dikira salinan; jarak antarkata dihitung dari posisi.
     const baris = [];
     for (const p of potongan.filter((q) => q.s.trim())) {
       let b = baris.find((r) => Math.abs(r.y - p.y) <= 2);
@@ -137,7 +91,6 @@ export function kelompokkanBaris(items) {
     return { baris, cetakUlang: true };
   }
 
-  // Halaman normal: ikuti urutan aliran — menjaga urutan kolom pada buku dua kolom.
   const baris = [];
   let kini = null;
   for (const p of potongan) {
@@ -151,25 +104,11 @@ export function kelompokkanBaris(items) {
   return { baris, cetakUlang: false };
 }
 
-/** Item `getTextContent()` satu halaman → daftar baris teks. */
 export function susunBarisHalaman(items) {
   const { baris, cetakUlang } = kelompokkanBaris(items);
   return baris.map((b) => gabungBaris(b.bagian, cetakUlang)).filter(Boolean);
 }
 
-/**
- * Item `getTextContent()` MENTAH satu halaman → true bila halaman ini tampak berupa tabel (aturan
- * B′): pdf.js meratakan kolom jadi baris tunggal, jadi dideteksi dari posisi horizontal potongan
- * teks, bukan struktur. Dua sinyal digabung DAN supaya sampul/poin berindentasi/kode menjorok tidak
- * salah terpilih (aturan tunggal berbasis satu sinyal saja terbukti salah pilih itu di riset).
- *
- * Dikelompokkan per baris VISUAL (y yang sama), BUKAN memakai `kelompokkanBaris`. Versi pertama
- * memakai urutan aliran `kelompokkanBaris`, yang memulai baris baru setiap `hasEOL` — di tabel pdf.js
- * menandai akhir baris di SETIAP SEL, jadi tiap sel menjadi "baris" sendiri tanpa celah kolom dan
- * sinyal multi-kolom hampir selalu nol. Terukur 2026-09-14: KATALOG-PENDAS 0 halaman (riset 130),
- * Buku Materi Pokok 0 (riset 3), Operator Handbook 28 (riset 152, tabel ADB hal. 13–15 terlewat) —
- * dialog OCR tak pernah muncul untuk dokumen penuh tabel.
- */
 export function deteksiTabelHalaman(items) {
   const isi = (items || []).filter((it) => it && typeof it.str === 'string' && it.str.trim() && it.transform);
   if (isi.reduce((s, it) => s + it.str.trim().length, 0) < AMBANG_HALAMAN_KOSONG) return false;
@@ -190,11 +129,6 @@ export function deteksiTabelHalaman(items) {
   return (multiKolom / baris.length) >= PORSI_MULTI_KOLOM && (yatim / baris.length) >= PORSI_BARIS_YATIM;
 }
 
-/**
- * Baris per halaman → teks utuh, tanpa judul/kaki halaman berulang, dengan penanda [Halaman N].
- * `tambahan[i]` (Item 88: blok TABEL CENTANG) ditempel SESUDAH pembersihan — barisnya sama di banyak
- * halaman buku, jadi kalau ikut diperiksa ia akan terbuang sebagai "judul/kaki halaman berulang".
- */
 export function rakitTeksHalaman(halaman, tambahan = []) {
   const hitung = new Map();
   for (const bs of halaman) {
@@ -212,26 +146,16 @@ export function rakitTeksHalaman(halaman, tambahan = []) {
       const k = kunciBaris(b);
       return !(diTepi && (berulang.has(k) || nomorSaja.test(k)));
     });
-    // Sambung kata yang dipotong tanda hubung di akhir baris: "kom-\npetensi" → "kompetensi".
     const teks = bersih.join('\n').replace(/([a-zà-ÿ])-\n([a-zà-ÿ])/g, '$1$2').trim();
     if (teks.replace(/\s/g, '').length < AMBANG_HALAMAN_KOSONG) kosong++;
     const isi = [teks, tambahan[i]].filter(Boolean).join('\n');
-    // Penanda halaman: model bisa menyebut "halaman N" tanpa kolom database baru.
     return isi ? `[Halaman ${i + 1}]\n${isi}` : '';
   });
 
   return { teks: bagian.filter(Boolean).join('\n\n'), halamanKosong: kosong };
 }
 
-/**
- * Inti ekstraksi PDF — `pdfjs` diberikan pemanggil (browser: build legacy + worker; uji: Node).
- * `petaOcr` (opsional, Item 76b): `Map<nomorHalaman, teks>` — halaman yang ada di peta ini memakai
- * teks OCR-nya (dipecah per baris) alih-alih hasil pdf.js, dipakai saat mengulang ekstraksi sesudah
- * `terapkanOcrHalaman` (lihat `pdfOcrService.js`) menggantikan halaman yang terdeteksi bertabel.
- */
 export async function ekstrakPdfDariData(data, pdfjs, onProgress, petaOcr) {
-  // Yang dihentikan di akhir adalah loadingTask, bukan doc: pdfjs 6 (mametlite) tak lagi punya
-  // doc.destroy() — terbukti saat uji salinan mametlite. loadingTask.destroy() ada di v5 dan v6.
   const tugas = pdfjs.getDocument({ data, isEvalSupported: false });
   let doc;
   try {
@@ -255,13 +179,9 @@ export async function ekstrakPdfDariData(data, pdfjs, onProgress, petaOcr) {
       const { baris, cetakUlang } = kelompokkanBaris(isi.items);
       if (deteksiTabelHalaman(isi.items)) bertabel.push(n);
       const teksOcr = petaOcr?.get(n);
-      // Item 88: kolom tanda centang dari koordinat pdf.js (OCR menggesernya pada judul bertingkat).
       const tc = bacaTabelCentang(isi.items, { teksOcr, bawaan: judulCentang, nomorHalaman: n, itemsSebelumnya });
       judulCentang = tc.bawaan;
       itemsSebelumnya = isi.items;
-      // K1 (5 Nov 2026): kolom itu juga ditulis di samping tandanya ("√ Mutlak"), supaya tabel dan potongan yang
-      // terpisah dari bloknya tetap benar. OCR: hanya bila pemasangan urutannya pasti (tulisCentangDiTeks).
-      // pdf.js: langsung pada item tandanya (tulisCentangDiItems). Blok TABEL CENTANG tetap ditempel.
       if (teksOcr !== undefined) {
         const barisOcr = teksOcr.split('\n').filter(Boolean);
         const tulis = tulisCentangDiTeks(barisOcr.join('\n'), tc.tanda);
@@ -290,22 +210,7 @@ export async function ekstrakPdfDariData(data, pdfjs, onProgress, petaOcr) {
   }
 }
 
-// ─── Tabel DOCX → baris Markdown (murni, tanpa browser — diuji di Node) ────────────────────
-//
-// extractRawText mengeluarkan setiap sel tabel sebagai paragraf sendiri: judul kolom hanya muncul
-// sekali di awal, dan dua paragraf dalam satu sel ditempel tanpa spasi ("Waktu(Kenaikan pangkat").
-// Mulai baris ke-2 model tak tahu lagi mana "Satuan" dan mana "Target". convertToHtml masih
-// menyimpan struktur tabel, jadi tabel ≥2 kolom ditulis ulang sebagai baris Markdown (Item 76):
-//   | No | Sasaran Strategis | Satuan |
-//   | --- | --- | --- |
-//   | 1 | Meningkatnya profesionalisme ASN | Skala / % |
-// Diuji 2026-09-14 dengan kode ini sendiri (Node: buffer; browser Vite: arrayBuffer, hasil sama):
-//   Buku Materi Pokok UT → 42 baris tabel, 6.407 → 6.407 kata (tidak ada yang hilang);
-//   HCDP → 48 baris tabel, 6.796 → 6.802 kata — selisihnya hanya kata yang dulu tertempel
-//   ("Waktu(Kenaikan") dan kini terpisah. Tanpa opsiHtmlDocx HTML Buku 5,5 MB (gambar base64), dengan 55 KB.
 
-// Penanda sementara tabel yang sudah diubah. Memakai NUL (U+0000): XML melarang karakter itu, jadi
-// mustahil muncul di teks DOCX — penanda yang terlihat seperti "⟦T0⟧" bisa saja ada di dokumen asli.
 const penandaTabel = (i) => `\u0000T${i}\u0000`;
 const PENANDA_TABEL = /\u0000T(\d+)\u0000/g;
 
@@ -314,39 +219,33 @@ const dekodeEntitas = (s) => s
   .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
   .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
   .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
-  .replace(/&amp;/g, '&');                                        // terakhir: "&amp;lt;" tetap "&lt;"
+  .replace(/&amp;/g, '&');
 
-// Tag dibuang DULU, entitas didekode SESUDAHNYA — "set status&lt;n&gt;" harus menjadi "<n>",
-// bukan ikut terbuang sebagai tag.
 const htmlKeParagraf = (html) => dekodeEntitas(html
   .replace(/<\/(p|h[1-6]|li)>/g, '\n\n').replace(/<br\s*\/?>/g, '\n')
   .replace(/<li[^>]*>/g, '• ').replace(/<[^>]+>/g, ''));
 
-// Isi satu sel → satu baris: paragraf dipisah " / ", "|" di-escape agar kolom tidak bergeser.
 const htmlKeSel = (html) => dekodeEntitas(html
   .replace(/<\/(p|h[1-6]|li)>/g, ' / ').replace(/<br\s*\/?>/g, ' / ').replace(/<[^>]+>/g, ''))
   .replace(/(\s*\/\s*)+/g, ' / ').replace(/^\s*\/\s*|\s*\/\s*$/g, '')
   .replace(/\|/g, '\\|').replace(/\s+/g, ' ').trim();
 
 function tabelKeTeks(isi, tabel) {
-  // Tabel bersarang sudah diganti penanda; di dalam sel ia diratakan jadi satu baris.
   const rataSel = (s) => s.replace(PENANDA_TABEL, (m, i) => (tabel[+i] ?? m)
     .split('\n').filter((l) => l.trim() && !/^\|( --- \|)+$/.test(l))
     .join(' ; ').replace(/(?<!\\)\|/g, '\\|'));
   const rows = [...isi.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)]
     .map((r) => [...r[1].matchAll(/<t([dh])([^>]*)>([\s\S]*?)<\/t[dh]>/g)].flatMap((c) => {
       const lebar = Number(c[2].match(/colspan="(\d+)"/)?.[1] || 1);
-      return [rataSel(htmlKeSel(c[3])), ...Array(lebar - 1).fill('')];   // sel gabungan: teks sekali
+      return [rataSel(htmlKeSel(c[3])), ...Array(lebar - 1).fill('')];
     }))
-    .filter((r) => r.some(Boolean));                                     // baris kosong (tata letak gambar)
+    .filter((r) => r.some(Boolean));
   const kolom = rows.length ? Math.max(...rows.map((r) => r.length)) : 0;
-  // Tabel satu kolom biasanya kotak teks ("OUTLINE" + butir-butirnya) — biarkan sebagai paragraf.
   if (kolom < 2) return htmlKeParagraf(isi).trim();
   const baris = (r) => `| ${[...r, ...Array(kolom - r.length).fill('')].join(' | ')} |`;
   return [baris(rows[0]), `|${' --- |'.repeat(kolom)}`, ...rows.slice(1).map(baris)].join('\n');
 }
 
-/** HTML dari mammoth.convertToHtml → teks, dengan tabel ≥2 kolom sebagai baris Markdown. */
 export function teksDariHtmlDocx(html) {
   const tabel = [];
   const terdalam = /<table[^>]*>((?:(?!<table[\s>])[\s\S])*?)<\/table>/;
@@ -354,13 +253,10 @@ export function teksDariHtmlDocx(html) {
   while (terdalam.test(sisa)) {
     sisa = sisa.replace(terdalam, (_, isi) => penandaTabel(tabel.push(tabelKeTeks(isi, tabel)) - 1));
   }
-  // Satu kali ganti cukup: penanda tabel bersarang sudah diratakan ke dalam sel oleh tabelKeTeks.
-  // (String.replace dengan regex global selalu mulai dari awal — tidak bergantung lastIndex.)
   const teks = htmlKeParagraf(sisa).replace(PENANDA_TABEL, (m, i) => (tabel[+i] === undefined ? m : `\n\n${tabel[+i]}\n\n`));
   return teks.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
-/** Opsi convertToHtml: gambar tidak dibaca — tanpa ini setiap gambar ikut menjadi base64. */
 export const opsiHtmlDocx = (mammoth) => ({
   convertImage: mammoth.images.imgElement(() => Promise.resolve({ src: '' }))
 });
@@ -382,13 +278,7 @@ function periksaHasil(nama, hasil) {
   return { ...hasil, huruf: hasil.teks.length };
 }
 
-// ─── Pintu utama untuk browser ─────────────────────────────────────────────────────────────
 
-/**
- * Berkas unggahan → teks siap dikirim ke rag-process.
- * @returns {Promise<{jenis, teks, huruf, halaman?, halamanKosong?}>}
- * @throws {GagalEkstrak}
- */
 export async function ekstrakTeksDokumen(file, { onProgress, petaOcrHalaman } = {}) {
   const eks = ekstensi(file?.name);
   if (eks === '.doc') {
@@ -410,7 +300,6 @@ export async function ekstrakTeksDokumen(file, { onProgress, petaOcrHalaman } = 
     const { default: mammoth } = await import('mammoth');
     let hasil;
     try {
-      // convertToHtml, bukan extractRawText: hanya HTML yang masih menyimpan baris & kolom tabel.
       hasil = await mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() }, opsiHtmlDocx(mammoth));
     } catch (e) {
       throw new GagalEkstrak('DOCX_RUSAK', `DOCX tidak bisa dibaca: ${e?.message || e}`);
@@ -418,8 +307,6 @@ export async function ekstrakTeksDokumen(file, { onProgress, petaOcrHalaman } = 
     return periksaHasil(file.name, { jenis: 'docx', teks: teksDariHtmlDocx(hasil.value) });
   }
 
-  // PDF — build "legacy" supaya jalan juga di browser HP yang lebih tua. Dimuat hanya saat
-  // mengunggah PDF (±1 MB), bukan saat aplikasi dibuka.
   const [pdfjs, { default: workerUrl }] = await Promise.all([
     import('pdfjs-dist/legacy/build/pdf.mjs'),
     import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')

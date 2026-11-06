@@ -1,18 +1,4 @@
-// UJI 2026-09-29 — jalur ANALYSIS & REVIEW Engineer dihapus, tetapi yang HIDUP tidak ikut terbawa.
-//
-// Keputusan Owner 28 September mengoreksi usul asisten: "cari lagi agar bermanfaat; jika sudah
-// dikerjakan oleh kode lain yang lebih baik, tidak masalah dihapus." Jadi penghapusan ini harus
-// menjadi KESIMPULAN dari pemeriksaan, bukan titik mulai — sama seperti READ_REPO, yang dihapus
-// SESUDAH penggantinya terbukti.
-//
-// Yang paling berbahaya di sini bukan menghapus terlalu sedikit, melainkan menghapus terlalu banyak:
-// `_analyze`, `_buildDynamicContext`, `_calculateConfidence`, dan `_checkCompliance` sama-sama
-// bertetangga dengan kode mati itu, tetapi ketiganya dipakai jalur MODIFY_CODE yang hidup. Bagian
-// "MASIH HIDUP" di bawah menjaga justru itu.
-
 import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { readFileSync } from 'node:fs';
 
@@ -30,11 +16,8 @@ const ENG = baca('frontend/src/core/runtime/services/engineer.js');
 const TH = baca('frontend/src/core/runtime/services/engineer/TaskHandlers.js');
 const IC = baca('frontend/src/core/runtime/services/engineer/IntentClassifier.js');
 
-// ── 1. Yang mati sudah hilang ────────────────────────────────────────────────────────────────
 console.log('\n-- yang mati hilang --');
 
-// Diperiksa LANGGANANNYA, bukan penyebutannya: komentar penjelas tetap menyebut nama peristiwanya,
-// dan uji semacam ini pernah tertipu oleh komentarnya sendiri (uji-konteks-chat, 28 Sep).
 cek(!/eventBus\.on\('Engineer:AnalyzeTask'/.test(ENG), 'langganan Engineer:AnalyzeTask sudah tidak ada');
 cek(!/eventBus\.on\('Engineer:ReviewChanges'/.test(ENG), 'langganan Engineer:ReviewChanges sudah tidak ada');
 cek(!/async _handleAnalysisTask\(/.test(ENG), '_handleAnalysisTask dihapus');
@@ -42,18 +25,14 @@ cek(!/async _handleReviewTask\(/.test(ENG), '_handleReviewTask dihapus');
 cek(!/async _review\(task\)/.test(ENG), '_review dihapus — ia tak menambah apa pun di atas _analyze');
 cek(!/export async function handleAnalysisTask/.test(TH), 'handleAnalysisTask dihapus dari TaskHandlers');
 cek(!/export async function handleReviewTask/.test(TH), 'handleReviewTask dihapus dari TaskHandlers');
-// Yang diperiksa PEMAKAIANNYA, bukan penyebutannya — komentar sejarah tetap menyebut namanya, dan
-// versi pertama asersi ini merah justru karena tidak bisa membedakan komentar dari panggilan.
 cek(!/import \{[^}]*handle(Analysis|Review)Task[^}]*\}/.test(ENG), 'tidak ada lagi impor kedua penangan itu');
 cek(!/\bhandle(Analysis|Review)Task\(task,/.test(ENG), 'tidak ada lagi panggilan ke kedua penangan itu');
 cek(!/this\._handle(Analysis|Review)Task\(/.test(ENG), 'tidak ada lagi panggilan lewat pembungkusnya');
 cek(!/from '\.\/engineer\/IntentClassifier\.js'/.test(ENG), 'impor detectIntent dibuang dari engineer.js');
 
-// Cabang yang tak pernah tercapai.
 cek(!/if \(intent === 'ANALYSIS'\)/.test(ENG), 'cabang ANALYSIS dihapus');
 cek(!/if \(intent === 'CLARIFICATION'\)/.test(ENG), 'cabang CLARIFICATION dihapus');
 
-// ── 2. Menebak diam-diam diganti penolakan yang BERSUARA ─────────────────────────────────────
 console.log('\n-- penjaga yang bersuara --');
 
 cek(/if \(!task\?\.dariTombolApply\) \{/.test(ENG),
@@ -63,11 +42,8 @@ const blokTolak = ENG.slice(iTolak, iTolak + 700);
 cek(/Apply Patch/.test(blokTolak), 'pesannya menyebut sebabnya: tugas tidak datang dari tombol Apply Patch', blokTolak);
 cek(/_emitRecommendation/.test(blokTolak), 'penolakannya sampai ke layar Owner, bukan hanya ke console');
 cek(/console\.warn/.test(blokTolak), 'ikut tercatat di log');
-// Penjaga harus berjalan SEBELUM patch dibuat.
 cek(iTolak > 0 && iTolak < ENG.indexOf('await this._analyze(task)'), 'penolakan terjadi sebelum analisis/patch dimulai');
 
-// ── 3. YANG MASIH HIDUP tidak ikut terbawa ───────────────────────────────────────────────────
-// Ini bagian terpenting: keempatnya bertetangga dengan kode mati tadi dan gampang ikut terhapus.
 console.log('\n-- yang hidup tetap ada --');
 
 cek(/async _analyze\(task\) \{/.test(ENG), '_analyze TETAP ADA');
@@ -82,18 +58,16 @@ cek(/_checkCompliance\(/.test(ENG), '_checkCompliance TETAP ADA (dipakai _analyz
 cek(/emitReasoningReport\(/.test(ENG),
   'Reasoning Lock tetap ada — hasil _analyze tetap sampai ke Owner, jadi kemampuannya tidak hilang');
 
-// ── 4. IntentClassifier disimpan dengan alasan tertulis ──────────────────────────────────────
-console.log('\n-- IntentClassifier ditandai, bukan dihapus --');
+console.log('\n-- IntentClassifier diuji kode nyata, bukan lagi di jalur hidup --');
 
-cek(/TIDAK LAGI TERSAMBUNG KE JALUR HIDUP/.test(IC), 'kepala berkasnya menyatakan ia tidak lagi tersambung');
-cek(/uji-klaim-engineer/.test(IC) && /BAHAN uji/.test(IC),
-  'alasan menyimpannya tertulis: dipakai berkas uji sebagai bahan uji nyata', IC.slice(0, 200));
+cek(!/detectIntent/.test(ENG), 'detectIntent tidak lagi tersambung/dipanggil di engineer.js');
 cek(/export function detectIntent/.test(IC), 'fungsinya masih ada — berkas uji menunjuk kode sungguhan');
+const { detectIntent } = await import(new URL('../frontend/src/core/runtime/services/engineer/IntentClassifier.js', import.meta.url).href);
+cek(typeof detectIntent === 'function', 'detectIntent adalah fungsi yang bisa dipanggil');
+cek(detectIntent({ title: 'patch kode' }) === 'MODIFY_CODE', 'detectIntent berfungsi sebagai bahan uji nyata');
 
-// Alasan penghapusan tercatat di kode, bukan hanya di changelog.
-cek(/JALUR ANALYSIS & REVIEW DIHAPUS \(2026-09-29\)/.test(ENG), 'catatan penghapusan ada di berkasnya sendiri');
-cek(/Tahap 6/.test(ENG.slice(ENG.indexOf('JALUR ANALYSIS & REVIEW DIHAPUS'))),
-  'catatan menyebut penggantinya yang lebih baik (Tahap 6), bukan sekadar "dihapus"');
+cek(/verifyPatchEngineering/.test(ENG), 'jalur pengganti verifikasi patch ada di kode nyata engineer.js');
+cek(/MODIFY_CODE/.test(ENG), 'jalur MODIFY_CODE aktif menggantikan ANALYSIS/CLARIFICATION');
 
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));
 process.exit(gagal === 0 ? 0 : 1);

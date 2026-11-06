@@ -1,25 +1,12 @@
-// RESEP KONEKTOR UMUM (Item 129 Tahap G1, 2026-11-03) — satu tugas: membaca & memvalidasi resep server MCP.
-//
-// Resep = satu berkas JSON per server MCP: cara menjalankannya (program lokal atau URL), kredensial yang dimintanya,
-// dan petunjuk pasang. Server baru cukup berkas resep baru, TANPA kode (K19). Dua sumber:
-//   - bawaan: `electron/konektor/resep/` — ikut pemasang karena `build.files` membawa `electron/**` (titik sambung S1;
-//     resep di `capability/` tidak akan ikut);
-//   - buatan Owner: folder data perangkat (folder program pemasang hanya-baca).
-// Resep Owner tidak boleh memakai id bawaan: resep bawaan tidak bisa ditimpa diam-diam oleh berkas lain.
-//
-// Resep TIDAK menyalakan apa pun dan tidak memegang rahasia. Alamat program diisi Owner saat memasang
-// (`daftarServer.cjs`), nilai kredensial disimpan brankas (`brankas.cjs`).
 
 const fs = require('fs');
 const path = require('path');
 
 const POLA_ID = /^[a-z][a-z0-9-]{1,39}$/;
-// Nama variabel lingkungan / header yang sah. Variabel berbau rahasia hanya boleh lewat `kredensial` (ke brankas),
-// tidak boleh tertulis sebagai nilai biasa di resep — resep bisa dibagikan, rahasia tidak.
 const POLA_ENV = /^[A-Z][A-Z0-9_]{1,63}$/;
 const POLA_HEADER = /^[A-Za-z][A-Za-z0-9-]{1,63}$/;
 const BERBAU_RAHASIA = /KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH/i;
-const ID_BAWAAN_TERPAKAI = Object.freeze(['ecosystem-crawler']); // konektor bawaan yang jalurnya sendiri (konektorMcp.cjs)
+const ID_BAWAAN_TERPAKAI = Object.freeze(['ecosystem-crawler']);
 
 const BATAS = Object.freeze({ nama: 60, petunjuk: 1200, argumen: 30, argumenHuruf: 500, kredensial: 8, lingkungan: 20 });
 
@@ -27,11 +14,10 @@ const tolak = (alasan) => ({ ok: false, alasan });
 const teks = (v, maks) => typeof v === 'string' && v.trim().length > 0 && v.length <= maks;
 const tanpaBarisBaru = (v) => !/[\r\n\0]/.test(v);
 
-/** URL server jarak jauh: https, atau http hanya ke mesin ini. */
 function urlSah(u) {
   let url;
-  try { url = new URL(String(u)); } catch { return false; /* bukan URL = tidak sah, alasannya dilaporkan pemanggil */ }
-  if (url.username || url.password) return false; // kredensial lewat brankas, bukan tertanam di URL
+  try { url = new URL(String(u)); } catch { return false;  }
+  if (url.username || url.password) return false;
   if (url.protocol === 'https:') return true;
   return url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
 }
@@ -44,7 +30,6 @@ function validasiKredensial(daftar, jenis) {
   for (const k of daftar) {
     if (!k || typeof k !== 'object') return tolak('kredensial harus objek');
     if (!POLA_ID.test(String(k.id || '')) || sudah.has(k.id)) return tolak(`id kredensial tidak sah/ganda: ${k.id}`);
-    // `oauth-*` milik penyedia OAuth (token & pendaftaran klien di brankas) — tidak boleh bisa ditimpa dari kolom ketik.
     if (String(k.id).startsWith('oauth-')) return tolak(`id kredensial ${k.id} dicadangkan untuk OAuth`);
     if (!teks(k.label, BATAS.nama * 2)) return tolak(`label kredensial ${k.id} kosong/terlalu panjang`);
     sudah.add(k.id);
@@ -76,10 +61,6 @@ function validasiLingkungan(obj) {
   return { ok: true, lingkungan: hasil };
 }
 
-/**
- * Satu resep mentah → bentuk sah, atau alasan penolakan. Bidang yang tak dikenal dibuang.
- * @returns {{ok: true, resep: object} | {ok: false, alasan: string}}
- */
 function validasiResep(mentah) {
   if (!mentah || typeof mentah !== 'object' || Array.isArray(mentah)) return tolak('resep harus objek JSON');
   const { id, nama, jenis } = mentah;
@@ -92,7 +73,6 @@ function validasiResep(mentah) {
   if (jenis === 'stdio') {
     const s = mentah.stdio;
     if (!s || typeof s !== 'object') return tolak(`resep ${id}: bagian "stdio" tidak ada`);
-    // Hanya .exe: .cmd/.bat/.ps1 butuh shell, dan konektor dijalankan TANPA shell (pola alatFolderJalan).
     if (!/^[A-Za-z0-9._-]{1,80}\.exe$/i.test(String(s.namaProgram || ''))) return tolak(`resep ${id}: "namaProgram" harus nama berkas .exe`);
     const argumen = s.argumen === undefined ? [] : s.argumen;
     if (!Array.isArray(argumen) || argumen.length > BATAS.argumen
@@ -109,21 +89,16 @@ function validasiResep(mentah) {
   const kr = validasiKredensial(mentah.kredensial, jenis);
   if (!kr.ok) return tolak(`resep ${id}: ${kr.alasan}`);
   resep.kredensial = kr.kredensial;
-  // Tahap F1: server jarak jauh yang meminta LOGIN (OAuth) — tanpa kredensial ketik; akun dipilih Owner di browser.
   if (mentah.oauth !== undefined) {
     if (mentah.oauth !== true || jenis !== 'http') return tolak(`resep ${id}: "oauth": true hanya untuk jenis http`);
     resep.oauth = true;
   }
-  // GH2: server tanpa pendaftaran klien otomatis (mis. GitHub) — `client_id` aplikasi yang didaftarkan penerbit Mamet
-  // sekali. BUKAN rahasia (ikut tampil di alamat login); rahasia klien tidak pernah ada di resep (K25).
   if (mentah.oauthKlienId !== undefined) {
     if (resep.oauth !== true || !/^[A-Za-z0-9._-]{4,100}$/.test(String(mentah.oauthKlienId))) {
       return tolak(`resep ${id}: "oauthKlienId" hanya untuk resep OAuth, berupa id klien tanpa spasi`);
     }
     resep.oauthKlienId = String(mentah.oauthKlienId);
   }
-  // GH3: `"oauthAlur": "perangkat"` — login perangkat (device flow, RFC 8628) untuk penyedia yang mewajibkan rahasia
-  // pada login browser (GitHub). Butuh client_id terdaftar; bawaan = login browser.
   if (mentah.oauthAlur !== undefined) {
     if (!['browser', 'perangkat'].includes(mentah.oauthAlur) || resep.oauth !== true) return tolak(`resep ${id}: "oauthAlur" harus "browser" atau "perangkat" (resep OAuth)`);
     if (mentah.oauthAlur === 'perangkat' && !resep.oauthKlienId) return tolak(`resep ${id}: login perangkat butuh "oauthKlienId"`);
@@ -144,16 +119,12 @@ function validasiResep(mentah) {
   return { ok: true, resep };
 }
 
-/**
- * Semua resep di satu folder: satu berkas `<id>.json` = satu resep, nama berkas wajib sama dengan id.
- * Folder tak ada → kosong (bukan galat). Resep rusak dilaporkan, tidak menggagalkan resep lain.
- */
 function bacaFolderResep(folder) {
   const resep = [];
   const galat = [];
   let berkas = [];
   try { berkas = fs.readdirSync(folder).filter((b) => b.toLowerCase().endsWith('.json')).sort(); }
-  catch { return { resep, galat }; /* folder belum dibuat Owner — tidak ada resep buatan sendiri */ }
+  catch { return { resep, galat };  }
   for (const b of berkas) {
     let mentah;
     try { mentah = JSON.parse(fs.readFileSync(path.join(folder, b), 'utf8')); }
@@ -166,7 +137,6 @@ function bacaFolderResep(folder) {
   return { resep, galat };
 }
 
-/** Resep bawaan + buatan Owner. Id ganda: bawaan menang, resep Owner dilaporkan. */
 function semuaResep({ folderBawaan, folderOwner = null }) {
   const bawaan = bacaFolderResep(folderBawaan);
   const owner = folderOwner ? bacaFolderResep(folderOwner) : { resep: [], galat: [] };

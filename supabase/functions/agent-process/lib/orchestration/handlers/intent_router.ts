@@ -20,8 +20,6 @@ export const IntentRouterHandler = {
     ctx.state.processingSteps.push('🔍 Menganalisis permintaan user...');
     
     {
-      // Kata utuh + bentuk kata kerja perintah, tanpa kata tanya — alasannya & angka mode bayangannya di
-      // kata_kunci_router.ts (Item 126 Fase 1). Kata kunci yang memicu ikut ditampilkan (ADR-0021: terlihat).
       const pemicu = kataKunciAksi(ctx.request.lowerMsg);
 
       if (pemicu) {
@@ -39,13 +37,6 @@ export const IntentRouterHandler = {
              ctx.state.processingSteps.push('⚡ Keputusan: Butuh aksi → Mempersiapkan sub-agent...');
           }
         } catch (err) {
-          // Jangan ditelan diam-diam. Sebelum Item 38, kegagalan di sini hanya muncul di
-          // konsol server — Owner tidak punya cara tahu bahwa Intent Router praktis mati.
-          //
-          // JALUR AMAN (Item 126 Fase 1, 2026-10-28): dulu isChatBiasa tetap false → Coordinator dipanggil. Riwayat
-          // chat: 6 dari 6 kegagalan router diikuti Coordinator yang JUGA gagal (model & kunci sama) dan 0 sub-agent
-          // jalan — satu panggilan gagal yang hanya membuang waktu sebelum jawaban langsung yang sama. Kini langsung
-          // dijawab tanpa sub-agent; jalurnya disebut di langkah proses.
           console.warn("Intent router error, jalur aman (jawab langsung):", err);
           isChatBiasa = true;
           ctx.state.processingSteps.push(`⚠️ Intent Router gagal (${String((err as any)?.message || err).substring(0, 120)}) → jalur aman: dijawab langsung tanpa sub-agent`);
@@ -69,9 +60,6 @@ export const IntentRouterHandler = {
         try {
           planText = await runCoordinatorLLM(`Permintaan User: "${ctx.request.finalMessage}"`, coordinatorSystemPrompt, false, rctx);
         } catch (err) {
-          // Sama seperti di atas: kegagalan perencanaan wajib terlihat Owner, bukan hanya
-          // di log server. Tanpa ini sistem tampak "memutuskan tidak butuh sub-agent",
-          // padahal sebenarnya tidak pernah sempat memutuskan apa pun.
           console.error("Coordinator LLM Error:", err);
           rencanaGagal = true;
           ctx.state.processingSteps.push(`⚠️ Coordinator gagal merencanakan, lanjut tanpa sub-agent: ${String((err as any)?.message || err).substring(0, 120)}`);
@@ -81,9 +69,6 @@ export const IntentRouterHandler = {
         plan = parseResult.plan;
         contractValidation = parseResult.validation as any;
 
-        // Tombol Deep Research (desktop mengirim tools ['deep_research'] tanpa 'web_search', 2026-09-15): pengguna meminta
-        // riset mendalam, jadi tugas "researcher" dari Coordinator dialihkan ke deep_research. Mode Lite / Mametlite yang
-        // mengirim keduanya tetap dibiarkan memilih sendiri.
         if (Array.isArray(tools) && tools.includes('deep_research') && !tools.includes('web_search')) {
             let dialihkan = 0;
             plan = plan.map((p: any) => {
@@ -95,13 +80,10 @@ export const IntentRouterHandler = {
         }
 
         if (plan.length > 0) {
-            // Tugas hasil tulisan ulang Coordinator ikut tampil (ADR-0021 §2.3) — dulu hanya nama sub-agent.
             ctx.state.processingSteps.push(barisRencana(plan));
         } else if (contractValidation.status === "REJECTED") {
             ctx.state.processingSteps.push(`❌ [Execution Contract] Skema ditolak: ${contractValidation.reason_code}`);
         } else if (!rencanaGagal) {
-            // "Tidak ada" ≠ "gagal": sesudah Coordinator gagal, baris "memutuskan" dulu tetap ditulis (6 dari 6 di
-            // riwayat) — padahal ia tak pernah sempat memutuskan. Kegagalannya sudah tercatat di atas.
             ctx.state.processingSteps.push('📋 Coordinator memutuskan tidak ada sub-agent yang diperlukan');
         }
     }

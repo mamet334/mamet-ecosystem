@@ -11,7 +11,6 @@ from crawler.inti import Misi, Pelapor, Sumber, Temuan
 from crawler.inti.teks import bersihkan, ke_iso
 from crawler.kanal import SesiSopan
 
-
 class Wikipedia(Sumber):
     id = "wikipedia"
     kanal = "laptop"

@@ -33,7 +33,6 @@ KEPALA = """\
 # JANGAN disunting tangan. Perbarui .venv dulu (pasang & uji), lalu: .venv/Scripts/python.exe -I scripts/kunci_bundel.py
 """
 
-
 def terpasang() -> list[tuple[str, str]]:
     keluaran = subprocess.run([sys.executable, "-m", "pip", "freeze", "--all", "--disable-pip-version-check"],
                               capture_output=True, text=True, check=True).stdout
@@ -47,7 +46,6 @@ def terpasang() -> list[tuple[str, str]]:
         nama, versi = baris.split("==", 1)
         pasangan.append((nama, versi))
     return pasangan
-
 
 def hash_pypi(nama: str, versi: str, tag_cocok: set) -> list[str]:
     with urllib.request.urlopen(f"https://pypi.org/pypi/{nama}/{versi}/json", timeout=30) as r:
@@ -67,7 +65,6 @@ def hash_pypi(nama: str, versi: str, tag_cocok: set) -> list[str]:
         raise SystemExit(f"{nama}=={versi}: PyPI tidak punya berkas yang bisa dipasang Python ini")
     return sorted(hasil)
 
-
 def susun() -> str:
     tag_cocok = set(sys_tags())
     baris = [KEPALA]
@@ -75,7 +72,6 @@ def susun() -> str:
         hs = hash_pypi(nama, versi, tag_cocok)
         baris.append(f"{nama}=={versi} \\\n" + " \\\n".join(f"    --hash=sha256:{h}" for h in hs) + "\n")
     return "".join(baris)
-
 
 if __name__ == "__main__":
     baru = susun()

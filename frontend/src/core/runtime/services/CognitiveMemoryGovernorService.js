@@ -1,24 +1,9 @@
-/**
- * CognitiveMemoryGovernorService.js — Frontend JS port dari lib/cognitiveMemoryGovernor.ts
- *
- * Versi ini di-bundle oleh Vite untuk frontend.
- * lib/cognitiveMemoryGovernor.ts tetap dipakai di server-side (Supabase Edge Functions).
- *
- * PR#2 — Reaktivasi Cognitive Memory Governor
- */
 
-// Feature flag — aktif dengan threshold awal longgar
 export const LEGACY_COGNITION_ENABLED = true;
 
-// Threshold awal (longgar) — perketat bertahap: 0.3 → 0.5 → 0.7
 const REJECT_THRESHOLD = 0.3;
 const HALLUCINATION_THRESHOLD = 0.2;
 
-/**
- * Hitung truth_score dari sumber memory.
- * @param {Object} memory
- * @returns {number} 0–1
- */
 export function calculateTruthScore(memory) {
   if (!memory) return 0.4;
   if (typeof memory.truth_score === 'number') return memory.truth_score;
@@ -32,11 +17,6 @@ export function calculateTruthScore(memory) {
   return 0.4;
 }
 
-/**
- * Jalankan Cognitive Memory Governor.
- * @param {Object} input
- * @returns {{ status: 'ALLOW'|'REJECT'|'REWRITE', reason: string, confidence: number, selected_truth: any }}
- */
 export function runCognitiveMemoryGovernor(input) {
   if (!LEGACY_COGNITION_ENABLED) {
     return {

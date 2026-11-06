@@ -14,7 +14,6 @@ from crawler.kanal import SesiSopan
 
 API = "http://export.arxiv.org/api/query"
 
-
 class Arxiv(Sumber):
     id = "arxiv"
     kanal = "laptop"
@@ -22,7 +21,7 @@ class Arxiv(Sumber):
     kemampuan = ("cari",)
     bahasa = ("en",)
     cocok_untuk = ("sains", "fisika", "matematika", "ilmu_komputer", "preprint")
-    pseudonim_penulis = False  # penulis preprint = byline publik (ADR-CRW-0010)
+    pseudonim_penulis = False
     batas_laju = "jeda 3 detik (arXiv minta ≥3 detik antar-permintaan)"
     alat = (
         {"nama": "arXiv API", "repo": "info.arxiv.org/help/api", "lisensi": "API resmi arXiv"},
@@ -33,8 +32,8 @@ class Arxiv(Sumber):
         if not misi.kata_kunci:
             raise ValueError("arxiv butuh kata_kunci")
         opsi = misi.opsi(self.id)
-        bidang = opsi.get("bidang", "all")  # mis. 'cat:quant-ph', atau 'all', 'ti' (judul), 'abs' (abstrak)
-        sesi = SesiSopan(konfig.USER_AGENT, jeda=(3.0, 3.5))  # arXiv minta minimal 3 detik
+        bidang = opsi.get("bidang", "all")
+        sesi = SesiSopan(konfig.USER_AGENT, jeda=(3.0, 3.5))
         jatah = self.jatah_per_kata_kunci(misi, batas)
         urut = "submittedDate" if opsi.get("urut") == "terbaru" else "relevance"
 

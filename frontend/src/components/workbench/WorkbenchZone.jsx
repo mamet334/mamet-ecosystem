@@ -31,7 +31,6 @@ function SortableWidgetWrapper({ widgetId, position, onClose }) {
       style={style}
       className={position === 'bottom' ? "h-full inline-block w-1/3 p-1 align-top" : "min-h-[250px] mb-2 relative"}
     >
-      {/* WidgetHost sekarang menerima drag handle & onClose dari sini */}
       <WidgetHost
         widgetId={widgetId}
         onClose={onClose}
@@ -42,11 +41,6 @@ function SortableWidgetWrapper({ widgetId, position, onClose }) {
   );
 }
 
-/**
- * WorkbenchZone
- * Handles rendering a specific zone (left, right, bottom) and its widgets.
- * Also provides the resize handle.
- */
 export default function WorkbenchZone({ 
   position,
   width, 
@@ -64,7 +58,6 @@ export default function WorkbenchZone({
     data: { workbench: position }
   });
 
-  // Reset draftSize if external width/height changes when not resizing
   useEffect(() => {
     if (!isResizing.current) {
        currentSizeRef.current = null;
@@ -103,7 +96,6 @@ export default function WorkbenchZone({
       currentSizeRef.current = null;
       setDraftSize(null);
 
-      // Trigger layout update outside of React state updater to prevent render phase warning
       if (finalSize !== null && onResize) {
         onResize(position, finalSize);
       }
@@ -113,7 +105,6 @@ export default function WorkbenchZone({
     document.addEventListener('pointerup', onPointerUp);
   };
 
-  // Let's NOT return null, but make it very thin if empty.
   
   let isEmpty = widgets.length === 0;
 
@@ -127,7 +118,6 @@ export default function WorkbenchZone({
     style.height = isEmpty ? '60px' : (currentHeight ? `${currentHeight}px` : '250px');
   }
 
-  // Common wrapper styles
   const baseClasses = "flex flex-col bg-slate-950 relative min-h-0 min-w-0";
   const positionClasses = {
     'left': 'border-b md:border-b-0 md:border-r border-slate-800 h-[350px] md:h-full flex-shrink-0',
@@ -138,7 +128,6 @@ export default function WorkbenchZone({
   return (
     <div className={`${baseClasses} ${positionClasses[position]}`} style={style} ref={setNodeRef}>
       
-      {/* Content Area */}
       <div className={`flex-1 overflow-y-auto ${isEmpty ? 'flex items-center justify-center p-0' : 'p-2 space-y-2'} custom-scrollbar`}>
         <SortableContext items={widgets} strategy={position === 'bottom' ? horizontalListSortingStrategy : verticalListSortingStrategy}>
           {widgets.map(widgetId => (
@@ -152,7 +141,6 @@ export default function WorkbenchZone({
         </SortableContext>
       </div>
 
-      {/* Resize Handle */}
       {position === 'left' && (
         <div 
           className="absolute top-0 right-0 w-1.5 h-full hover:bg-emerald-500/50 cursor-col-resize z-20"

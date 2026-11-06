@@ -1,22 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useService } from '../../core/runtime/hooks/useService';
 
-/**
- * SystemNotificationCenter — Menampilkan notifikasi sistem (System:Degraded, System:Error)
- * sebagai toast di pojok kanan bawah layar.
- *
- * Mendengarkan event dari EventBus:
- *   - System:Degraded → { reason, phase }
- *   - System:Error    → { reason, phase }
- *
- * Setiap notifikasi otomatis hilang setelah 10 detik.
- */
 export default function SystemNotificationCenter() {
   const [notifications, setNotifications] = useState([]);
   const eventBus = useService('EventBus');
   const timersRef = useRef({});
 
-  // Hapus notifikasi berdasarkan ID
   const dismissNotification = useCallback((id) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
     if (timersRef.current[id]) {
@@ -25,12 +14,11 @@ export default function SystemNotificationCenter() {
     }
   }, []);
 
-  // Tambah notifikasi baru
   const addNotification = useCallback((type, payload) => {
     const id = `sys-notif-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const notification = {
       id,
-      type, // 'DEGRADED' | 'ERROR'
+      type,
       reason: payload?.reason || 'Tidak ada detail',
       phase: payload?.phase ?? 'N/A',
       timestamp: Date.now(),
@@ -38,13 +26,11 @@ export default function SystemNotificationCenter() {
 
     setNotifications((prev) => [...prev, notification]);
 
-    // Auto-dismiss setelah 10 detik
     timersRef.current[id] = setTimeout(() => {
       dismissNotification(id);
     }, 10000);
   }, [dismissNotification]);
 
-  // Daftarkan listener EventBus saat komponen mount
   useEffect(() => {
     if (!eventBus) return;
 
@@ -58,18 +44,15 @@ export default function SystemNotificationCenter() {
       addNotification('ERROR', payload);
     });
 
-    // Cleanup: unsubscribe semua listener + bersihkan timer
     return () => {
       if (typeof unsubDegraded === 'function') unsubDegraded();
       if (typeof unsubError === 'function') unsubError();
 
-      // Bersihkan semua timer yang masih aktif
       Object.values(timersRef.current).forEach((timer) => clearTimeout(timer));
       timersRef.current = {};
     };
   }, [eventBus, addNotification]);
 
-  // Jika tidak ada notifikasi, jangan render apa pun
   if (notifications.length === 0) {
     return null;
   }
@@ -96,10 +79,8 @@ export default function SystemNotificationCenter() {
           `}
           role="alert"
         >
-          {/* Header */}
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2">
-              {/* Icon */}
               <span className="text-lg">
                 {notif.type === 'ERROR' ? '🔴' : '🟡'}
               </span>
@@ -107,7 +88,6 @@ export default function SystemNotificationCenter() {
                 {notif.type === 'ERROR' ? 'System Error' : 'System Degraded'}
               </span>
             </div>
-            {/* Tombol close */}
             <button
               onClick={() => dismissNotification(notif.id)}
               className="text-white/50 hover:text-white/90 transition-colors text-sm leading-none"
@@ -117,7 +97,6 @@ export default function SystemNotificationCenter() {
             </button>
           </div>
 
-          {/* Body */}
           <div className="mt-2 text-sm space-y-1">
             <p className="text-white/90 break-words">
               {notif.reason}
@@ -129,7 +108,6 @@ export default function SystemNotificationCenter() {
             )}
           </div>
 
-          {/* Progress bar auto-dismiss */}
           <div className="mt-3 h-1 w-full bg-white/10 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full animate-shrink-width ${
@@ -143,7 +121,6 @@ export default function SystemNotificationCenter() {
         </div>
       ))}
 
-      {/* Animasi keyframes — di-inject via style tag */}
       <style>{`
         @keyframes slide-in-right {
           from {

@@ -17,17 +17,14 @@ from crawler.sumber import web as web_mod
 from crawler.sumber import youtube as yt_mod
 from crawler.sumber.mediakonsumen import slug
 
-
 @pytest.fixture
 def gudang(tmp_path):
     g = Gudang(tmp_path / "data", "garam-uji")
     yield g
     g.tutup()
 
-
 def diam(*_a, **_k):
     pass
-
 
 class SumberPenulis(Sumber):
     id = "palsu"
@@ -38,13 +35,11 @@ class SumberPenulis(Sumber):
         for i, penulis in enumerate(("katadata-poster.bsky.social", "warga.bsky.social")):
             yield Temuan(jenis="postingan", id_asli=str(i), teks="cari cuan", url=f"https://x/{i}", penulis=penulis)
 
-
 def test_kecualikan_penulis_pola_glob(gudang):
     m = Misi(sumber=["palsu"], kata_kunci=["cuan"],
              opsi_sumber={"palsu": {"kecualikan_penulis": ["*-poster.bsky.social"]}})
     hasil = Dispatcher(gudang, {"palsu": SumberPenulis()}).jalankan(m)
     assert hasil["per_sumber"]["palsu"]["diambil"] == 1
-
 
 class Respon:
     def __init__(self, data):
@@ -54,9 +49,8 @@ class Respon:
         return self.data
 
     @property
-    def content(self):  # untuk sumber yang memakai feedparser (arxiv, rss)
+    def content(self):
         return self.data
-
 
 class SesiPalsu:
     """Pengganti SesiSopan: jawaban berdasarkan potongan URL."""
@@ -70,7 +64,6 @@ class SesiPalsu:
     def get(self, url, params=None):
         self.dipanggil.append((url, params))
         return Respon(next(v for k, v in self.jawaban.items() if url.endswith(k)))
-
 
 def test_youtube_api_video_komentar_dan_balasan(monkeypatch):
     monkeypatch.setattr(yt_mod.konfig, "YOUTUBE_API_KEY", "kunci-uji")
@@ -93,9 +86,7 @@ def test_youtube_api_video_komentar_dan_balasan(monkeypatch):
     assert all(p.get("key") == "kunci-uji" for _, p in sesi.dipanggil)
     assert yt_mod._id_video("https://www.youtube.com/shorts/sh0rt") == "sh0rt"
 
-
 def test_youtube_tanpa_kunci_pakai_ytdlp(monkeypatch):
-    # Tanpa kunci API, sumber tetap siap lewat yt-dlp (ADR-CRW-0010).
     monkeypatch.setattr(yt_mod.konfig, "YOUTUBE_API_KEY", "")
     assert "yt-dlp" in yt_mod.YouTube().kesehatan()
     info = {"id": "v9", "title": "Keluhan", "description": "isi", "channel": "Kanal", "upload_date": "20261001",
@@ -104,7 +95,6 @@ def test_youtube_tanpa_kunci_pakai_ytdlp(monkeypatch):
     video, komentar = list(yt_mod._dari_info_ytdlp(info))
     assert video.waktu_terbit == "2026-10-01" and video.penulis == "Kanal"
     assert komentar.id_asli_induk == "video:v9" and komentar.metrik["waktu_perkiraan"] is True
-
 
 class AksesPalsu:
     def __init__(self, halaman):
@@ -115,7 +105,6 @@ class AksesPalsu:
 
     def ambil(self, url, lapor=None):
         return self.halaman[url], 1, url
-
 
 def test_kaskus_dari_next_data(monkeypatch, gudang):
     thread = {"id": "5adad9", "title": "Usaha Sampingan", "dateline": 1524291924,
@@ -133,10 +122,8 @@ def test_kaskus_dari_next_data(monkeypatch, gudang):
     with pytest.raises(ValueError):
         list(kaskus_mod.Kaskus().ambil(Misi(sumber=["kaskus"]), 5, diam))
 
-
 ARTIKEL = ("<html><head><title>Antrean Puskesmas</title></head><body><article><p>"
            + "Warga mengeluhkan antrean panjang di puskesmas setiap pagi. " * 12 + "</p></article></body></html>")
-
 
 def test_web_ekstrak_dan_serahkan_link_kaskus(monkeypatch, gudang):
     url = "https://berita.contoh.id/a"
@@ -145,14 +132,12 @@ def test_web_ekstrak_dan_serahkan_link_kaskus(monkeypatch, gudang):
     hasil = Dispatcher(gudang, {"web": web_mod.Web()}).jalankan(Misi(sumber=["web"], url_awal=m.url_awal[:1]))
     [r] = gudang.baca_semua(hasil["misi_id"])
     assert "antrean panjang" in r["teks"] and r["jenis"] == "dokumen"
-    assert [t.url for t in web_mod.Web().ambil(m, 10, diam)] == [url]  # link Kaskus diserahkan ke sumber kaskus
-
+    assert [t.url for t in web_mod.Web().ambil(m, 10, diam)] == [url]
 
 def _rss(*judul):
     items = "".join(f"<item><title>{j}</title><link>https://media.id/{i}</link><guid>g{i}</guid>"
                     f"<description>ringkasan {j}</description></item>" for i, j in enumerate(judul))
     return f'<?xml version="1.0"?><rss version="2.0"><channel><title>x</title>{items}</channel></rss>'
-
 
 def test_rss_media_saring_kata_kunci_dan_ambil_isi(monkeypatch):
     halaman = {rss_mod.FEED["detik"]: _rss("Antrean BPJS mengular", "Harga cabai naik"),
@@ -163,7 +148,6 @@ def test_rss_media_saring_kata_kunci_dan_ambil_isi(monkeypatch):
     [t] = list(rss_mod.RssMedia().ambil(m, 10, diam))
     assert t.judul == "Antrean BPJS mengular" and "antrean panjang" in t.teks and t.jenis_akses == "html"
 
-
 def test_mediakonsumen_tag_dari_kata_kunci(monkeypatch):
     assert slug("BPJS Kesehatan") == "bpjs-kesehatan"
     url = "https://mediakonsumen.com/tag/bpjs-kesehatan/feed"
@@ -173,9 +157,7 @@ def test_mediakonsumen_tag_dari_kata_kunci(monkeypatch):
     [t] = list(mk_mod.MediaKonsumen().ambil(m, 10, diam))
     assert t.judul == "Sulit dapat kuota berobat" and t.metrik["jalur"] == "tag/bpjs-kesehatan"
 
-
 def test_mediakonsumen_cadangan_feed_utama_bila_tag_tidak_ada(monkeypatch):
-    # Tag "harga-beras" tidak ada (KeyError di AksesPalsu = 404); feed utama halaman 1 berisi dua surat.
     halaman = {"https://mediakonsumen.com/feed": _rss("Harga beras di minimarket naik", "Paket telat datang")}
     monkeypatch.setattr(mk_mod, "AksesWeb", AksesPalsu(halaman))
     m = Misi(sumber=["mediakonsumen"], kata_kunci=["harga beras"],
@@ -185,11 +167,9 @@ def test_mediakonsumen_cadangan_feed_utama_bila_tag_tidak_ada(monkeypatch):
     assert t.judul == "Harga beras di minimarket naik" and t.metrik["jalur"] == "feed_utama"
     assert "Adapter.FallbackTriggered" in peristiwa
 
-
 class BlueskyPalsu(SumberPenulis):
     id = "bluesky"
     kecualikan_penulis_default = ("*-poster.bsky.social",)
-
 
 def test_bluesky_buang_robot_berita_default_dan_bisa_dimatikan(gudang):
     registri = {"bluesky": BlueskyPalsu()}
@@ -197,7 +177,6 @@ def test_bluesky_buang_robot_berita_default_dan_bisa_dimatikan(gudang):
     assert hasil["per_sumber"]["bluesky"]["diambil"] == 1
     m = Misi(sumber=["bluesky"], kata_kunci=["cuan"], opsi_sumber={"bluesky": {"kecualikan_penulis": []}})
     assert Dispatcher(gudang, registri).jalankan(m)["per_sumber"]["bluesky"]["diambil"] == 2
-
 
 def test_arctic_shift_postingan_dan_pohon_komentar(monkeypatch):
     post = {"id": "p1", "title": "BPJS ribet", "selftext": "antri lama", "permalink": "/r/indonesia/comments/p1/x/",
@@ -212,24 +191,22 @@ def test_arctic_shift_postingan_dan_pohon_komentar(monkeypatch):
                                                             "/comments/tree": pohon}))
     m = Misi(sumber=["arctic_shift"], kata_kunci=["BPJS"], ambil_komentar=True, kedalaman_komentar=2)
     hasil = list(arctic_mod.ArcticShift().ambil(m, 10, diam))
-    assert [t.id_asli for t in hasil] == ["t3_p1", "t1_c1", "t1_c2"]  # AutoModerator dibuang
+    assert [t.id_asli for t in hasil] == ["t3_p1", "t1_c1", "t1_c2"]
     assert hasil[2].id_asli_induk == "t1_c1"
-
 
 def test_proxy_dari_konfig_dan_penyamaran(monkeypatch):
     from crawler import konfig
     from crawler.kanal import AksesWeb, SesiSopan
 
-    assert konfig.proxies("") is None  # "" = paksa langsung
+    assert konfig.proxies("") is None
     assert konfig.proxies("http://host:8080") == {"http": "http://host:8080", "https": "http://host:8080"}
     assert konfig.proxy_tersamar("http://budi:rahasia@host:8080") == "http://budi:***@host:8080"
     assert "tidak ada" in konfig.proxy_tersamar("")
 
     monkeypatch.setattr(konfig, "PROXY", "http://proxy.lokal:3128")
-    assert SesiSopan("ua").session.proxies["https"] == "http://proxy.lokal:3128"      # ikut .env
+    assert SesiSopan("ua").session.proxies["https"] == "http://proxy.lokal:3128"
     assert AksesWeb("ua").proxies["http"] == "http://proxy.lokal:3128"
-    assert AksesWeb("ua", proxy="").proxies is None                                   # override ke langsung
-
+    assert AksesWeb("ua", proxy="").proxies is None
 
 def test_pseudonim_dimatikan_untuk_sumber_rujukan(gudang):
     from crawler.gudang import pseudonim
@@ -247,10 +224,9 @@ def test_pseudonim_dimatikan_untuk_sumber_rujukan(gudang):
     rows = gudang.baca_semua(hasil["misi_id"])
     oa = [r["penulis_hash"] for r in rows if r["sumber"] == "openalex"]
     bs = [r["penulis_hash"] for r in rows if r["sumber"] == "bluesky"]
-    assert oa and all(not p.startswith("p_") for p in oa)                           # nama asli (byline)
-    assert bs and all(p.startswith("p_") for p in bs)                               # pseudonim
+    assert oa and all(not p.startswith("p_") for p in oa)
+    assert bs and all(p.startswith("p_") for p in bs)
     assert pseudonim("garam-uji", "bluesky", "warga.bsky.social") in bs
-
 
 def test_openalex_susun_abstrak_dan_metadata(monkeypatch):
     from crawler.sumber import openalex as oa
@@ -268,7 +244,6 @@ def test_openalex_susun_abstrak_dan_metadata(monkeypatch):
     assert t.teks == "Buku fisika" and t.penulis == "Budi" and t.metrik["sitasi"] == 8
     assert t.url == "https://contoh.id/w1" and t.jenis == "dokumen"
 
-
 def test_wikipedia_cari_lalu_ringkas(monkeypatch):
     from crawler.sumber import wikipedia as wp
 
@@ -283,7 +258,6 @@ def test_wikipedia_cari_lalu_ringkas(monkeypatch):
     [t] = list(wp.Wikipedia().ambil(m, 10, diam))
     assert t.judul == "Mekanika kuantum" and "cabang fisika" in t.teks
     assert t.url.endswith("/Mekanika_kuantum") and t.id_asli == "wiki:id:3855"
-
 
 def test_arxiv_parse_feed(monkeypatch):
     from crawler.sumber import arxiv as ax
@@ -301,7 +275,6 @@ def test_arxiv_parse_feed(monkeypatch):
     assert t.judul.startswith("Roadmap") and "abstrak" in t.teks and t.penulis == "Steve Campbell; Irene D Amico"
     assert t.metrik["kategori_utama"] == "quant-ph" and t.jenis == "dokumen"
 
-
 def test_stackexchange_pertanyaan_dengan_body(monkeypatch):
     from crawler.sumber import stackexchange as se
 
@@ -316,7 +289,6 @@ def test_stackexchange_pertanyaan_dengan_body(monkeypatch):
     assert t.id_asli == "softwarerecs:42" and "offline" in t.teks and t.metrik["skor"] == 5
     assert t.penulis == "user3257"
 
-
 def test_turnbackhoax_label_dan_saring(monkeypatch):
     from crawler.sumber import turnbackhoax as tbh
 
@@ -330,7 +302,6 @@ def test_turnbackhoax_label_dan_saring(monkeypatch):
              opsi_sumber={"turnbackhoax": {"halaman": 1, "ambil_isi": False}})
     [t] = list(tbh.TurnBackHoax().ambil(m, 10, diam))
     assert t.metrik["label"] == "SALAH" and "MBG" in t.judul and t.jenis == "dokumen"
-
 
 def test_deteksi_halaman_blokir():
     assert _terblokir(403, "")

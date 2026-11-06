@@ -2,13 +2,6 @@ import React, { useState } from 'react';
 import { supabase } from '../supabase';
 import { PANJANG_MINIMAL_SANDI, periksaSandiBaru, pesanGalatSandi } from '../../../shared/kata_sandi.js';
 
-/**
- * Ganti kata sandi untuk akun yang sedang masuk — Settings › Identitas (T19, ADR-0022 K4, 29 Okt 2026).
- *
- * Kata sandi LAMA diperiksa dulu (masuk ulang dengan email akun ini) sebelum yang baru disimpan: tanpa itu siapa pun
- * yang menemukan aplikasi dalam keadaan masuk bisa mengunci pemiliknya keluar. Kelas tampilan disalin dari isian &
- * tombol yang sudah ada di Settings (Model ID, Simpan batas harian).
- */
 export default function GantiKataSandi() {
   const [lama, setLama] = useState('');
   const [baru, setBaru] = useState('');
@@ -40,7 +33,7 @@ export default function GantiKataSandi() {
     }
   };
 
-  const isian = 'w-full bg-surface-container-lowest border border-outline-variant px-5 py-4 rounded-lg text-on-surface font-body-base focus:border-primary focus:ring-0 transition-all'; // tanpa `pulse-focus` milik isian Settings: kelas itu tak pernah didefinisikan (T18)
+  const isian = 'w-full bg-surface-container-lowest border border-outline-variant px-5 py-4 rounded-lg text-on-surface font-body-base focus:border-primary focus:ring-0 transition-all';
   return (
     <form onSubmit={simpan} className="mt-6 pt-6 border-t border-outline-variant space-y-3">
       <h3 className="font-headline-md text-headline-md mb-2">Ganti Kata Sandi</h3>

@@ -1,56 +1,20 @@
-/**
- * KonteksChat.js — jendela konteks per percakapan (ROADMAP-ENGINEER-MANDIRI Tahap 3a, 2026-09-23).
- *
- * SEBELUM INI: yang dikirim ke model hanya `history.slice(-10)` — sepuluh pesan terakhir, tanpa memandang
- * panjangnya. Jadi "konteks" bukan percakapan, melainkan jendela geser sepuluh pesan: pada tugas panjang Engineer
- * kehilangan benang merah, dan keluaran perintah yang lebih lama lenyap dari pandangannya.
- *
- * SEKARANG: percakapan ITULAH konteksnya, dibatasi ANGGARAN TOKEN — pesan diambil dari yang terbaru mundur ke
- * belakang sampai anggaran habis. Anggarannya diturunkan dari batas biaya harian Owner (Settings), bukan angka
- * karangan: konteks besar dibayar SETIAP pesan, dan pada tarif deepseek-v4-pro ($0,96/1 juta token masuk) jendela
- * 700 rb token berarti ±$0,67 sekali kirim.
- *
- * Keputusan Owner 23 September 2026:
- *   - "Bersihkan konteks" TIDAK menghapus pesan: pesan lama tetap terlihat di layar, hanya berhenti dikirim ke
- *     model. Bukti percakapan sudah dua kali menyelamatkan penelusuran bug hari itu.
- *   - Anggaran mengikuti kolom batas biaya di Settings.
- *   - Berlaku di Assistant DAN Engineer, masing-masing berdiri sendiri per percakapan.
- */
 
-/** Perkiraan token: 1 token ≈ 4 huruf untuk teks Latin; nama berkas & kode sedikit lebih padat. */
 export function perkiraanToken(teks) {
   const t = String(teks ?? '');
   if (!t) return 0;
   return Math.ceil(t.length / 4);
 }
 
-/** Token satu pesan chat, termasuk ongkos peran/pembungkus (±4 token per pesan). */
 export function tokenPesan(pesan) {
   return perkiraanToken(pesan?.content) + 4;
 }
 
-export const PORSI_PER_PESAN = 0.05;   // satu pesan boleh memakai 5% sisa anggaran harian
-export const ANGGARAN_MIN = 8000;      // di bawah ini konteks jadi tak berguna
-export const ANGGARAN_BAWAAN = 60000;  // dipakai bila harga/batas harian belum diketahui
+export const PORSI_PER_PESAN = 0.05;
+export const ANGGARAN_MIN = 8000;
+export const ANGGARAN_BAWAAN = 60000;
 
-/**
- * Porsi jendela model yang boleh dipakai KONTEKS. Sisanya milik jawaban model, tool, dan prompt sistem —
- * jendela model mencakup masukan DAN keluaran.
- *
- * Kenapa ini ada (24 September 2026): sebelum ini `batasModel` tidak pernah diisi, jadi anggaran murni
- * digerakkan biaya. Diukur dengan harga asli dari `model_pricing`: pada batas harian $3, `gpt-4o-mini`
- * ($0,15/1 jt) menghasilkan anggaran 1.000.000 token melawan jendela nyata 128.000, dan
- * `llama-3.1-8b-instruct` 3.000.000 melawan 131.072. Permintaan sebesar itu ditolak OpenRouter.
- * Yang menyelamatkan kita hanyalah kebetulan bahwa model Engineer saat itu berjendela sejuta.
- */
 export const PORSI_JENDELA_MODEL = 0.6;
 
-/**
- * Anggaran token untuk satu kirim, diturunkan dari batas biaya harian Owner.
- *
- * @param {{batasHarianUsd?: number, terpakaiHariIniUsd?: number, hargaInput1M?: number, batasModel?: number, porsi?: number}} p
- * @returns {{token: number, biayaPerkiraanUsd: number, sisaHarianUsd: number|null, alasan: string}}
- */
 export function anggaranKonteks({ batasHarianUsd, terpakaiHariIniUsd = 0, hargaInput1M, batasModel, porsi = PORSI_PER_PESAN } = {}) {
   const batasModelAman = Number.isFinite(batasModel) && batasModel > 0 ? Math.floor(batasModel * PORSI_JENDELA_MODEL) : Infinity;
 
@@ -70,9 +34,6 @@ export function anggaranKonteks({ batasHarianUsd, terpakaiHariIniUsd = 0, hargaI
 
   const sisa = Math.max(0, batasHarianUsd - Math.max(0, terpakaiHariIniUsd));
   const tokenDariBiaya = Math.floor(((sisa * porsi) / hargaInput1M) * 1_000_000);
-  // URUTAN PENTING: minimum dinaikkan DULU, lalu jendela model memotong TERAKHIR.
-  // Kalau dibalik, model berjendela sangat sempit (katalog OpenRouter memuat entri 4.095 token)
-  // akan tetap dikirimi ANGGARAN_MIN = 8.000 token dan permintaannya ditolak provider.
   const token = Math.min(Math.max(ANGGARAN_MIN, tokenDariBiaya), batasModelAman);
   const dibatasiJendelaModel = token === batasModelAman;
   return {
@@ -89,54 +50,16 @@ export function anggaranKonteks({ batasHarianUsd, terpakaiHariIniUsd = 0, hargaI
   };
 }
 
-/** Penanda pesan SISIPAN yang dipatok — lihat `pilihPesanKonteks`. */
 export const PATOK = '_patok';
 
-/** Sisipan dikenali dari penandanya, bukan dari posisinya. */
 export const adalahPatok = (p) => !!(p && p[PATOK] === true);
 
-// CATATAN 1 Okt: dulu ada `tanpaPatok()` di sini yang MEMBUANG penanda sebelum payload dikirim,
-// dengan alasan "penanda internal tidak boleh bocor ke server". Keputusan itu KELIRU, dan terbukti
-// mahal: server punya pemangkas riwayatnya sendiri (`rapikanRiwayat`) yang memangkas setiap pesan
-// kecuali dua terakhir menjadi 800 huruf. Sisipan ada di depan, jadi peta 16.059 huruf dipotong
-// jadi 800 begitu percakapan punya lebih dari dua pesan — terbukti di log server:
-//   [Riwayat] 3 pesan, 16999 → 16999 huruf   (kiriman ke-1: peta masih termasuk dua terakhir)
-//   [Riwayat] 5 pesan, 17311 →  2065 huruf   (kiriman ke-2: peta terpangkas)
-// Dengan membuang penandanya, server tidak punya cara tahu mana sisipan. Penandanya kini IKUT.
 
-/**
- * Pilih pesan yang dikirim ke model: dari yang TERBARU mundur ke belakang sampai anggaran habis.
- * Pesan sebelum `mulaiDari` (hasil tombol "Bersihkan konteks") tidak pernah ikut — tetapi TIDAK dihapus.
- *
- * ── SISIPAN DIPATOK (2026-10-01) ─────────────────────────────────────────────────────────────
- * Catatan akar repo dan peta repo disisipkan di DEPAN riwayat. Dulu keduanya diperlakukan seperti
- * pesan biasa, dan itu salah dua kali:
- *
- *   1. `mulaiDari` menghitung panjang daftar TAMPILAN, tetapi dikenakan pada `sisipan + tampilan`
- *      yang lebih panjang — jadi "Bersihkan konteks" dan "Padatkan" memotong sisipannya lebih dulu.
- *   2. Bahkan dengan indeks yang benar, pemotong membuang dari yang PALING TUA, dan sisipan ada di
- *      posisi paling tua. Artinya konteks yang paling tidak boleh hilang justru yang pertama
- *      dikorbankan setiap kali percakapan memanjang.
- *
- * Terbukti live 1 Okt: peta repo 15.493 huruf, tetapi riwayat yang benar-benar sampai ke model hanya
- * 4.042 huruf ([PROMPT_KOMPOSISI]). Model bukan mengabaikan peta — ia tidak pernah melihatnya.
- *
- * Sekarang sisipan dikenali dari penandanya, dihitung LEBIH DULU terhadap anggaran, dan `mulaiDari`
- * hanya berlaku pada bagian percakapan.
- *
- * Patokan dilepas dalam satu keadaan saja: bila memakainya akan menyingkirkan pertanyaan terbaru
- * itu sendiri. Konteks tambahan yang mengusir pertanyaannya sendiri lebih buruk daripada tidak ada.
- *
- * @param {Array<{role: string, content: string, _patok?: boolean}>} pesan urut lama → baru
- * @param {{anggaranToken: number, mulaiDari?: number, sisakanUntukJawaban?: number}} opsi
- * @returns {{dikirim: Array, tokenTerpakai: number, dilewati: number, penuh: boolean, patokDilepas: boolean}}
- */
 export function pilihPesanKonteks(pesan, { anggaranToken, mulaiDari = 0, sisakanUntukJawaban = 2000 } = {}) {
   const semua = Array.isArray(pesan) ? pesan : [];
   const patok = semua.filter(adalahPatok);
   const percakapan = semua.filter((p) => !adalahPatok(p));
 
-  // Dikenakan pada PERCAKAPAN saja — inilah perbaikan indeksnya.
   const awal = Math.max(0, Math.min(mulaiDari, percakapan.length));
   const layak = percakapan.slice(awal);
   const batas = Math.max(0, (anggaranToken || 0) - sisakanUntukJawaban);
@@ -155,31 +78,21 @@ export function pilihPesanKonteks(pesan, { anggaranToken, mulaiDari = 0, sisakan
   }
 
   return {
-    // Penanda IKUT ke server — lihat catatan di atas: pemangkas riwayat di sana membutuhkannya.
     dikirim: patokIkut ? [...patok, ...terpilih] : terpilih,
     tokenTerpakai: token,
-    // Sisipan yang ikut bukan "pesan lama yang dilewati" — yang dihitung hanya percakapannya.
     dilewati: percakapan.length - terpilih.length,
     penuh: terpilih.length < layak.length,
     patokDilepas: patok.length > 0 && !patokIkut,
   };
 }
 
-/** Tampilan angka: 1234 → "1,2k", 723800 → "723,8k". */
 export function angkaRingkas(n) {
   const x = Number(n) || 0;
   if (x < 1000) return String(x);
-  // "k" DIPERTAHANKAN: bentuk "723,8k / 1,0jt (72%)" adalah contoh Owner sendiri (uji-konteks-chat). Item 127 K4
-  // sempat menggantinya jadi "rb" atas usul AI, lalu dikembalikan — mengganti format pilihan Owner adalah
-  // keputusan Owner, bukan bagian dari "merapikan angka".
   if (x < 1_000_000) return `${(x / 1000).toFixed(1).replace('.', ',')}k`;
   return `${(x / 1_000_000).toFixed(1).replace('.', ',')}jt`;
 }
 
-/**
- * Bahan meteran untuk bilah atas chat — satu jendela per percakapan.
- * @returns {{teks: string, persen: number, warna: 'aman'|'hampir'|'penuh', rincian: string}}
- */
 export function meteranKonteks({ tokenTerpakai, anggaranToken, dilewati = 0, biayaPerkiraanUsd = 0, sisaHarianUsd = null, alasan = '', batasModel = null, dibatasiJendelaModel = false }) {
   const anggaran = Math.max(1, anggaranToken || 0);
   const persen = Math.min(100, Math.round((tokenTerpakai / anggaran) * 100));
@@ -187,8 +100,6 @@ export function meteranKonteks({ tokenTerpakai, anggaranToken, dilewati = 0, bia
   const biaya = biayaPerkiraanUsd ? ` · ±$${(biayaPerkiraanUsd).toFixed(3)}/pesan` : '';
   const sisa = sisaHarianUsd != null ? ` · sisa harian $${sisaHarianUsd.toFixed(2)}` : '';
   const lewat = dilewati > 0 ? ` · ${dilewati} pesan lama tidak dikirim (tetap terlihat)` : '';
-  // Saat yang memotong adalah jendela model (bukan biaya), Owner harus tahu ANGKANYA — kalau tidak,
-  // anggaran yang tiba-tiba mengecil setelah ganti model terlihat seperti kerusakan.
   const jendela = Number.isFinite(batasModel) && batasModel > 0
     ? dibatasiJendelaModel
       ? ` Dipotong jendela model ${batasModel.toLocaleString('id-ID')} token (konteks memakai ${Math.round(PORSI_JENDELA_MODEL * 100)}%, sisanya untuk jawaban).`
@@ -202,37 +113,19 @@ export function meteranKonteks({ tokenTerpakai, anggaranToken, dilewati = 0, bia
   };
 }
 
-/**
- * PADATKAN KONTEKS (sisa Tahap 3a, 24 September 2026).
- *
- * "Bersihkan konteks" membuang seluruh ingatan percakapan sekaligus — murah, tapi pada tugas panjang
- * benang merahnya putus persis seperti sebelum Tahap 3a. "Padatkan" adalah jalan tengah: pesan lama
- * diringkas jadi SATU pesan yang TETAP DIKIRIM, lalu batas konteks digeser ke ringkasan itu.
- *
- * Caranya sengaja sama dengan "Bersihkan": ringkasan ditambahkan sebagai pesan biasa di ujung daftar,
- * lalu `mulaiDari` disetel ke indeksnya. Tidak ada jalur konteks kedua yang harus dirawat, ringkasan
- * ikut tersimpan di `chats.messages` seperti pesan lain, dan Owner bisa membacanya — kalau
- * ringkasannya buruk, itu terlihat, bukan tersembunyi di balik layar.
- */
 
-/** Pesan lama yang akan diringkas: yang masih dikirim hari ini, tidak termasuk yang sudah dilepas. */
 export function pesanUntukDipadatkan(pesan, mulaiDari = 0) {
   const semua = Array.isArray(pesan) ? pesan : [];
   return semua.slice(Math.max(0, Math.min(mulaiDari, semua.length)))
     .filter((p) => String(p?.content || '').trim().length > 0);
 }
 
-/** Minimal sekian pesan sebelum memadatkan berguna — di bawah ini panggilan modelnya mubazir. */
 export const MIN_PESAN_PADATKAN = 4;
 
 export function bolehPadatkan(pesan, mulaiDari = 0) {
   return pesanUntukDipadatkan(pesan, mulaiDari).length >= MIN_PESAN_PADATKAN;
 }
 
-/**
- * Pesan ringkasan yang ditempel ke percakapan. `isRingkasanKonteks` menandainya supaya jelas ini
- * hasil mesin, bukan kalimat model dalam percakapan — dan supaya tidak ikut dipadatkan dua kali.
- */
 export function bentukPesanRingkasan(ringkasan, { jumlahPesan = 0, tokenSebelum = 0, tokenSesudah = 0 } = {}) {
   const hemat = tokenSebelum > 0 ? Math.max(0, Math.round((1 - tokenSesudah / tokenSebelum) * 100)) : 0;
   const kepala = `🗜️ **Konteks dipadatkan.** ${jumlahPesan} pesan di atas tetap ada di layar dan tetap tersimpan — mulai sekarang yang dikirim ke model adalah ringkasan di bawah ini (${angkaRingkas(tokenSebelum)} → ${angkaRingkas(tokenSesudah)} token, hemat ${hemat}%). Kalau ada yang penting terlewat dari ringkasan ini, tulis saja lagi di pesan berikutnya.`;
@@ -243,7 +136,6 @@ export function bentukPesanRingkasan(ringkasan, { jumlahPesan = 0, tokenSebelum 
   };
 }
 
-/** Kunci penyimpanan batas "Bersihkan konteks" — per percakapan, tidak saling mengganggu antar workspace. */
 export const kunciMulaiDari = (chatId) => `mamet:konteks:mulai:${chatId || 'baru'}`;
 
 export function bacaMulaiDari(chatId, ls) {
@@ -259,5 +151,5 @@ export function simpanMulaiDari(chatId, nilai, ls) {
     const s = ls || (typeof localStorage !== 'undefined' ? localStorage : null);
     if (nilai > 0) s?.setItem(kunciMulaiDari(chatId), String(nilai));
     else s?.removeItem(kunciMulaiDari(chatId));
-  } catch { /* penyimpanan penuh — konteks kembali ke bawaan */ }
+  } catch {  }
 }

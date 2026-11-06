@@ -23,7 +23,6 @@ from crawler.inti.teks import tanggal_relatif as _tanggal
 
 log = logging.getLogger("crawler")
 
-
 def _opsi(pasangan: list[str]) -> dict:
     """--opsi reddit.subreddit=indonesia --opsi mediakonsumen.tag=a,b  ->  {"reddit": {...}, ...}"""
     hasil: dict = {}
@@ -41,10 +40,8 @@ def _opsi(pasangan: list[str]) -> dict:
         hasil.setdefault(sumber, {})[nama] = nilai
     return hasil
 
-
 def _daftar(nilai: str) -> list[str]:
     return [s.strip() for s in (nilai or "").split(",") if s.strip()]
-
 
 def _cetak_ringkasan(keluaran: dict) -> None:
     r = keluaran["result"]
@@ -52,7 +49,6 @@ def _cetak_ringkasan(keluaran: dict) -> None:
     for nama, h in r["per_sumber"].items():
         catatan = f" · {h['alasan']}" if h.get("alasan") else ""
         print(f"  {nama:<12} diambil {h['diambil']:>4} · baru {h['baru']:>4} · revisi {h['revisi']}{catatan}")
-
 
 def _jalankan(crawler: EcosystemCrawler, misi: Misi, format_ekspor: str) -> None:
     keluaran = crawler.jalankan(misi)
@@ -62,7 +58,6 @@ def _jalankan(crawler: EcosystemCrawler, misi: Misi, format_ekspor: str) -> None
             print(f"  -> {p}")
     print(f"\nLihat lagi: crawler lihat {misi.id}   ·   Ekspor: crawler ekspor {misi.id} --format csv,jsonl,md")
 
-
 def cmd_cari(crawler: EcosystemCrawler, a) -> None:
     misi = Misi(
         sumber=_daftar(a.sumber), kata_kunci=a.kata_kunci, url_awal=a.url, kata_kunci_kecuali=_daftar(a.kecuali),
@@ -71,7 +66,6 @@ def cmd_cari(crawler: EcosystemCrawler, a) -> None:
         opsi_sumber=_opsi(a.opsi), bahasa=_daftar(a.bahasa), wilayah=a.wilayah, owner_intent=a.intent,
     )
     _jalankan(crawler, misi, a.ekspor)
-
 
 def cmd_misi(crawler: EcosystemCrawler, a) -> None:
     if a.aksi == "daftar":
@@ -85,7 +79,6 @@ def cmd_misi(crawler: EcosystemCrawler, a) -> None:
     teks = Path(a.berkas).read_text(encoding="utf-8")
     data = json.loads(teks) if a.berkas.endswith(".json") else yaml.safe_load(teks)
     _jalankan(crawler, Misi.dari_input(data), a.ekspor)
-
 
 def cmd_lihat(crawler: EcosystemCrawler, a) -> None:
     m = crawler.gudang.misi(a.misi_id)
@@ -105,12 +98,10 @@ def cmd_lihat(crawler: EcosystemCrawler, a) -> None:
         for p in crawler.gudang.peristiwa(a.misi_id):
             print(f"  {p['waktu']} {p['nama']:<28} {p['sumber']:<12} {json.dumps(p['detail'], ensure_ascii=False)}")
 
-
 def cmd_ekspor(crawler: EcosystemCrawler, a) -> None:
     formats = list(FORMAT) if a.format == "semua" else _daftar(a.format)
     for p in ekspor(crawler.gudang, a.misi_id, formats, Path(a.ke) if a.ke else konfig.HASIL_DIR):
         print(p)
-
 
 def cmd_katalog(crawler: EcosystemCrawler, a) -> None:
     status = crawler.report_status()
@@ -128,11 +119,9 @@ def cmd_katalog(crawler: EcosystemCrawler, a) -> None:
         if s["alat"]:
             print(f"{'':<12} alat: {', '.join(t['nama'] + ' (' + t['repo'] + ')' for t in s['alat'])}")
 
-
 def cmd_konfigurasi(crawler: EcosystemCrawler, a) -> None:
     data = crawler.configure(_daftar(a.nyalakan), _daftar(a.matikan))
     print(f"Sumber nonaktif: {', '.join(data['nonaktif']) or '(tidak ada)'}")
-
 
 def parse_args(argv=None) -> argparse.Namespace:
     p = argparse.ArgumentParser(prog="crawler", description="Ecosystem Crawler: indra dan tangan Mamet.")
@@ -182,19 +171,16 @@ def parse_args(argv=None) -> argparse.Namespace:
     kf.add_argument("--matikan", default="", help="Pisahkan koma")
     return p.parse_args(argv)
 
-
 PERINTAH = {"cari": cmd_cari, "misi": cmd_misi, "lihat": cmd_lihat, "ekspor": cmd_ekspor,
             "katalog": cmd_katalog, "konfigurasi": cmd_konfigurasi}
 
-
 def main(argv=None) -> None:
-    # Konsol Windows/pipa bisa memakai cp1252; paksa UTF-8 agar ★ dan huruf non-ASCII tidak membuat crash.
     for s in (sys.stdout, sys.stderr):
         s.reconfigure(encoding="utf-8", errors="replace")
     a = parse_args(argv)
     logging.basicConfig(level=logging.DEBUG if a.verbose else logging.INFO,
                         format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S")
-    if not a.verbose:  # log pustaka pihak ketiga tidak perlu muncul
+    if not a.verbose:
         for nama in ("urllib3", "prawcore"):
             logging.getLogger(nama).setLevel(logging.WARNING)
     try:

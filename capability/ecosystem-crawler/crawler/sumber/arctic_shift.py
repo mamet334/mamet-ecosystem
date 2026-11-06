@@ -14,12 +14,10 @@ from crawler.inti.teks import bersihkan
 from crawler.kanal import SesiSopan
 
 API = "https://arctic-shift.photon-reddit.com/api"
-TUNGGU_422 = (5, 15)  # detik
-
+TUNGGU_422 = (5, 15)
 
 def _waktu(detik) -> str:
     return datetime.fromtimestamp(detik, timezone.utc).isoformat() if detik else ""
-
 
 class ArcticShift(Sumber):
     id = "arctic_shift"
@@ -54,7 +52,7 @@ class ArcticShift(Sumber):
                     params["before"] = misi.sampai
                 try:
                     posts = self._get(sesi, "posts/search", params, lapor).get("data") or []
-                except requests.HTTPError as exc:  # satu kata kunci gagal, kata kunci lain tetap jalan
+                except requests.HTTPError as exc:
                     lapor("Sumber.KataKunciDilewati", subreddit=sub, kata_kunci=kw, alasan=str(exc)[:160])
                     continue
                 lapor("Sumber.HasilKataKunci", subreddit=sub, kata_kunci=kw, jumlah=len(posts))

@@ -1,29 +1,7 @@
-/**
- * UNGGAH BERTAHAP — sisi klien (K1 langkah 2, 2026-11-05).
- *
- * Keputusan Owner: satu berkas mentah = satu dokumen; yang gagal di tengah jalan menjadi cache; dilanjutkan dengan
- * berkas yang sama tanpa embedding ulang dari awal. `rag-process` bekerja ±80 detik per panggilan lalu menjawab
- * `selesai: false` + jumlah potongan tersimpan; modul ini memanggilnya lagi dengan teks yang sama sampai selesai.
- * Titik lanjut dihitung SERVER dari potongan yang tersimpan — klien hanya mengulang.
- *
- * Mengulang dengan jeda bila kegagalannya sesaat: jaringan putus (status 0), 429, 5xx — termasuk 503 gerbang Supabase
- * (5 Nov: 9 changelog ditolak beruntun dalam milidetik, fungsinya tak sempat berjalan) dan 502 penolakan penyedia yang
- * tetap gagal sesudah diulang server. Penolakan tetap (401 kunci, 402 saldo, 403, 409 tertunda berbeda, 413 kuota)
- * langsung dihentikan: mengulangnya hanya menunda pesan yang sama.
- *
- * 423 SEDANG_DIPROSES (kunci sementara dokumen, server): panggilan lama masih berjalan — ditunggu 30 s per kali, bukan
- * dianggap gagal; begitu kunci lepas, server melanjutkan dari potongan terakhir tanpa potongan ganda.
- *
- * Murni (tanpa impor; `panggil` & `tunggu` disuntikkan) — diuji di Node: `uji/uji-unggah-bertahap.mjs`.
- *
- * SALINAN: mametlite/src/lib/unggahBertahap.js memuat logika yang sama. Ubah keduanya bersamaan.
- */
 
-export const ULANG_MAKS = 4;            // percobaan ulang beruntun untuk satu panggilan yang gagal sesaat
-export const JEDA_DASAR_MS = 2000;      // 2, 4, 8, 16 detik
-const MACET_MAKS = 2;                   // jawaban "belum selesai" tanpa kemajuan berturut-turut
-// 423 SEDANG_DIPROSES: panggilan lama (mis. sesudah muat ulang) masih memegang kunci dokumen, paling lama ±130 s.
-// Ditunggu 30 s per kali, sampai 6 kali (3 menit) — lebih lama dari sewa kunci, jadi kunci pasti sudah lepas.
+export const ULANG_MAKS = 4;
+export const JEDA_DASAR_MS = 2000;
+const MACET_MAKS = 2;
 export const JEDA_KUNCI_MS = 30_000;
 export const TUNGGU_KUNCI_MAKS = 6;
 
@@ -35,16 +13,10 @@ export class GagalUnggah extends Error {
   }
 }
 
-/** Kegagalan yang pantas dicoba lagi: jaringan putus, batas laju, server/gerbang/penyedia sibuk. */
 export function bolehDiulang(status) {
   return status === 0 || status === 429 || status >= 500;
 }
 
-/**
- * Galat `supabase.functions.invoke` → { status, isi, pesan }. Status non-2xx: alasan sebenarnya ada di body jawaban
- * (error.context), bukan di error.message yang umum ("Edge Function returned a non-2xx status code", Item 63).
- * Tanpa `context` (jaringan putus) → status 0. Body bukan JSON (503 gerbang) → isi null.
- */
 export async function bacaGalatFungsi(error) {
   const ctx = error?.context;
   const status = typeof ctx?.status === 'number' ? ctx.status : 0;
@@ -53,19 +25,12 @@ export async function bacaGalatFungsi(error) {
     const j = await ctx?.json?.();
     if (j && typeof j === 'object') isi = j;
   } catch {
-    // Body bukan JSON — pakai pesan bawaan.
   }
   return { status, isi, pesan: isi?.error || error?.message || 'galat tak dikenal' };
 }
 
 const jedaBawaan = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/**
- * @param panggil    () => Promise<{ data, error }> — satu panggilan rag-process dengan teks yang SAMA setiap kali
- * @param onKemajuan ({ tersimpan, total, ulang? }) => void
- * @returns jawaban akhir rag-process (`selesai: true`)
- * @throws GagalUnggah — `bisaDilanjutkan` true bila sebagian sudah tersimpan di server
- */
 export async function unggahBertahap({ panggil, onKemajuan, tunggu = jedaBawaan, ulangMaks = ULANG_MAKS }) {
   let ulang = 0;
   let macet = 0;
@@ -77,7 +42,7 @@ export async function unggahBertahap({ panggil, onKemajuan, tunggu = jedaBawaan,
     try {
       ({ data, error } = await panggil());
     } catch (e) {
-      error = e; // fetch yang melempar (jaringan putus) diperlakukan sama dengan galat tanpa jawaban
+      error = e;
     }
 
     if (!error && data && !data.error) {

@@ -1,10 +1,3 @@
-// SERVER OAUTH + MCP TIRUAN untuk uji konektor OAuth (Item 129 Tahap F1). Meniru bentuk Notion MCP (diperiksa 3 Nov):
-// 401 + WWW-Authenticate resource_metadata · metadata RFC 9728/8414 · pendaftaran klien otomatis (DCR) · PKCE S256 ·
-// token pembaru · pencabutan (RFC 7009) · endpoint MCP Streamable HTTP yang menolak tanpa token.
-//
-// Pengendali uji: `keadaan` (klien, kode, token, pencabutan, permintaan otorisasi) dan sakelar perilaku:
-//   tolakLogin (penyedia menjawab error=access_denied) · pembaruanGagal (refresh ditolak) · tanpaS256 (metadata tanpa PKCE)
-//   · asalLoginLain (authorization_endpoint di origin lain) · kedaluwarsakanAkses() (semua token akses ditolak).
 
 const http = require('http');
 const crypto = require('crypto');
@@ -23,21 +16,15 @@ function bacaBadan(r) {
   return new Promise((ok) => { let s = ''; r.on('data', (d) => { s += d; }); r.on('end', () => ok(s)); });
 }
 
-// Bentuk GitHub (GH2, dilihat 3 Nov): `gayaGithub: true` → tanpa pendaftaran otomatis (tak ada registration_endpoint,
-// /register 404), satu klien TERDAFTAR `klien_terdaftar` dengan balikan `http://127.0.0.1/balikan` yang menerima port
-// berapa pun (aplikasi desktop, RFC 8252), dan tanpa revocation_endpoint.
 const KLIEN_TERDAFTAR = 'klien_terdaftar';
 const cocokBalikan = (terdaftar, diminta) => {
   try {
     const a = new URL(terdaftar); const b = new URL(diminta);
     return a.protocol === b.protocol && a.hostname === b.hostname && a.pathname === b.pathname && ['127.0.0.1', 'localhost'].includes(a.hostname);
-  } catch { return false; /* alamat rusak = tidak cocok */ }
+  } catch { return false;  }
 };
 
 function mulai(opsi = {}) {
-  // GH3 (bentuk GitHub yang terukur 3 Nov): `webButuhRahasia` → penukaran kode login browser tanpa client_secret dijawab
-  // 200 + incorrect_client_credentials; `pembaruanButuhRahasia` → pembaruan token tanpa rahasia dijawab sama; login
-  // perangkat (device flow) di /device/code; `lambatSekali` → polling pertama dijawab slow_down.
   const sakelar = { tolakLogin: false, pembaruanGagal: false, tanpaS256: false, asalLoginLain: false, gayaGithub: false,
     webButuhRahasia: false, pembaruanButuhRahasia: false, lambatSekali: false, ...opsi };
   const keadaan = { klien: new Map(), kode: new Map(), akses: new Set(), pembaru: new Map(), dicabut: [], otorisasi: [], panggilanMcp: 0, pendaftaran: 0,
@@ -91,17 +78,15 @@ function mulai(opsi = {}) {
     }
     if (rq.method === 'POST' && u.pathname === '/device/code') {
       const b = Object.fromEntries(new URLSearchParams(await bacaBadan(rq)));
-      if (!keadaan.klien.has(b.client_id)) return json(200, { error: 'unauthorized_client' }); // GitHub: galat ber-status 200
+      if (!keadaan.klien.has(b.client_id)) return json(200, { error: 'unauthorized_client' });
       const device = `dev_${acak()}`;
       const kodePengguna = `${acak(2).toUpperCase()}-${acak(2).toUpperCase()}`;
       keadaan.perangkat.set(device, { status: 'menunggu', client_id: b.client_id, kodePengguna });
-      // `perangkatAsalLain`: server nakal menunjuk halaman perangkat ke situs lain (tak boleh dibuka otomatis).
       const alamat = sakelar.perangkatAsalLain ? 'https://login-palsu.contoh.invalid/device' : `${base}/login/device`;
       return json(200, { device_code: device, user_code: kodePengguna, verification_uri: alamat, expires_in: 900, interval: 1 });
     }
     if (rq.method === 'POST' && u.pathname === '/token') {
       const b = Object.fromEntries(new URLSearchParams(await bacaBadan(rq)));
-      // GitHub menjawab galat penukaran token dengan status 200 (terukur 3 Nov).
       const galat = (kode, desk) => json(sakelar.gayaGithub ? 200 : 400, { error: kode, ...(desk ? { error_description: desk } : {}) });
       if (b.grant_type === 'urn:ietf:params:oauth:grant-type:device_code') {
         keadaan.pollPerangkat++;
@@ -130,7 +115,7 @@ function mulai(opsi = {}) {
       };
       if (b.grant_type === 'authorization_code') {
         const k = keadaan.kode.get(b.code);
-        keadaan.kode.delete(b.code); // kode sekali pakai
+        keadaan.kode.delete(b.code);
         if (!k || k.client_id !== b.client_id || k.redirect_uri !== b.redirect_uri || sha256url(b.code_verifier || '') !== k.tantangan) {
           return json(400, { error: 'invalid_grant' });
         }
@@ -139,7 +124,7 @@ function mulai(opsi = {}) {
       if (b.grant_type === 'refresh_token') {
         const pemilik = keadaan.pembaru.get(b.refresh_token);
         if (sakelar.pembaruanGagal || !pemilik) return json(400, { error: 'invalid_grant' });
-        keadaan.pembaru.delete(b.refresh_token); // rotasi
+        keadaan.pembaru.delete(b.refresh_token);
         return beri(pemilik);
       }
       return json(400, { error: 'unsupported_grant_type' });
@@ -183,7 +168,6 @@ function mulai(opsi = {}) {
     ok({
       url: `${base}/mcp`, base, keadaan, sakelar,
       kedaluwarsakanAkses: () => keadaan.akses.clear(),
-      // Pengguna memasukkan kode di halaman perangkat lalu menyetujui / menolak (GH3).
       jawabPerangkat: (kodePengguna, setuju = true) => {
         for (const d of keadaan.perangkat.values()) if (d.kodePengguna === kodePengguna) { d.status = setuju ? 'disetujui' : 'ditolak'; return true; }
         return false;

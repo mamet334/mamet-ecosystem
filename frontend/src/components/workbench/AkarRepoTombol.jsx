@@ -1,17 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Ikon from '../Ikon';
 
-// TOMBOL AKAR REPO ENGINEER (ROADMAP-ENGINEER-MANDIRI Tahap 5, 2026-09-28).
-//
-// Kembaran `FolderKerjaTombol` untuk Engineer, dan sengaja dibuat semirip mungkin: folder dipilih
-// lewat IPC berpagar `engineer:pilih-akar-repo`, akarnya dicatat di PROSES UTAMA, layar hanya
-// menerima NAMA folder. Yang berbeda cuma dua penjaga di sisi proses utama — wajib ada `.git`, dan
-// folder di dalam direktori instalasi ditolak.
-//
-// Di `npm run desktop` akar repo sudah pasti (folder induk main.cjs), jadi tombol tampil sebagai
-// keterangan saja: tidak ada yang perlu dipilih. Di aplikasi terpasang, tanpa pilihan Owner seluruh
-// alat repo Engineer MATI — dan tombol ini satu-satunya jalan menghidupkannya.
-// Tanpa Electron (web/Mametlite) tombol tidak tampil.
 
 export default function AkarRepoTombol() {
   const api = typeof window !== 'undefined' ? window.electronAPI?.engineer : null;

@@ -11,7 +11,6 @@ from google_play_scraper.exceptions import NotFoundError
 from crawler.inti import Misi, Pelapor, Sumber, Temuan
 from crawler.inti.teks import bersihkan, ke_iso, sebagai_daftar
 
-
 class PlayStore(Sumber):
     id = "playstore"
     kanal = "hp"
@@ -40,7 +39,7 @@ class PlayStore(Sumber):
             aplikasi = list(dict.fromkeys(aplikasi))
             lapor("Sumber.AplikasiDipilih", aplikasi=aplikasi, dari_kata_kunci=misi.kata_kunci)
 
-        bintang = sebagai_daftar(opsi.get("bintang")) or [None]  # None = semua bintang
+        bintang = sebagai_daftar(opsi.get("bintang")) or [None]
         per_putaran = max(1, batas // (len(aplikasi) * len(bintang) or 1))
         for app_id in aplikasi:
             try:
@@ -59,7 +58,7 @@ class PlayStore(Sumber):
                         teks=bersihkan(r.get("content")),
                         url=f"https://play.google.com/store/apps/details?id={app_id}&reviewId={r.get('reviewId', '')}",
                         penulis=r.get("userName", ""),
-                        waktu_terbit=ke_iso(r.get("at")),  # pustaka memberi waktu lokal tanpa zona
+                        waktu_terbit=ke_iso(r.get("at")),
                         bahasa=lang,
                         metrik={"bintang": r.get("score"), "suka": r.get("thumbsUpCount"), "aplikasi": app_id,
                                 "versi_aplikasi": r.get("reviewCreatedVersion"),

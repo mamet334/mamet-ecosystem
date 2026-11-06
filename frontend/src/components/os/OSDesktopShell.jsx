@@ -4,7 +4,7 @@ import MenuTeks from './MenuTeks';
 import LatarRuangan from './LatarRuangan';
 import ApplicationContainer from './ApplicationContainer';
 import MobileBottomNav from './MobileBottomNav';
-import SystemNotificationCenter from './SystemNotificationCenter'; // ✅ 1. Tambahkan Import Ini!
+import SystemNotificationCenter from './SystemNotificationCenter';
 
 export default function OSDesktopShell() {
   const [isMobile, setIsMobile] = useState(false);
@@ -23,15 +23,10 @@ export default function OSDesktopShell() {
 
   return (
     <div className="relative flex h-screen w-screen overflow-hidden bg-background text-on-surface font-body-base selection:bg-primary/30">
-      {/* Latar terdalam = dinding ruangan LampLogin (Item 127 Tahap 3). Dilukis lebih dulu; isi di bawah ini `relative`
-          tanpa z-index, jadi ia tergambar di atas dinding TANPA membuat konteks tumpukan baru — laci chat (z-[60])
-          tetap bisa menutupi tombol MENU (z-50) seperti sebelumnya. */}
       <LatarRuangan />
       
-      {/* ✅ 2. Tempatkan Komponen <SystemNotificationCenter /> DI SINI (Paling atas sebelum Sidebar) */}
       <SystemNotificationCenter />
 
-      {/* Desktop: menu teks bergaya menu game (Item 127 K2 — percobaan). Seluler tetap laci Sidebar. */}
       {isMobile
         ? <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         : <MenuTeks />}
@@ -43,8 +38,6 @@ export default function OSDesktopShell() {
         />
       )}
 
-      {/* ✅ UBAH: Kirim prop isMobile ke ApplicationContainer */}
-      {/* `ml-16` dulu memberi ruang bilah ikon yang `fixed`; MenuTeks ada di dalam alur, jadi tak perlu. */}
       <div className={`relative flex flex-col flex-1 min-w-0 overflow-hidden ${isMobile ? 'pb-16' : ''}`}>
         <ApplicationContainer isMobile={isMobile} />
       </div>

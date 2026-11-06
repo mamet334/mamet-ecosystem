@@ -37,14 +37,9 @@ import { SystemGovernorService } from './services/SystemGovernorService.js';
 import { RemoteConversionWorkerService } from './services/RemoteConversionWorkerService.js';
 import { supabase } from '../../supabase.js';
 
-/**
- * MAEF Kernel v2.0
- * Follows MAEF Bootstrap System Specification (17_MAEF_BOOTSTRAP_SYSTEM.md)
- */
 class Kernel {
   constructor() {
-    // Core State
-    this.status = 'COLD'; // COLD → BOOTING → RUNNING → ERROR → SHUTTING_DOWN
+    this.status = 'COLD';
     this.currentPhase = 0;
     this.bootPromise = null;
     this.serviceManager = null;
@@ -72,8 +67,6 @@ class Kernel {
   log(level, message, data = null) {
     const timestamp = new Date().toISOString();
     const logEntry = { timestamp, level, message, data };
-    // Level dipakai dalam huruf besar ('ERROR'/'WARN'), sedangkan bucket health
-    // bernama huruf kecil — pemetaan eksplisit mencegah entri jatuh ke key yang tidak ada.
     const bucket = level === 'ERROR' ? 'errors' : level === 'WARN' ? 'warnings' : null;
     if (bucket) {
       this.health[bucket].push(logEntry);
@@ -101,49 +94,36 @@ class Kernel {
     this.log('INFO', 'MAEF Kernel Bootstrap Sequence Started');
 
     try {
-      // PHASE 0 — KERNEL INITIALIZATION
       await this._phase0_InitializeKernel(serviceManager);
 
-      // PHASE 1 — SYSTEM CORE REGISTRATION
       await this._phase1_SystemCoreRegistration(serviceManager);
 
-      // PHASE 2 — EVENT SYSTEM BOOTSTRAP
       await this._phase2_EventSystemBootstrap(serviceManager);
 
-      // PHASE 3 — ADAPTER REGISTRY INIT
       await this._phase3_AdapterRegistryInit(serviceManager);
 
-      // PHASE 4 — VERIFICATION ENGINE STARTUP
       await this._phase4_VerificationEngineStartup(serviceManager);
 
-      // PHASE 5 — ORCHESTRATOR INITIALIZATION
       await this._phase5_OrchestratorInitialization(serviceManager);
 
-      // PHASE 6 — LOGGING & OBSERVABILITY INIT
       await this._phase6_LoggingObservabilityInit(serviceManager);
 
-      // PHASE 7 — METRICS SYSTEM WARMUP
       await this._phase7_MetricsSystemWarmup(serviceManager);
 
-      // PHASE 8 — KNOWLEDGE & MEMORY INITIAL SEED
       await this._phase8_KnowledgeMemorySeed(serviceManager);
 
-      // PHASE 9 — SYSTEM INTEGRATION CHECK
       await this._phase9_SystemIntegrationCheck(serviceManager);
 
-      // PHASE 10 — FULL SYSTEM ACTIVATION
       await this._phase10_FullSystemActivation(serviceManager);
 
       this.status = 'RUNNING';
       this.config.mode = 'OPERATIONAL';
       this.log('INFO', 'MAEF Kernel Bootstrap Complete — SYSTEM READY');
-      // Emit boot complete agar useService() hook bisa mengambil services
       this._emitEvent(serviceManager, 'Kernel:BootComplete', { status: 'RUNNING' });
     } catch (error) {
       this.log('ERROR', 'Bootstrap Failed', error);
       await this._handleBootFailure(error);
       
-      // JANGAN throw error; Setelah ini, sistem berjalan dalam mode Degraded
       this.status = 'RUNNING';
       this.log('WARN', 'Kernel running in DEGRADED mode (Safe Mode)');
     }
@@ -163,7 +143,6 @@ class Kernel {
     this.currentPhase = 1;
     this.log('INFO', 'PHASE 1 — SYSTEM CORE REGISTRATION: Started');
 
-    // Event System (reuse if already registered)
     let eventBus;
     if (serviceManager.has('EventBus')) {
       eventBus = serviceManager.get('EventBus');
@@ -174,34 +153,26 @@ class Kernel {
       this.log('INFO', 'Event System Registered');
     }
 
-    // SupabaseClient Core Service
     serviceManager.register('SupabaseClient', supabase);
 
-    // StorageManager (evolusi dari FileSystem)
     const storageManager = new StorageManager();
     serviceManager.register('StorageManager', storageManager);
 
-    // ProcessManager
     const processManager = new ProcessManager(eventBus);
     serviceManager.register('ProcessManager', processManager);
 
-    // ModuleLoader
     const moduleLoader = new ModuleLoader(storageManager);
     serviceManager.register('ModuleLoader', moduleLoader);
 
-    // DiscoveryManager
     const discoveryManager = new DiscoveryManager(serviceManager);
     await discoveryManager.initialize();
     serviceManager.register('DiscoveryManager', discoveryManager);
 
-    // 2. Metadata Service
     const metadataService = new MetadataService(serviceManager);
     await metadataService.initialize();
     serviceManager.register('MetadataService', metadataService);
     this.log('INFO', 'MetadataService Initialized & Registered');
 
-    // Tema aplikasi (Item 128) — dipasang di sini, sesudah metadata dimuat dan SEBELUM tampilan dipasang, supaya
-    // aplikasi terbuka langsung dengan tema pilihan pengguna, tanpa berkedip dari tema bawaan.
     temaService.pasang(metadataService.getThemes());
     serviceManager.register('TemaService', temaService);
 
@@ -214,9 +185,9 @@ class Kernel {
     this.log('INFO', 'PHASE 2 — EVENT SYSTEM BOOTSTRAP: Started');
 
     const eventBus = serviceManager.get('EventBus');
-    this.eventBus = eventBus; // Store reference for health tracking
+    this.eventBus = eventBus;
     eventBus.activate = () => { eventBus._active = true; };
-    eventBus._active = true; // Simple activation for now
+    eventBus._active = true;
     this.log('INFO', 'Event System Activated');
 
     this._emitEvent(serviceManager, 'Kernel:PhaseCompleted', { phase: 2, name: 'EVENT_SYSTEM_BOOTSTRAP' });
@@ -227,164 +198,113 @@ class Kernel {
     this.currentPhase = 3;
     this.log('INFO', 'PHASE 3 — CORE CAPABILITY SERVICES INIT: Started');
 
-    // 1. Vault Service (Security First)
     const vaultService = new VaultService(serviceManager);
     await vaultService.initialize();
     serviceManager.register('VaultService', vaultService);
 
-    // 2. Brain Service — WAJIB diinisialisasi SEBELUM Engineer
-    // [FIX 2026-07-30] Engineer.initialize() langsung memanggil _registerListeners(),
-    // dan saat task GeneratePatch diterima, Engineer memanggil BrainService.getActiveBrainContext().
-    // Jika BrainService belum terdaftar, serviceManager.get() akan gagal/null.
     const brainService = new BrainService(serviceManager);
     await brainService.initialize();
     serviceManager.register('BrainService', brainService);
 
-    // 3. Repository Reader Service — WAJIB sebelum Engineer
-    // Engineer menggunakan ini untuk membaca file dari repository via GitHub API / Electron
     const repositoryReaderService = new RepositoryReaderService(serviceManager);
     await repositoryReaderService.initialize();
     serviceManager.register('RepositoryReaderService', repositoryReaderService);
 
-    // Engineer Service (Engineering Brain)
     const engineer = new Engineer(serviceManager);
     await engineer.initialize();
     serviceManager.register('Engineer', engineer);
 
-// Memory Service
     const memoryService = new MemoryService(serviceManager);
     await memoryService.initialize();
     serviceManager.register('MemoryService', memoryService);
 
-    // Memory Governor Service — Anti-Bias & Memory Maintenance
-    // [FASE 1] Memerlukan MemoryService (untuk bookkeeping) & BrainService (untuk AI murah).
-    // Didaftarkan setelah keduanya agar dependensi tersedia di serviceManager.
     const memoryGovernorService = new MemoryGovernorService(serviceManager);
     await memoryGovernorService.initialize();
     serviceManager.register('MemoryGovernorService', memoryGovernorService);
 
-    // Semantic Context Service
     const semanticContextService = new SemanticContextService(serviceManager);
     await semanticContextService.initialize();
     serviceManager.register('SemanticContextService', semanticContextService);
 
-    // Tool Preferences Service — preferensi on/off per-tool (RAG, Web Search, dst),
-    // dibaca AssistantService sebelum memanggil RetrievalOrchestrator/Edge Function.
     const toolPreferencesService = new ToolPreferencesService(serviceManager);
     await toolPreferencesService.initialize();
     serviceManager.register('ToolPreferencesService', toolPreferencesService);
 
-    // Penyimpan Keadaan (Item 127 Tahap 1) — keadaan layar yang hidup di luar layarnya. Instance-nya
-    // tunggal milik modul (hook React memakainya langsung, tanpa menunggu boot); didaftarkan di sini supaya
-    // terlihat dan bisa diperiksa seperti layanan lain (`window.__mamet` di mode dev).
     serviceManager.register('PenyimpanKeadaan', penyimpanKeadaan);
 
-    // KnowledgeService tidak lagi didaftarkan di browser (Item 90, 2026-09-17): satu-satunya pemakainya,
-    // Tier 1 RetrievalOrchestrator, dihapus. Berkasnya tetap dipakai server (cadangan pencocokan kata).
 
-    // Agent Orchestrator Service
     const agentOrchestrator = new AgentOrchestratorService(serviceManager);
     await agentOrchestrator.initialize();
     serviceManager.register('AgentOrchestratorService', agentOrchestrator);
 
-    // Tool Registry Service
     const toolRegistry = new ToolRegistryService(serviceManager);
     await toolRegistry.initialize();
     serviceManager.register('ToolRegistryService', toolRegistry);
-    // Scan folder tools/ di root repo sekali saat boot (bisa di-scan ulang manual lewat
-    // Settings > Tools & Capabilities tanpa perlu restart app). Dependency lazy (mis.
-    // WebComparisonService) belum tentu terdaftar di sini — aman, karena tool hanya
-    // me-resolve dependency itu saat benar-benar dieksekusi, bukan saat didaftarkan.
     await toolRegistry.scanToolsFolder();
 
-    // Assistant Service — rumah arsitektur resmi untuk kapabilitas Assistant
-    // Prasyarat: BrainService, MemoryService, SemanticContextService sudah terdaftar di atas
     const assistantService = new AssistantService(serviceManager);
     await assistantService.initialize();
     serviceManager.register('AssistantService', assistantService);
     this.log('INFO', 'AssistantService Initialized & Registered');
 
-    // CommandRegistry (PR#1) dihapus 2026-09-22 (T8): merakit PowerShell dari alamat mentah dan tak pernah menjalankan
-    // perintah nyata. Tombol [MAMET_CMD] Engineer kini lewat IPC engineer:jalankan (tanpa shell, dialog izin).
 
-    // Audit Log Service (PR#1) — Log narasi terstruktur aksi AI ke Supabase
     const auditLogService = new AuditLogService(serviceManager);
     await auditLogService.initialize();
     serviceManager.register('AuditLogService', auditLogService);
     this.log('INFO', 'AuditLogService Initialized & Registered');
 
-    // RetrievalStrategyService tidak lagi didaftarkan di browser (Item 90) — alasan sama dengan KnowledgeService di atas.
 
-    // Internal Knowledge Fallback Service (PR#9 Fase 2) — Tier 2 Fallback
     const internalKnowledgeFallbackService = new InternalKnowledgeFallbackService(serviceManager);
     await internalKnowledgeFallbackService.initialize();
     serviceManager.register('InternalKnowledgeFallbackService', internalKnowledgeFallbackService);
     this.log('INFO', 'InternalKnowledgeFallbackService Initialized & Registered');
 
-    // Web Comparison Service (PR#9 Fase 3) — Tier 3 Web Search Comparison
     const webComparisonService = new WebComparisonService(serviceManager);
     await webComparisonService.initialize();
     serviceManager.register('WebComparisonService', webComparisonService);
     this.log('INFO', 'WebComparisonService Initialized & Registered');
 
-    // Retrieval Orchestrator (PR#9) — 3-Tier Knowledge Retrieval Orchestrator
     const retrievalOrchestrator = new RetrievalOrchestrator(serviceManager);
     await retrievalOrchestrator.initialize();
     serviceManager.register('RetrievalOrchestrator', retrievalOrchestrator);
     this.log('INFO', 'RetrievalOrchestrator Initialized & Registered');
 
-    // Module Discovery Service (PR#7) — Scan /modules/ Fase 1
-    // Di-run setelah ToolRegistryService tersedia sebagai target registrasi
     const moduleDiscoveryService = new ModuleDiscoveryService(serviceManager);
-    await moduleDiscoveryService.initialize(); // Scan otomatis saat initialize()
+    await moduleDiscoveryService.initialize();
     serviceManager.register('ModuleDiscoveryService', moduleDiscoveryService);
     this.log('INFO', 'ModuleDiscoveryService Initialized & Registered');
 
-    // Skill Registry (Skill Implementation) — scan /skills/, bangun trigger index
-    // Harus sebelum RequestClassifierService agar classify() bisa matchTrigger()
     const skillRegistry = new SkillRegistry(serviceManager);
     await skillRegistry.initialize();
     serviceManager.register('SkillRegistry', skillRegistry);
     this.log('INFO', 'SkillRegistry Initialized & Registered');
 
-    // Skill Guard Service (Skill Implementation) — validasi keamanan skill
     const skillGuardService = new SkillGuardService(serviceManager);
     await skillGuardService.initialize();
     serviceManager.register('SkillGuardService', skillGuardService);
     this.log('INFO', 'SkillGuardService Initialized & Registered');
 
-    // Request Classifier Service (PR#8) — Linux-style Request Dispatcher
-    // Klasifikasi tipe request (LOOKUP/CONVERSATION/COMMAND/ENGINEER/SKILL) sebelum pipeline berat.
-    // Deterministik, 0 LLM cost, 0 DB call — harus setelah SkillRegistry terdaftar.
     const requestClassifierService = new RequestClassifierService(serviceManager);
     await requestClassifierService.initialize();
     serviceManager.register('RequestClassifierService', requestClassifierService);
     this.log('INFO', 'RequestClassifierService Initialized & Registered');
 
-    // Penentu tingkat model (KECIL/SEDANG/THINKING) per pesan — deterministik, 0 LLM cost,
-    // pola sama seperti RequestClassifierService di atas.
     const tierClassifierService = new TierClassifierService(serviceManager);
     await tierClassifierService.initialize();
     serviceManager.register('TierClassifierService', tierClassifierService);
     this.log('INFO', 'TierClassifierService Initialized & Registered');
 
-    // System Governor Service (Tahap 2) — Codebase Governance & File Integrity Daemon
-    // Independen dari Engineer, 4-level escalation ladder, session-relative TTL
     const systemGovernorService = new SystemGovernorService(serviceManager);
     await systemGovernorService.initialize();
     serviceManager.register('SystemGovernorService', systemGovernorService);
     this.log('INFO', 'SystemGovernorService Initialized & Registered');
 
-    // Remote Conversion Worker (Item 57) — laptop mengerjakan konversi Word → PDF yang dikirim
-    // dari Mamet OS versi web (mis. dibuka di HP). Didaftarkan setelah ToolPreferencesService (dibaca untuk toggle
-    // word_to_pdf). Di luar Electron initialize() berhenti sendiri tanpa menyalakan apa pun.
     const remoteConversionWorker = new RemoteConversionWorkerService(serviceManager);
     serviceManager.register('RemoteConversionWorkerService', remoteConversionWorker);
     remoteConversionWorker.initialize().catch(err =>
       console.error('[Kernel] RemoteConversionWorkerService gagal dijalankan:', err.message));
     this.log('INFO', 'RemoteConversionWorkerService Registered');
 
-    // 3. Initialize Adapter Registry stub
     const adapterRegistry = {
       adapters: new Map(),
       register(name, adapter) {
@@ -399,7 +319,6 @@ class Kernel {
     };
     serviceManager.register('AdapterRegistry', adapterRegistry);
 
-    // Register stub adapters
     adapterRegistry.register('AI', { name: 'AI Adapter', type: 'AI' });
     adapterRegistry.register('DB', { name: 'Database Adapter', type: 'DB' });
     adapterRegistry.register('Search', { name: 'Search Adapter', type: 'SEARCH' });
@@ -418,27 +337,6 @@ class Kernel {
       mode: 'SAFE_BOOTSTRAP_MODE',
       validate: () => ({ valid: true, confidence: 1.0 }),
       verifyEvidence: () => ({ verdict: 'PASS' }),
-      // [FIX 2026-07-30] Verifikasi patch dengan cek keamanan nyata, bukan auto-PASS.
-      // Mencegah patch berbahaya (eval, new Function, vendor API langsung) lolos tanpa pemeriksaan.
-      /**
-       * Pemeriksaan pola berbahaya pada patch Engineer.
-       *
-       * YANG DIPERIKSA ADALAH PENAMBAHAN, BUKAN KEBERADAAN (diperbaiki 24 September 2026).
-       *
-       * Versi lama memindai SELURUH isi berkas hasil patch dengan `includes('eval(')`. Akibatnya setiap
-       * berkas yang KEBETULAN menyebut pola itu — termasuk dalam komentar atau dalam kode pemeriksanya
-       * sendiri — tidak akan pernah bisa di-patch, bahkan untuk perbaikan satu komentar.
-       *
-       * Terbukti live 24 September, putaran kelima tugas "perbaiki komentar engineer.js:1035":
-       * "Patch tidak lolos verifikasi: 2 masalah kritis". Dua-duanya palsu. `engineer.js` memuat
-       * `eval(` dan `new Function(` di baris 928 — DI DALAM pemeriksa aturan MAEF-nya sendiri, yaitu
-       * kode yang bertugas mendeteksi keduanya. Jadi pemeriksa itu memblokir berkas yang memuat dirinya.
-       *
-       * Sekarang jumlah kemunculan pada isi BARU dibandingkan dengan isi ASLI: pelanggaran dilaporkan
-       * hanya bila patch benar-benar MENAMBAH. Pagar keamanannya tidak melemah — patch yang benar-benar
-       * menyisipkan `eval(` tetap diblokir — tetapi berkas yang sekadar menyebutnya tidak lagi tersandera.
-       * Bila isi asli tidak dikirim, perilakunya kembali seperti semula (menganggap 0 kemunculan awal).
-       */
       verifyPatchEngineering: (context) => {
         const failures = [];
         try {
@@ -450,15 +348,11 @@ class Kernel {
           if (bertambah('eval(')) failures.push({ id: 'CHECK_P03_EVAL', severity: 'CRITICAL', message: 'Patch MENAMBAH pemanggilan eval() yang dilarang' });
           if (bertambah('new Function(')) failures.push({ id: 'CHECK_P03_NEW_FUNCTION', severity: 'CRITICAL', message: 'Patch MENAMBAH new Function() yang dilarang' });
 
-          // Tanda kutip boleh didahului backslash: isi berkas sampai ke sini sudah dibungkus
-          // JSON.stringify oleh pemanggil, jadi `fetch("https://…` menjadi `fetch(\"https://…`.
-          // Tanpa `\\?` pola ini tidak pernah cocok sama sekali — pemeriksa vendor yang selalu diam.
           const polaVendor = /fetch\(\\?['"]https:\/\/(api\.openai\.com|generativelanguage\.googleapis\.com)/g;
           const vendorBaru = (String(responseText).match(polaVendor) || []).length
             > (String(originalText).match(polaVendor) || []).length;
           if (vendorBaru) failures.push({ id: 'CHECK_P03_VENDOR', severity: 'HIGH', message: 'Patch MENAMBAH pemanggilan vendor API langsung tanpa Adapter Layer' });
         } catch (e) {
-          // Jika parsing gagal, tetap lanjut dengan failures kosong
         }
         const passed = failures.filter(f => f.severity === 'CRITICAL').length === 0;
         return { decision: passed ? 'PASS' : 'FAIL', score: passed ? 1.0 : 0.0, failures };
@@ -475,7 +369,6 @@ class Kernel {
     this.currentPhase = 5;
     this.log('INFO', 'PHASE 5 — ORCHESTRATOR INITIALIZATION: Started');
 
-    // AgentOrchestratorService now handles actual orchestration, DRY-RUN stub removed.
     this.log('INFO', 'Orchestrator initialization handled by AgentOrchestratorService');
 
     this._emitEvent(serviceManager, 'Kernel:PhaseCompleted', { phase: 5, name: 'ORCHESTRATOR_INITIALIZATION' });
@@ -546,7 +439,6 @@ class Kernel {
       throw new Error("BOOT ABORTED\n\nMissing dependency:\nMetadataService\n\nRequired by:\nSystem Integration Check\n\nCurrent Phase:\n9");
     }
 
-    // Register ApplicationManager, WindowManager, & WorkspaceManager
     const appManagerInstance = new ApplicationManager(serviceManager);
     serviceManager.register('ApplicationManager', appManagerInstance);
     
@@ -555,7 +447,6 @@ class Kernel {
     serviceManager.register('WorkspaceManager', new WorkspaceManager('mamet-os', serviceManager));
     this.log('INFO', 'ApplicationManager, WindowManager & WorkspaceManager Activated');
 
-    // NavigationService
     const navigationService = new NavigationService(serviceManager);
     serviceManager.register('NavigationService', navigationService);
 
@@ -584,7 +475,6 @@ class Kernel {
     if (!serviceManager.has('WorkspaceManager')) throw new Error("BOOT ABORTED\n\nMissing dependency:\nWorkspaceManager\n\nRequired by:\nFull System Activation\n\nCurrent Phase:\n10");
     if (!serviceManager.has('ApplicationManager')) throw new Error("BOOT ABORTED\n\nMissing dependency:\nApplicationManager\n\nRequired by:\nFull System Activation\n\nCurrent Phase:\n10");
 
-    // Activate all registered adapters
     const adapterRegistry = serviceManager.get('AdapterRegistry');
     if (adapterRegistry) {
       for (const [name, adapter] of adapterRegistry.adapters.entries()) {
@@ -594,13 +484,11 @@ class Kernel {
       }
     }
 
-    // Activate other services
     const verificationEngine = serviceManager.get('VerificationEngine');
     if (verificationEngine) verificationEngine.mode = 'OPERATIONAL';
     const orchestrator = serviceManager.get('AgentOrchestratorService');
     if (orchestrator) orchestrator.mode = 'OPERATIONAL';
 
-    // Widget Registry
     let widgetRegistry;
     if (serviceManager.has('WidgetRegistry')) {
       widgetRegistry = serviceManager.get('WidgetRegistry');
@@ -610,10 +498,8 @@ class Kernel {
       this.log('INFO', 'Widget Registry Registered');
     }
 
-    // Register Default Widgets
     await this._registerDefaultWidgets(widgetRegistry, serviceManager);
 
-    // Register Apps from Metadata
     const { AppComponents } = await import('../application/AppRegistry.js');
     const metadataService = serviceManager.get('MetadataService');
     const apps = metadataService.getApps();
@@ -626,7 +512,7 @@ class Kernel {
       appManagerInstance.registerApp({
         id: app.id,
         name: app.name,
-        icon: app.icon || 'apps',  // nama Material Symbols dari metadata — dirender <Ikon>/ligatur
+        icon: app.icon || 'apps',
         renderComponent: (props) => React.createElement(RenderComp, { ...props, appId: app.id, workspaceId: app.workspace })
       });
     });
@@ -634,7 +520,6 @@ class Kernel {
     const navigationService = serviceManager.get('NavigationService');
     navigationService.buildTree();
     
-    // Default Entry Point
     const sysConfig = metadataService.getSystemConfig();
     if (sysConfig && sysConfig.default_entry_point) {
       appManagerInstance.activateApp(sysConfig.default_entry_point);
@@ -668,23 +553,20 @@ class Kernel {
   }
 
   async _handleBootFailure(error) {
-    this.status = 'DEGRADED'; // Ubah dari ERROR ke DEGRADED
+    this.status = 'DEGRADED';
     this.config.mode = 'SAFE_MODE';
     this.log('ERROR', 'Entering SAFE_MODE due to failure', error);
 
-    // Emit event untuk UI agar menampilkan notifikasi, BUKAN layar crash!
     this._emitEvent(this.serviceManager, 'System:Degraded', { 
       reason: error.message, 
       phase: this.currentPhase 
     });
     
-    // Hapus baris yang mengubah status ke RUNNING di sini
   }
 
   _emitEvent(serviceManager, eventName, data) {
     try {
       if (!serviceManager || !serviceManager.has('EventBus')) {
-        // Skip warning silently if EventBus is not yet registered (e.g., Phase 0)
         return;
       }
       const eventBus = serviceManager.get('EventBus');
@@ -696,13 +578,11 @@ class Kernel {
     }
   }
 
-  // Identity Management
   setUser(userInfo) {
     this.identity.user = userInfo;
     this.log('INFO', 'User identity set', { userName: userInfo?.name || 'Unknown' });
   }
 
-  // Health Monitoring
   getHealth() {
     this.health.uptime = Date.now() - this.health.startTime;
     if (this.eventBus) {
@@ -721,7 +601,6 @@ class Kernel {
     return this.currentPhase;
   }
 
-  // Shutdown Lifecycle
   onShutdown(handler) {
     this._shutdownHandlers.push(handler);
   }

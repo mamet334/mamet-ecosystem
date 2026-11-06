@@ -1,13 +1,3 @@
-/**
- * ToolRegistryService - Layer 2 Capability Service
- * Bertanggung jawab sebagai pusat pendaftaran dan pengambilan spesifikasi Tool AI.
- *
- * Satu-satunya sumber tool: folder tools/ di root repo, di-scan lewat scanToolsFolder().
- * Tiap file .js WAJIB `export default { name, description, category, async execute(params, context) {...} }`.
- * Ini mekanisme "drop file, tidak perlu ubah kode aplikasi" (mirip modul Linux) —
- * dimuat lewat dynamic import() dari Blob URL saat runtime, bisa di-scan ulang kapan saja
- * lewat scanToolsFolder() tanpa restart aplikasi. Tidak ada lagi tool hardcode di initialize().
- */
 const TOOLS_FOLDER = 'tools';
 
 export class ToolRegistryService {
@@ -16,7 +6,7 @@ export class ToolRegistryService {
     this.eventBus = serviceManager.get('EventBus');
     this.isInitialized = false;
     this.tools = new Map();
-    this.fileSourcedToolNames = new Set(); // Nama tool yang berasal dari folder tools/ (untuk dibersihkan saat rescan)
+    this.fileSourcedToolNames = new Set();
     this.lastScan = { at: null, found: 0, errors: [] };
   }
 
@@ -25,9 +15,6 @@ export class ToolRegistryService {
 
     this.isInitialized = true;
 
-    // Tidak ada lagi tool hardcode di sini — semua tool (termasuk memory_manager,
-    // deep_research, web_search) sekarang datang dari folder tools/ di root repo, lihat
-    // scanToolsFolder(). Konsisten dengan prinsip "semua tool terkumpul di satu tempat".
 
     this.eventBus.emit('ToolRegistry:Ready', { status: 'READY', timestamp: Date.now() });
     console.log('[ToolRegistryService] Initialized and Ready');
@@ -80,22 +67,8 @@ export class ToolRegistryService {
     }
   }
 
-  // =========================================================================
-  // FOLDER SCANNING — "drop file, tidak perlu ubah kode" (lihat komentar kelas di atas)
-  // =========================================================================
 
-  /**
-   * Pindai ulang folder tools/ dan daftarkan ulang semua tool yang ditemukan.
-   * Aman dipanggil berkali-kali (tidak perlu restart app) — tool lama dari folder
-   * yang sudah dihapus/diubah namanya akan ikut dibersihkan dari registry.
-   * @returns {Promise<{found: number, registered: string[], errors: Array<{file: string, message: string}>}>}
-   */
   async scanToolsFolder() {
-    // Versi WEB (mamet-ecosystem.vercel.app / browser): tidak ada disk repo untuk dipindai —
-    // folder tools/ dibaca lewat IPC Electron. Sejak scan folder diperkenalkan (2026-09-09),
-    // versi web jadi tidak memuat SATU tool pun: panel Tools hanya menampilkan RAG, dan
-    // web_search diam-diam lewat jalur cadangan di RetrievalOrchestrator. Di web, tool diambil
-    // dari salinan yang ikut dibundel Vite saat build.
     if (typeof window === 'undefined' || typeof window.electronAPI?.listFilesRecursive !== 'function') {
       return this._muatToolTerbundel();
     }
@@ -110,17 +83,11 @@ export class ToolRegistryService {
 
     console.log(`[ToolRegistryService] 🔍 Memindai folder "${TOOLS_FOLDER}/"...`);
 
-    // Bersihkan dulu tool hasil scan sebelumnya (supaya file yang dihapus ikut hilang dari registry)
     for (const name of this.fileSourcedToolNames) {
       this.tools.delete(name);
     }
     this.fileSourcedToolNames.clear();
 
-    // [FIX] listRecursive(TOOLS_FOLDER) mengembalikan path RELATIF terhadap folder itu sendiri
-    // (mis. "web_search.js", bukan "tools/web_search.js") — lihat walkDir() di electron/main.cjs
-    // yang mulai relativePath dari '' persis di titik folder yang diminta. Jadi untuk baca isinya
-    // lewat storageManager.read() (yang selalu relatif ke PROJECT_ROOT), path itu harus digabung
-    // lagi dengan TOOLS_FOLDER.
     let relativeFilePaths = [];
     try {
       const allPaths = await storageManager.listRecursive(TOOLS_FOLDER);
@@ -172,15 +139,10 @@ export class ToolRegistryService {
     return { found: relativeFilePaths.length, registered, errors };
   }
 
-  /**
-   * Tool dari folder tools/ yang ikut dibundel saat build (hanya dipakai di luar Electron).
-   * Beda dengan scan disk: tool baru baru muncul di web setelah build & deploy ulang.
-   */
   async _muatToolTerbundel() {
     for (const name of this.fileSourcedToolNames) this.tools.delete(name);
     this.fileSourcedToolNames.clear();
 
-    // Path relatif dari file ini: services → runtime → core → src → frontend → root repo.
     const modul = import.meta.glob('../../../../../tools/*.js', { eager: true });
     const registered = [];
     const errors = [];

@@ -30,13 +30,8 @@ import { jejakUntukMonitor } from '../widgets/jejakMonitor.js';
 import { langkahPenting } from './langkahPenting.js';
 import { simpanBerurutan } from './simpanBerurutan.js';
 
-// =============================================
-// HELPER: Parse thinking/answer dari respons AI
-// =============================================
 const parseThinkingContent = (text) => {
   if (!text) return { thinking: '', answer: '', isThinkingComplete: false };
-  // Nalar <think>…</think> (diperintahkan request_pipeline) SENGAJA ditampilkan — sebagai blok lipat di atas
-  // jawaban seperti DeepSeek, bukan teks mentah bercampur jawaban (keputusan Owner 2026-09-14).
   const buka = text.search(/<think>/i);
   if (buka !== -1) {
     const tutup = text.search(/<\/think>/i);
@@ -62,60 +57,20 @@ const parseThinkingContent = (text) => {
   return { thinking: '', answer: text, isThinkingComplete: true };
 };
 
-// =============================================
-// COMPONENT: ConversationEngine (Thin UI Layer)
-//
-// Tanggung jawab komponen ini setelah PR#3:
-//   - useState untuk state UI (messages, input, loading, dll)
-//   - useEffect untuk subscribe EventBus (Engineer events, Memory events)
-//   - Delegasi semua logika bisnis ke AssistantService
-//   - Rendering JSX
-//
-// Tidak ada lagi: fetch() maupun kernel.serviceManager.get() untuk logika bisnis —
-// semuanya lewat AssistantService.
-//
-// TMN-0002 (dikoreksi 2026-10-04): kalimat ini dulu menyebut `supabase.from()` juga sudah tak ada.
-// Itu TIDAK benar, dan makin tidak benar: ada TIGA pemanggilan langsung di berkas ini —
-//   supabase.from('chats')                  2x — memuat ulang riwayat satu chat
-//   supabase.from('project_memory_entries') 1x — simpan pengetahuan Brain 1
-// Yang ketiga DITAMBAHKAN 2 Okt (bbfce3a), ditulis tepat di bawah komentar yang menyangkal
-// keberadaannya — komentar yang salah tidak menghalangi apa pun, jadi ia malah bertambah salah.
-//
-// Tabel & jumlah, SENGAJA tanpa nomor baris: nomor baris di komentar pasti membusuk pada suntingan
-// berikutnya — percobaan pertama perbaikan ini mencantumkannya, dan komentar ini sendiri langsung
-// menggeser ketiganya. `uji-komentar-tak-berbohong.mjs` yang menjaga daftar ini tetap cocok.
-//
-// Dibiarkan sebagai pernyataan keadaan, bukan aturan: ketiganya pembacaan/penulisan baris
-// langsung tanpa logika keputusan, dan memindahkannya ke AssistantService adalah pekerjaan
-// tersendiri — bukan sesuatu yang diselundupkan lewat perbaikan komentar.
-// =============================================
 export default function ConversationEngine({ sessionId }) {
   const { manager: workspaceManager, osState } = useWorkspace();
-  // Kunci keadaan di luar layar (Item 127 Tahap 1): satu per aplikasi — app:assistant, app:mametlite,
-  // app:engineer. Tersedia sejak render pertama, tidak seperti osState.workspaceId yang baru terisi
-  // sesudah switchWorkspace(). Keadaan yang dibaca lewat kunci ini SELAMAT bila layarnya dilepas.
   const kunciSesi = workspaceManager.appId;
 
-  // [FIX: localStorage isolation] Kunci spesifik per workspace untuk mencegah tabrakan
-  // antar tiga instance chat (ws-assistant, ws-lite, ws-engineer) yang berjalan bersamaan
-  // di DOM. chatStorageKey hanya tersedia setelah WorkspaceManager.switchWorkspace() selesai
-  // (osState.workspaceId tidak null). Operasi localStorage ditunda hingga key siap.
   const chatStorageKey = osState?.workspaceId
     ? `mamet_v4_${osState.workspaceId}_current_chat_id`
     : null;
 
-  // --- Tool Preferences (RAG & tool registry toggle langsung dari toolbar chat) ---
-  // toolTogglesVersion cuma pemicu re-render manual — nilai sesungguhnya selalu dibaca
-  // live dari ToolPreferencesService di setiap render lewat ragEnabledHere/getToolEnabled().
   const [toolTogglesVersion, setToolTogglesVersion] = useState(0);
   const toolPreferencesService = kernel.serviceManager?.get('ToolPreferencesService');
   const ragEnabledHere = (toolPreferencesService && osState?.workspaceId)
     ? toolPreferencesService.getEffective(osState.workspaceId, 'rag')
     : true;
 
-  // Chip tool selain RAG dibuat generik dari ToolRegistryService — bukan hardcode 'web_search'
-  // saja — supaya tool baru yang di-drop ke folder tools/ otomatis dapat chip toggle tanpa
-  // perlu ubah kode di sini (konsisten dengan konsep folder-scan "seperti modul Linux").
   const toolRegistryService = kernel.serviceManager?.get('ToolRegistryService');
   const registeredTools = toolRegistryService ? toolRegistryService.listTools() : [];
   const KNOWN_TOOL_LABELS = {
@@ -133,24 +88,13 @@ export default function ConversationEngine({ sessionId }) {
   const toolsEnabledCount = (ragEnabledHere ? 1 : 0)
     + registeredTools.filter(tool => getToolEnabled(tool.name)).length;
 
-  // Panel Tools — satu tombol yang buka daftar toggle, supaya toolbar tidak penuh
-  // walau jumlah tool di registry terus bertambah (bukan satu chip per tool lagi).
   const [showToolsPanel, setShowToolsPanel] = useState(false);
   const toolsPanelRef = useRef(null);
 
-  // Override tingkat model (Adaptive Model Tiering) — SENGAJA tidak persisten:
-  // state React biasa, berlaku hanya untuk sesi thread yang sedang terbuka di tab ini.
-  // Reload, buka chat lain, atau membuka chat yang sama dari device lain → kembali ke Auto.
-  // Konsekuensinya tidak ada kolom DB / migrasi skema baru untuk fitur ini (roadmap §4.4).
-  const [modelTierOverride, setModelTierOverride] = useKeadaanTersimpan(kunciSesi, 'modelTierOverride', null); // null = Auto
+  const [modelTierOverride, setModelTierOverride] = useKeadaanTersimpan(kunciSesi, 'modelTierOverride', null);
   const [showTierPanel, setShowTierPanel] = useState(false);
   const tierPanelRef = useRef(null);
   const isEngineerWorkspace = osState?.workspaceId === 'ws-engineer';
-  // Peristiwa Engineer (laporan penalaran, konfirmasi, patch, hasil baca repo) dipancarkan lewat EventBus GLOBAL,
-  // sementara TIGA instance chat hidup bersamaan (Assistant, Engineer, Lite). Tanpa penyaring, laporan Engineer ikut
-  // menempel di chat Assistant/Lite — live 22–23 September 2026: 8 baris chat berisi laporan Engineer lahir dengan
-  // label ws-assistant/ws-lite (dipindahkan ke ws-engineer 23 September atas izin Owner).
-  // Dipakai lewat REF, bukan nilai render: langganan didaftarkan sekali (deps []) sehingga nilai render akan beku.
   const instansiEngineerRef = useRef(false);
   instansiEngineerRef.current = osState?.workspaceId === 'ws-engineer';
 
@@ -175,71 +119,41 @@ export default function ConversationEngine({ sessionId }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showToolsPanel]);
 
-  // --- Keadaan percakapan — hidup DI LUAR layar (Item 127 Tahap 1) ---
-  // Lima keadaan dan lima ref di bawah ini menentukan apakah jawaban selamat dan tersimpan ke percakapan
-  // yang benar. Dulu semuanya `useState`/`useRef` layar, sehingga layar tidak boleh dilepas — itulah sebab
-  // 11 aplikasi dirender sekaligus. Bentuk kembaliannya sama persis, jadi tak ada baris pemakai yang berubah.
   const [messages, setMessages] = useKeadaanTersimpan(kunciSesi, 'messages', []);
   const [input, setInput] = useKeadaanTersimpan(kunciSesi, 'input', '');
   const [isLoading, setIsLoading] = useKeadaanTersimpan(kunciSesi, 'isLoading', false);
-  // Pembatalan kiriman (2026-10-01). Disimpan di ref, bukan state: menggantinya tidak boleh memicu
-  // render, dan `hentikanKirim` harus selalu memegang kendali kiriman yang SEDANG berjalan — juga sesudah
-  // layarnya dilepas lalu dipasang lagi, maka ref-nya ikut hidup di luar layar.
   const kendaliKirimRef = useRefTersimpan(kunciSesi, 'kendaliKirim', null);
   const [copiedIndex, setCopiedIndex] = useState(null);
-  const [galatUmpanBalik, setGalatUmpanBalik] = useState(null); // { idx, alasan } — 👍/👎 yang gagal tersimpan
-  // currentChatId diinisialisasi null — ID chat di-restore via useEffect setelah
-  // chatStorageKey tersedia (workspace diketahui). Ini mencegah tiga instance
-  // chat membaca/menghapus kunci yang sama saat mount.
+  const [galatUmpanBalik, setGalatUmpanBalik] = useState(null);
   const [currentChatId, setCurrentChatId] = useKeadaanTersimpan(kunciSesi, 'currentChatId', null);
-  // Di luar layar juga: layar yang dipasang ulang TIDAK boleh memulihkan ulang dari localStorage — itu
-  // akan menimpa percakapan yang sedang berjalan dengan salinan database yang lebih tua.
   const [initialRestoreDone, setInitialRestoreDone] = useKeadaanTersimpan(kunciSesi, 'initialRestoreDone', false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [attachedFile, setAttachedFile] = useKeadaanTersimpan(kunciSesi, 'attachedFile', null);
 
-  // --- Memory Context Panel State ---
   const [activeMemories, setActiveMemories] = useKeadaanTersimpan(kunciSesi, 'activeMemories', []);
   const [lastMemoryQuery, setLastMemoryQuery] = useKeadaanTersimpan(kunciSesi, 'lastMemoryQuery', '');
-  // Tertutup bawaan (Item 127 Tahap 2): ia laci "satu klik", bukan kolom tetap — pola standar aplikasi asisten.
   const [isMemoryPanelOpen, setIsMemoryPanelOpen] = useKeadaanTersimpan(kunciSesi, 'isMemoryPanelOpen', false);
   const [isMemoryLoading, setIsMemoryLoading] = useKeadaanTersimpan(kunciSesi, 'isMemoryLoading', false);
 
-  // --- Engineer State ---
   const [engineerCmdStates, setEngineerCmdStates] = useKeadaanTersimpan(kunciSesi, 'engineerCmdStates', {});
-  // Perintah yang sudah pernah dijalankan OTOMATIS — bukan state, karena mengubahnya tidak boleh
-  // memicu render (render ulang akan memicu efeknya lagi, dan perintahnya jalan dua kali).
   const cmdOtomatisRef = useRefTersimpan(kunciSesi, 'cmdOtomatis', () => new Set());
   const [lastCheckpoint, setLastCheckpoint] = useKeadaanTersimpan(kunciSesi, 'lastCheckpoint', null);
   const [rollbackState, setRollbackState] = useKeadaanTersimpan(kunciSesi, 'rollbackState', 'idle');
 
-  // --- PR#9: Tier 3 Web Comparison Confirmation State ---
   const [webConfirmation, setWebConfirmation] = useKeadaanTersimpan(kunciSesi, 'webConfirmation', null);
 
-  // --- Refs ---
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const textareaRef = useRef(null);
   const fileInputRef = useRef(null);
   const isNewChatInitiatedByUser = useRef(false);
-  // Nomor urut percakapan: naik setiap kali Owner BERPINDAH (chat baru / membuka riwayat). Dipakai
-  // callback jawaban untuk tahu apakah Owner masih di percakapan yang mengirim pertanyaan — lihat
-  // `pengirimanChat.js`. `chatId` saja tidak cukup karena percakapan baru belum punya id.
-  // Di luar layar: callback jawaban yang masih menunggu memegang ref INI, dan layar yang dipasang ulang
-  // harus membaca nomor yang sama — dua ref terpisah akan membuat setiap jawaban tampak "terlantar".
   const percakapanSeqRef = useRefTersimpan(kunciSesi, 'percakapanSeq', 0);
   const isInitialMount = useRef(true);
   const prevSessionIdRef = useRef(sessionId);
 
-  // =============================================
-  // HELPER: Dapatkan AssistantService & WebComparisonService dari Kernel
-  // =============================================
   const getAssistantService = () => kernel.serviceManager?.get('AssistantService');
   const getWebComparisonService = () => kernel.serviceManager?.get('WebComparisonService');
 
-  // =============================================
-  // HELPER: Buka Lifecycle Inspector di Right Workbench
-  // =============================================
   const openLifecycleInspector = (stepName, logs) => {
     workspaceManager.openWidgetInWorkbench('right', 'widget:maef-monitor', {
       focusStep: stepName,
@@ -247,9 +161,6 @@ export default function ConversationEngine({ sessionId }) {
     });
   };
 
-  // =============================================
-  // HELPER: Minimasi Semua Panel Samping (Mode Luas)
-  // =============================================
   const handleMinimizeSidePanels = () => {
     setIsMemoryPanelOpen(false);
     if (workspaceManager?.closeWidget) {
@@ -260,9 +171,6 @@ export default function ConversationEngine({ sessionId }) {
     }
   };
 
-  // =============================================
-  // HELPER: Toggle MAEF Monitor di Right Workbench
-  // =============================================
   const handleToggleMaefMonitor = () => {
     const rightWidgets = osState?.layout?.right_workbench || [];
     if (rightWidgets.includes('widget:maef-monitor')) {
@@ -272,9 +180,6 @@ export default function ConversationEngine({ sessionId }) {
     }
   };
 
-  // =============================================
-  // AUTO-GROW TEXTAREA
-  // =============================================
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -282,54 +187,24 @@ export default function ConversationEngine({ sessionId }) {
     }
   }, [input]);
 
-  // =============================================
-  // AUTO-SCROLL
-  // =============================================
   useEffect(() => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // =============================================
-  // LAYOUT RESIZE ON SIDEBAR TOGGLE
-  // =============================================
   useEffect(() => {
     window.dispatchEvent(new Event('resize'));
   }, [isSidebarOpen]);
 
-  // Di luar layar (Item 127 Tahap 1): tanpa ini layar yang dipasang ulang menganggap percakapan BELUM
-  // pernah disimpan dan menulis ulang barisnya (updated_at naik, chat melompat ke puncak riwayat).
   const lastSavedKeyRef = useRefTersimpan(kunciSesi, 'lastSavedKey', '');
   const isSavingRef = useRefTersimpan(kunciSesi, 'isSaving', false);
-  // T17: ada permintaan simpan yang datang selama penyimpanan sebelumnya berjalan — dijalankan sesudahnya (simpanBerurutan.js).
   const simpanTertundaRef = useRefTersimpan(kunciSesi, 'simpanTertunda', false);
-  // Pemulihan riwayat gagal karena gangguan (bukan karena chatnya hilang): penunjuk chat lama dipertahankan
-  // supaya riwayatnya tidak "dilupakan" aplikasi, dan chat lama tidak ditimpa pesan baru.
   const pemulihanGagalRef = useRefTersimpan(kunciSesi, 'pemulihanGagal', false);
-  // Di luar layar: penyimpanan otomatis di bawah butuh workspaceId TERAKHIR yang diketahui, juga saat
-  // layarnya sedang tidak terpasang.
   const osStateRef = useRefTersimpan(kunciSesi, 'osState', osState);
   osStateRef.current = osState;
   const timerSimpanRef = useRefTersimpan(kunciSesi, 'timerSimpan', null);
 
-  // =============================================
-  // PERSISTENSI: Auto-save messages (debounced & throttled)
-  // =============================================
-  // Item 127 Tahap 1: dulu ini `useEffect` milik layar — ia hanya jalan SELAMA layarnya terpasang. Jawaban
-  // yang selesai saat Owner sedang di halaman lain ditulis ke `messages` (Owner tidak berpindah PERCAKAPAN,
-  // jadi `pengirimanChat.js` menganggapnya "di layar"), lalu tidak ada siapa pun yang menyimpannya ke
-  // database. Kini ia PENGAMAT di PenyimpanKeadaan: jalan setiap kali salah satu dari empat keadaan di bawah
-  // berubah, dengan atau tanpa layar.
-  //
-  // Saat dipindah, isi logikanya SENGAJA tidak diubah satu penjaga pun (satu-satunya perubahan sesudahnya: T17, 29 Okt —
-  // permintaan yang datang selama penyimpanan berjalan tak lagi dibuang, lihat simpanBerurutan.js) — termasuk jeda 1 detik dan pembatalan timer
-  // setiap ada perubahan (dulu dikerjakan cleanup efek; kini di awal tiap jalan). Nilai dibaca dari
-  // penyimpan dengan NAMA YANG SAMA supaya badan fungsinya tetap terbaca seperti efek lamanya.
-  //
-  // Pendaftaran diulang setiap layar dipasang (id yang sama MENGGANTI, bukan menambah), dan SENGAJA tidak
-  // dilepas saat layar dilepas — itu seluruh tujuannya. Ia berhenti hanya saat pengguna berganti
-  // (`lupakanSemua`, App.jsx).
   useEffect(() => {
     const p = penyimpanKeadaan;
     const simpanOtomatis = () => {
@@ -340,43 +215,25 @@ export default function ConversationEngine({ sessionId }) {
       clearTimeout(timerSimpanRef.current);
       timerSimpanRef.current = null;
 
-      // Jangan auto-save jika tidak ada pesan atau sedang streaming
       if (!messages || messages.length === 0 || isLoading) return;
 
-      // [FIX 2026-09-23 putaran 2] JANGAN menyimpan sebelum pemulihan riwayat selesai. Sesudah muat ulang,
-      // currentChatId sudah terisi (dibaca dari localStorage) sementara isi chat MASIH KOSONG karena pembacaan dari
-      // database belum selesai. Pesan baru yang muncul lebih dulu — mis. laporan patch setelah muat ulang Vite —
-      // membuat penyimpanan menimpa baris chat dengan SATU pesan itu saja.
-      // Live TUGAS-02 putaran 1 (2026-09-23 09:29): percakapan lengkap (permintaan, analisis, konfirmasi) hilang,
-      // tersisa satu pesan "Patch diterapkan" — bukti uji ikut terhapus.
       if (!initialRestoreDone) return;
 
-      // [FIX 2026-09-23] Pesan yang dibuat sistem sendiri (laporan penalaran Engineer, dialog konfirmasi,
-      // laporan patch setelah muat ulang) tidak boleh MELAHIRKAN chat baru. Tanpa penjaga ini, pesan seperti itu
-      // tersimpan sebagai chat tersendiri yang judulnya isi laporan — live 2026-09-23 satu tugas Engineer
-      // terpecah jadi empat baris di tabel `chats`. Bila chat sudah ada, pesan sistem tetap ikut tersimpan.
       if (!bolehSimpanChat({ currentChatId, messages })) return;
 
       const saveKey = kunciSimpan({ chatId: currentChatId, messages });
 
-      // Lewati jika pesan belum berubah sejak penyimpanan terakhir
       if (saveKey === lastSavedKeyRef.current) {
         return;
       }
 
       timerSimpanRef.current = setTimeout(() => {
         timerSimpanRef.current = null;
-        // T17 (29 Okt 2026): dulu `if (isSavingRef.current) return;` membuang permintaan ini tanpa menjadwal ulang, dan
-        // tanda baru dipasang sesudah `await getSession()`. simpanBerurutan memasang tanda seketika dan menjalankan
-        // ulang pengamat ini bila ada permintaan yang datang selama penyimpanan berjalan.
         simpanBerurutan(isSavingRef, simpanTertundaRef, async () => {
           const { data: { session } } = await supabase.auth.getSession();
           if (!session?.user?.id) return;
           const assistantService = getAssistantService();
           if (!assistantService) return;
-          // [FIX: Cross-workspace leak] Jangan simpan chat jika workspace belum diketahui —
-          // fallback ke 'ws-assistant' akan menyebabkan chat Engineer/Lite tersimpan
-          // dengan workspace_type yang salah di database.
           const currentWsId = osStateRef.current?.workspaceId;
           if (!currentWsId) return;
           await assistantService.saveChatToDB({
@@ -386,7 +243,6 @@ export default function ConversationEngine({ sessionId }) {
             workspaceId: currentWsId,
             onNewChatId: (newId) => {
               setCurrentChatId(newId);
-              // [FIX: localStorage isolation] Gunakan kunci workspace-spesifik
               const wsId = osStateRef.current?.workspaceId;
               if (wsId) localStorage.setItem(`mamet_v4_${wsId}_current_chat_id`, newId);
             }
@@ -398,17 +254,8 @@ export default function ConversationEngine({ sessionId }) {
     p.amati(kunciSesi, 'simpanOtomatis', ['messages', 'currentChatId', 'isLoading', 'initialRestoreDone'], simpanOtomatis);
   }, [kunciSesi]);
 
-  // =============================================
-  // PERSISTENSI: Sync currentChatId ke localStorage (workspace-spesifik)
-  // =============================================
   useEffect(() => {
-    if (!chatStorageKey) return; // Tunggu hingga workspace diketahui
-    // [FIX 2026-09-23] Effect ini dideklarasikan SEBELUM effect pemulihan, jadi pada commit yang sama ia
-    // berjalan lebih dulu. Setelah muat ulang currentChatId selalu null, sehingga dulu kunci DIHAPUS tepat
-    // sebelum effect pemulihan membacanya → pemulihan chat tidak pernah berhasil dan pesan berikutnya
-    // melahirkan chat baru. Bukti: batch LevelDB seq 5433 & 5473 menghapus kunci ketiga workspace sekaligus
-    // pada dua kali muat ulang, padahal keempat baris chat masih ada di DB. Jangan sentuh kunci sebelum
-    // pemulihan selesai.
+    if (!chatStorageKey) return;
     if (!initialRestoreDone) return;
     if (currentChatId) {
       localStorage.setItem(chatStorageKey, currentChatId);
@@ -417,17 +264,9 @@ export default function ConversationEngine({ sessionId }) {
     }
   }, [currentChatId, chatStorageKey, initialRestoreDone]);
 
-  // =============================================
-  // RESTORE: Chat dari localStorage saat workspace pertama kali diketahui
-  // =============================================
-  // [FIX: localStorage isolation] Effect ini menggantikan pola lama yang membaca kunci
-  // global di useState initializer. Sekarang, restore ditunda hingga chatStorageKey tersedia
-  // (yaitu setelah WorkspaceManager.switchWorkspace() selesai dan osState.workspaceId terisi).
-  // Dependency [chatStorageKey] menjamin effect hanya berjalan sekali saat key pertama kali
-  // berubah dari null ke nilai nyata — dan guard initialRestoreDone mencegah duplikasi.
   useEffect(() => {
     if (initialRestoreDone) return;
-    if (!chatStorageKey) return; // Workspace belum diketahui, tunggu render berikutnya
+    if (!chatStorageKey) return;
 
     const savedChatId = localStorage.getItem(chatStorageKey);
     if (!savedChatId) {
@@ -435,12 +274,10 @@ export default function ConversationEngine({ sessionId }) {
       return;
     }
 
-    // Set chatId terlebih dahulu agar UI bisa highlight item di sidebar
     setCurrentChatId(savedChatId);
 
     const loadSavedChat = async () => {
       const assistantService = getAssistantService();
-      // Fallback ke supabase langsung jika service belum ready (boot delay)
       let hasil = null;
       if (assistantService) {
         hasil = await assistantService.loadChat(savedChatId);
@@ -454,17 +291,12 @@ export default function ConversationEngine({ sessionId }) {
       const putusan = putusanPemulihan(hasil);
       if (putusan === 'pakai') {
         setMessages(hasil.messages);
-        // Isi ini baru saja dibaca DARI database — tandai sudah tersimpan supaya muat ulang tidak
-        // menulis ulang baris yang sama (live 2026-09-23: tiap Ctrl+R menaikkan updated_at tanpa perubahan).
         lastSavedKeyRef.current = kunciSimpan({ chatId: savedChatId, messages: hasil.messages });
       } else if (putusan === 'lepas') {
-        // Baris chatnya memang tidak ada lagi — penunjuk boleh dilepas.
         console.warn('[ConversationEngine] Chat tersimpan tidak ada lagi di DB, penunjuk dilepas');
         setCurrentChatId(null);
         localStorage.removeItem(chatStorageKey);
       } else {
-        // Gagal membaca (gangguan sesaat, sesi belum siap, jaringan). Penunjuk JANGAN dihapus dan
-        // chat lama JANGAN ditimpa: pesan baru akan masuk ke chat baru, riwayat lama tetap di sidebar.
         console.warn('[ConversationEngine] Riwayat chat gagal dimuat, penunjuk dipertahankan:', hasil.error);
         pemulihanGagalRef.current = true;
         setCurrentChatId(null);
@@ -476,22 +308,13 @@ export default function ConversationEngine({ sessionId }) {
       setInitialRestoreDone(true);
     };
     loadSavedChat();
-  }, [chatStorageKey]); // Berjalan saat chatStorageKey berubah dari null → nilai nyata
+  }, [chatStorageKey]);
 
-  // =============================================
-  // SESSION ID SYNC
-  // =============================================
   useEffect(() => {
     if (isInitialMount.current) { isInitialMount.current = false; return; }
     prevSessionIdRef.current = sessionId;
   }, [sessionId]);
 
-  // Override tingkat model dilepas setiap berpindah chat — termasuk saat membuka chat lama
-  // dari riwayat, bukan cuma saat membuat chat baru.
-  //
-  // Item 127 Tahap 1: efek ini jalan juga setiap layar DIPASANG. Dulu itu tak berarti apa-apa (layar tak
-  // pernah dilepas); kini ia akan membuang pil tier pilihan Owner setiap ia kembali dari halaman lain.
-  // Jadi reset hanya bila chat-nya benar-benar berganti dari yang terakhir diingat — di luar layar.
   const chatTierRef = useRefTersimpan(kunciSesi, 'chatTier', undefined);
   useEffect(() => {
     if (chatTierRef.current === currentChatId) return;
@@ -499,23 +322,16 @@ export default function ConversationEngine({ sessionId }) {
     setModelTierOverride(null);
   }, [currentChatId]);
 
-  // =============================================
-  // NEW CHAT
-  // =============================================
   const handleNewChat = () => {
-    percakapanSeqRef.current += 1; // jawaban yang masih menunggu tidak boleh mendarat di sini
+    percakapanSeqRef.current += 1;
     isNewChatInitiatedByUser.current = true;
-    pemulihanGagalRef.current = false; // Owner memilih chat baru dengan sadar — penunjuk lama boleh dilepas
+    pemulihanGagalRef.current = false;
     setMessages([]);
     setCurrentChatId(null);
-    setModelTierOverride(null); // chat baru selalu kembali ke Auto (roadmap §3)
-    // [FIX: localStorage isolation] Hapus kunci workspace-spesifik, bukan kunci global
+    setModelTierOverride(null);
     if (chatStorageKey) localStorage.removeItem(chatStorageKey);
   };
 
-  // =============================================
-  // LOAD CHAT (dari ChatHistory sidebar)
-  // =============================================
   const handleLoadChat = async (chatId) => {
     const assistantService = getAssistantService();
     let hasil = null;
@@ -528,33 +344,24 @@ export default function ConversationEngine({ sessionId }) {
         : { messages: data ? (data.messages || []) : null, hilang: !data, error: null };
     }
     if (hasil.messages === null) {
-      // Gagal membaca → jangan pindah ke chat itu dengan layar kosong (isinya bisa tertimpa pesan baru).
       console.error('[ConversationEngine] Chat tidak bisa dibuka:', hasil.error || 'baris tidak ada');
       return;
     }
-    percakapanSeqRef.current += 1; // jawaban yang masih menunggu tidak boleh mendarat di percakapan ini
+    percakapanSeqRef.current += 1;
     pemulihanGagalRef.current = false;
-    // MEMBACA BUKAN MENGUBAH: tandai isi yang baru dibaca sebagai sudah tersimpan, supaya membuka chat lama
-    // tidak menulis ulang barisnya. Dulu `updated_at` ikut naik, sehingga chat yang cuma dilihat melompat ke
-    // puncak riwayat (urutannya `updated_at` menurun) dan chat yang sedang dikerjakan malah turun.
     lastSavedKeyRef.current = kunciSimpan({ chatId, messages: hasil.messages });
     setMessages(hasil.messages);
     setCurrentChatId(chatId);
     if (window.innerWidth < 768) setIsSidebarOpen(false);
   };
 
-  // =============================================
-  // COPY TO CLIPBOARD
-  // =============================================
-  // 👍/👎 (Item 126 Fase 0): langsung tampil di layar, lalu disimpan ke umpan_balik_jawaban. Gagal → nilai dikembalikan
-  // dan alasannya ditampilkan di bawah kartu — umpan balik yang tak tersimpan tidak boleh terlihat tersimpan.
   const nilaiJawaban = async (idx, tombol) => {
     const pesan = messages[idx];
     if (!bolehDinilai(pesan)) return;
     const sebelum = pesan.umpanBalik || 0;
     const nilai = nilaiBerikutnya(sebelum, tombol);
     const ubah = (n) => setMessages((prev) => {
-      if (prev[idx]?.traceId !== pesan.traceId) return prev; // daftar pesan berubah sementara itu
+      if (prev[idx]?.traceId !== pesan.traceId) return prev;
       const next = [...prev];
       next[idx] = { ...next[idx], umpanBalik: n };
       return next;
@@ -578,25 +385,13 @@ export default function ConversationEngine({ sessionId }) {
     }
   };
 
-  // =============================================
-  // EVENTBUS LISTENERS — Engineer Events
-  // =============================================
   useEffect(() => {
     const eventBus = kernel.serviceManager?.get('EventBus');
     if (!eventBus) return;
 
     const handler = (wrappedPayload) => {
-      if (!instansiEngineerRef.current) return;   // peristiwa Engineer hanya untuk chat Engineer
+      if (!instansiEngineerRef.current) return;
       const rec = wrappedPayload?.data || wrappedPayload;
-      // PATCH_APPLIED TIDAK digambar di sini (2026-10-01). Ia tetap dipancarkan sebagai catatan, tetapi
-      // pengumuman ke layar milik SATU jalur saja: `Engineer:PatchApplied` di bawah — satu-satunya yang
-      // tahu soal pemulihan Tahap 6 dan membawa laporan verifikasinya.
-      //
-      // Live 1 Okt, patch yang BENAR: Owner menerima dua spanduk berturut-turut. Yang pertama berhati-hati
-      // menyebut batasnya ("yang dijanjikan hanya patch tidak merusak yang sudah terbukti, bukan patch ini
-      // benar"); yang kedua menimpanya dengan "File telah dimodifikasi sesuai instruksi Anda" — klaim yang
-      // tak pernah diperiksa siapa pun, dan ia duduk paling bawah sehingga berdiri sebagai kesimpulan.
-      // Perbaikan 1 Okt sebelumnya hanya menutup kasus DIPULIHKAN; kasus berhasil masih bersuara dua kali.
       if (rec.type === 'PATCH_REJECTED') {
         setMessages(prev => {
           const newMsgs = [...prev];
@@ -608,7 +403,6 @@ export default function ConversationEngine({ sessionId }) {
           return [...prev, { role: 'model', content: `❌ **Patch Ditolak**\n\n${rec.message}` }];
         });
       } else if (['PATCH_VERIFICATION_FAILED', 'ERROR', 'PATCH_FAILED', 'SAFETY_REJECTION', 'CORE_MODIFICATION_BLOCKED'].includes(rec.type)) {
-        // PATCH_FAILED / SAFETY_REJECTION / CORE_MODIFICATION_BLOCKED dulu tak ditampilkan sama sekali (T10, 2026-09-22).
         setMessages(prev => {
           const newMsgs = [...prev];
           const lastIndex = newMsgs.length - 1;
@@ -625,15 +419,12 @@ export default function ConversationEngine({ sessionId }) {
       } else if (rec.type === 'ASK_CLARIFICATION') {
         setMessages(prev => [...prev, { role: 'model', content: rec.message, isReasoningBlock: false }]);
       }
-      // Cabang READ_REPO_* dihapus 2026-09-28 bersama handler-nya (TaskHandlers.js) — ketujuh jenis
-      // rekomendasi itu tidak punya pemancar lagi.
     };
 
     const unsubscribe = eventBus.on('Engineer:Recommendation', handler);
     return unsubscribe;
   }, []);
 
-  // ENGINEER ROLLBACK: Listen Engineer:PatchApplied
   useEffect(() => {
     const eventBus = kernel.serviceManager?.get('EventBus');
     if (!eventBus) return;
@@ -644,7 +435,6 @@ export default function ConversationEngine({ sessionId }) {
         setLastCheckpoint({ ref: data.checkpointRef, patchId: data.patchId, appliedAt: new Date().toLocaleTimeString('id-ID') });
         setRollbackState('idle');
       }
-      // Tahap 6: berkas yang sudah DIKEMBALIKAN karena uji gagal tidak boleh dilaporkan sebagai "diubah".
       const dipulihkan = !!data?.verifikasi?.dipulihkan;
       const files = data?.files?.filter(f => f.status === (dipulihkan ? 'DIPULIHKAN' : 'APPLIED')).map(f => f.path) || [];
       const successMsg = dipulihkan
@@ -652,7 +442,6 @@ export default function ConversationEngine({ sessionId }) {
         : data?.successCount > 0
           ? `✅ **Patch Berhasil!** ${data.successCount} file diubah${data.skippedCount > 0 ? `, ${data.skippedCount} dilewati` : ''}.${files.length > 0 ? '\n\n📁 ' + files.join('\n📁 ') : ''}${data.checkpointRef ? '\n\n💾 Checkpoint dibuat — Anda bisa rollback.' : ''}`
           : `⚠️ Patch selesai tapi ${data?.failCount || 0} file gagal.`;
-      // Laporan verifikasi ditempel APA ADANYA di bawahnya — termasuk keluaran berkas uji yang gagal.
       const isi = data?.verifikasi?.laporan ? `${successMsg}\n\n---\n\n${data.verifikasi.laporan}` : successMsg;
       setMessages(prev => [...prev, { role: 'model', content: isi, isPatchResult: true, checkpointRef: data?.checkpointRef || null }]);
     };
@@ -660,8 +449,6 @@ export default function ConversationEngine({ sessionId }) {
     return unsubPatch;
   }, []);
 
-  // JENDELA KONTEKS PER PERCAKAPAN (Tahap 3a, 2026-09-23). Meteran memakai perhitungan yang SAMA dengan jalur kirim
-  // (KonteksChat.js), jadi angka yang Owner lihat adalah angka yang benar-benar dikirim — bukan taksiran terpisah.
   const [konteksInfo, setKonteksInfo] = useState(null);
   const [versiKonteks, setVersiKonteks] = useState(0);
   useEffect(() => {
@@ -706,8 +493,6 @@ export default function ConversationEngine({ sessionId }) {
     setVersiKonteks((v) => v + 1);
   };
 
-  // PADATKAN KONTEKS — pesan lama diringkas jadi SATU pesan yang tetap dikirim, lalu batas konteks
-  // digeser ke ringkasan itu. Beda dengan "Bersihkan" yang membuang ingatannya sama sekali.
   const [sedangMemadatkan, setSedangMemadatkan] = useKeadaanTersimpan(kunciSesi, 'sedangMemadatkan', false);
   const [panelKonteks, setPanelKonteks] = useState(false);
   const panelKonteksRef = useRef(null);
@@ -745,14 +530,10 @@ export default function ConversationEngine({ sessionId }) {
         tokenSebelum,
         tokenSesudah: tokenPesan({ content: ringkasan }),
       });
-      // URUTAN PENTING: batas digeser ke INDEKS pesan ringkasan, jadi ringkasan itu sendiri yang jadi
-      // pesan pertama yang dikirim. Kalau digeser ke `messages.length + 1`, ringkasannya ikut terbuang
-      // dan "Padatkan" berubah jadi "Bersihkan" yang mahal.
       simpanMulaiDari(currentChatId, messages.length);
       setMessages((prev) => [...prev, pesanRingkas]);
       setVersiKonteks((v) => v + 1);
     } catch (e) {
-      // GAGAL = TIDAK MENGUBAH APA PUN. Batas konteks tidak digeser, jadi percakapannya tetap utuh.
       setMessages((prev) => [...prev, {
         role: 'model',
         isPatchResult: true,
@@ -763,9 +544,6 @@ export default function ConversationEngine({ sessionId }) {
     }
   };
 
-  // MESIN UJI KLAIM (ROADMAP-ENGINEER-MANDIRI Tahap 2, 2026-09-23): jawaban Engineer yang memuat blok <uji_klaim>
-  // dijalankan terhadap kode nyata di repo, lalu hasilnya ditempel sebagai pesan tersendiri. Jawaban model TIDAK
-  // diubah — laporan uji berdiri sendiri supaya jelas mana kata model dan mana hasil mesin.
   const klaimDiprosesRef = useRefTersimpan(kunciSesi, 'klaimDiproses', () => new Set());
   useEffect(() => {
     if (workspaceManager?.activeWorkspaceId !== 'ws-engineer') return;
@@ -791,28 +569,17 @@ export default function ConversationEngine({ sessionId }) {
     })().catch((e) => console.error('[UjiKlaim] gagal:', e));
   }, [messages, workspaceManager?.activeWorkspaceId]);
 
-  // INGATAN TEMUAN ENGINEER (Tahap 3b, 2026-09-24).
-  // Blok <temuan> dalam jawaban Engineer dibandingkan dengan catatan di repo: yang sudah pernah dilaporkan
-  // atau sudah DITUTUP Owner tidak diangkat lagi. Penulisannya ke disk MENUNGGU tombol Owner — batas
-  // "menulis berkas selalu lewat persetujuan Owner" tidak digeser untuk kenyamanan.
   const [temuanTersimpan, setTemuanTersimpan] = useState([]);
   const temuanDiprosesRef = useRefTersimpan(kunciSesi, 'temuanDiproses', () => new Set());
 
-  // Keutuhan ingatan temuan (TMN-0006). Dicatat terpisah dari daftarnya karena DAFTAR KOSONG
-  // punya dua sebab yang sama sekali berbeda — "memang tidak ada temuan" dan "berkasnya tidak
-  // terbaca" — dan sebelum ini keduanya mengalir jadi hal yang sama: Engineer menyimpulkan tidak
-  // ada temuan terbuka, padahal berkasnya jelas berisi.
   const [keutuhanTemuanRef, setKeutuhanTemuan] = useState(null);
 
   const bacaCatatanTemuan = async () => {
     const isi = await (window.electronAPI?.readFile?.(ALAMAT_TEMUAN) ?? Promise.resolve(null));
-    // Hanya dinilai bila berkasnya memang ada; berkas yang belum pernah dibuat bukan kelencengan.
     setKeutuhanTemuan(isi ? keutuhanTemuan(isi) : null);
     return bacaBerkasTemuan(isi);
   };
 
-  // Catatan dibaca sekali saat workspace Engineer dibuka, supaya perbandingan memakai isi disk yang nyata
-  // (termasuk suntingan tangan Owner), bukan ingatan layar.
   useEffect(() => {
     if (workspaceManager?.activeWorkspaceId !== 'ws-engineer') return;
     bacaCatatanTemuan().then(setTemuanTersimpan).catch(() => setTemuanTersimpan([]));
@@ -829,7 +596,6 @@ export default function ConversationEngine({ sessionId }) {
     (async () => {
       const { temuan, galat } = ambilBlokTemuan(pesan.content);
       if (!temuan.length && !galat.length) return;
-      // Dibandingkan dengan DISK, bukan dengan state: Owner bisa menyunting berkasnya di luar aplikasi.
       const tersimpan = await bacaCatatanTemuan();
       const { baru, kembar, pernahDitutup } = gabungTemuan([...tersimpan, ...temuanBelumSimpan], temuan);
       setTemuanTersimpan(tersimpan);
@@ -838,17 +604,6 @@ export default function ConversationEngine({ sessionId }) {
     })().catch((e) => console.error('[Temuan] gagal:', e));
   }, [messages, workspaceManager?.activeWorkspaceId]);
 
-  /**
-   * Temuan yang belum tertulis ke repo — DITURUNKAN dari seluruh percakapan, bukan disimpan sebagai state.
-   *
-   * Sebelumnya ini `useState` yang hanya diisi saat pesan TERAKHIR memuat blok <temuan>. Akibatnya terbukti
-   * live 24 September: Owner melanjutkan percakapan yang sama, blok <temuan>-nya sudah beberapa pesan di atas,
-   * dan tombol "Simpan temuan" TIDAK MUNCUL — temuan yang sah seolah hilang. Hal yang sama terjadi setiap kali
-   * Vite memuat ulang halaman, karena state React tidak bertahan.
-   *
-   * Diturunkan dari daftar pesan, tombolnya muncul selama temuannya masih terlihat di layar — di percakapan
-   * lanjutan maupun sesudah muat ulang. Jadi Owner TIDAK perlu membuka chat baru.
-   */
   const temuanBelumSimpan = useMemo(() => {
     if (!isEngineerWorkspace) return [];
     const semua = [];
@@ -860,22 +615,10 @@ export default function ConversationEngine({ sessionId }) {
     }
     if (!semua.length) return [];
     const baru = gabungTemuan(temuanTersimpan, semua).baru;
-    // Jejak yang bisa dibaca Owner di Console saat tombolnya tidak muncul: tiga angka ini menjawab
-    // "apakah blok terbaca", "apakah sudah tersimpan", dan "apakah tombolnya seharusnya muncul".
     console.log(`[Temuan] blok terbaca: ${semua.length} · sudah tersimpan: ${temuanTersimpan.length} · belum tersimpan: ${baru.length}`);
     return baru;
   }, [messages, temuanTersimpan, isEngineerWorkspace]);
 
-  /**
-   * PENGETAHUAN BRAIN 1 yang belum tersimpan (2 Oktober 2026).
-   *
-   * Diturunkan dari daftar pesan — bukan `useState` — dengan alasan yang sama persis seperti
-   * `temuanBelumSimpan`: state React tidak bertahan saat halaman dimuat ulang, dan blok yang sudah
-   * beberapa pesan di atas akan membuat tombolnya hilang padahal pengetahuannya sah.
-   *
-   * Yang kembar DI DALAM satu sesi disaring di sini; yang sudah ada di database disaring saat
-   * menyimpan, dengan judul yang dibaca ULANG dari sana.
-   */
   const pengetahuanBelumSimpan = useMemo(() => {
     if (!isEngineerWorkspace) return [];
     const semua = [];
@@ -885,8 +628,6 @@ export default function ConversationEngine({ sessionId }) {
       if (!isi.includes('<pengetahuan')) continue;
       const { pengetahuan, dilewati } = ambilBlokPengetahuan(isi);
       semua.push(...pengetahuan);
-      // Blok cacat disebut di Console, tidak ditelan: tanpa ini pengetahuan yang dimaksudkan model
-      // hilang tanpa seorang pun tahu — cacat yang sama bentuknya dengan yang dikejar seharian.
       for (const d of dilewati) console.warn(`[Brain1] blok dilewati — ${d.alasan}: ${d.potongan}`);
     }
     if (!semua.length) return [];
@@ -895,13 +636,6 @@ export default function ConversationEngine({ sessionId }) {
     return baru;
   }, [messages, isEngineerWorkspace]);
 
-  /**
-   * Tulis ke `project_memory_entries`. Klik Owner INILAH persetujuannya.
-   *
-   * Judul dibaca ULANG dari database tepat sebelum menulis — Brain 1 bisa berubah dari perangkat
-   * lain, dan menulis dari salinan lama akan melahirkan duplikat. Duplikat itu bukan kerugian
-   * teoretis: 3 dari 8 slot Brain 1 terbukti terpakai duplikat sebelum dibersihkan 2 Okt.
-   */
   const simpanPengetahuan = async () => {
     if (!pengetahuanBelumSimpan.length) return;
     try {
@@ -942,15 +676,10 @@ export default function ConversationEngine({ sessionId }) {
   const simpanTemuan = async () => {
     if (!temuanBelumSimpan.length) return;
     try {
-      // Dibaca ulang tepat sebelum menulis: kalau Owner menyunting berkasnya sejak dibaca tadi,
-      // menulis dari salinan lama akan menghapus suntingannya.
       const tersimpan = await bacaCatatanTemuan();
       const { daftar, baru } = gabungTemuan(tersimpan, temuanBelumSimpan);
       const ok = await window.electronAPI?.writeFile?.(ALAMAT_TEMUAN, susunBerkasTemuan(daftar));
       if (!ok) throw new Error('penulisan berkas ditolak sistem berkas');
-      // `temuanBelumSimpan` diturunkan dari daftar pesan dibanding `temuanTersimpan` — begitu daftar
-      // tersimpan diperbarui, temuan yang barusan ditulis otomatis berhenti dihitung "belum simpan"
-      // dan tombolnya hilang sendiri. Tidak ada state kedua yang bisa jadi tidak sinkron.
       setTemuanTersimpan(daftar);
       setMessages((prev) => [...prev, {
         role: 'model',
@@ -966,50 +695,23 @@ export default function ConversationEngine({ sessionId }) {
     }
   };
 
-  // PATCH YANG TERPUTUS MUAT ULANG (T10): menulis berkas aplikasi memuat ulang halaman (Vite) sebelum pesan hasil tampil.
-  // Laporan dibaca ulang dari DISK (CatatanPatch.js) dan tombol Undo dipulihkan.
-  // INSTANCE ini, bukan workspace yang sedang tampil. `workspaceManager.activeWorkspaceId` bernilai SAMA di
-  // ketiga instance chat yang hidup bersamaan, jadi memakainya berarti instance Assistant pun ikut berebut
-  // catatan patch — dan yang menang MENGHAPUS catatannya. Pelajaran yang sama dengan kebocoran peristiwa
-  // Engineer (23 September): penjaga harus menanyakan "apakah AKU Engineer", bukan "apakah Engineer aktif".
   const iniInstansiEngineer = osState?.workspaceId === 'ws-engineer';
   const [laporanPatchTertunda, setLaporanPatchTertunda] = useState(null);
 
   useEffect(() => {
     const storageManager = kernel.serviceManager?.get('StorageManager');
     if (!storageManager || !iniInstansiEngineer || !initialRestoreDone) return;
-    // `false` = catatan TIDAK dihapus di sini. Ia baru dibuang sesudah laporannya terbukti ada di layar
-    // (effect di bawah). Menghapus bukti sebelum bukti itu tersampaikan adalah urutan yang salah — live
-    // 24 September, Owner kehilangan pesan hasil DAN tombol Undo untuk patch yang sebenarnya berhasil.
     laporanSetelahMuatUlang((p) => storageManager.read(p), undefined, undefined, false).then((lap) => {
       if (!lap) return;
       if (lap.checkpointRef) setLastCheckpoint({ ref: lap.checkpointRef, patchId: lap.patchId, appliedAt: new Date().toLocaleTimeString('id-ID') });
-      // Laporannya DISIMPAN, bukan langsung ditempel sekali lalu dilupakan — lihat effect di bawah.
       setLaporanPatchTertunda(lap);
     }).catch(() => {});
   }, [iniInstansiEngineer, initialRestoreDone]);
 
-  /**
-   * Laporan patch dipastikan ADA di layar, bukan sekadar pernah ditempel.
-   *
-   * Live 24 September 09:19:47: patch BERHASIL diterapkan (terbukti di disk), spanduk checkpoint muncul,
-   * tetapi pesan "✅ Patch diterapkan" tidak ada — dan `chats` tersimpan terakhir 09:19:21, tanpa satu pun
-   * pesan berpenanda `isPatchResult`. Owner hanya melihat "Melanjutkan ke pembuatan patch…" lalu sunyi,
-   * padahal pekerjaannya selesai.
-   *
-   * Sebabnya perlombaan urutan: laporan ditempel sekali sesudah pemulihan, lalu pemulihan/sinkronisasi
-   * berikutnya MENGGANTI seluruh daftar pesan dengan salinan database yang belum memuatnya. Spanduk
-   * checkpoint selamat karena ia state terpisah — itulah kenapa gejalanya tampak ganjil.
-   *
-   * Karena itu laporan tidak "ditempel lalu dilupakan": selama ia belum terlihat di daftar pesan, ia
-   * dipasang lagi. Penandanya `patchId`, jadi tidak pernah dobel.
-   */
   useEffect(() => {
     if (!laporanPatchTertunda) return;
     const sudahAda = messages.some((m) => m.isPatchResult && m.patchId === laporanPatchTertunda.patchId);
     if (sudahAda) {
-      // Baru SEKARANG catatannya dibuang: laporannya sudah di layar dan ikut tersimpan bersama chat,
-      // jadi muat ulang berikutnya membacanya dari database, bukan dari catatan.
       hapusCatatanPatch();
       return;
     }
@@ -1024,7 +726,6 @@ export default function ConversationEngine({ sessionId }) {
       }]);
   }, [laporanPatchTertunda, messages]);
 
-  // PERSISTENT PATCH
   useEffect(() => {
     const eventBus = kernel.serviceManager?.get('EventBus');
     if (!eventBus) return;
@@ -1037,11 +738,7 @@ export default function ConversationEngine({ sessionId }) {
     return unsubPersisted;
   }, []);
 
-  // Penampil `Engineer:FileContent` dihapus 2026-09-28: satu-satunya pemancarnya `handleReadFiles`,
-  // yang ikut terhapus bersama jalur READ_REPO. Isi berkas kini sampai ke chat sebagai keluaran
-  // [MAMET_CMD: git grep / git blame] lewat jalur perintah biasa.
 
-  // REASONING REPORT
   useEffect(() => {
     const eventBus = kernel.serviceManager?.get('EventBus');
     if (!eventBus) return;
@@ -1066,7 +763,6 @@ export default function ConversationEngine({ sessionId }) {
     return unsubscribeReasoning;
   }, []);
 
-  // REQUEST CONFIRMATION
   useEffect(() => {
     const eventBus = kernel.serviceManager?.get('EventBus');
     if (!eventBus) return;
@@ -1085,18 +781,10 @@ export default function ConversationEngine({ sessionId }) {
     return unsubscribeConfirm;
   }, []);
 
-  // MEMORY RETRIEVED
   useEffect(() => {
     const eventBus = kernel.serviceManager?.get('EventBus');
     if (!eventBus) return;
     const memoryRetrievedHandler = (payload) => {
-      // EventBus.emit() SELALU membungkus payload asli di payload.data bersama {source, timestamp}
-      // — lihat EventBus.js:73-77. Handler ini dulu membaca payload.result (level teratas) yang
-      // selalu undefined, lalu jatuh ke wrapper-nya yang bukan array, sehingga activeMemories
-      // selamanya kosong. Akibatnya: Live Thought Pulse tidak pernah menyala, tombol refresh
-      // memori diam (lastMemoryQuery kosong), dan panel Memory diam-diam memakai fallback
-      // dbActiveMemories — menampilkan memori aktif terakhir dari DB, bukan memori yang benar-benar
-      // dipanggil untuk pertanyaan ini. Fallback itulah yang selama ini menutupi bugnya.
       const inner = payload?.data || payload;
       const result = inner?.result;
       setLastMemoryQuery(inner?.query || '');
@@ -1107,17 +795,10 @@ export default function ConversationEngine({ sessionId }) {
     return unsubscribeMemory;
   }, []);
 
-  // [ROADMAP-KNOWLEDGE-GALAXY-COSMIC-ORBITS §3.B] LIVE THOUGHT PULSING
-  // Memancarkan ID memori yang sedang aktif di percakapan ini ke EventBus,
-  // supaya ActivityGraph (Home Dashboard) bisa menyalakan denyut cahaya pada
-  // simpul bintang yang bersangkutan. Zero-cost — cuma re-emit state yang
-  // sudah ada (activeMemories), tidak ada panggilan LLM/DB tambahan.
   useEffect(() => {
     const eventBus = kernel.serviceManager?.get('EventBus');
     if (!eventBus) return;
     const memoryIds = (activeMemories || []).map(m => m.id).filter(Boolean);
-    // Hanya dicatat saat ada isinya — tanpa guard ini boot memancarkan beberapa kali "0 memori"
-    // dan menenggelamkan log yang berguna.
     if (memoryIds.length > 0) {
       console.log(`[LiveThought] emit Brain:ActiveThoughts — ${memoryIds.length} memori aktif`, memoryIds);
     }
@@ -1127,13 +808,11 @@ export default function ConversationEngine({ sessionId }) {
     });
   }, [activeMemories]);
 
-  // PR#9: TIER 3 WEB RETRIEVAL CONFIRMATION (Human-in-Command)
   useEffect(() => {
     const eventBus = kernel.serviceManager?.get('EventBus');
     if (!eventBus) return;
 
     const requestHandler = (wrappedPayload) => {
-      // EventBus wraps all payloads in { source, timestamp, data }
       const payload = wrappedPayload?.data || wrappedPayload;
       if (payload?.requestId) {
         console.log('[ConversationEngine] 📥 Received WebConfirmation request:', payload.requestId, payload.query);
@@ -1167,7 +846,6 @@ export default function ConversationEngine({ sessionId }) {
     };
   }, []);
 
-  // PR#9: Handle resolusi izin pencarian web (Setujui / Tolak)
   const handleResolveWebConfirmation = useCallback((requestId, isApproved) => {
     const targetId = requestId || webConfirmation?.requestId || webConfirmation?.data?.requestId;
     console.log('[ConversationEngine] 📤 Resolving WebConfirmation:', { targetId, isApproved });
@@ -1182,7 +860,6 @@ export default function ConversationEngine({ sessionId }) {
     setWebConfirmation(null);
   }, [webConfirmation]);
 
-  // MEMORY: Listen Memory:OpenConflicts to ensure memory panel opens
   useEffect(() => {
     const eventBus = kernel.serviceManager?.get('EventBus');
     if (!eventBus) return;
@@ -1193,9 +870,6 @@ export default function ConversationEngine({ sessionId }) {
     return () => unsub?.();
   }, []);
 
-  // =============================================
-  // HANDLE REFRESH MEMORY (manual)
-  // =============================================
   const handleRefreshMemory = useCallback(async () => {
     if (!lastMemoryQuery) return;
     setIsMemoryLoading(true);
@@ -1212,17 +886,6 @@ export default function ConversationEngine({ sessionId }) {
     }
   }, [lastMemoryQuery]);
 
-  /**
-   * BERHENTI — memutus kiriman yang sedang berjalan (2026-10-01).
-   *
-   * Sebelum ini tidak ada pembatalan sama sekali: sekali pesan terkirim, Owner terkunci sampai model
-   * selesai, dan satu-satunya jalan keluar adalah memuat ulang jendela. Paling berat di Engineer,
-   * yang permintaannya panjang dan mahal — salah arah baru ketahuan setelah menunggu lama.
-   *
-   * Yang DIHENTIKAN hanya sisi kita: permintaan yang sudah sampai ke server tetap dikerjakan sampai
-   * selesai dan tetap ditagih. Itu ditulis apa adanya di pesan yang muncul, supaya tombol ini tidak
-   * menjanjikan lebih daripada yang bisa diberikannya.
-   */
   const hentikanKirim = () => {
     if (!kendaliKirimRef.current) return;
     kendaliKirimRef.current.abort();
@@ -1235,9 +898,6 @@ export default function ConversationEngine({ sessionId }) {
     }]);
   };
 
-  // =============================================
-  // HANDLE SEND — delegasi ke AssistantService
-  // =============================================
   const handleSend = async (e, autoOverrideMsg = null) => {
     if (e) e.preventDefault();
     const userMsg = autoOverrideMsg || input.trim();
@@ -1248,20 +908,13 @@ export default function ConversationEngine({ sessionId }) {
     setMessages(newMessages);
     setIsLoading(true);
 
-    // Kiriman sebelumnya yang masih menggantung diputus dulu — kalau tidak, kendalinya tertimpa dan
-    // permintaan lama terus berjalan tanpa ada lagi yang bisa menghentikannya.
     kendaliKirimRef.current?.abort();
     const kendali = new AbortController();
     kendaliKirimRef.current = kendali;
 
-    // Identitas kiriman ini (bug 2026-09-28: jawaban mendarat di percakapan yang sedang dilihat).
-    // Disalin SEKARANG — `messages` akan diganti isinya begitu Owner membuka riwayat lain.
     const penanda = buatPenandaKiriman({ seq: percakapanSeqRef.current, chatId: currentChatId, pesan: newMessages });
     const diLayar = () => tujuanTulis(penanda, percakapanSeqRef.current) === 'layar';
 
-    // Owner sudah pindah percakapan saat jawaban tiba: jangan sentuh `messages` (itu milik percakapan
-    // lain sekarang), tulis pertanyaan + jawaban ini langsung ke percakapan asalnya. Bila percakapan
-    // itu belum punya id, penyimpanan inilah yang melahirkannya — jadi pertanyaan Owner tidak hilang.
     const simpanTerlantar = async (jawaban) => {
       try {
         if (!layakSimpanTerlantar(penanda, jawaban)) return;
@@ -1275,7 +928,7 @@ export default function ConversationEngine({ sessionId }) {
           chatId: penanda.chatId,
           userId: sesi.user.id,
           workspaceId: wsId,
-          onNewChatId: () => {}   // JANGAN pindahkan Owner: ia sedang membaca percakapan lain
+          onNewChatId: () => {}
         });
         console.warn('[ConversationEngine] Owner berpindah percakapan saat menunggu — jawaban disimpan ke percakapan asalnya.');
       } catch (err) {
@@ -1290,73 +943,41 @@ export default function ConversationEngine({ sessionId }) {
       return;
     }
 
-    // Ambil auth session
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
     const userId = session?.user?.id || null;
 
-    // Tambah placeholder streaming
     let streamingStarted = false;
-    // "Berpikir selama N detik": dari pesan dikirim sampai </think> pertama tiba (hanya jalur streaming —
-    // jalur JSON menerima nalar & jawaban sekaligus, jadi lamanya tidak diketahui dan tidak ditulis).
     const waktuKirim = Date.now();
     const lamaBerpikirDari = (teks, lama) => lama ?? (/<\/think>/i.test(teks) ? Math.max(1, Math.round((Date.now() - waktuKirim) / 1000)) : undefined);
-    // Hybrid: lama berpikir = dari potongan nalar PERTAMA sampai model mulai menulis jawaban (pencarian dokumen tak dihitung).
     let mulaiNalar = null;
 
     if (workspaceManager && osState) {
       workspaceManager.osState = osState;
     }
 
-    // INGATAN TEMUAN (Tahap 3b): temuan yang masih TERBUKA dibawa ke setiap kiriman Engineer, supaya ia tidak
-    // melaporkan ulang hal yang sudah tercatat. Disisipkan hanya ke yang DIKIRIM, tidak ke yang tampil dan
-    // tidak ke yang disimpan — catatan ini milik repo, bukan bagian percakapan Owner.
-    // Setiap kiriman, bukan sekali di awal: ringkasannya pendek (±20 baris), dan sekali-di-awal akan hilang
-    // begitu "Bersihkan konteks" atau "Padatkan" menggeser batas jendela.
     const ringkasanTemuan = isEngineerWorkspace
       ? ringkasanUntukKonteks([...temuanTersimpan, ...temuanBelumSimpan], 20, keutuhanTemuanRef)
       : '';
 
-    // AKAR REPO (Tahap 5, 2026-09-28): model tidak pernah diberi tahu di folder mana perintahnya
-    // dijalankan. Live 28 Sep ia menulis "dijalankan dari direktori kerja yang berbeda" lalu mengarang
-    // perintah python untuk mencari berkas yang alamatnya sudah ia ketahui. Dibaca dari proses utama
-    // pada SETIAP kiriman, bukan sekali di awal: Owner bisa berganti repo lewat tombol "Pilih repo",
-    // dan catatan sekali-di-awal akan hilang begitu "Bersihkan konteks" menggeser batas jendela.
     const akarRepoSekarang = isEngineerWorkspace
       ? await (window.electronAPI?.engineer?.akarRepo?.() ?? Promise.resolve('')).catch(() => '')
       : '';
     const catatanAkar = catatanAkarRepo(akarRepoSekarang);
 
-    // PETA REPO (1 Oktober 2026). Diukur: Engineer menerima ±5.400 token aturan dan hanya ±1.200
-    // token kode, tanpa satu pun blok khusus untuk kode sumber. Peta ini (±3.870 token) membuatnya
-    // TAHU berkas apa saja yang ada beserta jumlah barisnya, bukan menebak lalu mencari.
-    // Dibaca dari proses utama tiap kiriman; di sana ia di-cache, jadi murah.
     const peta = akarRepoSekarang
       ? await (window.electronAPI?.engineer?.petaRepo?.() ?? Promise.resolve('')).catch(() => '')
       : '';
     const catatanPeta = catatanPetaRepo(peta);
 
-    // INDEKS KONSTITUSI (5 Oktober 2026). AGENTS.md menempatkan Konstitusi DI ATAS kode sumber,
-    // tetapi Engineer tak pernah diberi tahu berkasnya ada: 33 berkas dibaca tiap boot ke
-    // `brain.static.raw` yang punya NOL pemakai. Indeks ini MENAMBAH ±384 token per pesan —
-    // arah biayanya berlawanan dengan peta repo (item 120), dan itu keputusan sadar Owner.
-    // Isinya tetap diambil saat perlu lewat `git show`, yang sudah jalan tanpa dialog sejak 4.2.5.
     const daftarKonstitusi = akarRepoSekarang
       ? await (window.electronAPI?.engineer?.indeksKonstitusi?.() ?? Promise.resolve([])).catch(() => [])
       : [];
     const catatanKons = catatanKonstitusi(daftarKonstitusi);
 
-    // `_patok: true` — sisipan TIDAK boleh ikut dipotong seperti pesan lama. Tanpa penanda ini,
-    // "Bersihkan konteks"/"Padatkan" memotongnya lebih dulu (indeksnya dihitung pada daftar tampilan
-    // yang lebih pendek), dan pemotong anggaran membuangnya duluan karena posisinya paling depan.
-    // Terukur 1 Okt: peta 15.493 huruf, yang sampai ke model 4.042 huruf. Lihat pilihPesanKonteks.
     const sisipan = [catatanAkar, catatanKons, catatanPeta, ringkasanTemuan].filter(Boolean).map((content) => ({ role: 'user', content, [PATOK]: true }));
     const historyKirim = sisipan.length ? [...sisipan, ...newMessages] : newMessages;
 
-    // MATA, bukan perbaikan. Sisipan disusun di sini dan tidak meninggalkan jejak apa pun di log
-    // server — itu sebabnya hilangnya peta di kiriman lanjutan belum terpecahkan sesudah tiga teori
-    // ditumbangkan angka. Dicatat SEBELUM apa pun memotongnya, jadi baris ini menjawab satu
-    // pertanyaan dengan pasti: sisipannya memang tidak dibuat, atau dibuat lalu hilang di jalan.
     {
       const jejak = jejakSisipan({
         engineer: isEngineerWorkspace,
@@ -1374,24 +995,16 @@ export default function ConversationEngine({ sessionId }) {
         userMsg,
         signal: kendali.signal,
         history: historyKirim,
-        // SATU sumber kebenaran. Layar menentukan dirinya Engineer dari `osState?.workspaceId`
-        // (lihat `isEngineerWorkspace`), tetapi kiriman dulu memakai `workspaceManager` dengan
-        // fallback `'ws-assistant'` — dua sumber untuk pertanyaan yang sama, dan yang satu jatuh
-        // DIAM-DIAM ke assistant. Kalau itu terjadi, `resolveMode()` memberi ASSISTANT, pesannya
-        // bisa tergolong LOOKUP, lalu sisipan terbuang, kontrak Engineer hilang, dan tier model
-        // turun ke KECIL — tanpa satu pun tanda di layar.
         workspaceId: isEngineerWorkspace ? 'ws-engineer' : (workspaceManager?.activeWorkspaceId || 'ws-assistant'),
         userId,
         token,
         attachedFile,
         modelTierOverride,
-        chatId: currentChatId,   // jendela konteks berdiri sendiri per percakapan (Tahap 3a)
+        chatId: currentChatId,
         workspaceManager,
 
-        // Hybrid: nalar mengalir sebelum jawaban. selesai=true saat model mulai menulis jawaban; jawaban utuh
-        // (sesudah label diperiksa server) datang lewat onDone dan menggantikan isi pesan ini.
         onNalar: (teksNalar, selesai) => {
-          if (!diLayar()) return;   // Owner sudah pindah — nalar tidak boleh menumpang di layar lain
+          if (!diLayar()) return;
           if (mulaiNalar === null) mulaiNalar = Date.now();
           if (!streamingStarted) {
             streamingStarted = true;
@@ -1409,7 +1022,7 @@ export default function ConversationEngine({ sessionId }) {
         },
 
         onChunk: (chunkText, allText, steps) => {
-          if (!diLayar()) return;   // Owner sudah pindah — potongan jawaban tidak boleh mencemari percakapan lain
+          if (!diLayar()) return;
           if (!streamingStarted) {
             streamingStarted = true;
             setMessages(prev => [...prev, { role: 'model', content: '', steps: [], isStreaming: true }]);
@@ -1425,8 +1038,6 @@ export default function ConversationEngine({ sessionId }) {
         onDone: (finalText, steps, jsonMetadata, extras = {}) => {
           const { hasPatch, patchOriginalTask, traceId } = extras;
           if (!diLayar()) {
-            // Owner sedang membaca percakapan lain. Jawaban + pertanyaannya diselamatkan ke percakapan
-            // asalnya; `isLoading` tetap dilepas supaya kotak kirim tidak terkunci selamanya.
             simpanTerlantar({ content: finalText, steps, metadata: jsonMetadata, hasPatchProposal: hasPatch || false, traceId });
             setIsLoading(false);
             return;
@@ -1448,8 +1059,6 @@ export default function ConversationEngine({ sessionId }) {
               return next;
             });
           } else {
-            // JSON/direct mode — tidak ada streaming frame. Nalar & jawaban tiba bersamaan, jadi lama BERPIKIR
-            // tak diketahui; yang dicatat lama seluruh respons dan ditampilkan sebagai "respons N detik".
             setMessages(prev => [...prev, {
               role: 'model',
               content: finalText,
@@ -1463,13 +1072,6 @@ export default function ConversationEngine({ sessionId }) {
             }]);
           }
           setIsLoading(false);
-          // Trace eksekusi tetap dikirim ke MAEF Monitor, tapi lewat injectWidgetData yang TIDAK
-          // memaksa panelnya terbuka — dulu tiap respons AI memanggil openWidgetInWorkbench()
-          // sehingga panel yang baru saja ditutup Owner terbuka lagi sendiri. Panel sekarang
-          // dibuka/ditutup manual lewat tombol "Monitor" (handleToggleMaefMonitor), dan saat
-          // dibuka akan langsung menampilkan trace terakhir dari getWidgetData().
-          // Isinya langkah GABUNGAN klien + server (jejakMonitor.js, 29 Okt 2026) — dulu `jsonMetadata` saja, sehingga
-          // baris klien "🔍 Dicari (web)" tak tampil dan jalur mengalir tak mengirim langkah apa pun.
           const jejak = jejakUntukMonitor(steps, jsonMetadata);
           if (jejak && workspaceManager?.injectWidgetData) {
             workspaceManager.injectWidgetData('widget:maef-monitor', jejak);
@@ -1477,14 +1079,8 @@ export default function ConversationEngine({ sessionId }) {
         },
 
         onError: (galat) => {
-          // Teks yang dibaca manusia disusun DI SINI, satu tempat. `AssistantService` kini
-          // melaporkan tanda terstruktur ({kode, pesan, status, teknis}) dan tidak lagi mengarang
-          // teks tampilan di sebelas tempat — string lama tetap diterima `blokGalat` apa adanya,
-          // jadi jalur yang belum ikut pindah merosot dengan sopan, bukan menampilkan "[object Object]".
           const errorMsg = blokGalat(galat);
           if (!diLayar()) {
-            // Galat pun milik percakapan asalnya — disimpan bersama pertanyaannya supaya Owner tahu
-            // apa yang terjadi saat ia kembali, bukan menemukan percakapan kosong.
             simpanTerlantar({ content: errorMsg });
             setIsLoading(false);
             return;
@@ -1502,8 +1098,6 @@ export default function ConversationEngine({ sessionId }) {
         }
       });
     } catch (err) {
-      // Dibatalkan Owner bukan galat: tanpa cabang ini tombol Berhenti memunculkan "⚠️ Error" dan
-      // terlihat seperti aplikasi yang rusak, padahal ia menuruti perintah.
       if (kendali.signal.aborted) {
         console.log('[ConversationEngine] kiriman dihentikan Owner');
       } else {
@@ -1514,74 +1108,35 @@ export default function ConversationEngine({ sessionId }) {
         setIsLoading(false);
       }
     } finally {
-      // Hanya kendali kiriman INI yang dilepas. Kalau Owner sudah mengirim pesan baru, ref sudah
-      // memegang kendali yang lebih baru — menghapusnya di sini akan melucuti tombol Berhenti
-      // untuk kiriman yang justru sedang berjalan.
       if (kendaliKirimRef.current === kendali) kendaliKirimRef.current = null;
     }
 
-    // Reset file attachment
     setAttachedFile(null);
   };
 
-  // =============================================
-  // HANDLE RUN COMMAND (Engineer Autonomous)
-  // Delegasi ke AssistantService.runCommand()
-  // =============================================
   const handleRunCommand = async (cmd, cmdKey) => {
     const assistantService = getAssistantService();
     if (!assistantService) {
-      // Kernel biasanya belum selesai boot (mis. tepat sesudah aplikasi memuat ulang) — bukan kerusakan permanen.
       setEngineerCmdStates(prev => ({ ...prev, [cmdKey]: { status: 'error', output: 'Layanan Assistant belum siap — Kernel masih memuat. Tunggu beberapa detik lalu klik Jalankan lagi.' } }));
       return;
     }
 
     setEngineerCmdStates(prev => ({ ...prev, [cmdKey]: { status: 'running', output: '' } }));
 
-    // T8: satu kalimat perintah → proses utama memecahnya tanpa shell & meminta izin lewat dialog asli.
-    // Riwayat perintah percakapan ini ikut dikirim: perintah identik tidak dijalankan dua kali (prosedur 0.4).
     const { output, success, ditolakOwner, ditolakAturan, ditolakProsedur } =
       await assistantService.runCommand(cmd, riwayatPerintahDariPesan(messages));
 
     setEngineerCmdStates(prev => ({
       ...prev,
-      // DUA ARTI YANG DULU DISATUKAN (Owner, 2026-10-02). `ditolakAturan` dan `ditolakProsedur`
-      // sama-sama dipetakan ke 'blocked', dan layar menuliskan kalimat yang sama untuk keduanya:
-      // "Tidak diizinkan untuk Engineer — … Jalankan sendiri di terminal bila perlu."
-      //
-      // Untuk pengulangan itu BOHONG. `git grep` yang diulang tetap BOLEH; ia hanya sudah dijalankan
-      // tadi. Owner melihat gemboknya dan bertanya "perintah grep itu wajar kan, kenapa dibatasi?" —
-      // pertanyaan yang lahir karena layarnya salah menuduh, bukan karena aturannya salah.
       [cmdKey]: { status: ditolakProsedur ? 'diulang' : ditolakAturan ? 'blocked' : ditolakOwner ? 'skipped' : success ? 'done' : 'error', output }
     }));
 
-    // Ditolak ATURAN (bukan Owner, bukan hasil program): tidak dikirim ke model — alasannya tetap sama tiap kali, dan
-    // live T8 membuktikan model hanya mengusulkan perintah yang sama lagi. Owner melihat alasannya di tombol.
     if (ditolakAturan) return;
 
-    // Ditolak PROSEDUR (perintah identik diulang): justru HARUS sampai ke model — isinya perintah untuk mengganti
-    // pendekatan, bukan sekadar penolakan. Tanpa itu model akan mengulang lagi (live TUGAS-02 2026-09-23).
 
-    // Auto-feed output ke LLM
     setTimeout(() => handleSend(null, pesanKeluaranPerintah(cmd, output)), 300);
   };
 
-  /**
-   * PERINTAH BACA DIJALANKAN SENDIRI (keputusan Owner, 2026-10-01).
-   *
-   * Owner: *"perintah yang krusial saja yang perlu persetujuan saya… ini seperti membuat ribet
-   * dengan hal yang sebenarnya aman."* Sebelum ini satu `git grep` menuntut DUA persetujuan —
-   * tombol Jalankan di sini, lalu dialog asli dari proses utama — jadi lima perintah baca = sepuluh
-   * kali menyetujui, dan Owner menjadi tangan model.
-   *
-   * Aman atau tidak TIDAK ditentukan di sini: layar bertanya ke proses utama (`perintahAman`), dan
-   * proses utama pula yang menegakkannya (`tanpaPersetujuan`). Teks perintahnya berasal dari model,
-   * jadi penilaiannya tidak boleh tinggal di tempat yang sama dengan yang menampilkannya.
-   *
-   * SATU kiriman untuk semua hasilnya. Jalur manual mengirim balik tiap perintah satu per satu;
-   * kalau pola itu dipakai di sini, lima perintah otomatis menjadi lima panggilan model BERBAYAR
-   * tanpa Owner pernah memintanya.
-   */
   const chatOtomatisRef = useRef(null);
   useEffect(() => {
     if (!instansiEngineerRef.current || isLoading) return;
@@ -1589,9 +1144,6 @@ export default function ConversationEngine({ sessionId }) {
     const pesanAkhir = messages[messages.length - 1];
     const idx = messages.length - 1;
 
-    // Pindah percakapan & pemuatan awal: lewati SEKALI, dan tandai perintah yang sudah ada supaya
-    // tidak ikut jalan belakangan. Tanpa ini, membuka riwayat lama akan menjalankan ulang perintah
-    // yang dulu sudah dijawab — Owner tidak meminta apa pun, tiba-tiba terminal bekerja.
     if (chatOtomatisRef.current !== currentChatId) {
       chatOtomatisRef.current = currentChatId;
       if (typeof pesanAkhir?.content === 'string') {
@@ -1616,7 +1168,7 @@ export default function ConversationEngine({ sessionId }) {
         if (cmdOtomatisRef.current.has(cmdKey)) continue;
         const aman = await (window.electronAPI?.engineer?.perintahAman?.(cmd) ?? Promise.resolve(false)).catch(() => false);
         if (batal) return;
-        if (!aman) continue;   // perintah krusial tetap menunggu tombol Jalankan milik Owner
+        if (!aman) continue;
 
         cmdOtomatisRef.current.add(cmdKey);
         setEngineerCmdStates((prev) => ({ ...prev, [cmdKey]: { status: 'running', output: '' } }));
@@ -1626,7 +1178,6 @@ export default function ConversationEngine({ sessionId }) {
           ...prev,
           [cmdKey]: { status: (r.ditolakAturan || r.ditolakProsedur) ? 'blocked' : r.ditolakOwner ? 'skipped' : r.success ? 'done' : 'error', output: r.output },
         }));
-        // Ditolak ATURAN tidak dikirim ke model — alasannya tetap sama tiap kali (lihat jalur manual).
         if (!r.ditolakAturan) hasil.push(pesanKeluaranPerintah(cmd, r.output));
       }
       if (!batal && hasil.length) handleSend(null, hasil.join('\n\n'));
@@ -1635,17 +1186,9 @@ export default function ConversationEngine({ sessionId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, currentChatId, isLoading]);
 
-  // =============================================
-  // HANDLE ROLLBACK (Engineer)
-  // Delegasi ke AssistantService.rollback()
-  // =============================================
   const handleRollback = async () => {
     setRollbackState('loading');
     try {
-      // [FIX 2026-09-23] Dulu tombol ini menyerah dengan dialog "AssistantService tidak tersedia" bila Kernel belum
-      // selesai boot — padahal Undo TIDAK memerlukan service itu: AssistantService.rollback hanya pembungkus tipis
-      // di atas IPC eng:git-rollback. Live 2026-09-23: Owner menekan Undo sesudah aplikasi memuat ulang dan
-      // pemulihan patch jadi mustahil sampai aplikasi dibuka ulang. Kini IPC dipakai langsung bila service belum ada.
       const assistantService = getAssistantService();
       const result = assistantService?.rollback
         ? await assistantService.rollback(lastCheckpoint?.ref)
@@ -1659,7 +1202,6 @@ export default function ConversationEngine({ sessionId }) {
         setMessages(prev => [...prev, { role: 'model', content: `↩️ **Rollback Berhasil!** Semua perubahan patch telah dikembalikan.\n\nOutput: ${result.output || 'selesai.'}` }]);
       } else {
         setRollbackState('error');
-        // Checkpoint kini salinan isi berkas di userData (bukan git stash), jadi saran "git stash pop" menyesatkan.
         setMessages(prev => [...prev, { role: 'model', content: `❌ **Undo gagal:** ${result?.error || 'sebab tidak diketahui'}\n\nIsi asli berkas masih tersimpan di checkpoint \`${lastCheckpoint?.ref || '(tidak diketahui)'}\` (folder \`eng-checkpoint\` di data aplikasi) — tidak ada yang hilang. Berkas yang berubah juga bisa dikembalikan dengan \`git checkout --\` pada berkas itu.` }]);
       }
     } catch (err) {
@@ -1667,15 +1209,9 @@ export default function ConversationEngine({ sessionId }) {
     }
   };
 
-  // =============================================
-  // RENDER
-  // =============================================
   return (
     <div className="flex flex-1 min-w-0 min-h-0 h-full w-full font-body-base text-on-surface">
 
-      {/* Sidebar Riwayat Chat */}
-      {/* Laci di SEMUA lebar (Item 127 Tahap 2) — dulu `md:relative` membuatnya kolom yang mendorong pesan di
-          desktop; di layar 1366px Owner itu 256px yang diambil dari kolom baca. */}
       <div className={`transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-64' : 'w-0 overflow-hidden'} shrink-0 z-[60] absolute left-0 top-0 h-full bg-background border-r border-outline-variant`}>
         <ChatHistory
           onSelectChat={handleLoadChat}
@@ -1686,9 +1222,6 @@ export default function ConversationEngine({ sessionId }) {
         />
       </div>
 
-      {/* Latar penutup laci riwayat — kini di semua lebar, bukan hanya seluler: klik di luar = tutup.
-          Lapisannya: bilah sesi z-50 < latar z-[55] < laci z-[60]. Dulu laci & bilah sama-sama z-50, jadi
-          tombol bilah menembus kepala laci dan tetap terang di atas latar yang diredupkan. */}
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[55]"
@@ -1696,12 +1229,8 @@ export default function ConversationEngine({ sessionId }) {
         />
       )}
 
-      {/* Area Chat Utama */}
       <div className="flex-1 flex flex-col relative min-w-0 min-h-0">
 
-        {/* Session Toolbar */}
-        {/* Bilah sesi kini BARIS biasa, bukan `absolute top-6 left-6` yang melayang di atas pesan (Item 127
-            Tahap 2): dulu awal pesan pertama tertutup tombol-tombol ini — terlihat di tangkapan 1366×720. */}
         <div className="relative z-50 flex flex-wrap items-center gap-2 px-6 pt-4 pb-2 shrink-0">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -1710,13 +1239,8 @@ export default function ConversationEngine({ sessionId }) {
           >
             <span className="material-symbols-outlined text-[20px]">{isSidebarOpen ? 'keyboard_double_arrow_left' : 'menu'}</span>
           </button>
-          {/* Tombol + (Item 129 Tahap G5): menu "Percakapan baru" + konektor workspace ini — komponen sendiri. */}
           <MenuTambah onNewChat={handleNewChat} workspaceId={osState?.workspaceId} />
 
-          {/* Panel Tools — satu tombol untuk RAG + semua tool dari registry, override langsung
-              untuk workspace yang sedang aktif (supaya tidak perlu bolak-balik ke Settings).
-              Bentuk dropdown (bukan satu chip per tool) supaya toolbar tidak penuh walau
-              jumlah tool di folder tools/ terus bertambah. */}
           {osState?.workspaceId && (
             <div className="relative" ref={toolsPanelRef}>
               <button
@@ -1778,8 +1302,6 @@ export default function ConversationEngine({ sessionId }) {
             </div>
           )}
 
-          {/* METERAN JENDELA KONTEKS (Tahap 3a) — di Assistant DAN Engineer, berdiri sendiri per percakapan.
-              Angkanya dari perhitungan yang sama dengan jalur kirim, jadi bukan taksiran terpisah. */}
           {konteksInfo && (
             <div className="relative" ref={panelKonteksRef}>
               <button
@@ -1802,8 +1324,6 @@ export default function ConversationEngine({ sessionId }) {
                     {konteksInfo.rincian}
                   </div>
 
-                  {/* PADATKAN — meringkas pesan lama jadi satu pesan yang TETAP dikirim.
-                      Berbayar (satu panggilan model), jadi biayanya disebut di sini, bukan disembunyikan. */}
                   <button
                     onClick={() => { setPanelKonteks(false); padatkanKonteks(); }}
                     disabled={sedangMemadatkan || !bisaPadatkan}
@@ -1858,8 +1378,6 @@ export default function ConversationEngine({ sessionId }) {
             </div>
           )}
 
-          {/* SIMPAN TEMUAN (Tahap 3b) — hanya muncul bila ada temuan baru yang belum ditulis ke repo.
-              Klik Owner inilah persetujuan menulis berkasnya; tidak ada penulisan tanpa tindakan Owner. */}
           {isEngineerWorkspace && temuanBelumSimpan.length > 0 && (
             <button
               onClick={simpanTemuan}
@@ -1871,10 +1389,6 @@ export default function ConversationEngine({ sessionId }) {
             </button>
           )}
 
-          {/* SIMPAN PENGETAHUAN (Brain 1, 2 Oktober) — tombol terpisah dari temuan karena isinya
-              berbeda jenis: temuan = cacat yang ditemukan, pengetahuan = pelajaran/keputusan yang
-              harus diingat Engineer lintas sesi. Keduanya sama-sama menunggu klik Owner; tak ada
-              penulisan tanpa tindakan Owner. */}
           {isEngineerWorkspace && pengetahuanBelumSimpan.length > 0 && (
             <button
               onClick={simpanPengetahuan}
@@ -1886,14 +1400,10 @@ export default function ConversationEngine({ sessionId }) {
             </button>
           )}
 
-          {/* Riwayat konversi Word → PDF (cache, Item 58) — hanya di Assistant, satu-satunya
-              workspace yang bisa memicu konversi ("ubah word ke pdf dokumen ini"). */}
           {osState?.workspaceId && !isEngineerWorkspace && workspaceManager?.activeWorkspaceId === 'ws-assistant' && (
             <RiwayatKonversi />
           )}
 
-          {/* Pil override tingkat model — hanya untuk jalur Assistant. Engineer sengaja tidak
-              ditampilkan karena memakai model utama sendiri, di luar sistem tiering (roadmap §3). */}
           {osState?.workspaceId && !isEngineerWorkspace && (
             <div className="relative" ref={tierPanelRef}>
               <button
@@ -1941,11 +1451,7 @@ export default function ConversationEngine({ sessionId }) {
               )}
             </div>
           )}
-          {/* Pil kanan — Memory · Monitor · Luaskan. Dulu kelompok `absolute top-3 right-5` yang melayang di
-              area chat, di baris KEDUA yang terpisah dari tombol kiri; kini ujung kanan bilah sesi yang sama
-              (Item 127 Tahap 2): satu baris tombol, rata, dan tidak lagi menempel di atas pesan pertama. */}
           <div className="ml-auto flex items-center gap-2">
-            {/* Toggle Memory Context Pill */}
             <button
               type="button"
               onClick={() => setIsMemoryPanelOpen(!isMemoryPanelOpen)}
@@ -1967,7 +1473,6 @@ export default function ConversationEngine({ sessionId }) {
               )}
             </button>
 
-            {/* Toggle MAEF Monitor Pill */}
             <button
               type="button"
               onClick={handleToggleMaefMonitor}
@@ -1982,7 +1487,6 @@ export default function ConversationEngine({ sessionId }) {
               <span className="hidden sm:inline">Monitor</span>
             </button>
 
-            {/* One-Click Minimize All / Fullscreen Chat */}
             {(isMemoryPanelOpen || (osState?.layout?.right_workbench || []).length > 0) && (
               <button
                 type="button"
@@ -1996,7 +1500,6 @@ export default function ConversationEngine({ sessionId }) {
           </div>
         </div>
 
-        {/* Engineer Rollback Banner */}
         {lastCheckpoint && (
           <div className="mx-3 mt-2 mb-0 flex items-center gap-2 px-3 py-2 rounded-xl border border-amber-500/30 bg-amber-950/20 text-amber-300 text-xs z-40 shrink-0">
             <span className="material-symbols-outlined text-[15px] text-amber-400 shrink-0">history</span>
@@ -2031,21 +1534,10 @@ export default function ConversationEngine({ sessionId }) {
           </div>
         )}
 
-        {/* Chat + Memory Context Panel */}
         <div className="flex-1 flex flex-col md:flex-row relative min-h-0 min-w-0">
           <div className="flex-1 flex flex-col relative overflow-hidden pt-4 min-h-0 min-w-0">
 
             <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto p-3 md:p-4 custom-scrollbar relative z-10">
-              {/* KOLOM BACA (Item 127 Tahap 2): pesan dibatasi lebar yang SAMA dengan kotak ketik dan ditengahkan —
-                  pola standar aplikasi asisten. Wadah gulirnya tetap selebar area chat, jadi bilah gulir tetap di
-                  tepi; hanya isinya yang dikolomkan.
-                  LEBARNYA 68rem (1088px) — KEPUTUSAN OWNER 19 Okt, yang sengaja menimpa pedoman tipografi. K4 sempat
-                  mempersempitnya ke 38rem (608px, ±72 karakter per baris, dalam batas nyaman 45–75); Owner menilainya
-                  di layarnya sendiri: "justru harus diperlebar… space sisa kanan kirinya sangat lebar sekali… panel
-                  jangan dilebarkan, tetapi isinya yang dipadatkan. Tujuannya saya mendapatkan layar interaksi yang
-                  luas pada chat." Ruang interaksi didahulukan di atas panjang baris: di 1088px satu baris ±134
-                  karakter (Inter 16px, 7,85px/huruf). "Dipadatkan" = bantalan gelembung px-4 py-3, bukan px-5 py-4.
-                  Kartu lampiran, kartu konfirmasi web, dan kotak ketik memakai lebar yang SAMA (dijaga uji). */}
               <div className="max-w-[68rem] mx-auto w-full space-y-3">
 
               {messages.length === 0 && (
@@ -2057,29 +1549,17 @@ export default function ConversationEngine({ sessionId }) {
 
               {messages.map((m, idx) => {
                 const parsed = parseThinkingContent(m.content);
-                // Ada nalar → jawaban = bagian di luar nalar (kosong selama nalar masih ditulis), jangan jatuh ke teks mentah.
                 const displayText = parsed.thinking ? parsed.answer : (parsed.answer || m.content || '');
 
                 return (
                   <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    {/* Pesan pengguna = gelembung (≤75%); jawaban model = selebar kolom baca — pola standar
-                        aplikasi asisten (Item 127 Tahap 2). Dulu keduanya ≤75%, jadi jawaban hanya 576 dari 768px.
-                        Jawaban model = KARTU SETTINGS (Owner 20 Okt, menunjuk halaman Settings: "kolom jawaban sama
-                        seperti kolom untuk tulisan AI Model Management… warna dalam bingkai sama persis"). Kelasnya
-                        SAMA dengan kartu itu — glass-panel (kayu gelap 72% + kaca buram) · rim-light · rounded-xl ·
-                        p-4 md:p-gutter · garis outline-variant — dan uji-kerangka-chat menuntut keduanya tetap sama.
-                        Riwayat: tanpa kotak (19 Okt, gambar rujukan) → bingkai hampir hitam 80% (20 Okt pagi) → ini. */}
                     <div className={`relative group ${m.role === 'user' ? 'max-w-[85%] lg:max-w-[75%]' : 'w-full'} ${m.role === 'user' ? 'rounded-2xl px-4 py-3 bg-primary-container/20 border border-primary/30 min-w-0 [overflow-wrap:anywhere]' : 'glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant overflow-hidden min-w-0'}`}>
                       <div className="text-body-base leading-relaxed">
-                        {/* Langkah penting — kueri yang dicari & rencana Coordinator, baris tipis tanpa lipat di atas blok
-                            Berpikir (ADR-0021 §2.3; Varian B pilihan Owner 29 Okt 2026, langkahPenting.js). Dulu gelembung tak
-                            menggambar langkah proses sama sekali; sisanya tetap di panel Monitor. */}
                         {m.role !== 'user' && langkahPenting(m.steps).length > 0 && (
                           <div className="mb-3 text-body-sm text-on-surface-variant leading-relaxed [overflow-wrap:anywhere]">
                             {langkahPenting(m.steps).map((baris, i) => <div key={i}>{baris}</div>)}
                           </div>
                         )}
-                        {/* Nalar AI — blok lipat di atas jawaban (gaya DeepSeek), terbuka secara bawaan demi transparansi */}
                         {parsed.thinking && (
                           <details open className="mb-3 group/nalar">
                             <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden inline-flex items-center gap-1.5 text-body-sm text-on-surface-variant hover:text-on-surface select-none transition-colors">
@@ -2090,7 +1570,6 @@ export default function ConversationEngine({ sessionId }) {
                                   : m.lamaBerpikir ? `Berpikir selama ${m.lamaBerpikir} detik`
                                   : m.lamaRespons ? `Proses berpikir · respons ${m.lamaRespons} detik` : 'Proses berpikir'}
                               </span>
-                              {/* chevron_right ada di subset font ikon (daftar-ikon.txt); expand_more tidak → dulu tampil sebagai kata */}
                               <span className="material-symbols-outlined text-[16px] transition-transform group-open/nalar:rotate-90">chevron_right</span>
                             </summary>
                             <div className="mt-2 ml-2 pl-3 border-l-2 border-outline-variant text-body-sm text-on-surface-variant leading-relaxed whitespace-pre-wrap">
@@ -2108,13 +1587,8 @@ export default function ConversationEngine({ sessionId }) {
                           </details>
                         )}
 
-                        {/* Render konten dengan parser marker Engineer */}
                         {(() => {
                           if (!displayText) return null;
-                          // Keluaran terminal Engineer (ProsedurEngineer: "[TERMINAL OUTPUT for: <perintah>]\n<keluaran>")
-                          // dikirim sebagai pesan pengguna, tetapi isinya keluaran MESIN — tampil sebagai kotak kode, bukan
-                          // prosa. Dulu teks biasa: baris panjang tanpa spasi menjebol tepi gelembung (Owner, 19 Okt).
-                          // Diurai oleh pengurai yang SAMA dengan riwayat perintah — satu sumber bentuk pesan.
                           const terminal = m.role === 'user' && riwayatPerintahDariPesan([{ content: displayText }])[0];
                           if (terminal) return <KotakKode isi={terminal.keluaran} label="terminal" perintah={terminal.perintah} tinggiMaks />;
                           const MARKER_RE = /(\[MAMET_CMD:[^\]]+\]|\[MAMET_CRITICAL:[^\]]*\]|\[OS EXECUTION REPORT\]|\[SYSTEM:[^\]]+\])/g;
@@ -2151,8 +1625,6 @@ export default function ConversationEngine({ sessionId }) {
                                       <span>Tidak diizinkan untuk Engineer — {String(state.output || '').replace(/^TIDAK DIJALANKAN:\s*/, '')}. Jalankan sendiri di terminal bila perlu.</span>
                                     </span>
                                   ) : state.status === 'diulang' ? (
-                                    /* BUKAN larangan — perintahnya boleh, cuma sudah dijalankan tadi. Nadanya netral
-                                       dan tidak menyuruh Owner ke terminal: hasilnya sudah ada di layar ini. */
                                     <span className="flex items-start gap-1.5 text-xs text-on-surface-variant" title={state.output}>
                                       <span className="material-symbols-outlined text-[14px]">history</span>
                                       <span>Sudah dijalankan di percakapan ini — hasilnya ada di atas. Perintahnya boleh; mengulanginya tidak akan memberi hasil berbeda.</span>
@@ -2199,8 +1671,6 @@ export default function ConversationEngine({ sessionId }) {
                               );
                             }
 
-                            // Jawaban model = Markdown yang dirender; pesan pengguna tetap apa adanya (yang diketik Owner
-                            // tampil persis seperti diketik, termasuk bintang & garis tegaknya).
                             if (m.role !== 'user') return <TeksMarkdown key={i} teks={part} />;
                             return <span key={i} className="whitespace-pre-wrap">{part}</span>;
                           });
@@ -2209,7 +1679,6 @@ export default function ConversationEngine({ sessionId }) {
                         {m.isStreaming && parsed.isThinkingComplete && <span className="animate-pulse text-primary"> ▍</span>}
                       </div>
 
-                      {/* Critical Backend UI: Tools Used Badges */}
                       {(() => {
                         const tools = m.metadata?.toolsUsed || m.toolsUsed || [];
                         if (!Array.isArray(tools) || tools.length === 0) return null;
@@ -2229,14 +1698,10 @@ export default function ConversationEngine({ sessionId }) {
                         );
                       })()}
 
-                      {/* Hasil tool word_to_pdf: tombol buka berkasnya. Tanpa ini balasan hanya
-                          menulis path sebagai teks dan Owner harus mencari PDF-nya sendiri. */}
                       {(() => {
                         const execution = m.metadata?.toolExecution;
                         const hasil = execution?.name === 'word_to_pdf' ? execution.result : null;
 
-                        // Dikerjakan laptop dari versi web (Item 57): PDF ada di Supabase Storage,
-                        // bukan di disk perangkat ini — jadi satu tombol unduh lewat signed URL.
                         const remote = execution?.name === 'word_to_pdf' ? execution.remote : null;
                         if (remote?.outputPath) {
                           const unduh = async () => {
@@ -2267,9 +1732,6 @@ export default function ConversationEngine({ sessionId }) {
                           try {
                             res = await window.electronAPI.openConvertedPdf(hasil.output, mode);
                           } catch (err) {
-                            // "No handler registered" = proses utama Electron masih versi lama. Terjadi
-                            // bila jendela hanya dimuat ulang (Ctrl+R): preload & UI ikut baru, main.cjs
-                            // tidak. Dulu error ini hanya muncul di konsol dan tombolnya tampak mati.
                             const basi = /No handler registered/i.test(err?.message || '');
                             res = {
                               ok: false,
@@ -2294,7 +1756,6 @@ export default function ConversationEngine({ sessionId }) {
                         );
                       })()}
 
-                      {/* Critical Backend UI: Grounding Sources Chips */}
                       {(() => {
                         const sources = m.metadata?.groundingSources || m.groundingSources || [];
                         if (!Array.isArray(sources) || sources.length === 0) return null;
@@ -2327,7 +1788,6 @@ export default function ConversationEngine({ sessionId }) {
                         );
                       })()}
 
-                      {/* Critical Backend UI: Tool Execution Collapsible Accordion */}
                       {(() => {
                         const execution = m.metadata?.toolExecution || m.toolExecution;
                         if (!execution) return null;
@@ -2347,7 +1807,6 @@ export default function ConversationEngine({ sessionId }) {
                         );
                       })()}
 
-                      {/* Confirmation Buttons */}
                       {m.isConfirmationRequest && (
                         <div className="mt-4 flex items-center gap-3 border-t border-outline-variant pt-3">
                           <button
@@ -2377,7 +1836,6 @@ export default function ConversationEngine({ sessionId }) {
                         </div>
                       )}
 
-                      {/* Reasoning Block Detail */}
                       {m.isReasoningBlock && m.reasoningReport && (
                         <div className="mt-3 border-t border-outline-variant pt-3">
                           <button
@@ -2393,14 +1851,12 @@ export default function ConversationEngine({ sessionId }) {
                         </div>
                       )}
 
-                      {/* Patch Proposal — Apply Button */}
                       {m.hasPatchProposal && (
                         <div className="mt-4 flex items-center gap-3 border-t border-primary/20 pt-3">
                           <button
                             onClick={() => {
                               const eventBus = kernel.serviceManager?.get('EventBus');
                               if (eventBus) {
-                                // Berkas target & usulan yang Owner setujui ikut dikirim (dulu hanya pesan asli → "Mohon diperjelas").
                                 eventBus.emit('Engineer:GeneratePatch', tugasDariUsulan({ pesanAsli: m.patchOriginalTask, jawaban: m.content }));
                                 setMessages(prev => { const next = [...prev]; next[idx] = { ...next[idx], hasPatchProposal: false, content: next[idx].content + '\n\n_⚙️ Engineer patch pipeline dimulai — Reasoning Lock aktif..._' }; return next; });
                               }
@@ -2413,7 +1869,6 @@ export default function ConversationEngine({ sessionId }) {
                         </div>
                       )}
 
-                      {/* 👍/👎 (Item 126) — hanya jawaban model selesai yang membawa traceId (lihat TombolUmpanBalik.jsx). */}
                       {bolehDinilai(m) && (
                         <TombolUmpanBalik
                           nilai={m.umpanBalik || 0}
@@ -2422,7 +1877,6 @@ export default function ConversationEngine({ sessionId }) {
                         />
                       )}
 
-                      {/* Copy Button */}
                       {m.role === 'model' && !m.isStreaming && displayText && (
                         <button
                           onClick={() => handleCopy(displayText, idx)}
@@ -2452,8 +1906,6 @@ export default function ConversationEngine({ sessionId }) {
               </div>
             </div>
 
-            {/* Input Area — tanpa gradien latar: dulu `from-background` (warna latar lama) memudar ke atas; di atas dinding
-                ruangan ia menjadi pita gelap. Area ini ada di alur (bukan melayang di atas pesan), jadi tak perlu peredam. */}
             <div className="px-3 pt-2 pb-2 z-10 flex flex-col items-center w-full">
               {attachedFile && (
                 <div className="w-full max-w-[68rem] mb-2 flex items-center justify-between bg-surface-container border border-outline-variant rounded-lg px-3 py-2 animate-in fade-in slide-in-from-bottom-2">
@@ -2467,7 +1919,6 @@ export default function ConversationEngine({ sessionId }) {
                 </div>
               )}
 
-              {/* PR#9: TIER 3 WEB COMPARISON CONFIRMATION CARD */}
               {webConfirmation && (
                 <div className="w-full max-w-[68rem] mb-2.5 p-3.5 bg-surface-container-high/95 backdrop-blur border border-primary/40 rounded-2xl shadow-xl animate-in fade-in slide-in-from-bottom-2 z-20">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -2518,14 +1969,12 @@ export default function ConversationEngine({ sessionId }) {
               )}
 
               <form onSubmit={handleSend} className="w-full max-w-[68rem] relative flex items-center gap-1.5 bg-surface-container-low border border-outline-variant rounded-2xl p-1.5 focus-within:border-primary transition-all shadow-lg pulse-focus">
-                {/* 📁 Folder kerja — hanya Assistant (Item 85) */}
                 {workspaceManager?.activeWorkspaceId === 'ws-assistant' && (
                   <div className="shrink-0 ml-1">
                     <FolderKerjaTombol />
                   </div>
                 )}
 
-                {/* Akar repo — hanya Engineer (Tahap 5). Di aplikasi terpasang, tanpa ini alat repo mati. */}
                 {workspaceManager?.activeWorkspaceId === 'ws-engineer' && (
                   <div className="shrink-0 ml-1">
                     <AkarRepoTombol />
@@ -2541,16 +1990,6 @@ export default function ConversationEngine({ sessionId }) {
                   className="flex-1 max-h-40 min-h-[38px] bg-transparent resize-none py-2 px-3 text-sm text-on-surface placeholder-on-surface-variant focus:outline-none custom-scrollbar overflow-y-auto"
                   rows="1"
                 />
-                {/* Tombol lampiran juga di Assistant: tool word_to_pdf ("ubah word ke pdf dokumen ini")
-                    butuh berkas terlampir, dan tombol folder di kiri hanya memilih FOLDER, bukan berkas.
-                    `e.target.value = ''` supaya berkas yang sama bisa dipilih lagi setelah dilepas. */}
-                {/* ENGINEER IKUT PUNYA LAMPIRAN (keputusan Owner, 2026-10-02).
-                    Owner: *"menempelkan berkas maupun gambar ke engineer belum ada, karena itu sebagai
-                    MATA untuk engineer terhadap aplikasi yang dikerjakannya menyangkut tata letak, dan
-                    dokumen yang bisa ditempel agar engineer tahu instruksi secara teknis."*
-                    Engineer sudah bisa MEMBACA kode sejak 1 Okt; ini yang membuatnya bisa MELIHAT hasilnya.
-                    Jalur kliennya sudah generik (buildFileData → payload `file`), jadi yang kurang hanya
-                    tombol ini — dan satu nama medan di server yang tidak pernah cocok (lihat request_parser). */}
                 {(isEngineerWorkspace || workspaceManager?.activeWorkspaceId === 'ws-lite' || workspaceManager?.activeWorkspaceId === 'ws-assistant') && (
                   <>
                     <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => { if (e.target.files?.[0]) setAttachedFile(e.target.files[0]); e.target.value = ''; }} />
@@ -2559,11 +1998,6 @@ export default function ConversationEngine({ sessionId }) {
                     </button>
                   </>
                 )}
-                {/* Satu tempat, dua watak: selama menunggu, tombol Kirim BERGANTI jadi Berhenti.
-                    Tombol berhenti terpisah akan menambah satu sasaran klik yang mati 99% waktu, dan
-                    pada saat dibutuhkan justru tertukar dengan Kirim yang sedang mati.
-                    Ikon `cancel` dipakai karena `stop` TIDAK ada di subset font — nama di luar subset
-                    tampil sebagai tulisan mentah (sudah tiga kali terjadi, dijaga uji-ikon-subset). */}
                 {isLoading ? (
                   <button type="button" onClick={hentikanKirim} title="Berhenti menunggu jawaban" className="p-2.5 mr-0.5 rounded-xl bg-error hover:opacity-90 text-on-error transition-all shadow-md shrink-0 cursor-pointer">
                     <span className="material-symbols-outlined text-[18px]">cancel</span>
@@ -2579,13 +2013,10 @@ export default function ConversationEngine({ sessionId }) {
               </div>
             </div>
 
-            {/* Atmospheric Glow */}
             <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-primary/5 blur-[120px] rounded-full pointer-events-none z-0"></div>
             <div className="absolute -top-32 -left-32 w-96 h-96 bg-secondary/5 blur-[120px] rounded-full pointer-events-none z-0"></div>
           </div>
 
-          {/* Memory Context Panel — LACI KANAN yang menutupi (Item 127 Tahap 2). Dulu kolom 320px yang terbuka
-              bawaan dan mendorong pesan; kini dibuka saat dibutuhkan lewat pil "Memory" di bilah atas chat. */}
           {isMemoryPanelOpen && (
             <div className="absolute right-0 top-0 h-full z-40 shadow-2xl">
             <MemoryContextPanel

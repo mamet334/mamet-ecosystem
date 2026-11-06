@@ -7,13 +7,11 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // 1. Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // 2. Validasi JWT Token (Security Layer)
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized: Missing Authorization header' }), {
@@ -31,7 +29,6 @@ serve(async (req) => {
       throw new Error('Missing Supabase environment variables');
     }
 
-    // Gunakan Anon Client untuk memvalidasi token pengguna
     const anonClient = createClient(supabaseUrl, supabaseAnonKey);
     const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
     
@@ -43,10 +40,8 @@ serve(async (req) => {
       });
     }
 
-    // 3. Setup Supabase Client dengan Service Role (Bypass RLS untuk background job)
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 4. Ambil semua monitor yang berstatus aktif
     console.log(`Health Checker: Request initiated by User ID: ${user.id}`);
     const { data: monitors, error: fetchError } = await supabase
       .from('monitors')
@@ -60,31 +55,27 @@ serve(async (req) => {
       });
     }
 
-    // 4. Lakukan Ping ke semua URL secara Paralel (Promise.all)
     const checkResults = await Promise.all(monitors.map(async (monitor) => {
       const startTime = Date.now();
       let statusCode = null;
       let errorText = null;
 
       try {
-        // Set Timeout 5 detik agar tidak menggantung (Hanging)
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
 
         const response = await fetch(monitor.url, {
-          method: 'OPTIONS', // Gunakan OPTIONS agar lebih ringan (hanya cek ketersediaan HTTP)
+          method: 'OPTIONS',
           signal: controller.signal
         });
 
         clearTimeout(timeoutId);
         statusCode = response.status;
         
-        // Anggap error jika status code >= 500
         if (statusCode >= 500) {
            errorText = `HTTP Error: ${statusCode}`;
         }
       } catch (err: any) {
-        // Jika AbortError, berarti Timeout
         if (err.name === 'AbortError') {
           errorText = 'TIMEOUT: Server tidak merespons dalam 5 detik.';
         } else {
@@ -102,7 +93,6 @@ serve(async (req) => {
       };
     }));
 
-    // 6. Simpan hasil ping ke tabel 'checks'
     console.log(`Health Checker: Menyimpan ${checkResults.length} hasil ping ke database...`);
     const { error: insertError } = await supabase
       .from('checks')
@@ -110,8 +100,6 @@ serve(async (req) => {
 
     if (insertError) throw insertError;
 
-    // --- LOGIKA ALERTING (TELEGRAM BOT) ---
-    // Jika ada error pada pengecekan, catat ke tabel 'incidents' dan kirim pesan ke Telegram
     const telegramToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
     const telegramChatId = Deno.env.get('TELEGRAM_CHAT_ID');
 
@@ -119,21 +107,17 @@ serve(async (req) => {
       if (result.error) {
         console.log(`Terdeteksi Error pada Monitor ${result.monitor_id}: ${result.error}`);
         
-        // 1. Simpan ke tabel incidents
         await supabase.from('incidents').insert({
           monitor_id: result.monitor_id,
           status: 'DOWN'
         });
 
-        // 2. Kirim Pesan ke Telegram
         if (telegramToken && telegramChatId) {
           try {
-            // Cari data monitor asli dari array yang sudah kita ambil di atas
             const brokenMonitor = monitors.find(m => m.id === result.monitor_id);
             const appName = brokenMonitor ? brokenMonitor.name : 'Unknown App';
             const appUrl = brokenMonitor ? brokenMonitor.url : 'Unknown URL';
             
-            // Format waktu ke Waktu Indonesia Barat (WIB)
             const timeOptions = { timeZone: 'Asia/Jakarta', dateStyle: 'full', timeStyle: 'medium' };
             const timeString = new Date().toLocaleString('id-ID', timeOptions);
 

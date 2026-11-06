@@ -10,15 +10,8 @@ export const processMemoryWriteQueue = async (
   supabaseKey: string,
   mode: string,
   workspaceId?: string | null,
-  // Diteruskan apa adanya ke saveFactDirectly supaya memori yang baru ditulis
-  // punya embedding. Tanpa ini memori tetap tersimpan, tapi hanya bisa
-  // ditemukan lewat pencarian SQL — bukan pencarian makna (Item 46).
   rctx?: any
 ) => {
-  // Pesan HASIL MESIN (T8, 2026-09-22) — hasil alat folder (isi berkas) & keluaran terminal Engineer — bukan ucapan
-  // pengguna: tidak dinilai sebagai fakta dan TIDAK dicatat di memory_audit_log (dulu 30 pesan hasil folder tersimpan
-  // utuh di sana, s.d. 12 ribu huruf isi berkas). Dicek sebelum apa pun ditulis; klien baru pun sudah tak mengirimnya.
-  // Item 129: data tangkapan konektor (tulisan orang di internet) juga bukan ucapan pengguna.
   if (/^\s*\[(TERMINAL OUTPUT for: |HASIL ALAT FOLDER\]|HASIL ALAT KONEKTOR\])/.test(String(userMessage || ''))) return;
 
   const supabase = createClient(supabaseUrl, supabaseKey);
@@ -41,7 +34,6 @@ export const processMemoryWriteQueue = async (
   };
 
   try {
-    // 0. MAEF POLICY GATE (GAP-005 Security Hardening)
     const policyDecision = PolicyEngine.evaluate('WRITE_MEMORY', {
       mode: mode as any,
       evidenceCount: 0,
@@ -55,16 +47,13 @@ export const processMemoryWriteQueue = async (
        return;
     }
 
-    // 1. FACT DETECTOR GATE
     const detectorResult = detectFact(userMessage);
 
-    // MEMORY WRITE RULE (CRITICAL): ONLY allowed if intent == FACT and memory_eligible == true
     if (!detectorResult.memory_eligible || detectorResult.intent !== 'FACT') {
        await logAudit('SKIPPED', detectorResult.intent, detectorResult.score, detectorResult.reason);
        return;
     }
 
-    // SKIP WRITE FOR EPHEMERAL EVENTS
     if (detectorResult.memory_type === 'EVENT') {
        await logAudit('SKIPPED', 'FACT', detectorResult.score, 'Event detected, ephemeral memory skipped');
        return;
@@ -72,15 +61,13 @@ export const processMemoryWriteQueue = async (
 
     const msgLower = userMessage.trim().toLowerCase();
     
-    // Defense-in-depth: validasi format UUID untuk workspaceId
     const validWorkspaceId = (workspaceId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(workspaceId).trim()))
       ? String(workspaceId).trim()
       : null;
 
     let extractedFact = userMessage.trim();
-    let memoryType = detectorResult.memory_type || detectorResult.tier; // Uses Semantic Types or fallback to T1, T2, T3
+    let memoryType = detectorResult.memory_type || detectorResult.tier;
 
-    // 2.5. STATE TRANSITION FOR EXCLUSIVE TYPES
     if (memoryType === 'LOCATION' || memoryType === 'JOB') {
         let updateQuery = supabase
           .from('user_memories')
@@ -97,7 +84,6 @@ export const processMemoryWriteQueue = async (
         await updateQuery;
     }
 
-    // 2. DEDUPLICATION LAYER
     const sanitizedFact = (extractedFact || '').replace(/[%_"'(),\\]/g, ' ').replace(/\s+/g, ' ').trim();
     let existingQuery = supabase
       .from('user_memories')
@@ -123,7 +109,6 @@ export const processMemoryWriteQueue = async (
        return;
     }
 
-    // 3. INSERT FACT BARU
     await saveFactDirectly({
       user_id: userId,
       content: extractedFact,

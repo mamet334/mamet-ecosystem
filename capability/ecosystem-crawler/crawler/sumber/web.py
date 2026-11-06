@@ -14,12 +14,10 @@ from crawler.kanal import AksesWeb, DilarangRobots, Terblokir
 
 from .kaskus import url_kaskus
 
-
 def ekstrak(html: str, url: str) -> dict:
     """Judul, teks, tanggal, penulis, dan nama situs dari halaman (trafilatura)."""
     doc = trafilatura.bare_extraction(html, url=url, with_metadata=True, include_comments=False)
     return doc.as_dict() if doc is not None else {}
-
 
 class Web(Sumber):
     id = "web"

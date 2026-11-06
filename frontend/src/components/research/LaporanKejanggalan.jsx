@@ -3,10 +3,8 @@ import Ikon from '../Ikon';
 import { uraiBaris } from '../../core/runtime/services/dataTabelAsnOcr.js';
 import { susunLaporanJanggal, lembarExcelOpd, lembarRingkasan, namaLembar, JENIS, TINGKAT } from '../../core/runtime/services/dataTabelAsnJanggal.js';
 
-// LAPORAN KEJANGGALAN PER OPD (Item 92 Tahap 4): diperiksa kode dari data tersimpan (berkas aktif), tanpa AI.
-// Unduh Excel = berkas dibuat di perangkat pengguna, siap dikirim balik ke OPD.
 
-const MAKS_TAMPIL = 300; // baris per OPD di layar; lengkapnya di Excel
+const MAKS_TAMPIL = 300;
 const LEBAR = [5, 16, 44, 22, 10, 34, 21, 60];
 const hariIni = () => new Date().toISOString().slice(0, 10);
 const aman = (s) => String(s).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();

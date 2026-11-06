@@ -1,26 +1,6 @@
-/**
- * Evidence Validator — Mamet AI Knowledge Operating System
- * =========================================================
- * Komponen ini adalah "hakim" yang memutuskan apakah pipeline
- * boleh memanggil LLM atau harus STOP.
- *
- * Filosofi (dari tujuan universal.txt):
- * - Jika evidence == 0 → STOP, RETURN "EVIDENCE NOT FOUND"
- * - LLM tidak boleh mengisi kekosongan dengan pengetahuan bebas
- * - Setiap jawaban harus bisa ditelusuri ke evidence yang digunakan
- */
 
 import { EvidenceReport, EvidenceInput } from './types.ts';
 
-/**
- * Fungsi utama: validasi apakah evidence cukup untuk memanggil LLM.
- *
- * Rules:
- * 1. Mode ENGINEER + totalEvidence === 0 → BLOCKED (hard stop)
- * 2. Mode ENGINEER + totalEvidence > 0 + (brain1 === 0 && brain2 === 0) → WARNING
- * 3. Mode AI/LITE + ragCount === 0 + memoryCount === 0 → WARNING (LLM boleh menjawab tapi diberi tahu)
- * 4. Semua kasus lain → PASSED
- */
 export function validateEvidence(input: EvidenceInput): EvidenceReport {
   const {
     requestId = `req_${Date.now()}`,
@@ -46,28 +26,24 @@ export function validateEvidence(input: EvidenceInput): EvidenceReport {
   let blockReason: string | null = null;
   let isValid = true;
 
-  // === RULE 1: Engineer + zero evidence → HARD BLOCK ===
   if (isEngineer && totalEvidence === 0) {
     verdict = 'BLOCKED';
     blockReason = 'EVIDENCE_EMPTY: Engineer mode membutuhkan minimal 1 evidence runtime. Brain 1, Brain 2, RAG, dan Memory semua kosong.';
     isValid = false;
   }
 
-  // === RULE 2: Engineer + ada evidence tapi Brain kosong ===
   else if (isEngineer && brain1Count === 0 && brain2Count === 0 && (ragCount > 0 || memoryCount > 0)) {
     verdict = 'WARNING';
-    blockReason = null; // Tidak diblok, tapi diberi warning
+    blockReason = null;
     isValid = true;
   }
 
-  // === RULE 3: Non-Engineer + zero evidence (WARNING only) ===
   else if (!isEngineer && ragCount === 0 && memoryCount === 0) {
     verdict = 'WARNING';
-    blockReason = null; // LLM boleh menjawab dari pengetahuan umum, tapi diberi tahu
+    blockReason = null;
     isValid = true;
   }
 
-  // Bangun teks verdict untuk diinjeksikan ke system prompt
   const gateVerdictText = buildGateVerdictText({
     verdict,
     blockReason,
@@ -99,10 +75,6 @@ export function validateEvidence(input: EvidenceInput): EvidenceReport {
   };
 }
 
-/**
- * Bangun teks yang diinjeksikan ke system prompt LLM.
- * Ini yang membuat LLM "tahu" status evidencenya sebelum menjawab.
- */
 function buildGateVerdictText(params: {
   verdict: string;
   blockReason: string | null;
@@ -150,7 +122,6 @@ function buildGateVerdictText(params: {
       text += `CATATAN: RAG dan Memory kosong. Jawab dari pengetahuan umum dan sampaikan bahwa tidak ada data spesifik project ditemukan.\n`;
     }
   } else {
-    // PASSED
     text += `STATUS: PASSED — Evidence valid.\n`;
     if (brain1Ids.length > 0) text += `Brain1 Loaded: ${brain1Ids.slice(0, 3).join(', ')}${brain1Ids.length > 3 ? ` (+${brain1Ids.length - 3} more)` : ''}\n`;
     if (brain2Tasks.length > 0) text += `Brain2 Tasks: ${brain2Tasks.join(', ')}\n`;
@@ -164,9 +135,6 @@ function buildGateVerdictText(params: {
   return text;
 }
 
-/**
- * Buat respons terstruktur untuk BLOCKED request (tidak perlu kirim ke LLM).
- */
 export function buildBlockedResponse(report: EvidenceReport, userMessage: string): string {
   return `[MAMET EVIDENCE GATE — BLOCKED]
 

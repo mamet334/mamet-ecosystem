@@ -5,7 +5,6 @@ export default {
   description: 'Mengekstrak teks subtitle (Closed Captions) dari video YouTube berdasarkan URL, lalu merangkum isi videonya secara mendetail.',
   execute: async ({ task, runLLM, env }) => {
     try {
-      // 1. Ekstrak URL YouTube dari teks tugas menggunakan Regex
       const urlRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
       const match = task.match(urlRegex);
       
@@ -14,7 +13,6 @@ export default {
       let videoId = "manual";
 
       if (!match) {
-        // Jika tidak ada URL tapi teksnya lumayan panjang, asumsikan user menempelkan transkrip manual
         if (task.length > 50) {
           cleanedText = task.substring(0, 30000);
         } else {
@@ -24,23 +22,19 @@ export default {
         videoId = match[1];
         videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
         
-        // 2. Ambil Transkrip Teks menggunakan package youtube-transcript
         let transcriptText = "";
         try {
           const transcript = await YoutubeTranscript.fetchTranscript(videoId);
           transcriptText = transcript.map(t => t.text).join(' ');
         } catch (err) {
           console.log("youtube-transcript failed, trying Apify fallback...", err.message);
-          // Dari env eksekusi, BUKAN Deno.env: execution_handler hanya mengisinya untuk akun pemilik (K5, TM-003).
           const apifyToken = env?.APIFY_API_TOKEN;
           
           if (apifyToken) {
             try {
-              // Timeout 50 detik agar tidak melebihi batas Edge Function
               const controller = new AbortController();
               const timeout = setTimeout(() => controller.abort(), 50000);
               
-              // Menggunakan Actor "supreme_coder/youtube-transcript-scraper" di Apify
               const apifyRes = await fetch(`https://api.apify.com/v2/acts/supreme_coder~youtube-transcript-scraper/run-sync-get-dataset-items?token=${apifyToken}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -102,8 +96,6 @@ export default {
         const rawText = transcriptText.replace(/\[.*?\]/g, ' ');
         const taskLower = task.toLowerCase();
         
-        // Mode Pintar: Potong teks berdasarkan instruksi untuk mengakali limit token (TPM)
-        // Groq Free Tier = 6000 TPM. Kita batasi transkrip maks 4000 karakter (~1000 token) untuk keamanan penuh.
         if (taskLower.includes('depan') || taskLower.includes('awal')) {
           cleanedText = rawText.substring(0, 4000);
         } else if (taskLower.includes('tengah')) {
@@ -115,7 +107,6 @@ export default {
         } else if (taskLower.includes('seluruhnya') || taskLower.includes('semua')) {
           cleanedText = rawText.substring(0, 8000);
         } else {
-          // Default: Intisari (2000 depan + 2000 belakang) → Total 4000 karakter (~1000 token, aman untuk Groq Free)
           if (rawText.length > 4000) {
             cleanedText = rawText.substring(0, 2000) + "\n\n... [BAGIAN TENGAH DIPOTONG OTOMATIS OLEH MAMET UNTUK MENGHEMAT KUOTA] ...\n\n" + rawText.substring(rawText.length - 2000);
           } else {
@@ -124,7 +115,6 @@ export default {
         }
       }
 
-      // 3. Masukkan teks kotor ke "Pipeline" LLM untuk disaring & dirangkum
       const prompt = `Anda adalah "YouTube Master Analyst", sebuah AI cerdas yang menguasai 5 disiplin ilmu sekaligus: Strategi Pertumbuhan, SEO YouTube, Scriptwriting Konten, Monetisasi, dan Analisis Kompetitor.
 
 Berikut adalah teks mentah (Subtitle/Transcript) dari video YouTube yang diminta user.

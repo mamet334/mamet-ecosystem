@@ -7,7 +7,6 @@ export default {
     try {
       let dbResultText = '';
       
-      // Deteksi jika user ingin memasukkan link shopee
       const urlRegex = /(https?:\/\/(?:www\.)?shopee\.[a-z\.]+[\/\w \.-]*)/gi;
       const foundUrls = cleanTask.match(urlRegex) || [];
 

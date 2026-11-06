@@ -1,29 +1,7 @@
-/**
- * PatchGenerator — Menghasilkan patch dari LLM: membangun prompt, memanggil
- * BrainService, mengekstrak kode dari respons, dan fallback deterministik
- * saat LLM gagal.
- *
- * Diekstrak dari engineer.js (Fase 7, ADR-0017). Digabung sengaja dengan
- * implementasi baru `CodeSnippetExtractor.js` (SPESIFIKASI-TEKNIS-MAMET-OS-v2.md
- * §2.1) karena keduanya menyentuh `_buildPatchPrompt()` yang sama — dikerjakan
- * sekali agar tidak ada dua PR yang tumpang tindih di titik yang sama.
- *
- * §2.1 mengganti percabangan lama berbasis jumlah-karakter (isLargeFile:
- * 4000 char awal + 4000 akhir untuk file >6000 char) dengan pemangkasan
- * presisi berbasis identifier via `extractRelevantSnippet()`, dan SELALU
- * meminta format search-replace ke LLM (bukan cuma untuk file besar) —
- * lihat §2.1.5. Apply logic untuk search-replace di `generatePatch()` di
- * bawah TIDAK berubah dari sebelumnya (bekerja terhadap isi file utuh yang
- * tetap disimpan di memori, snippet cuma memangkas apa yang ditunjukkan ke LLM).
- */
 import { extractFileNamesFromTask, tryReadFile } from './FileSystemGateway.js';
 import { MAX_FILES_PER_PATCH } from './CapabilityGuard.js';
 import { extractRelevantSnippet, extractTargetIdentifiers } from './CodeSnippetExtractor.js';
 
-/**
- * @param {Object} task
- * @param {Object} deps - { storageManager, fileIndexService, serviceManager, eventBus, brain, injectArtifactIntoPrompt }
- */
 export async function generatePatch(task, deps) {
   const { storageManager, fileIndexService, serviceManager, eventBus, brain, injectArtifactIntoPrompt } = deps;
 
@@ -94,18 +72,17 @@ export async function generatePatch(task, deps) {
         console.error('[Engineer] LLM call failed:', llmError.message);
         llmErrorMessage = llmError.message;
         isFallback = true;
-        generatedCode = {}; // T10: tanpa patch pengganti — kegagalan model dilaporkan, bukan ditutupi TODO
+        generatedCode = {};
       }
     } else {
       console.warn('[Engineer] ⚠️ BrainService not available or missing executeLLM method');
       llmErrorMessage = 'BrainService not available or missing executeLLM method';
       isFallback = true;
-      generatedCode = {}; // T10: tanpa patch pengganti — kegagalan model dilaporkan, bukan ditutupi TODO
+      generatedCode = {};
     }
 
     generatedCode = bakukanBentukPatch(generatedCode);
 
-    // Alasan per berkas, dikumpulkan supaya kegagalan bisa dijelaskan — bukan sekadar "tidak ada perubahan".
     const alasanGagal = [];
     const patchFiles = [];
     for (const [filePath, newContent] of Object.entries(generatedCode || {})) {
@@ -113,23 +90,9 @@ export async function generatePatch(task, deps) {
 
       let finalContent = null;
 
-      // === HANDLE FORMAT SEARCH-REPLACE ===
       if (newContent && typeof newContent === 'object' && newContent.__mode === 'search_replace') {
         const originalContent = fileContents[filePath] || '';
 
-        // AKHIR BARIS DISERAGAMKAN SEBELUM DICOCOKKAN (terbukti live 24 September 2026).
-        //
-        // Berkas di repo ini tersimpan dengan CRLF (Windows) — `file engineer.js` melaporkan "with CRLF
-        // line terminators", dan git pun memperingatkan "LF will be replaced by CRLF". Model menulis
-        // `search` sebagai string JSON dengan "\n" biasa. Akibatnya `includes()` GAGAL untuk setiap
-        // cari-ganti yang melintasi lebih dari satu baris — bukan kadang-kadang, tapi SELALU di repo ini.
-        //
-        // Gejalanya menyesatkan: bentuk JSON-nya benar, alamatnya benar, teksnya benar, verifikasi
-        // Supabase lulus — lalu patch sunyi tanpa satu pun berkas berubah.
-        //
-        // Pencocokan dilakukan dalam LF, lalu hasilnya dikembalikan ke CRLF bila berkas aslinya CRLF.
-        // Tanpa pengembalian itu, satu perbaikan komentar akan menulis ulang akhir baris SELURUH berkas
-        // dan menghasilkan diff yang tak bisa dibaca Owner.
         const pakaiCRLF = originalContent.includes('\r\n');
         const seragam = (t) => String(t).replace(/\r\n/g, '\n');
 
@@ -153,9 +116,6 @@ export async function generatePatch(task, deps) {
                 changeCount++;
                 console.log(`[Engineer] ✅ Search-replace (trimmed) applied`);
               } else {
-                // Toleransi sempit (T10, 2026-09-22): model menyalin baris dari kalimat dokumen beserta titik penutupnya
-                // ("…(PR#1).") padahal baris asli tanpa titik → cari-ganti yang benar gagal. Tanda baca penutup boleh
-                // diabaikan HANYA bila sisanya muncul tepat SEKALI di berkas.
                 const tanpaTandaBaca = trimmedSearch.replace(/[.,;]+$/, '');
                 const munculSekali = tanpaTandaBaca !== trimmedSearch && tanpaTandaBaca.length >= 10 &&
                   workingContent.split(tanpaTandaBaca).length === 2;
@@ -172,7 +132,6 @@ export async function generatePatch(task, deps) {
         }
 
         if (changeCount > 0) {
-          // Akhir baris dikembalikan ke bentuk asli berkas — hanya baris yang benar-benar diubah yang berbeda.
           finalContent = pakaiCRLF ? workingContent.replace(/\n/g, '\r\n') : workingContent;
           console.log(`[Engineer] 🔄 Search-replace mode: ${changeCount} perubahan diterapkan ke ${filePath}${pakaiCRLF ? ' (CRLF dipertahankan)' : ''}`);
         } else {
@@ -182,11 +141,9 @@ export async function generatePatch(task, deps) {
           continue;
         }
       }
-      // === HANDLE FORMAT STRING BIASA ===
       else if (newContent !== null && newContent !== undefined && typeof newContent === 'string') {
         finalContent = newContent;
       }
-      // === SKIP TIPE LAIN ===
       else {
         console.warn(`[Engineer] ⚠️ Skipping file "${filePath}": format tidak dikenal (${typeof newContent})`);
         continue;
@@ -212,13 +169,8 @@ export async function generatePatch(task, deps) {
       extractedCodeKeys: Object.keys(generatedCode || {}),
       modelUsed: modelUsed,
       isFallback: isFallback,
-      // Kegagalan tanpa galat model TIDAK boleh dilaporkan dengan kalimat tugas Owner. Live 24 September
-      // 01:51: verifikasi Supabase LULUS (PATCH_ENGINEERING, skor 100) tetapi tidak ada berkas yang lahir,
-      // dan Owner hanya melihat "Patch tidak dibuat — <kalimat perintahnya sendiri>" karena pesan itu
-      // jatuh ke `patch.description`. Bentuk JSON yang diterima disebut di sini supaya sebabnya terlihat.
       error: !llmErrorMessage && patchFiles.length === 0 && rawLLMResponse
         ? (alasanGagal.length
-          // Bentuknya benar, isinya yang tidak cocok — sebutkan berkas dan cuplikannya, bukan cuma "gagal".
           ? `model menjawab dengan bentuk yang benar, tetapi cari-ganti tidak menemukan sasarannya:\n${alasanGagal.map((a) => `- ${a}`).join('\n')}`
           : `model menjawab, tetapi tidak ada perubahan yang bisa diterapkan. Kunci JSON yang diterima: ${JSON.stringify(Object.keys(generatedCode || {}))}. Yang diminta: {"<alamat berkas>": {"__mode":"search_replace","changes":[…]}}`)
         : undefined,
@@ -233,29 +185,6 @@ export async function generatePatch(task, deps) {
   }
 }
 
-/**
- * [FIX #3] Menyertakan Session Artifact context untuk handoff antar model AI.
- * [ADR-0017 Fase 7 / §2.1] Snippet per-file sekarang dipangkas presisi via
- * `extractRelevantSnippet()` (identifier-based + brace-matching string-aware),
- * bukan potongan 4000-awal+4000-akhir berbasis jumlah karakter. Format output
- * yang diminta SELALU search-replace, untuk semua ukuran file — bukan cuma
- * file besar seperti versi lama.
- * @param {Object} deps - { brain, injectArtifactIntoPrompt }
- */
-/**
- * Bakukan bentuk JSON patch dari model ke bentuk yang dipahami pemasang: `{ "<alamat>": { __mode, changes } }`.
- *
- * KENAPA ADA (terbukti live 24 September 2026, dua putaran):
- * Prompt meminta bentuk berkunci-alamat, tetapi model kuat berkali-kali menjawab dengan bentuk daftar:
- *   { "files": [ { "path": "…", "changes": [ { "search": …, "replace": … } ] } ] }
- * Isinya SAMA PERSIS dan sah — cuma dibungkus berbeda. Karena `Object.entries` hanya melihat kunci "files"
- * yang nilainya array (bukan objek ber-`__mode`), seluruh patch dilewati diam-diam dan Owner menerima
- * "Patch tidak dibuat" tanpa sebab. Verifikasi Supabase sendiri LULUS (skor 100) — jadi patch yang benar
- * hilang di langkah paling akhir.
- *
- * Ini BUKAN menebak maksud dari prosa: kedua bentuk sama-sama JSON eksplisit dengan field yang sama.
- * Bentuk lain yang tidak dikenali sengaja TIDAK diterka — ia dikembalikan apa adanya supaya gagal terang.
- */
 export function bakukanBentukPatch(kode) {
   if (!kode || typeof kode !== 'object') return kode;
   const daftar = Array.isArray(kode.files) ? kode.files : null;
@@ -265,14 +194,11 @@ export function bakukanBentukPatch(kode) {
   for (const f of daftar) {
     const alamat = typeof f?.path === 'string' ? f.path : null;
     if (!alamat || !Array.isArray(f?.changes)) continue;
-    // Bila satu alamat muncul dua kali, perubahannya digabung — bukan yang terakhir menimpa yang pertama.
     const sebelumnya = hasil[alamat]?.changes || [];
     hasil[alamat] = { __mode: 'search_replace', changes: [...sebelumnya, ...f.changes] };
   }
-  // Tidak ada satu pun entri sah → jangan menukar jawaban model dengan objek kosong yang menyesatkan.
   if (Object.keys(hasil).length === 0) return kode;
 
-  // Kunci lain di luar "files" (mis. bentuk campuran) tetap dibawa.
   for (const [k, v] of Object.entries(kode)) {
     if (k !== 'files' && !(k in hasil)) hasil[k] = v;
   }
@@ -301,7 +227,6 @@ export function buildPatchPrompt(task, fileContents, deps) {
     prompt += `\n\n`;
   }
 
-  // 🧠 VERIFIED APPROACH MEMORY: inject pendekatan terbukti dari sesi-sesi sebelumnya
   const verifiedApproaches = brain?.verifiedApproaches || [];
   const rejectedPatterns = brain?.rejectedPatterns || [];
 
@@ -470,11 +395,7 @@ export function extractCodeFromResponse(response) {
       } catch (_) {}
     }
 
-    // =============================================
-    // FALLBACK: Ekstrak dari diff atau natural language
-    // =============================================
     try {
-      // Coba ekstrak file path + content dari diff format
       const diffRegex = /--- a\/(.+?)\n\+\+\+ b\/(.+?)\n@@.*?\n([\s\S]+?)(?=\n---|\n@@|$)/g;
       const matches = [...response.matchAll(diffRegex)];
       if (matches.length > 0) {
@@ -524,5 +445,3 @@ export function extractCodeFromResponse(response) {
   }
 }
 
-// generateFallbackPatch DIHAPUS 2026-09-22 (T10): saat model gagal ia menambahkan "// TODO: Implement changes…" ke
-// berkas lalu patch itu diusulkan & diterapkan seolah hasil kerja (live TUGAS-01). Kegagalan kini dilaporkan apa adanya.

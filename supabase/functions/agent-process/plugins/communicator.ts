@@ -30,9 +30,6 @@ KEMBALIKAN HANYA JSON MURNI TANPA MARKDOWN \`\`\`json. Format JSON harus seperti
       if (!url || !url.startsWith('http')) {
         return { output: "URL tidak valid atau tidak diberikan." };
       }
-      // K5 (30 Okt 2026): URL & isi permintaan disusun MODEL dari pesan siapa pun yang punya akun — tanpa pagar, server
-      // menjadi relai ke localhost/jaringan privat/metadata (TM-001). ambilAman memeriksa alamat awal DAN setiap
-      // pengalihan; penolakannya (AlamatDitolakError) dilaporkan lewat catch di bawah.
 
       const fetchOptions: any = {
         method: method || 'GET',

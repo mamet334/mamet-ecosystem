@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import Ikon from '../Ikon';
 
-// DATA TABEL TERSIMPAN (Item 92 Tahap 2): berkas rekonsiliasi yang sudah dikonfirmasi Owner. Aktif = dihitung; riwayat
-// = versi lama yang sudah digantikan (tetap disimpan untuk diperiksa). Hapus = batalkan unggahan: bila berkas itu
-// pernah menggantikan versi lama, versi lama aktif lagi (ON DELETE SET NULL).
 
 const tanggal = (t) => new Date(t).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 

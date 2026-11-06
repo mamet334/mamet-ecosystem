@@ -1,18 +1,3 @@
-/**
- * Perbarui berkas font ikon (Material Symbols) yang disimpan sendiri.
- *
- * Ikon di aplikasi ini ditulis sebagai LIGATUR: <span class="material-symbols-outlined">home</span>.
- * Kata "home" itu teks biasa; fontnyalah yang mengubahnya menjadi gambar. Kalau fontnya tidak
- * termuat, yang tampil adalah kata "home" — persis yang terjadi 12 September 2026 ketika
- * fonts.googleapis.com timeout dan seluruh sidebar berubah menjadi daftar kata.
- *
- * Font penuh Material Symbols Outlined berukuran 970 KB untuk ~3.600 ikon. Aplikasi ini hanya
- * memakai puluhan, jadi yang disimpan adalah SUBSET: Google menyediakan parameter icon_names yang
- * mengembalikan font berisi ikon yang diminta saja (belasan KB).
- *
- * Jalankan setiap kali ada ikon baru dipakai:  npm run ikon
- * Perlu internet — hanya saat menjalankan skrip ini, tidak saat membangun atau menjalankan aplikasi.
- */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,19 +7,13 @@ const SUMBER = path.join(AKAR, 'src');
 const TUJUAN_FONT = path.join(AKAR, 'src/assets/fonts/material-symbols-subset.woff2');
 const TUJUAN_DAFTAR = path.join(AKAR, 'src/assets/fonts/daftar-ikon.txt');
 
-// User-Agent Chrome diperlukan: tanpa itu Google mengirim TrueType (jauh lebih besar), bukan woff2.
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
-// Nama yang tertangkap pemindai tapi bukan ikon — berasal dari perbandingan status
-// (mis. saveStatus === 'success'). Google mengabaikan nama tak dikenal, ini hanya agar daftarnya bersih.
 const BUKAN_IKON = new Set(['open', 'running', 'scanning', 'success', 'testing', 'idle', 'error_state', 'icon', 'ikon', 'loading', 'processing', 'skipped', 'pending', 'blocked',
-  'nama']);  // 'nama' = {nama} di components/Ikon.jsx sendiri
+  'nama']);
 
-// Ikon yang namanya dirakit saat berjalan sehingga tak bisa dipindai. Tambahkan manual di sini.
-// Ikon aplikasi kini dibaca dari metadata (lihat METADATA di bawah) — 'apps' = cadangan bila metadata tak menyebutnya.
 const TAMBAHAN_MANUAL = ['apps'];
 
-// Ikon tiap aplikasi ada di metadata (`apps[].icon`), bukan di kode — Sidebar & MobileBottomNav membacanya dari sana.
 const METADATA = path.join(AKAR, 'public/metadata/system.json');
 
 function berkasSumber(dir, hasil = []) {
@@ -47,7 +26,7 @@ function berkasSumber(dir, hasil = []) {
 }
 
 function kumpulkanNama() {
-  const nama = new Map();   // nama ikon → berkas pertama yang memakainya
+  const nama = new Map();
   const catat = (n, berkas) => { if (!nama.has(n)) nama.set(n, berkas); };
   const sahih = (n) => /^[a-z][a-z0-9_]{1,39}$/.test(n) && !BUKAN_IKON.has(n);
 
@@ -55,13 +34,10 @@ function kumpulkanNama() {
     const isi = fs.readFileSync(berkas, 'utf8');
     const rel = path.relative(AKAR, berkas).split(path.sep).join('/');
 
-    // 1. Ligatur literal: <span className="material-symbols-outlined …">nama</span>
     for (const m of isi.matchAll(/material-symbols-outlined[^>]*>\s*\{?\s*([a-z0-9_]+)\s*\}?\s*<\//g)) {
       if (sahih(m[1])) catat(m[1], rel);
     }
 
-    // 2. Nama di dalam ternary pada baris yang memuat elemen ikon (mis. enabled ? 'toggle_on' : 'toggle_off')
-    //    Jendela 2 baris ke atas dan ke bawah, karena ternary sering dipecah beberapa baris.
     const baris = isi.split('\n');
     baris.forEach((b, i) => {
       if (!b.includes('material-symbols-outlined')) return;
@@ -70,22 +46,14 @@ function kumpulkanNama() {
       }
     });
 
-    // 3. Peta status: { ikon: 'schedule', … }. Nama gaya Lucide di metadata ("Home", "Zap")
-    //    tidak ikut karena polanya hanya menerima huruf kecil.
-    //    Juga penugasan `ikon = 'data_object'` (FileExplorer memilih ikon jenis berkas lewat variabel).
     for (const m of isi.matchAll(/\b(icon|ikon)\s*[:=]\s*'([a-z][a-z0-9_]{1,39})'/g)) {
       if (sahih(m[2])) catat(m[2], rel);
     }
 
-    // 4. Nama yang dioper sebagai prop: <Sesuatu icon="check" /> — di dalam komponennya
-    //    ligaturnya ditulis {icon} sehingga tidak terbaca pola 1.
     for (const m of isi.matchAll(/\b(icon|ikon)=["']([a-z][a-z0-9_]{1,39})["']/g)) {
       if (sahih(m[2])) catat(m[2], rel);
     }
 
-    // 5. Komponen <Ikon nama="close" /> (components/Ikon.jsx) — satu-satunya cara baru menampilkan ikon.
-    //    nama={buka ? 'expand_more' : 'chevron_right'} → setiap nama berkutip di dalam kurung kurawalnya. Hanya di
-    //    dalam nama={…}: jendela baris pola 2 di sini menangkap kata Indonesia biasa ('ganti', 'semua', …).
     for (const m of isi.matchAll(/<Ikon\b[^>]*?\bnama="([a-z][a-z0-9_]{1,39})"/g)) {
       if (sahih(m[1])) catat(m[1], rel);
     }

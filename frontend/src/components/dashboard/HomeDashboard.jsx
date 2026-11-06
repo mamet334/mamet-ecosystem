@@ -32,8 +32,6 @@ export default function HomeDashboard() {
     setDimensions
   } = useDashboardData();
 
-  // ── Lapisan Kemampuan (Item 130 Tahap D): tertutup di awal, dibuka tombol. Disusun HANYA saat dinyalakan; semua
-  // sumbernya di laptop (registry alat, daftar shared/, status konektor baca-saja) — tanpa jaringan, tanpa biaya.
   const [kemampuanTampil, setKemampuanTampil] = useState(false);
   const [lapisan, setLapisan] = useState(null);
   useEffect(() => {
@@ -46,10 +44,8 @@ export default function HomeDashboard() {
         name: t.name,
         aktif: preferensi ? preferensi.getEffective('ws-assistant', t.name) !== false : true,
       }));
-      // Hanya `status()` — jalur baca-saja yang juga dipakai Settings › Konektor. Graf tak pernah memanggil alat konektor.
       const statusKonektor = window.electronAPI?.konektor?.status;
       const konektorBawaan = statusKonektor ? konektorUntukGraf(await statusKonektor().catch(() => [])) : null;
-      // Tahap G3 (S8): server MCP umum ikut tampil — juga lewat `status()` baca-saja.
       const statusUmum = window.electronAPI?.konektorUmum?.status;
       const { konektorDikenal, konektor } = gabungKonektorUmum(KONEKTOR_DIKENAL, konektorBawaan, statusUmum ? await statusUmum().catch(() => []) : []);
       if (!batal) {
@@ -58,20 +54,15 @@ export default function HomeDashboard() {
     })();
     return () => { batal = true; };
   }, [kemampuanTampil]);
-  // ── Ekor pesan (Item 130 Tahap E): satu percakapan, dimuat SAAT DIKLIK lewat `pesan_percakapan_graf` — angka & kode
-  // alat dari basis data, cuplikan 80 huruf; konteks/memori tak pernah sampai ke klien. Klik lagi = tutup.
-  const [ekorBaris, setEkorBaris] = useState(null); // { chatId: 'chat-…', baris: [...] }
-  // Geseran Owner per simpul (id → [dx, dy]); diterapkan ulang setiap graf disusun agar planet yang dipindah tetap di
-  // tempatnya. Hanya di memori — dibuka ulang, tata surya kembali rapi.
+  const [ekorBaris, setEkorBaris] = useState(null);
   const geserRef = useRef(new Map());
-  const seretRef = useRef(null); // { id, x, y, ikut: [{ n, x, y }] } selama satu seretan
+  const seretRef = useRef(null);
   const grafTampil = useMemo(() => {
     const dasarPlus = kemampuanTampil && lapisan ? gabungGraf(graphData, lapisan) : graphData;
     const idAda = new Set(dasarPlus.nodes.map((n) => n.id));
-    // Percakapannya harus masih ada di graf (data bisa dimuat ulang) — garis ke simpul yang hilang membuat force-graph galat.
     const ekor = ekorBaris && idAda.has(ekorBaris.chatId) ? susunEkorPesan(ekorBaris.chatId, ekorBaris.baris, idAda) : null;
     const graf = gabungGraf(dasarPlus, ekor);
-    tataSurya(graf);   // Tahap F: semua posisi dihitung & dipaku — bintang, planet, bulan, fondasi, satelit, bulan-dari-bulan
+    tataSurya(graf);
     terapkanGeser(graf, geserRef.current);
     return graf;
   }, [graphData, kemampuanTampil, lapisan, ekorBaris]);
@@ -87,8 +78,6 @@ export default function HomeDashboard() {
     graphDataRef.current = grafTampil;
   }, [grafTampil]);
 
-  // Tata surya (Item 130 Tahap F): posisi dipaku `tataSurya`, jadi gaya fisika force-graph dimatikan — tak ada tolak,
-  // tarik pegas, atau penengah yang menggeser (dulu graf "memantul" ±15 detik mencari keseimbangan).
   useEffect(() => {
     const fg = fgRef.current;
     if (!fg || grafTampil.nodes.length === 0) return;
@@ -105,13 +94,11 @@ export default function HomeDashboard() {
     activePathRef.current = activePath;
   }, [activePath]);
 
-  // Realtime Reasoning Path Listener (moved from original file)
   useEffect(() => {
     const triggerReasoningHighlight = (nodeId) => {
       if (!graphDataRef.current) return;
       const { nodes, links } = graphDataRef.current;
 
-      // Jalur menelusuri arah garis data → kemampuan → belahan; kedua belahan MAMET selalu ikut menyala (Tahap C).
       const activeNodes = new Set([PUSAT.desktop, PUSAT.server]);
       const activeLinks = new Set();
 
@@ -158,7 +145,6 @@ export default function HomeDashboard() {
         triggerReasoningHighlight(`doc-${payload.new.id}`);
       })
       .subscribe((status) => {
-        // Lampu Realtime dinilai dari langganan INI (Item 130 Tahap B) — gratis; dulu statusnya tak pernah diisi.
         laporRealtime(status);
       });
 
@@ -171,7 +157,6 @@ export default function HomeDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Handle Resize for ForceGraph
   useEffect(() => {
     if (!containerRef.current) return;
     const resizeObserver = new ResizeObserver(entries => {
@@ -187,19 +172,15 @@ export default function HomeDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- GRAPH COLORING FUNCTIONS (Constitution 23 Semantic Palette) ---
-  // Lampu gabungan simpul fondasi & garis berlampu (jalur pesan, fondasi → belahan) dari vitals terkini.
   const warnaLampu = (kunci) => warnaStatus(statusGabungan(kunci, vitals));
 
   const getNodeColor = (node) => {
     if (!node) return FALLBACK_COLOR;
 
-    // Red for memory conflicts / alerts
     if (node.isConflict || (node.data && node.data.status === 'CONFLICT_PENDING_REVIEW')) {
       return '#ef4444';
     }
 
-    // Simpul berlampu (fondasi): warna dari status TERKINI (mis. Realtime yang terlapor sesudah graf disusun).
     let baseColor = node.statusKeys ? warnaLampu(node.statusKeys) : node.color;
 
     if (!baseColor) {
@@ -228,7 +209,6 @@ export default function HomeDashboard() {
     if (node?.group === 'chat') bukaEkor(node.id);
   };
 
-  // Klik percakapan → muat ekornya; klik percakapan yang sama lagi → tutup. Satu percakapan terbuka pada satu waktu.
   const bukaEkor = async (chatId) => {
     if (ekorBaris?.chatId === chatId) { setEkorBaris(null); return; }
     const { data, error } = await supabase.rpc('pesan_percakapan_graf', { p_chat: chatId.replace(/^chat-/, '') });
@@ -236,8 +216,6 @@ export default function HomeDashboard() {
     setEkorBaris({ chatId, baris: data || [] });
   };
 
-  // Bulan ikut planetnya (keputusan Owner 3 Nov): saat seretan dimulai, seluruh sistem simpul dicatat bersama posisi
-  // awalnya; tiap gerakan menggeser semuanya sejauh simpul itu bergeser dari titik awal seretan.
   const handleNodeDrag = (node) => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     if (seretRef.current?.id !== node.id) seretRef.current = mulaiSeret(grafTampil, node);
@@ -262,12 +240,8 @@ export default function HomeDashboard() {
     }
   };
 
-  // Dulu `zoomToFit(400, 50)` — padding sama di keempat sisi, graf masuk ke bawah judul & legenda. Kini pita atas
-  // disisakan (grafHome.js tataPas, Item 130 Tahap C).
-  // Kamera disesuaikan ulang hanya bila isi DASAR berubah (data dimuat, lapisan Kemampuan dinyalakan/dimatikan) — bukan
-  // saat ekor pesan dibuka, supaya pandangan Owner pada percakapan yang ia klik tak melompat (Tahap F).
   const kunciPasRef = useRef(null);
-  const [skalaPas, setSkalaPas] = useState(0);   // skala kamera saat dipaskan — dasar ambang nama simpul data
+  const [skalaPas, setSkalaPas] = useState(0);
   const handleEngineStop = () => {
     const fg = fgRef.current;
     const bbox = fg?.getGraphBbox?.();
@@ -283,7 +257,6 @@ export default function HomeDashboard() {
 
   return (
     <div className="flex flex-col md:flex-row h-full w-full text-slate-200 relative overflow-hidden font-body-base">
-      {/* Main Graph Area */}
       <div ref={containerRef} className="flex-1 relative h-full w-full z-10">
         <ActivityGraph
           graphData={grafTampil}
@@ -303,10 +276,7 @@ export default function HomeDashboard() {
         />
       </div>
 
-      {/* Right Panel: Detail / Metrics */}
       <div className="w-full md:w-80 border-t md:border-t-0 md:border-l border-white/10 bg-[rgb(var(--warna-panel-sisi)/0.9)] backdrop-blur-xl p-6 flex flex-col z-20 overflow-y-auto h-1/2 md:h-full shrink-0">
-        {/* Inspektur hanya untuk simpul DATA (memori, dokumen, percakapan) — ia tak mengenal alat/pesan dan dulu
-            memberi mereka lencana bawaan "USER MEMORY" (ditemukan Tahap E). */}
         {selectedNode && GRUP_DATA.includes(selectedNode.group) ? (
           <NodeInspector 
             selectedNode={selectedNode} 
@@ -332,7 +302,6 @@ export default function HomeDashboard() {
         </div>
       </div>
 
-      {/* Atmospheric Background Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 blur-[150px] rounded-full pointer-events-none z-0"></div>
     </div>
   );

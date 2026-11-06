@@ -8,14 +8,6 @@ export interface UsageData {
   completionTokens: number;
   callerContext?: string;
   traceId?: string;
-  /**
-   * Siapa yang memilih model (Item 126): 'owner-settings' | 'owner-override' | 'tier-auto' |
-   * 'sistem'. Undefined = belum ditandai → disimpan NULL, tidak ditebak.
-   *
-   * Catatan untuk yang membaca tabelnya: `caller_context` TIDAK bisa dipakai untuk ini. Namanya
-   * menjanjikan "siapa pemanggil", tetapi semua titik panggilan mengisinya dengan
-   * `context.trace_id` — jadi isinya UUID yang menduplikasi kolom `trace_id` di sebelahnya.
-   */
   pemilihModel?: string;
 }
 
@@ -41,7 +33,6 @@ export async function checkGuardrails(
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  // 1. Check system config for kill switch & budget
   const { data: config } = await supabase
     .from('system_config')
     .select('kill_switch_active, daily_budget_cap_usd')
@@ -60,7 +51,6 @@ export async function checkGuardrails(
     throw new Error('SYSTEM_KILL_SWITCH_ACTIVE: AI generation is temporarily disabled.');
   }
 
-  // 2. Check daily budget cap (USD)
   const today = new Date().toISOString().split('T')[0];
   const { data: usageData } = await supabase
     .from('cost_ledger')
@@ -110,10 +100,6 @@ export async function recordUsage(usage: UsageData): Promise<void> {
     outputPrice = priceData.output_price_per_1m || 0;
   }
 
-  // Calculate cost per 1M tokens
-  // Biaya sesungguhnya dari provider mengalahkan tabel model_pricing. Tabel itu tidak
-  // pernah lengkap — pada 2026-09-09 ia sama sekali tidak punya baris DeepSeek, sehingga
-  // semua panggilan DeepSeek tercatat berbiaya nol. Lihat Item 42.
   const estimatedCostUsd = (typeof actualCostUsd === 'number' && isFinite(actualCostUsd) && actualCostUsd >= 0)
     ? actualCostUsd
     : ((promptTokens / 1_000_000) * inputPrice) + ((completionTokens / 1_000_000) * outputPrice);
@@ -128,8 +114,6 @@ export async function recordUsage(usage: UsageData): Promise<void> {
     total_tokens: totalTokens,
     estimated_cost_usd: estimatedCostUsd,
     caller_context: callerContext || null,
-    // Item 126: `|| null` dan bukan nilai bawaan — baris tanpa penanda harus TERLIHAT kosong,
-    // karena metrik "cakupan penanda pemilih" justru bertugas menemukannya.
     pemilih_model: pemilihModel || null,
     status: 'completed'
   });

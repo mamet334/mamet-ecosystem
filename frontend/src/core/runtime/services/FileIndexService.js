@@ -26,10 +26,6 @@ export class FileIndexService {
     }
   }
 
-  /**
-   * Mencari path lengkap berdasarkan nama file dengan prioritas ketat.
-   * Menghindari folder sampah (node_modules, .git) dan folder backup lama.
-   */
   resolvePath(filename) {
     const candidates = this.fileIndex.get(filename) || [];
     
@@ -40,13 +36,11 @@ export class FileIndexService {
     
     if (candidates.length === 1) return candidates[0];
 
-    // 🛡️ BLACKLIST: Folder yang TIDAK BOLEH dipilih
     const BLACKLIST = [
       'node_modules', '.git', 'dist', 'release', '.vite', 
       'ai-agent-project', 'backup', '.cache', 'mamet_fs'
     ];
     
-    // Filter path yang mengandung folder blacklist
     const filtered = candidates.filter(p => {
       const normalized = p.replace(/\\/g, '/');
       return !BLACKLIST.some(b => 
@@ -61,7 +55,6 @@ export class FileIndexService {
       return candidates[0]; 
     }
 
-    // 🎯 PRIORITAS 1: Root folder aktif (Mamet OS Ecosystem)
     const activeRoot = filtered.find(p => 
       p.includes('mamet os ecosystem') || 
       p.includes('mamet_os_ecosystem') ||
@@ -72,18 +65,15 @@ export class FileIndexService {
       return activeRoot;
     }
 
-    // 🎯 PRIORITAS 2: Workbench components (tempat ConversationEngine.jsx berada)
     const workbench = filtered.find(p => p.includes('frontend/src/components/workbench'));
     if (workbench) {
       console.log(`[FileIndexService] ✅ Resolved via Workbench: ${workbench}`);
       return workbench;
     }
 
-    // 🎯 PRIORITAS 3: Frontend src secara umum
     const frontendSrc = filtered.find(p => p.includes('frontend/src'));
     if (frontendSrc) return frontendSrc;
 
-    // 🎯 PRIORITAS 4: Path terpendek (fallback paling aman)
     const shortest = filtered.sort((a, b) => a.length - b.length)[0];
     console.log(`[FileIndexService] ✅ Resolved via Shortest Path: ${shortest}`);
     return shortest;
@@ -93,10 +83,6 @@ export class FileIndexService {
     await this.buildIndex();
   }
 
-  /**
-   * Mengembalikan daftar semua file yang di-index
-   * @returns {string[]}
-   */
   getAllFiles() {
     if (!this.isReady) return [];
     const allFiles = [];

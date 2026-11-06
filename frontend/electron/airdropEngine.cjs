@@ -6,7 +6,7 @@ const RecaptchaPlugin = require('puppeteer-extra-plugin-recaptcha');
 puppeteer.use(
   RecaptchaPlugin({
     provider: { id: '2captcha', token: process.env.CAPTCHA_API_KEY || 'dummy_key' },
-    visualFeedback: true // mewarnai kotak captcha yang sedang di-solve
+    visualFeedback: true
   })
 );
 
@@ -14,16 +14,11 @@ const path = require('path');
 const { app } = require('electron');
 const { createCursor } = require('ghost-cursor');
 
-/**
- * Helper untuk otomatis mencari dan mengeklik tombol di dalam popup MetaMask
- * Sangat tahan banting terhadap perubahan UI MetaMask.
- */
 async function autoMetamaskSign(browser) {
   console.log('[MetamaskHelper] Menunggu popup Metamask...');
-  await new Promise(r => setTimeout(r, 3000)); // Beri waktu animasi popup
+  await new Promise(r => setTimeout(r, 3000));
 
   const pages = await browser.pages();
-  // Cari tab yang merupakan ekstensi (notification/popup)
   const metamaskPage = pages.find(p => p.url().includes('chrome-extension://') && p.url().includes('notification'));
 
   if (!metamaskPage) {
@@ -35,7 +30,6 @@ async function autoMetamaskSign(browser) {
   await metamaskPage.bringToFront();
 
   try {
-    // Cari dan klik tombol biru utama (Next, Connect, Sign, Confirm, Approve)
     const clicked = await metamaskPage.evaluate(() => {
       const buttons = Array.from(document.querySelectorAll('button'));
       const targetKeywords = ['Next', 'Connect', 'Sign', 'Confirm', 'Approve'];
@@ -62,9 +56,6 @@ async function autoMetamaskSign(browser) {
   }
 }
 
-/**
- * Helper untuk menyetujui Login Twitter & Discord serta Task Intent secara otomatis
- */
 async function autoSocialSign(browser) {
   console.log('[SocialHelper] Menunggu popup otorisasi atau aksi (Twitter/Discord)...');
   await new Promise(r => setTimeout(r, 4000));
@@ -85,16 +76,14 @@ async function autoSocialSign(browser) {
 
   console.log('[SocialHelper] Popup Sosial terdeteksi! Mengambil alih...');
   await socialPage.bringToFront();
-  await new Promise(r => setTimeout(r, 2000)); // Tunggu elemen selesai di-render
+  await new Promise(r => setTimeout(r, 2000));
 
   try {
     const clicked = await socialPage.evaluate(() => {
-      // Tombol otorisasi bisa berupa button atau div dengan role="button"
       const allElements = Array.from(document.querySelectorAll('div[role="button"], button, span'));
       const targetKeywords = ['Authorize app', 'Authorize', 'Izinkan aplikasi', 'Setujui', 'Otorisasi', 'Follow', 'Post', 'Reply', 'Like'];
 
       for (const el of allElements) {
-        // Cek apakah elemen terlihat dan memiliki teks yang cocok
         const text = el.innerText || '';
         if (targetKeywords.some(keyword => text.trim() === keyword || text.includes(keyword)) && el.offsetParent !== null) {
           el.click();
@@ -106,8 +95,8 @@ async function autoSocialSign(browser) {
 
     if (clicked) {
       console.log('[SocialHelper] ✅ Berhasil mengeklik otorisasi/aksi sosial!');
-      await new Promise(r => setTimeout(r, 3000)); // Tunggu proses selesai
-      await socialPage.close(); // Tutup tab intent jika berhasil
+      await new Promise(r => setTimeout(r, 3000));
+      await socialPage.close();
       return true;
     } else {
       console.log('[SocialHelper] ⚠️ Tombol otorisasi/aksi tidak ditemukan.');
@@ -119,21 +108,14 @@ async function autoSocialSign(browser) {
   }
 }
 
-/**
- * Mesin Eksekusi Web3 Airdrop Farmer (Phase 5: Monetization Empire)
- * Berjalan di Desktop user menggunakan Chromium terselubung (Stealth)
- */
 async function runAirdropTask(taskName, params = {}) {
   let browser;
   try {
     console.log(`[AirdropEngine] Memulai task: ${taskName} dengan proxy: ${params.proxy || 'None'}`);
 
-    // Gunakan userDataDir agar sesi (Login Twitter, Discord, Metamask) TERSIMPAN PERMANEN
     const userDataPath = path.join(app.getPath('userData'), 'StealthSession');
     console.log(`[AirdropEngine] Menggunakan profil tersimpan di: ${userDataPath}`);
 
-    // Cari path instalasi Google Chrome asli di komputer User
-    // Ini jauh lebih 'stealth' daripada menggunakan Chromium bawaan Puppeteer
     const fs = require('fs');
     let execPath = '';
     const chromePaths = [
@@ -148,7 +130,6 @@ async function runAirdropTask(taskName, params = {}) {
       }
     }
 
-    // Fallback jika Chrome tidak ketemu
     if (!execPath) {
       const defaultPath = puppeteer.executablePath();
       execPath = typeof defaultPath === 'string' ? defaultPath : '';
@@ -156,7 +137,6 @@ async function runAirdropTask(taskName, params = {}) {
 
     console.log(`[AirdropEngine] Executable Path yang akan digunakan: ${execPath}`);
 
-    // Siapkan argumen browser (termasuk injeksi Proxy jika ada)
     const browserArgs = [
       '--start-maximized',
       '--disable-blink-features=AutomationControlled'
@@ -166,19 +146,16 @@ async function runAirdropTask(taskName, params = {}) {
     }
 
     browser = await puppeteer.launch({
-      headless: false, // Wajib false untuk Metamask dan bypass captcha yang rumit
-      executablePath: String(execPath), // PASTIKAN SELALU STRING
+      headless: false,
+      executablePath: String(execPath),
       defaultViewport: null,
       userDataDir: userDataPath,
       args: browserArgs,
-      ignoreDefaultArgs: ['--enable-automation'] // Menghapus tulisan "Chrome is being controlled by automated test software"
+      ignoreDefaultArgs: ['--enable-automation']
     });
 
     const page = await browser.newPage();
 
-    // ==========================================
-    // 1. TOPENG ROTASI: Autentikasi Proxy
-    // ==========================================
     if (params.proxyUsername && params.proxyPassword) {
       await page.authenticate({
         username: params.proxyUsername,
@@ -187,55 +164,38 @@ async function runAirdropTask(taskName, params = {}) {
       console.log('[AirdropEngine] Proxy authentication diaktifkan.');
     }
 
-    // ==========================================
-    // LOGIKA TASK RUNNER
-    // ==========================================
     if (taskName === 'test_stealth') {
       await page.goto('https://bot.sannysoft.com', { waitUntil: 'networkidle2' });
       await new Promise(resolve => setTimeout(resolve, 5000));
     }
     else if (taskName === 'faucet_claim') {
-      // ==========================================
-      // 2 & 3. METAMASK INTERACTION & CAPTCHA SOLVER (Contoh Faucet)
-      // ==========================================
       const faucetUrl = params.faucetUrl || 'https://sepoliafaucet.com/';
       await page.goto(faucetUrl, { waitUntil: 'networkidle2' });
 
       console.log('[AirdropEngine] Mencari dan memecahkan reCAPTCHA/hCaptcha jika ada...');
-      // Memanggil plugin solver otomatis
       const { captchas, filtered, solutions, solved, error } = await page.solveRecaptchas();
       if (solved && solved.length > 0) {
         console.log('[AirdropEngine] 🔓 Captcha berhasil dipecahkan otomatis!');
       }
 
-      // TODO: Logika klik tombol connect wallet Metamask (Popup Handler)
-      // await page.click('#connect-wallet-btn');
-      // // Switch window ke popup Metamask
-      // // click next, connect, sign...
 
       await new Promise(resolve => setTimeout(resolve, 3000));
     }
     else if (taskName === 'galxe_campaign') {
-      // ==========================================
-      // SIMULASI: FARMING AIRDROP DI GALXE
-      // ==========================================
       const targetUrl = params.url || 'https://app.galxe.com/';
       console.log(`[AirdropEngine] Membuka kampanye Galxe: ${targetUrl}`);
       await page.goto(targetUrl, { waitUntil: 'networkidle2' });
 
-      // 1. Bypass Captcha (Cloudflare/Turnstile) di awal halaman jika ada
       console.log('[AirdropEngine] Memeriksa Captcha / Anti-Bot Security...');
       const captchaResult = await page.solveRecaptchas();
       if (captchaResult.solved && captchaResult.solved.length > 0) {
         console.log('[AirdropEngine] 🔓 Captcha rintangan awal berhasil dipecahkan!');
       }
 
-      // 2. Klik Connect Wallet / Log In
       console.log('[AirdropEngine] Mencari tombol Connect Wallet / Log in...');
       const cursor = createCursor(page);
 
       try {
-        // Cari koordinat tombol secara presisi
         const btnBox = await page.evaluate(() => {
           const els = Array.from(document.querySelectorAll('button, a'));
           for (let el of els) {
@@ -260,9 +220,8 @@ async function runAirdropTask(taskName, params = {}) {
           await new Promise(r => setTimeout(r, 6000));
         }
 
-        await new Promise(r => setTimeout(r, 4000)); // Tunggu modal pilihan wallet muncul
+        await new Promise(r => setTimeout(r, 4000));
 
-        // Klik opsi Metamask dengan Ghost Cursor
         console.log('[AirdropEngine] Mencari opsi dompet MetaMask...');
         const metaBox = await page.evaluate(() => {
           const els = Array.from(document.querySelectorAll('div, button, span'));
@@ -283,20 +242,17 @@ async function runAirdropTask(taskName, params = {}) {
           console.log('[AirdropEngine] Logo MetaMask berhasil diklik!');
         }
 
-        await new Promise(r => setTimeout(r, 3000)); // Tunggu Metamask memicu popup
+        await new Promise(r => setTimeout(r, 3000));
       } catch (e) {
         console.log('[AirdropEngine] Gagal memproses tahapan Login:', e.message);
       }
 
-      // 3. Tangani Popup Metamask (Connect / Sign Message)
       await autoMetamaskSign(browser);
 
-      // 4. Mengerjakan Tugas Sosial (Twitter / Discord) & Claim
       console.log('[AirdropEngine] Memindai elemen tugas secara brutal (Bypass Anti-Bot UI)...');
       try {
         const cursor = createCursor(page);
 
-        // Loop pemindaian beberapa kali (Multi-Pass) untuk tombol yang baru terbuka (seperti Participate/Claim)
         for (let pass = 1; pass <= 3; pass++) {
           console.log(`[AirdropEngine] --- Memulai Pemindaian Pass ke-${pass} ---`);
 
@@ -309,17 +265,13 @@ async function runAirdropTask(taskName, params = {}) {
               const style = window.getComputedStyle(el);
               const rect = el.getBoundingClientRect();
 
-              // 1. Deteksi via Kata Kunci (Dipebanyak)
               const isTaskKeyword = text.includes('verify') || text.includes('follow') || text.includes('join') || text.includes('claim') || text.includes('start') || text.includes('retweet') || text.includes('quote') || text.includes('participate') || text.includes('visit') || text.includes('like') || text.includes('repost') || text.includes('watch') || text.includes('read') || text.includes('space');
 
-              // 2. Deteksi via Geometri Ruang (Cara Otomatis Tanpa Baca Teks)
-              // Baris tugas Galxe biasanya berupa kotak panjang (lebar > 300px, tinggi 40-120px) yang berada di tengah/bawah layar (y > 200)
               const isTaskShape = (el.tagName === 'DIV') && (rect.width > 250 && rect.height >= 40 && rect.height <= 150 && rect.y > 150);
 
               const isClickable = style.cursor === 'pointer' || el.tagName === 'BUTTON' || el.getAttribute('role') === 'button';
               const isVisible = el.offsetParent !== null;
 
-              // Hindari mengeklik tombol header navigasi atau logo (batas y > 100)
               if ((isTaskKeyword || isTaskShape) && isClickable && isVisible && rect.y > 100 && el.children.length < 15) {
                 if (rect.width > 0 && rect.height > 0) {
                   targets.push({
@@ -346,10 +298,8 @@ async function runAirdropTask(taskName, params = {}) {
             }
           }
 
-          // 5. Tangani Otorisasi Twitter/Discord jika popup muncul akibat klik tadi
           await autoSocialSign(browser);
 
-          // Tunggu sebentar sebelum Pass berikutnya (memberi waktu Galxe memverifikasi/membuka tombol baru)
           await new Promise(r => setTimeout(r, 4000));
         }
 
@@ -366,7 +316,6 @@ async function runAirdropTask(taskName, params = {}) {
     }
 
     console.log(`[AirdropEngine] Task ${taskName} selesai.`);
-    // Jangan langsung tutup browser jika mode testing/pengembangan
     if (!params.keepOpen) {
       await browser.close();
     }

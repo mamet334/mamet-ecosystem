@@ -1,7 +1,7 @@
 export class EventBus {
   constructor() {
     this.listeners = new Map();
-    this.active = true; // Always active!
+    this.active = true;
     this.totalEvents = 0;
     this.rateLimits = new Map();
     setInterval(() => {
@@ -22,7 +22,7 @@ export class EventBus {
     if (typeof event !== 'string') throw new Error('Event name must be a string');
     if (event === '*') {
       console.warn('[EventBus] Security Warning: Wildcard listeners are disabled.');
-      return () => {}; // Return no-op to prevent legacy crashes
+      return () => {};
     }
     if (!event.includes(':')) {
       throw new Error('Event name must include a namespace separated by a colon (e.g. "Category:EventName")');
@@ -48,7 +48,6 @@ export class EventBus {
 
     const namespace = event.split(':')[0];
     
-    // Rate Limiting (Max 100 per second per namespace)
     const currentCount = this.rateLimits.get(namespace) || 0;
     if (currentCount >= 100) {
       console.warn(`[EventBus] Rate limit exceeded for namespace: ${namespace}`);
@@ -58,12 +57,10 @@ export class EventBus {
 
     this.totalEvents++;
 
-    // Anti-Spoofing: Wrap payload with metadata
     let sourceFile = 'Unknown';
     try {
       const stack = new Error().stack;
       if (stack) {
-        // Simple stack parsing to get caller file name (approximate)
         const callerLine = stack.split('\n')[2] || '';
         const match = callerLine.match(/([^/]+)\.jsx?/);
         if (match) sourceFile = match[0];
@@ -76,7 +73,6 @@ export class EventBus {
       data: payload
     };
 
-    // SECURITY PATCH: Wildcard execution removed to prevent eavesdropping
 
     if (this.listeners.has(event)) {
       for (const callback of this.listeners.get(event)) {

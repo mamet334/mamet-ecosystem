@@ -1,12 +1,3 @@
-// Layanan tema aplikasi (Item 128 Tahap B) — yang menyentuh dunia luar: <html>, localStorage, akun Supabase.
-// Logika pilihnya murni, ada di tema.js.
-//
-// Urutan supaya aplikasi TIDAK berkedip dari tema lama ke tema pilihan:
-//   1. Kernel boot memuat metadata (themes.json) lalu memanggil `pasang()` — SEBELUM tampilan dipasang.
-//   2. `pasang()` membaca salinan lokal setelan dan langsung menerapkannya ke <html> (data-tema, data-latar).
-//   3. Sesudah masuk, App memanggil `sinkronDariAkun(user)`: setelan di akun (user_metadata.tampilan) menjadi
-//      sumber kebenaran — tema ikut ke desktop dan web (keputusan Owner 20 Okt: per akun).
-// Pola penyimpanan per akun sama dengan batas biaya harian di Settings (user_metadata) — tanpa tabel baru.
 
 import { supabase } from '../../../supabase';
 import {
@@ -24,7 +15,6 @@ class TemaService {
     this.mqGerak = null;
   }
 
-  /** Dipanggil kernel sesudah metadata dimuat, sebelum tampilan dipasang. */
   pasang(metaTema) {
     this.meta = metaDipakai(metaTema);
     if (typeof document !== 'undefined') {
@@ -38,9 +28,7 @@ class TemaService {
     }
     if (typeof window !== 'undefined' && window.matchMedia) {
       this.mq = window.matchMedia('(prefers-color-scheme: dark)');
-      // "Ikuti sistem": Windows berganti gelap/terang saat aplikasi terbuka → tema ikut berganti.
       this.mq.addEventListener?.('change', () => { if (this.setelan.tema === PILIHAN_SISTEM) this.#terapkan(); });
-      // "Kurangi gerakan" mengikuti sistem (bawaan): setelan animasi Windows berubah → aplikasi ikut.
       this.mqGerak = window.matchMedia('(prefers-reduced-motion: reduce)');
       this.mqGerak.addEventListener?.('change', () => { if (this.setelan.gerak === 'sistem') this.#terapkan(); });
     }
@@ -54,7 +42,6 @@ class TemaService {
   temaTampil() { return pilihTema(this.setelan, this.#sistemGelap(), this.meta); }
   gerakTampilDikurangi() { return gerakDikurangi(this.setelan, this.mqGerak?.matches); }
 
-  /** Ubah setelan + simpan ke akun. Mengembalikan { error } dari Supabase — tampilan sudah berganti apa pun hasilnya. */
   async simpan(setelanBaru) {
     this.setelan = normalisasiSetelan({ ...this.setelan, ...setelanBaru }, this.meta);
     this.#terapkan();
@@ -63,7 +50,6 @@ class TemaService {
     return { error };
   }
 
-  /** Setelan di akun menjadi sumber kebenaran sesudah masuk. Tanpa setelan di akun, setelan lokal dipertahankan. */
   sinkronDariAkun(user) {
     const diAkun = user?.user_metadata?.tampilan;
     if (!diAkun) return;
@@ -99,7 +85,6 @@ class TemaService {
     try {
       return JSON.parse(localStorage.getItem(KUNCI_LOKAL) || 'null');
     } catch {
-      // localStorage tak tersedia / isinya rusak: pakai bawaan — setelan akun akan menyusul sesudah masuk.
       return null;
     }
   }
@@ -108,7 +93,6 @@ class TemaService {
     try {
       localStorage.setItem(KUNCI_LOKAL, JSON.stringify(this.setelan));
     } catch {
-      // Penyimpanan lokal penuh/ditolak: tema tetap tersimpan di akun; hanya salinan pembuka-cepatnya yang hilang.
     }
   }
 }

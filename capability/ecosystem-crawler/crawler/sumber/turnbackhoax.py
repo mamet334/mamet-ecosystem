@@ -20,8 +20,7 @@ from crawler.kanal import AksesWeb, DilarangRobots, Terblokir
 from .web import ekstrak
 
 DASAR = "https://turnbackhoax.id"
-_LABEL = re.compile(r"^\[([^\]]+)\]")  # mis. [SALAH], [PENIPUAN]
-
+_LABEL = re.compile(r"^\[([^\]]+)\]")
 
 class TurnBackHoax(Sumber):
     id = "turnbackhoax"
@@ -30,7 +29,7 @@ class TurnBackHoax(Sumber):
     kemampuan = ("feed", "tag")
     bahasa = ("id",)
     cocok_untuk = ("cek_fakta", "hoaks", "penipuan", "disinformasi")
-    pseudonim_penulis = False  # penulis/pemeriksa fakta = byline publik (ADR-CRW-0010)
+    pseudonim_penulis = False
     batas_laju = "jeda 1-2 detik per feed/halaman; isi lengkap diekstrak"
     alat = (
         {"nama": "feedparser", "repo": "github.com/kurtmckee/feedparser", "lisensi": "BSD-2-Clause"},
@@ -55,7 +54,7 @@ class TurnBackHoax(Sumber):
                 except (DilarangRobots, Terblokir) as exc:
                     lapor("Sumber.HalamanDilewati", url=url, alasan=str(exc))
                     break
-                except Exception as exc:  # tag tidak ada / halaman habis
+                except Exception as exc:
                     lapor("Sumber.FeedTidakAda", jalur=j or "feed_utama", halaman=hal, alasan=str(exc)[:120])
                     break
                 entries = feedparser.parse(teks_feed).entries

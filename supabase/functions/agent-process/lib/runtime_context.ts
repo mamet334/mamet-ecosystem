@@ -1,18 +1,4 @@
-/**
- * RuntimeContext — Mamet AI Agent Process
- * =========================================
- * Mengelompokkan seluruh dependency request-level yang sebelumnya
- * di-capture secara implisit sebagai closure di dalam serve() handler.
- *
- * ADR-0009 Phase 5.1 — RuntimeContext Preparation
- * Tujuan: menghilangkan hidden closure dependencies sebelum module extraction.
- *
- * TIDAK ADA logic runtime di file ini. Hanya type definitions.
- */
 
-// ─────────────────────────────────────────────
-// 1. PROVIDER KEYS
-// ─────────────────────────────────────────────
 
 export interface EnvironmentConfig {
   supabaseUrl: string;
@@ -20,149 +6,49 @@ export interface EnvironmentConfig {
   supabaseAnonKey: string;
   apifyApiToken: string;
   enableAsyncMemoryWrite: boolean;
-  /**
-   * `HAKIM_BAYANGAN=1` menyalakan hakim bayangan per kalimat (T13, `verification/hakim_bayangan.ts`).
-   * MATI secara bawaan dan disengaja: ia menambah satu panggilan model berbayar dan waktu tunggu per
-   * jawaban RAG, sementara vonisnya tidak mengubah apa pun yang Owner lihat — hanya dicatat.
-   */
   hakimBayangan?: string;
 }
 
 export interface ProviderKeys {
-  /** Dynamic provider key (e.g., 'openrouter', 'openai', 'custom-provider') */
   [key: string]: string | string[] | undefined;
-  /** Primary Gemini API key (selected via round-robin) */
   gemini: string;
-  /** All Gemini API keys for retry/rotation */
   allGemini: string[];
   groq: string;
   openRouter?: string;
-  /**
-   * Kunci OpenRouter MILIK PENGGUNA (header x-byok-openrouter) — khusus embedding (Item 63–65).
-   * Tetap terpisah dari `openRouter` karena pemakaiannya berbeda: embedding dibayar pengguna.
-   *
-   * KOREKSI 2026-10-04: kalimat lama di sini berbunyi `openRouter` "jatuh ke OPENROUTER_API_KEY
-   * sistem bila provider chat pengguna bukan openrouter". Itu BASI — perilaku itu dihapus
-   * 2026-09-15; `request_pipeline.ts` kini jatuh ke header `x-byok-openrouter`, bukan kunci
-   * sistem. Komentar basi ini nyaris membuat saya melaporkan cadangan kunci sistem yang sudah
-   * tidak ada; kode yang menentukan, bukan komentar.
-   */
   openRouterByok?: string;
-  /** Kunci OpenAI MILIK PENGGUNA saja. Tak ada cadangan kunci sistem (BYOK, ditutup 2026-10-04). */
   openAI: string;
 }
 
-// ─────────────────────────────────────────────
-// 2. LOGGER INTERFACE
-// ─────────────────────────────────────────────
 
-/**
- * Logger interface untuk semua operasi background logging.
- * Menggantikan fungsi-fungsi `logApiUsage` dan `logAgentEvent`
- * yang sebelumnya di-capture dari closure.
- */
 export interface RequestLogger {
-  /**
-   * Mencatat pemakaian API ke tabel `api_usage`.
-   * Dipanggil setelah setiap LLM call non-streaming.
-   */
   logApiUsage: (provider: string, modelName: string, inputText: string, outputText: string, actualCostUsd?: number) => void;
 
-  /**
-   * Mencatat event agent ke tabel `agent_logs`.
-   * Dipanggil untuk RATE_LIMIT_HIT, FALLBACK_TRIGGERED, dll.
-   */
   logAgentEvent: (eventType: string, provider: string, logMessage: string) => Promise<void>;
 }
 
-// ─────────────────────────────────────────────
-// 3. STREAM CONFIG
-// ─────────────────────────────────────────────
 
 export interface StreamConfig {
-  /** True jika request menggunakan SSE streaming */
   isStream: boolean;
-  /** Gambar yang di-extract dari file upload, jika ada */
   extractedImage: { mimeType: string; data: string } | null;
-  /** Mode OS Desktop — mengaktifkan terminal tags */
   desktopOSMode: boolean;
-  /** Audit mode: 'OFF' | 'BASIC' | 'FULL' */
   auditMode: string;
-  /** Hybrid: nalar dialirkan lewat SSE, jawaban tetap JSON utuh di event terakhir (index.ts). */
   streamNalar?: boolean;
-  /** Diisi index.ts saat hybrid aktif — mengirim event nalar ke klien. */
   kirimNalar?: (ev: { tipe: 'nalar' | 'nalar_selesai'; teks?: string }) => void;
-  /** Waktu (ms epoch) permintaan diterima index.ts — dasar tenggat batas waktu dinding Supabase (streaming/batas_waktu.ts). */
   mulaiPermintaan?: number;
-  /** Diisi synthesis_handler bila jawaban akhir dipotong pada tenggat. */
   jawabanTerpotong?: boolean;
 }
 
-// ─────────────────────────────────────────────
-// 4. MODEL CONFIG
-// ─────────────────────────────────────────────
 
 export interface ModelConfig {
-  /**
-   * Model string dari request client.
-   * Contoh: 'gemini-2.5-flash', 'groq/openai/gpt-oss-20b',
-   *         'openrouter/anthropic/claude-sonnet-4.6'
-   * Undefined = gunakan default cascade.
-   */
   model: string | undefined;
-  /**
-   * Provider string dari request client.
-   * Contoh: 'openrouter', 'openai', 'anthropic', 'custom-provider'
-   * Undefined = gunakan default cascade.
-   */
   provider?: string;
-  /**
-   * Minta model melakukan penalaran mendalam (reasoning/thinking).
-   * Berasal dari slot tier Adaptive Model Tiering di BrainService.
-   *
-   * PENTING — semantiknya sengaja asimetris:
-   *   true            = kirim parameter reasoning provider yang sesuai
-   *   false/undefined = JANGAN kirim apa pun, biarkan perilaku bawaan model
-   *
-   * Ini BUKAN "matikan reasoning". Mematikan tidak bisa dijamin lintas provider:
-   * OpenRouter menolak dengan 400 kalau parameter reasoning dikirim ke model
-   * non-reasoning, dan Gemini 2.5 Pro sama sekali tidak bisa dimatikan
-   * thinking-nya. Karena ai_adapter.ts dilewati SEMUA panggilan LLM (Assistant,
-   * Engineer, Lite, dan pengguna eksternal mametlite), jalur aman satu-satunya
-   * adalah tidak mengirim apa pun kecuali diminta eksplisit.
-   */
   thinking?: boolean;
-  /**
-   * SIAPA yang memilih model ini (Item 126, Data Flywheel Fase 0).
-   *
-   *   'owner-settings'  Owner memilih model utama di Settings (termasuk mode Engineer)
-   *   'owner-override'  Owner menekan pil tier di kolom chat; classifier dilewati
-   *   'tier-auto'       TierClassifierService yang memutuskan (deterministik, 0 token)
-   *   'sistem'          panggilan internal: hakim bayangan, pemadat konteks, Coordinator
-   *   undefined         klien belum menandai — dicatat NULL, bukan ditebak
-   *
-   * Kenapa ia ada di sini dan bukan diulirkan sebagai parameter: `recordUsage` dipanggil dari
-   * DELAPAN tempat di `ai_adapter.ts`, semuanya sudah memegang `this.rctx`. Satu medan di sini
-   * lebih sulit dilupakan daripada delapan argumen.
-   *
-   * Kenapa penanda ini perlu sama sekali: 74,3% biaya (diukur 18 Okt 2026) berasal dari model
-   * yang Owner pilih sendiri. Tanpa membedakan pemilihnya, "biaya per jawaban" mengukur selera
-   * Owner, bukan kepintaran sistem.
-   */
   pemilih?: string;
 }
 
-// ─────────────────────────────────────────────
-// 5. POLICY CONFIG
-// ─────────────────────────────────────────────
 
-// canUseDesktopTools dihapus 2026-09-15 (Item 85) bersama jalur desktop lama. Objek tetap ada karena
-// ToolDispatcher menolak RuntimeContext tanpa `policy`.
 export type PolicyConfig = Record<string, never>;
 
-// ─────────────────────────────────────────────
-// 6. RUNTIME STATE
-// ─────────────────────────────────────────────
 
 export type EngineeringPhase = 'OBSERVE_ANALYZE' | 'PROPOSAL' | 'IMPLEMENTATION' | 'VERIFICATION_DOCUMENTATION';
 
@@ -178,90 +64,42 @@ export interface EngineeringState {
   approval?: EphemeralApproval;
 }
 
-/**
- * State yang diakumulasi selama request lifecycle.
- * Ditulis oleh berbagai stage pipeline.
- *
- * Note: MametExecutionContext (ctx) mengandung sebagian besar state.
- * RuntimeState menampung state tambahan yang tidak ada di ctx.
- */
 export interface RuntimeState {
-  /** Error string yang terakumulasi dari explicit model failures */
   explicitModelErrors: string;
-  /** State of the engineering lifecycle (only active for ENGINEER mode) */
   engineeringState?: EngineeringState;
 }
 
-// ─────────────────────────────────────────────
-// 6. BACKGROUND TASK TRACKER
-// ─────────────────────────────────────────────
 
-/**
- * Tracker untuk background async tasks.
- * Menggantikan `safeFireAndTrack` closure.
- */
 export interface BackgroundTaskTracker {
   traceId?: string;
   fire: (taskName: string, promise: Promise<any>) => void;
   awaitAll: () => Promise<void>;
 }
 
-// ─────────────────────────────────────────────
-// 7. RUNTIME CONTEXT (MAIN)
-// ─────────────────────────────────────────────
 
-/**
- * RuntimeContext — single object yang merangkum seluruh
- * dependencies request-level.
- *
- * Digunakan sebagai pengganti hidden closure capture.
- * Setiap fungsi yang sebelumnya bergantung pada closure
- * sekarang menerima RuntimeContext sebagai parameter eksplisit.
- *
- * Dibuat sekali di awal request, di-pass ke semua fungsi.
- *
- * ADR-0009 Phase 5.1
- */
 export interface RuntimeContext {
-  /** Trace ID untuk observability & cost tracking */
   traceId: string;
 
-  /** Provider API keys — immutable per request */
   keys: ProviderKeys;
 
-  /** Model configuration dari request */
   model: ModelConfig;
 
-  /** Policy parameters */
   policy: PolicyConfig;
 
-  /** Stream dan output configuration */
   stream: StreamConfig;
 
-  /** Logger untuk API usage dan agent events */
   logger: RequestLogger;
 
-  /** Identitas User */
   userId?: string;
 
-  /** Mutable runtime state */
   state: RuntimeState;
 
-  /** Background task tracker */
   tasks: BackgroundTaskTracker;
 
-  /** Environment variables and external endpoints */
   env: EnvironmentConfig;
 }
 
-// ─────────────────────────────────────────────
-// 8. FACTORY: createBackgroundTaskTracker
-// ─────────────────────────────────────────────
 
-/**
- * Factory untuk membuat BackgroundTaskTracker.
- * Menggantikan `pendingBackgroundTasks` array + `safeFireAndTrack` closure.
- */
 export function createBackgroundTaskTracker(traceId?: string): BackgroundTaskTracker {
   const pending: Promise<any>[] = [];
 
@@ -287,91 +125,17 @@ export function createBackgroundTaskTracker(traceId?: string): BackgroundTaskTra
   };
 }
 
-// ─────────────────────────────────────────────
-// 9. FACTORY: createRuntimeLogger
-// ─────────────────────────────────────────────
 
-/**
- * Factory untuk membuat RequestLogger yang terhubung ke Supabase.
- * Menggantikan `logApiUsage` dan `logAgentEvent` closures.
- *
- * @param userId - Auth user ID untuk tagging log entries
- * @param tasks  - BackgroundTaskTracker untuk fire-and-forget logging
- * @param env - Environment configuration for Supabase credentials
- */
-/**
- * TABEL TARIF — dipakai menghitung `api_usage.cost_usd`, yang dibaca RPC
- * `check_daily_quota` dan MENENTUKAN KAPAN CIRCUIT BREAKER MEMUTUS OWNER.
- * Salah di sini = Owner diblokir untuk biaya yang tidak pernah terjadi.
- *
- * URUTAN PENTING: dicocokkan dari atas ke bawah, yang PALING SPESIFIK dulu.
- * Sebelum perbaikan 2026-09-09 kodenya memakai `modelName.includes('gpt-4o')`
- * tanpa urutan, sehingga "openai/gpt-4o-mini" — yang mengandung substring
- * "gpt-4o" — ditagih dengan tarif gpt-4o. Terukur: 335.485 token input dicatat
- * $1,7119, padahal tagihan asli di dashboard OpenRouter hari itu $0,0606 untuk
- * model yang sama. Selisih 28x. Owner sepanjang hari menaikkan batas hariannya
- * ($1 → $1,5 → $2 → $3) mengejar biaya yang tidak nyata. Lihat Item 41.
- *
- * Angka di bawah diambil dari katalog resmi OpenRouter
- * (https://openrouter.ai/api/v1/models) pada 2026-09-09, dikonversi dari
- * harga per-token ke per-1K token. JANGAN diubah dari ingatan — ambil ulang
- * dari katalog. Tarif gpt-4o yang lama ($0,005/$0,015) bahkan salah untuk
- * gpt-4o sendiri; harga sebenarnya $0,0025/$0,01.
- *
- * BATAS KETELITIAN YANG DISADARI: jumlah token di sini masih ESTIMASI
- * (`Math.ceil(text.length / 4)`), bukan angka dari provider. Jadi hasilnya
- * tetap perkiraan sekalipun tarifnya benar — pada data uji 2026-09-09 hasilnya
- * $0,0517 vs $0,0606 asli. Solusi tepatnya memakai `usage` yang dikembalikan
- * provider, bukan menebak dari panjang teks. Dicatat sebagai pekerjaan terpisah.
- */
 const MODEL_PRICING: Array<{ match: string; costIn: number; costOut: number }> = [
-  // Paling spesifik lebih dulu — "gpt-4o-mini" WAJIB sebelum "gpt-4o".
   { match: 'gpt-4o-mini',              costIn: 0.00015,    costOut: 0.0006 },
   { match: 'gpt-4o',                   costIn: 0.0025,     costOut: 0.01 },
   { match: 'deepseek-v4-pro',          costIn: 0.00057948, costOut: 0.00173844 },
   { match: 'deepseek-v4-flash',        costIn: 0.000065,   costOut: 0.00018 },
   { match: 'llama',                    costIn: 0.00005,    costOut: 0.00008 },
-  // Groq, ditambahkan 2026-09-10 (Item 53). Model llama Groq dipensiunkan
-  // 16 Agustus 2026 dan diganti gpt-oss; tanpa dua baris ini keduanya tidak
-  // cocok entri mana pun dan jatuh ke FALLBACK_PRICING. Baris 'llama' di atas
-  // TETAP dipertahankan karena masih dipakai model llama lewat OpenRouter
-  // (`meta-llama/llama-3.1-8b-instruct`), bukan sisa Groq.
-  //
-  // Angkanya dari halaman model GroqCloud, bukan dari ingatan (pelajaran Item
-  // 41): gpt-oss-20b $0,075/1M masuk dan $0,30/1M keluar; gpt-oss-120b
-  // $0,15/1M dan $0,60/1M. Tabel ini bersatuan per 1K token, jadi dibagi 1000.
-  //
-  // '120b' WAJIB sebelum '20b' — pencocokannya `includes()`, dan menaruh yang
-  // pendek lebih dulu adalah kelas kesalahan yang sama dengan gpt-4o-mini.
   { match: 'gpt-oss-120b',             costIn: 0.00015,    costOut: 0.0006 },
   { match: 'gpt-oss-20b',              costIn: 0.000075,   costOut: 0.0003 },
-  // SENGAJA TIDAK ADA BARIS GEMINI.
-  //
-  // Sejak 2026-09-10 baris Gemini muncul di api_usage dengan nama modelnya yang
-  // benar (`gemini-2.5-flash`) — sebelumnya ia salah tercatat sebagai model
-  // OpenRouter milik pemanggil. Konsekuensinya ia kini tidak cocok dengan entri
-  // mana pun dan jatuh ke FALLBACK_PRICING.
-  //
-  // Itu disengaja, dan tetap disengaja setelah tiernya diketahui.
-  //
-  // Owner mengonfirmasi (2026-09-10) bahwa key Gemini di `GEMINI_API_KEY` adalah
-  // key AI Studio tier GRATIS, dipasang di era "AI Agent" sebagai cadangan. Jadi
-  // biaya nyatanya $0 dan FALLBACK sedikit terlalu mahal — sekitar $0,00002 per
-  // panggilan Intent Router (~157 token). Dalam sehari 100 pesan itu $0,002.
-  //
-  // Baris bertarif 0 SENGAJA TIDAK ditambahkan, meski itu yang paling akurat hari
-  // ini. Proyek ini sudah pernah terbakar pola tersebut: `model_pricing` tidak
-  // punya baris DeepSeek sehingga semua panggilan DeepSeek dihargai NOL, dan
-  // circuit breaker jadi buta terhadapnya (Item 42). Mengunci Gemini di 0
-  // menciptakan ulang titik buta yang sama begitu ada key berbayar dipasang —
-  // dan kesalahannya akan senyap, karena nol tidak pernah memicu alarm.
-  //
-  // Pertukarannya jelas: meleset $0,002/hari ke arah AMAN, demi tidak menanam
-  // titik buta yang pernah menggigit. Kalau kelak Owner beralih ke key berbayar,
-  // isi baris ini dengan angka dari halaman harga resmi Google — bukan ingatan.
 ];
 
-/** Tarif cadangan kalau model tidak dikenali — sengaja konservatif (lebih mahal). */
 const FALLBACK_PRICING = { costIn: 0.0001, costOut: 0.0002 };
 
 function resolveModelPricing(modelName: string): { costIn: number; costOut: number } {
@@ -392,7 +156,7 @@ export function createRuntimeLogger(
 
   return {
     logApiUsage(provider: string, modelName: string, inputText: string, outputText: string, actualCostUsd?: number): void {
-      if (isStream) return; // streaming: skip per-call logging
+      if (isStream) return;
       if (!userId) return;
 
       tasks.fire('LogAPIUsage', (async () => {
@@ -400,9 +164,6 @@ export function createRuntimeLogger(
         const inputTokens = Math.ceil(inputText.length / 4);
         const outputTokens = Math.ceil(outputText.length / 4);
 
-        // Biaya sesungguhnya dari provider selalu menang. Perkiraan tabel tarif hanya
-        // cadangan untuk provider yang tidak melaporkan biaya. Ini yang membuat angka
-        // circuit breaker akhirnya cocok dengan tagihan nyata — lihat Item 42.
         let totalCost: number;
         if (typeof actualCostUsd === 'number' && isFinite(actualCostUsd) && actualCostUsd >= 0) {
           totalCost = actualCostUsd;

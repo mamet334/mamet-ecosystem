@@ -1,9 +1,3 @@
-// SERVER MCP TIRUAN untuk uji konektor umum (Item 129 Tahap G2). Dijalankan sebagai: node serverMcpTiruan.cjs <berkasDeskripsi>
-//
-// Tiga alat:
-//   baca_data  — deskripsinya dibaca dari <berkasDeskripsi> saat server mulai (uji mengubahnya untuk meniru "rug pull");
-//   cek_token  — mengembalikan SHA-256 TIRUAN_TOKEN (bukan nilainya) + apakah rahasia proses utama ikut terkirim;
-//   tulis_data — sengaja tidak disetujui uji: memanggilnya harus ditolak Mamet sebelum sampai ke sini.
 
 const path = require('path');
 const fs = require('fs');

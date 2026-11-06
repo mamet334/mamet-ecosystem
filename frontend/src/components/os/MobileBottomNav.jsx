@@ -1,12 +1,6 @@
 import React from 'react';
 import { useService } from '../../core/runtime/hooks/useService';
 
-/**
- * MobileBottomNav
- * Bottom navigation bar untuk perangkat mobile (< 768px).
- * Menampilkan ikon navigasi utama di bagian bawah layar — mirip native mobile app.
- * Di desktop komponen ini tidak dirender (disembunyikan via kondisi di OSDesktopShell).
- */
 export default function MobileBottomNav({ onMenuOpen }) {
   const applicationManager = useService('ApplicationManager');
   const navigationService = useService('NavigationService');
@@ -39,7 +33,6 @@ export default function MobileBottomNav({ onMenuOpen }) {
 
   const isActive = (id) => appState?.activeAppId === id;
 
-  // Ambil item navigasi utama (max 5 agar muat di layar kecil)
   const navItems = navTree
     .filter(n => n.type === 'item' && n.app && !n.app.id?.includes('settings'))
     .slice(0, 4);
@@ -51,7 +44,6 @@ export default function MobileBottomNav({ onMenuOpen }) {
         safe-area-pb"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
-      {/* Tombol Menu (buka sidebar drawer) */}
       <button
         onClick={onMenuOpen}
         className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl
@@ -62,11 +54,10 @@ export default function MobileBottomNav({ onMenuOpen }) {
         <span className="text-[12px] font-medium uppercase tracking-wider">Menu</span>
       </button>
 
-      {/* Nav Items dari metadata */}
       {navItems.map((node) => {
         const app = node.app;
         const active = isActive(app.id);
-        const icon = app.icon || 'apps';  // dari metadata system.json
+        const icon = app.icon || 'apps';
         return (
           <button
             key={app.id}
@@ -94,7 +85,6 @@ export default function MobileBottomNav({ onMenuOpen }) {
         );
       })}
 
-      {/* Tombol Settings selalu ada */}
       <button
         onClick={() => activate('app:settings')}
         className={`flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition-colors

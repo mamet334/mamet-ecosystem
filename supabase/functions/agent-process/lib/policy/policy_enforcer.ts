@@ -15,7 +15,6 @@ export class PolicyEnforcer {
     const ws = this.validateWorkspace(workspace);
     if (ws === 'ws-assistant' || ws === 'ws-engineer') return 'ALLOW';
     
-    // ws-lite
     if (memory_type === 'essential_memory') return 'ALLOW';
     return 'ALLOW_WITH_LIMIT';
   }
@@ -51,7 +50,7 @@ export class PolicyEnforcer {
     if (ws === 'ws-engineer') {
       const restrictedFromEngineer = ['social_media_poster', 'casual_chat_agent'];
       if (restrictedFromEngineer.includes(tool_name)) return 'DENY';
-      return 'ALLOW'; // Engineer has access to engineer tools like shell, fs, git, etc.
+      return 'ALLOW';
     }
     return 'DENY';
   }
@@ -73,7 +72,6 @@ export class PolicyEnforcer {
       return 'DENY';
     }
     
-    // ws-lite cannot spawn complex sub agents
     return 'DENY';
   }
 }

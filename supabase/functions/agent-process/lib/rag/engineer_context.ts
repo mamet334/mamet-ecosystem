@@ -28,14 +28,8 @@ export const loadEngineerContext = async (
       
       const lowerMsgForEngineer = (finalMessage || '').toLowerCase();
       
-      // Lazy-load triggers
       const needsDeprecatedADR = /deprecated|konflik|conflict|history|lama|diganti|obsolete|pola lama/.test(lowerMsgForEngineer);
 
-      // =====================================================
-      // BRAIN 1 — STATIC ENGINEERING KNOWLEDGE
-      // Governance-aware: hanya load ACTIVE/APPROVED/VERIFIED + is_current
-      // Source of truth for architecture & rules.
-      // =====================================================
       const staticRes = await supClient
         .from('project_memory_entries')
         .select('id, entry_type, title, content, governance_status, version_major, version_minor, version_patch, is_current')
@@ -45,7 +39,6 @@ export const loadEngineerContext = async (
         .order('created_at', { ascending: false })
         .limit(8);
 
-      // Log governance filter untuk audit
       const skippedEntries = (staticRes.data || []).filter((e: any) =>
         e.governance_status === 'SUPERSEDED' || e.governance_status === 'DEPRECATED'
       );
@@ -58,11 +51,6 @@ export const loadEngineerContext = async (
         `${e.title} [v${e.version_major || 1}.${e.version_minor || 0}.${e.version_patch || 0}]`
       );
 
-      // =====================================================
-      // BRAIN 2 — DYNAMIC ENGINEERING CONTEXT
-      // Loaded per request. Changes every session.
-      // Source of truth for current state & runtime facts.
-      // =====================================================
       const [tasksRes, gapsRes, verRes] = await Promise.all([
         supClient.from('engineering_tasks').select('task_number, title, status, goal').in('status', ['Proposed', 'InProgress']).order('created_at', { ascending: false }).limit(5),
         supClient.from('architecture_gaps').select('gap_number, title, status, description').in('status', ['Open', 'InProgress']).order('created_at', { ascending: false }).limit(5),
@@ -73,7 +61,6 @@ export const loadEngineerContext = async (
       brain2Gaps = gapsRes.data?.map((g: any) => g.gap_number) || [];
       brain2Verifications = verRes.data?.map((v: any) => v.related_task) || [];
 
-      // Lazy-load Deprecated ADRs (only on conflict/history keywords)
       let deprecatedContext = '';
       if (needsDeprecatedADR) {
         const depRes = await supClient.from('project_memory_entries').select('entry_type, title, content').eq('status', 'Deprecated').order('updated_at', { ascending: false }).limit(5);
@@ -86,19 +73,16 @@ export const loadEngineerContext = async (
 
       engineerContextPrompt = `\n\n[MAMET ENGINEER CONTEXT — Two-Brain Model (ADR-0006)]\n`;
 
-      // STATIC BRAIN
       engineerContextPrompt += `\n--- BRAIN 1: STATIC ENGINEERING KNOWLEDGE (Foundation — rarely changes) ---\n`;
       engineerContextPrompt += staticRes.data?.map((e: any) => `[${e.entry_type}] ${e.title}: ${e.content}`).join('\n') || 'No static knowledge loaded.';
       engineerContextPrompt += '\n';
 
-      // DYNAMIC BRAIN
       engineerContextPrompt += `\n--- BRAIN 2: DYNAMIC ENGINEERING CONTEXT (Current state — changes per session) ---\n`;
       engineerContextPrompt += `Active Tasks:\n${tasksRes.data?.map((t: any) => `- ${t.task_number} (${t.status}): ${t.title} | Goal: ${t.goal}`).join('\n') || 'None'}\n`;
       engineerContextPrompt += `Architecture Gaps:\n${gapsRes.data?.map((g: any) => `- ${g.gap_number} (${g.status}): ${g.title}`).join('\n') || 'None'}\n`;
       engineerContextPrompt += `Recent Verifications:\n${verRes.data?.map((v: any) => `- [${v.result}] ${v.related_task} (${v.verification_type}): ${v.evidence}`).join('\n') || 'None'}\n`;
       if (deprecatedContext) engineerContextPrompt += deprecatedContext;
 
-      // --- PHASE 6-8: ENGINEER RULES (ADR-0004, ADR-0005, ADR-0006) ---
       engineerContextPrompt += `
 [ENGINEER IDENTITY & CONVERSATION MODE]
 You are Mamet Engineer — an AI coding assistant embedded in the Mamet OS Ecosystem.

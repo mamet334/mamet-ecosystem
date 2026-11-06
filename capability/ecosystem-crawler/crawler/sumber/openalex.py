@@ -12,14 +12,12 @@ from crawler.kanal import SesiSopan
 
 API = "https://api.openalex.org/works"
 
-
 def _abstrak(inv: dict | None) -> str:
     """Susun ulang abstract_inverted_index OpenAlex ({kata: [posisi, ...]}) menjadi teks."""
     if not inv:
         return ""
     kata_per_posisi = {pos: kata for kata, posisi in inv.items() for pos in posisi}
     return " ".join(kata_per_posisi[i] for i in sorted(kata_per_posisi))
-
 
 class OpenAlex(Sumber):
     id = "openalex"
@@ -28,7 +26,7 @@ class OpenAlex(Sumber):
     kemampuan = ("cari",)
     bahasa = ("semua",)
     cocok_untuk = ("ilmu_pengetahuan", "akademik", "jurnal", "riset")
-    pseudonim_penulis = False  # penulis karya ilmiah = byline publik (ADR-CRW-0010)
+    pseudonim_penulis = False
     batas_laju = "jeda 1-2 detik; polite pool via mailto"
     alat = ({"nama": "OpenAlex API", "repo": "github.com/ourresearch/openalex-guts", "lisensi": "CC0 (data)"},)
 
@@ -49,7 +47,7 @@ class OpenAlex(Sumber):
         for kw in misi.kata_kunci:
             params = {"search": kw, "per-page": min(jatah, 50),
                       "sort": "relevance_score:desc" if opsi.get("urut") != "terbaru" else "publication_date:desc"}
-            if konfig.MAILTO:  # polite pool OpenAlex; dari .env, bukan di-hardcode
+            if konfig.MAILTO:
                 params["mailto"] = konfig.MAILTO
             if filter_tahun:
                 params["filter"] = ",".join(filter_tahun)

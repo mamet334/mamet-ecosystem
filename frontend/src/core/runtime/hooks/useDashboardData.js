@@ -22,11 +22,8 @@ export default function useDashboardData() {
     agentProcess: 'UNKNOWN',
     electron: 'UNKNOWN'
   });
-  // Nilai TERKINI untuk dibaca di luar render (efek pengambil & laporan Realtime) — state `vitals` di efek itu basi.
   const vitalsRef = useRef(vitals);
-  // Alasan tiap lampu (mis. "permintaan terakhir gagal · 30 Okt 18.25") — ditampilkan saat lampunya disorot.
   const [keteranganLampu, setKeteranganLampu] = useState({});
-  // Dipanggil HomeDashboard dari callback `channel.subscribe` — Realtime dinilai dari langganan yang memang dipakai.
   const laporRealtime = useCallback((s) => {
     vitalsRef.current = { ...vitalsRef.current, realtime: statusRealtime(s) };
     setVitals(vitalsRef.current);
@@ -62,7 +59,6 @@ export default function useDashboardData() {
   });
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
 
-  // Fetch Supabase Data
   useEffect(() => {
     async function fetchData() {
       try {
@@ -72,7 +68,6 @@ export default function useDashboardData() {
         let memQuery = supabase.from('user_memories').select('id, summary, created_at, memory_hits, metadata, status').limit(500);
         let docQuery = supabase.from('documents').select('id, title, created_at').limit(500);
         let chatQuery = supabase.from('chats').select('id, title, workspace_type, created_at').limit(500);
-        // Hanya `document_id` — yang dipakai hanyalah hitungan potongan per dokumen (Item 130 Tahap B: kolom seperlunya).
         let chunkQuery = currentUserId
           ? supabase.from('document_chunks').select('document_id, documents!inner(user_id)').eq('documents.user_id', currentUserId).limit(5000)
           : supabase.from('document_chunks').select('document_id').limit(5000);
@@ -83,9 +78,6 @@ export default function useDashboardData() {
           chatQuery = chatQuery.eq('user_id', currentUserId);
         }
 
-        // Item 130 Tahap E: angka dihitung di basis data (`hitungan_graf_home`, migrasi 20261102000000) — pesan per
-        // percakapan, potongan per dokumen, total pemakaian model. Dulu ±3.600 baris document_id ditarik hanya untuk
-        // dihitung. Bila RPC gagal (mis. migrasi belum diterapkan) → jalan lama, Home tetap utuh.
         const [memRes, docRes, chatRes, hitunganRes] = await Promise.all([
           memQuery,
           docQuery,
@@ -108,9 +100,6 @@ export default function useDashboardData() {
           });
         }
 
-        // ---- Observability telemetry (0 LLM Tokens, Zero-Cost DB read) ----
-        // Item 130 Tahap B (syarat GRATIS): tanpa `select('*')` — hanya kolom yang dibaca di bawah. `agent_logs` tak lagi
-        // membawa `message` & `metadata` utuh: hanya 5 nilai metadata yang dipakai (latensi & trace id).
         const [logsRes, checksRes, incidentsRes, verRes, agentLogsRes, apiUsageRes] = await Promise.all([
           supabase.from('ai_system_logs').select('created_at, llm_call_count, model_used, latency_ms, memory_fetch_count, memory_write_count, error_flag, cost_alert_flag').order('created_at', { ascending: false }).limit(100),
           supabase.from('checks').select('status_code,response_time_ms,checked_at').order('checked_at', { ascending: false }).limit(100),
@@ -140,11 +129,9 @@ export default function useDashboardData() {
         const pipelineIncidentsTotal = (incidentsRes.data || []).length;
         const pipelineIncidentsDown = (incidentsRes.data || []).filter(i => (i.status || '').toUpperCase() === 'DOWN').length;
 
-        // Audit counts (all historical)
         const verificationFail = verificationItems.filter(v => (v.decision || '').toUpperCase() === 'FAIL' || (v.status || '').toUpperCase() === 'FAIL').length;
         const verificationWarn = verificationItems.filter(v => (v.decision || '').toUpperCase() === 'WARNING' || (v.decision || '').toUpperCase() === 'WARN' || (v.status || '').toUpperCase() === 'WARN' || (v.status || '').toUpperCase() === 'WARNING').length;
 
-        // Live recent failures for status evaluation (< 15 mins)
         const recentVerificationFail = verificationItems.filter(v => {
           const isFail = (v.decision || '').toUpperCase() === 'FAIL' || (v.status || '').toUpperCase() === 'FAIL';
           return isFail && isRecent(v.created_at);
@@ -162,7 +149,6 @@ export default function useDashboardData() {
           return arr[safeIdx];
         };
 
-        // Collect latency samples across all telemetry sources (checks, verification, agent_logs, ai_system_logs)
         const latencySamples = [
           ...logs.map(l => Number(l.latency_ms)),
           ...checks.map(c => Number(c.response_time_ms)),
@@ -215,7 +201,6 @@ export default function useDashboardData() {
           .sort((a, b) => (b.p95 || 0) - (a.p95 || 0))
           .slice(0, 5);
 
-        // Robust recursive failure sanitizer to prevent [object Object]
         const sanitizeFailureMessage = (raw) => {
           if (!raw) return 'Unknown failure';
           if (typeof raw === 'string') {
@@ -285,7 +270,6 @@ export default function useDashboardData() {
 
         const totalLlmCalls = Math.max(
           logs.reduce((acc, l) => acc + (l.llm_call_count || 0), 0),
-          // Total sebenarnya dari basis data (Tahap E); dulu panjang kueri ber-limit 100 → selalu 100.
           hitungan.pemakaianModel ?? apiUsages.length,
           agentLogs.filter(l => (l.event_type || '').toLowerCase().includes('provider') || (l.event_type || '').toLowerCase().includes('response')).length
         );
@@ -318,7 +302,6 @@ export default function useDashboardData() {
           .eq('service_name', 'agent-process')
           .maybeSingle();
 
-        // Lampu dari sinyal yang SUDAH ada (Item 130 Tahap B) — tanpa `functions.invoke('ping')`. Aturannya: grafHome.js nilaiLampu.
         const lampu = nilaiLampu({
           heartbeat: heartbeatData,
           suksesTerakhir: apiUsages[0]?.created_at,
@@ -344,8 +327,6 @@ export default function useDashboardData() {
               ? 'HEALTHY'
               : 'UNKNOWN';
 
-        // Satu objek TERKINI untuk panel DAN graf. Dulu graf menerima `vitals` dari state awal (efek berjalan sekali,
-        // sebelum setVitals) → 11 simpul layanan selalu abu-abu bergaris merah, apa pun keadaannya.
         const vitalsBaru = {
           ...vitalsRef.current,
           supabase: normalizeHealthStatus((memRes.error || docRes.error) ? 'DOWN' : 'HEALTHY'),
@@ -362,14 +343,11 @@ export default function useDashboardData() {
 
         setLastCheckTime(new Date().toLocaleTimeString('id-ID', { hour12: false }));
 
-        // Susunan graf = modul murni `grafHome.js` (Item 130 Tahap A) — bisa diuji tanpa peramban.
         const { nodes, links, stats: statistik } = susunGrafHome({ memories, documents, chats, docChunkCounts, vitals: vitalsBaru, pesanPerChat: hitungan.pesanPerChat });
         setStats(statistik);
 
-        // ---- Execution Trace ----
         let activeTraceId = selectedNode?.data?.trace_id || selectedNode?.data?.metadata?.trace_id;
         if (!activeTraceId) {
-          // Auto-load latest trace from agent_logs on initial render (0 Token, realtime DB read)
           const latestAgentWithTrace = agentLogs.find(l => l.metadata?.trace_id || l.metadata?.traceId);
           activeTraceId = latestAgentWithTrace?.metadata?.trace_id ||
                           latestAgentWithTrace?.metadata?.traceId ||
@@ -404,7 +382,6 @@ export default function useDashboardData() {
               const hasFailed = timeline.some(e => (e.status || '').toLowerCase() === 'failed');
 
               if (hasTimeout || hasFailed) {
-                // Jejak terakhir gagal → sorot jalur pesan di antara kedua belahan (Tahap C; dulu cluster Agent/Execution).
                 const nodesToActivate = new Set([PUSAT.desktop, PUSAT.server]);
                 const linksToActivate = new Set([`${PUSAT.desktop}->${PUSAT.server}`]);
                 setActivePath({ nodes: nodesToActivate, links: linksToActivate });

@@ -1,36 +1,22 @@
 import { supabase } from '../../../supabase.js';
 
-/**
- * MemoryService - Layer 2 Capability Service
- * Bertanggung jawab atas pengelolaan memori OS secara terpusat.
- */
 export class MemoryService {
   constructor(serviceManager) {
     this.serviceManager = serviceManager;
     this.eventBus = serviceManager.get('EventBus');
-    this.storageManager = serviceManager.get('StorageManager'); // Optional deps
+    this.storageManager = serviceManager.get('StorageManager');
     this.isInitialized = false;
   }
 
   async initialize() {
     if (this.isInitialized) return;
     
-    // Placeholder untuk inisialisasi state atau resource (misal: load memory cache)
     
     this.isInitialized = true;
     this.eventBus.emit('Memory:Ready', { status: 'READY', timestamp: Date.now() });
     console.log('[MemoryService] Initialized and Ready');
   }
 
-  /**
-   * Mengambil memori berdasarkan query.
-   * Prioritas: MemoryGovernorService.retrieveMemory() (two-stage filter + ranking)
-   * Fallback: keyword ilike search (backward compatible)
-   *
-   * @param {string} query
-   * @param {Object} [options]
-   * @param {boolean} [options.includeSensitive] - Hanya true jika flag eksplisit dari user
-   */
   async getMemory(query, options = {}) {
     if (!this.isInitialized) throw new Error('MemoryService not initialized');
 
@@ -41,7 +27,6 @@ export class MemoryService {
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id;
 
-      // === PATH UTAMA: Two-Stage Retrieval via MemoryGovernorService ===
       const governor = this.serviceManager.has('MemoryGovernorService')
         ? this.serviceManager.get('MemoryGovernorService')
         : null;
@@ -55,8 +40,6 @@ export class MemoryService {
         console.log(`[MemoryService] Two-Stage retrieval: ${result.length} memori`);
 
       } else {
-        // === FALLBACK: keyword ilike (backward compatible) ===
-        // Selalu exclude status non-active jika kolom status ada
         console.log('[MemoryService] Fallback ke keyword search (MemoryGovernorService tidak tersedia)');
         const stopwords = ['hai', 'halo', 'saya', 'aku', 'adalah', 'apa', 'siapa', 'bagaimana', 'dimana', 'kapan', 'mengapa', 'coba', 'tolong', 'bisa', 'kan', 'dong', 'ya', 'yg', 'yang', 'ini', 'itu', 'dan', 'atau', 'ke', 'di', 'dari', 'untuk', 'dengan'];
         const sanitizedFull = (query || '').replace(/[%_"'(),\\]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -71,12 +54,10 @@ export class MemoryService {
         } else {
           return [];
         }
-        // Exclude archived/pending_purge/conflict
         memoryQuery = memoryQuery.not('status', 'in', '("archived","pending_purge","CONFLICT_PENDING_REVIEW")');
         const { data, error } = await memoryQuery.order('created_at', { ascending: false }).limit(10);
 
         if (error) {
-          // status kolom belum ada (data lama) → retry tanpa filter status
           const { data: data2 } = await supabase
             .from('user_memories')
             .select('*')
@@ -98,20 +79,9 @@ export class MemoryService {
   }
 
 
-/**
-   * Menyimpan memori baru.
-   * @param {string} key 
-   * @param {any} value 
-   * @param {Object} [options] - Metadata opsional golden source
-   * @param {string} [options.source_reference] - Reference ke sumber asli (file/path/doc)
-   * @param {string} [options.chat_id] - Chat ID terkait
-   * @param {string} [options.version_code] - Kode versi
-   * @param {string} [options.source_type] - 'fact' | 'preference' | 'location' | 'engineer_session'
-   */
   async storeMemory(key, value, options = {}) {
     if (!this.isInitialized) throw new Error('MemoryService not initialized');
     
-    // Input validation
     if (!key || typeof key !== 'string' || key.trim().length === 0) {
       console.error('[MemoryService] Invalid key: must be non-empty string');
       this.eventBus.emit('Memory:Stored', { key, success: false, error: 'Invalid key' });
@@ -137,9 +107,6 @@ export class MemoryService {
       const content = typeof value === 'object' ? JSON.stringify(value) : String(value);
       const summary = key.length > 100 ? key.substring(0, 100) + '...' : key;
 
-      // === GOLDEN SOURCE PATH (MemoryGovernorService - Secure by Default) ===
-      // Selalu delegasikan ke MemoryGovernorService jika tersedia agar raw content disimpan
-      // dan ringkasan selalu mendapat metadata wajib.
       const governor = this.serviceManager.has('MemoryGovernorService')
         ? this.serviceManager.get('MemoryGovernorService')
         : null;
@@ -163,21 +130,6 @@ export class MemoryService {
         return success;
       }
 
-      // === STANDARD PATH (Safety Net Fallback jika Governor tidak tersedia) ===
-      //
-      // JALUR INI MENULIS TANPA EMBEDDING (Item 46, 2026-09-10).
-      //
-      // Vektorisasi hanya ada di MemoryGovernorService, jadi memori yang lahir
-      // di sini tidak akan pernah ditemukan `match_memories` — hanya lewat
-      // pencarian SQL. Kolom `embedding` nullable sehingga Postgres menerimanya
-      // tanpa protes, dan itulah yang membuat cacat ini bertahan berbulan-bulan:
-      // satu baris di produksi bersumber `MemoryService` sejak 24 Juli 2026.
-      //
-      // Jalur ini SENGAJA tidak dibuat memanggil embedding sendiri — ia justru
-      // berjalan ketika Governor tidak ada, jadi menambahkan logika embedding di
-      // sini berarti menduplikasinya di tempat kedua. Yang ditambahkan adalah
-      // SUARA: kalau jaring pengaman ini sampai menyala, itu keadaan tidak normal
-      // dan harus terlihat, bukan tertelan.
       console.warn(
         '[MemoryService] ⚠️ MemoryGovernorService tidak tersedia — memakai jalur cadangan. ' +
         'Memori ini disimpan TANPA embedding dan tidak akan bisa dicari berdasarkan makna. ' +

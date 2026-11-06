@@ -1,17 +1,10 @@
-/**
- * StorageManager - Layer 1 Core Service
- * Abstraksi semua media penyimpanan (localStorage, file system, IndexedDB, memory).
- * Digunakan oleh seluruh service dan komponen untuk operasi baca/tulis.
- */
 export class StorageManager {
   constructor() {
-    // Tentukan backend default berdasarkan environment
     this.backends = new Map();
     this.backends.set('localStorage', this._localStorageBackend());
     this.backends.set('file-system', this._fileSystemBackend());
     this.backends.set('memory', this._memoryBackend());
 
-    // Deteksi environment: Electron atau Browser
     if (typeof window !== 'undefined' && window.electronAPI) {
       this.currentBackend = 'file-system';
     } else {
@@ -19,14 +12,7 @@ export class StorageManager {
     }
   }
 
-  // =============================================
-  // BACKEND MANAGEMENT
-  // =============================================
 
-  /**
-   * Set backend penyimpanan yang aktif
-   * @param {string} type - 'localStorage' | 'file-system' | 'memory'
-   */
   setBackend(type) {
     if (this.backends.has(type)) {
       this.currentBackend = type;
@@ -36,25 +22,14 @@ export class StorageManager {
     }
   }
 
-  /**
-   * Dapatkan backend yang sedang aktif
-   * @returns {string}
-   */
   getBackend() {
     return this.currentBackend;
   }
 
-  /**
-   * Daftar semua backend yang tersedia
-   * @returns {string[]}
-   */
   listBackends() {
     return Array.from(this.backends.keys());
   }
 
-  // =============================================
-  // PUBLIC API
-  // =============================================
 
   async read(filePath) {
     console.log(`[StorageManager:read] 🔍 Memulai read("${filePath}")`);
@@ -64,7 +39,6 @@ export class StorageManager {
     console.log(`[StorageManager:read]   currentBackend: "${this.currentBackend}"`);
     console.log(`[StorageManager:read]   backends available:`, Array.from(this.backends.keys()));
 
-    // ✅ ELECTRON: Gunakan IPC ke main process terlebih dahulu
     if (typeof window !== 'undefined' && window.electronAPI?.readFile) {
       console.log(`[StorageManager:read] 📡 Mencoba Electron IPC readFile("${filePath}")...`);
       try {
@@ -84,7 +58,6 @@ export class StorageManager {
       console.log(`[StorageManager:read] ⚠️ Electron IPC tidak tersedia, langsung fallback ke backend`);
     }
     
-    // FALLBACK: Gunakan backend yang sedang aktif
     console.log(`[StorageManager:read] 🔄 Fallback ke backend "${this.currentBackend}"`);
     const backend = this.backends.get(this.currentBackend);
     console.log(`[StorageManager:read]   backend object tersedia:`, !!backend);
@@ -126,16 +99,10 @@ export class StorageManager {
     return backend.clear();
   }
 
-  /**
-   * List semua file secara rekursif dari direktori tertentu.
-   * @param {string} dir - Direktori awal (default: '.')
-   * @returns {Promise<string[]>} Array path file (bukan folder)
-   */
   async listRecursive(dir = '.') {
     console.log(`[StorageManager:listRecursive] 🔍 Memulai listRecursive("${dir}")`);
     console.log(`[StorageManager:listRecursive]   currentBackend: "${this.currentBackend}"`);
 
-    // ✅ ELECTRON: Gunakan IPC listFilesRecursive terlebih dahulu
     if (typeof window !== 'undefined' && window.electronAPI?.listFilesRecursive) {
       console.log(`[StorageManager:listRecursive] 📡 Mencoba Electron IPC listFilesRecursive("${dir}")...`);
       try {
@@ -149,7 +116,6 @@ export class StorageManager {
       console.log(`[StorageManager:listRecursive] ⚠️ Electron IPC tidak tersedia, fallback ke backend "${this.currentBackend}"`);
     }
 
-    // FALLBACK: Implementasi manual untuk backend lain (localStorage / memory)
     const results = [];
 
     async function walk(currentDir) {
@@ -157,18 +123,14 @@ export class StorageManager {
         const entries = await this.list(currentDir);
         for (const entry of entries) {
           const fullPath = currentDir === '/' ? `/${entry}` : `${currentDir}/${entry}`;
-          // Coba list sub-entry untuk deteksi folder
           const subEntries = await this.list(fullPath).catch(() => []);
           if (subEntries.length > 0 && subEntries.some(e => e !== entry)) {
-            // Ini folder, rekursif
             await walk.call(this, fullPath);
           } else {
-            // Ini file
             results.push(fullPath);
           }
         }
       } catch (e) {
-        // Skip folder yang tidak bisa diakses
         console.warn(`[StorageManager:listRecursive] ⚠️ Gagal list "${currentDir}": ${e.message}`);
       }
     }
@@ -177,9 +139,6 @@ export class StorageManager {
     return results;
   }
 
-  // =============================================
-  // BACKEND: LOCAL STORAGE
-  // =============================================
 
   _localStorageBackend() {
     const PREFIX = 'mamet_fs:';
@@ -271,9 +230,6 @@ export class StorageManager {
     };
   }
 
-  // =============================================
-  // BACKEND: FILE SYSTEM (ELECTRON)
-  // =============================================
 
   _fileSystemBackend() {
     const api = () => {
@@ -367,9 +323,6 @@ export class StorageManager {
     };
   }
 
-  // =============================================
-  // BACKEND: MEMORY (FALLBACK)
-  // =============================================
 
   _memoryBackend() {
     const store = new Map();

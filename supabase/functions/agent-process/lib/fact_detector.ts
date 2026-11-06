@@ -8,14 +8,7 @@ export interface IntentResult {
   reason: string;
 }
 
-/**
- * Hybrid Heuristic Probabilistic Classifier (HHPC)
- * Menggunakan pendekatan ekstraksi fitur probabilistik dengan bobot matematika ketat.
- */
 export function detectFact(text: string): IntentResult {
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // FAST FAIL (Protecting the engine from obvious questions/commands)
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   let lowerText = text.trim().toLowerCase();
 
   if (lowerText.includes('?')) {
@@ -32,38 +25,28 @@ export function detectFact(text: string): IntentResult {
     return { intent: 'TASK', score: 0.2, confidence: 'LOW', memory_eligible: false, tier: 'NONE', memory_type: 'OTHER', reason: 'Command / Task Request' };
   }
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // LAYER 1 — LIGHT NORMALIZATION
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // Only map pronouns to SELF token. DO NOT remove intensity modifiers.
   lowerText = lowerText.replace(/\b(gue|aku|saya|namaku)\b/g, 'SELF');
   lowerText = lowerText.replace(/\s+/g, ' ').trim();
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // LAYER 2 — FEATURE EXTRACTION (HEURISTIC SIGNALS)
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   const strongVerbs = ['kerja', 'tinggal', 'punya', 'adalah', 'lahir', 'domisili'];
   const prefVerbs = ['suka', 'doyan', 'minum', 'makan', 'benci', 'alergi'];
   const allVerbs = [...strongVerbs, ...prefVerbs];
 
-  // 1. self_reference_score
   let self_reference_score = 0.0;
   if (lowerText.startsWith('SELF')) {
-    // Check distance to verb
     const tokens = lowerText.split(' ');
     if (tokens.length > 1 && allVerbs.includes(tokens[1])) {
-      self_reference_score = 1.0; // Immediate verb
+      self_reference_score = 1.0;
     } else if (tokens.length > 2 && allVerbs.includes(tokens[2])) {
-      self_reference_score = 0.6; // One gap word (like 'juga' or 'sedikit')
+      self_reference_score = 0.6;
     } else {
-      self_reference_score = 0.5; // General presence
+      self_reference_score = 0.5;
     }
   } else if (lowerText.includes('SELF')) {
     self_reference_score = 0.4;
   }
 
-  // 2. verb_intent_score
   let verb_intent_score = 0.0;
   if (strongVerbs.some(v => lowerText.includes(v)) || lowerText.includes('nama SELF')) {
     verb_intent_score = 1.0;
@@ -72,10 +55,9 @@ export function detectFact(text: string): IntentResult {
   }
 
   if (lowerText.includes('tidak')) {
-    verb_intent_score *= 0.5; // Polarity shift heavily reduces direct statement confidence
+    verb_intent_score *= 0.5;
   }
 
-  // 3. object_presence_score
   let object_presence_score = 0.0;
   const tokenCount = lowerText.split(' ').length;
   if (tokenCount >= 3) {
@@ -84,26 +66,21 @@ export function detectFact(text: string): IntentResult {
     object_presence_score = 0.5;
   }
 
-  // 4. declarative_score
   let declarative_score = 1.0;
   if (lowerText.includes('juga')) {
-    declarative_score = 0.8; // Reduces absolute declaration slightly
+    declarative_score = 0.8;
   }
   const weakDeclarations = ['kayaknya', 'mungkin', 'sepertinya', 'agak', 'kira-kira'];
   if (weakDeclarations.some(w => lowerText.includes(w))) {
     declarative_score = 0.5;
   }
 
-  // 5. modifier_score
   let modifier_score = 0.0;
-  if (lowerText.includes('juga')) modifier_score += 1.0;   // 1.0 * 0.05 = +0.05
-  if (lowerText.includes('sangat')) modifier_score += 2.0; // 2.0 * 0.05 = +0.10
-  if (lowerText.includes('banget')) modifier_score += 2.0; // 2.0 * 0.05 = +0.10
-  if (lowerText.includes('sedikit')) modifier_score -= 2.0;// -2.0 * 0.05 = -0.10
+  if (lowerText.includes('juga')) modifier_score += 1.0;
+  if (lowerText.includes('sangat')) modifier_score += 2.0;
+  if (lowerText.includes('banget')) modifier_score += 2.0;
+  if (lowerText.includes('sedikit')) modifier_score -= 2.0;
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // LAYER 3 — PROBABILISTIC SCORING ENGINE
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   let rawScore =
     (self_reference_score * 0.30) +
     (verb_intent_score * 0.30) +
@@ -114,9 +91,6 @@ export function detectFact(text: string): IntentResult {
   let score = Math.max(0.0, Math.min(1.0, rawScore));
   score = parseFloat(score.toFixed(2));
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // LAYER 4 & 5 — CONFIDENCE BAND CLASSIFIER & TIERING
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   let intent: 'FACT' | 'CHAT' | 'QUESTION' | 'TASK' = 'CHAT';
   let confidence: 'HIGH' | 'MEDIUM' | 'LOW' = 'LOW';
   let memory_eligible = false;
@@ -128,7 +102,6 @@ export function detectFact(text: string): IntentResult {
     confidence = 'HIGH';
     memory_eligible = true;
 
-    // T1 if strong verb, T2 if preference
     if (score >= 0.85 && (strongVerbs.some(v => lowerText.includes(v)) || lowerText.includes('nama SELF'))) {
       tier = 'T1';
     } else {

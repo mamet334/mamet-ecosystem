@@ -1,14 +1,3 @@
-// ALAT TULIS FOLDER KERJA (Item 85 Tahap 2, 2026-09-22) — folder_write, folder_edit, folder_mkdir, folder_rename,
-// folder_delete.
-//
-// Murni: izin & tempat sampah DISUNTIKKAN (Electron: dialog asli proses utama + shell.trashItem; uji: tiruan), jadi
-// bisa diuji di Node dengan folder nyata. Prinsip:
-//   - Setiap alamat (asal DAN tujuan) lewat alamatDalamPagar (pagarFolder.cjs). Akar folder kerja tak bisa
-//     ditimpa, diganti nama, atau dihapus.
-//   - Tidak ada PowerShell: fs langsung (CommandRegistry lama merakit perintah dari alamat mentah — T8).
-//   - SETIAP perubahan meminta izin dengan pratinjau; ditolak = tidak ada yang berubah, dilaporkan apa adanya.
-//   - Hapus = Recycle Bin, bukan permanen. Tulis = berkas sementara lalu ganti nama (tak ada berkas setengah jadi).
-//   - Ekstensi yang bisa dijalankan tidak boleh ditulis/diedit/dijadikan tujuan ganti nama.
 
 const fs = require('fs');
 const path = require('path');
@@ -19,7 +8,6 @@ const BATAS_TULIS = {
   editBerkasByte: 1024 * 1024,
   pratinjauHuruf: 1200,
 };
-// Bisa dijalankan / diklik-jalan di Windows. .js ikut (Windows Script Host menjalankannya dengan klik ganda).
 const EKSTENSI_TERLARANG = new Set(['.exe', '.dll', '.com', '.bat', '.cmd', '.ps1', '.psm1', '.vbs', '.vbe', '.js',
   '.jse', '.wsf', '.wsh', '.hta', '.lnk', '.scr', '.msi', '.msp', '.reg', '.pif', '.cpl', '.jar', '.sys']);
 
@@ -30,31 +18,26 @@ const terlarang = (alamat) => EKSTENSI_TERLARANG.has(path.extname(alamat).toLowe
 const tampakBiner = (buf) => { const n = Math.min(buf.length, 8192); for (let i = 0; i < n; i++) if (buf[i] === 0) return true; return false; };
 const statAtauNull = (a) => { try { return fs.statSync(a); } catch { return null; } };
 
-/** Pagar + larangan umum. Mengembalikan {ok, alamat(abs), rel} atau gagal. */
 function sahkan(akar, alat, relatif, { bukanAkar = true, cekEkstensi = false } = {}) {
   if (typeof relatif !== 'string' || !relatif.trim()) return gagal(alat, relatif, 'alamat kosong');
   const p = alamatDalamPagar(akar, relatif);
   if (!p.ok) return gagal(alat, relatif, p.alasan);
   if (bukanAkar && p.relatif === '.') return gagal(alat, relatif, 'akar folder kerja tidak boleh diubah, diganti nama, atau dihapus');
-  // Tahap 3: .git berisi hook & konfigurasi yang DIJALANKAN git — menulis di sana membuat "git status/commit" di dialog
-  // izin tampak aman padahal menjalankan kode tersembunyi.
   if (p.relatif.split(path.sep).some((b) => b.toLowerCase() === '.git')) return gagal(alat, relUnix(p.relatif), 'isi folder .git tidak boleh diubah oleh alat folder (hook & konfigurasi git dijalankan otomatis)');
   if (cekEkstensi && terlarang(p.alamat)) return gagal(alat, relUnix(p.relatif), `ekstensi ${path.extname(p.alamat)} bisa dijalankan — tidak boleh ditulis oleh alat folder`);
   return { ok: true, alamat: p.alamat, rel: relUnix(p.relatif) };
 }
 
-/** Minta izin; hasil ditolak diseragamkan. */
 async function izin(deps, permintaan) {
   try { return (await deps.mintaIzin(permintaan)) === true; } catch { return false; }
 }
 const ditolakOwner = (alat, alamat) => ({ ok: false, alat, alamat, ditolakOwner: true, alasan: 'ditolak Owner di dialog izin — tidak ada yang diubah' });
 
-/** Tulis atomik: berkas sementara di folder yang sama lalu ganti nama. */
 function tulisAtomik(alamat, isi) {
   fs.mkdirSync(path.dirname(alamat), { recursive: true });
   const sementara = path.join(path.dirname(alamat), `.${path.basename(alamat)}.mamet-${process.pid}-${Date.now()}.tmp`);
   fs.writeFileSync(sementara, isi, 'utf8');
-  try { fs.renameSync(sementara, alamat); } catch (e) { try { fs.unlinkSync(sementara); } catch { /* */ } throw e; }
+  try { fs.renameSync(sementara, alamat); } catch (e) { try { fs.unlinkSync(sementara); } catch {  } throw e; }
 }
 
 async function folderWrite(akar, { alamat, isi }, deps) {
@@ -89,7 +72,6 @@ async function folderEdit(akar, { alamat, cari, ganti }, deps) {
   const buf = fs.readFileSync(s.alamat);
   if (tampakBiner(buf)) return gagal('folder_edit', s.rel, 'berkas biner — tidak diedit');
   const lama = buf.toString('utf8');
-  // Akhir baris berkas (CRLF) dan teks dari model (LF) disamakan dulu supaya potongan yang benar tetap ketemu.
   const crlf = lama.includes('\r\n');
   const cariN = crlf ? cari.replace(/\r?\n/g, '\r\n') : cari;
   const gantiN = crlf ? ganti.replace(/\r?\n/g, '\r\n') : ganti;
@@ -160,7 +142,6 @@ async function folderDelete(akar, { alamat }, deps) {
 
 const ALAT_TULIS = ['folder_write', 'folder_edit', 'folder_mkdir', 'folder_rename', 'folder_delete'];
 
-/** Satu pintu untuk IPC. deps = { mintaIzin(permintaan) → Promise<boolean>, keTempatSampah(alamatAbs) → Promise }. */
 async function jalankanAlatTulis(akar, permintaan = {}, deps) {
   if (!akar) return gagal(permintaan.alat, permintaan.alamat, 'folder kerja belum dipilih');
   if (!deps || typeof deps.mintaIzin !== 'function') return gagal(permintaan.alat, permintaan.alamat, 'dialog izin tidak tersedia — tidak ada yang diubah');

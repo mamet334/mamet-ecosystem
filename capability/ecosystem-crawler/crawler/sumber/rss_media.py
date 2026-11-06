@@ -23,7 +23,6 @@ FEED = {
     "antara": "https://www.antaranews.com/rss/terkini.xml",
 }
 
-
 class RssMedia(Sumber):
     id = "rss_media"
     kanal = "tv"
@@ -31,7 +30,7 @@ class RssMedia(Sumber):
     kemampuan = ("feed", "saring_kata_kunci")
     bahasa = ("id",)
     cocok_untuk = ("berita_terbaru", "isu_publik", "tren")
-    pseudonim_penulis = False  # penulis berita = byline publik (ADR-CRW-0010)
+    pseudonim_penulis = False
     batas_laju = "jeda 1-2 detik per feed/halaman; robots.txt mengikuti sakelar (lihat akses di katalog)"
     alat = (
         {"nama": "feedparser", "repo": "github.com/kurtmckee/feedparser", "lisensi": "BSD-2-Clause"},

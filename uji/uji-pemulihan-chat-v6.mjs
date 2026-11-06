@@ -1,9 +1,4 @@
-// UJI 2026-09-23 — pemulihanChat.js + penjaga urutan effect di ConversationEngine.jsx.
-// Sebab yang diuji: setelah muat ulang, penunjuk chat dihapus sebelum dibaca, dan semua kegagalan baca
-// dianggap "chat hilang". Bukti live: batch LevelDB seq 5433 & 5473 menghapus kunci ketiga workspace.
 import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
 import { readFileSync } from 'node:fs';
@@ -18,7 +13,6 @@ const cek = (ok, pesan, rinci) => {
   if (!ok) gagal++;
 };
 
-// ---------- putusanPemulihan ----------
 cek(P.putusanPemulihan({ messages: [{ role: 'user' }], hilang: false }) === 'pakai', 'isi chat terbaca → pakai');
 cek(P.putusanPemulihan({ messages: [], hilang: false }) === 'pakai', 'chat kosong yang sah → tetap pakai (bukan hilang)');
 cek(P.putusanPemulihan({ messages: null, hilang: true }) === 'lepas', 'baris chat memang tidak ada → penunjuk dilepas');
@@ -26,7 +20,6 @@ cek(P.putusanPemulihan({ messages: null, hilang: false, error: 'JWT expired' }) 
   'GAGAL BACA (sesi/jaringan) → penunjuk DIPERTAHANKAN, bukan dianggap hilang');
 cek(P.putusanPemulihan(undefined) === 'pertahankan', 'hasil tak terduga → pilih aman: pertahankan');
 
-// ---------- bolehSimpanChat ----------
 const laporan = { role: 'model', content: '🧠 Engineer Reasoning Report' };
 const konfirmasi = { role: 'model', content: '🔔 Konfirmasi Diperlukan' };
 cek(P.bolehSimpanChat({ currentChatId: null, messages: [laporan, konfirmasi] }) === false,
@@ -38,7 +31,6 @@ cek(P.bolehSimpanChat({ currentChatId: 'abc', messages: [laporan] }) === true,
 cek(P.bolehSimpanChat({ currentChatId: null, messages: [] }) === false, 'tanpa pesan → tidak disimpan');
 cek(P.bolehSimpanChat({ currentChatId: 'abc', messages: [] }) === false, 'chat ada tapi kosong → tidak disimpan');
 
-// ---------- kunciSimpan ----------
 const pesanA = [{ role: 'user', content: 'halo' }, { role: 'model', content: 'hai' }];
 cek(P.kunciSimpan({ chatId: 'c1', messages: pesanA }) === P.kunciSimpan({ chatId: 'c1', messages: pesanA.slice() }),
   'isi sama → kunci simpan sama (muat ulang tidak menulis ulang baris yang sama)');
@@ -48,12 +40,11 @@ cek(P.kunciSimpan({ chatId: 'c1', messages: pesanA }) !== P.kunciSimpan({ chatId
   'chat lain → kunci berbeda');
 cek(P.kunciSimpan({ chatId: null, messages: [] }) === 'new_0_0_', 'tanpa chat & tanpa pesan → bentuk kunci tetap terdefinisi');
 
-// ---------- penjaga urutan effect (statis, di berkas yang benar-benar dipakai) ----------
 const src = readFileSync(AKAR + 'ConversationEngine.jsx', 'utf8');
-const iSync = src.indexOf('PERSISTENSI: Sync currentChatId ke localStorage');
-const iRestore = src.indexOf('RESTORE: Chat dari localStorage');
+const iSync = src.indexOf('localStorage.setItem(chatStorageKey, currentChatId);');
+const iRestore = src.indexOf('const savedChatId = localStorage.getItem(chatStorageKey);');
 cek(iSync > 0 && iRestore > iSync, 'effect sinkronisasi memang dideklarasikan SEBELUM effect pemulihan (jadi jalan lebih dulu)');
-const badanSync = src.slice(iSync, iRestore);
+const badanSync = src.slice(src.lastIndexOf('useEffect', iSync), src.lastIndexOf('useEffect', iRestore));
 cek(/if \(!initialRestoreDone\) return;/.test(badanSync),
   'effect sinkronisasi menunggu pemulihan selesai → tidak menghapus penunjuk saat currentChatId masih null');
 cek(/initialRestoreDone\]/.test(badanSync) || /initialRestoreDone\)/.test(badanSync.split('}, [')[1] || ''),
@@ -62,8 +53,6 @@ cek(/else if \(!pemulihanGagalRef\.current\)/.test(badanSync),
   'saat pemulihan gagal, penunjuk chat tidak dihapus');
 cek(!/\.single\(\)/.test(src), 'tidak ada lagi .single() (baris kosong dulu jadi error → dikira chat hilang)');
 
-// Membaca chat (dari riwayat maupun saat pemulihan) tidak boleh menulis ulang barisnya:
-// isi yang baru dibaca ditandai "sudah tersimpan" SEBELUM setMessages memicu effect autosave.
 const iMuatRiwayat = src.indexOf('const handleLoadChat');
 const badanMuat = src.slice(iMuatRiwayat, iMuatRiwayat + 1400);
 const iTandai = badanMuat.indexOf('lastSavedKeyRef.current = kunciSimpan');
@@ -74,34 +63,19 @@ const iPulih = src.indexOf("if (putusan === 'pakai')");
 cek(/lastSavedKeyRef\.current = kunciSimpan/.test(src.slice(iPulih, iPulih + 500)),
   'pemulihan setelah muat ulang juga tidak menulis ulang baris yang sama');
 
-// Penjaga balapan (live TUGAS-02 putaran 1, 2026-09-23 09:29): penyimpanan & laporan patch harus MENUNGGU
-// pemulihan riwayat selesai — kalau tidak, chat ditimpa satu pesan saja dan percakapan lengkap hilang.
-const iSimpan = src.indexOf('PERSISTENSI: Auto-save messages');
-// Sampai akhir efek pendaftarnya (`}, [kunciSesi]);`), bukan angka tetap: sejak T17 (29 Okt) pengamatnya fungsi bernama
-// yang didaftarkan di BAWAH badannya, sehingga pendaftaran jatuh di luar jendela 4500 huruf lama.
+const iSimpan = src.indexOf('simpanOtomatis = () => {');
 const akhirSimpan = src.indexOf('}, [kunciSesi]);', iSimpan);
 const badanSimpan = src.slice(iSimpan, akhirSimpan > iSimpan ? akhirSimpan + 16 : iSimpan + 4500);
 cek(/if \(!initialRestoreDone\) return;/.test(badanSimpan),
   'autosave menunggu pemulihan selesai (chat tidak ditimpa satu pesan)');
-// v6 (2026-10-19, Item 127 Tahap 1): penyimpanan otomatis kini PENGAMAT di PenyimpanKeadaan, bukan
-// `useEffect` layar — supaya tetap jalan saat layarnya dilepas. Niat asersinya tetap sama: ia harus jalan
-// LAGI saat initialRestoreDone berubah. Dulu itu dijamin daftar dependency efek; kini daftar yang diamati.
 cek(/\[messages, currentChatId, isLoading, initialRestoreDone\]/.test(badanSimpan) ||
     /amati\(kunciSesi, 'simpanOtomatis', \[[^\]]*'initialRestoreDone'[^\]]*\]/.test(badanSimpan),
   'initialRestoreDone memicu ulang autosave (tetap tersimpan sesudah pemulihan)');
-// Pengamat yang dilepas bersama layarnya mengembalikan bug yang ditutup Tahap 1: jawaban yang selesai saat
-// Owner di halaman lain tidak pernah tersimpan. Jadi efek pendaftarnya TIDAK boleh mengembalikan pelepas.
-// Pendaftarannya harus pernyataan telanjang: dikembalikan (`return p.amati(…)`) berarti React memanggil
-// pelepasnya saat layar dilepas; disimpan ke variabel (`const lepas = p.amati(…)`) membuka jalan yang sama.
 cek(/\n\s+p\.amati\(kunciSesi, 'simpanOtomatis'/.test(badanSimpan) &&
     !/(?:return|=)\s*p\.amati\(kunciSesi, 'simpanOtomatis'/.test(badanSimpan),
   'pengamat autosave TIDAK dilepas saat layar dilepas');
-const iLaporan = src.indexOf('PATCH YANG TERPUTUS MUAT ULANG');
-const badanLaporan = src.slice(iLaporan, iLaporan + 3200);
-// Diperbarui 24 September: penjaganya kini per-INSTANCE (`iniInstansiEngineer`), bukan workspace yang
-// sedang tampil — `activeWorkspaceId` bernilai sama di ketiga instance chat sehingga instance Assistant
-// pun ikut berebut catatan patch dan yang menang menghapusnya. Ketahanan laporannya diuji terpisah di
-// uji-laporan-patch-bertahan.mjs.
+const iLaporan = src.indexOf('laporanSetelahMuatUlang((p) => storageManager.read(p)');
+const badanLaporan = src.slice(src.lastIndexOf('useEffect', iLaporan), iLaporan + 1000);
 cek(/!iniInstansiEngineer \|\| !initialRestoreDone/.test(badanLaporan),
   'laporan patch setelah muat ulang menunggu pemulihan (tidak terhapus isi dari database)');
 cek(/\[iniInstansiEngineer, initialRestoreDone\]/.test(badanLaporan), 'dependency laporan ikut initialRestoreDone');

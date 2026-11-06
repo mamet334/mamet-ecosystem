@@ -10,10 +10,8 @@ from crawler import konfig
 from crawler.inti import Misi, Pelapor, Sumber, Temuan
 from crawler.inti.teks import bersihkan, ke_iso
 
-
 def _query(keywords: list[str]) -> str:
     return " OR ".join(f'"{k}"' if " " in k else k for k in keywords)
-
 
 def _time_filter(dari: str) -> str:
     if not dari:
@@ -23,7 +21,6 @@ def _time_filter(dari: str) -> str:
         if hari <= batas:
             return nama
     return "all"
-
 
 class Reddit(Sumber):
     id = "reddit"

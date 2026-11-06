@@ -13,7 +13,6 @@ from .teks import ada_kata
 
 log = logging.getLogger(__name__)
 
-
 class Dispatcher:
     def __init__(self, gudang, registri: dict[str, Sumber], nonaktif: list[str] | None = None):
         self.gudang = gudang
@@ -62,7 +61,7 @@ class Dispatcher:
                     status = self.gudang.simpan(misi, nama, sumber.kanal, jenis_akses, confidence, temuan,
                                                 sumber.pseudonim_penulis)
                     if status == "ulang":
-                        continue  # item yang sama muncul dua kali di misi ini (mis. dari dua kata kunci)
+                        continue
                     hasil["diambil"] += 1
                     hasil["baru"] += status == "baru"
                     hasil["revisi"] += status == "revisi"
@@ -71,7 +70,7 @@ class Dispatcher:
                     if hasil["diambil"] >= batas:
                         break
                 lapor("Adapter.Response", **hasil)
-            except Exception as exc:  # adapter gagal tidak boleh menjatuhkan misi
+            except Exception as exc:
                 log.exception("Sumber '%s' gagal", nama)
                 hasil.update(gagal=1, alasan=f"{type(exc).__name__}: {exc}")
                 lapor("Adapter.Error", alasan=hasil["alasan"])
@@ -87,7 +86,6 @@ class Dispatcher:
         ringkasan = {
             "misi_id": misi.id, "status": status, "per_sumber": per_sumber, "total": total,
             "kursor": self.gudang.kursor_akhir(misi.id),
-            # Rata-rata keandalan pengambilan item yang berhasil (ADR-CRW-0003 butir 6).
             "confidence": round(sum(confidences) / len(confidences), 3) if confidences else 0.0,
         }
         self.gudang.catat_misi(misi, status, ringkasan)
@@ -109,7 +107,7 @@ class Dispatcher:
             try:
                 hari = date.fromisoformat(t.waktu_terbit[:10])
             except ValueError:
-                return True  # tanggal tidak terbaca: jangan dibuang
+                return True
             if misi.dari and hari < date.fromisoformat(misi.dari):
                 return False
             if misi.sampai and hari > date.fromisoformat(misi.sampai):

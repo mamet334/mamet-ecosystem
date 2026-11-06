@@ -1,21 +1,3 @@
-/**
- * KONEKTOR MCP — klien di proses utama (Item 129 Tahap B, 2026-10-23).
- *
- * Mamet sebagai KLIEN MCP: menjalankan server MCP lokal (stdio), lalu initialize → tools/list → tools/call.
- * Rancangan & keputusan Owner: docs/roadmap/ROADMAP-KONEKTOR-MCP.md (K1–K15).
- *
- *   - PER WORKSPACE (K3): satu proses server per (workspace, konektor). Menyalakan konektor di Assistant tidak
- *     menghubungkan Engineer — kuncinya `${ws}::${id}`, dan setiap kunci punya proses sendiri.
- *   - LINGKUNGAN DAFTAR PUTIH: server hanya menerima variabel aman dari SDK (`getDefaultEnvironment`: PATH, TEMP,
- *     USERPROFILE, …) — kunci API di proses Electron TIDAK ikut. Lebih ketat dari `envBersih` (daftar hitam).
- *   - TANPA SHELL & ALAMAT ABSOLUT: program = `python.exe` di `.venv` konektor itu sendiri, dicek ada sebelum jalan;
- *     tidak dicari di PATH.
- *   - `panggil()` pengelola TIDAK pernah diekspos ke layar. Jalan satu-satunya dari layar ke tools/call adalah
- *     `buatGerbangKonektor` (Tahap D): K2 — setiap alat menunggu persetujuan Owner; K8 — sekali per misi. Gerbang
- *     ada di proses utama karena layar tidak bisa dipercaya untuk bertanya sendiri.
- *
- * Murni (tanpa `electron`) supaya bisa diuji dengan node biasa — lihat `uji/uji-konektor-mcp.mjs`.
- */
 
 const fs = require('fs');
 const path = require('path');
@@ -27,42 +9,32 @@ const komponenKonektor = require('./komponenKonektor.cjs');
 
 const WORKSPACE = Object.freeze(['ws-assistant', 'ws-engineer']);
 
-// Konektor yang dikenal. Menambah konektor lokal = menambah entri di sini (Tahap C: Settings menampilkannya).
 const KONEKTOR = Object.freeze({
   'ecosystem-crawler': Object.freeze({
     nama: 'Ecosystem Crawler',
     jenis: 'lokal',
-    folder: ['capability', 'ecosystem-crawler'],        // relatif ke akar repo (npm run desktop)
-    python: ['.venv', 'Scripts', 'python.exe'],          // Python milik konektor itu, bukan Python di PATH
-    terbundel: Object.freeze({ python: ['python', 'python.exe'] }), // relatif ke resources/crawler-runtime (Tahap E)
-    // Folder yang crawler anggap wajib ada di CRAWLER_ROOT — di folder data baru belum ada (sumber inbox "belum siap").
+    folder: ['capability', 'ecosystem-crawler'],
+    python: ['.venv', 'Scripts', 'python.exe'],
+    terbundel: Object.freeze({ python: ['python', 'python.exe'] }),
     folderDataWajib: Object.freeze(['inbox']),
-    // Komponen tingkat stealth tidak dibundel (K14) — dipasang atas izin Owner (Tahap E2, stealthKonektor.cjs).
     stealth: true,
-    modul: 'crawler.wajah.mcp_server',                   // dijalankan `python -m` — paket dimuat dari folder kerja
+    modul: 'crawler.wajah.mcp_server',
     berkasModul: ['crawler', 'wajah', 'mcp_server.py'],
-    // Dibaca MAMET SENDIRI saat konektor menyala (Tahap C, rancangan §6 D): isinya setelan crawler — sumber & sakelar
-    // akses — bukan data luar, jadi tidak lewat persetujuan Owner dan tidak membuka jalur tools/call dari layar.
     bacaSaatNyala: 'katalog',
-    // Gerbang (Tahap D, K2/K8): misi baru → dialog; status & baca untuk misi yang SUDAH disetujui di workspace itu →
-    // tanpa dialog; alat lain → dialog setiap kali. `bebas` = setelan capability (bukan data luar).
     kebijakan: Object.freeze({ bebas: ['katalog'], misiBaru: 'jalankan_misi', ikutMisi: ['status_misi', 'baca_tangkapan'] }),
   }),
 });
 
 const BATAS = Object.freeze({
-  // 4.3.1: 30 s terlalu ketat — laptop 4 GB Windows 10 (uji Owner 26 Okt) gagal di percobaan pertama, berhasil di
-  // kedua. Batas ini hanya untuk server yang benar-benar macet; menaikkannya tidak melonggarkan apa pun.
   sambungMs: 90000,
   panggilBawaanMs: 60000,
-  panggilMaksMs: 150000,      // jalankan_misi crawler menunggu ≤ 110 s di sisi server
-  hasilHuruf: 60000,          // hasil alat yang lebih panjang dipotong — dibawa ke prompt, harus berbatas
-  stderrHuruf: 4000,          // ekor log server untuk keterangan galat
+  panggilMaksMs: 150000,
+  hasilHuruf: 60000,
+  stderrHuruf: 4000,
 });
 
 const RAHASIA = /KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|SUPABASE|OPENROUTER|AUTH/i;
 
-/** Lingkungan untuk server: daftar putih SDK + pengaturan Python; nama yang berbau rahasia dibuang (berjaga). */
 function lingkunganServer(dasar = getDefaultEnvironment()) {
   const hasil = {};
   for (const [k, v] of Object.entries(dasar)) if (!RAHASIA.test(k)) hasil[k] = v;
@@ -74,21 +46,6 @@ const tolak = (alasan) => ({ ok: false, alasan });
 function sahWorkspace(ws) { return WORKSPACE.includes(ws); }
 function sahKonektor(id) { return Object.prototype.hasOwnProperty.call(KONEKTOR, id); }
 
-/** Cara menjalankan konektor `id` — atau alasan kenapa tidak bisa. Tidak menjalankan apa pun. */
-/**
- * Dua cara menjalankan konektor (Tahap E, K10):
- *   - `npm run desktop`: dari repo — `capability/ecosystem-crawler/.venv`; data crawler di folder itu sendiri.
- *   - aplikasi terpasang: dari runtime yang DIBUNDEL pemasang (`resources/crawler-runtime/{python, crawler}`, disiapkan
- *     `scripts/siapkan-crawler.mjs`); folder program tidak bisa ditulis, jadi data, `.env`, dan hasil crawler ada di
- *     `folderData` (<userData>\crawler = %APPDATA%\ai-agent-frontend\crawler) lewat CRAWLER_ROOT.
- * `runtimeTerbundel` diisi proses utama hanya bila `app.isPackaged`.
- *
- * `folderDataPengembangan` — KHUSUS UJI, tidak pernah diisi `main.cjs`: di mode pengembangan, CRAWLER_ROOT ke folder ini
- * (biasanya folder sementara). Tanpanya crawler memakai folder repo sebagai akar data, dan suite uji pernah menulis 27
- * misi "uji rantai" ke `capability/ecosystem-crawler/data/gudang.db` milik Owner (temuan 27 Okt). Sengaja BUKAN
- * `folderData`: proses utama selalu mengirim `folderData` (%APPDATA%), jadi menghormatinya di mode pengembangan akan
- * memindahkan data `npm run desktop` Owner diam-diam.
- */
 function peluncuran(akarRepo, id, { runtimeTerbundel = null, folderData = null, folderDataPengembangan = null } = {}) {
   if (!sahKonektor(id)) return tolak(`konektor tidak dikenal: ${id}`);
   const k = KONEKTOR[id];
@@ -97,8 +54,6 @@ function peluncuran(akarRepo, id, { runtimeTerbundel = null, folderData = null, 
     if (!fs.existsSync(path.join(runtimeTerbundel, ...k.berkasModul))) return tolak(`runtime konektor tidak lengkap di ${runtimeTerbundel}`);
     if (!fs.existsSync(python)) return tolak('Python konektor tidak ada di runtime terbundel');
     if (!folderData) return tolak('folder data konektor tidak diketahui');
-    // E2: komponen stealth yang SUDAH terpasang (penanda ada) dimuat lewat PYTHONPATH; belum → tanpa (crawler melewati
-    // halaman yang memblokir dan mencatatnya).
     const st = k.stealth ? stealth.statusStealth({ terbundel: true, folderData }) : { keadaan: 'belum' };
     return {
       ok: true, command: python, args: ['-m', k.modul], cwd: runtimeTerbundel,
@@ -123,7 +78,7 @@ function peluncuran(akarRepo, id, { runtimeTerbundel = null, folderData = null, 
 function matikanPohon(pid) {
   if (!pid) return;
   const taskkill = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'taskkill.exe');
-  try { execFile(taskkill, ['/PID', String(pid), '/T', '/F'], { windowsHide: true }, () => {}); } catch { /* sudah mati */ }
+  try { execFile(taskkill, ['/PID', String(pid), '/T', '/F'], { windowsHide: true }, () => {}); } catch {  }
 }
 
 function denganBatasWaktu(janji, ms, pesan) {
@@ -132,7 +87,6 @@ function denganBatasWaktu(janji, ms, pesan) {
     .finally(() => clearTimeout(t));
 }
 
-/** Teks hasil tools/call: gabungan isi bertipe teks, dipotong ke batas. */
 function teksHasil(hasil, batasHuruf = BATAS.hasilHuruf) {
   const bagian = (hasil?.content || []).map((c) => (c?.type === 'text' ? c.text : `[isi ${c?.type || 'tak dikenal'}]`));
   if (hasil?.structuredContent && !bagian.length) bagian.push(JSON.stringify(hasil.structuredContent));
@@ -142,7 +96,6 @@ function teksHasil(hasil, batasHuruf = BATAS.hasilHuruf) {
     : { teks, terpotong: false, huruf: teks.length };
 }
 
-/** Setelan tersimpan → bentuk sah: hanya workspace & konektor yang dikenal, nilai `true` saja yang berarti nyala. */
 function normalisasiSetelan(mentah) {
   const hasil = {};
   for (const ws of WORKSPACE) {
@@ -153,7 +106,6 @@ function normalisasiSetelan(mentah) {
   return hasil;
 }
 
-/** Ringkasan `katalog` crawler untuk Settings: sakelar akses + jumlah sumber yang aktif & siap. */
 function ringkasKatalog(teks) {
   try {
     const k = JSON.parse(teks);
@@ -163,27 +115,17 @@ function ringkasKatalog(teks) {
       akses: k.akses || null,
       sumber: sumber.length,
       siap: siap.length,
-      // Tahap D: daftar sumber siap untuk blok prompt (disaring lagi oleh konektorAlat.infoKonektorAman).
       sumberSiap: siap.map((s) => ({ id: s.id, cocok: Array.isArray(s.cocok_untuk) ? s.cocok_untuk : [] })),
       versi: k.versi || null,
     };
   } catch {
-    // Katalog bukan JSON (server lain / versi crawler lain): Settings menampilkan "tampil setelah menyala" alih-alih
-    // angka yang salah. Konektornya tetap nyala — ringkasan hanya pelengkap tampilan.
     return null;
   }
 }
 
-/**
- * Pengelola sesi konektor. `akarRepo` = folder repo Mamet (di `npm run desktop`: dua tingkat di atas berkas ini).
- * `berkasSetelan` = JSON di perangkat (K7: setelan konektor tidak ikut akun) — mis. %APPDATA%\Mamet AI\konektor.json.
- * `runtimeTerbundel` & `folderData` (Tahap E): aplikasi terpasang — lihat `peluncuran`.
- * `folderDataPengembangan`: khusus uji — akar data crawler sementara di mode pengembangan; lihat `peluncuran`.
- * @param {{akarRepo: string, berkasSetelan?: string, runtimeTerbundel?: string|null, folderData?: string|null, folderDataPengembangan?: string|null, versi?: string, log?: (pesan: string) => void}} opsi
- */
 function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbundel = null, folderData = null, folderDataPengembangan = null, versi = '0', log = () => {} }) {
-  const sesi = new Map(); // `${ws}::${id}` → { client, transport, pid, alat, stderr, status, sejak, ringkasan }
-  let sedangPasangStealth = null; // janji pemasangan stealth yang berjalan — tombol ditekan dua kali tidak memasang dua kali
+  const sesi = new Map();
+  let sedangPasangStealth = null;
 
   const kunci = (ws, id) => `${ws}::${id}`;
   const luncurkan = (id) => peluncuran(akarRepo, id, { runtimeTerbundel, folderData, folderDataPengembangan });
@@ -193,8 +135,6 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbunde
     try {
       return normalisasiSetelan(JSON.parse(fs.readFileSync(berkasSetelan, 'utf8')));
     } catch {
-      // Belum pernah disimpan (berkas tidak ada) atau rusak → semua konektor mati. Aman ke arah mati: tidak ada proses
-      // yang dinyalakan tanpa sakelar Owner yang terbaca jelas. Owner melihat sakelarnya mati di Settings.
       return {};
     }
   }
@@ -230,7 +170,7 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbunde
     return hasil;
   }
 
-  const sedangMenyala = new Map(); // `${ws}::${id}` → janji — sakelar ditekan dua kali tidak melahirkan dua proses
+  const sedangMenyala = new Map();
 
   async function nyalakan(ws, id) {
     if (!sahWorkspace(ws)) return tolak(`workspace tidak dikenal: ${ws}`);
@@ -247,8 +187,6 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbunde
     const k = kunci(ws, id);
     if (sesi.get(k)?.status === 'nyala') return { ok: true, ...ringkas(ws, id) };
     if (p.folderData) {
-      // Aplikasi terpasang: folder data baru di %APPDATA% belum berisi folder yang crawler anggap wajib (mis. inbox —
-      // tanpa itu sumber inbox "belum siap"). Dibuat sekali; isinya tetap milik Owner.
       try { for (const f of KONEKTOR[id].folderDataWajib || []) fs.mkdirSync(path.join(p.folderData, f), { recursive: true }); }
       catch (e) { log(`[KONEKTOR] folder data ${p.folderData} tidak bisa disiapkan: ${e.message}`); }
     }
@@ -274,7 +212,7 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbunde
       return { ok: true, ...ringkas(ws, id) };
     } catch (e) {
       const pid = transport.pid;
-      try { await client.close(); } catch { /* sambungan memang gagal — penutupannya boleh gagal juga; pohon proses dimatikan di bawah */ }
+      try { await client.close(); } catch {  }
       matikanPohon(pid);
       return tolak(`${e.message}${catatan.stderr ? ` — log server: ${catatan.stderr.slice(-500)}` : ''}`);
     }
@@ -286,8 +224,8 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbunde
     const s = sesi.get(k);
     if (!s) return { ok: true, ...ringkas(ws, id) };
     sesi.delete(k);
-    try { await s.client.close(); } catch { /* server sudah berhenti sendiri — matikanPohon di bawah tetap memastikan */ }
-    matikanPohon(s.pid); // berjaga: proses anak (mis. browser stealth) ikut mati
+    try { await s.client.close(); } catch {  }
+    matikanPohon(s.pid);
     log(`[KONEKTOR] ${k} dimatikan`);
     return { ok: true, ...ringkas(ws, id) };
   }
@@ -296,7 +234,6 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbunde
     await Promise.all([...sesi.keys()].map((k) => { const [ws, id] = k.split('::'); return matikan(ws, id); }));
   }
 
-  /** Sakelar Owner di Settings: disimpan di perangkat (K7), lalu konektor dinyalakan/dimatikan di workspace itu. */
   async function atur(ws, id, nyala) {
     if (!sahWorkspace(ws) || !sahKonektor(id)) return tolak('workspace/konektor tidak dikenal');
     if (typeof nyala !== 'boolean') return tolak('nyala harus true/false');
@@ -307,11 +244,6 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbunde
     return nyala ? nyalakan(ws, id) : matikan(ws, id);
   }
 
-  /**
-   * Pasang komponen stealth (Tahap E2). Persetujuan Owner diminta PEMANGGIL (dialog proses utama) sebelum ini.
-   * Sesudah berhasil, konektor yang sedang menyala dimulai ulang supaya langsung memuat paketnya.
-   * @param {{jalankan?: Function}} [opsi] penjalan proses tiruan untuk uji
-   */
   function pasangStealth({ jalankan } = {}) {
     if (sedangPasangStealth) return sedangPasangStealth;
     sedangPasangStealth = (async () => {
@@ -332,8 +264,6 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbunde
     return sedangPasangStealth;
   }
 
-  // Settings ⑦ (Tahap E3): yang terpasang di perangkat untuk konektor `id` — lihat komponenKonektor.cjs. Terpisah dari
-  // status() karena menghitung ukuran folder (status dibaca layar tiap 3 detik).
   const opsiKomponen = (id) => ({ runtimeTerbundel, folderData, folderRepo: akarRepo ? path.join(akarRepo, ...KONEKTOR[id].folder) : null });
 
   async function komponen(id) {
@@ -341,12 +271,10 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbunde
     return { ok: true, ...(await komponenKonektor.bacaKomponen(opsiKomponen(id))) };
   }
 
-  /** Alamat untuk tombol "Buka folder" — layar mengirim kunci, bukan alamat; null bila tak dikenal / tak ada. */
   function lokasiFolder(id, kunci) {
     return sahKonektor(id) ? komponenKonektor.lokasiFolder(kunci, opsiKomponen(id)) : null;
   }
 
-  /** Saat aplikasi dibuka: konektor yang dinyalakan Owner dinyalakan lagi. Gagal → tampil di status, tidak diulang. */
   async function pulihkan() {
     const setelan = bacaSetelan();
     const hasil = [];
@@ -356,10 +284,6 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbunde
     return hasil;
   }
 
-  /**
-   * Panggil satu alat. TIDAK diekspos ke layar (lihat kepala berkas) — gerbang persetujuan Owner (K2/K8) Tahap D
-   * yang akan memanggilnya.
-   */
   async function panggil(ws, id, nama, argumen = {}, { batasMs = BATAS.panggilBawaanMs } = {}) {
     const s = sesi.get(kunci(ws, id));
     if (!s || s.status !== 'nyala') return tolak(`konektor ${id} tidak nyala di ${ws}`);
@@ -374,11 +298,6 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbunde
     }
   }
 
-  /**
-   * Rencana peluncuran konektor `id` TANPA menjalankannya: program, folder kerja, dan akar data (CRAWLER_ROOT; null =
-   * folder crawler repo). Untuk uji yang membuktikan jalur `main.cjs` (yang SELALU mengirim folderData) tidak
-   * memindahkan data `npm run desktop` — lihat folderDataPengembangan di `peluncuran`. Lingkungan lain tidak dibuka.
-   */
   function rencanaPeluncuran(id) {
     const p = luncurkan(id);
     return p.ok
@@ -389,18 +308,15 @@ function buatPengelolaKonektor({ akarRepo, berkasSetelan = null, runtimeTerbunde
   return { status, nyalakan, matikan, matikanSemua, panggil, atur, pulihkan, bacaSetelan, pasangStealth, komponen, lokasiFolder, rencanaPeluncuran };
 }
 
-/** `misi_id` dari hasil jalankan_misi (selesai maupun masih berjalan, keduanya memuatnya). */
 function misiIdDari(teks) {
   try { const id = JSON.parse(teks)?.misi_id; return typeof id === 'string' && /^[A-Za-z0-9_-]{6,64}$/.test(id) ? id : null; }
   catch {
-    // Hasil bukan JSON → tidak ada misi yang bisa diizinkan otomatis; status/baca tetap lewat dialog (aman ke arah tanya).
     return null;
   }
 }
 
 const LABEL_WS = { 'ws-assistant': 'Assistant', 'ws-engineer': 'Engineer' };
 
-/** Isi dialog persetujuan: apa persisnya yang akan dijalankan, dengan kata-kata Owner, bukan JSON mentah saja. */
 function susunDialog(ws, id, alat, argumen, ringkasan) {
   const nama = KONEKTOR[id].nama;
   const daftar = (v) => (Array.isArray(v) ? v.join(', ') : v ? String(v) : '—');
@@ -427,15 +343,8 @@ function susunDialog(ws, id, alat, argumen, ringkasan) {
   };
 }
 
-/**
- * GERBANG PERSETUJUAN (Item 129 Tahap D) — satu-satunya jalan dari layar ke tools/call.
- * K2: setiap alat menunggu persetujuan Owner. K8: SEKALI per misi — `jalankan_misi` memunculkan dialog; sesudah
- * disetujui, `status_misi` & `baca_tangkapan` untuk misi_id itu di workspace itu lewat tanpa dialog. Izin misi hidup
- * selama aplikasi terbuka; workspace lain (K3) dan misi lain tetap ditanyakan.
- * @param {{pengelola: ReturnType<typeof buatPengelolaKonektor>, mintaIzin: (d: {judul: string, rincian: string}) => Promise<boolean>, log?: Function}} opsi
- */
 function buatGerbangKonektor({ pengelola, mintaIzin, log = () => {} }) {
-  const izinMisi = new Map(); // `${ws}::${id}` → Set<misi_id>
+  const izinMisi = new Map();
 
   async function panggil(ws, id, alat, argumen = {}) {
     if (!sahWorkspace(ws) || !sahKonektor(id)) return { ...tolak('workspace/konektor tidak dikenal'), alat };
@@ -455,7 +364,6 @@ function buatGerbangKonektor({ pengelola, mintaIzin, log = () => {} }) {
         return { ok: false, ditolakOwner: true, alat, alasan: 'ditolak Owner di dialog persetujuan' };
       }
     }
-    // jalankan_misi menunggu ≤ 110 s di sisi crawler; batas panggilan diberi kelonggaran di atasnya.
     const h = await pengelola.panggil(ws, id, alat, argumen, alat === kb.misiBaru ? { batasMs: 130000 } : undefined);
     if (h.ok && alat === kb.misiBaru) {
       const misiId = misiIdDari(h.teks);
@@ -471,6 +379,5 @@ function buatGerbangKonektor({ pengelola, mintaIzin, log = () => {} }) {
 module.exports = {
   buatPengelolaKonektor, buatGerbangKonektor, susunDialog, misiIdDari,
   peluncuran, lingkunganServer, teksHasil, normalisasiSetelan, ringkasKatalog, KONEKTOR, WORKSPACE, BATAS,
-  // Tahap G2: dipakai juga oleh konektor umum (konektor/sesiUmum.cjs) — satu cara mematikan & membatasi waktu.
   matikanPohon, denganBatasWaktu,
 };

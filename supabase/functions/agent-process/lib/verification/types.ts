@@ -1,21 +1,17 @@
-// ============================================================
-// VERIFICATION DOMAIN TYPES (Wave 5.2E)
-// ============================================================
 
-// --- EVIDENCE VALIDATOR TYPES ---
 export interface EvidenceReport {
   requestId: string;
   userId: string;
-  mode: string;                  // LITE | AI | ENGINEER
-  brain1Count: number;           // Static engineering knowledge (ADR, Lesson, dll)
-  brain2Count: number;           // Dynamic context (Tasks, Gaps, Verifications)
-  ragCount: number;              // RAG documents retrieved
-  memoryCount: number;           // User memory nodes loaded
-  totalEvidence: number;         // Total semua evidence
-  isValid: boolean;              // Apakah boleh lanjut ke LLM?
-  blockReason: string | null;    // Alasan STOP jika isValid = false
-  verdict: 'PASSED' | 'BLOCKED' | 'WARNING'; // Verdict final
-  gateVerdictText: string;       // Teks yang diinjeksikan ke system prompt
+  mode: string;
+  brain1Count: number;
+  brain2Count: number;
+  ragCount: number;
+  memoryCount: number;
+  totalEvidence: number;
+  isValid: boolean;
+  blockReason: string | null;
+  verdict: 'PASSED' | 'BLOCKED' | 'WARNING';
+  gateVerdictText: string;
 }
 
 export interface EvidenceInput {
@@ -30,20 +26,19 @@ export interface EvidenceInput {
   memoryArray: any[];
 }
 
-// --- CONFIDENCE ENGINE TYPES ---
 export interface SourceTraceItem {
   type: 'ADR' | 'TASK' | 'GAP' | 'VERIFICATION' | 'RAG' | 'MEMORY' | 'LESSON' | 'VISION' | 'MAEF' | 'SOLUTION' | 'OTHER';
-  id: string;           // entry_id atau identifier
-  title: string;        // Judul singkat
-  govStatus?: string;   // governance_status (ACTIVE, DEPRECATED, dll)
-  version?: string;     // "1.2.0"
+  id: string;
+  title: string;
+  govStatus?: string;
+  version?: string;
   isCurrent?: boolean;
-  relationship?: string; // Hubungan dengan jawaban: "primary", "supporting", "referenced"
+  relationship?: string;
 }
 
 export interface ConfidenceReport {
-  score: number;          // 0-100
-  grade: 'A' | 'B' | 'C' | 'D' | 'F';  // A=90+, B=75+, C=60+, D=45+, F=<45
+  score: number;
+  grade: 'A' | 'B' | 'C' | 'D' | 'F';
   breakdown: {
     baseScore: number;
     evidenceBonus: number;
@@ -60,14 +55,14 @@ export interface ConfidenceReport {
     mode: string;
   };
   sourceTrace: SourceTraceItem[];
-  summaryText: string;    // Teks yang diinjeksikan ke system prompt
-  label: string;          // "High Confidence", "Low Confidence", dll
+  summaryText: string;
+  label: string;
 }
 
 export interface ConfidenceInput {
   mode: string;
-  brain1Ids: string[];              // Title ADR/Lesson/dll yang di-load
-  brain1Entries?: Array<{           // Detail entry jika tersedia
+  brain1Ids: string[];
+  brain1Entries?: Array<{
     id: string;
     entry_type: string;
     title: string;
@@ -80,14 +75,13 @@ export interface ConfidenceInput {
   brain2Tasks: string[];
   brain2Gaps: string[];
   brain2Verifications: string[];
-  ragDocs: string[];                // Judul dokumen RAG
+  ragDocs: string[];
   memoryCount: number;
-  activeConflicts?: number;         // Dari knowledge_conflicts table
-  hasVerification?: boolean;        // Ada verifikasi yang PASS?
-  allCurrent?: boolean;             // Semua knowledge is_current?
+  activeConflicts?: number;
+  hasVerification?: boolean;
+  allCurrent?: boolean;
 }
 
-// --- POLICY ENGINE TYPES ---
 export type MametMode = 'LITE' | 'AI' | 'ENGINEER';
 export type PolicyAction =
   | 'CALL_LLM'
@@ -109,18 +103,17 @@ export interface PolicyContext {
   riskScore: number;
   appSource: string;
   hasActiveConflicts?: boolean;
-  govStatus?: string; // governance status of knowledge being accessed
+  govStatus?: string;
 }
 
 export interface PolicyDecision {
   allow: boolean;
   reason: string;
-  constraints: string[];  // Batasan tambahan jika allow=true
-  auditNote: string;      // Dicatat ke audit log
+  constraints: string[];
+  auditNote: string;
   severity: 'INFO' | 'WARNING' | 'BLOCK';
 }
 
-// --- UNIVERSAL EVIDENCE CONTRACT TYPES ---
 export interface IdentityBlock {
   name: string;
   version: string;
@@ -133,7 +126,7 @@ export interface IdentityBlock {
 export interface MemoryBlock {
   hasMemory: boolean;
   memoryCount: number;
-  memoryContext: string;  // Teks ringkasan memory (sudah dibangun di context_fusion)
+  memoryContext: string;
 }
 
 export interface KnowledgeBlock {
@@ -167,8 +160,8 @@ export interface ConstraintBlock {
   canUseAutomation: boolean;
   canUseDesktopTools: boolean;
   canWriteKnowledge: boolean;
-  activeConstraints: string[];  // Daftar aturan aktif dari Policy Engine
-  forbidden: string[];           // Daftar larangan eksplisit
+  activeConstraints: string[];
+  forbidden: string[];
 }
 
 export interface OutputContractBlock {
@@ -189,10 +182,9 @@ export interface UniversalEvidenceContract {
   runtime: RuntimeBlock;
   constraint: ConstraintBlock;
   outputContract: OutputContractBlock;
-  systemBasePrompt: string; // Instruksi dasar (Identity, Sub-Agents, Fitur Zip/Chart)
-  hasilAlatFolder?: boolean; // Item 85 Tahap 3: putaran lanjutan folder kerja — hasil alat menjadi sumber label
-  keluaranPerintah?: boolean; // 2026-09-23: keluaran perintah Engineer yang disetujui Owner — sumber label yang sah
-  // Full text rendition — siap dikirim ke LLM
+  systemBasePrompt: string;
+  hasilAlatFolder?: boolean;
+  keluaranPerintah?: boolean;
   asSystemPromptText: () => string;
 }
 

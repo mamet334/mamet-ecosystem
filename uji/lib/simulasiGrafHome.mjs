@@ -1,11 +1,3 @@
-// Simulasi graf Home di Node (Item 130). Sejak Tahap F (tata surya, 3 Nov 2026) posisi tidak lagi "dicari" oleh gaya
-// fisika: `tataSurya` (grafHome.js) menghitung & memaku semuanya — fungsi yang SAMA yang dipakai HomeDashboard. Penyusun
-// simpul juga yang sama (`susunGrafHome`, `gabungGraf`), sebaran data Owner yang diukur 2 Nov (hanya hitungan): chat 131
-// Assistant / 84 Engineer / 4 Lite, 229 dokumen ber-potongan, 10 memori.
-//
-// Kamera = `tataPas` (padding 50 + pita atas RUANG_ATAS), seperti onEngineStop HomeDashboard. Label: kategori 12 px di
-// layar, simpul data hanya bila skala ≥ ambang; jangkar label = `jangkarLabel` (label planet di luar sistem bulannya);
-// penghindar tabrakan = `bolehLabel` menurut `prioritasLabel` — aturan yang SAMA dengan ActivityGraph onRenderFramePost.
 
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { join } from 'node:path';
@@ -15,9 +7,8 @@ const { susunGrafHome, ambangLabelData, tataPas, gabungGraf, prioritasLabel, bol
   await import(pathToFileURL(join(AKAR, 'frontend/src/core/runtime/hooks/grafHome.js')).href);
 
 export const SEBARAN_OWNER = Object.freeze({ assistant: 131, engineer: 84, lite: 4, dokumen: 229, memori: 10 });
-export const LAYAR_OWNER = Object.freeze({ lebar: 1046, tinggi: 690 }); // 1366×768 dikurangi panel kanan & bilah
+export const LAYAR_OWNER = Object.freeze({ lebar: 1046, tinggi: 690 });
 
-/** Baris tiruan berbentuk persis seperti hasil kueri `useDashboardData` (tanpa isi pribadi apa pun). */
 export function barisTiruan(s = SEBARAN_OWNER) {
   const chats = [];
   const ws = [['ws-assistant', s.assistant], ['ws-engineer', s.engineer], ['ws-lite', s.lite]];
@@ -30,13 +21,6 @@ export function barisTiruan(s = SEBARAN_OWNER) {
 
 const lebarTeks = (s) => [...s].reduce((n, c) => n + (c >= 'A' && c <= 'Z' ? 8.4 : 7.2), 0);
 
-/**
- * @param {object} [opsi] layar, sebaran, ambangLabel, pesanPerChat, lapisan (satu atau larik: hasil susunLapisanKemampuan /
- *   susunEkorPesan, atau fungsi (grafDasar) → lapisan). `pasangGaya`/`benih`/`detak` dari masa gaya fisika diabaikan.
- * @returns {{ skala, label, tumpang, tampil, tersembunyi, simpul, garis, atasSimpul, ukuran }}
- *   label = kandidat label; tumpang = tumpang MENTAH (mutu tata letak); tampil/tersembunyi = sesudah penghindar tabrakan;
- *   ukuran = hasil tataSurya (jariOrbit, jariLuar, sistem).
- */
 export function simulasikan({ layar = LAYAR_OWNER, sebaran = SEBARAN_OWNER, ambangLabel = null, lapisan = null, pesanPerChat = {} } = {}) {
   const dasar = susunGrafHome({ ...barisTiruan(sebaran), vitals: {}, pesanPerChat });
   const daftar = (Array.isArray(lapisan) ? lapisan : [lapisan]).map((l) => (typeof l === 'function' ? l(dasar) : l));
@@ -52,7 +36,6 @@ export function simulasikan({ layar = LAYAR_OWNER, sebaran = SEBARAN_OWNER, amba
   const keLayar = (gx, gy) => [(gx - kamera.x) * k + layar.lebar / 2, (gy - kamera.y) * k + layar.tinggi / 2];
   const atasSimpul = Math.min(...nodes.map((n) => keLayar(n.x, n.y - r(n))[1]));
 
-  // Ambang nama data = ambangLabelData(skala pas) seperti ActivityGraph (Tahap F); `ambangLabel` angka = paksa (pembanding).
   const ambang = ambangLabel ?? ambangLabelData(k);
   const label = nodes.filter((n) => n.name && (n.isCategory || k >= ambang)).map((n) => {
     const kategori = !!n.isCategory;

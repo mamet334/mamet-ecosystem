@@ -2,13 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useService } from '../../core/runtime/hooks/useService';
 import Ikon from '../Ikon';
 
-/**
- * OS Sidebar — laci navigasi SELULER.
- *
- * Laci overlay dari kiri, disembunyikan saat tertutup; dikontrol via props isOpen & onClose dari OSDesktopShell.
- * Desktop memakai menu teks (MenuTeks.jsx, Item 127 K2). Cabang desktop berkas ini — bilah ikon w-16 — tidak
- * terpakai sejak itu dan dihapus atas keputusan Owner 20 Okt.
- */
 export default function Sidebar({ isOpen = false, onClose }) {
   const applicationManager = useService('ApplicationManager');
   const navigationService = useService('NavigationService');
@@ -16,7 +9,6 @@ export default function Sidebar({ isOpen = false, onClose }) {
   const [appState, setAppState] = useState({ apps: [], activeAppId: null });
   const [navTree, setNavTree] = useState([]);
 
-  // Sync state saat service tersedia
   useEffect(() => {
     if (applicationManager) {
       setAppState(applicationManager.getState());
@@ -42,7 +34,6 @@ export default function Sidebar({ isOpen = false, onClose }) {
     if (appState.apps.find(a => a.id === id)) {
       applicationManager.activateApp(id);
     }
-    // Tutup laci setelah navigasi
     if (onClose) onClose();
   };
 
@@ -101,7 +92,6 @@ export default function Sidebar({ isOpen = false, onClose }) {
       className={`fixed left-0 top-0 h-screen w-72 flex flex-col bg-surface-container-low border-r border-outline-variant z-40 transition-transform duration-300 ease-in-out shadow-2xl
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
     >
-      {/* Header laci */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-outline-variant/50">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-primary-container/20 flex items-center justify-center text-primary">
@@ -121,10 +111,8 @@ export default function Sidebar({ isOpen = false, onClose }) {
         </button>
       </div>
 
-      {/* Daftar navigasi */}
       <nav className="flex-1 overflow-y-auto py-4 space-y-1 custom-scrollbar">
         {navTree.map((node, idx) => renderNavNode(node, idx))}
-        {/* Settings di dalam laci */}
         <div className="mx-2 mt-2">
           <a
             href="#"

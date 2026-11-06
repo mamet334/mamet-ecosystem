@@ -1,38 +1,8 @@
-// Pengambil web Tier 3 untuk IPC `net:fetchWeb` (dipanggil WebComparisonService._safeFetch dari renderer).
-//
-// ── Kenapa jaringan CHROMIUM, bukan `fetch()` Node (2026-10-27, "Black October") ─────────────────────────────
-// CVE-2026-111497 ("Node2Shell"): dekoder Brotli bisa menulis di luar buffer → eksekusi kode, cukup dengan
-// respons ber-`Content-Encoding: br` yang dirancang. `fetch()` Node meminta & mengurai Brotli sendiri, dan Node
-// bawaan Electron 42.3.3 adalah 24.15.0 — versi tertambal 24.22.1, dan per 27 Okt belum ada Electron stabil
-// yang membawanya. Jalur ini mengambil situs & RSS PIHAK KETIGA di PROSES UTAMA (akses penuh ke komputer),
-// jadi situs jahat atau yang diretas cukup untuk memicunya.
-//
-// 28 Okt: Electron naik ke 45.1.0 (Node 24.22.1 — tertambal; Chromium 156). `fetch()` Node kini aman lagi, tetapi
-// jalur ini TETAP lewat `net.fetch`: satu dekoder (Chromium) untuk semua lalu lintas web, dan dua penjaga di bawah
-// tidak bergantung pada versi Node. Jangan kembalikan ke `fetch()` Node.
-//
-// `net.fetch` memakai tumpukan jaringan Chromium, yang membawa brotli sendiri. Chromium 148.0.7778.218 (bawaan
-// Electron 42.3.3) memuat brotli `cfa184a` (2026-03-18), yang SUDAH berisi perbaikannya: `0ed4268` "Detect and
-// report invalid stream earlier" (2026-02-27) — patch yang sama yang dirilis brotli v1.2.1 untuk CVE ini
-// (`b418fa8`). Diperiksa lewat API compare GitHub, bukan dari klaim artikel.
-//
-// ── Yang berubah perilakunya, dan sengaja ─────────────────────────────────────────────────────────────────
-// - Hanya http/https. `net.fetch` juga melayani `file:` dan protokol kustom (`mamet://`) — `fetch()` Node tidak.
-//   Tanpa pembatasan ini, renderer bisa membaca berkas lokal lewat saluran yang dulu hanya untuk web.
-// - `credentials: 'omit'`: `fetch()` Node tidak pernah mengirim cookie/autentikasi sesi; ini menjaganya tetap begitu.
-//   Wajib, bukan hiasan: tanpa opsi ini `net.fetch` MENGIRIM cookie sesi bawaan — terbukti di Electron 42 dan
-//   45.1.0 (uji/uji-ambil-web.mjs bagian 3, mutasi), walau dokumentasi tipenya menyiratkan cookie tidak ikut.
-// - Proksi sistem kini dihormati (Chromium membacanya; `fetch()` Node tidak).
 
 const SKEMA_BOLEH = new Set(['http:', 'https:']);
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
 
-/**
- * @param {(url: string, init: object) => Promise<Response>} ambil  `net.fetch` di main.cjs; disuntikkan agar teruji
- * @param {{url: string, options?: {headers?: object, method?: string, timeoutMs?: number}}} permintaan
- * @returns {Promise<{ok: boolean, status: number, statusText?: string, data?: string, error?: string}>}
- */
 async function ambilWeb(ambil, { url, options = {} } = {}) {
   let skema;
   try {

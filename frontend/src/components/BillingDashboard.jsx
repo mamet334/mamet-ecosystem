@@ -3,9 +3,6 @@ import Ikon from './Ikon';
 import { supabase } from '../supabase';
 import { angka, waktuLokal } from '../core/runtime/services/formatAngka.js';
 
-// Dipakai kalau plafon sistem tidak terbaca. Angkanya sengaja disamakan dengan
-// FALLBACK_DAILY_LIMIT di quota_middleware.ts — layar ini tidak boleh menjanjikan
-// ruang yang lebih longgar daripada yang sebenarnya diizinkan server.
 const FALLBACK_DAILY_LIMIT = 1;
 
 export default function BillingDashboard() {
@@ -15,15 +12,6 @@ export default function BillingDashboard() {
   const [batasPribadi, setBatasPribadi] = useState(null);
   const [plafonSistem, setPlafonSistem] = useState(null);
 
-  // Batas efektif dihitung dengan rumus yang SAMA PERSIS seperti circuit breaker
-  // di server (quota_middleware.ts → resolveDailyLimit): nilai terkecil antara
-  // batas pribadi user dan plafon sistem.
-  //
-  // Sebelumnya angka ini di-hardcode `0.50` dan sudah lama basi — batas nyata
-  // Owner $3. Layar yang memantau pengaman tidak boleh memakai angkanya sendiri:
-  // ia akan menyalakan "CIRCUIT BREAKER AKTIF" pada $0,50 sementara server masih
-  // meloloskan permintaan, dan itu justru menyesatkan orang yang sedang mengejar
-  // biaya (Item 48).
   const plafon = Number.isFinite(plafonSistem) && plafonSistem > 0 ? plafonSistem : FALLBACK_DAILY_LIMIT;
   const DAILY_LIMIT = Number.isFinite(batasPribadi) && batasPribadi > 0
     ? Math.min(batasPribadi, plafon)
@@ -32,15 +20,10 @@ export default function BillingDashboard() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Pola sama seperti MemoryApp/Settings: aplikasi mengambil sesinya sendiri,
-      // tidak menerima prop `user` — Kernel tidak meneruskannya.
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       const userId = session.user.id;
 
-      // 1. Batas pribadi (user_metadata) dan plafon sistem (system_config).
-      //    system_config hanya bisa DIBACA dari klien; policy UPDATE-nya sengaja
-      //    dicabut agar pengguna tidak bisa menaikkan sendiri jatah belanjanya.
       const capPribadi = Number(session.user.user_metadata?.daily_budget_cap_usd);
       setBatasPribadi(Number.isFinite(capPribadi) ? capPribadi : null);
 
@@ -54,8 +37,6 @@ export default function BillingDashboard() {
       const capSistem = Number(cfg?.daily_budget_cap_usd);
       setPlafonSistem(Number.isFinite(capSistem) ? capSistem : null);
 
-      // 2. Total belanja hari ini — RPC yang sama persis dengan yang membaca
-      //    circuit breaker, jadi angka di layar ini tidak bisa berbeda darinya.
       const { data: costData, error: costError } = await supabase.rpc('check_daily_quota', { target_user_id: userId });
       if (costError) {
         console.error('[BillingDashboard] Gagal membaca pemakaian harian:', costError.message);
@@ -63,7 +44,6 @@ export default function BillingDashboard() {
         setDailyCost(Number(costData || 0));
       }
 
-      // 3. Riwayat transaksi
       const { data: logsData, error: logsError } = await supabase
         .from('api_usage')
         .select('*')
@@ -96,7 +76,6 @@ export default function BillingDashboard() {
     <div className="flex-1 overflow-y-auto p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-slate-100 flex items-center gap-3">
@@ -115,7 +94,6 @@ export default function BillingDashboard() {
           </button>
         </div>
 
-        {/* Quota Progress Bar */}
         <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-6 shadow-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl"></div>
           <div className="flex justify-between items-end mb-4 relative z-10">
@@ -138,9 +116,6 @@ export default function BillingDashboard() {
           <p className="text-xs text-slate-400 relative z-10">
             <strong className="text-slate-300">{angka(percentage, 1)}%</strong> dari batas harian efektif. Direset setiap jam 00:00 UTC.
           </p>
-          {/* Menampilkan KEDUA batas, bukan cuma hasil akhirnya. Saat Owner kena
-              circuit breaker, pertanyaan pertamanya adalah "batas yang mana?" —
-              dan menjawabnya butuh melihat keduanya sekaligus. */}
           <p className="text-[12px] text-slate-500 mt-2 relative z-10">
             Batas efektif = nilai terkecil antara batas pribadi Anda dan plafon sistem.{' '}
             <span className="text-slate-400">
@@ -154,7 +129,6 @@ export default function BillingDashboard() {
           </p>
         </div>
 
-        {/* Logs Table */}
         <div className="bg-slate-800/50 border border-slate-700 rounded-2xl overflow-hidden shadow-xl">
           <div className="p-4 border-b border-slate-700 bg-slate-800/80 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">

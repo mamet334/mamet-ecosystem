@@ -1,55 +1,16 @@
-/**
- * HAKIM BAYANGAN — penilaian per kalimat oleh model, TANPA menyentuh label (T13, 2026-09-28)
- *
- * ── Kenapa ada ──────────────────────────────────────────────────────────────────────────────
- * Dua kali pendekatan leksikal gagal memisahkan "kalimat bersandar dokumen" dari "kalimat pendapat":
- * CHIMERA WASM (5 dari 6 kasus Mamet salah) lalu `klaim_sumber.ts` (melewatkan ekstrapolasi di porsi
- * 0,18; menuduh "Semoga membantu, Pak Slamet." pada 24% jawaban VERIFIED). Sebabnya satu: kedua
- * sebaran itu BERIRISAN, sehingga tak ada ambang yang bisa memisahkannya.
- *
- * Bentuk tembok yang sama sudah pernah dihadapi proyek ini di Item 55 (`judge_endpoint.ts`):
- * kemiripan vektor tidak bisa memisahkan konflik memori dari penajaman (0,8780 BENTROK vs 0,8323
- * TAJAM — beririsan). Jalan keluarnya waktu itu: berhenti mengukur, tanya model. Berkas ini memakai
- * jalan yang sama, untuk alasan yang sama.
- *
- * ── Kenapa BAYANGAN ─────────────────────────────────────────────────────────────────────────
- * Vonis hakim di sini TIDAK PERNAH mengubah label, teks jawaban, atau apa pun yang Owner lihat.
- * Ia hanya dicatat. Sesudah beberapa puluh pesan, tiga pertanyaan yang hari ini masih dikira-kira
- * bisa dijawab dengan angka:
- *   1. benarkah sebagian jawaban HYPOTHESIS sebenarnya campuran yang layak PARTIAL?
- *   2. seberapa sering hakim tidak sepakat dengan `label_sumber.ts`, dan siapa yang benar?
- *   3. berapa biayanya sungguhan per hari?
- * Naik pangkat dari bayangan menjadi penentu label adalah keputusan Owner, bukan keputusan kode.
- *
- * ── Tiga pagar ──────────────────────────────────────────────────────────────────────────────
- * 1. MATI SECARA BAWAAN. Butuh env `HAKIM_BAYANGAN=1`. Tanpa itu tak ada panggilan, tak ada biaya.
- * 2. TIDAK MENGEMBALIKAN APA PUN (`Promise<void>`). Mustahil dipakai mengubah label tanpa mengubah
- *    tanda tangannya lebih dulu — dan perubahan itu akan terlihat di diff.
- * 3. GAGAL DENGAN DIAM. Seluruh isinya dibungkus try/catch; kegagalan hanya dicatat di log.
- *
- * ── Biaya ───────────────────────────────────────────────────────────────────────────────────
- * Satu panggilan model tambahan per jawaban RAG, memakai kunci pengguna (BYOK, Item 51), dicatat ke
- * `api_usage` lewat `logApiUsage` — celah yang diperbaiki 24 September di `padatkan_endpoint.ts` dan
- * `judge_endpoint.ts` tidak diulang di sini. Ditunggu sebelum respons dikirim (`tasks.awaitAll` di
- * `index.ts`), jadi ia MENAMBAH waktu tunggu. Itu harga uji coba, dan sebabnya ia mati secara bawaan.
- */
 
 import { pecahKlaim } from './klaim_sumber.ts';
 
-/** Batas supaya satu pesan tidak pernah menjadi prompt raksasa — dan supaya biayanya bisa diduga. */
 export const MAKS_KALIMAT = 40;
 export const MAKS_POTONGAN = 8;
 export const MAKS_HURUF_POTONGAN = 1200;
-/** Kalimat sependek ini tidak dikirim ke hakim: tidak ada yang bisa dinilai, hanya menambah biaya. */
 export const MIN_HURUF_KALIMAT = 12;
 
 export type VonisKalimat = 'BERSANDAR' | 'TIDAK' | 'PERCAKAPAN';
 
 export type PutusanHakim = {
-  /** nomor kalimat, 1-based, sesuai urutan di prompt */
   n: number;
   v: VonisKalimat;
-  /** indeks potongan penyandar (0-based), null bila tidak ada */
   p: number | null;
 };
 
@@ -70,26 +31,12 @@ Aturan penting:
 - Kalau ragu antara "BERSANDAR" dan "TIDAK", pilih "BERSANDAR". Salah menuduh lebih merugikan daripada melewatkan.
 - Kalau ragu antara "TIDAK" dan "PERCAKAPAN", pilih "PERCAKAPAN".`;
 
-/**
- * Kalimat yang layak dikirim ke hakim.
- *
- * `sertakanTabel: true` — terbukti perlu 2026-09-28. Satu jawaban campuran menulis bagian yang
- * bersandar dokumen sebagai TABEL; `pecahKlaim` membuangnya, jadi hakim hanya menerima paragraf
- * rekomendasinya dan menyimpulkan HYPOTHESIS. Vonisnya benar atas apa yang ia lihat — yang salah
- * adalah apa yang dikirimkan kepadanya.
- */
 export function kalimatUntukHakim(jawaban: string): string[] {
   return pecahKlaim(jawaban, { sertakanTabel: true })
     .filter((k) => k.length >= MIN_HURUF_KALIMAT)
     .slice(0, MAKS_KALIMAT);
 }
 
-/**
- * Label yang BENAR-BENAR terlihat di jawaban akhir. Versi pertama tabel ini menyimpan apakah sistem
- * *mengubah* sesuatu (`(diam)` / `diturunkan`) — bukan labelnya. Akibatnya tabelnya sendiri tidak bisa
- * menjawab "seberapa sering hakim tidak sepakat"; perbandingannya harus digabung manual dengan
- * `chats`. Untuk sebuah alat ukur, itu cacat pokok.
- */
 export function labelTerlihat(teks: string): string {
   const t = String(teks || '');
   if (t.includes('[STATUS: VERIFIED]')) return 'VERIFIED';
@@ -100,21 +47,6 @@ export function labelTerlihat(teks: string): string {
   return 'TANPA_LABEL';
 }
 
-/**
- * Masukan untuk `adapter.execute`. `thinking: false` WAJIB dan bukan penghematan kecil.
- *
- * Terukur pada panggilan hakim pertama yang berhasil (2026-09-28 05:37), yang mewarisi `thinking`
- * dari model Owner:
- *
- *   prompt=2550t completion=5146t reasoning=4993t biaya=$0,002213  durasi=107.910 ms
- *
- * **97% keluarannya nalar**, 108 detik, dan biayanya 3,3× biaya jawaban chat itu sendiri. Karena hakim
- * ditunggu sebelum respons dikirim, ia ikut membuat sambungan Owner terputus di tengah jawaban.
- *
- * Menilai kalimat terhadap potongan tidak menuntut nalar panjang; ia menuntut membaca. `ai_adapter.ts`
- * memang menyediakan penimpaan per panggilan untuk itu — dipakai Intent Router, Coordinator, dan
- * peringkas dengan alasan yang sama.
- */
 export function masukanHakim(prompt: string) {
   return {
     promptText: prompt,
@@ -137,14 +69,6 @@ export function susunPromptHakim(kalimat: string[], isiDokumen: string[]): strin
 
 const VONIS_SAH = new Set<string>(['BERSANDAR', 'TIDAK', 'PERCAKAPAN']);
 
-/**
- * Membaca balasan model menjadi daftar putusan. Model sering membungkus JSON dengan pagar markdown
- * atau kalimat pengantar, jadi potongan `[` … `]` terluar yang diambil — pola yang sama dipakai
- * `bersihkanRingkasan` di `padatkan_endpoint.ts`.
- *
- * Balasan yang tidak bisa dibaca menghasilkan daftar KOSONG, bukan lemparan: ini jalur bayangan,
- * kegagalannya tidak boleh merembet ke jawaban Owner.
- */
 export function bacaPutusanHakim(mentah: string, jumlahKalimat: number): PutusanHakim[] {
   const teks = String(mentah || '');
   const mulai = teks.indexOf('[');
@@ -167,7 +91,7 @@ export function bacaPutusanHakim(mentah: string, jumlahKalimat: number): Putusan
     const v = String((baris as any).v || '').toUpperCase();
     if (!Number.isInteger(n) || n < 1 || n > jumlahKalimat) continue;
     if (!VONIS_SAH.has(v)) continue;
-    if (terpakai.has(n)) continue; // putusan ganda untuk kalimat yang sama: yang pertama dipakai
+    if (terpakai.has(n)) continue;
     terpakai.add(n);
     const pMentah = (baris as any).p;
     const p = Number.isInteger(pMentah) && Number(pMentah) >= 0 ? Number(pMentah) : null;
@@ -178,7 +102,6 @@ export function bacaPutusanHakim(mentah: string, jumlahKalimat: number): Putusan
 
 export type RingkasanHakim = { bersandar: number; tidak: number; percakapan: number; takTerbaca: number };
 
-/** Hitungan ringkas untuk kolom tabel — kalimat tanpa putusan dihitung `takTerbaca`, bukan diam-diam hilang. */
 export function ringkasPutusan(putusan: PutusanHakim[], jumlahKalimat: number): RingkasanHakim {
   const r: RingkasanHakim = { bersandar: 0, tidak: 0, percakapan: 0, takTerbaca: 0 };
   for (const p of putusan) {
@@ -190,18 +113,6 @@ export function ringkasPutusan(putusan: PutusanHakim[], jumlahKalimat: number): 
   return r;
 }
 
-/**
- * Label yang AKAN diusulkan hakim seandainya ia berwenang — dicatat untuk dibandingkan, tidak dipakai.
- *
- * `labelModel` = label yang terlihat di jawaban. INSUFFICIENT berarti model menyatakan **tidak
- * menemukan jawabannya**, dan jawaban semacam itu TIDAK berada di tangga VERIFIED–PARTIAL–HYPOTHESIS
- * sama sekali: kalimat-kalimatnya bercerita tentang isi dokumen, bukan menjawab pertanyaannya.
- *
- * Terukur 2026-09-28: pertanyaan tunjangan kinerja (tidak ada di dokumen mana pun) dijawab
- * INSUFFICIENT oleh model, tetapi penggulungan lama mengubahnya jadi **VERIFIED** — karena ketiga
- * kalimat "dokumen hanya memuat X dan Y" memang bersandar. Vonis per kalimatnya benar; rumusnya yang
- * salah. Karena itu kasus ini dikeluarkan dari perbandingan, bukan dipaksa masuk.
- */
 export function labelUsulan(
   r: RingkasanHakim,
   labelModel?: string
@@ -217,17 +128,6 @@ export function labelUsulan(
 export const HAKIM_AKTIF = (env: Record<string, unknown> | undefined): boolean =>
   String((env as any)?.hakimBayangan ?? '') === '1';
 
-/**
- * Nama kunci di `rctx.keys` TIDAK sama dengan id penyedia, dan itu berbeda antar-jalur:
- *
- *   `request_pipeline.ts` (jalur chat)  → keys.openRouter, keys.openAI, keys.gemini, keys.groq
- *   `judge_endpoint.ts`   (endpoint)    → keys[provider] DAN alias camelCase, keduanya
- *
- * Versi pertama berkas ini hanya membaca `keys[provider]`, disalin dari `judge_endpoint`. Akibatnya
- * di jalur chat `keys['openrouter']` selalu undefined dan hakim berhenti dengan
- * "tidak ada kunci pengguna" walau kuncinya ada — terbukti live 2026-09-28 05:22, chat pertama
- * sesudah bendera dinyalakan. Karena itu kedua bentuk dicoba di sini.
- */
 export function kunciPengguna(rctx: any): string {
   const provider = String(rctx?.model?.provider || '');
   if (!provider) return '';
@@ -247,19 +147,13 @@ export function kunciPengguna(rctx: any): string {
 }
 
 type BahanHakim = {
-  /** teks yang dinilai hakim (jawaban model, sebelum label dikoreksi sistem) */
   jawaban: string;
-  /** teks akhir yang BENAR-BENAR dilihat Owner — dari sinilah label pembanding dibaca */
   jawabanAkhir: string;
   isiDokumen: string[];
-  /** true bila `periksaLabelSumber` menurunkan label model */
   diturunkan: boolean;
   chatId?: string;
 };
 
-/**
- * Menjalankan hakim dan MENCATATNYA. Tidak mengembalikan apa pun, dengan sengaja — lihat pagar 2.
- */
 export async function jalankanHakimBayangan(rctx: any, bahan: BahanHakim): Promise<void> {
   const mulai = Date.now();
   try {
@@ -274,9 +168,6 @@ export async function jalankanHakimBayangan(rctx: any, bahan: BahanHakim): Promi
 
     const isi = (bahan.isiDokumen || []).filter((t) => typeof t === 'string' && t.trim());
     const kalimat = kalimatUntukHakim(bahan.jawaban);
-    // Batas SATU kalimat, bukan dua. Batas lama membuat jawaban pendek tak pernah dinilai sama sekali
-    // — terukur 2026-09-28: "berapa jumlah pegawai yang diintervensi?" dijawab ringkas, dilewati diam-diam,
-    // dan tidak ada barisnya di tabel. Justru jawaban pendek yang paling mudah diperiksa.
     if (!isi.length || kalimat.length < 1) {
       console.log(`[HakimBayangan] dilewati — potongan=${isi.length} kalimat=${kalimat.length}`);
       return;
@@ -312,8 +203,6 @@ export async function jalankanHakimBayangan(rctx: any, bahan: BahanHakim): Promi
       return;
     }
 
-    // Biaya WAJIB tercatat walau ini jalur bayangan: pengeluaran yang tak terlihat anggaran adalah
-    // persis celah yang diperbaiki 24 September di padatkan_endpoint.ts & judge_endpoint.ts.
     rctx.logger?.logApiUsage?.(
       provider,
       modelTercatat || rctx?.model?.model || '',
@@ -336,15 +225,10 @@ export async function jalankanHakimBayangan(rctx: any, bahan: BahanHakim): Promi
 
     await simpanPutusan(rctx, bahan, kalimat, putusan, ringkas, labelSistem, usulan, modelTercatat, biayaAsliUsd, ms);
   } catch (e: any) {
-    // Pagar 3: jalur bayangan tidak boleh merembet ke jawaban Owner, apa pun yang terjadi.
     console.error('[HakimBayangan] gagal (diabaikan):', e?.message);
   }
 }
 
-/**
- * Menulis satu baris ke `hakim_bayangan`. Kalimatnya DIPOTONG 160 huruf: tabel ini untuk membandingkan
- * vonis, bukan arsip kedua isi chat — kuota basis data proyek ini pernah dimakan log (Item 93).
- */
 async function simpanPutusan(
   rctx: any,
   bahan: BahanHakim,
@@ -367,8 +251,6 @@ async function simpanPutusan(
     return { n: i + 1, v: p?.v ?? null, p: p?.p ?? null, k: k.slice(0, 160) };
   });
 
-  // Alamat esm.sh yang sama dengan seluruh berkas lain di fungsi ini (12 pemakai) — bukan `jsr:`,
-  // yang tidak bisa diselesaikan esbuild saat pemeriksaan bundel sebelum deploy.
   const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.39.3');
   const db = createClient(url, kunciLayanan);
   const { error } = await db.from('hakim_bayangan').insert({

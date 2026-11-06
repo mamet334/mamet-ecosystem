@@ -18,7 +18,6 @@ from crawler.kanal import SesiSopan
 log = logging.getLogger(__name__)
 API = "https://www.googleapis.com/youtube/v3"
 
-
 class _LogYtdlp:
     """Peringatan 'JavaScript runtime' hanya soal format video (tidak diunduh), jadi diturunkan ke debug."""
 
@@ -32,7 +31,6 @@ class _LogYtdlp:
 
     def error(self, msg):
         log.error(msg)
-
 
 def _dari_info_ytdlp(info: dict) -> Iterator[Temuan]:
     vid = info["id"]
@@ -62,7 +60,6 @@ def _dari_info_ytdlp(info: dict) -> Iterator[Temuan]:
             mentah=c,
         )
 
-
 def _id_video(url: str) -> str:
     s = urlsplit(url)
     if s.netloc.endswith("youtu.be"):
@@ -70,7 +67,6 @@ def _id_video(url: str) -> str:
     if "/shorts/" in s.path:
         return s.path.split("/shorts/")[1].split("/")[0]
     return (parse_qs(s.query).get("v") or [""])[0]
-
 
 def _komentar(snip: dict, vid: str, induk: str) -> Temuan:
     s = snip["snippet"]
@@ -80,7 +76,6 @@ def _komentar(snip: dict, vid: str, induk: str) -> Temuan:
         id_asli_induk=induk, penulis=s.get("authorDisplayName", ""), waktu_terbit=ke_iso(s.get("publishedAt")),
         metrik={"suka": s.get("likeCount")}, mentah=snip,
     )
-
 
 class YouTube(Sumber):
     id = "youtube"
@@ -108,7 +103,6 @@ class YouTube(Sumber):
         sesi = SesiSopan(konfig.USER_AGENT, jeda=(0.2, 0.5))
 
         def api(jalur: str, **params) -> dict:
-            # Pesan error requests memuat URL lengkap beserta kunci API; jangan sampai masuk log atau gudang.
             try:
                 return sesi.get(f"{API}/{jalur}", {**params, "key": konfig.YOUTUBE_API_KEY}).json()
             except requests.HTTPError as exc:
@@ -165,7 +159,7 @@ class YouTube(Sumber):
                 params["pageToken"] = token
             try:
                 data = api("commentThreads", **params)
-            except RuntimeError as exc:  # mis. komentar dimatikan pemilik video
+            except RuntimeError as exc:
                 lapor("Sumber.KomentarDilewati", video=vid, alasan=str(exc))
                 return
             for th in data.get("items", []):
@@ -177,8 +171,6 @@ class YouTube(Sumber):
             token = data.get("nextPageToken")
             if not token:
                 return
-
-    # ---- jalur yt-dlp (tanpa kunci API) ---------------------------------------------------------------------
 
     def _ambil_ytdlp(self, misi: Misi, batas: int, lapor: Pelapor) -> Iterator[Temuan]:
         import yt_dlp

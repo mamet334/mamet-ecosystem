@@ -2,18 +2,6 @@ import React, { useState } from 'react';
 import Ikon from '../Ikon';
 import { perkiraanBlokKonektor, BATAS_UMUM } from '../../../../shared/konektorUmum.js';
 
-/**
- * Tinjau alat server MCP (Item 129 Tahap G2, K16). Deskripsi alat adalah TULISAN PIHAK LAIN: ditampilkan sebagai teks
- * biasa (React meng-escape-nya; tidak pernah dangerouslySetInnerHTML — desktop tanpa CSP). Yang dikirim balik ke
- * proses utama hanya NAMA alat yang dicentang; sidiknya dihitung di sana dari snapshot yang sama dengan yang tampil.
- *
- * Centang awal: alat yang sudah disetujui dan tidak berubah. Alat baru & alat yang BERUBAH tidak dicentang —
- * Owner memutuskannya sendiri.
- *
- * 3 Nov (permintaan Owner, Notion 68 alat): tombol Tandai semua / Kosongkan / Tandai alat baca (penanda `readOnlyHint`
- * dari pembuat server — bantuan memilih, bukan jaminan), label baca / bisa menghapus, deskripsi panjang diringkas, dan
- * PERKIRAAN beban prompt alat yang dicentang (dihitung dengan fungsi yang sama dengan blok server).
- */
 const LABEL_KEADAAN = {
   disetujui: { teks: 'disetujui', kelas: 'text-primary' },
   baru: { teks: 'baru', kelas: 'text-on-surface-variant' },

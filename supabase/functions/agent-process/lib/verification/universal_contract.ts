@@ -1,24 +1,6 @@
-/**
- * Universal Evidence Contract — Mamet AI Knowledge OS Phase 2 (Priority 5 + 7)
- * ==============================================================================
- * Format payload standar untuk SEMUA LLM provider.
- * Tidak peduli GPT, Claude, Gemini, DeepSeek, Qwen, atau Llama —
- * formatnya SAMA. Identitas Mamet tetap dari backend.
- *
- * 6 Blok Kontrak:
- *   1. IDENTITY     — Siapa Mamet, mode apa, kapabilitas apa
- *   2. MEMORY       — Konteks memori user
- *   3. KNOWLEDGE    — Brain 1 + Brain 2 + RAG
- *   4. RUNTIME      — Task aktif, verifikasi, evidence gate
- *   5. CONSTRAINT   — Apa yang boleh dan tidak boleh dilakukan
- *   6. OUTPUT_CONTRACT — Format output yang diharapkan
- */
 
 import { buildSourceTraceText } from './confidence_engine.ts';
 
-// ============================================================
-// TYPES
-// ============================================================
 
 import {
   EvidenceReport,
@@ -33,9 +15,6 @@ import {
   ContractBuilderInput,
 } from './types.ts';
 
-// ============================================================
-// BUILDER FUNCTION
-// ============================================================
 
 export function buildUniversalContract(params: ContractBuilderInput): UniversalEvidenceContract {
   const {
@@ -46,28 +25,10 @@ export function buildUniversalContract(params: ContractBuilderInput): UniversalE
     systemBasePrompt, activeConflicts = 0,
   } = params;
 
-  // ── IDENTITY BLOCK ──
   const capabilities: string[] = [];
   const restrictions: string[] = [];
 
   if (mode === 'ENGINEER') {
-    // KACAMATA KUDA DILEPAS (keputusan Owner, 2026-10-01).
-    //
-    // Sampai hari ini BLOK 1 mengirim "Tidak boleh menjalankan perintah OS" ke Engineer, dan BLOK 5
-    // melarang "menggunakan pengetahuan di luar evidence yang terdaftar" — sementara evidence hanya
-    // berarti 8 baris Brain 1 + dokumen RAG. Kode sumber repo, yaitu KEBENARANNYA SENDIRI, berada di
-    // luar daftar itu.
-    //
-    // Akibatnya terlihat live 1 Okt. Owner bertanya di mana label VERIFIED diputuskan. Peta repo ADA
-    // di prompt (16.945 huruf, terukur lewat [PROMPT_KOMPOSISI]) dan perintah git sudah jalan sendiri
-    // tanpa persetujuan — tetapi model menjawab "tidak ada evidence", SOURCE TRACE [NONE], tanpa
-    // menjalankan satu pun pencarian. Ia tidak bodoh; ia PATUH. Jawabannya ada di
-    // `hakim_bayangan.ts:212`, dua perintah jauhnya.
-    //
-    // Owner: *"itu lebih mirip memasang kacamata kuda, seperti menyembunyikan kebenaran."*
-    //
-    // Berminggu-minggu matanya dibangun — git grep, peta repo, catatan akar, lalu gerbang izinnya
-    // dilepas — sementara prompt terus menyuruhnya jangan melihat.
     capabilities.push(
       'Membaca Brain 1 (ADR, Solution, Lesson)',
       'Membaca Brain 2 (Task, Gap, Verification)',
@@ -78,8 +39,6 @@ export function buildUniversalContract(params: ContractBuilderInput): UniversalE
       'Tidak boleh menulis memory otomatis',
       'Tidak boleh menggunakan web search',
       'Perintah yang MENJALANKAN KODE (node -e, python -c, npm) perlu persetujuan Owner — usulkan lewat [MAMET_CMD: …] dan tunggu hasilnya; jangan mengaku sudah menjalankannya',
-      // Kewajiban berbuktinya DIPERTAHANKAN — ia yang mencegah model mengarang, dan mahal diperoleh.
-      // Yang diperbaiki bukan kewajibannya, melainkan DAFTAR TEMPAT bukti boleh dicari.
       'WAJIB memiliki evidence sebelum menjawab. Untuk pertanyaan tentang KODE, evidence diperoleh dengan MENENGOK repo lebih dulu — bukan dengan menyatakan tidak ada',
     );
   } else if (mode === 'LITE') {
@@ -103,30 +62,12 @@ export function buildUniversalContract(params: ContractBuilderInput): UniversalE
     restrictions,
   };
 
-  // ── MEMORY BLOCK ──
   const memory: MemoryBlock = {
     hasMemory: memoryArray.length > 0,
     memoryCount: memoryArray.length,
     memoryContext: memoryContextText,
   };
 
-  // ── KNOWLEDGE BLOCK ──
-  //
-  // BRAIN 1 DIKIRIM DUA KALI di mode ENGINEER (ditemukan 2026-10-05, diukur dari
-  // `[PROMPT_KOMPOSISI]`). `engineer_context.ts:91` merender entri yang SAMA dengan string format
-  // yang SAMA HURUF DEMI HURUF — `[${entry_type}] ${title}: ${content}` — dan hasilnya masuk ke
-  // segmen `konteks_engineer`; `context_builder.ts:528` merendernya lagi jadi `brain1ContextText`
-  // untuk BLOK 4. Keduanya bersumber dari satu tempat: `ctx.brain1Entries = engineerCtx.brain1Entries`.
-  //
-  // Model karena itu membaca isi yang sama dua kali dalam satu prompt. Itu pemborosan murni —
-  // tidak ada aturan yang hilang bila salinan keduanya diringkas.
-  //
-  // YANG DIPERTAHANKAN: judulnya. BLOK 6 menjadikan BLOK 4 rujukan label VERIFIED ("Sumber: judul
-  // dokumen persis seperti tertulis di BLOK 4"), jadi judul harus tetap ada di sini — yang dibuang
-  // hanya ISI yang sudah terbaca beberapa ribu huruf di atas.
-  //
-  // HANYA mode ENGINEER: di mode lain (mametlite, assistant) `konteks_engineer` tidak ada sama
-  // sekali, jadi BLOK 4 adalah satu-satunya salinan dan tidak boleh disentuh.
   const brain1Kembar = mode === 'ENGINEER' && brain1Entries.length > 0;
   const brain1Ringkas = brain1Kembar
     ? brain1Entries.map((e: any) => `[${e.entry_type}] ${e.title}`).join('\n')
@@ -145,7 +86,6 @@ export function buildUniversalContract(params: ContractBuilderInput): UniversalE
     ragSummary: ragContextText,
   };
 
-  // ── RUNTIME BLOCK ──
   const runtime: RuntimeBlock = {
     evidenceGateVerdict: evidenceReport.verdict,
     totalEvidence: evidenceReport.totalEvidence,
@@ -157,7 +97,6 @@ export function buildUniversalContract(params: ContractBuilderInput): UniversalE
     timestamp: new Date().toISOString(),
   };
 
-  // ── CONSTRAINT BLOCK ──
   const constraint: ConstraintBlock = {
     canCallLLM: evidenceReport.isValid,
     canWriteMemory: mode === 'AI',
@@ -168,10 +107,6 @@ export function buildUniversalContract(params: ContractBuilderInput): UniversalE
     canWriteKnowledge: false,
     activeConstraints: policyConstraints,
     forbidden: [
-      // Larangan lama berbunyi "Menggunakan pengetahuan di luar evidence yang terdaftar (untuk
-      // Engineer mode)". Niatnya benar — mencegah karangan — tetapi kalimatnya menutup kode sumber
-      // repo, karena repo tidak pernah masuk "evidence yang terdaftar". Yang dilarang sekarang
-      // adalah MENGAKU TAHU TANPA MENENGOK; menengoknya justru diwajibkan.
       'Mengaku tahu isi kode tanpa menengoknya lebih dulu lewat perintah git baca',
       'Menyatakan "tidak ada evidence" atau "tidak ditemukan" untuk pertanyaan tentang KODE tanpa pernah menjalankan satu pun pencarian di repo',
       'Menyebut ADR, Task, atau knowledge yang tidak ada di bagian KNOWLEDGE di atas',
@@ -180,10 +115,9 @@ export function buildUniversalContract(params: ContractBuilderInput): UniversalE
     ],
   };
 
-  // ── OUTPUT CONTRACT BLOCK ──
   const labelVariant: 'full' | 'short' = mode === 'LOOKUP' ? 'short' : 'full';
   const outputContract: OutputContractBlock = {
-    language: 'id', // Bahasa Indonesia default
+    language: 'id',
     expectedFormat: mode === 'ENGINEER' ? 'structured_technical' : 'conversational',
     requireSourceTrace: mode === 'ENGINEER',
     requireConfidenceStatement: mode === 'ENGINEER' && confidenceReport.score < 70,
@@ -195,7 +129,6 @@ export function buildUniversalContract(params: ContractBuilderInput): UniversalE
   };
 
 
-  // ── RETURN CONTRACT + RENDERER ──
   const contract: UniversalEvidenceContract = {
     identity,
     memory,
@@ -212,9 +145,6 @@ export function buildUniversalContract(params: ContractBuilderInput): UniversalE
   return contract;
 }
 
-// ============================================================
-// RENDERER: Kontrak → System Prompt Text
-// ============================================================
 
 function renderContractAsText(
   contract: UniversalEvidenceContract,
@@ -224,20 +154,17 @@ function renderContractAsText(
 
   let text = systemBasePrompt + '\n';
 
-  // ── IDENTITY ──
   text += `\n\n${'═'.repeat(60)}\n`;
   text += `[UNIVERSAL EVIDENCE CONTRACT v2.0]\n`;
   text += `${'═'.repeat(60)}\n`;
   text += `System: ${identity.name} | Mode: ${identity.mode} | v${identity.version}\n`;
   text += `Request ID: ${runtime.requestId} | Waktu server (DATA SISTEM, bukan dokumen): ${runtime.timestamp}\n\n`;
 
-  // ── IDENTITY BLOCK ──
   text += `[BLOK 1: IDENTITY]\n`;
   text += `Mode Aktif: ${identity.mode}\n`;
   text += `Kapabilitas: ${identity.capabilities.join(', ')}\n`;
   text += `Batasan: ${identity.restrictions.join(' | ')}\n\n`;
 
-  // ── RUNTIME BLOCK (Evidence Gate + Confidence) ──
   text += `[BLOK 2: RUNTIME STATUS]\n`;
   text += `Evidence Gate: ${runtime.evidenceGateVerdict} | Total Evidence: ${runtime.totalEvidence}\n`;
   text += `Backend Confidence: ${runtime.confidenceScore}% (Grade: ${runtime.confidenceGrade})\n`;
@@ -249,13 +176,11 @@ function renderContractAsText(
   }
   text += '\n';
 
-  // ── MEMORY BLOCK ──
   if (memory.hasMemory) {
     text += `[BLOK 3: USER MEMORY — ${memory.memoryCount} node]\n`;
     text += memory.memoryContext + '\n\n';
   }
 
-  // ── KNOWLEDGE BLOCK ──
   text += `[BLOK 4: KNOWLEDGE]\n`;
 
   if (knowledge.hasBrain1) {
@@ -276,10 +201,6 @@ function renderContractAsText(
     text += `--- RAG Documents (${knowledge.ragCount} dokumen) ---\n`;
     text += `<RAG>\n${knowledge.ragSummary}\n</RAG>\n\n`;
 
-    // [ATURAN KUTIPAN PERSIS] Sisa Item 70: dokumen berbahasa Inggris dibaca lewat pertanyaan
-    // bahasa Indonesia, sehingga perintah shell yang dikutip berisiko diterjemahkan/dirapikan.
-    // Perintah yang sudah diterjemahkan tidak bisa dijalankan, jadi kutipan harus tetap apa adanya.
-    // Hanya dikirim bila ada dokumen — tidak menambah token saat RAG kosong.
     text += `ATURAN KUTIPAN PERSIS (berlaku untuk dokumen di atas):\n`;
     text += `- Perintah, kode, jalur file, flag/parameter, nama fungsi, kunci konfigurasi, pesan error, dan URL WAJIB ditulis ulang PERSIS huruf demi huruf seperti di dokumen: jangan diterjemahkan, jangan dirapikan ejaannya, jangan diganti tanda kutip/tanda hubungnya, jangan ditambah atau dikurangi spasi.\n`;
     text += `- Bahasa penjelasan mengikuti bahasa pertanyaan user, tetapi bagian yang dikutip TETAP dalam bahasa aslinya (dokumen berbahasa Inggris tetap dikutip dalam bahasa Inggris).\n`;
@@ -287,7 +208,6 @@ function renderContractAsText(
     text += `- Bila dokumen tidak memuat perintah yang diminta, katakan apa adanya. Jangan menyusun perintah dari ingatan sendiri lalu menyebutnya berasal dari dokumen.\n\n`;
   }
 
-  // ── CONSTRAINT BLOCK ──
   text += `\n[BLOK 5: CONSTRAINT]\n`;
   text += `Dilarang keras:\n`;
   for (const f of constraint.forbidden) {
@@ -318,32 +238,21 @@ function renderContractAsText(
     text += `- SOURCE TRACE HARUS menjadi baris terakhir dari jawaban Anda. Jangan tambahkan kalimat penutup, kesimpulan, atau teks apapun setelahnya.\n`;
     text += `- Jika tidak ada evidence yang relevan dari daftar KNOWLEDGE, tulis: "SOURCE TRACE: - [NONE]".\n`;
   }
-  // Tambahkan Source Trace jika ada
   if (confidenceReport.sourceTrace.length > 0 && outputContract.requireSourceTrace) {
     text += buildSourceTraceText(confidenceReport.sourceTrace);
   }
 
-  // ── BLOK 6: OUTPUT FORMAT & STATUS LABEL ──
   text += `\n[BLOK 6: OUTPUT FORMAT & STATUS LABEL]\n`;
   const isShortVariant = outputContract.labelVariant === 'short';
 
   if (runtime.evidenceGateVerdict === 'PASSED') {
-    // PASSED hanya berarti ADA dokumen yang dilampirkan — bukan bahwa dokumen itu memuat
-    // jawabannya (Item 71). Dulu blok ini memerintahkan VERIFIED TANPA SYARAT, bertentangan dengan
-    // panduan identitas di request_pipeline.ts, dan terbukti melabeli VERIFIED untuk jawaban dari
-    // pengetahuan umum ketika potongan yang terambil tidak memuat jawabannya (Item 70).
     text += `WAJIB: pilih TEPAT SATU label di baris PALING AKHIR jawaban Anda:\n`;
     text += `- [STATUS: VERIFIED] — HANYA bila isi jawaban benar-benar berasal dari dokumen di BLOK 4 / <RAG> di atas. Bila memakai label ini, sertakan Sumber: "judul dokumen persis seperti tertulis di BLOK 4" — boleh di baris sebelum label atau pada baris label itu sendiri. Sebut nomor halaman HANYA bila potongan yang dikutip memuat penanda [Halaman N]; bila tidak ada penanda, JANGAN menulis nomor halaman.\n`;
     text += `- [STATUS: HYPOTHESIS - Rekomendasi AI] — bila dokumen yang tersedia tidak memuat jawabannya dan Anda menjawab dari pengetahuan sendiri.\n`;
     text += `- [STATUS: INSUFFICIENT] — bila jawabannya tidak diketahui.\n`;
-    // Data sistem bukan dokumen (2026-09-13): pertanyaan "jam saat ini" dijawab dari stempel waktu
-    // header ini, lalu berlabel VERIFIED karena tabel zona waktu di ebook ikut dikutip untuk sebagian
-    // isinya. Pemeriksa label_sumber.ts hanya bisa memeriksa KUTIPAN, bukan asal tiap fakta, jadi
-    // pembedaan ini harus dinyatakan di prompt.
     text += `Waktu, tanggal, zona waktu pengguna (KONTEKS WAKTU), dan Request ID di header kontrak adalah DATA SISTEM, bukan dokumen — jangan dijadikan Sumber dan jangan menjadi dasar label VERIFIED.\n`;
     text += `Bila INTI jawaban berasal dari data sistem atau pengetahuan Anda sendiri, dan dokumen hanya melengkapi sebagian, JANGAN pakai VERIFIED: pakai [STATUS: HYPOTHESIS - Rekomendasi AI] dan sebutkan bagian mana yang berasal dari dokumen.\n`;
     text += `Dokumen terlampir TIDAK otomatis berarti VERIFIED. Label VERIFIED tanpa baris Sumber yang cocok diturunkan otomatis oleh sistem.\n`;
-    // Item 88: hanya bila konteks memang memuat blok itu — dokumen lain tidak menanggung prompt tambahan.
     if (String(knowledge.ragSummary || '').includes('[TABEL CENTANG')) {
       text += `TABEL CENTANG: blok [TABEL CENTANG — …] dibaca dari posisi tanda centang di PDF. Untuk baris yang tercantum di blok itu, nilai kolomnya (mis. Mutlak/Penting/Perlu) WAJIB diambil dari blok, BUKAN dari tabel Markdown/OCR di atasnya — tabel itu bisa bergeser kolom. Butir "(label perkiraan)": kolomnya pasti, cocokkan barisnya dengan tabel. Bila halaman sumber memuat [TABEL CENTANG TIDAK PASTI — …], JANGAN pakai VERIFIED untuk nilai kolom dari halaman itu; katakan bahwa tingkat/kolomnya perlu dicek di dokumen asli halaman tersebut.\n`;
     }
@@ -358,10 +267,6 @@ function renderContractAsText(
     }
   }
 
-  // Item 85 Tahap 3 (live 2026-09-22): tanpa blok ini laporan tindakan folder kerja ("app.py diedit, python app.py →
-  // Jumlah: 27", "perintah ditolak") selalu berlabel HYPOTHESIS — BLOK 6 hanya mengakui dokumen BLOK 4/<RAG>, jadi model
-  // yang patuh tak punya pilihan lain. Hasil alat dicatat proses utama; pemeriksa label (label_sumber.ts +
-  // sumberDariHasilAlat) membuktikan Sumber & angka terhadap pesan hasil itu, sama ketatnya dengan dokumen.
   if (contract.hasilAlatFolder) {
     text += `\n[LABEL UNTUK HASIL ALAT FOLDER KERJA]\n`;
     text += `Pesan "[HASIL ALAT FOLDER]" di percakapan ini dicatat oleh proses utama aplikasi di laptop pengguna — untuk label, statusnya SETARA dokumen BLOK 4: isi berkas yang dibaca (folder_read), perubahan yang tercatat BERHASIL atau DITOLAK, dan keluaran perintah (folder_run). Aturan ini menggantikan syarat "dokumen BLOK 4/<RAG>" di atas khusus untuk hasil alat folder.\n`;
@@ -369,10 +274,6 @@ function renderContractAsText(
     text += `- Inti jawaban berupa saran, tafsiran, atau rencana Anda sendiri → [STATUS: HYPOTHESIS - Rekomendasi AI].\n`;
   }
 
-  // ENGINEER (2026-09-23): setara blok di atas, untuk keluaran perintah Engineer. Tanpa ini, analisis yang seluruhnya
-  // dibangun dari isi berkas nyata (TUGAS-02 & TUGAS-04 live) selalu diturunkan ke HYPOTHESIS "tidak mengutip
-  // dokumen" — jawaban paling berbukti justru dihukum. Pembuktiannya tetap ketat: sumberDariKeluaranTerminal
-  // (synthesis_handler) hanya mengakui perintah yang BENAR-BENAR dijalankan setelah Owner menyetujui dialog izin.
   if (contract.keluaranPerintah) {
     text += `\n[LABEL UNTUK KELUARAN PERINTAH ENGINEER]\n`;
     text += `Pesan "[TERMINAL OUTPUT for: <perintah>]" di percakapan ini adalah keluaran perintah yang dijalankan proses utama di laptop Owner setelah Owner menyetujui dialog izin — untuk label, statusnya SETARA dokumen BLOK 4. Aturan ini menggantikan syarat "dokumen BLOK 4/<RAG>" di atas khusus untuk keluaran perintah.\n`;

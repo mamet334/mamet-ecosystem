@@ -13,11 +13,9 @@ from crawler.kanal import SesiSopan
 
 API = "https://api.bsky.app/xrpc"
 
-
 def _url(post: dict) -> str:
     handle = post.get("author", {}).get("handle", "")
     return f"https://bsky.app/profile/{handle}/post/{post.get('uri', '').rsplit('/', 1)[-1]}"
-
 
 def _temuan(post: dict, jenis: str, induk: dict | None = None) -> Temuan:
     rec = post.get("record", {})
@@ -35,7 +33,6 @@ def _temuan(post: dict, jenis: str, induk: dict | None = None) -> Temuan:
         mentah=post,
     )
 
-
 class Bluesky(Sumber):
     id = "bluesky"
     kanal = "hp"
@@ -44,7 +41,6 @@ class Bluesky(Sumber):
     bahasa = ("semua",)
     cocok_untuk = ("opini_spontan", "keluhan", "isu_publik")
     batas_laju = "jeda 0,5-1 detik; 100 postingan per halaman"
-    # Akun robot media (mis. kumparan-poster, katadata-poster) hanya mengulang judul berita, bukan suara warga.
     kecualikan_penulis_default = ("*-poster.bsky.social",)
     alat = (
         {"nama": "Bluesky AppView API", "repo": "github.com/bluesky-social/atproto", "lisensi": "MIT/Apache-2.0"},
@@ -58,8 +54,6 @@ class Bluesky(Sumber):
         opsi = misi.opsi(self.id)
         lang = opsi.get("lang", misi.bahasa[0] if misi.bahasa else "")
         jatah = self.jatah_per_kata_kunci(misi, batas)
-        # Akun yang dikecualikan dilewati sebelum dihitung ke jatah; kalau tidak, halaman pertama yang penuh akun
-        # robot berita menghabiskan jatah dan hasil akhirnya kosong (Dispatcher tetap menyaring ulang).
         kecualikan = sebagai_daftar(opsi.get("kecualikan_penulis", list(self.kecualikan_penulis_default)))
 
         def dikecualikan(post: dict) -> bool:
@@ -79,7 +73,6 @@ class Bluesky(Sumber):
                 try:
                     data = sesi.get(f"{API}/app.bsky.feed.searchPosts", params).json()
                 except requests.HTTPError as exc:
-                    # Tanpa login, Bluesky menolak (403) halaman lanjutan pencarian; berhenti di halaman pertama.
                     if "cursor" not in params or exc.response.status_code != 403:
                         raise
                     lapor("Sumber.HalamanLanjutanDitolak", kata_kunci=kw, alasan="403 tanpa login")
@@ -103,6 +96,6 @@ class Bluesky(Sumber):
 
     def _balasan(self, node: dict) -> Iterator[Temuan]:
         for r in node.get("replies") or []:
-            if "post" in r:  # balasan yang dihapus/diblokir tidak punya "post"
+            if "post" in r:
                 yield _temuan(r["post"], "komentar", induk=node["post"])
                 yield from self._balasan(r)

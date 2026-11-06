@@ -2,17 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Ikon from './Ikon';
 import KonektorUmum from './konektor/KonektorUmum';
 
-/**
- * Settings › Konektor (Item 129 Tahap C, 2026-10-23) — susunan disetujui Owner dari pratinjau ①–⑤.
- *
- *   ① tab sendiri · ② sakelar TERPISAH Assistant/Engineer (K3) · ③ cara crawler mengakses halaman, hanya ditampilkan
- *   (dibaca Mamet dari `katalog` saat konektor menyala; sakelarnya di `.env` crawler) · ④ konektor yang tak bisa
- *   dijalankan: sakelar mati, alasan ditampilkan · ⑤ versi web: konektor hanya di desktop · ⑥ komponen stealth (E2) · ⑦ yang terpasang di perangkat ini (E3).
- *
- * Setelan disimpan proses utama di perangkat (K7, `konektor.json` di userData). Layar ini hanya membaca status dan
- * memakai sakelar — memanggil alat konektor tidak bisa dari sini (K2: gerbang persetujuan di proses utama, Tahap D).
- * Warna memakai token palet (primary/error/tertiary), jadi ikut tema (Item 128); ikon lewat <Ikon>.
- */
 
 const WORKSPACE = [
   { id: 'ws-assistant', label: 'Assistant' },
@@ -25,7 +14,6 @@ const KETERANGAN = {
 
 const SELANG_SEGAR_MS = 3000;
 
-/** Status per konektor: { id, nama, jenis, tersedia, alasan, ws: { 'ws-assistant': {...}, ... }, ringkasan } */
 export function kelompokkan(daftar) {
   const hasil = new Map();
   for (const s of daftar || []) {
@@ -44,10 +32,6 @@ export function teksStatus(s, sedang) {
   return { teks: '○ mati', kelas: 'text-on-surface-variant' };
 }
 
-/**
- * ⑥ Komponen tingkat stealth (Tahap E2, susunan disetujui Owner 26 Okt). Tidak tampil di `npm run desktop`
- * (keadaan "pengembangan": stealth sudah ada di .venv). Pasang → proses utama meminta persetujuan unduhan dulu.
- */
 export function BarisStealth({ stealth, sedang, hasil, onPasang }) {
   if (!stealth || stealth.keadaan === 'pengembangan') return null;
   if (sedang || stealth.sedangDipasang) {
@@ -132,14 +116,9 @@ function Lokasi({ alamat, onBuka }) {
   );
 }
 
-/**
- * ⑦ Yang terpasang di perangkat ini (Tahap E3, susunan disetujui Owner 26 Okt) — transparansi isi bundel & unduhan.
- * Isi dari proses utama (`komponen.json` yang ditulis build + ukuran folder yang diukur saat dibuka). "Buka folder"
- * mengirim KUNCI (bawaan/data/stealth/browser), bukan alamat.
- */
 export function DaftarTerpasang({ komponen, onBuka }) {
   const [bukaDaftar, setBukaDaftar] = useState(false);
-  if (!komponen) return null; // belum dibaca
+  if (!komponen) return null;
   if (!komponen.ok) {
     return <p className="text-body-sm text-error mt-4">Daftar yang terpasang tidak bisa dibaca: {komponen.alasan || 'alasan tidak diketahui'}</p>;
   }
@@ -247,14 +226,13 @@ function KotakAkses({ ringkasan }) {
 export default function BagianKonektor() {
   const api = typeof window !== 'undefined' ? window.electronAPI?.konektor : null;
   const [daftar, setDaftar] = useState([]);
-  const [sedang, setSedang] = useState({}); // `${ws}::${id}` → true selama sakelar diproses
-  const [galat, setGalat] = useState({});   // `${ws}::${id}` → alasan gagal terakhir
+  const [sedang, setSedang] = useState({});
+  const [galat, setGalat] = useState({});
   const [sedangStealth, setSedangStealth] = useState(false);
-  const [hasilStealth, setHasilStealth] = useState(null);   // hasil pemasangan terakhir (untuk pesan gagal)
-  const [komponen, setKomponen] = useState({});              // id konektor → daftar yang terpasang (⑦)
+  const [hasilStealth, setHasilStealth] = useState(null);
+  const [komponen, setKomponen] = useState({});
   const [galatBuka, setGalatBuka] = useState(null);
 
-  // ⑦ dibaca saat layar dibuka & sesudah pemasangan stealth — bukan tiap 3 detik (menghitung ukuran folder).
   const segarkanKomponen = useCallback(async () => {
     if (!api?.komponen) return;
     const hasil = {};
@@ -262,7 +240,6 @@ export default function BagianKonektor() {
       try {
         hasil[id] = await api.komponen(id);
       } catch (e) {
-        // Tidak ditelan: alasannya tampil di bagian ⑦ ("tidak bisa dibaca: …"), bukan bagian yang hilang diam-diam.
         hasil[id] = { ok: false, alasan: e.message };
       }
     }
@@ -275,7 +252,6 @@ export default function BagianKonektor() {
       const h = await api.bukaFolder(id, kunci);
       if (!h?.ok) setGalatBuka(h?.alasan || 'folder tidak bisa dibuka');
     } catch (e) {
-      // Tidak ditelan: tampil di bawah kartu konektor (galatBuka).
       setGalatBuka(e.message);
     }
   };
@@ -290,14 +266,14 @@ export default function BagianKonektor() {
 
   const segarkan = useCallback(async () => {
     if (!api) return;
-    try { setDaftar(await api.status()); } catch { /* proses utama sibuk — dicoba lagi pada selang berikutnya */ }
+    try { setDaftar(await api.status()); } catch {  }
   }, [api]);
 
   useEffect(() => {
     if (!api) return undefined;
     segarkan();
     segarkanKomponen();
-    const t = setInterval(segarkan, SELANG_SEGAR_MS); // status "berhenti sendiri" & ringkasan katalog muncul tanpa muat ulang
+    const t = setInterval(segarkan, SELANG_SEGAR_MS);
     return () => clearInterval(t);
   }, [api, segarkan, segarkanKomponen]);
 
@@ -393,7 +369,6 @@ export default function BagianKonektor() {
         </div>
       ))}
 
-      {/* Tahap G2: server MCP umum dari resep (GitHub, dsb.) — komponen sendiri, bukan menambah isi berkas ini. */}
       {api && <KonektorUmum />}
     </section>
   );

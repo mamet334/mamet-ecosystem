@@ -20,10 +20,7 @@ import { adalahPdf, perkiraanPdfAsn, bacaBerkasPdfAsn } from '../../core/runtime
 import { buatCadangan, periksaBerkasCadangan, namaBerkasCadangan } from '../../core/runtime/services/cadanganData.js';
 import { angka, ukuranMB } from '../../core/runtime/services/formatAngka.js';
 
-// Di atas ini pengguna diminta konfirmasi dulu — embedding dibayar dari saldo OpenRouter-nya.
-const POTONGAN_PERLU_KONFIRMASI = 150; // ±105 ribu huruf ≈ $0,006 (potongan 800 huruf, Item 70)
-// Daftar dimuat per halaman; total diambil dari server agar dokumen lama tidak hilang diam-diam
-// (buku Kepbup 221 berkas: batas 50 menyembunyikan dokumen terlama tanpa tanda apa pun).
+const POTONGAN_PERLU_KONFIRMASI = 150;
 const DOKUMEN_PER_HALAMAN = 50;
 
 export default function ResearchApp() {
@@ -37,26 +34,19 @@ export default function ResearchApp() {
     const [uploading, setUploading] = useState(false);
     const [statusUnggah, setStatusUnggah] = useState('');
     const [deletingId, setDeletingId] = useState(null);
-    // Pilih banyak dokumen untuk dihapus (5 Nov 2026, permintaan Owner).
     const [pilihan, setPilihan] = useState(() => new Set());
     const [statusHapusBanyak, setStatusHapusBanyak] = useState('');
-    // Hanya jawaban pemuatan daftar TERBARU yang dipakai (lihat buatPenjagaTerbaru).
     const penjagaDaftar = useRef(buatPenjagaTerbaru());
     const [knowledgeSpaces, setKnowledgeSpaces] = useState([]);
-    // Pratinjau data tabel Excel (Item 92 Tahap 1) — hanya di layar, belum disimpan.
     const [pratinjauTabel, setPratinjauTabel] = useState(null);
-    // Data tabel tersimpan (Item 92 Tahap 2).
     const [daftarTabel, setDaftarTabel] = useState([]);
     const muatDaftarTabel = async () => {
         try { setDaftarTabel(await daftarBerkasAsn(supabase)); }
         catch (err) { console.error('[ResearchApp] Gagal memuat data tabel:', err); }
     };
     const [selectedSpace, setSelectedSpaceMentah] = useState(null);
-    // Pilihan workspace diingat: dulu bawaannya selalu space TERBARU, jadi space buatan knowledge_manager
-    // ("Berapa pejabat struktural …?") diam-diam menjadi tujuan unggahan RAG (T9, 2026-09-21).
     const setSelectedSpace = (id) => { setSelectedSpaceMentah(id); ingatRuangTerpilih(id); };
 
-    // Load knowledge spaces
     const loadSpaces = async () => {
         try {
             const { data: { session } } = await supabase.auth.getSession();
@@ -70,15 +60,12 @@ export default function ResearchApp() {
 
             if (error) throw error;
             setKnowledgeSpaces(data || []);
-            // Pilihan sekarang dipertahankan selama masih ada; bila tidak, pilihan terakhir yang tersimpan, lalu terbaru.
             setSelectedSpaceMentah((kini) => pilihRuangAwal(data || [], (data || []).some((s) => s.id === kini) ? kini : ruangTerpilihTersimpan()));
         } catch (err) {
             console.error('[ResearchApp] Gagal memuat spaces:', err);
         }
     };
 
-    // Load documents
-    // tambah = true → sambung halaman berikutnya; selain itu muat ulang sebanyak yang sudah tampil (min. satu halaman).
     const loadDocuments = async (tambah = false) => {
         const dari = tambah ? documents.length : 0;
         const sampai = tambah ? dari + DOKUMEN_PER_HALAMAN : Math.max(documents.length, DOKUMEN_PER_HALAMAN);
@@ -89,7 +76,6 @@ export default function ResearchApp() {
             if (!session) return;
 
             let query = supabase.from('documents').select('*', { count: 'exact' }).eq('user_id', session.user.id);
-            // Jika ada query pencarian khusus, jangan batasi ke space tertentu agar dokumen selalu ditemukan
             if (selectedSpace && !searchQuery.trim()) {
                 query = query.eq('space_id', selectedSpace);
             }
@@ -97,13 +83,10 @@ export default function ResearchApp() {
                 query = query.ilike('title', `%${searchQuery.trim()}%`);
             }
 
-            // id sebagai pengurut kedua: created_at yang sama tidak membuat baris ganda/terlewat antar halaman.
             const { data, error, count } = await query
                 .order('created_at', { ascending: false }).order('id', { ascending: true })
                 .range(dari, sampai - 1);
             if (error) throw error;
-            // Jawaban usang (pemuatan lain dimulai sesudahnya) dibuang: 5 Nov, sesudah muat ulang, daftar tanpa
-            // saringan workspace datang belakangan dan menimpa daftar yang benar — dengan hapus banyak itu berbahaya.
             if (!penjagaDaftar.current.masihTerbaru(nomor)) return;
             setDocuments((lama) => (tambah ? [...lama, ...(data || [])] : (data || [])));
             setTotalDokumen(count ?? 0);
@@ -124,34 +107,14 @@ export default function ResearchApp() {
 
     useEffect(() => {
         setDocuments([]);
-        setPilihan(new Set()); // pilihan tak boleh terbawa ke workspace / pencarian lain
+        setPilihan(new Set());
         loadDocuments();
     }, [selectedSpace, searchQuery]);
 
-    // Upload document
-    //
-    // CATATAN (2026-09-10): sampai hari ini fungsi ini menulis LANGSUNG ke tabel
-    // `documents` dan `document_chunks` tanpa pernah menyentuh `rag-process`.
-    // Akibatnya tiga kegagalan yang semuanya diam:
-    //   1. Chunk tersimpan tanpa `embedding`. Kolom itu nullable, jadi Postgres
-    //      menerima tanpa protes — dokumen muncul di daftar, terlihat berhasil,
-    //      tapi tidak akan pernah ditemukan pencarian RAG.
-    //   2. `text.substring(0, 5000)` membuang sisa dokumen tanpa memberi tahu.
-    //   3. `space_id` di-hardcode ke workspace milik satu akun, sehingga unggahan
-    //      pengguna lain akan mendarat di workspace orang.
-    // Semuanya kini diserahkan ke `rag-process` — jalur yang sama yang dipakai
-    // mametlite, yang memotong per 4.500 karakter, memvektorkan tiap potongan,
-    // dan menentukan space CORE milik pengguna yang benar di sisi server.
-    // UNGGAH BANYAK BERKAS (2026-09-17): buku Kepbup dipecah per jabatan (222 berkas). Semua berkas dibaca dulu
-    // (gratis, pdf.js), lalu pengguna menjawab SEKALI untuk OCR dan SEKALI untuk biaya embedding — bukan 222×
-    // dialog. Berkas yang judulnya sudah ada dilewati (unggahan ganda 17 Sep). Berkas diproses berurutan;
-    // satu gagal tidak menghentikan yang lain; ringkasan di akhir. Satu berkas = alur yang sama.
     const handleUpload = async (e) => {
         const files = Array.from(e.target.files || []);
         if (!files.length) return;
 
-        // EXCEL → jalur DATA TABEL (Item 92), bukan RAG: RAG tak bisa menghitung / mencari sel kosong. Tahap 1 hanya
-        // membaca & menampilkan pratinjau di perangkat — tanpa kunci, tanpa biaya, tanpa menyimpan.
         const excel = files.filter((f) => adalahExcel(f.name));
         if (excel.length) {
             e.target.value = '';
@@ -162,8 +125,6 @@ export default function ResearchApp() {
             setUploading(true);
             setStatusUnggah('Membaca Excel...');
             try {
-                // Tanda unik per unggahan: dua berkas bernama sama (INSPEKTORAT senin & selasa) dulu memakai ulang layar
-                // lama — termasuk tulisan "Tersimpan" — sehingga berkas kedua tampak tersimpan padahal tidak.
                 setPratinjauTabel({ ...(await bacaBerkasExcelAsn(excel[0])), _unggahan: `${Date.now()}-${Math.random()}` });
             } catch (err) {
                 console.error('[ResearchApp] Gagal membaca Excel:', err);
@@ -186,34 +147,23 @@ export default function ResearchApp() {
                 return;
             }
 
-            // Embedding (Item 63) dan OCR opsional (Item 76b) dibayar pengguna dengan kunci
-            // OpenRouter-nya sendiri — diambil sekali di sini, dipakai untuk keduanya.
             let openRouterKey = null;
             try {
                 const vault = kernel.serviceManager?.get('VaultService');
                 openRouterKey = vault?.getKey('openrouter') || null;
             } catch {
-                // Vault belum siap — ditangani di bawah.
             }
-            // Tanpa kunci: embedding pasti ditolak rag-process DAN tawaran OCR terlewat diam-diam. Dulu tetap
-            // membaca & mencoba tiap berkas → 2/2 gagal dengan pesan sama (uji 17 Sep); untuk 222 berkas = 222×.
             if (!openRouterKey) {
                 alert('Kunci OpenRouter belum terpasang di aplikasi ini — unggahan dibatalkan sebelum membaca berkas.\n\n' +
                     'Pasang kunci di Pengaturan (kunci baru bila kunci lama sudah diganti), lalu unggah lagi.');
                 return;
             }
 
-            // Judul yang sudah ada di server (bukan daftar di layar, yang bisa basi) → dilewati. Unggahan yang BELUM
-            // selesai (K1 langkah 2) tidak dilewati: berkas yang sama melanjutkannya dari potongan terakhir.
             const { data: judulAda, error: errJudul } = await supabase
                 .from('documents').select('title, selesai, space_id').eq('user_id', session.user.id).limit(10000);
             if (errJudul) throw errJudul;
             const sudahAda = new Set((judulAda || []).filter((d) => d.selesai !== false).map((d) => d.title));
             const tertunda = new Set((judulAda || []).filter((d) => d.selesai === false).map((d) => d.title));
-            // PERBARUI DOKUMEN (5 Nov 2026, permintaan Owner: nama sama, isi berbeda). Judul yang sudah ada DI WORKSPACE
-            // INI boleh diperbarui — rag-process membangun versi baru (potongan yang isinya sama menyalin vektor lama,
-            // tanpa biaya), lalu menghapus versi lama sesudah versi baru selesai. Judul yang ada di workspace LAIN tetap
-            // dilewati seperti dulu (unggahan ganda 17 Sep).
             const diRuangIni = new Set((judulAda || [])
                 .filter((d) => d.selesai !== false && (!selectedSpace || d.space_id === selectedSpace)).map((d) => d.title));
             const kembar = files.filter((f) => diRuangIni.has(f.name)).map((f) => f.name);
@@ -224,8 +174,6 @@ export default function ResearchApp() {
                 'sesudah versi baru selesai (selama itu versi lama tetap dipakai chat).\nBatal = lewati berkas-berkas itu.'
             );
 
-            // 1. Baca semua berkas. PDF/DOCX diambil teksnya di browser (Item 69); berkas teks dibaca apa adanya.
-            //    Gagal (scan, terkunci, format lama…) = GagalEkstrak berpesan jelas → dicatat, berkas lain lanjut.
             const siap = [];
             for (const file of files) {
                 const diperbarui = perbarui && diRuangIni.has(file.name);
@@ -243,9 +191,6 @@ export default function ResearchApp() {
                 }
             }
 
-            // 2. OCR — satu keputusan untuk semua berkas. Halaman PDF yang tampak bertabel (Item 76b): pdf.js
-            //    meratakan kolomnya. OCR mistral-ocr HANYA untuk halaman itu, opsional, dan hanya bila ada kunci
-            //    OpenRouter untuk membayarnya (Human-in-Command, sama seperti gerbang konfirmasi Tier 3 Web Search).
             const totalTabel = siap.reduce((a, s) => a + (s.hasil.halamanBertabelTerdeteksi?.length || 0), 0);
             const berkasBertabel = siap.filter((s) => s.hasil.halamanBertabelTerdeteksi?.length).length;
             let pakaiOcr = false;
@@ -256,8 +201,6 @@ export default function ResearchApp() {
                     `Perbaiki dengan OCR (mistral-ocr)? Perkiraan biaya ±${angka(perkiraanOcr(totalTabel), 3)} ` +
                     `dari saldo OpenRouter Anda, di luar biaya embedding.`
                 );
-                // OCR massal (2026-09-16): buku Kepbup 1.004 halaman menandai 939 halaman bertabel —
-                // ±$1,9 dan berjam-jam. Konfirmasi kedua menyebut lama pengerjaan sebelum uang terpakai.
                 pakaiOcr = lanjutOcr && (totalTabel <= OCR_BANYAK_HALAMAN || window.confirm(
                     `${totalTabel} halaman itu banyak.\n\n` +
                     `Perkiraan: ±${perkiraanMenitOcr(totalTabel)} menit dan ±${angka(perkiraanOcr(totalTabel), 3)}, ` +
@@ -268,7 +211,6 @@ export default function ResearchApp() {
                 ));
             }
 
-            // 3. Biaya embedding — satu konfirmasi (perkiraan dari teks sebelum OCR).
             const totalPotongan = siap.reduce((a, s) => a + perkiraanUnggah(s.hasil.huruf).potongan, 0);
             if (totalPotongan > POTONGAN_PERLU_KONFIRMASI) {
                 const totalDolar = siap.reduce((a, s) => a + perkiraanUnggah(s.hasil.huruf).dolar, 0);
@@ -289,7 +231,6 @@ export default function ResearchApp() {
             const headers = {};
             if (openRouterKey) headers['x-byok-openrouter'] = openRouterKey.replace(/[^\x00-\x7F]/g, '');
 
-            // 4. Proses berurutan: OCR (bila dipilih) → rag-process. Satu berkas gagal tidak menghentikan yang lain.
             for (const [i, item] of siap.entries()) {
                 const { file } = item;
                 let { hasil } = item;
@@ -299,8 +240,6 @@ export default function ResearchApp() {
                     if (pakaiOcr && halamanTabel.length) {
                         setStatusUnggah(`${awalan}OCR ${halamanTabel.length} halaman tabel…`);
                         const bytes = new Uint8Array(await file.arrayBuffer());
-                        // Cache OCR di perangkat (K1 langkah 2): halaman yang pernah di-OCR tidak dibayar lagi, dan teksnya
-                        // sama persis — syarat agar unggahan yang terputus bisa dilanjutkan.
                         const cache = buatCacheOcr(await sidikBerkas(bytes));
                         const { peta: petaOcr, halamanGagal, saldoHabis, halamanBelum = [] } = await terapkanOcrHalaman(
                             bytes,
@@ -309,8 +248,6 @@ export default function ResearchApp() {
                             ({ ke, total, gagal, dariCache }) => setStatusUnggah(`${awalan}OCR halaman ${ke}/${total}${dariCache ? ` (${dariCache} dari cache)` : ''}${gagal ? ` (${gagal} dilewati)` : ''}…`),
                             { cache }
                         );
-                        // Saldo habis di tengah OCR (5 Nov: buku Kepbup, 522 halaman jatuh ke teks pdf.js tanpa ditanya).
-                        // Pengguna memutuskan; bawaan aman = berhenti (kebenaran data RAG di atas biaya).
                         if (saldoHabis) {
                             const lanjutTanpaOcr = window.confirm(
                                 `OCR "${file.name}" berhenti: saldo OpenRouter tidak cukup (OCR berkas butuh saldo minimal $0,50).\n\n` +
@@ -332,20 +269,13 @@ export default function ResearchApp() {
                     }
 
                     setStatusUnggah(`${awalan}Memvektorkan ±${perkiraanUnggah(hasil.huruf).potongan} potongan…`);
-                    // Unggah bertahap (K1 langkah 2): rag-process bekerja ±80 detik per panggilan dan menyimpan setiap
-                    // kelompok; panggilan diulang dengan teks yang sama sampai selesai. Gagal sesaat (503 gerbang,
-                    // jaringan, penolakan penyedia) dicoba lagi; yang sudah tersimpan menjadi cache untuk dilanjutkan.
-                    // Alasan galat non-2xx dibaca dari body jawaban (error.context, Item 63) — di unggahBertahap.
                     const body = {
                         title: file.name,
                         text: hasil.teks,
                         userId: session.user.id,
-                        // Hanya dikirim kalau pengguna memang sedang memilih sebuah space.
-                        // Tanpa ini rag-process mencari space CORE milik pengguna sendiri.
                         ...(selectedSpace ? { spaceId: selectedSpace } : {}),
                         source_type: 'user_upload',
                         retrieved_at: new Date().toISOString(),
-                        // Perbarui dokumen berjudul sama di workspace ini (lihat konfirmasi di atas).
                         ...(item.perbarui ? { perbarui: true } : {})
                     };
                     const data = await unggahBertahap({
@@ -362,7 +292,6 @@ export default function ResearchApp() {
                 } catch (err) {
                     console.error(`[ResearchApp] Gagal upload ${file.name}:`, err);
                     hasilAkhir.gagal.push({ nama: file.name, pesan: err.message });
-                    // Saldo habis / kunci ditolak berlaku untuk semua berkas berikutnya → berhenti, jangan menagih ulang.
                     if (err.status === 401 || err.status === 402 || /\b(401|402)\b|SALDO_HABIS|KUNCI_TIDAK_VALID|OPENROUTER_KEY_REQUIRED/i.test(err.message)) {
                         siap.slice(i + 1).forEach((s) => hasilAkhir.gagal.push({ nama: s.file.name, pesan: 'tidak diproses — kunci/saldo OpenRouter bermasalah' }));
                         break;
@@ -391,23 +320,18 @@ export default function ResearchApp() {
                     const jumlah = ocrDilewati.reduce((a, o) => a + o.halaman.length, 0);
                     baris.push(`\n${jumlah} halaman gagal di-OCR dan dilewati (teks biasa tetap dipakai):\n${daftar(ocrDilewati, (o) => `- ${o.nama}: hal ${o.halaman.join(', ')}`)}`);
                 }
-                // Ditunda sebentar: alert memblokir, dan tanpa jeda layar masih menampilkan status
-                // "Berkas n/n · Memvektorkan…" serta daftar lama (uji 3 berkas 2026-09-17).
                 if (baris.length) setTimeout(() => alert(baris.join('\n')), 300);
             }
         }
     };
 
-    // PDF PINDAIAN → DATA TABEL (Item 92 Tahap 5). PDF biasa tetap ke RAG lewat "Upload Dokumen"; tombol ini khusus berkas
-    // rekonsiliasi hasil pindaian (10/10 PDF kiriman OPD = gambar, 0 huruf). Semua halaman di-OCR — dibayar kunci
-    // OpenRouter pengguna, jadi jumlah halaman & biaya ditanyakan dulu. Hasilnya pratinjau yang sama dengan Excel.
     const handlePdfDataTabel = async (e) => {
         const file = e.target.files?.[0];
         e.target.value = '';
         if (!file) return;
         if (!adalahPdf(file.name)) { alert('Pilih berkas PDF. Excel diunggah lewat "Upload Dokumen".'); return; }
         let kunci = null;
-        try { kunci = kernel.serviceManager?.get('VaultService')?.getKey('openrouter') || null; } catch { /* vault belum siap */ }
+        try { kunci = kernel.serviceManager?.get('VaultService')?.getKey('openrouter') || null; } catch {  }
         if (!kunci) {
             alert('Kunci OpenRouter belum terpasang — OCR PDF dibayar dari saldo OpenRouter Anda. Pasang kunci di Pengaturan, lalu coba lagi.');
             return;
@@ -435,8 +359,6 @@ export default function ResearchApp() {
         }
     };
 
-    // CADANGAN DATA (Item 93 Tahap 1): satu berkas JSON di laptop pengguna, dibuat dengan sesi pengguna sendiri (RLS),
-    // per halaman, jumlah baris tiap tabel dicocokkan dengan database. Berkas dibaca ulang sebelum diunduh.
     const handleCadangan = async () => {
         const lanjut = window.confirm(
             'Cadangkan semua data Anda ke satu berkas di laptop ini?\n\n' +
@@ -457,7 +379,6 @@ export default function ResearchApp() {
                 onKemajuan: ({ tabel, ke, total, baris }) => setStatusUnggah(`Cadangan ${ke}/${total}: ${tabel}${baris ? ` (${baris})` : ''}…`),
             });
             const teks = JSON.stringify(berkas);
-            // Dibaca ulang dari teks yang akan ditulis — yang diperiksa adalah isi berkas, bukan objek di memori.
             const cek = periksaBerkasCadangan(JSON.parse(teks));
             const url = URL.createObjectURL(new Blob([teks], { type: 'application/json' }));
             const a = document.createElement('a');
@@ -482,19 +403,13 @@ export default function ResearchApp() {
         }
     };
 
-    // Delete document
     const handleDelete = async (docId) => {
         if (deletingId) return;
         setDeletingId(docId);
         try {
-            // supabase-js tidak melempar error — wajib cek { error } sendiri.
-            // Hapus chunks dulu. Nol baris di sini wajar (dokumen bisa tanpa potongan).
             const { error: errChunks } = await supabase.from('document_chunks').delete().eq('document_id', docId);
             if (errChunks) throw errChunks;
 
-            // Hapus dokumen dan minta baris yang terhapus dikembalikan:
-            // DELETE yang tidak mengenai baris apa pun tetap 204 tanpa error,
-            // jadi 0 baris = dokumen sudah tidak ada (daftar di layar basi).
             const { data, error } = await supabase.from('documents').delete().eq('id', docId).select('id');
             if (error) throw error;
             if (!data || data.length === 0) {
@@ -505,13 +420,10 @@ export default function ResearchApp() {
             alert('Gagal menghapus dokumen: ' + (err.message || err));
         } finally {
             setDeletingId(null);
-            // Berhasil atau gagal, selalu muat ulang dari server agar entri basi hilang.
             loadDocuments();
         }
     };
 
-    // Pilih banyak & hapus terpilih (5 Nov 2026, permintaan Owner). Hanya dokumen yang TAMPIL di daftar yang bisa
-    // terpilih; konfirmasi menyebut jumlah, contoh judul, dan asal workspace-nya.
     const togglePilih = (id) => setPilihan((lama) => {
         const baru = new Set(lama);
         if (baru.has(id)) baru.delete(id); else baru.add(id);
@@ -549,8 +461,6 @@ export default function ResearchApp() {
         }
     };
 
-    // Tampilkan jam juga: dua unggahan berjudul sama di hari yang sama
-    // tidak bisa dibedakan bila hanya tanggal.
     const formatDate = (dateStr) => {
         if (!dateStr) return '';
         return new Date(dateStr).toLocaleString('id-ID', {
@@ -560,7 +470,6 @@ export default function ResearchApp() {
 
     return (
         <div className="h-full text-white p-6 overflow-y-auto">
-            {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <div className="p-3 bg-blue-500/20 rounded-lg border border-blue-500/30">
@@ -574,7 +483,6 @@ export default function ResearchApp() {
                     </div>
                 </div>
 
-                {/* Upload Button */}
                 <div className="flex items-center gap-2">
                 <button
                     onClick={handleCadangan}
@@ -607,7 +515,6 @@ export default function ResearchApp() {
                     onPeriksaVersi={async (opd) => {
                         const { p_pegawai } = siapkanSimpan(pratinjauTabel, opd);
                         const kandidat = dugaVersi(p_pegawai.map((p) => p.nip), await ambilBerkasAktif(supabase), pratinjauTabel.berkas);
-                        // Isi dibandingkan per orang & per kolom: NIP sama belum tentu isi sama (INSPEKTORAT senin/selasa).
                         for (const k of kandidat) {
                             const b = bandingkanIsi(p_pegawai, await ambilPegawaiBerkas(supabase, k.id));
                             k.identik = b.identik;
@@ -638,14 +545,12 @@ export default function ResearchApp() {
 
             {daftarTabel.some((b) => !b.digantikan_oleh) && (
                 <LaporanKejanggalan
-                    // Data tabel berubah (simpan / hapus / versi) → laporan lama dibuang, bukan ditampilkan basi.
                     key={daftarTabel.map((b) => `${b.id}:${b.digantikan_oleh || ''}`).join(',')}
                     onMuatBahan={() => ambilBahanLaporan(supabase)}
                     onUnduh={unduhExcelJanggal}
                 />
             )}
 
-            {/* Search Bar */}
             <div className="mb-6">
                 <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 focus-within:border-blue-500/50 transition-colors">
                     <Ikon nama="search" ukuran={16} className="text-slate-500" />
@@ -659,7 +564,6 @@ export default function ResearchApp() {
                 </div>
             </div>
 
-            {/* Knowledge Spaces */}
             <DaftarWorkspace
                 daftar={knowledgeSpaces}
                 terpilih={selectedSpace}
@@ -682,7 +586,6 @@ export default function ResearchApp() {
                 }}
             />
 
-            {/* Document List */}
             {loading ? (
                 <div className="flex items-center justify-center py-12 text-slate-500">
                     <Ikon nama="progress_activity" ukuran={20} className="animate-spin mr-2" />
@@ -723,7 +626,6 @@ export default function ResearchApp() {
                                     <p className="text-sm text-slate-200">{doc.title}</p>
                                     <p className="text-[12px] text-slate-500">{formatDate(doc.created_at)}</p>
                                     {doc.selesai === false && (
-                                        // Unggah bertahap (K1 langkah 2): belum dipakai menjawab chat sampai lengkap.
                                         <p className="text-[12px] text-amber-400">
                                             Belum selesai{doc.total_potongan ? ` (${doc.total_potongan} potongan)` : ''} — belum dipakai chat. Unggah berkas yang sama untuk melanjutkan, atau hapus.
                                         </p>
@@ -762,7 +664,6 @@ export default function ResearchApp() {
                 </div>
             )}
 
-            {/* Stats */}
             <div className="mt-6 text-center text-[12px] text-slate-600">
                 {documents.length < totalDokumen ? `${documents.length} dari ${totalDokumen}` : documents.length} dokumen • {knowledgeSpaces.length} spaces
             </div>

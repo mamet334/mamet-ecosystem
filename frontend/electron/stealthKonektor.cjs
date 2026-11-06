@@ -1,22 +1,3 @@
-/**
- * KOMPONEN STEALTH CRAWLER (Item 129 Tahap E2, 2026-10-26) — dipasang atas izin Owner, bukan dibundel.
- *
- * K14 (keputusan Owner): pemasang TIDAK membawa komponen tingkat stealth. Tanpanya crawler tetap jalan; halaman yang
- * memblokir dilewati & dicatat (crawler/kanal/web.py `_stealth`). Modul ini memasangnya bila Owner menekan tombolnya:
- *
- *   1. `python -m pip install --target <stealth>\paket-<waktu> --no-deps <patchright==versi>` — hanya Patchright:
- *      Scrapling 0.5 (StealthyFetcher) memakai Patchright saja; Playwright tidak diimpor (diperiksa 26 Okt).
- *      `--no-deps`: greenlet & pyee sudah ada di runtime terbundel. Versi dikunci dari `.venv` pengembangan
- *      (`stealth.json`, ditulis scripts/siapkan-crawler.mjs).
- *   2. `python -m patchright install chromium` — browser ke %LOCALAPPDATA%\ms-playwright (lokasi bawaan; bila sudah
- *      ada di laptop itu, tidak diunduh ulang).
- *   3. UJI: `from scrapling.fetchers import StealthyFetcher` dengan paket baru di PYTHONPATH.
- *   Ketiganya berhasil → folder sementara diganti nama menjadi `paket` (kunci sesaat Windows diulang, lihat
- *   pindahkanFolder) dan penanda `terpasang.json` ditulis. Gagal di langkah mana pun, termasuk pemindahan itu →
- *   folder sementara dihapus, penanda tidak ditulis, alasan dikembalikan apa adanya.
- *
- * Murni (tanpa `electron`); penjalan proses bisa diganti tiruan — lihat `uji/uji-konektor-stealth.mjs`.
- */
 
 const fs = require('fs');
 const path = require('path');
@@ -29,21 +10,15 @@ function lokasiStealth(folderData) {
   return { akar, paket: path.join(akar, 'paket'), penanda: path.join(akar, 'terpasang.json') };
 }
 
-/** Spesifikasi komponen dari runtime terbundel — `{ paket: 'patchright==1.64.1', browser: 'chromium' }`. */
 function spesifikasiStealth(runtime) {
   try {
     const s = JSON.parse(fs.readFileSync(path.join(runtime, 'stealth.json'), 'utf8'));
     if (/^patchright==\d+\.\d+\.\d+$/.test(s?.paket) && s?.browser === 'chromium') return s;
   } catch {
-    // Runtime lama (dibangun sebelum E2) atau berkas rusak → tidak ada versi terkunci; pemasangan ditolak di bawah.
   }
   return null;
 }
 
-/**
- * Keadaan komponen stealth: `pengembangan` (npm run desktop — sudah ada di .venv), `terpasang`, atau `belum`.
- * @param {{terbundel: boolean, folderData?: string|null}} p
- */
 function statusStealth({ terbundel, folderData }) {
   if (!terbundel) return { keadaan: 'pengembangan' };
   if (!folderData) return { keadaan: 'belum' };
@@ -52,7 +27,6 @@ function statusStealth({ terbundel, folderData }) {
     const p = JSON.parse(fs.readFileSync(l.penanda, 'utf8'));
     if (fs.existsSync(path.join(l.paket, 'patchright'))) return { keadaan: 'terpasang', paket: p.paket, waktu: p.waktu, folderPaket: l.paket };
   } catch {
-    // Penanda belum ada (belum pernah dipasang) atau rusak → dianggap belum; tombol pasang tetap tersedia.
   }
   return { keadaan: 'belum' };
 }
@@ -60,10 +34,9 @@ function statusStealth({ terbundel, folderData }) {
 function matikanPohon(pid) {
   if (!pid) return;
   const taskkill = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'taskkill.exe');
-  try { execFile(taskkill, ['/PID', String(pid), '/T', '/F'], { windowsHide: true }, () => {}); } catch { /* proses sudah selesai */ }
+  try { execFile(taskkill, ['/PID', String(pid), '/T', '/F'], { windowsHide: true }, () => {}); } catch {  }
 }
 
-/** Jalankan tanpa shell; kumpulkan ekor keluaran; matikan pohon proses bila lewat batas waktu. */
 function jalankanProses(program, argumen, { cwd, env, batasMs }) {
   return new Promise((selesai) => {
     let keluaran = '';
@@ -78,12 +51,8 @@ function jalankanProses(program, argumen, { cwd, env, batasMs }) {
   });
 }
 
-// Kunci SESAAT Windows: antivirus/pengindeks masih memegang berkas yang baru dibuat sesaat sesudah proses terakhir
-// selesai, sehingga rename folder ditolak (terukur 28 Okt di uji bagian 5: EPERM 2 dari 6 jalan; beberapa detik
-// kemudian rename yang sama berhasil). pip mengulang os.replace di Windows untuk sebab yang sama.
 const KUNCI_SESAAT = new Set(['EPERM', 'EACCES', 'EBUSY']);
 
-/** Ganti `tujuan` dengan `asal`; kunci sesaat diulang sampai `batasMs`. Mengembalikan kode galat, atau null bila berhasil. */
 async function pindahkanFolder(asal, tujuan, { batasMs = 10000, jedaMs = 250 } = {}) {
   const mulai = Date.now();
   for (;;) {
@@ -92,17 +61,12 @@ async function pindahkanFolder(asal, tujuan, { batasMs = 10000, jedaMs = 250 } =
       fs.renameSync(asal, tujuan);
       return null;
     } catch (e) {
-      // Tidak ditelan: kodenya dikembalikan, dan pasangStealth melaporkannya sebagai alasan langkah "pindah".
       if (!KUNCI_SESAAT.has(e.code) || Date.now() - mulai >= batasMs) return e.code || e.message;
       await new Promise((r) => setTimeout(r, jedaMs));
     }
   }
 }
 
-/**
- * Pasang komponen stealth. Persetujuan Owner sudah diminta pemanggil (dialog di proses utama).
- * @param {{runtime: string, folderData: string, env: Record<string,string>, jalankan?: Function, log?: Function, sekarang?: () => number}} p
- */
 async function pasangStealth({ runtime, folderData, env, jalankan = jalankanProses, log = () => {}, sekarang = Date.now }) {
   const spek = spesifikasiStealth(runtime);
   if (!spek) return { ok: false, langkah: 'persiapan', alasan: 'runtime terbundel tidak memuat stealth.json — bangun ulang pemasang (npm run crawler:siapkan)' };

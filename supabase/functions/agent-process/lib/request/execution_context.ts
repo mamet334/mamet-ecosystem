@@ -1,7 +1,6 @@
 import { UnifiedExecutionContext, MametCapabilityMode } from './types.ts';
 
 export function buildUnifiedExecutionContext(input: { message: string, desktopOSMode?: boolean, tools?: string[], ragEnabled?: boolean, memoryEnabled?: boolean, userId: string, userName?: string, appSource?: string, mode?: string }): UnifiedExecutionContext {
-  // UUID Validation - Fix for "SUPABASE" string error
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.userId)) {
     console.error('[ExecutionContext] Invalid userId:', input.userId);
     input.userId = null as any;
@@ -11,16 +10,8 @@ export function buildUnifiedExecutionContext(input: { message: string, desktopOS
   const isMametEngineer = input.appSource === 'engineer' || input.mode === 'ENGINEER';
   const mode: MametCapabilityMode = (input.mode as MametCapabilityMode) || (isMametEngineer ? "ENGINEER" : isMametLite ? "LITE" : (input.desktopOSMode ? "AI" : "LITE"));
   const isRagEnabled = input.ragEnabled !== false;
-  // Tombol Memory desktop (2026-09-15): mati = memori tidak dibaca (loadProjectMemory) dan tidak ditulis (fakta otomatis
-  // sesudah menjawab). Ditaruh di policy supaya semua pemakai canReadMemory/canWriteMemory ikut, termasuk mode Engineer.
   const isMemoryEnabled = input.memoryEnabled !== false;
 
-  // AMBANG PENCARIAN DOKUMEN: 0,55 tetap (Item 65, 2026-09-11) — menggantikan 0,60/0,65/0,68
-  // menurut panjang pertanyaan. Diukur di Item 63 dengan 33 potongan HCDP, 8 pertanyaan
-  // berjawaban pasti, model gemini-embedding-2: potongan benar berskor 0,649–0,803, pertanyaan
-  // kontrol tak berhubungan maksimal 0,455. Ambang 0,65 membuang satu jawaban benar (0,649).
-  // 0,55 meloloskan 8/8 dengan jarak 0,1 dari kontrol; jumlah tetap dibatasi ragTopK.
-  // Ambang MEMORI (match_memories, request_pipeline.ts) terpisah dan tidak diubah di sini.
   const dynamicThreshold = 0.55;
 
   const lowerMsg = (input.message || '').toLowerCase();
@@ -36,9 +27,6 @@ export function buildUnifiedExecutionContext(input: { message: string, desktopOS
     request: { originalMessage: input.message, finalMessage: input.message, lowerMsg, mode },
     policy: {
         mode, decision: "ALLOW", toolsEnabled: true, webSearchEnabled: true, riskScore: 0,
-        // 8 potongan (dulu 5) sejak potongan 800 huruf (Item 70): 8 × ±800 = ±6.400 huruf dokumen
-        // per jawaban — tetap jauh di bawah 5 × 4.500 = 22.500 sebelumnya, dengan potongan tetangga
-        // ikut terbawa (jawaban di peringkat #2 pun masuk). LITE sudah 10.
         ragTopK: mode === "LITE" ? 10 : 8, ragThreshold: dynamicThreshold, webHint,
         canReadRAG: engineerPolicy?.canReadRAG ?? true,
         canReadMemory: isMemoryEnabled && (engineerPolicy?.canReadMemory ?? !isMametLite),
@@ -56,9 +44,6 @@ export function buildUnifiedExecutionContext(input: { message: string, desktopOS
   const POLICY_LAYER_ENABLED = true;
   if (!POLICY_LAYER_ENABLED) return ctx;
 
-  // ENGINEER mode sudah divalidasi dengan BYOK key di request_pipeline.ts.
-  // Prompt Engineer berisi kode source file (panjang, banyak token berulang) yang
-  // secara salah memicu riskScore >= 4 → BLOCK. Exempt dari policy risk scoring.
   if (isMametEngineer) {
     ctx.policy.riskScore = 0;
     ctx.trace.riskScore = 0;

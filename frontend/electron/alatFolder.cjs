@@ -1,9 +1,3 @@
-// ALAT BACA FOLDER KERJA (Item 85 Tahap 1, 2026-09-22) — folder_list, folder_read, folder_search.
-//
-// Murni (tanpa Electron) supaya bisa diuji di Node dengan folder & junction nyata. SETIAP alamat lewat
-// alamatDalamPagar (pagarFolder.cjs): alamat absolut, `..`, junction ke luar, nama perangkat ditolak.
-// Hasil hanya memuat alamat RELATIF (garis miring "/") — alamat lengkap tidak pernah keluar dari proses utama.
-// Baca saja: tidak ada yang menulis, mengganti nama, atau menghapus.
 
 const fs = require('fs');
 const path = require('path');
@@ -20,23 +14,19 @@ const BATAS = {
   cariBerkas: 2000,
   kueriHuruf: 200,
 };
-// Folder yang dilewati saat mendaftar & mencari (bukan isi kerja, dan sering sangat besar).
 const FOLDER_DILEWATI = new Set(['node_modules', '.git', '.svn', '.hg', 'dist', 'build', 'out', '.next', '.cache',
   '__pycache__', '.venv', 'venv', 'env', '.idea', '.vs', 'coverage', 'target', 'bin', 'obj']);
-// Dokumen berformat: teksnya tidak bisa dibaca langsung — diarahkan ke 📎 atau RAG.
 const EKSTENSI_DOKUMEN = new Set(['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.odt', '.rtf']);
 
 const relUnix = (r) => (r === '.' ? '.' : r.split(path.sep).join('/'));
 const gagal = (alat, alamat, alasan) => ({ ok: false, alat, alamat, alasan });
 
-/** Deteksi biner sederhana: ada byte NUL di 8 KB pertama. */
 function tampakBiner(buf) {
   const n = Math.min(buf.length, 8192);
   for (let i = 0; i < n; i++) if (buf[i] === 0) return true;
   return false;
 }
 
-/** Daftar isi folder (rekursif terbatas). */
 function folderList(akar, relatif = '.', { kedalaman = BATAS.daftarKedalaman } = {}) {
   const p = alamatDalamPagar(akar, relatif || '.');
   if (!p.ok) return gagal('folder_list', relatif, p.alasan);
@@ -53,7 +43,6 @@ function folderList(akar, relatif = '.', { kedalaman = BATAS.daftarKedalaman } =
     for (const d of isi) {
       if (entri.length >= BATAS.daftarEntri) { terpotong = true; return; }
       const rel = relDir === '.' ? d.name : `${relDir}/${d.name}`;
-      // Setiap entri dinilai ulang lewat pagar: junction/symlink di dalam folder yang menunjuk ke luar tidak diikuti.
       const cek = alamatDalamPagar(akar, rel);
       if (!cek.ok) { dilewati++; continue; }
       if (d.isDirectory()) {
@@ -62,7 +51,7 @@ function folderList(akar, relatif = '.', { kedalaman = BATAS.daftarKedalaman } =
         if (tingkat < kedalaman) jalan(cek.alamat, rel, tingkat + 1);
       } else if (d.isFile()) {
         let ukuran = null;
-        try { ukuran = fs.statSync(cek.alamat).size; } catch { /* abaikan */ }
+        try { ukuran = fs.statSync(cek.alamat).size; } catch {  }
         entri.push({ jenis: 'berkas', alamat: rel, ukuran });
       }
     }
@@ -71,12 +60,9 @@ function folderList(akar, relatif = '.', { kedalaman = BATAS.daftarKedalaman } =
   return { ok: true, alat: 'folder_list', alamat: relUnix(p.relatif), entri, terpotong, dilewatiPagar: dilewati };
 }
 
-/** Baca satu berkas teks, dibatasi ukuran; `dari`/`sampai` = nomor baris (1-based, inklusif). */
 function folderRead(akar, relatif, { dari, sampai } = {}) {
   const p = alamatDalamPagar(akar, relatif);
   if (!p.ok) return gagal('folder_read', relatif, p.alasan);
-  // T12: ditolak SEBELUM berkasnya dibuka — isi yang sudah dibaca sudah berada di memori proses,
-  // dan dari sana ia tinggal selangkah dari prompt. Penolakannya menyebut sebab dan jalan lain.
   if (adalahBerkasRahasia(p.relatif)) return gagal('folder_read', relUnix(p.relatif), alasanRahasia(p.relatif));
   let stat;
   try { stat = fs.statSync(p.alamat); } catch (e) { return gagal('folder_read', relatif, `tidak ditemukan (${e.code})`); }
@@ -113,7 +99,6 @@ function folderRead(akar, relatif, { dari, sampai } = {}) {
   };
 }
 
-/** Cari teks (tanpa beda huruf besar/kecil) di berkas teks dalam folder. */
 function folderSearch(akar, kueri, { relatif = '.' } = {}) {
   if (typeof kueri !== 'string' || !kueri.trim()) return gagal('folder_search', relatif, 'kata yang dicari kosong');
   const cari = kueri.trim().slice(0, BATAS.kueriHuruf).toLowerCase();
@@ -122,7 +107,7 @@ function folderSearch(akar, kueri, { relatif = '.' } = {}) {
   const temuan = [];
   let diperiksa = 0;
   let terpotong = false;
-  let dilewatiRahasia = 0;   // T12 — dihitung supaya pengecualiannya TERLIHAT, bukan diam-diam
+  let dilewatiRahasia = 0;
   const jalan = (dir, relDir) => {
     let isi;
     try { isi = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
@@ -134,8 +119,6 @@ function folderSearch(akar, kueri, { relatif = '.' } = {}) {
       if (!cek.ok) continue;
       if (d.isDirectory()) { if (!FOLDER_DILEWATI.has(d.name.toLowerCase())) jalan(cek.alamat, rel); continue; }
       if (!d.isFile() || EKSTENSI_DOKUMEN.has(path.extname(d.name).toLowerCase())) continue;
-      // T12: pencarian isi membaca SELURUH berkas di folder, jadi tanpa penjaga di sini satu kata
-      // yang kebetulan ada di .env akan mengirim baris rahasianya ke prompt sebagai "temuan".
       if (adalahBerkasRahasia(d.name)) { dilewatiRahasia++; continue; }
       let buf;
       try {
@@ -160,12 +143,10 @@ function folderSearch(akar, kueri, { relatif = '.' } = {}) {
   return {
     ok: true, alat: 'folder_search', alamat: relUnix(p.relatif), kueri: cari, temuan,
     berkasDiperiksa: diperiksa, terpotong,
-    // Disebut hanya bila memang ada — supaya hasil pencarian biasa tidak berisik.
     ...(dilewatiRahasia ? { dilewatiRahasia } : {}),
   };
 }
 
-/** Satu pintu untuk IPC: {alat, alamat, dari, sampai, kueri}. Alat tak dikenal ditolak. */
 function jalankanAlat(akar, permintaan = {}) {
   if (!akar) return gagal(permintaan.alat, permintaan.alamat, 'folder kerja belum dipilih');
   switch (permintaan.alat) {

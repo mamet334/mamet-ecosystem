@@ -1,17 +1,6 @@
-// DAFTAR KONEKTOR UNTUK MENU + (Item 129 Tahap G5, 2026-11-03) — satu tugas: dua sumber status (crawler bawaan &
-// server MCP umum) → satu daftar seragam untuk workspace yang sedang dibuka. Murni (diuji tanpa layar).
-//
-// Kenapa ada: konektor yang menyala tidak terlihat dari chat — padahal daftar alatnya ikut terkirim di SETIAP pesan
-// (± 2–3 ribu token untuk GitHub 27 alat). Menu + menampilkannya dan memberi sakelar per workspace (K3).
 
 import { KONEKTOR_DIKENAL } from '../../../../shared/konektorAlat.js';
 
-/**
- * @param {Array} statusBawaan hasil `electronAPI.konektor.status()` (baris per workspace×konektor)
- * @param {Array} statusUmum hasil `electronAPI.konektorUmum.status()`
- * @param {string} ws workspace yang sedang dibuka
- * @returns {{id: string, nama: string, asal: 'bawaan'|'umum', diaktifkan: boolean, menyala: boolean, jumlahAlat: number, siap: boolean, keterangan: string}[]}
- */
 export function susunMenuKonektor(statusBawaan, statusUmum, ws) {
   const hasil = [];
   for (const b of Array.isArray(statusBawaan) ? statusBawaan : []) {
@@ -31,7 +20,6 @@ export function susunMenuKonektor(statusBawaan, statusUmum, ws) {
     const w = u.ws?.[ws] || {};
     const menyala = w.status === 'nyala';
     const disetujui = Array.isArray(u.alatDisetujui) ? u.alatDisetujui.length : 0;
-    // Tahap F2: server OAuth butuh akun terhubung — sama pentingnya dengan kredensial ketik.
     const akunTerhubung = u.oauth !== true || u.terhubung === true;
     const kredensialLengkap = (u.kredensial || []).every((k) => k?.terisi) && akunTerhubung;
     const siap = kredensialLengkap && disetujui > 0;
@@ -54,10 +42,6 @@ export function susunMenuKonektor(statusBawaan, statusUmum, ws) {
   return hasil;
 }
 
-/**
- * Penanda di tombol +: 'nyala' bila ada konektor menyala; 'masalah' bila ada yang dinyalakan Owner tetapi tidak
- * menyala (gagal, berhenti, alat berubah); null bila tak ada. Masalah didahulukan — itu yang perlu dilihat.
- */
 export function penandaKonektor(daftar) {
   const d = Array.isArray(daftar) ? daftar : [];
   if (d.some((k) => k.diaktifkan && !k.menyala)) return 'masalah';

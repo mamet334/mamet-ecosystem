@@ -14,15 +14,10 @@ async function bootstrapOS() {
     console.log('[LIFECYCLE] Booting Kernel...');
     await kernel.boot(serviceManager);
     
-    // =========================================================
-    // 🔽 TAMBAHKAN KODE INI DI SINI (Setelah boot Kernel sukses)
-    // =========================================================
-    // Hanya ekspos untuk debugging di mode development
     if (import.meta.env.DEV) {
       window.__mamet = { serviceManager };
       console.log('🔧 Dev Mode: ServiceManager exposed to window.__mamet for debugging.');
     }
-    // =========================================================
 
     console.log('[LIFECYCLE] Kernel Boot Complete. Mounting UI.');
   } catch (error) {
@@ -30,13 +25,10 @@ async function bootstrapOS() {
     bootError = error;
   }
 
-  // Jika boot gagal, render error page — jangan OS shell
-  // Ini mencegah komponen seperti Sidebar memanggil serviceManager.get() pada service yang belum terdaftar
   if (bootError) {
     ReactDOM.createRoot(document.getElementById('root')).render(
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        // Palet LampLogin (Item 127 Tahap 3) — layar panik boot ikut ruangan kayu; MERAH galat sengaja dipertahankan.
         height: '100vh', background: '#0b0806', color: '#ef4444',
         fontFamily: 'monospace', flexDirection: 'column', gap: '16px', padding: '24px'
       }}>

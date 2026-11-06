@@ -8,7 +8,6 @@ from pathlib import Path
 
 import crawler
 
-
 def test_paket_crawler_dimuat_dari_folder_ini():
     folder_ini = Path(__file__).resolve().parent.parent
     dimuat = Path(crawler.__file__).resolve().parent.parent

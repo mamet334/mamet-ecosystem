@@ -16,7 +16,6 @@ export const executeRoutingDecision = async (query: string, userId: string, rctx
 
     if (!userId) return routingDecision;
 
-    // Use explicit workspace ID from UI if provided
     if (explicitWorkspaceId && typeof explicitWorkspaceId === 'string' && explicitWorkspaceId.trim() !== '' && explicitWorkspaceId !== 'global') {
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(explicitWorkspaceId.trim());
         
@@ -27,8 +26,6 @@ export const executeRoutingDecision = async (query: string, userId: string, rctx
                 reason_code: "EXPLICIT_UI_WORKSPACE_SELECTION"
             };
         } else {
-            // Jika UI mengirimkan string environment/target storage (misal 'AUTO', 'SUPABASE', 'LOCAL', 'ENGINEER', 'ws-*'),
-            // fallback ke Core dan pastikan workspace_id null (bukan string non-UUID)
             const envTag = explicitWorkspaceId.toUpperCase().replace(/[^A-Z0-9_]/g, '_');
             return {
                 scope: "CORE",
@@ -84,12 +81,6 @@ export const executeRoutingDecision = async (query: string, userId: string, rctx
     return routingDecision;
 };
 
-/**
- * SPACE PENGETAHUAN ENGINEER (T10 Tahap 1, 2026-09-22). Mode ENGINEER hanya mencari dokumen di space milik pengguna
- * yang bertanda `engineer` atau bernama "Pengetahuan Engineer" (dibuat Owner di Research App). Tanpa ini Engineer
- * mencari di SEMUA space: live "tampilkan 5 commit terakhir" memasukkan 4–7 potongan buku Kepbup (skor 0,56–0,66).
- * @returns id space, atau null bila tak ada (pemanggil melewati RAG dengan catatan jujur)
- */
 export const cariSpaceEngineer = async (userId: string, rctx: RuntimeContext): Promise<string | null> => {
     if (!userId) return null;
     try {

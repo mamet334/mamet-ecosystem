@@ -19,18 +19,15 @@ from crawler.kanal import AksesWeb, DilarangRobots, Terblokir
 _NEXT_DATA = re.compile(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', re.DOTALL)
 DOMAIN = ("kaskus.co.id", "kask.us")
 
-
 def url_kaskus(url: str) -> bool:
     host = urlsplit(url).netloc.lower()
     return any(host == d or host.endswith("." + d) for d in DOMAIN)
-
 
 def _ke_www(url: str) -> str:
     """m.kaskus.co.id dan halaman 2, 3, ... diarahkan ke halaman pertama versi www."""
     s = urlsplit(url)
     m = re.match(r"(/thread/[0-9a-f]+/[^/]+)", s.path)
     return f"https://www.kaskus.co.id{m.group(1) if m else s.path}"
-
 
 class Kaskus(Sumber):
     id = "kaskus"

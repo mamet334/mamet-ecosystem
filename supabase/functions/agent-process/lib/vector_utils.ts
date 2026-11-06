@@ -1,41 +1,9 @@
-// Pemotongan teks dipindah ke potong_teks.ts (Item 89, 2026-09-17) agar bisa diuji di Node; diekspor ulang di sini.
 export { chunkText, UKURAN_POTONGAN, TUMPANG_POTONGAN } from './potong_teks.ts';
 
-/**
- * EMBEDDING LEWAT OPENROUTER DENGAN KUNCI PENGGUNA (Item 63–64, 2026-09-10)
- *
- * Menggantikan getGeminiEmbeddingWithRetry (Gemini langsung, kunci sistem). Keputusan
- * Owner di Item 63: model TETAP `google/gemini-embedding-2` — hanya jalurnya pindah —
- * dan yang membayar adalah pengguna dengan kunci OpenRouter-nya sendiri.
- *
- * Model tidak boleh diganti tanpa memvektorkan ulang SEMUA baris: vektor dari model lain
- * tidak sebanding (Item 62). Lewat OpenRouter model ini terbukti menghasilkan vektor yang
- * identik dengan yang sudah tersimpan (sidik "saya suka kopi", Item 63).
- *
- * Kunci diterima sebagai ARGUMEN, bukan lewat CapabilityRegistry — Map statis di sana
- * dipakai bersama semua permintaan, dan kunci pengguna tidak boleh ikut tertukar.
- *
- * Satu panggilan = satu kelompok teks (OpenRouter menerima array). Uji HCDP: 11 potongan
- * ±12 ribu token selesai ±1 detik per permintaan, 0 kali 429 — dibanding satu per satu
- * dengan jeda 0,6 s yang gagal setelah 44 detik.
- */
 export const EMBED_MODEL = 'google/gemini-embedding-2';
-// 768, bukan 3072 (Item 70). Model ini "Matryoshka": angka-angka awal vektornya sudah memuat makna
-// utama, jadi vektor bisa dipersingkat. Terukur: peringkat potongan berisi jawaban SAMA PERSIS pada
-// 3072/1536/768 untuk keenam pertanyaan uji; `dimensions: 768` dari OpenRouter identik dengan
-// memotong sendiri (kemiripan 1,0000); ambang memori 0,70 tetap memisahkan pasangan kalibrasinya
-// (teh 0,7327 lolos, jalan pagi 0,6735 tidak). Seperempat ruang (±3 KB/vektor, bukan ±12 KB) dan kini
-// bisa diindeks (pgvector membatasi indeks 2.000 dimensi). Kolom database WAJIB ikut 768.
 export const EMBED_DIMENSI = 768;
 
-// Penolakan lokasi (K1 langkah 2, 5 Nov 2026): dua unggahan ditolak di tengah jalan dengan 400 "User location is not
-// supported for the API use." (FAILED_PRECONDITION); 58 kelompok sebelumnya dengan kunci & server yang sama berhasil —
-// jadi sesaat, dan dicoba lagi. Rute penyedia SENGAJA tidak diatur: diukur 5 Nov (`uji/ukur-rute-embedding.js`)
-// google-vertex menjawab 404 "No endpoints found" untuk akun Owner (disaring "Regional Surcharge"), sedangkan
-// google-ai-studio memberi vektor IDENTIK dengan yang tersimpan (kosinus 1,0000 pada 8/8 potongan). Semua vektor
-// tersimpan berasal dari AI Studio; memaksa rute lain = vektor yang belum terbukti sebanding.
 
-/** Penolakan yang lewat bila dicoba lagi: 429, 5xx, dan 400 penolakan lokasi. */
 export function penolakanSesaat(status: number, pesan: string): boolean {
   if (status === 429 || status >= 500) return true;
   return status === 400 && /location is not supported|FAILED_PRECONDITION/i.test(pesan);
@@ -84,8 +52,6 @@ export async function embedLewatOpenRouter(
       throw new EmbedGagal('SALDO_HABIS', 'Saldo OpenRouter Anda tidak cukup untuk memproses dokumen ini (402).', 402);
     }
 
-    // 429, 5xx, dan penolakan lokasi: tunggu lalu coba lagi — sesuai Retry-After bila ada, selain itu 2, 4, 8 detik.
-    // (Versi Gemini dulu hanya menunggu 1 lalu 2 detik, terlalu singkat untuk jatah per menit.)
     if (penolakanSesaat(res.status, pesanAsli) && percobaan < MAKS_PERCOBAAN) {
       const saran = Number(res.headers.get('retry-after'));
       const tunggu = Math.min(Number.isFinite(saran) && saran > 0 ? saran * 1000 : 2000 * 2 ** (percobaan - 1), 30_000);

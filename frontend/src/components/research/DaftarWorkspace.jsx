@@ -2,10 +2,8 @@ import React, { useState } from 'react';
 import Ikon from '../Ikon';
 import { periksaNamaRuang, bolehDihapus, PANJANG_NAMA_MAKS } from '../../core/runtime/services/ruangPengetahuan.js';
 
-// Deretan workspace + buat / ganti nama / hapus-bila-kosong (2026-09-21). jumlahDokumen = isi workspace terpilih
-// (null bila sedang mencari — daftar di layar saat itu mencakup semua workspace).
 export default function DaftarWorkspace({ daftar, terpilih, onPilih, jumlahDokumen, onBuat, onGantiNama, onHapus }) {
-    const [mode, setMode] = useState(null); // 'buat' | 'ganti' | null
+    const [mode, setMode] = useState(null);
     const [teks, setTeks] = useState('');
     const [pesan, setPesan] = useState('');
     const [sibuk, setSibuk] = useState(false);

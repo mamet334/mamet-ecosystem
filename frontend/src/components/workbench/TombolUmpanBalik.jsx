@@ -1,15 +1,6 @@
 import React from 'react';
 import Ikon from '../Ikon';
 
-/**
- * 👍/👎 di bawah kartu jawaban (Item 126 Fase 0, Data Flywheel — susunan disetujui Owner 27 Okt).
- *
- * Transparan supaya ikut tema & tidak mengganggu: tanpa latar & bingkai, warna teks samar 40% saat diam, terang saat
- * diarahkan, terisi & berwarna utama tema saat dipilih. Selalu tampak (layar sentuh tak punya hover).
- * Logika & penyimpanan di services/umpanBalikJawaban.js; layar ini hanya menampilkan dan meneruskan klik.
- *
- * @param {{ nilai?: number, onNilai: (tombol: 1 | -1) => void, galat?: string|null }} props
- */
 const TOMBOL = [
   { tombol: 1, ikon: 'thumb_up', label: 'Jawaban membantu' },
   { tombol: -1, ikon: 'thumb_down', label: 'Jawaban kurang tepat' },

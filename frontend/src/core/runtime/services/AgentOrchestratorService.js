@@ -1,7 +1,3 @@
-/**
- * AgentOrchestratorService - Layer 2 Capability Service
- * Bertanggung jawab mengorkestrasi eksekusi agent AI dan pengelolaannya.
- */
 export class AgentOrchestratorService {
   constructor(serviceManager) {
     this.serviceManager = serviceManager;
@@ -14,13 +10,10 @@ export class AgentOrchestratorService {
     console.log('[AgentOrchestratorService] initialize() called. isInitialized=', this.isInitialized);
     if (this.isInitialized) return;
     
-    // ✅ PINDAHKAN isInitialized = true ke ATAS, sebelum registerAgent()
     this.isInitialized = true;
     
     console.log('[AgentOrchestratorService] Initializing...');
     
-    // Register built-in agents
-    // Agen: memory_manager
     this.registerAgent({
       name: 'memory_manager',
       description: 'Mengelola User Memory - menyimpan, mencari, dan menghapus data memori pengguna',
@@ -29,7 +22,6 @@ export class AgentOrchestratorService {
       category: 'memory'
     });
 
-    // Agen: researcher
     this.registerAgent({
       name: 'researcher',
       description: 'Mencari informasi dari web dan merangkum hasil pencarian',
@@ -38,10 +30,7 @@ export class AgentOrchestratorService {
       category: 'research'
     });
 
-    // Agen file_analyzer (tool file_reader) dihapus 2026-09-15: hanya kerangka, tidak pernah dijalankan;
-    // berkas dibaca lewat lampiran 📎 (AssistantService.buildFileData).
 
-    // Agen: deep_researcher
     this.registerAgent({
       name: 'deep_researcher',
       description: 'Riset mendalam multi-langkah dengan sintesis dan pelaporan',
@@ -50,7 +39,6 @@ export class AgentOrchestratorService {
       category: 'research'
     });
 
-    // Emit event setelah semua agen terdaftar
     this.eventBus.emit('Agent:Registered', { name: 'memory_manager' });
     this.eventBus.emit('Agent:Registered', { name: 'researcher' });
     this.eventBus.emit('Agent:Registered', { name: 'deep_researcher' });
@@ -60,28 +48,18 @@ export class AgentOrchestratorService {
     console.log('[AgentOrchestratorService] Total agents registered:', this.agents.size);
   }
 
-  /**
-   * Mengeksekusi task melalui agen tertentu.
-   * @param {string} agentName 
-   * @param {string} task 
-   */
   async executeAgent(agentName, task) {
     if (!this.isInitialized) throw new Error('AgentOrchestratorService not initialized');
     
     console.log(`[AgentOrchestratorService] Requesting execution for agent: ${agentName}`);
     this.eventBus.emit('Agent:ExecuteRequested', { agentName, task });
     
-    // TODO: Implement actual execution logic/API Call
     const placeholderResponse = { success: true, output: `Task "${task}" executed by ${agentName}` };
     
     this.eventBus.emit('Agent:ExecutionComplete', { agentName, result: placeholderResponse });
     return placeholderResponse;
   }
 
-  /**
-   * Mendaftarkan konfigurasi agen AI baru.
-   * @param {Object} agentConfig 
-   */
   async registerAgent(agentConfig) {
     console.log(`[AgentOrchestratorService] registerAgent() called for:`, agentConfig?.name, 'isInitialized=', this.isInitialized);
     if (!this.isInitialized) {

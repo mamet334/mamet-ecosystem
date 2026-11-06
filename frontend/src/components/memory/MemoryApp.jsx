@@ -66,7 +66,6 @@ let query = supabase
 
     return (
         <div className="h-full text-white p-6 overflow-y-auto">
-            {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <div className="p-3 bg-purple-500/20 rounded-lg border border-purple-500/30">
@@ -88,7 +87,6 @@ let query = supabase
                 </button>
             </div>
 
-            {/* Search */}
             <div className="mb-6">
                 <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 focus-within:border-purple-500/50 transition-colors">
                     <Ikon nama="search" ukuran={16} className="text-slate-500" />
@@ -102,7 +100,6 @@ let query = supabase
                 </div>
             </div>
 
-            {/* Memory List */}
             {loading ? (
                 <div className="flex items-center justify-center py-12 text-slate-500">
                     <Ikon nama="progress_activity" ukuran={20} className="animate-spin mr-2" />
@@ -134,7 +131,6 @@ let query = supabase
                                     <span className="text-[12px] text-slate-500">{memory.memory_hits || 0} hits</span>
                                     <span className="text-[12px] text-slate-600">{formatDate(memory.created_at)}</span>
                                 </div>
-                                {/* Golden Source Metadata (Fase 1) — graceful, hanya tampil jika ada */}
                                 {(memory.source_reference || memory.version_code || memory.chat_id) && (
                                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                                         {memory.source_reference && (
@@ -172,7 +168,6 @@ let query = supabase
                 </div>
             )}
 
-            {/* Stats */}
             <div className="mt-6 text-center text-[12px] text-slate-600">
                 {memories.length} memori
             </div>

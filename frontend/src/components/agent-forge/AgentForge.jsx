@@ -2,26 +2,19 @@ import React, { useState, useEffect } from 'react';
 import Ikon from '../Ikon';
 import { kernel } from '../../core/runtime/Kernel';
 
-/**
- * AgentForge - Dashboard untuk mengelola sub-agen dan tools
- * Menampilkan daftar agen yang terdaftar, tools yang tersedia, dan statusnya
- */
 export default function AgentForge() {
   const [agents, setAgents] = useState([]);
   const [tools, setTools] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Modal states
   const [showAddAgent, setShowAddAgent] = useState(false);
   const [showAddTool, setShowAddTool] = useState(false);
   const [editingAgent, setEditingAgent] = useState(null);
 
-  // Form states
   const [newAgent, setNewAgent] = useState({ name: '', description: '', status: 'active', category: 'general', tools: [] });
   const [newTool, setNewTool] = useState({ name: '', description: '', category: 'general' });
 
-  // Load data dari services
   const loadData = async () => {
     if (kernel.status !== 'RUNNING' || !kernel.serviceManager) {
       console.warn('[AgentForge] Kernel belum siap, retry dalam 500ms...');
@@ -33,7 +26,6 @@ export default function AgentForge() {
       const agentOrchestrator = kernel.serviceManager.get('AgentOrchestratorService');
       const toolRegistry = kernel.serviceManager.get('ToolRegistryService');
 
-      // Load agents
       if (agentOrchestrator && agentOrchestrator.agents) {
         const agentList = Array.from(agentOrchestrator.agents.entries()).map(([name, config]) => ({
           name,
@@ -43,7 +35,6 @@ export default function AgentForge() {
         setAgents(agentList);
       }
 
-      // Load tools
       if (toolRegistry && toolRegistry.listTools) {
         const toolList = toolRegistry.listTools();
         setTools(toolList);
@@ -69,7 +60,6 @@ export default function AgentForge() {
 
   const handleRefresh = () => { setRefreshing(true); loadData(); };
 
-  // --- Add Agent ---
   const handleAddAgent = async () => {
     if (!newAgent.name.trim()) return;
     try {
@@ -83,7 +73,6 @@ export default function AgentForge() {
     }
   };
 
-  // --- Add Tool ---
   const handleAddTool = async () => {
     if (!newTool.name.trim()) return;
     try {
@@ -97,7 +86,6 @@ export default function AgentForge() {
     }
   };
 
-  // --- Edit Agent (Status) ---
   const handleEditAgent = (agent) => {
     setEditingAgent({ ...agent });
   };
@@ -106,7 +94,7 @@ export default function AgentForge() {
     if (!editingAgent) return;
     try {
       const agentOrchestrator = kernel.serviceManager.get('AgentOrchestratorService');
-      await agentOrchestrator.registerAgent(editingAgent); // Overwrite
+      await agentOrchestrator.registerAgent(editingAgent);
       setEditingAgent(null);
       loadData();
     } catch (err) {
@@ -124,7 +112,6 @@ export default function AgentForge() {
 
   return (
     <div className="h-full text-white p-6 overflow-y-auto relative">
-      {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-purple-500/20 rounded-lg border border-purple-500/30"><Ikon nama="smart_toy" ukuran={24} className="text-purple-400" /></div>
@@ -138,7 +125,6 @@ export default function AgentForge() {
         </button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 gap-4 mb-8">
         <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-800">
           <div className="flex items-center gap-3"><Ikon nama="memory" ukuran={20} className="text-emerald-400" /><div><div className="text-2xl font-bold text-emerald-400">{agents.length}</div><div className="text-xs text-slate-400">Active Agents</div></div></div>
@@ -148,7 +134,6 @@ export default function AgentForge() {
         </div>
       </div>
 
-      {/* Agents Section */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-slate-300">Registered Agents</h2>
@@ -178,7 +163,6 @@ export default function AgentForge() {
         )}
       </div>
 
-      {/* Tools Section */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-slate-300">Available Tools</h2>
@@ -201,7 +185,6 @@ export default function AgentForge() {
         )}
       </div>
 
-      {/* Modal: Add Agent */}
       {showAddAgent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6">
@@ -221,7 +204,6 @@ export default function AgentForge() {
         </div>
       )}
 
-      {/* Modal: Add Tool */}
       {showAddTool && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6">
@@ -238,7 +220,6 @@ export default function AgentForge() {
         </div>
       )}
 
-      {/* Modal: Edit Agent */}
       {editingAgent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6">

@@ -2,14 +2,6 @@ import React, { Suspense, useState } from 'react';
 import Ikon from '../Ikon';
 import { serviceManager } from '../../core/runtime/ServiceManager';
 
-/**
- * WidgetHost — Container widget dengan header fungsional
- *
- * Fitur tombol header:
- *  ≡  (Minus)    → Collapse/Expand widget (sembunyikan isi, hanya tampil header)
- *  ↗  (Maximize) → Toggle fullscreen overlay widget
- *  ✕  (X)        → Hapus widget dari zone (butuh prop onClose dari parent)
- */
 
 class WidgetErrorBoundary extends React.Component {
   constructor(props) {
@@ -52,9 +44,8 @@ export default function WidgetHost({ widgetId, onClose, dragHandleListeners, dra
   const widgetRegistry = serviceManager.get('WidgetRegistry');
   const widgetMeta = widgetRegistry?.getWidget(widgetId);
 
-  // ── State lokal widget ──
-  const [collapsed, setCollapsed] = useState(false);   // Collapse/expand isi widget
-  const [fullscreen, setFullscreen] = useState(false); // Fullscreen overlay
+  const [collapsed, setCollapsed] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
 
   if (!widgetMeta) {
     return (
@@ -66,7 +57,6 @@ export default function WidgetHost({ widgetId, onClose, dragHandleListeners, dra
 
   const WidgetComponent = widgetMeta.component;
 
-  // ── Fullscreen overlay ──
   const FullscreenWrapper = ({ children }) => (
     <div className="fixed inset-0 z-[200] flex flex-col bg-slate-900 border border-slate-700 shadow-2xl rounded-lg overflow-hidden">
       {children}
@@ -74,15 +64,13 @@ export default function WidgetHost({ widgetId, onClose, dragHandleListeners, dra
   );
 
   const containerClasses = fullscreen
-    ? '' // fullscreen dirender via FullscreenWrapper
+    ? ''
     : 'flex flex-col bg-slate-900 border border-slate-800 rounded-lg overflow-hidden h-full';
 
   const content = (
     <div className={containerClasses}>
-      {/* ── Widget Header ── */}
       <div className="flex items-center justify-between px-3 py-1.5 bg-slate-800/60 border-b border-slate-700/50 shrink-0 select-none">
         <div className="flex items-center gap-2 min-w-0">
-          {/* Drag handle */}
           <span
             className="cursor-grab active:cursor-grabbing text-slate-600 hover:text-slate-400 transition-colors shrink-0"
             title="Drag to move widget"
@@ -91,14 +79,11 @@ export default function WidgetHost({ widgetId, onClose, dragHandleListeners, dra
           >
             <Ikon nama="drag_handle" ukuran={14} />
           </span>
-          {/* Status dot + name */}
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
           <span className="text-xs font-semibold text-slate-300 truncate">{widgetMeta.name}</span>
         </div>
 
-        {/* Action buttons */}
         <div className="flex items-center gap-0.5 shrink-0">
-          {/* Collapse / Expand */}
           <button
             type="button"
             onClick={() => setCollapsed(prev => !prev)}
@@ -111,7 +96,6 @@ export default function WidgetHost({ widgetId, onClose, dragHandleListeners, dra
             }
           </button>
 
-          {/* Fullscreen / Restore */}
           <button
             type="button"
             onClick={() => setFullscreen(prev => !prev)}
@@ -124,7 +108,6 @@ export default function WidgetHost({ widgetId, onClose, dragHandleListeners, dra
             }
           </button>
 
-          {/* Close — hanya tampil jika onClose prop tersedia */}
           {onClose && (
             <button
               type="button"
@@ -138,7 +121,6 @@ export default function WidgetHost({ widgetId, onClose, dragHandleListeners, dra
         </div>
       </div>
 
-      {/* ── Widget Content ── */}
       {!collapsed && (
         <div className="flex-1 overflow-auto custom-scrollbar bg-slate-950 p-2 relative min-h-0">
           <WidgetErrorBoundary widgetId={widgetId}>
@@ -156,7 +138,6 @@ export default function WidgetHost({ widgetId, onClose, dragHandleListeners, dra
         </div>
       )}
 
-      {/* Collapsed state: tampilkan info ringkas */}
       {collapsed && (
         <div className="px-3 py-2 text-[12px] text-slate-600 font-mono italic">
           Widget collapsed — klik ▾ untuk expand
@@ -165,7 +146,6 @@ export default function WidgetHost({ widgetId, onClose, dragHandleListeners, dra
     </div>
   );
 
-  // Jika fullscreen, bungkus dengan overlay
   if (fullscreen) {
     return <FullscreenWrapper>{content}</FullscreenWrapper>;
   }

@@ -1,11 +1,6 @@
 import React, { useState } from 'react';
 import Ikon from '../Ikon';
 
-/**
- * Tambah server MCP dari resep (Item 129 Tahap G2, K19). Resep = satu berkas JSON: bawaan (ikut pemasang) atau buatan
- * Owner di folder resep perangkat ini — server baru tanpa kode. Alamat program dipilih di dialog proses utama.
- * Sumber resmi ditampilkan sebagai teks (bukan tautan): tautan di jendela aplikasi akan membuka halaman di dalam Mamet.
- */
 const TOMBOL_BIASA = 'flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-all active:scale-95 font-semibold text-sm disabled:opacity-60 border-outline-variant bg-surface-container-low text-on-surface-variant hover:text-on-surface';
 
 export default function TambahServer({ resep, terpasang, api, onBerubah }) {
@@ -20,7 +15,7 @@ export default function TambahServer({ resep, terpasang, api, onBerubah }) {
       const h = await api.pasang(id);
       if (h && !h.ok && !h.dibatalkan) setGalat(h.alasan || 'gagal');
     } catch (e) {
-      setGalat(e.message); // tidak ditelan: tampil di bawah daftar resep
+      setGalat(e.message);
     } finally {
       setSedang(null);
       onBerubah();
@@ -33,7 +28,7 @@ export default function TambahServer({ resep, terpasang, api, onBerubah }) {
       const h = await api.bukaFolderResep();
       if (!h?.ok) setGalat(h?.alasan || 'folder resep tidak bisa dibuka');
     } catch (e) {
-      setGalat(e.message); // tidak ditelan: tampil di bawah daftar resep
+      setGalat(e.message);
     }
   };
 

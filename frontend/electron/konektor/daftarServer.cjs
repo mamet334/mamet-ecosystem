@@ -1,11 +1,3 @@
-// DAFTAR SERVER KONEKTOR UMUM (Item 129 Tahap G1, 2026-11-03) — satu tugas: server MCP yang DIPASANG Owner.
-//
-// Satu entri = satu server: dari resep (`resep.cjs`) atau diisi sendiri di Settings. Entri menyimpan alamat program
-// (stdio) atau URL (http), argumen, kredensial yang DIMINTA (namanya, bukan nilainya — nilai di `brankas.cjs`), dan
-// sidik alat yang disetujui Owner (`sidikAlat.cjs`, K16). Disimpan di perangkat (K7), tidak ikut akun.
-//
-// Sakelar nyala/mati per workspace TIDAK di sini — tetap di `konektor.json` milik pengelola sesi (K3), sama seperti
-// crawler. Berkas rusak → daftar kosong (aman ke arah mati: tak ada server yang dijalankan tanpa entri yang jelas).
 
 const fs = require('fs');
 const path = require('path');
@@ -15,7 +7,6 @@ const MAKS_SERVER = 20;
 const POLA_SIDIK = /^[0-9a-f]{64}$/;
 const tolak = (alasan) => ({ ok: false, alasan });
 
-/** Alamat program: absolut, berkas .exe (tanpa shell — .cmd/.bat ditolak). Keberadaannya diperiksa saat menyala. */
 function programSah(p) {
   return typeof p === 'string' && p.length <= 400 && path.win32.isAbsolute(p) && /\.exe$/i.test(p) && !/[\r\n\0"]/.test(p);
 }
@@ -31,13 +22,8 @@ function alatDisetujuiSah(obj) {
   return { ok: true, alat: { ...obj } };
 }
 
-/**
- * Entri mentah → bentuk sah. Bentuk dasarnya resep (divalidasi `validasiResep`), ditambah `program` (stdio),
- * `dariResep`, dan `alatDisetujui`.
- */
 function validasiEntri(mentah) {
   if (!mentah || typeof mentah !== 'object') return tolak('entri server harus objek');
-  // Resep stdio butuh `namaProgram`; entri memakai nama berkas dari `program` yang ditunjuk Owner.
   const sebagaiResep = mentah.jenis === 'stdio'
     ? { ...mentah, stdio: { ...(mentah.stdio || {}), namaProgram: path.win32.basename(String(mentah.program || 'x.exe')) } }
     : mentah;
@@ -59,7 +45,6 @@ function validasiEntri(mentah) {
   return { ok: true, entri };
 }
 
-/** Entri baru dari resep + isian Owner (alamat program). Alat belum disetujui sampai ditinjau. */
 function entriDariResep(resep, { program } = {}) {
   const dasar = { ...resep, dariResep: resep.id, alatDisetujui: {} };
   delete dasar.asal;
@@ -70,14 +55,13 @@ function entriDariResep(resep, { program } = {}) {
   return validasiEntri(dasar);
 }
 
-/** @param {{berkas: string}} opsi */
 function buatDaftarServer({ berkas }) {
   if (!berkas) throw new Error('daftar server butuh alamat berkas');
 
   function baca() {
     let mentah;
     try { mentah = JSON.parse(fs.readFileSync(berkas, 'utf8')); }
-    catch { return []; /* belum pernah disimpan atau rusak → tak ada server (lihat kepala berkas) */ }
+    catch { return [];  }
     const hasil = [];
     const sudah = new Set();
     for (const m of Array.isArray(mentah?.server) ? mentah.server : []) {
@@ -108,13 +92,12 @@ function buatDaftarServer({ berkas }) {
     return { ok: true, entri: v.entri };
   }
 
-  /** Ubah entri. Mengubah cara menjalankan (program/argumen/URL/lingkungan) MENGHAPUS persetujuan alat. */
   function ubah(id, perubahan) {
     const daftar = baca();
     const i = daftar.findIndex((e) => e.id === id);
     if (i < 0) return tolak(`server ${id} tidak terpasang`);
     const lama = daftar[i];
-    const baru = { ...lama, ...perubahan, id }; // id tidak bisa diganti lewat ubah
+    const baru = { ...lama, ...perubahan, id };
     const caraJalan = (e) => JSON.stringify([e.program, e.stdio, e.http]);
     if (caraJalan(baru) !== caraJalan(lama) && perubahan.alatDisetujui === undefined) baru.alatDisetujui = {};
     const v = validasiEntri(baru);
@@ -124,7 +107,6 @@ function buatDaftarServer({ berkas }) {
     return { ok: true, entri: v.entri };
   }
 
-  /** Simpan hasil tinjauan Owner (peta nama alat → sidik dari `pakuAlat`). */
   const setujuiAlat = (id, petaSidik) => ubah(id, { alatDisetujui: petaSidik });
 
   function hapus(id) {

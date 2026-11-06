@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import Ikon from '../Ikon';
 import { uraiBaris, labelBaris, SUMBER_OCR } from '../../core/runtime/services/dataTabelAsnOcr.js';
 
-// PRATINJAU DATA TABEL (Item 92 Tahap 1): hasil pembacaan Excel rekonsiliasi ASN ditampilkan untuk diperiksa Owner
-// SEBELUM apa pun disimpan (penyimpanan = Tahap 2). Semua dibaca di perangkat; tidak ada yang dikirim.
 
 const WARNA_STATUS = {
   BERSIH: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30',
@@ -27,7 +25,6 @@ function KartuSheet({ s, terbukaAwal }) {
         <Ikon nama={buka ? 'expand_more' : 'chevron_right'} ukuran={16} className="text-slate-500 shrink-0" />
         <span className="text-sm text-slate-200 font-medium truncate">{s.sheet}</span>
         <span className="text-[12px] text-slate-500">{LABEL_KELOMPOK[s.kelompok] || s.kelompok}</span>
-        {/* Catatan ringan (mis. pembagian L/P beda) tidak mengubah status BERSIH — tetap harus terlihat tanpa membuka kartu. */}
         {s.kejanggalan.length > 0 && (
           <span className="ml-auto flex items-center gap-1 text-[12px] text-amber-300" title="buka kartu untuk melihat catatan">
             <Ikon nama="warning" ukuran={14} /> {s.kejanggalan.length} catatan
@@ -137,8 +134,6 @@ export default function PratinjauDataTabel({ hasil, onTutup, opdAwal, onPeriksaV
         {r.nipGandaAntarSheet > 0 && <span className="text-amber-300"> · {r.nipGandaAntarSheet} NIP muncul di lebih dari satu sheet</span>}
       </div>
       {hasil.sumber === SUMBER_OCR && (
-        // PDF pindaian (Item 92 Tahap 5): uji 3 pasangan PDF–xlsx — 121 NIP tepat, 2 NIP 18 digit beda SATU digit (tak
-        // terdeteksi susunan NIP), sisanya terpotong (dicatat). Maka NIP hasil OCR wajib dicocokkan sebelum dikirim balik.
         <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-100 space-y-1">
           <p>
             <b>Dibaca dari PDF pindaian lewat OCR.</b> Jumlah orang dan L/P umumnya tepat, tetapi <b>digit NIP bisa salah baca</b>{' '}
@@ -158,14 +153,12 @@ export default function PratinjauDataTabel({ hasil, onTutup, opdAwal, onPeriksaV
   );
 }
 
-// SIMPAN (Item 92 Tahap 2). Mesin hanya tahu dua berkas BERBAGI NIP; ia tidak tahu mana yang lebih baru (simulasi 53
-// berkas dengan urutan acak: "PBJ.xlsx" lama sempat "menggantikan" "PBJ yg baru.xlsx"). Arah versi = keputusan Owner.
 function BagianSimpan({ hasil, opdAwal, onPeriksaVersi, onSimpan }) {
   const [opd, setOpd] = useState(opdAwal || '');
-  const [tahap, setTahap] = useState('siap'); // siap → memeriksa → pilih → menyimpan → tersimpan | galat
+  const [tahap, setTahap] = useState('siap');
   const [kandidat, setKandidat] = useState([]);
-  const [pilihan, setPilihan] = useState('ganti'); // untuk satu kandidat: ganti | lama | terpisah
-  const [diganti, setDiganti] = useState({}); // untuk beberapa kandidat: id → true
+  const [pilihan, setPilihan] = useState('ganti');
+  const [diganti, setDiganti] = useState({});
   const [pesan, setPesan] = useState('');
   const kosong = hasil.ringkasan.jumlahOrang === 0;
 
@@ -234,8 +227,6 @@ function BagianSimpan({ hasil, opdAwal, onPeriksaVersi, onSimpan }) {
       </div>
       {tahap === 'galat' && <p className="text-red-300">Gagal: {pesan}</p>}
 
-      {/* ISI SAMA PERSIS (Item 92): INSPEKTORAT senin tersimpan dua kali karena ditawarkan sebagai "versi" — padahal
-          tidak ada yang perlu dipilih. Tidak ada tombol Simpan. */}
       {tahap === 'pilih' && kandidat.length === 1 && kandidat[0].identik && (
         <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
           <p className="text-emerald-200">

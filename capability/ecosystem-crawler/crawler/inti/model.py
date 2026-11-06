@@ -7,10 +7,8 @@ from .teks import ulid
 
 TIPE_MISI = "crawler.misi.jalankan"
 
-
 class MisiTidakValid(ValueError):
     pass
-
 
 @dataclass
 class Misi:
@@ -18,8 +16,8 @@ class Misi:
     kata_kunci: list[str] = field(default_factory=list)
     kata_kunci_kecuali: list[str] = field(default_factory=list)
     url_awal: list[str] = field(default_factory=list)
-    dari: str = ""            # YYYY-MM-DD, inklusif
-    sampai: str = ""          # YYYY-MM-DD, inklusif
+    dari: str = ""
+    sampai: str = ""
     batas_per_sumber: int = 100
     batas_total: int = 1000
     ambil_komentar: bool = False
@@ -93,28 +91,26 @@ class Misi:
             "trace_id": self.trace_id,
         }
 
-
 @dataclass
 class Temuan:
     """Satu item dari adapter sumber, sebelum disimpan dan dipseudonimkan oleh gudang."""
 
-    jenis: str                      # artikel | postingan | komentar | ulasan | dokumen
+    jenis: str
     teks: str
     url: str
     id_asli: str = ""
     judul: str = ""
-    penulis: str = ""               # username asli; gudang menyimpan pseudonimnya
-    waktu_terbit: str = ""          # ISO-8601 UTC
+    penulis: str = ""
+    waktu_terbit: str = ""
     bahasa: str = ""
     metrik: dict = field(default_factory=dict)
     url_induk: str = ""
-    id_asli_induk: str = ""         # id_asli item induk di sumber yang sama (utas komentar)
-    jenis_akses: str = ""           # kosong = jenis akses default sumber
-    mentah: Any = None              # payload asli apa adanya
+    id_asli_induk: str = ""
+    jenis_akses: str = ""
+    mentah: Any = None
 
     def ke_dict(self) -> dict:
         return asdict(self)
-
 
 def _daftar(nilai) -> list[str]:
     if not nilai:

@@ -1,16 +1,5 @@
-// Pencarian berita + pembacaan isi artikel untuk sub-agent researcher dan deep_research (2026-09-15, Pilihan A Item 82).
-//
-// Mengganti DuckDuckGo Lite yang dari server Supabase selalu kosong. Mesinnya sama dengan tool web desktop
-// (WebComparisonService.js): Bing News RSS → Google News RSS (id, lalu en-US).
-//
-// Isi artikel diambil LANGSUNG dari situs beritanya lalu disaring ke paragraf <p>, bukan lewat r.jina.ai:
-// uji dari komputer Owner, Kompas langsung 0,5–0,8 detik dengan teks bersih, sedangkan r.jina.ai 5–8,5 detik
-// berisi menu situs — tidak muat anggaran 12 detik sub-agent. Tautan Google News (redirect JS) dan MSN (isi dimuat
-// JavaScript) tidak bisa dibaca dengan cara ini, jadi dilewati; hasilnya tetap dipakai sebagai cuplikan.
 
 import { ringkasKueri } from '../../../../../shared/kueri_pencarian.js';
-// Pembersih teks RSS — sejak 29 Okt 2026 satu salinan bersama dengan web Tier 3 klien (dulu klien punya pengurai sendiri
-// yang meneruskan tautan pengalih Bing sebagai URL sumber).
 import { entitas, tanpaTag, urlAsliBing } from '../../../../../shared/teks_rss.js';
 
 export type HasilBerita = {
@@ -36,7 +25,6 @@ const PENYEDIA = [
   { nama: 'Google News EN', url: (q: string) => `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-US&gl=US&ceid=US:en` },
 ];
 
-/** Sinyal yang batal karena batas waktu ATAU karena sinyal induk (timeout sub-agent) batal. */
 function sinyalBerbatas(batasMs: number, induk?: AbortSignal) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(new Error(`batas ${batasMs} ms`)), batasMs);
@@ -68,17 +56,7 @@ export function uraiRss(xml: string, penyedia: string, maks = 8): HasilBerita[] 
   return hasil;
 }
 
-// Tugas dari Coordinator sering berupa kalimat perintah; RSS lebih cocok dengan kata kunci → `ringkasKueri`, yang
-// sejak 28 Okt 2026 tinggal di modul bersama `shared/kueri_pencarian.js` (ADR-0021 #6) karena web Tier 3 di klien
-// memakai aturan yang sama.
 
-/**
- * Cari berita. Kembali pada percobaan pertama yang memberi hasil. `catatan` berisi status HTTP, jumlah hasil, dan
- * lama tiap percobaan agar kegagalan terlihat di log (kekurangan searchDuckDuckGo lama).
- *
- * Urutan (uji live 2026-09-15): Bing dengan kata kunci → Bing dengan kalimat asli → Google News ID/EN dengan kata
- * kunci. Bing dari server menjawab 0,3–2 detik; Google News dari server sempat melewati batas 4 detik, jadi cadangan.
- */
 export async function cariBerita(
   query: string,
   opsi: OpsiFetch & { batasPerPermintaanMs?: number; batasTotalMs?: number; maks?: number; kueriLain?: string[] } = {},
@@ -89,8 +67,6 @@ export async function cariBerita(
   const tenggat = Date.now() + (opsi.batasTotalMs ?? 7000);
   const catatan: string[] = [];
   const penuh = query.trim();
-  // `kueriLain` (pesan asli pengguna) didahulukan: Coordinator sering memperluas tugas ("…berdasarkan pendapatan,
-  // valuasi, atau pangsa pasar") sehingga Bing hanya memberi 1–2 hasil (live v442), sedangkan pertanyaan asli 4–8.
   const kataKunci = [...new Set([...(opsi.kueriLain || []), query].map(ringkasKueri).filter((k) => k.length >= 2))];
   if (kataKunci.length === 0) kataKunci.push(penuh);
   const [bing, googleId, googleEn] = PENYEDIA;
@@ -117,11 +93,9 @@ export async function cariBerita(
     }
   };
 
-  // 1. Bing untuk semua kata kunci sekaligus (paralel), hasil digabung bergiliran tanpa duplikat.
   const gabung = gabungHasil(await Promise.all(kataKunci.map((k) => coba(bing, k))), maks);
   if (gabung.length > 0) return { hasil: gabung, penyedia: bing.nama, kueri: kataKunci.join(' | '), catatan };
 
-  // 2. Bing dengan kalimat tugas apa adanya, lalu Google News ID/EN (dari server lebih lambat, jadi cadangan).
   const cadangan = [
     ...(penuh && !kataKunci.includes(penuh) ? [{ p: bing, kueri: penuh }] : []),
     { p: googleId, kueri: kataKunci[0] },
@@ -134,7 +108,6 @@ export async function cariBerita(
   return { hasil: [], penyedia: null, kueri: kataKunci[0], catatan };
 }
 
-/** Gabung beberapa daftar hasil secara bergiliran (peringkat teratas tiap kueri lebih dulu), tanpa tautan ganda. */
 export function gabungHasil(daftar: HasilBerita[][], maks = 8): HasilBerita[] {
   const hasil: HasilBerita[] = [];
   const terlihat = new Set<string>();
@@ -151,30 +124,21 @@ export function gabungHasil(daftar: HasilBerita[][], maks = 8): HasilBerita[] {
   return hasil;
 }
 
-/**
- * Paragraf panjang tanpa tanda baca adalah menu/daftar tautan, bukan prosa. Liputan6 menaruh seluruh menu situs
- * (±1.400 huruf) dalam satu <p>, sehingga jatah huruf habis sebelum isi berita (live v442). Prosa berita punya
- * ±1–3 tanda baca per 100 huruf; menu itu ±0,1.
- */
 function sepertiProsa(p: string): boolean {
   if (p.length < 200) return true;
   const tanda = (p.match(/[.,!?;]/g) || []).length;
   return (tanda / p.length) * 100 >= 0.5;
 }
 
-/** Teks artikel = paragraf <p> berprosa yang cukup panjang; isi <article> didahulukan bila ada. */
 export function ambilParagraf(html: string): string {
   const bersih = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<noscript[\s\S]*?<\/noscript>/gi, '');
   const saring = (potongan: string) => {
     const terlihat = new Set<string>();
-    // `<p(?:\s[^>]*)?>` — bukan `<p[^>]*>` yang ikut menangkap <path>/<picture>; atribut ber-JavaScript di dalamnya
-    // (mis. `x-on:click="… => …"`) membawa kode ke teks (live: inet.detik.com).
     return (potongan.match(/<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/gi) || [])
       .map((p) => tanpaTag(entitas(p.replace(/<[^>]+>/g, ' '))))
       .filter((p) => p.length >= 60 && sepertiProsa(p) && !/=>|[{}]|\(\)\s*;?/.test(p) && !terlihat.has(p) && terlihat.add(p))
       .join('\n');
   };
-  // Situs berita menaruh isi di <article>; menu dan daftar berita lain berada di luarnya.
   const dariArtikel = (bersih.match(/<article\b[\s\S]*?<\/article>/gi) || [])
     .map(saring)
     .sort((a, b) => b.length - a.length)[0] || '';
@@ -207,10 +171,6 @@ export async function bacaArtikel(
   }
 }
 
-/**
- * Baca beberapa artikel teratas secara paralel. `kandidat` > `jumlah` agar situs yang gagal/tak terbaca diganti
- * artikel berikutnya tanpa menunggu giliran. Urutan hasil tetap mengikuti peringkat pencarian.
- */
 export async function bacaBeberapaArtikel(
   hasil: HasilBerita[],
   opsi: OpsiFetch & { jumlah?: number; kandidat?: number; batasMs?: number; maksHuruf?: number } = {},
@@ -234,7 +194,6 @@ export async function bacaBeberapaArtikel(
   return { artikel, catatan };
 }
 
-/** Daftar hasil bernomor untuk prompt, dengan isi artikel yang berhasil dibaca di bawahnya. */
 export function susunDataPencarian(hasil: HasilBerita[], artikel: (ArtikelTerbaca & { nomor: number })[], maksHasil = 6): string {
   const daftar = hasil.slice(0, maksHasil).map((h, i) =>
     `[${i + 1}] ${h.title}\nSumber: ${[h.sumber || domainDariUrl(h.link), h.tanggal].filter(Boolean).join(', ')}\nURL: ${h.link}\nCuplikan: ${h.snippet}`,

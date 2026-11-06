@@ -9,7 +9,6 @@ import BagianKonektor from './BagianKonektor';
 import { ambilBagianSettings, PERISTIWA_BAGIAN_SETTINGS } from './konektor/arahSettings';
 import GantiKataSandi from './GantiKataSandi';
 
-// Workspace yang bisa punya override preferensi tool sendiri (lihat WorkspaceManager.js)
 const TOGGLEABLE_WORKSPACES = [
   { id: 'ws-assistant', label: 'Assistant' },
   { id: 'ws-lite', label: 'Lite' },
@@ -22,10 +21,6 @@ const TOOL_LABELS = {
 };
 
 export default function Settings() {
-  // Item 127 Tahap 2: Settings bertab — satu bagian tampil pada satu waktu, bukan sembilan kartu yang
-  // digulir. Bentuknya sama dengan gambar referensi menu Owner: daftar di kiri, isi di kanan.
-  // Item 129 Tahap G5: "Atur di Settings ›" dari menu + chat membuka tab Konektor (arahSettings.js) — dibaca saat
-  // terpasang, dan lewat peristiwa bila Settings sudah terpasang di belakang.
   const [bagianAktif, setBagianAktif] = useState(() => ambilBagianSettings() || 'model');
   useEffect(() => {
     const ganti = (e) => { if (e.detail?.bagian) { ambilBagianSettings(); setBagianAktif(e.detail.bagian); } };
@@ -35,13 +30,11 @@ export default function Settings() {
   const [user, setUser] = useState(null);
   const [health, setHealth] = useState(null);
 
-  // AI Config State
   const [aiProvider, setAiProvider] = useState('openrouter');
   const [aiModel, setAiModel] = useState('anthropic/claude-3.5-sonnet');
   const [aiKey, setAiKey] = useState('');
   const [saveStatus, setSaveStatus] = useState('');
 
-  // Tool Preferences State
   const [toolPrefsVersion, setToolPrefsVersion] = useState(0);
   const toolPreferencesService = kernel.serviceManager?.get('ToolPreferencesService');
   const toolNames = toolPreferencesService ? toolPreferencesService.listToolNames() : ['rag', 'web_search'];
@@ -55,14 +48,12 @@ export default function Settings() {
 
   const handleSetWorkspaceOverride = (workspaceId, toolName, value) => {
     if (!toolPreferencesService) return;
-    // value: 'default' | 'on' | 'off'
     const enabled = value === 'default' ? null : value === 'on';
     toolPreferencesService.setWorkspaceOverride(workspaceId, toolName, enabled);
     setToolPrefsVersion(v => v + 1);
   };
 
-  // Tool Registry State (folder tools/ — lihat ToolRegistryService.scanToolsFolder())
-  const [scanStatus, setScanStatus] = useState(''); // '', 'scanning', 'done'
+  const [scanStatus, setScanStatus] = useState('');
   const [registryVersion, setRegistryVersion] = useState(0);
   const toolRegistryService = kernel.serviceManager?.get('ToolRegistryService');
   const registeredTools = toolRegistryService ? toolRegistryService.listTools() : [];
@@ -77,8 +68,6 @@ export default function Settings() {
     setTimeout(() => setScanStatus(''), 2500);
   };
 
-  // Adaptive Model Tiering — 3 slot kurasi Owner (lihat ROADMAP-ADAPTIVE-MODEL-TIERING.md).
-  // Sumber kebenaran tetap BrainService; state di sini cuma pemicu re-render setelah setTier().
   const [tiersVersion, setTiersVersion] = useState(0);
   const brainServiceRef = kernel.serviceManager?.get('BrainService');
   const modelTiers = brainServiceRef?.getTiers?.() || {};
@@ -89,8 +78,6 @@ export default function Settings() {
     setTiersVersion(v => v + 1);
   };
 
-  // Batas biaya harian pribadi — disimpan di user_metadata, dibaca quota_middleware di edge
-  // function. Nilai efektifnya = min(batas ini, plafon sistem) sehingga hanya bisa memperketat.
   const [dailyCap, setDailyCap] = useState('');
   const [systemCap, setSystemCap] = useState(null);
   const [capStatus, setCapStatus] = useState('');
@@ -132,11 +119,9 @@ export default function Settings() {
   };
 
   useEffect(() => {
-    // Get user from Kernel identity
     setUser(kernel.identity.user);
     setHealth(kernel.getHealth());
 
-    // Fetch initial state from services
     const brainService = kernel.serviceManager?.get('BrainService');
     const vaultService = kernel.serviceManager?.get('VaultService');
 
@@ -150,7 +135,6 @@ export default function Settings() {
       setAiKey(key);
     }
     
-    // Periodically update health
     const interval = setInterval(() => {
       setHealth(kernel.getHealth());
     }, 1000);
@@ -163,7 +147,7 @@ export default function Settings() {
     const vaultService = kernel.serviceManager?.get('VaultService');
 
     if (brainService) {
-      brainService.setBrain(aiProvider, aiModel); // sekarang menyimpan model juga
+      brainService.setBrain(aiProvider, aiModel);
     }
     if (vaultService) {
       vaultService.setKey(aiProvider, aiKey);
@@ -173,18 +157,11 @@ export default function Settings() {
     setTimeout(() => setSaveStatus(''), 2000);
   };
 
-  // ── PEMBARUAN APLIKASI ────────────────────────────────────────────────────────────────────
-  // Jembatannya sudah ada di preload sejak lama (checkForUpdates/getAppVersion/onUpdateStatus)
-  // tetapi TIDAK dipakai satu pun berkas di frontend/src, jadi Pengaturan tak punya apa-apa untuk
-  // ditampilkan. Bagian ini menyambungkannya. Di web (tanpa Electron) seluruh blok ini tidak dirender.
   const [versiApl, setVersiApl] = useState(null);
   const [kabarPembaruan, setKabarPembaruan] = useState(null);
   const [sedangPeriksa, setSedangPeriksa] = useState(false);
   const adaPembaruan = !!window.electronAPI?.checkForUpdates;
 
-  // Urutan & syaratnya SAMA dengan bagian di bawah: Pembaruan hanya di aplikasi terpasang, Unduh Desktop
-  // hanya di web — jadi yang tampil selalu sepuluh, dan tak ada tab yang membuka halaman kosong. Ikonnya
-  // diambil dari kepala bagian masing-masing (Identitas memakai `person`, bukan `logout` milik tombolnya).
   const BAGIAN_SETTINGS = [
     { id: 'model', label: 'Model AI', ikon: 'psychology', tampil: true },
     { id: 'apikey', label: 'API Key', ikon: 'key', tampil: true },
@@ -194,21 +171,19 @@ export default function Settings() {
     { id: 'desktop', label: 'Aplikasi Desktop', ikon: 'download', tampil: !adaPembaruan },
     { id: 'alat', label: 'Alat & Kemampuan', ikon: 'tune', tampil: true },
     { id: 'registry', label: 'Tool Registry', ikon: 'extension', tampil: true },
-    { id: 'konektor', label: 'Konektor', ikon: 'lan', tampil: true }, // Item 129 — konektor MCP per workspace
-    { id: 'tampilan', label: 'Tampilan', ikon: 'visibility', tampil: true }, // Item 128 — tema & latar
+    { id: 'konektor', label: 'Konektor', ikon: 'lan', tampil: true },
+    { id: 'tampilan', label: 'Tampilan', ikon: 'visibility', tampil: true },
     { id: 'identitas', label: 'Identitas', ikon: 'person', tampil: true },
   ];
 
   useEffect(() => {
     if (!adaPembaruan) return;
     window.electronAPI.getAppVersion?.().then(setVersiApl).catch(() => setVersiApl(null));
-    // Pendengar dipasang SEKALI dan dilepas saat komponen ditutup — tanpa itu tiap kali Pengaturan
-    // dibuka akan menumpuk pendengar baru pada peristiwa yang sama.
     const lepas = window.electronAPI.onUpdateStatus?.((data) => {
       setKabarPembaruan(data);
       if (data?.status !== 'downloading') setSedangPeriksa(false);
     });
-    return () => { try { lepas?.(); } catch { /* sudah dilepas */ } };
+    return () => { try { lepas?.(); } catch {  } };
   }, [adaPembaruan]);
 
   const handlePeriksaPembaruan = async () => {
@@ -216,8 +191,6 @@ export default function Settings() {
     setKabarPembaruan({ status: 'checking' });
     try {
       const hasil = await window.electronAPI.checkForUpdates();
-      // 'checked' berarti permintaannya terkirim; jawabannya datang lewat onUpdateStatus.
-      // dev-mode & error dijawab langsung, jadi keduanya ditampilkan apa adanya.
       if (hasil?.status !== 'checked') { setKabarPembaruan(hasil); setSedangPeriksa(false); }
     } catch (e) {
       setKabarPembaruan({ status: 'error', message: e.message });
@@ -238,8 +211,6 @@ export default function Settings() {
         return;
       }
 
-      // FIX: API key harus dikirim di header `x-byok-{provider}`,
-      // bukan di body sebagai `apiKey`. request_pipeline.ts membaca dari header.
       const byokHeaderKey = `x-byok-${aiProvider}`;
       const endpoint = 'https://uuyzdjifhdfyyvpxsofu.supabase.co/functions/v1/agent-process';
       const response = await fetch(endpoint, {
@@ -247,7 +218,7 @@ export default function Settings() {
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
-          [byokHeaderKey]: aiKey,  // ← key dikirim di header yang benar
+          [byokHeaderKey]: aiKey,
         },
         body: JSON.stringify({
           message: 'Halo, tes koneksi. Balas dengan "OK".',
@@ -294,7 +265,6 @@ export default function Settings() {
     <div className="flex-1 overflow-auto p-4 md:p-6 lg:p-8 custom-scrollbar font-body-base text-on-surface">
       <div className="max-w-screen-container-max mx-auto space-y-6 md:space-y-8">
         
-        {/* Header */}
         <div className="mb-6 md:mb-12">
           <h1 className="font-display-lg text-display-lg text-on-surface mb-2">Settings</h1>
           <p className="text-on-surface-variant text-body-base">Configure your deep-dark AI workspace and management parameters.</p>
@@ -318,7 +288,6 @@ export default function Settings() {
 
           <div className="flex-1 min-w-0 space-y-6">
           
-          {/* AI Model Management — full width di mobile, 8/12 di desktop */}
           {bagianAktif === 'model' && (
           <section className="col-span-12 lg:col-span-8 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant relative overflow-hidden">
             <div className="flex items-center gap-3 mb-8">
@@ -363,7 +332,6 @@ export default function Settings() {
                 />
               </div>
 
-              {/* Status Grid */}
               <div className="grid grid-cols-3 gap-4 mt-4">
                 <div className="bg-surface-container-low border border-outline-variant/50 p-4 rounded-lg flex flex-col items-center gap-2 text-center group/card hover:border-primary/50 transition-colors">
                   <span className="material-symbols-outlined text-primary-fixed-dim" style={{fontVariationSettings: "'FILL' 1"}}>speed</span>
@@ -385,7 +353,6 @@ export default function Settings() {
           </section>
           )}
 
-          {/* API Key Management */}
           {bagianAktif === 'apikey' && (
           <section className="col-span-12 lg:col-span-4 glass-panel rim-light p-gutter rounded-xl border border-outline-variant flex flex-col">
             <div className="flex items-center gap-3 mb-8">
@@ -418,7 +385,6 @@ export default function Settings() {
                 </button>
               </div>
 
-              {/* Test Connection Button */}
               <button
                 onClick={handleTestConnection}
                 disabled={testStatus === 'testing' || !aiKey}
@@ -434,7 +400,6 @@ export default function Settings() {
                   : 'Test Connection'}
               </button>
 
-              {/* Error detail */}
               {testStatus.startsWith('error:') && (
                 <div className="p-3 rounded-lg bg-error/10 border border-error/30">
                   <p className="text-[12px] text-error leading-relaxed break-words">{testStatus.replace('error:', '')}</p>
@@ -449,9 +414,6 @@ export default function Settings() {
           )}
 
 
-          {/* Adaptive Model Tiering — 3 slot kurasi Owner, khusus jalur Assistant.
-              Sistem hanya memutuskan TINGKAT mana yang dipakai per pesan (TierClassifierService,
-              deterministik tanpa LLM); model apa yang mengisi tiap tingkat sepenuhnya pilihan Owner. */}
           {bagianAktif === 'tier' && (
           <section className="col-span-12 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant">
             <div className="flex items-center gap-3 mb-2">
@@ -500,10 +462,6 @@ export default function Settings() {
                         className="w-full bg-surface-container-lowest border border-outline-variant px-4 py-3 rounded-lg text-on-surface text-sm font-mono focus:border-primary focus:ring-0 transition-all"
                       />
                     </div>
-                    {/* Toggle reasoning. Sengaja hanya bisa MENYALAKAN: kalau mati, tidak ada
-                        parameter apa pun yang dikirim ke provider (bukan dikirim sebagai "off").
-                        Alasannya ada di komentar ai_adapter.ts — OpenRouter menolak dengan 400
-                        kalau parameter reasoning dikirim ke model yang tidak mendukungnya. */}
                     <label className="mt-3 flex items-start gap-3 cursor-pointer group">
                       <input
                         type="checkbox"
@@ -543,10 +501,6 @@ export default function Settings() {
           )}
 
 
-          {/* Batas Biaya Harian — circuit breaker per akun.
-              Nilai efektif = min(batas pribadi ini, plafon sistem). Plafon hanya bisa diubah
-              lewat service role, supaya tidak ada pengguna yang bisa menaikkan jatah belanjanya
-              sendiri di atas API key sistem. */}
           {bagianAktif === 'biaya' && (
           <section className="col-span-12 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant">
             <div className="flex items-center gap-3 mb-2">
@@ -597,16 +551,10 @@ export default function Settings() {
           )}
 
 
-          {/* Pembaruan Aplikasi — hanya di aplikasi terpasang; di web tidak ada auto-updater.
-              Versi yang sedang berjalan ditampilkan lebih dulu: tanpa itu, tidak ada cara memastikan
-              dua orang memakai versi yang sama, dan laporan bug jadi membingungkan. */}
           {adaPembaruan && bagianAktif === 'pembaruan' && (
           <section className="col-span-12 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-primary-container/20 flex items-center justify-center">
-                {/* `refresh`, bukan `system_update`: font ikon hanya memuat SUBSET dari daftar-ikon.txt,
-                    dan nama di luar subset dirender sebagai TULISAN besar yang menimpa judul —
-                    terlihat live 29 Sep ("TEM_UPDATE"), sama seperti "DATA_USAGE" 23 Sep. */}
                 <span className="material-symbols-outlined text-primary">refresh</span>
               </div>
               <div>
@@ -646,9 +594,6 @@ export default function Settings() {
           </section>
           )}
 
-          {/* Unduh Aplikasi Desktop — pasangan panel di atas: yang itu untuk yang SUDAH memakai
-              desktop, yang ini untuk yang membuka lewat web. Komponennya sendiri yang memutuskan
-              menampilkan diri atau tidak, jadi hanya satu dari keduanya yang pernah muncul. */}
           {!adaPembaruan && bagianAktif === 'desktop' && (
           <section className="col-span-12 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant">
             <div className="flex items-center gap-3 mb-2">
@@ -669,7 +614,6 @@ export default function Settings() {
           </section>
           )}
 
-          {/* Tools & Capabilities */}
           {bagianAktif === 'alat' && (
           <section className="col-span-12 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant">
             <div className="flex items-center gap-3 mb-6">
@@ -682,7 +626,6 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* Default Global */}
             <div className="mb-6">
               <label className="text-label-mono text-on-surface-variant uppercase tracking-widest pl-1 mb-2 block">Default (Semua Workspace)</label>
               <div className="flex flex-wrap gap-3">
@@ -710,7 +653,6 @@ export default function Settings() {
               )}
             </div>
 
-            {/* Per-workspace override */}
             <div>
               <label className="text-label-mono text-on-surface-variant uppercase tracking-widest pl-1 mb-2 block">Override per Workspace</label>
               <div className="overflow-x-auto">
@@ -753,8 +695,6 @@ export default function Settings() {
           </section>
           )}
 
-          {/* Tool Registry — folder tools/ di root repo, discan otomatis saat boot,
-              atau manual lewat tombol ini tanpa perlu restart app. */}
           {bagianAktif === 'registry' && (
           <section className="col-span-12 glass-panel rim-light p-4 md:p-gutter rounded-xl border border-outline-variant">
             <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
@@ -812,17 +752,14 @@ export default function Settings() {
           </section>
           )}
 
-          {/* Konektor — sakelar MCP per workspace, disimpan di perangkat (Item 129 Tahap C) */}
           {bagianAktif === 'konektor' && (
           <BagianKonektor />
           )}
 
-          {/* Tampilan — tema & latar ruangan (Item 128 Tahap B) */}
           {bagianAktif === 'tampilan' && (
           <BagianTampilan />
           )}
 
-          {/* Identity & Danger Zone */}
           {bagianAktif === 'identitas' && (
           <section className="col-span-12 glass-panel rim-light p-gutter rounded-xl border border-outline-variant">
              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
@@ -843,7 +780,6 @@ export default function Settings() {
                   </button>
                 </div>
              </div>
-             {/* T19 (29 Okt 2026, ADR-0022 K4): ganti kata sandi untuk akun yang sedang masuk. */}
              <GantiKataSandi />
           </section>
           )}

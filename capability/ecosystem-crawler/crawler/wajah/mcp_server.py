@@ -61,7 +61,6 @@ server = MCPServer(name=NAMA, version=__version__, instructions=INSTRUKSI)
 
 _berjalan: dict[str, threading.Thread] = {}
 
-
 def _ringkas(t: dict, panjang_teks: int) -> dict:
     teks = t["teks"] or ""
     return {
@@ -71,7 +70,6 @@ def _ringkas(t: dict, panjang_teks: int) -> dict:
         "metrik": {k: v for k, v in t["metrik"].items() if v not in (None, "", 0)},
         "parent_id": t["parent_id"], "kata_kunci_cocok": t["kata_kunci_cocok"],
     }
-
 
 def _status(misi_id: str) -> dict:
     with EcosystemCrawler() as c:
@@ -85,7 +83,6 @@ def _status(misi_id: str) -> dict:
             return {"misi_id": misi_id, "status": "berjalan", "sudah_tersimpan": c.gudang.jumlah(misi_id),
                     "catatan": "panggil status_misi lagi sebentar lagi"}
         return m["ringkasan"] or {"misi_id": misi_id, "status": m["status"]}
-
 
 @server.tool()
 def katalog() -> dict:
@@ -124,7 +121,6 @@ def katalog() -> dict:
         "versi": f"{status['name']} {status['version']}",
     }
 
-
 def akses(patuhi_robots: bool, stealth: bool) -> dict:
     """Keadaan sakelar akses saat ini (ADR-CRW-0010), dibaca dari .env saat server mulai — bukan teks tetap.
 
@@ -141,7 +137,6 @@ def akses(patuhi_robots: bool, stealth: bool) -> dict:
             + " Crawler tidak menjawab CAPTCHA/tantangan yang sudah muncul dan tidak memakai akun orang lain."
         ),
     }
-
 
 @server.tool()
 async def jalankan_misi(
@@ -204,12 +199,10 @@ async def jalankan_misi(
     await anyio.to_thread.run_sync(thread.join, max(1, min(tunggu_detik, 110)))
     return _status(misi.id)
 
-
 @server.tool()
 def status_misi(misi_id: str) -> dict:
     """Status dan ringkasan per sumber sebuah misi (diambil, baru, gagal, alasan)."""
     return _status(misi_id)
-
 
 @server.tool()
 def daftar_misi(batas: int = 10) -> list[dict]:
@@ -220,7 +213,6 @@ def daftar_misi(batas: int = 10) -> list[dict]:
                  "kata_kunci": m["spesifikasi"]["payload"]["kata_kunci"],
                  "owner_intent": m["spesifikasi"]["context"].get("owner_intent", "")}
                 for m in c.gudang.daftar_misi(batas)]
-
 
 @server.tool()
 def baca_tangkapan(misi_id: str, kursor: int = 0, batas: int = 50, sumber: str = "",
@@ -245,7 +237,6 @@ def baca_tangkapan(misi_id: str, kursor: int = 0, batas: int = 50, sumber: str =
         habis = kursor_baru >= c.gudang.kursor_akhir(misi_id)
     return {"items": items, "kursor_berikut": kursor_baru, "habis": habis}
 
-
 @server.tool()
 def ekspor_misi(misi_id: str, format: list[str] | None = None) -> dict:
     """Simpan hasil misi ke berkas di folder hasil/: csv (Excel), jsonl (AI/skrip), md (daftar yang mudah dibaca).
@@ -258,16 +249,13 @@ def ekspor_misi(misi_id: str, format: list[str] | None = None) -> dict:
             return {"error": str(exc)}
     return {"berkas": [str(p) for p in paths]}
 
-
 def main() -> None:
-    # Di Windows stdin/stdout default cp1252: teks non-ASCII (★, emoji, ±) rusak atau error di protokol MCP.
     for s in (sys.stdin, sys.stdout, sys.stderr):
         s.reconfigure(encoding="utf-8")
     logging.basicConfig(level=logging.INFO, stream=sys.stderr, format="%(asctime)s [%(levelname)s] %(message)s")
     for nama in ("urllib3", "prawcore"):
         logging.getLogger(nama).setLevel(logging.WARNING)
     server.run("stdio")
-
 
 if __name__ == "__main__":
     main()

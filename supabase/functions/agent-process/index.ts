@@ -9,22 +9,16 @@ import { handleJudgeConflictRequest } from './lib/request/judge_endpoint.ts';
 import { handlePadatkanRequest } from './lib/request/padatkan_endpoint.ts';
 import { handleProxyFetchRequest } from './lib/request/proxy_fetch_endpoint.ts';
 
-// PRIORITY 2: ENVIRONMENT VALIDATION (STARTUP)
 const REQUIRED_ENV_VARS = [
   'SUPABASE_URL',
   'SUPABASE_SERVICE_ROLE_KEY',
   'SUPABASE_ANON_KEY'
 ];
 
-// DEPLOYMENT DRIFT DETECTION: Metadata commit di-set via `supabase secrets set`
-// oleh script deploy (lihat scripts/deploy-agent-process.ps1), bukan file statis,
-// agar tidak terikat pada satu mekanisme deploy (CLI atau MCP tool).
 const DEPLOYED_COMMIT_SHA = Deno.env.get('DEPLOYED_COMMIT_SHA') || 'unknown';
 const DEPLOYED_BRANCH = Deno.env.get('DEPLOYED_BRANCH') || 'unknown';
 const DEPLOYED_AT = Deno.env.get('DEPLOYED_AT') || null;
 
-// Umur worker saat permintaan masuk dicatat untuk memastikan batas waktu dinding dihitung per permintaan
-// (log live v443: tiap chat mem-boot worker baru, dimatikan tepat 150 detik setelah permintaan).
 const WAKTU_BOOT_WORKER = Date.now();
 
 let envValidationStatus = 'OK';
@@ -43,7 +37,6 @@ try {
 serve(async (req) => {
   const mulaiPermintaan = Date.now();
   try {
-    // PRIORITY 2: DEEP HEALTH CHECK SYSTEM
     const url = new URL(req.url);
     if (req.method === 'GET' && url.pathname.endsWith('/health')) {
       const healthReport = {
@@ -71,51 +64,30 @@ serve(async (req) => {
       });
     }
 
-    // Handle CORS for OPTIONS
     if (req.method === 'OPTIONS') {
       return new Response('ok', { headers: corsHeaders });
     }
 
-    // TIER 3 WEB PROXY BRIDGE: Membantu client Web/Vercel melakukan fetch URL tanpa kendala CORS browser
     if (req.method === 'POST') {
       const clonedReq = req.clone();
 
-      // Body di-parse SEKALI di luar blok penelan galat di bawah.
-      //
-      // Blok `try { ... } catch (_) { /* lanjut */ }` yang lama menelan SEMUA
-      // galat, bukan hanya kegagalan parse JSON. Menaruh penanganan action baru
-      // di dalamnya berarti setiap galat di dalamnya akan diam-diam jatuh ke
-      // pipeline chat — pemanggil menerima jawaban chat untuk permintaan
-      // embedding, tanpa satu pun pesan galat. Pola yang sama yang melahirkan
-      // Item 46. Jadi parse-nya dipisahkan, dan hanya kegagalan parse yang boleh
-      // diabaikan diam-diam.
       let parsedBody: any = null;
       try {
         parsedBody = await clonedReq.json();
       } catch (_) {
-        parsedBody = null; // Bukan JSON — lanjutkan ke pipeline normal.
+        parsedBody = null;
       }
 
-      // ENDPOINT EMBEDDING (Item 46) — `{ action: 'embed', text }`.
-      // Di luar penelan galat: kalau ia gagal, kegagalannya harus terdengar.
-      // Penjagaan JWT-nya ada di dalam handleEmbedRequest, WAJIB karena fungsi
-      // ini di-deploy dengan --no-verify-jwt.
       if (parsedBody) {
         const embedResponse = await handleEmbedRequest(req, parsedBody, corsHeaders);
         if (embedResponse) return embedResponse;
 
-        // ENDPOINT HAKIM KONFLIK (Item 55) — `{ action: 'judge_conflict', ... }`.
-        // Sama alasannya: di luar penelan galat, dan memeriksa JWT sendiri.
         const judgeResponse = await handleJudgeConflictRequest(req, parsedBody, corsHeaders);
         if (judgeResponse) return judgeResponse;
 
-        // ENDPOINT PADATKAN KONTEKS (Tahap 3a) — `{ action: 'padatkan', pesan, model }`.
-        // Sama alasannya: di luar penelan galat, dan memeriksa JWT sendiri.
         const padatkanResponse = await handlePadatkanRequest(req, parsedBody, corsHeaders);
         if (padatkanResponse) return padatkanResponse;
 
-        // PROXY FETCH (web Tier 3 versi web). K5 30 Okt 2026: dulu di sini, SEBELUM pemeriksaan token apa pun —
-        // proksi terbuka untuk seluruh internet. Kini memeriksa JWT sendiri + hanya alamat http/https publik.
         const proxyResponse = await handleProxyFetchRequest(req, parsedBody, corsHeaders);
         if (proxyResponse) return proxyResponse;
       }
@@ -129,16 +101,12 @@ serve(async (req) => {
     rctx.stream.mulaiPermintaan = mulaiPermintaan;
     console.log(`[BATAS_WAKTU] permintaan diterima; umur worker ${mulaiPermintaan - WAKTU_BOOT_WORKER} ms`);
 
-    // --- HYBRID: NALAR DIALIRKAN, JAWABAN TETAP JSON UTUH (2026-09-14) ---
-    // Owner memilih nalar tampil SEBELUM jawaban (gaya DeepSeek) tanpa melepas pemeriksaan label, verifikasi,
-    // dan konteks tersimpan milik jalur JSON. Pipeline di bawah dijalankan persis sama di dalam aliran SSE:
-    // event `nalar` / `nalar_selesai` selama model berpikir, lalu `hasil` = isi Response JSON yang biasa.
     if (rctx.stream?.streamNalar) {
       const encoder = new TextEncoder();
       const aliran = new ReadableStream({
         async start(controller) {
           let tertutup = false;
-          const tulis = (teks: string) => { if (tertutup) return; try { controller.enqueue(encoder.encode(teks)); } catch (_) { /* klien pergi */ } };
+          const tulis = (teks: string) => { if (tertutup) return; try { controller.enqueue(encoder.encode(teks)); } catch (_) {  } };
           const kirim = (obj: any) => tulis(`data: ${JSON.stringify(obj)}\n\n`);
           const detak = setInterval(() => tulis(': detak\n\n'), 10000);
           rctx.stream.kirimNalar = kirim;
@@ -158,34 +126,28 @@ serve(async (req) => {
           } finally {
             clearInterval(detak);
             tertutup = true;
-            try { controller.close(); } catch (_) { /* sudah tertutup */ }
+            try { controller.close(); } catch (_) {  }
           }
         }
       });
       return new Response(aliran, { headers: { ...corsHeaders, 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' } });
     }
 
-    // --- EXECUTE ORCHESTRATION ---
     const engineResult = await coreEngine.execute(ctx, rctx);
     
-    // --- POST EXECUTION GUARANTEES ---
     await rctx.tasks.awaitAll();
 
-    // === TAMBAHAN: Update heartbeat HEALTHY setiap kali request sukses ===
     await pingHeartbeat('agent-process', 'HEALTHY');
 
-    // --- STREAMING OR RESPONSE LAYER ---
     return streamController.pipe(engineResult, rctx);
 
   } catch (error: any) {
     console.error('Edge Function Error:', error);
     await pingHeartbeat('agent-process', 'DOWN');
     
-    // Determine appropriate status code
     const errorMessage = String(error.message || '');
     let statusCode = 500;
     
-    // Provider/LLM errors should return 400 (client error) rather than 500 (server error)
     if (errorMessage.includes('Provider') || errorMessage.includes('failed') || errorMessage.includes('not available')) {
       statusCode = 400;
     }

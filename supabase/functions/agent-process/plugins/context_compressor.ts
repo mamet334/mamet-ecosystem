@@ -1,9 +1,3 @@
-// =========================================================================
-// MAMET AI - CONTEXT COMPRESSOR AGENT
-// =========================================================================
-// Architecture: Strict Separation of Concerns (Deterministic vs LLM)
-// Prevents "Compression Hallucination" by establishing hard facts before
-// executing inference-time cognitive synthesis.
 
 export interface CompressContextParams {
   intent: {
@@ -17,7 +11,6 @@ export interface CompressContextParams {
 }
 
 export interface CompressedMemoryContext {
-  // Layer A: Deterministic Facts
   current_state: string[];
   important_history: string[];
   contradictions: string[];
@@ -26,21 +19,13 @@ export interface CompressedMemoryContext {
   token_before: number;
   token_after: number;
 
-  // Layer B: Synthesized Cognitive Facts
   compressed_summary: string;
   emotional_context: string[];
 }
 
-/**
- * Compresses the raw memory subgraph into an efficient cognitive payload.
- */
 export async function compressCognitiveContext(params: CompressContextParams): Promise<CompressedMemoryContext> {
   const { intent, nodes, edges, query, rctx } = params;
 
-  // =========================================================================
-  // LAYER A: DETERMINISTIC EXTRACTOR
-  // No LLM involved here. Strictly algorithmic evaluation.
-  // =========================================================================
   
   const currentState: string[] = [];
   const importantHistory: string[] = [];
@@ -50,17 +35,14 @@ export async function compressCognitiveContext(params: CompressContextParams): P
   let totalConfidence = 0;
   let confidenceCount = 0;
 
-  // 1. Trace the Relational Graph
   const overriddenNodeIds = new Set<string>();
   const contradictionsSet = new Set<string>();
 
-  // B. CompressionGuard
   if (nodes.some(n => n.is_compressed_context === true)) {
      console.warn(`[CompressionGuard] BLOCKED: Attempting to compress an already compressed context.`);
      throw new Error("DOUBLE_COMPRESSION_BLOCKED");
   }
 
-  // A. MemoryGraphValidator
   const validEdges = [];
   const nodeMap = new Map((nodes || []).map(n => [n.id, n]));
   for (const edge of (edges || [])) {
@@ -72,7 +54,6 @@ export async function compressCognitiveContext(params: CompressContextParams): P
        console.warn(`[MemoryGraphValidator] Blocked edge with missing source/target: ${edge.source_memory_id} -> ${edge.target_memory_id}`);
        continue;
     }
-    // Temporal validation hook placeholder
     if (edge.relation_type === 'OVERRIDES') {
        const srcNode = nodeMap.get(edge.source_memory_id);
        const tgtNode = nodeMap.get(edge.target_memory_id);
@@ -87,7 +68,7 @@ export async function compressCognitiveContext(params: CompressContextParams): P
 
   for (const edge of validEdges) {
     if (edge.relation_type === 'OVERRIDES' || edge.relation_type === 'REFINES') {
-      overriddenNodeIds.add(edge.target_memory_id); // The target was overridden
+      overriddenNodeIds.add(edge.target_memory_id);
       overrideChains.push(`[${edge.relation_type}] Fakta ${edge.source_memory_id} menimpa/menggantikan Fakta ${edge.target_memory_id}. Alasan: ${edge.reason_type}`);
     }
     if (edge.relation_type === 'CONTRADICTS') {
@@ -95,18 +76,15 @@ export async function compressCognitiveContext(params: CompressContextParams): P
     }
   }
 
-  // 2. Classify Nodes
   for (const node of (nodes || [])) {
     sourceNodes.push(node.id);
     const nodeFact = node.summary || node.content;
 
-    // Is it active or history?
     if (overriddenNodeIds.has(node.id)) {
       importantHistory.push(`[HISTORICAL ID: ${node.id}] ${nodeFact}`);
     } else {
       currentState.push(`[ACTIVE ID: ${node.id}] ${nodeFact}`);
       
-      // Calculate confidence ONLY for active facts
       if (node.score !== undefined || node.metadata?.confidence !== undefined) {
         const conf = node.score !== undefined ? node.score : (node.metadata?.confidence || 0);
         totalConfidence += conf;
@@ -119,14 +97,9 @@ export async function compressCognitiveContext(params: CompressContextParams): P
 
   const confidence_score = confidenceCount > 0 ? (totalConfidence / confidenceCount) : 1.0;
   
-  // Rough Token Metric Calculation
   const rawJson = JSON.stringify({ nodes, edges });
   const token_before = Math.ceil(rawJson.length / 4);
 
-  // =========================================================================
-  // LAYER B: COGNITIVE SYNTHESIS (LLM)
-  // Synthesizes the deterministic facts into a query-aware context package.
-  // =========================================================================
   
   let compressed_summary = "";
   let emotional_context: string[] = [];
@@ -167,14 +140,10 @@ Silakan lakukan Cognitive Compression berformat JSON.`;
     let success = false;
     let llmResponse = "";
 
-    // MIGRATION: GAP-006 (Capability Adapter Integration)
-    if (rctx && rctx.logger) { // Ensure CapabilityRegistry is accessible via rctx or use global
-       // We import CapabilityRegistry at the top of this file
+    if (rctx && rctx.logger) {
        const { CapabilityRegistry } = await import('../lib/adapters/adapter_registry.ts');
        await CapabilityRegistry.initializeAdapters(rctx);
        
-       // OpenRouter dulu (2026-09-15, kunci server Gemini/Groq dihapus). Gemini/Groq kini hanya ada bila pengguna
-       // memakai BYOK-nya. Dulu hanya ['groq','gemini'] — tanpa kunci server peringkas tidak pernah jalan.
        const adapters = CapabilityRegistry.getAvailableAIAdapters(['openrouter', 'gemini', 'groq']);
        
        const adapterPayload = {
@@ -208,14 +177,12 @@ Silakan lakukan Cognitive Compression berformat JSON.`;
        console.warn("[ContextCompressor] WARNING: rctx missing, falling back to empty response.");
     }
 
-    // JSON PARSING & SAFEGUARD
     try {
       if (success && llmResponse) {
         const parsed = JSON.parse(llmResponse);
         compressed_summary = parsed.compressed_summary || "Rangkuman tidak dapat diproses.";
         emotional_context = Array.isArray(parsed.emotional_context) ? parsed.emotional_context : [];
       } else {
-        // Ultimate Fallback: Just return the raw active facts
         compressed_summary = currentState.join(' | ');
       }
     } catch (e) {
@@ -226,7 +193,6 @@ Silakan lakukan Cognitive Compression berformat JSON.`;
     const outputObj = { compressed_summary, emotional_context, current_state: currentState };
     token_after = Math.ceil(JSON.stringify(outputObj).length / 4);
 
-    // C. ObservabilityLayer
     const compression_ratio = token_after > 0 ? (token_before / token_after) : 1;
     console.log(`[ObservabilityLayer] Compression Ratio: ${compression_ratio.toFixed(2)}`);
     if (compression_ratio > 3) {

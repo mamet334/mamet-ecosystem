@@ -1,17 +1,3 @@
-/**
- * RepositoryReaderService — Kemampuan Engineer Membaca Repository
- *
- * Seperti Antigravity yang dapat membaca file di repository,
- * service ini memberikan Engineer kemampuan yang sama.
- *
- * Dua Backend:
- * 1. Electron (desktop): via window.electronAPI.readFile / listFilesRecursive
- * 2. GitHub API (web/Vercel): via fetch ke api.github.com
- *    - Repo public: tidak perlu token
- *    - Repo private: perlu GitHub PAT dari VaultService
- *
- * Diregistrasi di Kernel.js (Phase 5) sebelum Engineer.
- */
 
 const GITHUB_OWNER = 'mamet334';
 const GITHUB_REPO = 'mamet-ecosystem';
@@ -23,29 +9,19 @@ export class RepositoryReaderService {
   constructor(serviceManager) {
     this.serviceManager = serviceManager;
     this.isElectron = typeof window !== 'undefined' && !!window.electronAPI;
-    this.repoTree = null; // Cache tree dari GitHub
+    this.repoTree = null;
     this.treeBuiltAt = null;
   }
 
   async initialize() {
     console.log(`[RepositoryReaderService] Initializing — backend: ${this.isElectron ? 'Electron' : 'GitHub API'}`);
-    // Pre-fetch tree untuk kemampuan search (non-blocking, best-effort)
     this._prefetchTree().catch(() => {});
   }
 
-  // =============================================
-  // PUBLIC API
-  // =============================================
 
-  /**
-   * Membaca isi file dari repository.
-   * @param {string} path - Path relatif dari root repo (e.g., "frontend/src/core/runtime/Kernel.js")
-   * @returns {Promise<{content: string, path: string, size: number, backend: string} | null>}
-   */
   async readFile(path) {
     console.log(`[RepositoryReaderService] readFile: ${path}`);
 
-    // Bersihkan path (hapus leading slash, normalize separator)
     const cleanPath = path.replace(/^\//, '').replace(/\\/g, '/');
 
     if (this.isElectron) {
@@ -54,11 +30,6 @@ export class RepositoryReaderService {
     return this._readFileGitHub(cleanPath);
   }
 
-  /**
-   * Mendaftar isi direktori dari repository.
-   * @param {string} dirPath - Path direktori (e.g., "frontend/src/core")
-   * @returns {Promise<Array<{name: string, path: string, type: 'file'|'dir', size?: number}>>}
-   */
   async listDirectory(dirPath = '') {
     console.log(`[RepositoryReaderService] listDirectory: ${dirPath || '(root)'}`);
     const cleanPath = dirPath.replace(/^\//, '').replace(/\\/g, '/');
@@ -69,11 +40,6 @@ export class RepositoryReaderService {
     return this._listDirectoryGitHub(cleanPath);
   }
 
-  /**
-   * Mencari file berdasarkan nama atau pola.
-   * @param {string} query - Nama file atau kata kunci
-   * @returns {Promise<string[]>} Array path file yang cocok
-   */
   async searchFiles(query) {
     console.log(`[RepositoryReaderService] searchFiles: ${query}`);
     const tree = await this._getTree();
@@ -83,17 +49,11 @@ export class RepositoryReaderService {
     return tree
       .filter(item => item.type === 'blob' && item.path.toLowerCase().includes(q))
       .map(item => item.path)
-      .slice(0, 50); // Maksimal 50 hasil
+      .slice(0, 50);
   }
 
-  /**
-   * Membaca beberapa file sekaligus.
-   * @param {string[]} paths - Array path file
-   * @returns {Promise<Object>} Map dari path → content
-   */
   async readMultipleFiles(paths) {
     const results = {};
-    // Baca secara paralel tapi batasi 5 request sekaligus
     const chunks = [];
     for (let i = 0; i < paths.length; i += 5) {
       chunks.push(paths.slice(i, i + 5));
@@ -109,22 +69,14 @@ export class RepositoryReaderService {
     return results;
   }
 
-  /**
-   * Mendapatkan full tree repository (untuk search).
-   * Di-cache selama 10 menit.
-   */
   async getRepoTree() {
     return this._getTree();
   }
 
-  // =============================================
-  // GITHUB API BACKEND
-  // =============================================
 
   async _readFileGitHub(path) {
     try {
       const headers = this._getGitHubHeaders();
-      // Gunakan raw content (lebih efisien daripada API)
       const url = `${GITHUB_RAW_BASE}/${path}`;
       const response = await fetch(url, { headers });
 
@@ -177,7 +129,6 @@ export class RepositoryReaderService {
   }
 
   async _getTree() {
-    // Cache selama 10 menit
     const TEN_MINUTES = 10 * 60 * 1000;
     if (this.repoTree && this.treeBuiltAt && (Date.now() - this.treeBuiltAt < TEN_MINUTES)) {
       return this.repoTree;
@@ -212,7 +163,6 @@ export class RepositoryReaderService {
 
   _getGitHubHeaders() {
     const headers = { 'Accept': 'application/vnd.github.v3+json' };
-    // Coba ambil GitHub PAT dari VaultService (opsional, untuk private repo)
     try {
       if (this.serviceManager.has('VaultService')) {
         const vault = this.serviceManager.get('VaultService');
@@ -222,14 +172,10 @@ export class RepositoryReaderService {
         }
       }
     } catch (e) {
-      // Tidak ada token, lanjut tanpa auth (repo public)
     }
     return headers;
   }
 
-  // =============================================
-  // ELECTRON BACKEND
-  // =============================================
 
   async _readFileElectron(path) {
     try {
@@ -251,10 +197,7 @@ async _listDirectoryElectron(dirPath) {
     try {
       const entries = await window.electronAPI.listFiles(dirPath || '.');
       if (!Array.isArray(entries)) return [];
-      // Elektron main handler (fs:listFiles) kini mengembalikan objek
-      // { name, path, type: 'dir'|'file', size }. Normalisasi ke bentuk standar.
       return entries.map(entry => {
-        // Jika ternyata masih string (backward compat), buat objek dasar
         if (typeof entry === 'string') {
           const name = entry.split('/').pop() || entry;
           return {

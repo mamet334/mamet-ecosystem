@@ -1,27 +1,10 @@
-/**
- * ToolPreferencesService — Preferensi on/off per-tool (RAG, Web Search, dst),
- * dengan default global + override opsional per workspace.
- *
- * Skema (lihat docs/roadmap/INDEX-ROADMAP.md untuk diskusi desainnya):
- *   globalDefaults: { [toolName]: boolean }
- *   workspaceOverrides: { [workspaceId]: { [toolName]: boolean } }
- *
- * Resolusi nilai efektif: override workspace (jika ada) > default global > DEFAULT_TOOLS fallback.
- * Disimpan di localStorage — murni preferensi per-perangkat, tidak perlu sinkron server.
- */
 
 const STORAGE_KEY = 'mamet:toolPreferences';
 
-// Tool yang didukung saat ini. Menambah tool baru di masa depan
-// cukup menambah entrinya di sini — struktur data & UI tidak perlu berubah.
 const DEFAULT_TOOLS = {
   rag: true,
   web_search: true,
-  // Deep Research (2026-09-15) mati bawaan: satu riset ±20–30 detik dan memakai kredit OpenRouter lebih banyak,
-  // jadi hanya jalan bila pengguna menyalakannya sendiri.
   deep_research: false,
-  // Data Tabel (Item 92 Tahap 3) mati bawaan: kosakatanya sama dengan buku Kepbup di RAG, jadi hanya jalan bila
-  // pengguna sengaja menyalakannya.
   data_tabel: false
 };
 
@@ -71,12 +54,6 @@ export class ToolPreferencesService {
     }
   }
 
-  /**
-   * Nilai efektif untuk satu tool di satu workspace: override workspace (jika ada) > default global.
-   * @param {string} workspaceId
-   * @param {string} toolName
-   * @returns {boolean}
-   */
   getEffective(workspaceId, toolName) {
     const override = this.workspaceOverrides?.[workspaceId]?.[toolName];
     if (typeof override === 'boolean') return override;
@@ -94,17 +71,11 @@ export class ToolPreferencesService {
     this.eventBus?.emit('ToolPreferences:Changed', { scope: 'global', toolName, enabled: !!enabled });
   }
 
-  /**
-   * @returns {boolean|null} null berarti "ikuti default global" (tidak ada override)
-   */
   getWorkspaceOverride(workspaceId, toolName) {
     const value = this.workspaceOverrides?.[workspaceId]?.[toolName];
     return typeof value === 'boolean' ? value : null;
   }
 
-  /**
-   * @param {boolean|null} enabled - null untuk menghapus override (kembali ikuti default global)
-   */
   setWorkspaceOverride(workspaceId, toolName, enabled) {
     const current = { ...(this.workspaceOverrides[workspaceId] || {}) };
     if (enabled === null || enabled === undefined) {
@@ -117,7 +88,6 @@ export class ToolPreferencesService {
     this.eventBus?.emit('ToolPreferences:Changed', { scope: 'workspace', workspaceId, toolName, enabled });
   }
 
-  /** Daftar nama tool yang didukung (untuk render UI generik). */
   listToolNames() {
     return Object.keys(this.globalDefaults);
   }
