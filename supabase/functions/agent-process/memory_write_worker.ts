@@ -37,7 +37,6 @@ export const processMemoryWriteQueue = async (
     const policyDecision = PolicyEngine.evaluate('WRITE_MEMORY', {
       mode: mode as any,
       evidenceCount: 0,
-      riskScore: 0,
       appSource: 'WORKER',
       hasActiveConflicts: false
     });

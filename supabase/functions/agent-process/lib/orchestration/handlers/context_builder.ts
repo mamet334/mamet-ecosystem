@@ -439,7 +439,6 @@ export const ContextBuilderHandler = {
       const policyCtx = {
         mode: ctx.policy.mode as any,
         evidenceCount: evidenceReport.totalEvidence,
-        riskScore: ctx.policy.riskScore,
         appSource: ctx.auth.appSource,
         hasActiveConflicts: activeConflictsCount > 0,
       };

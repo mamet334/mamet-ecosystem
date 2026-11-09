@@ -1,6 +1,6 @@
 
 
-import { MametMode, PolicyAction, PolicyContext, PolicyDecision } from './types.ts';
+import type { MametMode, PolicyAction, PolicyContext, PolicyDecision } from './types.ts';
 
 interface PolicyRule {
   id: string;
@@ -24,24 +24,6 @@ const POLICY_RULES: PolicyRule[] = [
           reason: 'P-001: Engineer mode membutuhkan minimal 1 evidence. Total evidence = 0.',
           constraints: [],
           auditNote: 'BLOCKED by P-001: ENGINEER + zero evidence',
-          severity: 'BLOCK',
-        };
-      }
-      return null;
-    }
-  },
-
-  {
-    id: 'P-002',
-    description: 'High risk score blocks LLM call',
-    action: 'CALL_LLM',
-    evaluate: (ctx) => {
-      if (ctx.riskScore >= 4) {
-        return {
-          allow: false,
-          reason: `P-002: Permintaan ditolak karena skor risiko tinggi (${ctx.riskScore}/4+).`,
-          constraints: [],
-          auditNote: `BLOCKED by P-002: riskScore=${ctx.riskScore}`,
           severity: 'BLOCK',
         };
       }

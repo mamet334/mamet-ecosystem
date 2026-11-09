@@ -1,40 +1,10 @@
-import { UnifiedExecutionContext } from './types.ts';
-import { catatPenolakan, barisLogJejak, salinJejak } from '../jejak_prompt.ts';
+import type { UnifiedExecutionContext } from './types.ts';
 
-export function enforcePolicy(ctx: UnifiedExecutionContext, stream: boolean, corsHeaders: HeadersInit): Response | null {
+export function saringAlatMenurutKemampuan(ctx: UnifiedExecutionContext): void {
   if (ctx.request.tools && Array.isArray(ctx.request.tools)) {
     ctx.request.tools = ctx.request.tools.filter(t => {
       if (t === 'cron_manager' && !ctx.policy.canUseAutomation) { console.warn(`[CAPABILITY_BLOCK] Tool '${t}' blocked: canUseAutomation=false (mode=${ctx.policy.mode})`); return false; }
       return true;
     });
   }
-
-  if (ctx.policy.decision === "BLOCK") {
-    console.warn(`[EXECUTION POLICY] Blocked request from user ${ctx.auth.userId} due to HIGH risk. Trace:`, ctx.trace);
-    const blockMsg = "Permintaan ditolak oleh Sistem Kebijakan Eksekusi. Deteksi injeksi atau pola berbahaya.";
-    catatPenolakan(ctx.state.jejakPrompt, 'kebijakan_eksekusi', `BLOCK skor ${ctx.policy.riskScore}`);
-    console.log(barisLogJejak(ctx.state.jejakPrompt));
-    if (!stream) {
-      return new Response(JSON.stringify({ message: blockMsg, jejakPrompt: salinJejak(ctx.state.jejakPrompt) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-    } else {
-      const streamRes = new ReadableStream({
-        start(controller) {
-          const data = JSON.stringify({ choices: [{ delta: { content: blockMsg } }] });
-          controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
-          controller.enqueue(new TextEncoder().encode(`data: [DONE]\n\n`));
-          controller.close();
-        }
-      });
-      return new Response(streamRes, { headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' } });
-    }
-  }
-  
-  if (ctx.policy.decision === "ALLOW_WITH_LIMIT") {
-    console.warn(`[EXECUTION POLICY] Applied limits to user ${ctx.auth.userId} due to MEDIUM risk. Trace:`, ctx.trace);
-  }
-
-  if (!ctx.policy.toolsEnabled && ctx.request.tools && Array.isArray(ctx.request.tools)) {
-      ctx.request.tools = []; 
-  }
-  return null;
 }

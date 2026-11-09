@@ -61,7 +61,6 @@ console.log('\n-- gerbang: pemberitahuan wajib ada (H) --');
   const riwayat = [{ role: 'user', content: 'tanya' }];
   const dasar = () => {
     const s = J.buatJejak({ traceId: 't', riwayatDiterima: J.ukurRiwayat(riwayat) });
-    s.kebijakan = { keputusan: 'ALLOW', skorRisiko: 0, alatDimatikan: false, webDimatikan: false, ragTopK: 8 };
     const m = H.siapkanRiwayatUntukModel(riwayat, 'x', s);
     J.catatPanggilanModel(s, { utama: true, sistemHuruf: 100, pesanHuruf: 1, riwayat: m, segmen: {} });
     return s;

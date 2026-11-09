@@ -55,7 +55,6 @@ export interface JejakPrompt {
   mode: string;
   riwayatDiterima: UkuranRiwayat;
   lapisRiwayat: LapisRiwayat[];
-  kebijakan: { keputusan: string; skorRisiko: number; alatDimatikan: boolean; webDimatikan: boolean; ragTopK: number } | null;
   rag: JejakRag;
   penolakan: { lapis: string; sebab: string }[];
   panggilanModel: PanggilanModel[];
@@ -81,7 +80,6 @@ export function buatJejak(awal: { traceId?: string | null; appSource?: string; m
     mode: awal.mode || 'ASSISTANT',
     riwayatDiterima: awal.riwayatDiterima,
     lapisRiwayat: [],
-    kebijakan: null,
     rag: { diminta: false, batasWaktuMs: null, habisWaktu: false, msSelesai: null, ditemukan: null, datangTerlambat: null, galat: null, turunKeKata: false, dikirim: 0, dikirimWeb: 0, dataTabelMenggantikan: false },
     penolakan: [],
     panggilanModel: [],

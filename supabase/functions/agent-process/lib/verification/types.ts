@@ -100,7 +100,6 @@ export type PolicyAction =
 export interface PolicyContext {
   mode: MametMode;
   evidenceCount: number;
-  riskScore: number;
   appSource: string;
   hasActiveConflicts?: boolean;
   govStatus?: string;

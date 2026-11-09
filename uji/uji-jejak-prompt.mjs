@@ -122,11 +122,10 @@ console.log('\n-- panggilan model & privasi --');
   cek(jejak.rag.dikirim === 0, 'salinan yang dikirim ke klien terpisah dari jejak hidup');
 }
 
-const susunJejakPipeline = async (riwayat, pesan, kebijakan = { keputusan: 'ALLOW', skorRisiko: 0, alatDimatikan: false, webDimatikan: false, ragTopK: 8 }) => {
+const susunJejakPipeline = async (riwayat, pesan) => {
   const p = await terimaParser({ message: pesan, tools: [], history: riwayat });
   const jejak = J.buatJejak({ traceId: 't', riwayatDiterima: J.ukurRiwayat(p.riwayatAsli) });
   J.catatLapis(jejak, 'buang_tag_call', p.riwayatAsli, p.riwayatSesudahTag);
-  jejak.kebijakan = kebijakan;
   const keModel = H.siapkanRiwayatUntukModel(p.history, pesan, jejak);
   J.catatPanggilanModel(jejak, { utama: true, sistemHuruf: 9000, pesanHuruf: pesan.length, riwayat: keModel, segmen: {} });
   return jejak;
@@ -165,8 +164,7 @@ console.log('\n-- gerbang: setiap sebab merah dikenali --');
     const s = await dasar(); ubahServer(s);
     return G.nilaiGiliran([{ nomor: 1, pasangan: [{ klien: ubahKlien(kl()), server: s }], harapan }]).perKode;
   };
-  cek((await kode((s) => { s.kebijakan = { keputusan: 'ALLOW_WITH_LIMIT', skorRisiko: 2, alatDimatikan: true, webDimatikan: true, ragTopK: 2 }; })).kebijakan_membatasi === 1, 'ALLOW_WITH_LIMIT (alat dimatikan diam-diam) merah');
-  cek((await kode((s) => { J.catatPenolakan(s, 'kebijakan_eksekusi', 'BLOCK skor 4'); })).ditolak_kebijakan_eksekusi === 1, 'BLOCK merah');
+  cek((await kode((s) => { J.catatPenolakan(s, 'evidence_gate', 'uji'); })).ditolak_evidence_gate === 1, 'penolakan apa pun merah');
   const rag = await kode((s) => { Object.assign(s.rag, { diminta: true, habisWaktu: true, batasWaktuMs: 5000, ditemukan: null, datangTerlambat: { potongan: 8, ms: 7100 } }); });
   cek(rag.rag_habis_waktu === 1 && rag.rag_ketemu_dibuang === 1, 'RAG habis waktu & hasil terlambat yang dibuang merah', rag);
   cek((await kode((s) => { Object.assign(s.rag, { diminta: true, ditemukan: 8, dikirim: 3 }); })).rag_tak_terkirim === 1, 'potongan ditemukan tetapi tak dikirim merah');
@@ -219,7 +217,8 @@ console.log('\n-- gerbang: hasil alat antar giliran --');
 console.log('\n-- alat uji skenario (uji-jejak-prompt-t0.js) dengan aplikasi tiruan --');
 {
   const panjang16 = percakapan(20, { huruf: 1500 });
-  const server = await susunJejakPipeline(panjang16, 'lanjutkan', { keputusan: 'ALLOW_WITH_LIMIT', skorRisiko: 3, alatDimatikan: true, webDimatikan: true, ragTopK: 2 });
+  const server = await susunJejakPipeline(panjang16, 'lanjutkan');
+  J.catatPenolakan(server, 'evidence_gate', 'uji');
   const riwayatJejak = [{ klien: K.susunJejakKlien({ jalur: 'CONVERSATION', traceId: 't', riwayatTersedia: panjang16, dikirim: panjang16 }), server }];
   globalThis.window = { __mamet: { serviceManager: { get: (n) => (n === 'AssistantService' ? { riwayatJejak } : null) } } };
   const T0 = await imp('uji/uji-jejak-prompt-t0.js');
@@ -229,7 +228,7 @@ console.log('\n-- alat uji skenario (uji-jejak-prompt-t0.js) dengan aplikasi tir
   let lap;
   try { lap = await T0.laporan(); } finally { console.table = asliTable; console.log = asliLog; }
   cek(T0.SKENARIO.length >= 15, `skenario ≥ 15 giliran (${T0.SKENARIO.length})`);
-  cek(lap && lap.hijau === false && lap.perKode.kebijakan_membatasi === 1 && lap.giliran[0].merah === 'kebijakan_membatasi' && lap.giliran[0].keModel === '20/' + server.panggilanModel[0].riwayat.huruf, 'laporan menilai jejak dengan gerbang yang sama', lap?.giliran?.[0]);
+  cek(lap && lap.hijau === false && lap.perKode.ditolak_evidence_gate === 1 && lap.giliran[0].merah === 'ditolak_evidence_gate' && lap.giliran[0].keModel === '20/' + server.panggilanModel[0].riwayat.huruf, 'laporan menilai jejak dengan gerbang yang sama', lap?.giliran?.[0]);
   const keluar = tertangkap.join('\n');
   cek(!keluar.includes(RAHASIA) && !JSON.stringify(lap).includes(RAHASIA), 'laporan yang disalin Owner tidak membawa isi pesan');
   delete globalThis.window;
@@ -239,11 +238,9 @@ console.log('\n-- sambungan di kode sungguhan --');
 {
   const RP = baca('supabase/functions/agent-process/lib/request/request_pipeline.ts');
   cek(/buatJejak\(\{[^}]*riwayatDiterima: ukurRiwayat\(parsed\.riwayatAsli\)/.test(RP), 'pipeline mengukur riwayat ASLI dari klien');
-  cek(RP.indexOf('ctx.state.jejakPrompt = jejakPrompt') > 0 && RP.indexOf('ctx.state.jejakPrompt = jejakPrompt') < RP.indexOf('enforcePolicy(ctx'), 'jejak dibuat sebelum keputusan kebijakan (BLOCK ikut terukur)');
+  cek(RP.indexOf('ctx.state.jejakPrompt = jejakPrompt') > 0 && RP.indexOf('ctx.state.jejakPrompt = jejakPrompt') < RP.indexOf('checkQuota('), 'jejak dibuat sebelum penolakan kuota (penolakan ikut terukur)');
   cek(/ctx\.request\.history = siapkanRiwayatUntukModel\(ctx\.request\.history \|\| \[\], parsed\.message, jejakPrompt\)/.test(RP), 'pipeline memakai siapkanRiwayatUntukModel yang diuji di atas');
   cek(/tasks: backgroundTasks,\s*jejakPrompt/.test(RP), 'rctx membawa jejak yang sama');
-  const PM = baca('supabase/functions/agent-process/lib/request/policy_middleware.ts');
-  cek(/JSON\.stringify\(\{ message: blockMsg, jejakPrompt: salinJejak\(ctx\.state\.jejakPrompt\) \}\)/.test(PM), 'jawaban BLOCK membawa jejak');
   const SC = baca('supabase/functions/agent-process/lib/streaming/stream_controller.ts');
   cek(/jejakPrompt: salinJejak\(rctx\.jejakPrompt\)/.test(SC) && (SC.match(/barisLogJejak\(rctx\?\.jejakPrompt\)/g) || []).length === 2, 'jawaban DIRECT membawa jejak; DIRECT & STREAM mencatat log');
   const LO = baca('supabase/functions/agent-process/lib/llm_orchestrator.ts');

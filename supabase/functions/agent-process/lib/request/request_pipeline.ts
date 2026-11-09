@@ -1,7 +1,7 @@
 import { handleCorsAndOptions } from './cors_middleware.ts';
 import { handleAuth } from './auth_middleware.ts';
 import { checkQuota } from './quota_middleware.ts';
-import { enforcePolicy } from './policy_middleware.ts';
+import { saringAlatMenurutKemampuan } from './policy_middleware.ts';
 import { parseRequestParams } from './request_parser.ts';
 import { buildUnifiedExecutionContext } from './execution_context.ts';
 import { UnifiedExecutionContext, RequestPipelineParams, RequestPipelineResult } from './types.ts';
@@ -134,23 +134,15 @@ export async function executeRequestPipeline(
       mode: parsed.mode
   });
 
-  console.log("[L1] auth binding", { actualAuthId: ctx.auth.userId, appSource: ctx.auth.appSource, message: parsed.message ? parsed.message.substring(0, 50) + '...' : null });
+  console.log("[L1] auth binding", { actualAuthId: ctx.auth.userId, appSource: ctx.auth.appSource, hurufPesan: (parsed.message || '').length });
 
   ctx.request = { ...ctx.request, tools: parsed.tools, model: parsed.model, stream: parsed.stream, history: parsed.history, globalMemory: parsed.globalMemory, semanticContext: parsed.semanticContext || '', extractedImage: parsed.extractedImage, guardianPromptDirective: parsed.guardianPromptDirective, desktopOSMode: parsed.desktopOSMode, auditMode: parsed.auditMode, ragEnabled: parsed.ragEnabled, memoryEnabled: parsed.memoryEnabled, dataTabel: parsed.dataTabel === true, folderKerja: parsed.folderKerja, workspaceTarget: parsed.workspaceTarget, storageTarget: parsed.storageTarget, finalMessage: parsed.finalMessage };
 
   const jejakPrompt = buatJejak({ traceId: parsed.traceId, appSource: parsed.appSource, mode: parsed.mode, riwayatDiterima: ukurRiwayat(parsed.riwayatAsli) });
   catatLapis(jejakPrompt, 'buang_tag_call', parsed.riwayatAsli, parsed.riwayatSesudahTag);
-  jejakPrompt.kebijakan = {
-    keputusan: ctx.policy.decision,
-    skorRisiko: ctx.policy.riskScore,
-    alatDimatikan: ctx.policy.toolsEnabled === false,
-    webDimatikan: ctx.policy.webSearchEnabled === false,
-    ragTopK: ctx.policy.ragTopK,
-  };
   ctx.state.jejakPrompt = jejakPrompt;
 
-  const policyResponse = enforcePolicy(ctx, !!parsed.stream, corsHeaders);
-  if (policyResponse) return { ctx: {} as any, rctx: {} as any, response: policyResponse };
+  saringAlatMenurutKemampuan(ctx);
 
   const quotaResponse = await checkQuota(ctx.auth.userId, runtimeEnv.supabaseUrl, runtimeEnv.supabaseServiceKey, !!parsed.stream, corsHeaders);
   if (quotaResponse) {

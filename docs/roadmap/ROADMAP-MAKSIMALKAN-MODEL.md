@@ -160,7 +160,11 @@ lihat bawah). Catatan palsu dihapus.
 **Selesai bila:** live — pertanyaan ke-N memakai hasil folder dari pertanyaan ke-(N−k) tanpa memanggil alat lagi; log
 `[Riwayat]` = jumlah yang dipilih klien; uji mutasi untuk tiap pemangkas yang dicabut.
 
-## Tahap D — Cabut keamanan semu (K5) 📋 🔧
+## Tahap D — Cabut keamanan semu (K5) 📝 🔧
+
+**Status 9 Nov — terbukti di Ecosystem, menunggu Mametlite** ([log](../project-memory/changelog/2026-11-09-item-131-tahap-d-cabut-blokir-kata.md)): daftar kata, skor
+panjang & kata berulang dicabut, BLOCK/ALLOW_WITH_LIMIT & P-002 dihapus; v554 — 15 permintaan Owner (putaran alat
+19–33 ribu huruf, riwayat sampai 106 ribu) 0 penolakan. **Sisa:** Mametlite tidak rusak (satu chat + RAG live).
 
 **Masalah.** `execution_context.ts` menilai **seluruh teks yang dikirim** — termasuk isi berkas hasil alat — dengan daftar
 kata ("ignore previous instructions", "system prompt", "developer mode", "reveal memory", "bypass", "all data", …),
@@ -283,7 +287,7 @@ build hijau, server ter-deploy sama dengan repo.
 0. **Tahap 0** (ukur ujung-ke-ujung) — gerbang semua tahap; tanpa alat ukur ini kesalahan yang sama bisa terulang diam-diam.
    **J** (hapus komentar) — **keputusan Owner 6 Nov: langsung sesudah Tahap 0, sebelum A**, supaya sesi yang mengerjakan
    A–I tidak lagi disesatkan komentar lama; perubahannya terbukti tak mengubah kode (keluaran build sama). Dalam
-   praktik J selesai lebih dulu (9 Nov); Tahap 0 ✅ 9 Nov; A sebagian, C + H dikerjakan 9 Nov — **berikutnya sisa A (lambat) atau B**.
+   praktik J selesai lebih dulu (9 Nov); Tahap 0 ✅ 9 Nov; A sebagian, C + H + D dikerjakan 9 Nov — **berikutnya sisa A (lambat) atau B**.
 1. **A** (RAG cepat) — syarat uji K1/K2 buku utuh.
 2. **C** (konteks utuh) + **H** (kegagalan jujur) — model berhenti lupa & berhenti diam.
 3. **B** (alat RAG) — dibangun di atas A.

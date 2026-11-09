@@ -50,10 +50,6 @@ function periksaPasangan(p, tambah) {
     if (alatHilang > 0) tambah(MERAH, 'hasil_alat_dibuang', `lapis ${l.nama} membuang ${alatHilang} hasil alat`);
   }
 
-  const kb = server.kebijakan;
-  if (kb && kb.keputusan !== 'ALLOW') {
-    tambah(MERAH, 'kebijakan_membatasi', `keputusan ${kb.keputusan} (skor ${kb.skorRisiko})${kb.alatDimatikan ? ', alat dimatikan' : ''}${kb.webDimatikan ? ', web dimatikan' : ''}, RAG ${kb.ragTopK} potongan`);
-  }
   for (const t of server.penolakan || []) {
     tambah(t.lapis === 'kuota' ? KUNING : MERAH, `ditolak_${t.lapis}`, t.sebab);
   }
