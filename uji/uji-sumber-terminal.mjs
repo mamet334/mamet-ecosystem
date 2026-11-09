@@ -1,9 +1,4 @@
-// UJI 2026-09-23 — keluaran perintah Engineer diakui sebagai sumber label.
-// Sebab: live TUGAS-02 & TUGAS-04, jawaban yang seluruhnya dibangun dari isi berkas nyata (lewat perintah yang
-// Owner setujui) diturunkan ke HYPOTHESIS dengan alasan "tidak mengutip dokumen".
 import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
 import { join } from 'node:path';
@@ -13,27 +8,13 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 const AKAR = AKAR_REPO;
 const F = await import(pathToFileURL(AKAR + '/shared/folderKerjaAlat.js').href + '?v=' + Date.now());
 
-// label_sumber.ts (TypeScript) → JS lewat esbuild: yang diuji berkas server yang asli.
-const { build } = await import(new URL('frontend/node_modules/esbuild/lib/main.js', new URL('../', import.meta.url)).href); // esbuild ada di frontend/node_modules; dirujuk lewat ALAMAT, bukan nama paket, karena berkas uji ini kini di akar repo (di luar frontend/) — lihat uji/README.md
+const { build } = await import(new URL('frontend/node_modules/esbuild/lib/main.js', new URL('../', import.meta.url)).href);
 const SRC = AKAR + '/supabase/functions/agent-process/lib/verification/label_sumber.ts';
 
-// Keluaran sementara ditaruh di folder sementara SISTEM, bukan di dalam `node_modules` (8 Okt 2026).
-//
-// Dulu: `frontend/node_modules/.uji-rag/`. Itu folder yang suite ini JUSTRU dipindahkan dari sana —
-// `npm ci` menghapus `node_modules`, dan itulah yang dulu melenyapkan 48 berkas uji sekaligus
-// (lihat `uji/README.md`). Berkas ujinya ikut pindah ke repo; alamat keluaran sementaranya tidak,
-// jadi separuh masalahnya tertinggal. Dibuktikan 8 Okt: folder itu disembunyikan sesaat, dan empat
-// berkas uji langsung jatuh dengan ENOENT — kegagalan yang tidak terlihat seperti "kode rusak".
-//
-// Alasan asli memilih `node_modules` (Vite tidak memantaunya, jadi menulis di sana tidak memicu
-// aplikasi memuat ulang saat Owner sedang memakainya) justru LEBIH terpenuhi di sini: Vite tidak
-// memantau folder sementara sistem sama sekali.
 const DIR_SEMENTARA = join(tmpdir(), 'uji-mamet');
 mkdirSync(DIR_SEMENTARA, { recursive: true });
 
 const TMP = join(DIR_SEMENTARA, '_label_sumber.mjs');
-// bundle: true sejak T13 (2026-09-28) — label_sumber.ts mengimpor klaim_sumber.ts, jadi impornya
-// harus ikut dibundel ke berkas sementara; dengan bundle:false Node mencarinya di folder sementara.
 writeFileSync(TMP, (await build({ entryPoints: [SRC], bundle: true, platform: 'neutral', write: false, format: 'esm', loader: { '.ts': 'ts' } })).outputFiles[0].text);
 const L = await import(pathToFileURL(TMP).href + '?v=' + Date.now());
 
@@ -48,7 +29,6 @@ const PERINTAH = 'git show HEAD:frontend/src/core/runtime/services/engineer/Inte
 const KELUARAN = `export function detectIntent(task) {\n  const analysisKeywords = ['analisis', 'cek', 'lihat'];\n}\n\nKode keluar 0 (0,2 s).`;
 const pesanTerminal = `[TERMINAL OUTPUT for: ${PERINTAH}]\n${KELUARAN}`;
 
-// ---------- sumberDariKeluaranTerminal ----------
 let s = F.sumberDariKeluaranTerminal([pesanTerminal]);
 cek(s.judul.length === 1 && s.judul[0] === PERINTAH, 'perintah menjadi judul sumber', s.judul);
 cek(s.isi.length === 1 && s.isi[0].includes('detectIntent'), 'keluarannya menjadi isi sumber');
@@ -58,7 +38,6 @@ cek(F.sumberDariKeluaranTerminal([`[TERMINAL OUTPUT for: git status]\nDITOLAK OW
 cek(F.sumberDariKeluaranTerminal([`[TERMINAL OUTPUT for: npm install lodash]\nTIDAK DIJALANKAN: mengunduh paket dari internet`]).judul.length === 0,
   'perintah yang tidak dijalankan tidak boleh jadi sumber');
 
-// ---------- pemeriksa label memakai sumber itu ----------
 const jawabanBenar = `Fungsi detectIntent memakai daftar kata analisis 'analisis', 'cek', 'lihat'.\n\nSumber: \`${PERINTAH}\`\n[STATUS: VERIFIED]`;
 let h = L.periksaLabelSumber(jawabanBenar, s.judul, s.isi);
 cek(h.dikoreksi === false, 'VERIFIED BERTAHAN bila Sumber menyebut perintah yang benar-benar dijalankan', h.alasan);
@@ -78,7 +57,6 @@ const tanpaLabel = `Fungsi detectIntent memakai daftar kata analisis.\n\nSumber:
 h = L.periksaLabelSumber(tanpaLabel, s.judul, s.isi);
 cek(h.dikoreksi === true && /tidak menulis label/.test(h.alasan), 'tanpa label apa pun → HYPOTHESIS ditambahkan seperti biasa', h.alasan);
 
-// ---------- terpasang di jalur server ----------
 const sh = readFileSync(AKAR + '/supabase/functions/agent-process/lib/orchestration/handlers/synthesis_handler.ts', 'utf8');
 cek(/sumberDariKeluaranTerminal/.test(sh) && /requestMode === 'ENGINEER'/.test(sh), 'synthesis_handler memakai sumber terminal untuk mode ENGINEER');
 const uc = readFileSync(AKAR + '/supabase/functions/agent-process/lib/verification/universal_contract.ts', 'utf8');

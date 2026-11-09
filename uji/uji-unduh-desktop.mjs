@@ -1,16 +1,5 @@
-// UJI 2026-09-29 — tautan unduh aplikasi desktop untuk pengguna web.
-//
-// Permintaan Owner: sampai hari ini satu-satunya cara rekan kantor mendapatkan aplikasi adalah Owner
-// MENGIRIMKAN berkas 190 MB itu sendiri, diulang setiap versi baru. Sekarang cukup membuka alamat web.
-//
-// Dua cacat yang paling mungkin, dan keduanya DIAM:
-//   1. tombol memberi `latest.yml` atau `.blockmap` — berkasnya turun, tapi tidak bisa dipasang;
-//   2. API GitHub gagal (batas laju 60/jam per IP) lalu tombolnya menuju ke mana-mana.
-// Keduanya dijaga di bawah.
 
 import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
 import { readFileSync } from 'node:fs';
@@ -25,7 +14,6 @@ const cek = (ok, pesan, rinci) => {
   if (!ok) gagal++;
 };
 
-// Bentuk rilis NYATA (diambil dari GitHub 29 Sep 2026), bukan karangan.
 const RILIS_NYATA = {
   tag_name: 'v4.2.0', draft: false, prerelease: false,
   assets: [
@@ -35,7 +23,6 @@ const RILIS_NYATA = {
   ],
 };
 
-// ── 1. Memilih berkas yang BENAR ─────────────────────────────────────────────────────────────
 console.log('\n-- memilih pemasang --');
 
 const info = U.pilihPemasang(RILIS_NYATA);
@@ -45,17 +32,14 @@ cek(!/\.yml|\.blockmap/.test(info?.nama || ''),
 cek(info.versi === '4.2.0', 'versi tanpa awalan v', info.versi);
 cek(info.byte === 189960793, 'ukuran ikut terbaca');
 
-// Draf & pra-rilis bukan untuk rekan kantor.
 cek(U.pilihPemasang({ ...RILIS_NYATA, draft: true }) === null, 'rilis DRAF ditolak');
 cek(U.pilihPemasang({ ...RILIS_NYATA, prerelease: true }) === null, 'PRA-RILIS ditolak');
-// Rilis tanpa .exe (mis. hanya berkas updater) jangan dipaksakan.
 cek(U.pilihPemasang({ tag_name: 'v9', assets: [{ name: 'latest.yml', size: 1, browser_download_url: 'x' }] }) === null,
   'rilis tanpa .exe → null, bukan memberikan berkas lain');
 for (const buruk of [null, undefined, {}, 'teks', { assets: 'bukan array' }]) {
   cek(U.pilihPemasang(buruk) === null, `masukan buruk (${JSON.stringify(buruk)}) → null, bukan galat`);
 }
 
-// ── 2. Tombol tidak pernah buntu ─────────────────────────────────────────────────────────────
 console.log('\n-- tidak pernah buntu --');
 
 cek(U.alamatUnduh(info) === info.url, 'ada info → menuju berkasnya langsung');
@@ -65,12 +49,10 @@ cek(U.teksUnduh(null) === 'Unduh aplikasi desktop', 'tanpa info, tombolnya tetap
 cek(/v4\.2\.0/.test(U.teksUnduh(info)) && /181 MB/.test(U.teksUnduh(info)),
   'versi & ukuran ditampilkan SEBELUM diklik — 190 MB tak pantas mengejutkan orang di tengah unduhan', U.teksUnduh(info));
 
-// Ukuran
 cek(U.bentukUkuran(189960793) === '181 MB', 'ukuran dibulatkan ke MB', U.bentukUkuran(189960793));
 cek(U.bentukUkuran(2 * 1024 * 1024 * 1024) === '2,0 GB', 'ukuran besar jadi GB');
 for (const b of [0, -5, null, undefined, 'x']) cek(U.bentukUkuran(b) === '', `ukuran tak sah (${JSON.stringify(b)}) → kosong, bukan "NaN MB"`);
 
-// ── 3. Gagal jaringan/batas laju tidak melempar ──────────────────────────────────────────────
 console.log('\n-- API gagal --');
 
 cek(await U.ambilRilisTerbaru(async () => ({ ok: false, status: 403 })) === null, 'batas laju (403) → null, bukan lemparan');
@@ -78,7 +60,6 @@ cek(await U.ambilRilisTerbaru(async () => { throw new Error('offline'); }) === n
 const nyata = await U.ambilRilisTerbaru(async () => ({ ok: true, json: async () => RILIS_NYATA }));
 cek(nyata?.nama === 'Mamet-AI-Setup-4.2.0.exe', 'jawaban sah diurai benar', nyata);
 
-// ── 4. TERPASANG ─────────────────────────────────────────────────────────────────────────────
 console.log('\n-- terpasang --');
 
 const TOMBOL = readFileSync(`${AKAR}/frontend/src/components/TombolUnduhDesktop.jsx`, 'utf8');
@@ -90,18 +71,13 @@ cek(/<TombolUnduhDesktop ringkas \/>/.test(LOGIN), 'tombol dirender di layar mas
 cek(/import TombolUnduhDesktop from '\.\/TombolUnduhDesktop'/.test(SET) && /<TombolUnduhDesktop \/>/.test(SET),
   'tombol juga ada di Pengaturan untuk pengguna web yang sudah masuk');
 
-// Di aplikasi desktop tombol ini TIDAK boleh muncul — pembaruannya datang sendiri.
 cek(/window\.electronAPI\?\.checkForUpdates/.test(TOMBOL), 'komponen memeriksa apakah sedang di desktop');
 cek(/if \(diDesktop\) return null;/.test(TOMBOL), 'di aplikasi desktop tombolnya tidak dirender sama sekali');
-// v2 (2026-10-19, Item 127 Tahap 2b): Settings bertab menambah syarat `bagianAktif === 'desktop'`.
-// Yang dijaga tetap `!adaPembaruan` sebagai syarat render — bukan susunan teks harfiahnya.
 cek(/\{!adaPembaruan && (?:bagianAktif === '[a-z]+' && )?\(/.test(SET), 'bagian Pengaturan hanya muncul di web — pasangan panel Pembaruan');
 
-// Pengambilan dibatalkan bila komponen ditutup lebih dulu.
 cek(/let batal = false;/.test(TOMBOL) && /return \(\) => \{ batal = true; \};/.test(TOMBOL),
   'permintaan dibatalkan saat komponen ditutup — tidak menulis state pada komponen yang sudah hilang');
 
-// Tautan keluar wajib aman.
 cek(/rel="noopener noreferrer"/.test(TOMBOL), 'tautan keluar memakai noopener noreferrer');
 
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));

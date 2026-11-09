@@ -1,7 +1,3 @@
-// UJI 2026-11-02 — Item 130 Tahap D (graf Home): lapisan Kemampuan lewat tombol — alat chat, alat folder, MCP berekor,
-// sub-agent dari DAFTAR RESMI `shared/daftarSubagen.js` yang juga dibaca server (izin T1). Menjaga: daftar = registry
-// server, server tak lagi menulis daftarnya sendiri, tanpa ID/token di berkas publik, graf hanya membaca status konektor,
-// tombol tertutup di awal, label tak menumpuk saat lapisan menyala, kelas tombol benar-benar dibuat Tailwind.
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -26,7 +22,6 @@ const baca = (p) => readFileSync(join(AKAR, p), 'utf8');
 const kode = (p) => baca(p).split(/\r?\n/).filter((b) => !/^\s*(\/\/|\*)/.test(b)).join('\n');
 console.log('uji-graf-home-tahap-d v1');
 
-// ── 1. Daftar resmi = registry server ───────────────────────────────────────────────────────────
 const REG = 'supabase/functions/agent-process/plugins/registry.ts';
 const reg = kode(REG);
 const impor = Object.fromEntries([...reg.matchAll(/^import (\w+) from '\.\/(\w+)\.ts';/gm)].map((m) => [m[1], m[2]]));
@@ -39,18 +34,14 @@ cek(JSON.stringify(D.SUBAGEN_MAMETLITE) === '["researcher","deep_research"]' && 
   && JSON.stringify(D.ALIAS_TOOLS) === '{"web_search":"researcher","code_executor":"coder","web_scraper":"scraper"}',
   'sifat sama dengan aturan T1 sebelumnya (Mametlite: researcher & deep_research; pemilik: youtube_analyst; alias)');
 
-// ── 2. Server membaca daftar yang sama ──────────────────────────────────────────────────────────
 const IZIN = kode('supabase/functions/agent-process/lib/orchestration/izin_subagent.ts');
-// `new Set(['…` maupun bentuk TypeScript `new Set<string>(['…` — daftar yang ditulis tangan di server.
 cek(/from '\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/shared\/daftarSubagen\.js'/.test(IZIN) && !/new Set(<[^>]*>)?\(\s*\[\s*['"]/.test(IZIN) && !/web_search:\s*'researcher'/.test(IZIN),
   'izin_subagent.ts mengambil daftar & sifat dari shared/ (tak lagi menulis daftarnya sendiri)');
 
-// ── 3. Berkas publik tanpa rahasia ──────────────────────────────────────────────────────────────
 const DS = kode('shared/daftarSubagen.js');
 cek(!/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(DS) && !/apify_api|sk-or-|https?:\/\/|Deno\.env|process\.env/.test(DS),
   'shared/daftarSubagen.js tanpa UUID pemilik, token, alamat, atau env (ikut bundel klien & repo publik)');
 
-// ── 4. Susunan lapisan ──────────────────────────────────────────────────────────────────────────
 const alatChat = [{ name: 'web_search', aktif: true }, { name: 'data_tabel', aktif: true }, { name: 'memory_manager', aktif: false }, { name: 'word_to_pdf', aktif: true }, { name: 'deep_research', aktif: true }];
 const sumber = { alatChat, alatFolder: ALAT_SEMUA, konektorDikenal: KONEKTOR_DIKENAL, subagen: D.SUBAGEN };
 const L = G.susunLapisanKemampuan({ ...sumber, konektor: [] });
@@ -77,7 +68,6 @@ const tiruanKonektor = G.konektorUntukGraf([{ konektor: 'x', nama: 'X', workspac
 cek(JSON.stringify(Object.keys(tiruanKonektor[0]).sort()) === '["alat","diaktifkan","id","menyala","nama","workspace"]' && tiruanKonektor[0].menyala === true,
   'konektorUntukGraf membuang pid, ringkasan, stealth (tak dibawa ke graf)', tiruanKonektor[0]);
 
-// ── 5. Gabung ke graf dasar ─────────────────────────────────────────────────────────────────────
 const dasar = G.susunGrafHome({ ...barisTiruan(), vitals: {} });
 const jumlahDasar = dasar.nodes.length;
 const gab = G.gabungGraf(dasar, L);
@@ -87,17 +77,11 @@ cek(dasar.nodes.length === jumlahDasar && gab.nodes.length === jumlahDasar + L.n
   && gab.nodes.slice(iKer).every((n) => n.isCategory), 'gabungGraf: graf dasar tak diubah, setiap garis lapisan bertemu simpulnya, kerangka tetap dilukis terakhir');
 cek(G.simpulDirektori(gab.nodes).length === G.simpulDirektori(dasar.nodes).length, 'Knowledge Directory tak kemasukan alat');
 
-// ── 6. Tata letak saat lapisan menyala ──────────────────────────────────────────────────────────
-// Urutan alat di registry tak bisa dikendalikan (penemuan modul) dan menggeser keseimbangan — diukur 3 urutan.
-// Sejak Tahap F (tata surya, posisi dihitung — bukan gaya fisika): 0 tumpang mentah di SEMUA layar & urutan, termasuk 768
-// & data 2× yang semasa gaya fisika masih 1–3. Batas dikencangkan ke 0.
 const nama = alatChat.map((a) => a.name);
 const urutan = [nama, [...nama].reverse(), ['word_to_pdf', 'web_search', 'deep_research', 'memory_manager', 'data_tabel']];
 const lapisanUrut = urutan.map((u) => G.susunLapisanKemampuan({ ...sumber, konektor: [], alatChat: u.map((n) => alatChat.find((a) => a.name === n)) }));
 for (const [nama2, opsi, batas] of [['layar Owner', {}, 0], ['1920×1080', { layar: { lebar: 1600, tinggi: 980 } }, 0],
   ['768×900', { layar: { lebar: 768, tinggi: 600 } }, 0], ['data 2×', { sebaran: { assistant: 260, engineer: 170, lite: 10, dokumen: 460, memori: 20 } }, 0]]) {
-  // Sejak Tahap E: tumpang MENTAH = mutu tata letak (dijaga batas); label yang tetap menindih disembunyikan penghindar
-  // tabrakan — label INTI (pusat, kemampuan, fondasi) tak pernah boleh termasuk yang disembunyikan.
   const hasil = lapisanUrut.map((lp) => simulasikan({ ...opsi, lapisan: lp }));
   const tumpang = hasil.map((h) => h.tumpang.length);
   const intiHilang = hasil.flatMap((h) => h.tersembunyi.filter((l) => ['pusat', 'kemampuan', 'fondasi'].includes(l.group)).map((l) => l.teks));
@@ -105,7 +89,6 @@ for (const [nama2, opsi, batas] of [['layar Owner', {}, 0], ['1920×1080', { lay
     `${nama2}, lapisan menyala, 3 urutan alat: tumpang mentah ${tumpang.join('/')} (batas ${batas}), 0 label inti tersembunyi, pita legenda bersih`, { tumpang: hasil.map((h) => h.tumpang), intiHilang });
 }
 
-// ── 7. Terpasang, tertutup di awal, hanya membaca konektor ──────────────────────────────────────
 const HD = kode('frontend/src/components/dashboard/HomeDashboard.jsx');
 const AG = kode('frontend/src/components/dashboard/ActivityGraph.jsx');
 cek(/\[kemampuanTampil, setKemampuanTampil\] = useState\(false\)/.test(HD) && /graphData=\{grafTampil\}/.test(HD) && /tataSurya\(graf\);/.test(HD),
@@ -121,7 +104,6 @@ const blok = AG.match(/onClick=\{onToggleKemampuan\}[\s\S]*?<\/div>/)?.[0] || ''
 const kelas = [...blok.matchAll(/className="([^"]+)"/g)].flatMap((m) => m[1].split(/\s+/)).filter(Boolean);
 const { css } = await postcss([tailwind({ ...loadConfig(join(AKAR, 'frontend', 'tailwind.config.js')),
   content: [{ raw: `<div className="${kelas.join(' ')}">`, extension: 'jsx' }] })]).process('@tailwind utilities;', { from: undefined });
-// Kelas dianggap dibuat bila selektornya muncul diikuti spasi, `{`, atau `:` (varian hover:/focus:).
 const dibuat = (k) => ['.' + escTW(k) + ' ', '.' + escTW(k) + '{', '.' + escTW(k) + ':'].some((s) => css.includes(s));
 const takDibuat = kelas.filter((k) => !dibuat(k));
 cek(kelas.length >= 10 && takDibuat.length === 0, `${kelas.length} kelas tombol Kemampuan benar-benar dibuat Tailwind`, takDibuat);

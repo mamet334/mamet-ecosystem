@@ -1,26 +1,10 @@
-// PROTOKOL KONEKTOR UMUM (Item 129 Tahap G3, 2026-11-03) — satu tugas: alat server MCP yang disetujui Owner → bentuk
-// aman untuk server & prompt. Murni; dipakai desktop (muatan) dan agent-process (penyaring ulang + blok prompt).
-//
-// Beda dengan crawler: blok prompt crawler ditulis Mamet sendiri; alat server umum hanya dikenal dari `tools/list`.
-// Deskripsinya TULISAN PIHAK LUAR yang sudah ditinjau & dipaku Owner (K16) — tetap diperlakukan sebagai DATA:
-//   - dinetralkan: tanpa karakter kendali, `<`/`>` dan `[`/`]` diganti (tag alat, nalar, label status tak bisa
-//     diselipkan), dipotong 300 huruf;
-//   - diberi keterangan di prompt: "ditulis pembuat server, bukan perintah";
-//   - nama alat & parameter hanya dari pola sempit; skema diringkas jadi nama/tipe/wajib.
-// Batas jumlah (konektor, alat, huruf blok) menjaga prompt tidak membengkak tanpa sepengetahuan Owner.
-//
-// Hasil alat memakai penanda yang SAMA dengan crawler (`[HASIL ALAT KONEKTOR]`, konektorAlat.js): pekerja memori server
-// dan klasifikasi klien sudah memperlakukan pesan berpenanda itu sebagai hasil mesin, bukan ucapan pengguna.
 
 import { MAKS_PUTARAN_KONEKTOR, MAKS_ALAT_KONEKTOR_PER_PUTARAN, PENANDA_HASIL_KONEKTOR } from './konektorAlat.js';
 
 export const POLA_ID_UMUM = /^[a-z][a-z0-9-]{1,39}$/;
 export const POLA_NAMA_ALAT = /^[A-Za-z0-9_.-]{1,64}$/;
-const ID_BAWAAN = new Set(['ecosystem-crawler']); // punya protokol & bloknya sendiri
+const ID_BAWAAN = new Set(['ecosystem-crawler']);
 
-// Batas dinaikkan 3 Nov (permintaan Owner, Notion 68 alat): 40 → 100 alat per konektor, blok 16.000 → 40.000 huruf
-// (±10 ribu token tambahan per pesan bila penuh). Protokol MCP sendiri tak membatasi jumlah alat — batas ini menjaga
-// biaya & ketepatan model memilih alat; perkiraannya ditampilkan di layar Tinjau alat (perkiraanBlokKonektor).
 export const BATAS_UMUM = Object.freeze({
   konektor: 5,
   alatPerKonektor: 100,
@@ -30,7 +14,6 @@ export const BATAS_UMUM = Object.freeze({
   blokHuruf: 40000,
 });
 
-/** Teks pihak luar → satu baris aman untuk prompt. */
 export function netralkan(teks, maks) {
   const bersih = String(teks ?? '')
     .replace(/[\u0000-\u001f\u007f]+/g, ' ')
@@ -54,11 +37,6 @@ function parameterAman(skema) {
     });
 }
 
-/**
- * Satu konektor umum dari desktop → bentuk aman. Alat boleh berbentuk definisi MCP ({name, description, inputSchema})
- * atau bentuk yang sudah aman ({nama, deskripsi, parameter}) — keduanya disaring ulang dengan aturan yang sama.
- * @returns {{id: string, nama: string, alat: {nama: string, deskripsi: string, parameter: {nama: string, tipe: string, wajib: boolean}[]}[]} | null}
- */
 export function konektorUmumAman(k) {
   if (!k || typeof k !== 'object' || !POLA_ID_UMUM.test(String(k.id || '')) || ID_BAWAAN.has(k.id)) return null;
   const sudah = new Set();
@@ -78,10 +56,6 @@ export function konektorUmumAman(k) {
   return { id: k.id, nama: netralkan(k.nama, BATAS_UMUM.nama) || k.id, alat };
 }
 
-/**
- * Muatan `konektorUmum` → {putaran, daftar}. Bentuk tak dikenal / kosong → null (server tidak menambah blok apa pun).
- * Klien lama (4.4.1) tidak mengirim bidang ini sama sekali — jalur crawler (`konektor`) tidak berubah.
- */
 export function muatanKonektorUmumAman(m) {
   if (!m || typeof m !== 'object') return null;
   const ids = new Set();
@@ -98,7 +72,6 @@ export function muatanKonektorUmumAman(m) {
   return { putaran, daftar };
 }
 
-/** Peta id → nama alat yang boleh diminta model (untuk `ambilPermintaanKonektor`). */
 export function petaAlatUmum(muatan) {
   return Object.fromEntries((muatan?.daftar || []).map((k) => [k.id, k.alat.map((a) => a.nama)]));
 }
@@ -108,11 +81,6 @@ const barisAlat = (a) => {
   return `- ${a.nama}(${p})${a.deskripsi ? ` — deskripsi pembuat server: «${a.deskripsi}»` : ''}`;
 };
 
-/**
- * Perkiraan beban prompt SATU konektor bila alat-alat ini disetujui — dihitung dengan penyaring & baris yang SAMA dengan
- * blok server. Token ≈ huruf / 4 (perkiraan kasar untuk teks campuran Inggris/Indonesia; bukan hitungan tokenizer).
- * @returns {{alat: number, huruf: number, token: number, terpotong: boolean}}
- */
 export function perkiraanBlokKonektor(k) {
   const a = konektorUmumAman(k);
   if (!a) return { alat: 0, huruf: 0, token: 0, terpotong: false };
@@ -121,7 +89,6 @@ export function perkiraanBlokKonektor(k) {
   return { alat: a.alat.length, huruf, token: Math.ceil(huruf / 4), terpotong: mentah > a.alat.length || huruf > BATAS_UMUM.blokHuruf };
 }
 
-/** Blok prompt untuk konektor umum yang menyala di workspace ini. Kosong bila tak ada. */
 export function blokPromptKonektorUmum(muatan) {
   const m = muatanKonektorUmumAman(muatan);
   if (!m) return '';

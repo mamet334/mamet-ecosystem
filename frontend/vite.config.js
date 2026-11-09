@@ -7,19 +7,15 @@ export default defineConfig({
   plugins: [
     react(),
     splitVendorChunkPlugin(),
-    // Run obfuscator only on our custom source code to avoid breaking third-party libraries
     obfuscator({
       include: ['src/**/*.js', 'src/**/*.jsx', 'src/**/*.ts', 'src/**/*.tsx'],
       exclude: [
         'node_modules/**', 
         '**/node_modules/**',
         'src/core/workspace/WidgetRegistry.js',
-        'src/core/runtime/Kernel.js', // Critical: Obfuscator breaks static analysis of dynamic imports
-        'src/core/runtime/services/documentTextExtractor.js', // import() pdfjs/mammoth + worker ?url (Item 69)
-        // import('pdf-lib') (Item 76b): string array obfuscator menyembunyikan nama paket dari Vite,
-        // pdf-lib tak ikut dibundel dan browser gagal "Failed to resolve module specifier 'pdf-lib'".
+        'src/core/runtime/Kernel.js',
+        'src/core/runtime/services/documentTextExtractor.js',
         'src/core/runtime/services/pdfOcrService.js',
-        // import('xlsx') (Item 92): alasan sama dengan pdf-lib di atas.
         'src/core/runtime/services/bacaExcelAsn.js',
         'src/core/application/AppRegistry.js'
       ],
@@ -35,16 +31,7 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
-    // tools/ ada di root repo, di luar frontend/. ToolRegistryService membundelnya lewat
-    // import.meta.glob untuk versi web; tanpa izin ini server dev menolak menyajikannya.
-    // shared/ (28 Okt 2026, ADR-0021 #6): modul bersama klien & server, mis. shared/kueri_pencarian.js.
-    // uji/ (T16, 29 Okt 2026): modul konsol uji-pengambilan-v5.js & uji-konteks-potongan-v2.js + datanya di uji/data-lokal/
-    // (NIP & nama pegawai, diabaikan git). Server dev hanya mendengarkan localhost (tanpa `host`), jadi tak terjangkau jaringan.
     fs: { allow: ['.', '../tools', '../shared', '../uji'] },
-    // Hasil build tidak diawasi (28 Okt 2026). Tanpa ini Vite mengawasi seluruh frontend/, termasuk release/
-    // (aplikasi hasil kemas, ±12.800 berkas) dan build/ (runtime crawler terbundel, ±12.700 berkas, ditulis ulang
-    // tiap `npm run crawler:siapkan`) — terukur: server dev diam memakan 160% satu inti, 497 menit CPU dalam ±5,5 jam.
-    // Keduanya keluaran build yang diabaikan git; renderer tidak pernah mengimpornya. Bawaan Vite (.git, node_modules) tetap.
     watch: { ignored: ['**/release/**', '**/build/**', '**/dist/**'] },
     proxy: {
       '/api': {
@@ -54,6 +41,6 @@ export default defineConfig({
     }
   },
   build: {
-    chunkSizeWarningLimit: 2000 // Raise limit since we use a single vendor chunk
+    chunkSizeWarningLimit: 2000
   }
 })

@@ -1,27 +1,9 @@
-// UJI 2026-10-07 — uraian Markdown Mametlite menghasilkan DATA, bukan HTML.
-//
-// Yang dijaga di sini, dan kenapa ia pantas jadi uji dan bukan sekadar perbaikan sekali jalan:
-//
-//   1. PELOLOSAN  — muatan `<img onerror>`, `<audio onerror>`, `<animate>` jadi TEKS, bukan tag.
-//   2. SKEMA      — `javascript:` / `data:` / `vbscript:` ditolak jadi tautan, dan penolakannya
-//                   TERLIHAT (jatuh ke teks aslinya), bukan dibuang diam-diam.
-//   3. NALAR UTUH — blok `<think>` Mametlite sengaja ditampilkan; perbaikan keamanan tidak boleh
-//                   diam-diam mematikannya, termasuk dua kelonggaran stream-nya.
-//   4. TERPASANG  — `dangerouslySetInnerHTML` benar-benar HILANG dari `mametlite/src`, dan
-//                   perendernya benar-benar dipakai. Ini asersi yang membuat kelas cacatnya tidak
-//                   bisa kembali: tanpa penyuntikan, tak ada daftar putih yang perlu dijaga benar.
-//
-// Asersi 4 itu yang membedakan uji ini dari "sudah saya perbaiki". Daftar putih lama sudah benar
-// menurut penulisnya juga — yang kurang bukan ketelitian, melainkan penjaga.
 
 import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 
-// AKAR diturunkan dari letak berkas ini, mengikuti `uji-cari-judul.mjs` — BUKAN dipaku
-// 'D:/SLAMET/...'. 69 berkas uji lain masih memakunya (J3/J1 di ROADMAP-SIAP-PENGGUNA.md); uji baru
-// tidak boleh menambah satu lagi.
 const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 
 const M = await import(
@@ -39,7 +21,6 @@ const cek = (ok, pesan, rinci) => {
   if (!ok) gagal++;
 };
 
-/** Semua teks yang akan dirender React, digabung — inilah yang sampai ke mata pengguna. */
 const semuaTeks = (simpul) =>
   simpul
     .map((s) => {
@@ -54,7 +35,6 @@ const semuaTeks = (simpul) =>
 const adaJenis = (simpul, jenis) =>
   simpul.some((s) => s.jenis === jenis || (s.jenis === 'nalar' && adaJenis(s.anak, jenis)));
 
-// ── 1. Pelolosan: muatan suntikan jadi TEKS ─────────────────────────────────────────────────────
 console.log('\n-- 1. muatan suntikan jadi teks, bukan tag --');
 
 const muatan = [
@@ -72,8 +52,6 @@ const muatan = [
 for (const [jahat, nama] of muatan) {
   const simpul = M.uraikanMarkdown(jahat);
   const teks = semuaTeks(simpul);
-  // Yang benar: tulisannya UTUH sebagai teks (React yang meloloskannya saat render), dan tidak ada
-  // satu pun simpul tautan/gambar yang lahir darinya.
   cek(
     teks.includes(jahat) && !adaJenis(simpul, 'tautan') && !adaJenis(simpul, 'gambar'),
     `${nama} → teks utuh, nol tautan/gambar`,
@@ -89,11 +67,9 @@ cek(
   M.uraikanMarkdown('<img src=x onerror=alert(1)>'),
 );
 
-// Tidak ada satu pun simpul yang memuat HTML siap-suntik.
 const bocorHtml = JSON.stringify(M.uraikanMarkdown(muatan.map(([m]) => m).join('\n')));
 cek(!bocorHtml.includes('__html'), 'hasil uraian tidak memuat kunci `__html` sama sekali');
 
-// ── 2. Skema alamat ─────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 2. skema alamat: yang ditolak tetap TERLIHAT --');
 
 cek(M.alamatAman('https://contoh.id/a') === 'https://contoh.id/a', 'https diterima');
@@ -125,7 +101,6 @@ s = M.uraikanMarkdown('![x](data:text/html,<script>alert(1)</script>)');
 cek(!adaJenis(s, 'gambar'), 'gambar data: TIDAK jadi gambar', s);
 cek(semuaTeks(s).includes('data:text/html'), 'dan tulisannya tetap terlihat', s);
 
-// ── 3. Nalar & Markdown biasa tetap utuh ────────────────────────────────────────────────────────
 console.log('\n-- 3. nalar & Markdown biasa tidak ikut mati --');
 
 s = M.uraikanMarkdown('<think>menimbang dulu</think>Jawabannya 120.');
@@ -161,20 +136,14 @@ cek(adaJenis(M.uraikanMarkdown('a\nb'), 'baris'), 'baris baru jadi simpul `baris
 cek(M.uraikanMarkdown('').length === 0, 'teks kosong → array kosong, bukan null');
 cek(Array.isArray(M.uraikanMarkdown(null)), 'null → array, tidak melempar');
 
-// Gambar harus menang atas tautan: `![a](b)` memuat `[a](b)`.
 s = M.uraikanMarkdown('![a](https://contoh.id/b.png)');
 cek(s.length === 1 && s[0].jenis === 'gambar', 'gambar diurai lebih dulu daripada tautan', s);
 
-// ── 4. TERPASANG — kelas cacatnya benar-benar hilang dari aplikasi ──────────────────────────────
 console.log('\n-- 4. terpasang: penyuntikan HTML hilang dari mametlite/src --');
 
 const berkasApp = `${AKAR}/mametlite/src/App.jsx`;
 const isiApp = readFileSync(berkasApp, 'utf8');
 
-// Komentar DIBUANG sebelum diperiksa. Berkas itu memang menyebut `dangerouslySetInnerHTML` dalam
-// komentar sejarahnya ("DULU: …"), dan itu benar — catatan kenapa sesuatu dihapus berguna bagi
-// pembaca berikutnya. Yang dilarang adalah PEMAKAIANNYA, bukan penyebutannya; mencocokkan kata
-// mentah akan menghukum dokumentasi yang jujur dan memaksa penulis berikutnya menyamarkan kata itu.
 const kodeSaja = isiApp
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .split('\n')
@@ -193,8 +162,6 @@ cek(
   /dangerouslySetInnerHTML/.test(isiApp),
   'komentarnya MASIH menyebutnya — catatan kenapa ia dihapus tidak boleh ikut hilang',
 );
-// Rantai TERPASANG: App.jsx → TeksKaya.jsx → markdown.js. Diperiksa tiap mata rantainya, karena
-// "modulnya ada" bukan bukti ia dipakai.
 cek(/<TeksKaya\s/.test(kodeSaja), 'App.jsx benar-benar MERENDER dengan <TeksKaya>');
 cek(
   /from '\.\/lib\/TeksKaya'/.test(kodeSaja),
@@ -217,13 +184,8 @@ cek(
   'perendernya sendiri juga tidak menyuntikkan HTML',
 );
 
-// ── 5. KELUARAN RENDER — bukti terakhir, bukan hanya tokennya ───────────────────────────────────
 console.log('\n-- 5. HTML yang benar-benar keluar dari React --');
 
-// Kenapa bagian ini ada: bagian 1 membuktikan muatan jahat jadi token `teks`, tetapi itu belum
-// membuktikan apa yang SAMPAI KE HALAMAN. Yang menentukan adalah keluaran render. Layar chat
-// Mametlite ada di belakang login ke Supabase produksi, jadi ia tidak bisa dibuka di sini — dan
-// `react-dom/server` memberi bukti yang sama tanpa menyentuh akun siapa pun.
 let render = null;
 let sebabGagalRender = '';
 const tmp = mkdtempSync(join(tmpdir(), 'uji-teks-kaya-'));
@@ -248,10 +210,6 @@ try {
     jsx: 'automatic',
     outfile: keluar,
     logLevel: 'silent',
-    // `react-dom/server` masih CJS di dalamnya dan memanggil `require('util')`. Bundel ESM tidak
-    // punya `require`, jadi disediakan di sini — tanpa ini esbuild gagal dengan
-    // "Dynamic require of \"util\" is not supported", dan kegagalan itu TENTANG PEMBUNGKUSAN,
-    // bukan tentang keamanan yang diuji. Dibedakan supaya pesan merahnya tidak menyesatkan.
     banner: {
       js: "import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);",
     },
@@ -264,14 +222,6 @@ try {
 cek(!!render, `perender bisa dibangun & dimuat${sebabGagalRender ? ` (${sebabGagalRender.slice(0, 160)})` : ''}`);
 
 if (render) {
-  // Asersi ini DIPERBAIKI saat ditulis, dan sebabnya pantas dicatat: bentuk pertamanya mencari
-  // /\bon(error|click|…)=/ di keluaran, lalu MERAH pada keluaran yang justru benar —
-  // `&lt;img src=x onerror=alert(1)&gt;`. Tulisan "onerror=" memang ada di sana, sebagai TEKS, dan
-  // itu yang kita mau: pengguna melihat apa yang model tulis. Yang salah asersinya, bukan kodenya.
-  //
-  // Pernyataan yang tepat lebih sederhana DAN lebih kuat: dari muatan jahat, keluarannya tidak
-  // boleh memuat satu pun `<` di dalam pembungkusnya — nol markup, bukan "markup yang tidak
-  // berbahaya". Dengan begitu tak ada atribut yang bisa hidup, karena tak ada tag tempat ia menempel.
   for (const [jahat, nama] of muatan) {
     const html = render(jahat);
     const dalam = html.replace(/^<div class="uji">/, '').replace(/<\/div>$/, '');
@@ -299,12 +249,10 @@ if (render) {
 
 rmSync(tmp, { recursive: true, force: true });
 
-// Penjaga CSP: Mametlite tidak punya `vercel.json` sebelum ini, jadi nol header keamanan.
 let vercel = null;
 try {
   vercel = JSON.parse(readFileSync(`${AKAR}/mametlite/vercel.json`, 'utf8'));
 } catch {
-  /* ditangani asersi di bawah */
 }
 cek(!!vercel, 'mametlite/vercel.json ada');
 const csp = JSON.stringify(vercel?.headers ?? []);

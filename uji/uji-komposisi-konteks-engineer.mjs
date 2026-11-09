@@ -1,23 +1,3 @@
-// UJI 2026-10-04 — biaya terbesar mode Engineer berhenti bersembunyi.
-//
-// ── Cacatnya ────────────────────────────────────────────────────────────────────────────────
-// `catatKomposisiPrompt` mengukur tiap segmen prompt sebagai JARAK ke segmen berikutnya. Blok
-// `engineerContextPrompt` tidak punya penandanya sendiri, padahal urutannya di
-// `context_pipeline.ts:24` adalah: identitas + userContext + MEMORI + ENGINEER + kontrak.
-//
-// Akibatnya seluruh konteks Engineer ikut terhitung ke dalam `memori_personal_klien`.
-//
-// Terukur di produksi 4 Okt, empat kali jalan berturut-turut:
-//   memori_personal_klien = 18195, 18195, 18195, 18195
-// IDENTIK — tak peduli pertanyaannya, tak peduli RAG menemukan 8 potongan atau 0. Padahal:
-//   • `user_memories` yang sebenarnya: 10 baris, 316 huruf SELURUHNYA (terpanjang 45)
-//   • `globalMemory` dari klien dibatasi 4.000 huruf (`MAX_RAG_CONTEXT_CHARS`)
-// Sisanya — belasan ribu huruf — adalah konteks Engineer yang tak pernah punya namanya sendiri.
-//
-// Ini bukan sekadar label keliru: selama empat kali jalan itu, Owner melihat "memori personal"
-// sebagai biaya terbesar prompt-nya dan tidak punya cara tahu bahwa yang sebenarnya membengkak
-// adalah konteks Engineer. Satu pengukuran yang salah nama menyembunyikan satu-satunya angka
-// yang bisa ditindaklanjuti.
 
 import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -37,8 +17,6 @@ const cek = (ok, pesan, rinci) => {
 const esbuild = await import(pathToFileURL(join(AKAR, 'frontend/node_modules/esbuild/lib/main.js')).href);
 const dir = mkdtempSync(join(tmpdir(), 'uji-komposisi-'));
 try {
-  // Modul ASLI dijalankan; ketiga impornya ditukar tiruan karena tak satu pun dipakai fungsi ini.
-  // pesanSemuaPenyediaGagal ikut ditiru (impor ke-4 sejak 30 Okt 2026, K4) — juga tak dipakai fungsi ini.
   writeFileSync(join(dir, 'stub.mjs'), 'export const eventBus={emit(){},subscribe(){}};export const CapabilityRegistry={};export const RuntimeContext={};export const pesanSemuaPenyediaGagal=()=>"";');
   let src = baca('supabase/functions/agent-process/lib/llm_orchestrator.ts')
     .replace("'./runtime_context.ts'", "'./stub.mjs'")
@@ -49,7 +27,6 @@ try {
   writeFileSync(join(dir, 'o.mjs'), code);
   const { catatKomposisiPrompt } = await import(pathToFileURL(join(dir, 'o.mjs')).href);
 
-  // Prompt tiruan yang meniru URUTAN NYATA di context_pipeline.ts:24.
   const MEMORI = 300;
   const ENGINEER = 14000;
   const sistem =
@@ -59,7 +36,6 @@ try {
     '\n[UNIVERSAL EVIDENCE CONTRACT v1]\n' + 'k'.repeat(500) +
     '\n[BLOK 5: X]\n' + 'c'.repeat(200);
 
-  // `catatKomposisiPrompt` menulis ke console.log; keluarannya ditangkap untuk diperiksa.
   const asli = console.log;
   let baris = '';
   console.log = (t) => { baris += String(t); };
@@ -77,7 +53,6 @@ try {
   console.log('\n-- memori personal kembali ke ukuran sebenarnya --');
   cek(ukuran.memori_personal_klien < MEMORI + 200,
     `tidak lagi menelan konteks Engineer (${ukuran.memori_personal_klien}, bukan belasan ribu)`, ukuran);
-  // INTI PERBAIKANNYA: tanpa penanda Engineer, angka ini akan ±14.300 — persis pola 18.195 nyata.
   cek(ukuran.memori_personal_klien < ukuran.konteks_engineer / 10,
     'selisihnya tegas — kebisuan yang membuat 18.195 tampak sebagai "memori personal" tertutup', ukuran);
 
@@ -92,10 +67,6 @@ try {
   rmSync(dir, { recursive: true, force: true });
 }
 
-// ── Penandanya dicari dari AWAL, bukan dari awal kontrak ────────────────────────────────────
-// `cari()` sengaja mulai dari awal kontrak (lihat JSDoc fungsinya). Blok Engineer ada SEBELUM
-// kontrak, jadi memakai `cari` akan selalu -1 dan segmennya diam-diam tak pernah muncul — persis
-// kebisuan yang hendak dihentikan. Kesalahan ini benar-benar terjadi saat menulis perbaikannya.
 console.log('\n-- dicari dari awal --');
 {
   const O = baca('supabase/functions/agent-process/lib/llm_orchestrator.ts');

@@ -1,11 +1,3 @@
-// UJI 2026-10-28 — Intent Router: kegagalan ke JALUR AMAN, dan "tidak ada" ≠ "gagal" (Item 126 Fase 1, temuan 4).
-//
-// Riwayat chat (agregat di database): 6 dari 6 kegagalan LLM pengklasifikasi diikuti Coordinator yang JUGA gagal (model
-// & kunci sama) dan 0 sub-agent jalan; lalu 6 dari 6 tetap tercatat "Coordinator memutuskan tidak ada sub-agent" —
-// padahal ia tak pernah sempat memutuskan.
-//
-// intent_router.ts DIBUNDEL SUNGGUHAN (esbuild); hanya tiga impornya diganti tiruan: pemanggil LLM, parser rencana, dan
-// daftar plugin. Pencocok kata kunci tetap modul asli. Jadi yang diuji adalah alur keputusan handler itu sendiri.
 
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -33,7 +25,7 @@ const hasil = await esbuild.build({
 const dir = mkdtempSync(join(tmpdir(), 'uji-router-jalur-aman-'));
 writeFileSync(join(dir, 'ir.mjs'), hasil.outputFiles[0].text);
 const { IntentRouterHandler } = await import(pathToFileURL(join(dir, 'ir.mjs')).href);
-process.on('exit', () => { try { rmSync(dir, { recursive: true, force: true }); } catch { /* sudah bersih */ } });
+process.on('exit', () => { try { rmSync(dir, { recursive: true, force: true }); } catch {  } });
 
 console.log('uji-router-jalur-aman v1');
 let gagal = 0;
@@ -42,7 +34,6 @@ const cek = (ok, pesan, rinci) => {
   if (!ok) gagal++;
 };
 
-/** Satu putaran router. `llm` = daftar jawaban/galat berurutan untuk tiap panggilan runCoordinatorLLM. */
 async function jalankan(pesan, llm, { tools = ['web_search'] } = {}) {
   const panggilan = [];
   const antre = [...llm];
@@ -67,7 +58,6 @@ async function jalankan(pesan, llm, { tools = ['web_search'] } = {}) {
 }
 const ada = (langkah, re) => langkah.some((l) => re.test(l));
 
-// ── 1. Pengklasifikasi gagal → jalur aman ──────────────────────────────────────────────────────
 console.log('\n-- pengklasifikasi gagal --');
 let r = await jalankan('halo, apa kabar hari ini?', [new Error('402 saldo tidak cukup')]);
 cek(r.isChatBiasa === true, 'isChatBiasa = true → jawab langsung', r.isChatBiasa);
@@ -76,7 +66,6 @@ cek(r.lewati.includes('ORCHESTRATION') && r.lewati.includes('TOOL_EXECUTION'), '
 cek(ada(r.langkah, /Intent Router gagal \(402 saldo tidak cukup\) → jalur aman: dijawab langsung tanpa sub-agent/), 'langkah proses menyebut alasan DAN jalurnya', r.langkah);
 cek(!ada(r.langkah, /memutuskan/), 'tidak ada klaim "memutuskan" apa pun', r.langkah);
 
-// ── 2. Coordinator gagal → "gagal", bukan "memutuskan" ─────────────────────────────────────────
 console.log('\n-- Coordinator gagal --');
 r = await jalankan('tolong mencari berita oku', [new Error('timeout')]);
 cek(r.panggilan.join(',') === 'coordinator', 'kata kunci "mencari" → langsung Coordinator, tanpa pengklasifikasi', r.panggilan);
@@ -84,7 +73,6 @@ cek(ada(r.langkah, /Coordinator gagal merencanakan, lanjut tanpa sub-agent: time
 cek(!ada(r.langkah, /Coordinator memutuskan tidak ada sub-agent/), '"memutuskan tidak ada sub-agent" TIDAK ditulis sesudah gagal (dulu 6 dari 6)', r.langkah);
 cek(r.plan.length === 0, 'rencana kosong', r.plan);
 
-// ── 3. Jalur normal tak berubah ────────────────────────────────────────────────────────────────
 console.log('\n-- jalur normal --');
 r = await jalankan('halo, apa kabar?', ['CHAT_BIASA']);
 cek(r.isChatBiasa === true && r.panggilan.join(',') === 'pengklasifikasi', 'CHAT_BIASA → jawab langsung, Coordinator tak dipanggil', r);

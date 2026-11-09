@@ -1,12 +1,3 @@
-// UJI 2026-10-31 — K6 (ADR-0022, pilihan A Owner): menghapus akun = menghapus SELURUH datanya, tanpa data yatim.
-//
-// Cacat: 4 tabel ber-FK NO ACTION menolak penghapusan akun yang pernah dipakai ("Database error deleting user" di
-// dashboard Supabase), dan tabel tanpa FK / log ber-SET NULL menyisakan data pribadi tanpa pemilik. Perbaikannya
-// pemicu BEFORE DELETE di auth.users (migrasi 20261031020000).
-//
-// PERILAKUNYA dibuktikan di database (transaksi dibatalkan, sebelum & sesudah berlaku): akun ber-data tanpa pemicu →
-// gagal FK; dengan pemicu → terhapus, sisa baris di SEMUA tabel public ber-user_id = 0 (changelog 2026-10-31).
-// Uji repo ini menjaga daftar tabel dan bentuk pemicunya agar tak membusuk diam-diam.
 
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -27,12 +18,9 @@ const daftar = (pola) => {
   const m = MIG.match(pola);
   return m ? [...m[1].matchAll(/'([a-z_]+)'/g)].map((x) => x[1]) : [];
 };
-// [^\]]* — bukan [\s\S]*?: pola malas tetap bisa melompati daftar pertama sampai ke `using old.id::text` milik
-// daftar kedua (versi awal uji ini salah begitu). Daftar nama tabel tak pernah memuat ']'.
 const uuid = daftar(/foreach t in array array\[([^\]]*)\] loop\s+execute format\('delete from public\.%I where user_id = \$1', t\) using old\.id;/);
 const teks = daftar(/foreach t in array array\[([^\]]*)\] loop\s+execute format\('delete from public\.%I where user_id = \$1', t\) using old\.id::text;/);
 
-// Diukur 31 Okt (FK ke auth.users + tipe kolom user_id) — ditulis ulang di sini sebagai pembanding independen.
 const NO_ACTION = ['chats', 'documents', 'agent_logs', 'scheduled_tasks'];
 const SET_NULL_MILIK_AKUN = ['ai_system_logs', 'assistant_audit_log', 'evidence_audit_logs', 'memory_audit_logs', 'verification_audit_logs'];
 const TANPA_FK_UUID = ['api_usage', 'chats_backup', 'entity_locks', 'hakim_bayangan', 'user_memories'];

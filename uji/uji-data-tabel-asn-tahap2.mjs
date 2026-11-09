@@ -1,7 +1,4 @@
-// UJI Item 92 Tahap 2 (logika murni) — nama OPD, bentuk simpan, dugaan versi dengan 53 berkas disimpan berurutan.
 import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 console.log('uji-data-tabel-asn-tahap2 v2');
 import fs from 'node:fs';
@@ -13,8 +10,6 @@ const XLSX = require('xlsx');
 const M = await import(pathToFileURL(AKAR_REPO + '/frontend/src/core/runtime/services/dataTabelAsn.js').href + '?v=' + Date.now());
 
 const AKAR = 'D:/REKONSIALISASI 2026';
-// J3 (2 Nov 2026): berkas Excel rekonsiliasi pegawai SUNGGUHAN hanya ada di laptop Owner — tak boleh ke repo publik.
-// Tanpanya uji ini DILEWATI dengan jujur di mesin lain (CI GitHub); K3 diulang di laptop sebelum rilis garis dasar.
 if (!fs.existsSync(AKAR)) {
   console.log('DILEWATI — butuh D:/REKONSIALISASI 2026 (Excel pegawai sungguhan, sengaja di luar repo)');
   process.exit(0);
@@ -26,7 +21,6 @@ let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL
 console.log('--- usulan nama OPD');
 for (const f of berkas) console.log(`   ${path.basename(f).padEnd(72)} → ${M.opdDariNamaBerkas(path.basename(f))}`);
 
-// Simulasi: simpan satu per satu (urutan folder); setiap simpan, dugaan versi terhadap berkas aktif; bila ada → ganti.
 const aktif = []; const dugaan = []; let totalBaris = 0;
 for (const f of berkas) {
   const nama = path.basename(f);
@@ -45,14 +39,11 @@ const harap = ['INSPEKTORAT', 'muara jaya', 'REKON --- RENCANA', 'EDARAN REKONSI
 cek(dugaan.length === 5, `tepat 5 pasangan versi (${dugaan.length})`);
 cek(harap.every((h) => dugaan.some((x) => x.includes(h))), 'kelima pasangan pengukuran terdeteksi (termasuk DPPKB ↔ REKON)');
 cek(!dugaan.some((x) => /PERKIM/.test(x)), 'PERKIM ↔ EDARAN susulan (1 NIP kebetulan) TIDAK dianggap versi');
-// 2.312 → 2.310 (Tahap 5): baris templat bernama "-" (Semidang Aji JFT) dan "=" (Ulu Ogan) bukan orang.
 cek(totalBaris === 2310, `total baris siap simpan 2.310 (${totalBaris})`);
 const unik = aktif.reduce((a, b) => a + b.nips.length, 0);
 console.log(`   berkas aktif sesudah semua disimpan: ${aktif.length}, orang di berkas aktif: ${unik}`);
 cek(aktif.length === 48, `53 berkas − 5 versi lama = 48 berkas aktif (${aktif.length})`);
-// Perbandingan isi (kasus live INSPEKTORAT): NIP sama belum tentu isi sama
 const muat = (rel) => { const h = { berkas: path.basename(rel), ...M.bacaWorkbookAsn(M.dariSheetJS(XLSX.readFile('D:/REKONSIALISASI 2026/' + rel), XLSX)) }; return M.siapkanSimpan(h, 'INSPEKTORAT').p_pegawai; };
-// Bentuk "dari database": string kosong jadi null, seperti asn_simpan_berkas (nullif)
 const keDb = (rows) => rows.map((p) => Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v === '' ? null : v])));
 const senin = muat('senin/INSPEKTORAT.xlsx'), selasa = muat('selasa/INSPEKTORAT.xlsx');
 const sama = M.bandingkanIsi(senin, keDb(senin));

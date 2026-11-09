@@ -1,14 +1,3 @@
-// uji-chimera-verifier-nyata v1 — bukti untuk T13 (ROADMAP-TEMUAN-TERBUKA.md)
-//
-// Dua hal diperiksa pada `chimera_wasm_bundle.ts` yang ditawarkan masuk `agent-process`:
-//   1. KEAMANAN — daftar bagian biner WASM. Impor adalah SATU-SATUNYA cara modul WASM
-//      menyentuh dunia luar. Nol impor = tidak bisa jaringan, berkas, atau variabel lingkungan.
-//   2. KEBENARAN — binernya (bukan sumber Rust-nya) dijalankan terhadap kasus berbentuk
-//      dokumen Mamet NYATA, bukan benchmark buatannya sendiri.
-//
-// PRASYARAT: folder CHIMERA ada di laptop. Kode uji ikut repo, binernya tidak
-// (aturan uji/README.md: "kode ikut repo, data tinggal di laptop").
-// Kalau folder itu tidak ada, uji ini melapor DILEWATI dan keluar dengan kode 0.
 
 import { readFileSync, existsSync } from 'node:fs';
 
@@ -21,7 +10,6 @@ if (!existsSync(JALUR_BUNDEL)) {
   process.exit(0);
 }
 
-// ── Ambil biner dari dalam berkas TypeScript ────────────────────────────────
 const isi = readFileSync(JALUR_BUNDEL, 'utf8');
 const PENANDA = "CHIMERA_WASM_BASE64 = '";
 const mulai = isi.indexOf(PENANDA);
@@ -36,7 +24,6 @@ const periksa = (nama, lulus, catatan) => {
   console.log(`${lulus ? 'OK   ' : 'GAGAL'} ${nama}${catatan ? ` — ${catatan}` : ''}`);
 };
 
-// ── BAGIAN 1: audit bagian (section) biner WASM ─────────────────────────────
 console.log('\n── 1. Audit biner ──');
 console.log(`ukuran biner : ${biner.length} bita`);
 console.log(`magic        : ${biner.subarray(0, 4).toString('hex')}`);
@@ -76,8 +63,8 @@ if (bagianEkspor) {
     const panjangNama = bacaLeb();
     const nama = biner.subarray(p, p + panjangNama).toString('utf8');
     p += panjangNama;
-    p++;          // jenis
-    bacaLeb();    // indeks
+    p++;
+    bacaLeb();
     ekspor.push(nama);
   }
 }
@@ -88,7 +75,6 @@ periksa(
   'verifier = fungsi murni; data yang mengalir TIDAK mengubahnya'
 );
 
-// ── Pembungkus panggilan, meniru verifyWithChimera() dari bundel ────────────
 const instance = new WebAssembly.Instance(new WebAssembly.Module(biner), {});
 const { memory, alloc_bytes, dealloc_bytes, verify_rag_raw } = instance.exports;
 const enc = new TextEncoder();
@@ -114,9 +100,6 @@ function verify(jawaban, potongan, bolehParsial = true) {
   }
 }
 
-// ── BAGIAN 2: kasus berbentuk dokumen Mamet nyata ───────────────────────────
-// Tiap kasus menyebut apa yang dibuktikannya, supaya kegagalan bisa dibaca tanpa
-// membuka dokumen roadmap.
 const kasus = [
   {
     nama: 'A. Kutipan benar yang menyebut nomor & tahun regulasi',
@@ -173,15 +156,12 @@ for (const k of kasus) {
   console.log(`        dibuktikan: ${k.buktikan}`);
 }
 
-// Temuan T13 dicatat sebagai 5 dari 6 salah. Uji ini LULUS bila keadaan itu masih sama —
-// kalau CHIMERA diperbaiki suatu hari, uji ini akan GAGAL dan itu berarti T13 perlu ditinjau ulang.
 periksa(
   'keadaan T13 masih sama (5 dari 6 kasus salah)',
   salah === 5,
   `sekarang ${salah} salah — kalau berubah, tinjau ulang T13 di ROADMAP-TEMUAN-TERBUKA.md`
 );
 
-// ── Fungsi murni: panggilan berulang memberi vonis identik ──────────────────
 const sekali = JSON.stringify(verify(kasus[1].jawaban, kasus[1].potongan, true));
 const lagi = JSON.stringify(verify(kasus[1].jawaban, kasus[1].potongan, true));
 periksa('vonis identik pada panggilan berulang', sekali === lagi, 'tak ada keadaan yang menumpuk');

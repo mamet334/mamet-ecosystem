@@ -1,18 +1,3 @@
-// UJI 2026-10-08 — galat yang sampai ke pengguna Mametlite memakai bahasanya, bukan bahasa server.
-//
-// Keadaan sebelum (M4, `ROADMAP-SIAP-PENGGUNA.md`): `App.jsx` menuliskan `❌ Error: ${err.message}`
-// ke gelembung chat, dan `err.message` datang dari `callAgentSimple.js:100` yang memulangkan teks
-// server APA ADANYA. Yang dibaca pegawai ASN di HP: `❌ Error: ENGINEER_NO_API_KEY`,
-// `❌ Error: Server error: 500`, `❌ Error: Failed to fetch`. Galat masuk lebih buruk lagi —
-// `alert(error.message)`, kotak sistem berisi "Invalid login credentials".
-//
-// Tiga sifat yang dijaga, dan yang kedua paling mudah dilanggar saat orang menambah pesan baru:
-//
-//   1. BAHASANYA  — judul & saran bahasa Indonesia, tanpa istilah teknis yang bocor.
-//   2. JUJUR      — tanda yang TIDAK dikenali menghasilkan pesan UMUM, bukan tebakan yang terdengar
-//                   yakin. Pesan yakin yang salah lebih merugikan daripada pesan umum.
-//   3. TIDAK MENELAN — teks teknisnya tetap ada. Pengguna HP tak punya DevTools; kalau sebabnya
-//                   hilang, satu-satunya cara melapor adalah "errornya merah".
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -34,11 +19,8 @@ const cek = (ok, pesan, rinci) => {
   if (!ok) gagal++;
 };
 
-// Istilah yang TIDAK boleh muncul di kalimat yang dibaca pengguna. "OpenRouter" & "Pengaturan"
-// sengaja tidak termasuk: keduanya nama benda yang pengguna LIHAT di layarnya sendiri.
 const BOCOR = /\b(error|failed|fetch|server error|invalid|credentials|undefined|null|exception|stack|API_KEY|NetworkError)\b/i;
 
-// ── 1. Tanda yang dikenali → bahasa pengguna + tindakan ─────────────────────────────────────────
 console.log('\n-- 1. tanda dikenali: bahasa pengguna, dan ada tindakannya --');
 
 const kasus = [
@@ -62,8 +44,6 @@ for (const [mentah, polaJudul, nama] of kasus) {
   cek(h.teknis === mentah, `${nama} → teks teknisnya UTUH untuk pelaporan`, h.teknis);
 }
 
-// Saldo: catatan Owner — saldo minus TIDAK berarti layanan mati, sebagian permintaan kecil masih
-// dilayani. Pesannya tidak boleh menyatakan lebih dari itu.
 const saldo = P.pesanUntukPengguna(new Error('402 can only afford 1048 tokens'));
 cek(
   /lebih pendek|kecil/i.test(saldo.saran),
@@ -71,7 +51,6 @@ cek(
   saldo.saran,
 );
 
-// ── 2. Tidak dikenali → umum, bukan tebakan ─────────────────────────────────────────────────────
 console.log('\n-- 2. tidak dikenali → umum, tidak menebak --');
 
 for (const aneh of ['QWERTY_ZZZ', '', 'at Object.<anonymous> (/x.js:1:1)']) {
@@ -88,7 +67,6 @@ for (const aneh of ['QWERTY_ZZZ', '', 'at Object.<anonymous> (/x.js:1:1)']) {
 cek(P.pesanUntukPengguna(null).teknis === 'tanpa keterangan', 'null tidak melempar & tetap punya teknis');
 cek(P.pesanUntukPengguna('teks biasa').teknis === 'teks biasa', 'galat berupa string juga ditangani');
 
-// ── 3. Galat masuk ──────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 3. galat masuk (Supabase Auth) --');
 
 const masuk = [
@@ -106,7 +84,6 @@ for (const [mentah, pola, nama] of masuk) {
 const masukAneh = P.pesanGalatMasuk(new Error('ZZZ'));
 cek(!/email atau kata sandi/i.test(masukAneh.judul), 'masuk: tanda tak dikenali tidak menuduh sandi salah', masukAneh);
 
-// ── 4. TERPASANG ────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 4. terpasang: jalur lama benar-benar hilang --');
 
 const APP = readFileSync(`${AKAR}/mametlite/src/App.jsx`, 'utf8');
@@ -121,19 +98,16 @@ cek(/pesanUntukPengguna\(/.test(KODE), 'jalur chat memakai penerjemah');
 cek(/pesanGalatMasuk\(/.test(KODE), 'jalur masuk memakai penerjemah');
 cek(/galatMasuk &&/.test(KODE), 'dan galat masuk BENAR-BENAR dirender di formulirnya, bukan di alert');
 
-// Gelembung kosong yang tertinggal: dua gelembung untuk satu kegagalan.
 cek(
   /akhir\.role === 'assistant' && !akhir\.content/.test(KODE),
   'gelembung penampung yang kosong DIGANTI saat gagal, bukan ditinggalkan',
 );
 
-// Mutasi di tempat pada objek pesan yang masih dibagi dengan state sebelumnya.
 cek(
   !/newArr\[newArr\.length - 1\]\.content = /.test(KODE),
   'objek pesan tidak lagi diubah di tempat saat arus mengalir (tak aman di StrictMode)',
 );
 
-// Hapus percakapan tidak bisa dibatalkan, dan riwayatnya hanya ada di peramban ini.
 const blokHapus = (KODE.match(/const handleDeleteChat[\s\S]{0,700}/) || [''])[0];
 cek(/window\.confirm/.test(blokHapus), 'hapus percakapan bertanya dulu (hapus dokumen sudah sejak dulu)');
 cek(/tidak bisa dikembalikan/i.test(blokHapus), 'dan pertanyaannya menyebutkan bahwa itu permanen');

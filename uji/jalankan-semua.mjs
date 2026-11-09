@@ -1,50 +1,3 @@
-/**
- * jalankan-semua.mjs — penjalan seluruh berkas uji, dengan keluaran yang bisa dibaca MESIN.
- * Dibuat 28 September 2026 untuk Tahap 6 (ROADMAP-ENGINEER-MANDIRI): verifikasi patch yang DIJALANKAN.
- *
- * Sebelum ini satu-satunya cara menjalankan seluruh suite adalah lingkaran shell di uji/README.md —
- * cukup untuk mata manusia, tidak cukup untuk proses utama yang harus MEMUTUSKAN apakah sebuah patch
- * dipulihkan. Karena itu berkas ini menuliskan satu objek JSON, dan hanya itu yang dibaca mesin.
- *
- *   node uji/jalankan-semua.mjs                      seluruh berkas uji
- *   node uji/jalankan-semua.mjs uji-a.mjs            hanya yang disebut (dipakai untuk menjalankan ULANG
- *                                                    berkas yang gagal, sesudah pemulihan)
- *   node uji/jalankan-semua.mjs --keluar=hasil.json  JSON ditulis ke berkas, bukan ke layar
- *
- * Kenapa --keluar ada: proses utama Electron memotong keluaran perintah pada 20 KB (alatFolderJalan
- * BATAS_JALAN.keluaranByte). JSON yang memuat keluaran uji yang gagal mudah melewatinya, dan JSON
- * terpotong tidak bisa diurai — hasilnya "verifikasi gagal" untuk patch yang sebenarnya selamat.
- *
- * Tiga golongan hasil, mengikuti kebiasaan yang sudah ada di folder ini:
- *   LULUS     baris terakhir "SEMUA LULUS" dan kode keluar 0
- *   DILEWATI  baris terakhir diawali "DILEWATI" (mis. data-lokal/ atau folder luar tak ada di mesin ini)
- *   GAGAL     selain keduanya — termasuk mati mendadak dan habis waktu
- *
- * DUA CACAT YANG KETAHUAN PADA JALAN PERTAMA (28 September 2026), keduanya memberi MERAH PALSU — yaitu
- * cacat yang paling berbahaya di sini, karena merah palsu memulihkan patch yang sebenarnya benar:
- *
- *   (a) stdout dan stderr digabung. Lima berkas dinyatakan gagal hanya karena node menulis peringatan
- *       MODULE_TYPELESS_PACKAGE_JSON ke stderr SESUDAH baris kesimpulan. Putusan kini dibaca dari
- *       stdout saja; stderr tetap disimpan untuk laporan, tidak pernah untuk memutuskan.
- *   (b) berkas ".js" ikut dijalankan. `uji-pengambilan-v5.js` dan `uji-konteks-potongan-v2.js` bukan berkas
- *       uji baris perintah — ia modul yang diimpor dari konsol DevTools aplikasi yang sedang berjalan,
- *       jadi dijalankan node ia diam saja dan tampak gagal. Hanya .mjs/.cjs yang dijalankan, sama dengan
- *       lingkaran shell di README. Tetapi berkas .js TIDAK disembunyikan: ia masuk daftar `takDijalankan`
- *       beserta alasannya — pengecualian yang diam adalah cara `uji-folder-label` merah tanpa ketahuan
- *       selama empat hari.
- *
- * PENANDA UJI CERMIN (prasyarat Tahap 6). Berkas uji yang MENYALIN logika lalu menguji salinannya tetap
- * hijau walau kode aslinya berubah. Ia tidak dihapus — untuk logika di dalam komponen React ia kadang
- * satu-satunya cara — tetapi tidak boleh dihitung sebagai bukti keselamatan patch. Penandanya satu baris
- * di dalam berkas: "UJI-CERMIN:" diikuti alasannya.
- *
- * BATAS PER BERKAS (28 Oktober 2026). Berkas yang menjalankan proses berat sungguhan (Python, Chromium) menyatakan
- * batasnya SENDIRI dengan baris komentar di awal baris: "// BATAS-UJI-DETIK: <angka>" diikuti alasan terukurnya
- * (paling tinggi 600). Bukan menaikkan batas semua berkas: berkas lain tetap 120 detik, dan setiap batas khusus masuk
- * laporan (`batasKhusus`) supaya tak ada yang memperlonggar diam-diam. Berkas itu membaca angka yang sama
- * (`batasBerkas`) dan memasang tenggat per langkah DI BAWAHNYA — bila lambat, ia sendiri yang menyebut langkahnya,
- * bukan dibunuh tanpa keterangan.
- */
 
 import { spawn } from 'node:child_process';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -53,22 +6,17 @@ import { fileURLToPath } from 'node:url';
 
 const FOLDER_UJI = path.dirname(fileURLToPath(import.meta.url));
 const AKAR_REPO = path.resolve(FOLDER_UJI, '..');
-// Batas bawaan SATU berkas uji. Terukur 28 Okt 2026 (122 berkas, suite 129–204 s): ±110 berkas di bawah 2 s; yang
-// terlama uji-crawler 25–36 s, uji-konektor-mcp 26–27 s, uji-konektor-stealth 19 s. uji-konektor-stealth — satu-satunya
-// yang meluncurkan Chromium sungguhan — dua kali dibunuh batas ini (26–27 & 28 Okt); lihat BATAS PER BERKAS di atas.
 export const BATAS_MS = 120000;
 const BATAS_TERTINGGI_MS = 600000;
 const PENANDA_CERMIN = /UJI-CERMIN:/;
 const PENANDA_BATAS = /^\/\/ BATAS-UJI-DETIK: (\d+)/m;
 
-/** Berkas uji baris perintah di folder ini. Berkas ini sendiri tidak ikut — namanya tidak diawali "uji-". */
 export function daftarBerkasUji(folder = FOLDER_UJI) {
   return readdirSync(folder)
     .filter((n) => /^uji-.+\.(mjs|cjs)$/i.test(n))
     .sort();
 }
 
-/** Berkas uji-*.js: modul untuk konsol DevTools, bukan untuk node. Dilaporkan, tidak dijalankan. */
 export function daftarTakDijalankan(folder = FOLDER_UJI) {
   return readdirSync(folder)
     .filter((n) => /^uji-.+\.js$/i.test(n))
@@ -76,7 +24,6 @@ export function daftarTakDijalankan(folder = FOLDER_UJI) {
     .map((nama) => ({ nama, alasan: 'modul konsol DevTools, bukan uji baris perintah (tidak mencetak kesimpulan)' }));
 }
 
-/** Golongan hasil satu berkas uji. Dipisah supaya bisa diuji tanpa menjalankan node. */
 export function golongkan({ kodeKeluar, barisTerakhir, habisWaktu }) {
   if (habisWaktu) return 'GAGAL';
   const b = String(barisTerakhir || '').trim();
@@ -85,22 +32,19 @@ export function golongkan({ kodeKeluar, barisTerakhir, habisWaktu }) {
   return 'GAGAL';
 }
 
-/** Apakah berkas uji ini menguji CERMIN (salinan logika), bukan kode sungguhan. */
 export function ujiCermin(nama, folder = FOLDER_UJI) {
   try { return PENANDA_CERMIN.test(readFileSync(path.join(folder, nama), 'utf8')); }
   catch { return false; }
 }
 
-/** Batas (ms) satu berkas uji: yang ia nyatakan sendiri lewat PENANDA_BATAS, atau BATAS_MS. */
 export function batasBerkas(nama, folder = FOLDER_UJI) {
   try {
     const m = readFileSync(path.join(folder, nama), 'utf8').match(PENANDA_BATAS);
     if (m && Number(m[1]) > 0) return Math.min(Number(m[1]) * 1000, BATAS_TERTINGGI_MS);
-  } catch { /* berkas tak terbaca → batas bawaan; kegagalannya tampak saat dijalankan */ }
+  } catch {  }
   return BATAS_MS;
 }
 
-/** Jalankan satu berkas uji. `folder`/`batasMs` hanya diganti oleh uji penjalan ini sendiri (uji-verifikasi-tahap6). */
 export function jalankanSatu(nama, { folder = FOLDER_UJI, batasMs = batasBerkas(nama, folder) } = {}) {
   return new Promise((selesai) => {
     const mulai = Date.now();
@@ -110,8 +54,6 @@ export function jalankanSatu(nama, { folder = FOLDER_UJI, batasMs = batasBerkas(
     } catch (e) {
       return selesai({ nama, golongan: 'GAGAL', ms: 0, barisTerakhir: `gagal memulai: ${e.message}`, keluaran: String(e.message) });
     }
-    // Dipisah dengan sengaja: putusan HANYA dari stdout (lihat cacat (a) di kepala berkas),
-    // stderr ikut dilaporkan supaya sebabnya terlihat bila ada yang gagal sungguhan.
     let keluaran = '';
     let galatKeluaran = '';
     const batasi = (s) => (s.length > 200000 ? s.slice(-200000) : s);
@@ -119,8 +61,6 @@ export function jalankanSatu(nama, { folder = FOLDER_UJI, batasMs = batasBerkas(
     anak.stderr.on('data', (d) => { galatKeluaran = batasi(galatKeluaran + d); });
 
     let habisWaktu = false;
-    // anak.kill() cukup: di Windows libuv memasukkan proses anak ke job object yang mematikan seluruh keturunannya
-    // (Python, Chromium) begitu node ini mati — dibuktikan uji-verifikasi-tahap6 (28 Okt 2026).
     const jam = setTimeout(() => { habisWaktu = true; anak.kill(); }, batasMs);
 
     anak.on('error', (e) => {
@@ -136,8 +76,6 @@ export function jalankanSatu(nama, { folder = FOLDER_UJI, batasMs = batasBerkas(
         golongan: golongkan({ kodeKeluar, barisTerakhir, habisWaktu }),
         ms: Date.now() - mulai,
         barisTerakhir: habisWaktu ? `habis waktu ${batasMs / 1000} detik` : (barisTerakhir || '(tanpa keluaran)'),
-        // Keluaran disimpan untuk yang gagal — inilah yang dilaporkan APA ADANYA, bukan
-        // diringkas jadi "2 masalah kritis" (constitution/28 PRINSIP DASAR a).
         keluaran: `${keluaran.slice(-3000)}${galatKeluaran ? `\n[stderr]\n${galatKeluaran.slice(-1000)}` : ''}`,
       });
     });
@@ -169,10 +107,7 @@ async function utama() {
     dilewati: ambil('DILEWATI').map((h) => ({ nama: h.nama, alasan: h.barisTerakhir })),
     gagal: ambil('GAGAL').map((h) => ({ nama: h.nama, barisTerakhir: h.barisTerakhir, keluaran: h.keluaran })),
     takDijalankan: daftarTakDijalankan(),
-    // Berapa dari berkas uji ini hanya menguji cermin — angka ini masuk laporan supaya "semua hijau"
-    // tidak pernah berarti lebih daripada yang sungguh dibuktikan.
     cermin: hasil.filter((h) => h.cermin).map((h) => h.nama),
-    // Berkas yang menyatakan batas sendiri — terlihat, bukan kelonggaran diam-diam.
     batasKhusus: daftar.filter((n) => batasBerkas(n) !== BATAS_MS).map((nama) => ({ nama, detik: batasBerkas(nama) / 1000 })),
   };
   const teks = JSON.stringify(ringkas);
@@ -181,7 +116,6 @@ async function utama() {
   process.exit(ringkas.gagal.length ? 1 : 0);
 }
 
-// Diimpor berkas uji (untuk menguji golongkan/daftarBerkasUji) → jangan jalankan apa pun.
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) {
   await utama();
 }

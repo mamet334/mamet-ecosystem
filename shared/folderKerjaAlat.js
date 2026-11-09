@@ -1,16 +1,8 @@
-// FOLDER KERJA — protokol alat baca (Item 85 Tahap 1, 2026-09-22). Murni & tanpa impor: dipakai desktop
-// (AssistantService — membaca permintaan alat dari jawaban AI, menyusun hasil) dan server (agent-process — blok prompt).
-//
-// Alur: server hanya tahu NAMA folder. Bila ada, prompt memuat blok FOLDER KERJA AKTIF. AI meminta alat dengan tag
-// <alat_folder>{"alat":"folder_read","alamat":"src/app.js"}</alat_folder>; desktop menjalankannya di proses utama
-// (berpagar), lalu mengirim hasilnya sebagai putaran berikutnya. Paling banyak MAKS_PUTARAN putaran per pertanyaan.
 
 export const MAKS_PUTARAN = 4;
 export const MAKS_ALAT_PER_PUTARAN = 5;
 export const ALAT_BACA = ['folder_list', 'folder_read', 'folder_search'];
-// Tahap 2: tulis — setiap alat meminta izin Owner lewat dialog asli proses utama (bukan di sini).
 export const ALAT_TULIS = ['folder_write', 'folder_edit', 'folder_mkdir', 'folder_rename', 'folder_delete'];
-// Tahap 3: jalankan program dari daftar izin (proses utama: tanpa shell, dialog izin, batas waktu). Satu per putaran.
 export const ALAT_JALAN = ['folder_run'];
 export const ALAT_SEMUA = [...ALAT_BACA, ...ALAT_TULIS, ...ALAT_JALAN];
 export const PENANDA_HASIL = '[HASIL ALAT FOLDER]';
@@ -19,17 +11,10 @@ const POLA_TAG = /<alat_folder>\s*([\s\S]*?)\s*<\/alat_folder>/gi;
 const POLA_BLOK_JSON = /```(?:json)?[ \t]*\n\s*(\{[\s\S]*?\})\s*\n?```/gi;
 const BUKA_ISI = '<<<ISI BERKAS>>>';
 const TUTUP_ISI = '<<<AKHIR ISI BERKAS>>>';
-const BATAS_KELUARAN_TAMPIL = 20 * 1024; // sama dengan BATAS_JALAN.keluaranByte di alatFolderJalan.cjs
+const BATAS_KELUARAN_TAMPIL = 20 * 1024;
 const BUKA_KELUARAN = '<<<KELUARAN PERINTAH>>>';
 const TUTUP_KELUARAN = '<<<AKHIR KELUARAN PERINTAH>>>';
 
-/**
- * Berkas yang TERBUKTI dibaca alat, dari pesan hasil alat (pesan kini + riwayat) — untuk pemeriksa label server:
- * judul = alamat relatif berkas (boleh disebut di baris "Sumber:"), isi = isi berkas + teks daftar/pencarian
- * (angka di jawaban dicocokkan ke sini). Hanya pesan berawalan PENANDA_HASIL yang dibaca.
- * @param {string[]} pesan
- * @returns {{judul: string[], isi: string[]}}
- */
 export function sumberDariHasilAlat(pesan) {
   const judul = [];
   const isi = [];
@@ -41,14 +26,10 @@ export function sumberDariHasilAlat(pesan) {
       isi.push(m[2]);
     }
     for (const m of t.matchAll(/^### folder_(?:list|search)[^\n]*\n[\s\S]*?(?=\n\n### |\n\nLanjutkan:|\n\nIni putaran TERAKHIR|(?![\s\S]))/gm)) isi.push(m[0]);
-    // Tahap 3: perintah yang benar-benar dijalankan proses utama — perintahnya boleh disebut di baris Sumber, angka
-    // jawaban dicocokkan ke keluarannya.
     for (const m of t.matchAll(/^### folder_run (.+?) \(disetujui Owner — ([^\n]*)\)\n<<<KELUARAN PERINTAH>>>\n([\s\S]*?)\n<<<AKHIR KELUARAN PERINTAH>>>/gm)) {
       if (!judul.includes(m[1])) judul.push(m[1]);
       isi.push(`${m[2]}\n${m[3]}`);
     }
-    // Tahap 3: laporan tindakan (BERHASIL / DITOLAK OWNER / DITOLAK/GAGAL) — alamat/perintahnya boleh disebut di baris
-    // Sumber. Isi berkas & keluaran dibuang dulu: teks di dalamnya tak boleh memalsukan baris hasil.
     const tanpaIsi = t.replace(/<<<ISI BERKAS>>>[\s\S]*?<<<AKHIR ISI BERKAS>>>|<<<KELUARAN PERINTAH>>>[\s\S]*?<<<AKHIR KELUARAN PERINTAH>>>/g, '');
     for (const m of tanpaIsi.matchAll(/^### folder_[a-z]+ (.+)\n(?:BERHASIL \(disetujui Owner\)|DITOLAK OWNER|DITOLAK\/GAGAL):[^\n]*/gm)) {
       for (const j of [m[1], ...m[1].split(' → ')]) if (j && !judul.includes(j)) judul.push(j);
@@ -58,19 +39,6 @@ export function sumberDariHasilAlat(pesan) {
   return { judul, isi };
 }
 
-/**
- * ENGINEER (2026-09-23): keluaran perintah Engineer dikirim balik ke model sebagai pesan pengguna berbentuk
- * "[TERMINAL OUTPUT for: <perintah>]\n<keluaran>" — bentuk yang BERBEDA dari hasil alat folder di atas, sehingga
- * pemeriksa label tidak mengenalinya. Akibatnya (live TUGAS-02 & TUGAS-04) jawaban yang seluruh isinya bersumber
- * dari berkas nyata justru diturunkan ke HYPOTHESIS dengan alasan "tidak mengutip dokumen" — jawaban paling
- * berbukti dihukum, sementara jawaban tanpa bukti sama sekali tidak.
- *
- * Perintahnya dijalankan proses utama setelah Owner menyetujui dialog izin, jadi keluarannya SETARA dokumen:
- * perintah boleh disebut di baris Sumber, dan angka jawaban dicocokkan ke keluarannya.
- *
- * @param {string[]} pesan pesan pengguna (pesan kini + riwayat)
- * @returns {{judul: string[], isi: string[]}}
- */
 export function sumberDariKeluaranTerminal(pesan) {
   const judul = [];
   const isi = [];
@@ -80,7 +48,6 @@ export function sumberDariKeluaranTerminal(pesan) {
     if (!m) continue;
     const perintah = m[1].trim();
     const keluaran = m[2];
-    // Perintah yang DITOLAK tidak menghasilkan bukti apa pun — jangan jadikan sumber.
     if (/^(DITOLAK OWNER|TIDAK DIJALANKAN)/m.test(keluaran)) continue;
     if (perintah && !judul.includes(perintah)) judul.push(perintah);
     isi.push(`${perintah}\n${keluaran}`);
@@ -88,28 +55,16 @@ export function sumberDariKeluaranTerminal(pesan) {
   return { judul, isi };
 }
 
-// Baris bergaya catatan kaki sistem: emoji + teks miring seluruhnya ("📂 _…_", "✍️ _…_", "⚠️ _…_").
 const BARIS_KAKI = /^\s*(?:📂|✍️?|▶️?|⚠️?|🚫|⛔|⏱️?|🔁)\s*_.*_\s*$/u;
 const KLAIM_SISTEM = /dicatat dari proses utama/i;
 
-/**
- * Buang catatan kaki TIRUAN yang ditulis model (live Tahap 3: model meniru "✍️ _… (dicatat dari proses utama, bukan
- * dari kata model): …_" dari riwayat — sekali bahkan tanpa satu alat pun dijalankan). Kalimat "dicatat dari proses
- * utama" hanya boleh ditulis sistem: baris yang memuatnya selalu dibuang; bagian setelah pemisah "---" yang isinya
- * hanya baris bergaya catatan kaki dibuang utuh. Catatan kaki asli ditambahkan SESUDAH fungsi ini.
- * @param {string} teks
- */
 export function buangKakiTiruan(teks) {
-  // Pemisah ikut ditangkap supaya teks yang tidak dibuang kembali persis seperti aslinya.
   const potongan = String(teks ?? '').split(/(\n[ \t]*---[ \t]*\n)/);
   const tanpaKlaim = (b) => b.split('\n').filter((l) => !KLAIM_SISTEM.test(l)).join('\n');
   let hasil = tanpaKlaim(potongan[0]);
   for (let i = 1; i < potongan.length; i += 2) {
     const b = tanpaKlaim(potongan[i + 1] ?? '');
     const baris = b.split('\n');
-    // Catatan pemeriksa label server ("_Catatan sistem: …_") ditempel SESUDAH teks model, bisa jatuh di bagian yang
-    // sama dengan catatan kaki tiruan (live Tahap 3, chat "jalankan app.py lagi") — catatannya dipertahankan,
-    // tiruannya dibuang.
     if (baris.every((l) => !l.trim() || BARIS_KAKI.test(l) || CATATAN_SISTEM.test(l))) {
       const catatan = baris.filter((l) => CATATAN_SISTEM.test(l));
       if (catatan.length) hasil += `\n\n${catatan.join('\n')}`;
@@ -124,17 +79,7 @@ const CATATAN_SISTEM = /^\s*_Catatan sistem:/;
 const POLA_KLAIM_JALAN = /\b(?:berhasil dijalankan|(?:sudah|telah) (?:saya )?(?:jalankan|dijalankan)|saya jalankan|dijalankan (?:lagi|ulang|kembali)|hasil (?:eksekusi|menjalankan)|kode keluar)\b/i;
 const POLA_KLAIM_UBAH = /\b(?:berhasil (?:di)?(?:simpan|tulis|ubah|edit|buat|hapus|tambahkan)|(?:sudah|telah) (?:saya )?(?:di)?(?:simpan|tulis|ubah|edit|tambahkan|buat|hapus|ganti)|saya (?:sudah )?(?:simpan|tambahkan|ubah|edit|tulis))\b/i;
 
-/**
- * Peringatan sistem bila jawaban MENGAKU menjalankan/mengubah sesuatu padahal proses utama tidak mencatatnya untuk
- * pertanyaan ini (live Tahap 3: "jalankan app.py lagi" → model tak meminta alat, tak ada dialog, tapi menulis
- * "saya jalankan lagi … Jumlah 27" disalin dari riwayat). Kalimat peringatannya SELALU benar bila dipasang — tidak ada
- * yang tercatat — jadi pola yang terlalu longgar paling-paling menambah satu kalimat benar, tak pernah menuduh salah.
- * @param {string} teks jawaban akhir (tanpa catatan kaki)
- * @param {{jalan: boolean, ubah: boolean}} tercatat ada folder_run / alat ubah yang BERHASIL untuk pertanyaan ini
- * @returns {string|null}
- */
 export function peringatanKlaimTanpaAlat(teks, tercatat) {
-  // Nalar & blok kode tidak dinilai; tanda tebal/miring dibuang ("**berhasil** dijalankan" tetap klaim).
   const t = String(teks ?? '').replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/```[\s\S]*?```/g, '').replace(/[*_`]/g, '');
   const bagian = [];
   if (!tercatat?.jalan && POLA_KLAIM_JALAN.test(t)) bagian.push('TIDAK ADA perintah yang dijalankan untuk pertanyaan ini');
@@ -143,23 +88,15 @@ export function peringatanKlaimTanpaAlat(teks, tercatat) {
   return `⚠️ **Peringatan sistem:** ${bagian.join('; ')} — proses utama tidak mencatatnya, jadi klaim menjalankan/mengubah di atas tidak berdasar (hasil yang disebut mungkin disalin dari jawaban sebelumnya). Minta ulang bila memang ingin dijalankan/diubah.`;
 }
 
-/** Nama folder yang boleh dikirim ke server: teks pendek tanpa pemisah alamat. */
 export function namaFolderAman(nama) {
   const n = String(nama ?? '').replace(/[\\/:\x00-\x1f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100);
   return n || null;
 }
 
-/**
- * Permintaan alat di jawaban AI. Blok <think> diabaikan (tag di nalar bukan permintaan).
- * @returns {{permintaan: Array<{alat, alamat?, kueri?, dari?, sampai?}>, galat: string[], teksTanpaTag: string}}
- */
 export function ambilPermintaanAlat(teks) {
   const tanpaNalar = String(teks || '').replace(/<think>[\s\S]*?<\/think>/gi, '');
   const permintaan = [];
   const galat = [];
-  // Tag resmi + blok ```json berisi permintaan alat folder yang sah (live Tahap 3: deepseek flash menulis
-  // {"alat":"folder_run",…} di blok kode, bahkan setelah dikoreksi — sistem diam, dialog tak muncul). Aman diterima:
-  // setiap perubahan & perintah tetap lewat dialog izin. Blok kode lain (contoh JSON biasa) diabaikan tanpa catatan.
   const calon = [
     ...[...tanpaNalar.matchAll(POLA_TAG)].map((m) => ({ isi: m[1], tag: true })),
     ...[...tanpaNalar.matchAll(POLA_BLOK_JSON)].map((m) => ({ isi: m[1], tag: false })),
@@ -170,14 +107,12 @@ export function ambilPermintaanAlat(teks) {
     try { obj = JSON.parse(mentah); } catch { if (tag) galat.push(`isi tag bukan JSON: ${mentah.slice(0, 80)}`); continue; }
     if (!tag && !(obj && ALAT_SEMUA.includes(obj.alat))) continue;
     const kunci = JSON.stringify(obj);
-    if (sudah.has(kunci)) continue; // tag + blok kode yang sama → satu permintaan
+    if (sudah.has(kunci)) continue;
     sudah.add(kunci);
     if (!obj || !ALAT_SEMUA.includes(obj.alat)) { galat.push(`alat "${obj?.alat}" tidak tersedia`); continue; }
     const p = { alat: obj.alat };
     if (typeof obj.alamat === 'string') p.alamat = obj.alamat.slice(0, 300);
     if (typeof obj.kueri === 'string') p.kueri = obj.kueri.slice(0, 200);
-    // Tulis: isi/cari/ganti TIDAK dipotong diam-diam (berkas terpotong lebih buruk daripada ditolak) — kelebihan ukuran
-    // ditolak oleh proses utama dengan alasan yang dilaporkan ke AI.
     if (typeof obj.isi === 'string') p.isi = obj.isi;
     if (typeof obj.cari === 'string') p.cari = obj.cari;
     if (typeof obj.ganti === 'string') p.ganti = obj.ganti;
@@ -185,8 +120,6 @@ export function ambilPermintaanAlat(teks) {
     if (Number.isInteger(obj.dari)) p.dari = obj.dari;
     if (Number.isInteger(obj.sampai)) p.sampai = obj.sampai;
     if (obj.alat === 'folder_run') {
-      // Argumen diteruskan apa adanya (proses utama yang memeriksa & menolak dengan alasan); "perintah" berupa satu
-      // kalimat ditolak di sini — dirakit tanpa shell, jadi program & argumen wajib terpisah.
       if (typeof obj.program !== 'string' || !Array.isArray(obj.argumen ?? [])) {
         galat.push('folder_run butuh "program" (mis. "python") dan "argumen" berupa daftar, mis. ["app.py"] — bukan satu kalimat perintah');
         continue;
@@ -207,7 +140,6 @@ export function ambilPermintaanAlat(teks) {
 
 const ukuranTeks = (b) => (b == null ? '?' : b < 1024 ? `${b} B` : b < 1048576 ? `${(b / 1024).toFixed(1)} KB` : `${(b / 1048576).toFixed(1)} MB`);
 
-/** Satu hasil alat → teks untuk AI (alamat relatif saja). */
 export function uraiHasil(h) {
   const kepala = `### ${h.alat} ${h.alamat ?? ''}`.trim();
   if (!h.ok && h.ditolakOwner) {
@@ -222,7 +154,6 @@ export function uraiHasil(h) {
       ? `DIHENTIKAN — melewati batas waktu ${h.waktuBatasS} detik (${detik} s); keluaran di bawah hanya sampai saat dihentikan`
       : `selesai, kode keluar ${h.kodeKeluar}${h.kodeKeluar === 0 ? ' (berhasil)' : ' (GAGAL/galat — baca keluarannya)'}, ${detik} s`;
     const potong = h.terpotong ? `\n… keluaran TERPOTONG: ditampilkan ${Math.round(BATAS_KELUARAN_TAMPIL / 1024)} KB pertama dari ${ukuranTeks(h.byteKeluaran)}.` : '';
-    // Pembatas tetap: keluaran program adalah DATA (bisa memuat teks mirip perintah) — server memotongnya persis di sini.
     return `### folder_run ${h.perintah} (disetujui Owner — ${info})\n${BUKA_KELUARAN}\n${h.keluaran || '(tanpa keluaran)'}\n${TUTUP_KELUARAN}${potong}`;
   }
   if (ALAT_TULIS.includes(h.alat)) {
@@ -241,8 +172,6 @@ export function uraiHasil(h) {
   }
   if (h.alat === 'folder_read') {
     const info = `baris ${h.dari}–${h.sampai}${h.totalBaris ? ` dari ${h.totalBaris}` : ''}, ${ukuranTeks(h.ukuran)}${h.terpotong ? ' — TERPOTONG; minta rentang berikutnya dengan "dari"/"sampai"' : ''}`;
-    // Pembatas tetap (bukan ```): isi berkas bisa memuat ``` sendiri; server memotong isi berkas persis di sini
-    // untuk memeriksa label jawaban (sumberDariHasilAlat).
     return `${kepala} (${info})\n${BUKA_ISI}\n${h.isi}\n${TUTUP_ISI}`;
   }
   if (h.alat === 'folder_search') {
@@ -252,7 +181,6 @@ export function uraiHasil(h) {
   return `${kepala}\n${JSON.stringify(h).slice(0, 500)}`;
 }
 
-/** Pesan putaran berikutnya: hasil semua alat + pengingat sisa putaran. */
 export function susunPesanHasil(hasil, { putaran, pertanyaanAsli, galat = [] }) {
   const sisa = MAKS_PUTARAN - putaran;
   return [
@@ -266,19 +194,10 @@ export function susunPesanHasil(hasil, { putaran, pertanyaanAsli, galat = [] }) 
   ].join('\n\n');
 }
 
-// Nama program yang boleh dijalankan (sama dengan PROGRAM di electron/alatFolderJalan.cjs — proses utama tetap
-// memeriksa ulang; daftar ini hanya untuk mengenali blok kode yang dimaksud sebagai perintah).
 const PROGRAM_DIKENAL = new Set(['python', 'py', 'pip', 'node', 'npm', 'npx', 'git', 'go', 'cargo', 'rustc', 'deno', 'bun',
   'php', 'ruby', 'java', 'javac', 'dotnet', 'gcc', 'g++', 'make', 'cmake']);
 const POLA_BLOK_PERINTAH = /```(?:bash|sh|shell|console|cmd|powershell|ps|pwsh|terminal)?[ \t]*\n[ \t]*(?:\$|>|PS>)?[ \t]*([^\n`]+?)[ \t]*\n[ \t]*```/gi;
 
-/**
- * Engineer (live T8 2026-09-22): setelah aturannya sampai, model menulis perintah sebagai blok ```bash satu baris
- * ("```bash\ngit status\n```"), bukan penanda [MAMET_CMD: …] — tombol Jalankan tak muncul. Blok SATU baris yang
- * diawali program dikenal diubah menjadi penanda (tetap butuh klik Owner + dialog izin + aturan profil Engineer).
- * Blok berbaris banyak atau program lain dibiarkan sebagai contoh kode.
- * @param {string} teks
- */
 export function blokKodeKeMametCmd(teks) {
   return String(teks ?? '').replace(POLA_BLOK_PERINTAH, (blok, baris) => {
     const program = baris.trim().split(/\s+/)[0].toLowerCase().replace(/\.exe$/, '');
@@ -286,17 +205,6 @@ export function blokKodeKeMametCmd(teks) {
   });
 }
 
-/**
- * Engineer (T8, 2026-09-22): perintah Engineer hanya jalan saat Owner mengklik tombol [MAMET_CMD]; keluarannya dikirim
- * balik sebagai pesan "[TERMINAL OUTPUT for: …]" yang disusun dari hasil proses utama (AssistantService.runCommand:
- * "Kode keluar N" / "Dihentikan — melewati batas waktu"). Klaim "sudah dijalankan … lulus" SAH hanya bila pesan
- * yang dijawab adalah keluaran seperti itu. Jawaban yang masih mengusulkan [MAMET_CMD] berisi HARAPAN ("output yang
- * diharapkan: berhasil dijalankan"), bukan klaim — tidak dinilai. Klaim mengubah berkas tidak dinilai: perubahan kode
- * Engineer lewat jalur patch (usulan → persetujuan → terapkan), bukan klaim teks.
- * @param {string} teks jawaban Engineer
- * @param {string} pesanDijawab pesan pengguna yang dijawab
- * @returns {string|null}
- */
 export function peringatanKlaimEngineer(teks, pesanDijawab) {
   if (/\[MAMET_CMD:/.test(String(teks ?? ''))) return null;
   const p = String(pesanDijawab ?? '');
@@ -304,10 +212,6 @@ export function peringatanKlaimEngineer(teks, pesanDijawab) {
   return peringatanKlaimTanpaAlat(teks, { jalan: adaKeluaran, ubah: true });
 }
 
-/**
- * Putaran koreksi: jawaban sebelumnya mengaku menjalankan/mengubah padahal tidak ada alat yang diminta. Berawalan
- * PENANDA_HASIL supaya server memperlakukannya sebagai putaran lanjutan folder (tanpa RAG), bukan pertanyaan baru.
- */
 export function susunPesanKoreksi({ putaran, pertanyaanAsli, tercatat = {} }) {
   const apa = [!tercatat.jalan && 'TIDAK ADA perintah yang dijalankan', !tercatat.ubah && 'TIDAK ADA berkas yang diubah'].filter(Boolean).join(' dan ');
   return [
@@ -318,7 +222,6 @@ export function susunPesanKoreksi({ putaran, pertanyaanAsli, tercatat = {} }) {
   ].join('\n\n');
 }
 
-/** Blok prompt server — hanya bila folder kerja aktif. */
 export function blokPromptFolder(nama, putaran = 0) {
   if (!nama) return '';
   const terakhir = putaran >= MAKS_PUTARAN;

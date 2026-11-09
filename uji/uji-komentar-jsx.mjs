@@ -1,15 +1,3 @@
-// UJI 2026-10-19 — tak ada komentar JSX yang bocor jadi teks di layar.
-//
-// Kenapa ada: pemeriksaan "error tersembunyi" 19 Okt menemukan RiwayatKonversi.jsx menampilkan kalimat
-// "` di posisi ekspresi dibaca sebagai literal objek — build gagal. */}" di panel Riwayat Konversi sejak 8 Okt.
-// Komentarnya MENULIS contoh pembuka-penutup komentar di dalam dirinya; penutup contoh itu mengakhiri komentar lebih
-// awal, dan sisa kalimatnya menjadi teks JSX. Tak ada uji yang merah — build hanya memperingatkan, dan hanya karena
-// kebetulan sisa kalimatnya memuat `}`. Sisa tanpa `}` bocor tanpa peringatan sama sekali.
-//
-// Yang dijaga, dua lapis:
-//   1. esbuild mengompilasi SETIAP .jsx tanpa satu peringatan pun (menangkap "} tidak sah di dalam elemen JSX" dll.).
-//   2. Tak ada komentar JSX `{/* … */}` yang memuat pembuka komentar lain di dalamnya — pola penyebabnya, yang bisa
-//      bocor tanpa peringatan.
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve, relative } from 'node:path';
@@ -40,7 +28,6 @@ cek(berkas.length > 50, `${berkas.length} berkas ditemukan`);
 cek(berperingatan.length === 0, 'tak ada peringatan kompilasi', berperingatan);
 
 console.log('\n-- 2. tak ada komentar JSX yang memuat pembuka komentar lain --');
-/** Nomor baris komentar JSX yang memuat pembuka komentar lain, atau penutupnya tak langsung diikuti `}`. */
 const komentarBermasalah = (t) => [...t.matchAll(/\{\/\*/g)].flatMap((m) => {
   const akhir = t.indexOf('*/', m.index + 3);
   if (akhir < 0) return [];
@@ -51,11 +38,9 @@ const komentarBermasalah = (t) => [...t.matchAll(/\{\/\*/g)].flatMap((m) => {
 const bersarang = berkas.flatMap((f) => komentarBermasalah(readFileSync(f, 'utf8')).map((b) => `${relative(AKAR, f)}:${b}`));
 cek(bersarang.length === 0, 'setiap komentar JSX tertutup di tempat yang dimaksud', bersarang);
 
-// Uji gigit penghitungnya sendiri — kalau dua pemeriksa di atas tumpul, keduanya lulus untuk alasan yang salah.
 console.log('\n-- 3. pemeriksa menggigit (fixture) --');
 const bocor = 'export default () => (<div>\n  {/* contoh {/* */} lalu sisa kalimat */}\n</div>);';
 cek(esbuild.transformSync(bocor, { loader: 'jsx', jsx: 'automatic', logLevel: 'silent' }).warnings.length > 0, 'fixture bocor (sisa memuat `}`) → peringatan esbuild');
-// Bocor DIAM: sisa kalimat tanpa `}` — esbuild tak memperingatkan apa pun, teksnya tetap tampil di layar.
 const bocorDiam = 'export default () => (<div>\n  {/* contoh {/* */} lalu sisa kalimat tanpa kurung tutup\n</div>);';
 cek(esbuild.transformSync(bocorDiam, { loader: 'jsx', jsx: 'automatic', logLevel: 'silent' }).warnings.length === 0,
   'fixture bocor-diam memang lolos esbuild tanpa peringatan — karena itu lapis 2 perlu ada');

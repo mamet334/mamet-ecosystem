@@ -1,17 +1,4 @@
-// DATA TABEL REKONSILIASI ASN — saring & hitung (Item 92 Tahap 3, 2026-09-21)
-//
-// Menjawab "berapa" / "siapa yang belum" dengan KODE, bukan dengan model. Model perencana hanya menerjemahkan
-// pertanyaan menjadi RENCANA (saringan terstruktur, lihat normalkanRencana); fungsi di sini yang menyaring baris
-// asn_pegawai, menghitung, dan menyusun:
-//   - teks untuk model penjawab: jumlah + paling banyak 30 nama, TANPA NIP;
-//   - lampiran tabel lengkap DENGAN NIP, ditempel kode di bawah jawaban — model tidak pernah melihat NIP, dan NIP yang
-//     tampil diambil langsung dari database (keputusan Owner 2026-09-21: bukan penanda [P-0231] yang harus disalin model).
-//
-// Murni & tanpa impor: dipakai server (agent-process, lewat impor relatif seperti KnowledgeService.js) dan diuji di Node
-// dengan data 53 berkas `D:\REKONSIALISASI 2026`.
 
-// Baris asal: Excel → "baris 12"; PDF pindaian (Tahap 5, disandikan negatif −(halaman×1000 + baris)) → "hal. 3 baris 5".
-// Disalin dari dataTabelAsnOcr.uraiBaris supaya modul ini (dipakai server) tidak menarik pembaca Excel.
 const teksBaris = (n) => (Number.isInteger(n) && n < 0 ? `hal. ${Math.floor(-n / 1000)} baris ${-n % 1000}` : `baris ${n}`);
 
 export const KELOMPOK = ['struktural', 'jft', 'pelaksana', 'pppk', 'paruh_waktu', 'tidak_dikenal'];
@@ -38,18 +25,11 @@ const rapat = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
 const kecil = (s) => rapat(s).toLowerCase();
 const KOSONG_ISI = (v) => !v || v === '-' || v === '–';
 
-/** Tingkat PIM dari nilai tersimpan ("IV", "PIM IV", "Diklat PIM III", "√" di kolom PIM IV → sudah "IV"). */
 export function tingkatPim(v) {
   const m = rapat(v).toUpperCase().match(/\b(IV|III|II|I)\b/);
   return m ? m[1] : rapat(v).toUpperCase();
 }
 
-/**
- * Bersihkan rencana dari model perencana: hanya OPD/kelompok/bidang/operator yang dikenal yang dipakai; sisanya
- * dicatat di `diabaikan` supaya jawaban jujur tentang saringan yang tidak bisa diterapkan.
- * @param {object} mentah  keluaran JSON model
- * @param {string[]} daftarOpd  nama OPD aktif milik pengguna
- */
 export function normalkanRencana(mentah, daftarOpd = []) {
   const r = mentah && typeof mentah === 'object' ? mentah : {};
   const diabaikan = [];
@@ -90,7 +70,6 @@ function angka(v) {
   return Number.isFinite(n) && rapat(v) !== '' ? n : null;
 }
 
-/** true bila satu pegawai memenuhi satu syarat. */
 export function cocokSyarat(p, s) {
   const v = nilaiBidang(p, s.bidang);
   const daftar = Array.isArray(v);
@@ -109,11 +88,6 @@ export function cocokSyarat(p, s) {
   }
 }
 
-/**
- * Saring & hitung.
- * @param {Array} pegawai  baris asn_pegawai + `opd` (dari berkas aktif)
- * @param {object} rencana  hasil normalkanRencana
- */
 export function saringPegawai(pegawai, rencana) {
   const cocok = pegawai.filter((p) =>
     (!rencana.opd.length || rencana.opd.includes(p.opd))
@@ -133,8 +107,6 @@ export function saringPegawai(pegawai, rencana) {
   return { jumlah: urut.length, dari: pegawai.length, daftar: urut, rincian };
 }
 
-// Label tampilan — TANPA kata "daftar". Uji live 2026-09-21: "pelatihan teknis/fungsional — daftar kosong" dibaca model
-// sebagai "daftar hasilnya kosong" dan jawabannya membalik 155 menjadi "tidak ada satu pun".
 const LABEL_TAMPIL = {
   nama: 'nama', nip: 'NIP', jenis_kelamin: 'jenis kelamin', status: 'status', pendidikan_cpns: 'pendidikan CPNS',
   pendidikan_akhir: 'pendidikan terakhir', tahun_lulus: 'tahun lulus', jabatan: 'jabatan', pangkat: 'pangkat',
@@ -156,7 +128,6 @@ function uraiSyarat(s) {
   }
 }
 
-/** Uraian saringan dalam bahasa manusia — tampil di jawaban supaya Owner bisa memeriksa apa yang dihitung. */
 export function uraiRencana(rencana) {
   const bagian = [];
   bagian.push(rencana.opd.length ? `OPD: ${rencana.opd.join(', ')}` : 'semua OPD tersimpan (berkas aktif)');
@@ -165,33 +136,24 @@ export function uraiRencana(rencana) {
   return bagian.join(' · ');
 }
 
-/** Kalimat hasil dari KODE — ditaruh di baris paling atas jawaban, sebelum teks model. */
 export function susunJudulHasil(hasil, rencana) {
   const rincian = hasil.rincian ? ` · per ${rencana.kelompokkan}: ${Object.entries(hasil.rincian).map(([k, n]) => `${k} ${n}`).join(', ')}` : '';
   return `**📊 Hasil hitung sistem: ${hasil.jumlah} orang** — ${uraiRencana(rencana)}${rincian}`;
 }
 
-// Tabel data dimulai dengan garis + judul tebal ini (susunLampiran). Model yang meniru formatnya juga menulis judul ini.
 const POLA_LAMPIRAN = /\n*-{3,}\s*\n+\*\*(?:📊\s*)?Data Tabel\s+—[\s\S]*$/;
 const POLA_NIP = /\b\d{18}\b|\b\d{8}[ .]\d{6}[ .]\d[ .]\d{3}\b/g;
 
-/**
- * Bersihkan pesan asisten di RIWAYAT sebelum dikirim ke model: tabel data (berisi NIP asli) dibuang dan angka NIP
- * disamarkan. Uji live 2026-09-21: tabel ber-NIP dari jawaban sebelumnya ikut riwayat → NIP sampai ke model, dan model
- * meniru tabel itu lengkap dengan 30 NIP KARANGAN (0 dari 30 ada di database).
- */
 export function bersihkanRiwayatDataTabel(teks) {
   return String(teks ?? '').replace(POLA_LAMPIRAN, '\n[tabel data dari sistem — tidak disertakan]').replace(POLA_NIP, '[NIP]');
 }
 
-/** Angka berbentuk NIP di teks MODEL = karangan (model tidak pernah menerima NIP) → disamarkan. */
 export function samarkanNipKarangan(teks) {
   let n = 0;
   const hasil = String(teks ?? '').replace(POLA_NIP, () => { n++; return '[NIP — lihat tabel sistem]'; });
   return { teks: hasil, jumlah: n };
 }
 
-/** Teks untuk model penjawab — jumlah, rincian, ≤30 nama. TANPA NIP. */
 export function susunTeksUntukModel(hasil, rencana) {
   const baris = [
     `HASIL DATA TABEL REKONSILIASI ASN — dihitung oleh KODE dari data yang tersimpan (berkas aktif), bukan perkiraan.`,
@@ -212,7 +174,6 @@ export function susunTeksUntukModel(hasil, rencana) {
 
 const sel = (s) => rapat(s).replace(/\|/g, '/');
 
-/** Lampiran markdown DENGAN NIP — ditempel kode di bawah jawaban, tidak lewat model. */
 export function susunLampiran(hasil, rencana) {
   if (!hasil.jumlah) return '';
   const tampil = hasil.daftar.slice(0, MAKS_BARIS_LAMPIRAN);

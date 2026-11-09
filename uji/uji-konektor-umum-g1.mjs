@@ -1,11 +1,3 @@
-// UJI 2026-11-03 — pipa konektor umum (Item 129 Tahap G1): electron/konektor/{resep,sidikAlat,brankas,daftarServer,transport}.cjs.
-//
-// Yang dijaga (keputusan Owner 3 Nov, docs/roadmap/ROADMAP-KONEKTOR-MCP.md §9):
-//   K16 alat ditinjau & dipaku — server yang mengubah alat yang sudah disetujui tidak dipakai; alat baru diabaikan.
-//   K18 kredensial terenkripsi di perangkat — tanpa enkripsi tidak disimpan; layar tak pernah menerima nilainya.
-//   K19 server baru = berkas resep, tanpa kode; resep bawaan ikut pemasang (S1).
-//   S5  kredensial dari brankas sampai ke server pemiliknya walau penyaring rahasia membuang nama berbau TOKEN.
-// Murni: tidak menjalankan server, tidak mengunduh apa pun.
 
 import { createRequire } from 'node:module';
 import { existsSync, mkdtempSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -32,7 +24,6 @@ const cek = (ok, pesan, rinci) => {
 const sementara = () => mkdtempSync(path.join(os.tmpdir(), 'mamet-g1-'));
 const PROGRAM = 'C:\\Alat\\github-mcp-server\\github-mcp-server.exe';
 
-// ── 1. Resep ────────────────────────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 1. resep --');
 const pkg = JSON.parse(readFileSync(path.join(AKAR, 'frontend', 'package.json'), 'utf8'));
 cek(path.relative(path.join(AKAR, 'frontend', 'electron'), R.FOLDER_BAWAAN) === path.join('konektor', 'resep')
@@ -65,7 +56,6 @@ cek(R.validasiResep({ id: 'lokal', nama: 'L', jenis: 'http', http: { url: 'http:
 
 const fOwner = sementara();
 writeFileSync(path.join(fOwner, 'github.json'), JSON.stringify({ ...dasar, id: 'github', nama: 'GitHub palsu' }));
-// v2 (3 Nov, F2): contoh resep Owner bukan `notion` lagi — Notion kini resep bawaan (dan bawaan memang tak bisa ditimpa).
 writeFileSync(path.join(fOwner, 'catatan.json'), JSON.stringify({ ...dasar, id: 'catatan', nama: 'Catatan' }));
 writeFileSync(path.join(fOwner, 'salah-nama.json'), JSON.stringify({ ...dasar, id: 'lain' }));
 writeFileSync(path.join(fOwner, 'rusak.json'), '{ ini bukan json');
@@ -77,7 +67,6 @@ cek(gab.galat.some((g) => /salah-nama/.test(g)) && gab.galat.some((g) => /rusak/
   'resep rusak / salah nama / id bentrok dilaporkan, tidak menggagalkan resep lain', gab.galat);
 cek(R.bacaFolderResep(path.join(fOwner, 'tidak-ada')).resep.length === 0, 'folder resep Owner belum ada → kosong, bukan galat');
 
-// ── 2. Sidik alat (K16) ─────────────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 2. sidik alat --');
 const alat = [
   { name: 'get_file_contents', description: 'Baca isi berkas', inputSchema: { type: 'object', properties: { owner: { type: 'string' }, repo: { type: 'string' } } } },
@@ -107,7 +96,6 @@ cek(b.status === 'belum_ditinjau' && b.dipakai.length === 0, 'belum ditinjau →
 b = S.bandingkan([alat[1]], paku);
 cek(b.hilang.join() === 'get_file_contents' && b.dipakai.length === 0, 'alat yang disetujui hilang dari server → dicatat', b);
 
-// ── 3. Brankas (K18) ────────────────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 3. brankas --');
 const tiruan = (tersedia = true) => ({
   tersedia: () => tersedia,
@@ -137,7 +125,6 @@ cek(JSON.stringify(brankas.ambil('github')) === '{}', 'server dihapus → kreden
 writeFileSync(berkasB, '{ rusak');
 cek(JSON.stringify(brankas.status('github')) === '{}', 'berkas brankas rusak → kosong, tidak merobohkan proses utama');
 
-// ── 4. Daftar server ────────────────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 4. daftar server --');
 cek(!D.entriDariResep(gh, {}).ok, 'GitHub tanpa alamat program ditolak');
 cek(!D.entriDariResep(gh, { program: 'github-mcp-server.exe' }).ok, 'alamat program relatif ditolak (bukan dicari di PATH)');
@@ -160,7 +147,6 @@ cek(daftar.hapus('github').ok && daftar.semua().length === 0, 'server dihapus');
 writeFileSync(path.join(fD, 'konektor-server.json'), 'rusak');
 cek(Array.isArray(daftar.semua()) && daftar.semua().length === 0, 'berkas daftar rusak → kosong (aman ke arah mati)');
 
-// ── 5. Transport ────────────────────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 5. transport --');
 const lingkungan = lingkunganServer({ PATH: 'C:\\Windows', GITHUB_PERSONAL_ACCESS_TOKEN: 'bocor-dari-proses-utama', OPENROUTER_API_KEY: 'sk-or-bocor' });
 const r = T.rencanaTransport(eGh.entri, { token: TOKEN }, { lingkungan, ada: () => true });
@@ -181,7 +167,6 @@ const tr = T.buatTransport(r);
 cek(tr?.constructor?.name === 'StdioClientTransport', 'stdio → StdioClientTransport SDK (belum dijalankan)', tr?.constructor?.name);
 cek(T.buatTransport(rh)?.constructor?.name === 'StreamableHTTPClientTransport', 'http → StreamableHTTPClientTransport SDK');
 
-// ── 6. Satu berkas satu tugas ───────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 6. susunan --');
 for (const b of ['resep.cjs', 'sidikAlat.cjs', 'brankas.cjs', 'daftarServer.cjs', 'transport.cjs']) {
   const isi = readFileSync(path.join(FOLDER, b), 'utf8');

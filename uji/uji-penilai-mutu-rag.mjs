@@ -1,6 +1,3 @@
-// Uji penilai mutu jawaban RAG (K1/K2, 3 Nov 2026) — `uji/lib/penilaiMutuRag.mjs` dan kabel modul konsol
-// `uji/uji-mutu-rag-k1.js`. Contoh jawaban meniru cara model menulis di produksi: label `[STATUS: …]` di baris
-// sendiri atau menempel pada "— Sumber:", angka bertanda tebal, nalar <think> di depan.
 import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,7 +15,6 @@ const BUKU13 = { id: 'BUKU-13', jenis: 'dokumen', harus_memuat: ['daya tarik wis
 const NEG01 = { id: 'NEG-01', jenis: 'tidak_ada' };
 const SUMBER_HCDP = '[STATUS: VERIFIED] — Sumber: "DOKUMEN HCDP 2025-2026.docx", Tabel 2.6';
 
-// --- normalisasi & pencocokan angka
 cek(P.memuat('Targetnya **20%** pada tahun 3.', '20,0%'), '20,0% = 20% (nol desimal & tanda tebal diabaikan)');
 cek(P.memuat('sebesar 20,0 %', '20,0%'), 'spasi sebelum % diabaikan');
 cek(P.memuat('meliputi daya tarik **wisata** dan *industri* pariwisata', 'daya tarik wisata') && P.memuat('**20,0**%', '20,0%'), 'tanda tebal di tengah token dibuang');
@@ -28,12 +24,10 @@ cek(P.memuat('total 4.828 orang', '4.828') && !P.memuat('total 14.828 orang', '4
 cek(!P.memuat('pengalaman 13 tahun', ['3 tahun']) && P.memuat('paling singkat 3 (tiga) tahun', BUKU07.harus_memuat[2]), 'alternatif: "3 (tiga) tahun" ya, "13 tahun" tidak');
 cek(!P.memuat('<think>jawabannya 20,0%</think>\nTarget tahun 3 adalah 35,0%.', '20,0%'), 'isi nalar <think> tidak dihitung');
 
-// --- label
 cek(P.labelJawaban(`Jawaban.\n\n${SUMBER_HCDP}`) === 'VERIFIED', 'label VERIFIED terbaca dari baris "— Sumber:"');
 cek(P.labelJawaban('x\n[STATUS: HYPOTHESIS - Rekomendasi AI]') === 'HYPOTHESIS', 'label HYPOTHESIS terbaca');
 cek(P.labelJawaban('tanpa label') === null, 'tanpa label → null');
 
-// --- pertanyaan dokumen
 const benar = P.nilaiJawaban(HCDP01, `Target rasio jabatan fungsional bersertifikat kompetensi pada **tahun 3** adalah **20,0%**.\n\n${SUMBER_HCDP}`);
 cek(benar.hasil === 'BENAR' && !benar.label_turun && !benar.label_bohong, 'isi + sumber benar → BENAR');
 const deret = P.nilaiJawaban(HCDP01, `Tahun 1: 5,93%; tahun 2: 12,0%; tahun 3: **20,0%**; tahun 4: 27,5%; target akhir 35,0%.\n\n${SUMBER_HCDP}`);
@@ -44,17 +38,13 @@ const salah = P.nilaiJawaban(HCDP01, `Target pada tahun 3 adalah **35,0%**.\n\n$
 cek(salah.hasil === 'SALAH' && salah.label_bohong, 'isi salah berlabel VERIFIED → SALAH + label bohong');
 const jujur = P.nilaiJawaban(HCDP01, 'Maaf, angka untuk tahun 3 tidak ditemukan dalam dokumen yang tersedia.\n\n[STATUS: HYPOTHESIS - Rekomendasi AI]');
 cek(jujur.hasil === 'JUJUR' && !jujur.label_bohong, 'mengaku tidak menemukan → JUJUR');
-// 5 Nov (uji penuh): jawaban KELIRU ber-VERIFIED yang dulu lolos sebagai JUJUR — teks putaran 2 BUKU-10 apa adanya.
 const BUKU10 = { id: 'BUKU-10', jenis: 'dokumen', harus_memuat: ['mutlak', 'penting'], sumber_memuat: ['177'] };
 const buku10Keliru = P.nilaiJawaban(BUKU10, 'Berdasarkan dokumen **Kepbup OKU 2025 - 177 - Bidang Pencegahan (Dinas Pemadam Kebakaran dan Penyelamatan Kab.OKU).pdf**, berikut tingkat kepentingannya untuk jabatan Bidang Pencegahan: **Pengalaman Kerja:** - Uraian: "2 tahun di eselon IV" - Tingkat kepentingan: **Penting** (tanda "Ö" berada pada kolom Penting) **Pelatihan (Diklat Manajerial):** - Kolom "1. Manajerial" tertulis **"-"** — artinya **tidak ada persyaratan pelatihan manajerial** sehingga tidak memiliki tingkat kepentingan. Sumber: "Kepbup OKU 2025 - 177 - Bidang Pencegahan.pdf" [STATUS: VERIFIED]');
 cek(buku10Keliru.hasil === 'PERLU_CEK' && /sebagian fakta kunci/.test(buku10Keliru.alasan.join()), 'fakta kunci sebagian + kalimat fakta "tidak ada persyaratan …" → PERLU_CEK, BUKAN JUJUR (kasus nyata BUKU-10)');
-// Catatan: "penting" tercocok di dalam "kepentingan" (kata ≥ 5 huruf = potongan teks) — contoh di bawah sengaja tanpa
-// kata itu supaya yang diuji aturan PERLU_CEK-nya, bukan kebetulan pencocokan.
 const sebagianJujur = P.nilaiJawaban(BUKU10, 'Pengalaman kerja bertingkat **Mutlak**. Untuk diklat manajemen, tingkatnya tidak ditemukan pada potongan dokumen. Sumber: Kepbup 177.\n\n[STATUS: HYPOTHESIS - Rekomendasi AI]');
 cek(sebagianJujur.hasil === 'PERLU_CEK', 'sebagian benar + mengaku sisanya tak ditemukan → PERLU_CEK (diperiksa manusia, tidak otomatis JUJUR)');
 const nolJujur = P.nilaiJawaban(BUKU10, 'Tingkat untuk pengalaman kerja dan diklat jabatan itu tidak ditemukan pada potongan dokumen yang tersedia.\n\n[STATUS: HYPOTHESIS - Rekomendasi AI]');
 cek(nolJujur.hasil === 'JUJUR', 'tak satu pun fakta kunci + mengaku tidak ditemukan → tetap JUJUR');
-// 5 Nov (BUKU-10 ×5): kata lepas meloloskan "Penting (bukan Mutlak)" sebagai BENAR — kunci kini pasangan baris → nilai.
 const PILIH = ['mutlak', 'penting', 'perlu'];
 const BUKU10P = { ...BUKU10, pasangan: [{ baris: 'pengalaman kerja', nilai: 'mutlak', pilihan: PILIH }, { baris: 'diklat teknis', nilai: 'penting', pilihan: PILIH }] };
 const pasBenar = P.nilaiJawaban(BUKU10P, 'Pengalaman Kerja: **Mutlak**. Diklat Teknis: **Penting**. Sumber: Kepbup 177.\n\n[STATUS: VERIFIED]');
@@ -85,14 +75,12 @@ cek(P.nilaiJawaban(HCDP07, `Jumlah total PNS 4.828 orang.\n\n${SUMBER_HCDP}`).ha
 const ragTurun = P.nilaiJawaban(HCDP07, `4.828 orang.\n\n${SUMBER_HCDP}\n_Catatan sistem: pencarian makna dokumen tidak jalan (402) — dokumen dicari lewat pencocokan kata, jadi sumber yang sebenarnya ada bisa terlewat._`);
 cek(ragTurun.rag_turun, 'catatan RAG turun (U8b) terbaca');
 
-// --- pertanyaan tidak_ada
 cek(P.nilaiJawaban(NEG01, 'Dokumen HCDP tidak mencantumkan target untuk tahun 2030; tabelnya hanya memuat Tahun 1–5 dan Target Akhir.\n\n[STATUS: HYPOTHESIS - Rekomendasi AI]').hasil === 'JUJUR', 'tidak_ada dijawab jujur → JUJUR');
 const karang = P.nilaiJawaban(NEG01, `Target pada tahun 2030 adalah **35,0%**.\n\n${SUMBER_HCDP}`);
 cek(karang.hasil === 'SALAH' && karang.label_bohong, 'tidak_ada dijawab dengan angka → SALAH (mengarang) + label bohong');
 cek(P.nilaiJawaban(NEG01, `Target tahun 2030 tidak disebutkan dalam dokumen.\n\n${SUMBER_HCDP}`).hasil === 'PERLU_CEK', 'tidak_ada: mengaku tapi VERIFIED → PERLU_CEK');
 cek(P.nilaiJawaban(NEG01, 'Saya tidak dapat menemukan data tersebut.').hasil === 'JUJUR', 'bentuk "tidak dapat menemukan" dikenali');
 
-// --- gabungan & putusan
 cek(P.hasilTerburuk(['BENAR', 'SALAH']) === 'SALAH' && P.hasilTerburuk(['BENAR', 'JUJUR']) === 'JUJUR' && P.hasilTerburuk(['BENAR', 'BENAR']) === 'BENAR', 'putaran terburuk menentukan');
 const b = (id, jenis, ...hasil) => ({ id, jenis, putaran: hasil.map((h) => (typeof h === 'string' ? { hasil: h } : h)) });
 const lulus = P.putusanK1K2([b('A', 'dokumen', 'BENAR', 'BENAR'), b('B', 'dokumen', 'JUJUR', 'BENAR'), b('N', 'tidak_ada', 'JUJUR', 'JUJUR')]);
@@ -102,7 +90,6 @@ cek(P.putusanK1K2([b('A', 'dokumen', 'BENAR', 'PERLU_CEK')]).k1 === 'PERIKSA', '
 cek(P.putusanK1K2([b('A', 'dokumen', { hasil: 'SALAH', label_bohong: true }), b('N', 'tidak_ada', 'JUJUR')]).k2 === 'GAGAL', 'jawaban salah berlabel VERIFIED → K2 GAGAL walau semua tidak_ada jujur');
 cek(P.putusanK1K2([b('N', 'tidak_ada', 'JUJUR', 'SALAH')]).k2 === 'GAGAL', 'tidak_ada dikarang → K2 GAGAL');
 
-// --- galat ≠ salah (jalan pertama 3 Nov: 52 kegagalan saldo tercatat SALAH → "K1 GAGAL" palsu)
 const g = P.hasilGalat("Provider 'OpenRouterAdapter' failed: Saldo OpenRouter hanya cukup untuk 48 token jawaban");
 cek(g.hasil === 'GALAT' && !g.label_bohong, 'galat saldo → GALAT, bukan SALAH');
 const semuaGalat = P.putusanK1K2([b('A', 'dokumen', g, g), b('N', 'tidak_ada', g, g)]);
@@ -112,7 +99,6 @@ cek(P.putusanK1K2([b('A', 'dokumen', 'SALAH', g)]).k1 === 'GAGAL', 'SALAH tetap 
 cek(P.putusanK1K2([b('A', 'dokumen', 'PERLU_CEK', g)]).k1 === 'TIDAK_TERUKUR', 'galat lebih berat dari PERLU_CEK');
 cek(/P\.hasilGalat\(j\.galat\)/.test(readFileSync(path.join(AKAR, 'uji/uji-mutu-rag-k1.js'), 'utf8')),'modul konsol: galat dicatat lewat hasilGalat, bukan SALAH');
 
-// --- kabel modul konsol
 const MOD = readFileSync(path.join(AKAR, 'uji/uji-mutu-rag-k1.js'), 'utf8');
 cek(/userId: null/.test(MOD), 'modul konsol: userId kosong (memori sesi tak disentuh)');
 cek(/finally \{\s*pulihkan\(\);\s*\}/.test(MOD), 'modul konsol: setelan sementara dipulihkan di finally');
@@ -122,7 +108,6 @@ cek(/set-uji-mutu-k1\.json/.test(MOD) && /new URL\('\.\/lib\/penilaiMutuRag\.mjs
 cek(!/console\.\w+\([^)]*(session|access_token|token)\b/.test(MOD), 'modul konsol: sesi/token tak pernah dicetak');
 cek(!/saveChatToDB|from\('chats'\)/.test(MOD), 'modul konsol: tidak menyimpan ke chats');
 
-// --- set uji (hanya di mesin yang punya uji/data-lokal/ — diabaikan git)
 const SET = path.join(AKAR, 'uji/data-lokal/set-uji-mutu-k1.json');
 if (existsSync(SET)) {
   const s = JSON.parse(readFileSync(SET, 'utf8')).pertanyaan;

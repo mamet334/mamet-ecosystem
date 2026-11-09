@@ -1,6 +1,3 @@
-// UJI 2026-11-02 — Item 130 Tahap C (graf Home): pusat MAMET dua belahan, lingkar 1 kemampuan inti, data = ekor
-// kemampuan pemakainya, fondasi di lingkar luar — menurut Konstitusi 23 revisi 2 Nov (dulu: bintang ke "SUPABASE
-// KERNEL", 5 cluster, 12 sub-cluster label kosong, 11 simpul layanan, memori tanpa relasi melayang).
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -20,7 +17,6 @@ const baca = (p) => readFileSync(join(AKAR, p), 'utf8');
 const kode = (p) => baca(p).split(/\r?\n/).filter((b) => !/^\s*(\/\/|\*)/.test(b)).join('\n');
 console.log('uji-graf-home-tahap-c v1');
 
-// Sebaran Owner + satu memori yang berasal dari percakapan & satu yang berasal dari dokumen (relasi data tetap digambar).
 const baris = barisTiruan();
 baris.memories[0].metadata = { chat_id: baris.chats[0].id };
 baris.memories[1].metadata = { document_id: baris.documents[0].id };
@@ -30,7 +26,6 @@ const id = (x) => x?.id ?? x;
 const garis = links.map((l) => `${id(l.source)}->${id(l.target)}`);
 const ada = (s, t) => garis.includes(`${s}->${t}`);
 
-// ── 1. Pusat dua belahan ────────────────────────────────────────────────────────────────────────
 const D = G.PUSAT.desktop, S = G.PUSAT.server;
 cek(byId[D]?.group === 'pusat' && byId[S]?.group === 'pusat' && byId[D].fx < 0 && byId[S].fx > 0 && byId[D].fy === 0,
   'pusat = MAMET dua belahan (Desktop kiri, Server kanan, posisi dipaku)');
@@ -38,17 +33,14 @@ cek(ada(D, S) && links.find((l) => l.jalurPesan)?.statusKeys?.[0] === 'agentProc
 cek(!nodes.some((n) => /SUPABASE KERNEL/.test(n.name) || /^(core-|cat-|subcat-|pipe-)/.test(n.id)),
   'susunan lama hilang: tanpa SUPABASE KERNEL, cluster, sub-cluster label kosong, simpul layanan');
 
-// ── 2. Lingkar 1: kemampuan bergaris ke belahan tempat kodenya berjalan ─────────────────────────
 const harapBelahan = { 'kem-chat': [D, S], 'kem-rag': [S], 'kem-tabel': [D], 'kem-engineer': [D, S], 'kem-memori': [S] };
 for (const [k, bel] of Object.entries(harapBelahan)) {
   const nyata = [D, S].filter((b) => ada(k, b));
   cek(byId[k]?.group === 'kemampuan' && JSON.stringify(nyata) === JSON.stringify(bel), `${byId[k]?.name}: bergaris ke ${bel.map((b) => b.split('-')[1]).join(' & ')}`, nyata);
 }
-// Relasi di kode, bukan karangan: Data Tabel dihitung di desktop (tools/), RAG & memori dibaca server.
 cek(/data_tabel/.test(baca('tools/data_tabel.js')) && /match_documents|rag/i.test(baca('supabase/functions/agent-process/lib/orchestration/handlers/context_builder.ts')),
   'belahan kemampuan berpijak pada kode: tools/data_tabel.js (desktop), context_builder.ts RAG (server)');
 
-// ── 3. Data = ekor kemampuan pemakainya ─────────────────────────────────────────────────────────
 const ekor = (k) => links.filter((l) => id(l.target) === k).map((l) => byId[id(l.source)]).filter((n) => ['memory', 'rag', 'chat'].includes(n?.group));
 cek(ekor('kem-rag').length === SEBARAN_OWNER.dokumen && ekor('kem-rag').every((n) => n.group === 'rag'), `RAG Dokumen berekor ${SEBARAN_OWNER.dokumen} dokumen`);
 cek(ekor('kem-memori').length === SEBARAN_OWNER.memori, `Memori berekor ${SEBARAN_OWNER.memori} memori — tak ada lagi memori melayang`);
@@ -61,15 +53,12 @@ cek(ada(`chat-${baris.chats[0].id}`, `mem-${baris.memories[0].id}`) && ada(`doc-
 const tanpaGaris = nodes.filter((n) => !links.some((l) => id(l.source) === n.id || id(l.target) === n.id));
 cek(tanpaGaris.length === 0, 'setiap simpul bergaris (tak ada yang melayang)', tanpaGaris.map((n) => n.id).slice(0, 5));
 
-// ── 4. Fondasi & lampu ──────────────────────────────────────────────────────────────────────────
 cek(['fon-supabase', 'fon-openrouter', 'fon-electron'].every((f) => byId[f]?.group === 'fondasi' && Array.isArray(byId[f].statusKeys))
   && ada('fon-supabase', D) && ada('fon-supabase', S) && ada('fon-openrouter', S) && !ada('fon-openrouter', D) && ada('fon-electron', D) && !ada('fon-electron', S),
   'fondasi: Supabase ke kedua belahan (ingatan bersama), OpenRouter ke server, Electron ke desktop');
 const L = G.nilaiLampu({ desktop: true }), W = G.nilaiLampu({ desktop: false });
 cek(L.status.electron === 'HEALTHY' && W.status.electron === 'UNKNOWN' && /web/.test(W.keterangan.electron), 'lampu Electron: desktop hijau, web abu-abu dengan alasan');
 
-// ── 5. Tata letak: lingkar 1 dekat pusat, fondasi di luar, label tak menumpuk ───────────────────
-// Sejak Tahap F (tata surya) lingkarnya DIHITUNG: kemampuan tepat di orbit dalam, fondasi tepat di orbit luar.
 const sim = simulasikan();
 const jarak = (n) => Math.hypot(n.x, n.y);
 const kem = sim.simpul.filter((n) => n.group === 'kemampuan'), fon = sim.simpul.filter((n) => n.group === 'fondasi');
@@ -77,7 +66,6 @@ cek(kem.every((n) => Math.abs(jarak(n) - sim.ukuran.jariOrbit) < 1e-6) && fon.ev
   && sim.ukuran.jariLuar > sim.ukuran.jariOrbit, `kemampuan di orbit dalam (${sim.ukuran.jariOrbit.toFixed(0)}), fondasi di orbit luar (${sim.ukuran.jariLuar.toFixed(0)})`);
 cek(sim.tumpang.length === 0 && sim.label.length === 10, `layar Owner: 10 label (2 belahan + 5 kemampuan + 3 fondasi), 0 tumpang (skala ${sim.skala.toFixed(3)})`, sim.tumpang);
 
-// ── 5b. Label kerangka tak tertimbun, legenda tak tertimpa (tangkapan layar Owner 2 Nov) ─────────
 const iKerangkaPertama = nodes.findIndex((n) => n.isCategory);
 cek(iKerangkaPertama > 0 && nodes.slice(iKerangkaPertama).every((n) => n.isCategory) && nodes.slice(0, iKerangkaPertama).every((n) => !n.isCategory),
   'simpul kerangka dilukis PALING AKHIR (label "RAG Dokumen" tak tertimbun titik data)');
@@ -92,17 +80,14 @@ for (const [nama, layar] of [['layar Owner', undefined], ['1920×1080', { lebar:
 cek(/tataPas\(\{ bbox, lebar: dimensions\.width, tinggi: dimensions\.height \}\)/.test(kode('frontend/src/components/dashboard/HomeDashboard.jsx'))
   && !/zoomToFit\(/.test(kode('frontend/src/components/dashboard/HomeDashboard.jsx')), 'HomeDashboard memakai tataPas, bukan zoomToFit');
 
-// ── 6. Sorotan jalur & jejak gagal memakai pusat baru ───────────────────────────────────────────
 const HD = kode('frontend/src/components/dashboard/HomeDashboard.jsx');
 const UD = kode('frontend/src/core/runtime/hooks/useDashboardData.js');
 cek(/new Set\(\[PUSAT\.desktop, PUSAT\.server\]\)/.test(HD) && !/core-maef/.test(HD + UD) && /`\$\{PUSAT\.desktop\}->\$\{PUSAT\.server\}`/.test(UD),
   'sorotan jalur & jejak gagal memakai belahan MAMET (tanpa core-maef)');
-// Arah garis data → kemampuan → belahan: telusur 3 langkah dari sebuah percakapan sampai ke server.
 let kini = new Set([`chat-${baris.chats[0].id}`]); const capai = new Set();
 for (let i = 0; i < 3; i++) { const lanjut = new Set(); kini.forEach((c) => garis.forEach((g) => { const [s, t] = g.split('->'); if (s === c) { capai.add(t); lanjut.add(t); } })); kini = lanjut; }
 cek(capai.has('kem-chat') && capai.has(S), 'telusur jalur dari percakapan mencapai kemampuan & belahan server', [...capai]);
 
-// ── 7. Konstitusi 23 ────────────────────────────────────────────────────────────────────────────
 const K = baca('constitution/23_HOME_DASHBOARD_SPEC.md');
 cek(/## CENTRAL NODE[\s\S]*`MAMET`/.test(K) && !/Node pusat mutlak:\s*\n\s*`SUPABASE`/.test(K) && /Revisi 2 November 2026/.test(K),
   'Konstitusi 23: pusat MAMET, bukan lagi SUPABASE; revisi tercatat');

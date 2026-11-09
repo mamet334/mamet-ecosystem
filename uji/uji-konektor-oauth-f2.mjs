@@ -1,9 +1,3 @@
-// UJI 2026-11-03 — konektor OAuth Tahap F2: pintu IPC sungguhan (electron/konektor/ipcUmum.cjs) dengan pengganti
-// Electron (ipcMain/dialog/shell/safeStorage tiruan), resep Notion bawaan, status untuk layar, menu +, dan kartu Settings.
-//
-// Alur Owner yang diuji ujung ke ujung melawan server OAuth + MCP tiruan (uji/lib/serverOAuthTiruan.cjs):
-//   resep → Pasang (tanpa program) → Hubungkan akun (browser sistem) → Tinjau → Setujui → nyala → panggil lewat gerbang
-//   → Putuskan (dialog; batal = tetap terhubung; ya = dicabut di server) → Hapus (mencabut dulu).
 
 import { createRequire } from 'node:module';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
@@ -28,7 +22,6 @@ const cek = (ok, pesan, rinci) => {
   if (!ok) gagal++;
 };
 
-// ── 1. Resep Notion bawaan ──────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 1. resep --');
 const bawaan = bacaFolderResep(FOLDER_BAWAAN);
 const notion = bawaan.resep.find((r) => r.id === 'notion');
@@ -36,7 +29,6 @@ cek(bawaan.galat.length === 0 && notion?.oauth === true && notion.jenis === 'htt
   'resep Notion bawaan: server resmi, OAuth, tanpa token ketik', notion);
 cek(/alat baca/.test(notion?.petunjuk || '') && /Putuskan/.test(notion?.petunjuk || ''), 'petunjuk menyebut alat baca & cara mencabut');
 
-// ── 2. Pintu IPC sungguhan ──────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 2. ipc --');
 const srv = await mulai();
 const folderData = mkdtempSync(path.join(os.tmpdir(), 'mamet-f2-'));
@@ -54,7 +46,7 @@ const dialog = {
   showOpenDialog: async () => { throw new Error('server http tidak boleh meminta program'); },
 };
 const shell = {
-  openExternal: async (url) => { // browser sistem tiruan: ikuti pengalihan login sampai penerima balikan
+  openExternal: async (url) => {
     dibuka.push(url);
     const r = await fetch(url, { redirect: 'manual' });
     const tujuan = r.headers.get('location');
@@ -127,7 +119,6 @@ try {
   await srv.tutup();
 }
 
-// ── 3. Menu + ───────────────────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 3. menu --');
 const dasar = { id: 'notion', nama: 'Notion', oauth: true, kredensial: [], alatDisetujui: ['cari'], ws: { 'ws-assistant': { diaktifkan: false, status: 'mati', alat: [] } } };
 let d = M.susunMenuKonektor([], [{ ...dasar, terhubung: false }], 'ws-assistant')[0];
@@ -137,7 +128,6 @@ cek(d.siap && d.keterangan === 'mati', 'menu: terhubung & alat disetujui → sia
 d = M.susunMenuKonektor([], [{ ...dasar, terhubung: true, ws: { 'ws-assistant': { diaktifkan: true, status: 'perlu_hubungkan_ulang', alat: [] } } }], 'ws-assistant');
 cek(/login kedaluwarsa/.test(d[0].keterangan) && M.penandaKonektor(d) === 'masalah', 'menu: login kedaluwarsa → keterangan + titik merah', d[0]);
 
-// ── 4. Kartu Settings & jembatan (statis) ───────────────────────────────────────────────────────────────────
 console.log('\n-- 4. layar --');
 const KS = baca('frontend/src/components/konektor/KartuServerUmum.jsx');
 const PRE = baca('frontend/electron/preload.cjs');

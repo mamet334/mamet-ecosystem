@@ -1,25 +1,3 @@
-// UJI 2026-10-19 — latar terdalam seluruh aplikasi = dinding ruangan LampLogin (Item 127 Tahap 3).
-//
-// Kenapa ada: Owner, 19 Okt — "soal kenyamanan mata penyebabnya warna hijau kayu yang mendominasi… bisakah background
-// dasar yang terletak paling dalam menggunakan background yang sama di LampLogin?" Akar masalahnya: tiap aplikasi
-// mengecat latar terdalamnya SENDIRI (#050505, slate-950, slate-900/50, bg-background) — dinding apa pun yang dipasang
-// di belakang akan tertutup lagi. Perbaikannya: satu lapisan dinding (os/LatarRuangan.jsx) di OSDesktopShell, akar
-// aplikasi tembus pandang.
-//
-// Yang dijaga:
-//   1. SAMA DENGAN LAMPLOGIN — kelas dinding, bayangan samping, vinyet, dan tekstur noise identik dengan LampLogin.jsx
-//      (utang K5: salinan, karena LampLogin tak boleh disentuh; uji inilah yang mencegah keduanya menyimpang).
-//   2. TERPASANG — dinding dilukis di OSDesktopShell sebelum isi; isinya `relative` TANPA z-index (tak membuat
-//      konteks tumpukan baru, jadi laci chat z-[60] tetap menutupi tombol MENU z-50).
-//   3. TEMBUS — akar sebelas layar tidak mengecat latar sendiri.
-//   4. TERBACA — kontras teks di titik dinding PALING TERANG (dihitung dari gradiennya sendiri) ≥ 4,5:1.
-//   5. BILAH GULIR — gaya tipis berlaku untuk SEMUA elemen, tak bergantung kelas yang bisa lupa dipasang.
-//
-// v2 (19 Okt, pemeriksaan "error tersembunyi"): v1 LULUS padahal salah. Ia menghitung kontras dengan bayangan samping
-// LampLogin (`from-black/43 via-78% to-black/52`) — tetapi Tailwind 3.4 tidak pernah membuat ketiga kelas itu (43, 52,
-// 78% di luar skala), jadi bayangannya tak pernah tergambar dan titik terang sebenarnya rgb(98,58,30), bukan (77,45,23):
-// slate-500 3,62:1, bukan 4,55. Uji menghitung CSS yang DITULIS, bukan yang DIBUAT. Kini setiap kelas latar
-// DIKOMPILASI dengan Tailwind sungguhan (konfigurasi proyek), dan lapisan hanya ikut dihitung bila kelasnya dibuat.
 
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -43,12 +21,9 @@ const LL = baca('frontend/src/components/LampLogin.jsx');
 const LR = baca('frontend/src/components/os/LatarRuangan.jsx');
 const konst = (nama) => (LR.match(new RegExp(`const ${nama} = (['\`])([\\s\\S]*?)\\1;`)) || [])[2];
 
-// ── 1. Sama dengan LampLogin ────────────────────────────────────────────────────────────────────
 console.log('\n-- 1. salinan dinding identik dengan LampLogin --');
 const DINDING = konst('DINDING'), SAMPING = konst('BAYANGAN_SAMPING'), VINYET = konst('VINYET'), NOISE = konst('NOISE');
 cek(DINDING && LL.includes(`className="absolute inset-0 ${DINDING}"`), 'gradien dinding = lapisan 0 LampLogin', DINDING);
-// Bayangan samping: NILAINYA sama dengan yang dimaksud LampLogin (.43 · 78% · .52), tetapi ditulis sebagai nilai bebas
-// supaya benar-benar dibuat Tailwind (keputusan Owner A, 19 Okt).
 const angkaLL = (LL.match(/bg-gradient-to-r from-black\/(\d+) via-transparent via-(\d+)% to-black\/(\d+)/) || []).slice(1).map(Number);
 const angkaLR = ((SAMPING || '').match(/^bg-gradient-to-r from-black\/\[\.(\d+)\] via-transparent via-\[(\d+)%\] to-black\/\[\.(\d+)\]$/) || []).slice(1).map(Number);
 cek(angkaLL.length === 3 && JSON.stringify(angkaLL) === JSON.stringify(angkaLR), `bayangan samping bernilai sama dengan maksud LampLogin (${angkaLL.join(' · ')})`, { angkaLL, angkaLR, SAMPING });
@@ -57,16 +32,12 @@ cek(NOISE && LL.includes(NOISE), 'tekstur noise = LampLogin', (NOISE || '').slic
 cek(/opacity-10 mix-blend-overlay/.test(LR) && /opacity-10 mix-blend-overlay/.test(LL), 'kekuatan noise sama (opacity-10, overlay)');
 cek(/pointer-events-none/.test(LR) && /aria-hidden="true"/.test(LR), 'dinding tak menangkap klik dan tak dibaca pembaca layar');
 
-// ── 1b. Setiap kelas latar benar-benar DIBUAT Tailwind ──────────────────────────────────────────
 console.log('\n-- 1b. kelas latar dikompilasi dengan Tailwind sungguhan --');
 const reqFE = createRequire(join(AKAR, 'frontend', 'package.json'));
 const postcss = reqFE('postcss'), tailwind = reqFE('tailwindcss'), loadConfig = reqFE('tailwindcss/loadConfig');
 const konfigurasi = loadConfig(join(AKAR, 'frontend', 'tailwind.config.js'));
-// Pelolosan nama kelas memakai fungsi Tailwind SENDIRI — tulisan tangan meleset (koma jadi `\2c `), dan pemeriksa yang
-// meleset memberi "tak dibuat" palsu.
 const esc = reqFE('tailwindcss/lib/util/escapeClassName').default;
 const dibuat = async (daftar) => {
-  // `block` ikut agar Tailwind tak memperingatkan "tak ada kelas" saat yang diperiksa memang kelas mati.
   const { css } = await postcss([tailwind({ ...konfigurasi, content: [{ raw: `<div className="block ${daftar.join(' ')}">`, extension: 'jsx' }] })])
     .process('@tailwind utilities;', { from: undefined });
   return Object.fromEntries(daftar.map((k) => [k, css.includes('.' + esc(k) + ' ') || css.includes('.' + esc(k) + '{')]));
@@ -79,7 +50,6 @@ const hasilLL = await dibuat(['from-black/43', 'via-78%', 'to-black/52']);
 cek(Object.values(hasilLL).every((ada) => !ada),
   'kelas bayangan LampLogin memang TIDAK dibuat (alasan nilai bebas di atas; bila Tailwind kelak membuatnya, tinjau ulang)', hasilLL);
 
-// ── 2. Terpasang ────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 2. terpasang di OSDesktopShell --');
 const SH = tanpaKomentar(baca('frontend/src/components/os/OSDesktopShell.jsx'));
 const iLatar = SH.indexOf('<LatarRuangan />'), iIsi = SH.indexOf('<ApplicationContainer');
@@ -88,7 +58,6 @@ cek(/<div className="relative flex h-screen w-screen/.test(SH), 'kerangka luar `
 const bungkusIsi = (SH.match(/<div className=\{`(relative flex flex-col flex-1[^`]*)`\}>\s*<ApplicationContainer/) || [])[1];
 cek(bungkusIsi && !/\bz-/.test(bungkusIsi), 'pembungkus isi `relative` TANPA z-index (laci chat tetap di atas tombol MENU)', bungkusIsi);
 
-// ── 3. Tembus ───────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 3. akar layar tidak mengecat latar sendiri --');
 const AKAR_LAYAR = [
   ['os/ApplicationContainer.jsx', '<main className="flex-1 h-full overflow-hidden relative'],
@@ -109,8 +78,6 @@ for (const [berkas, awalan] of AKAR_LAYAR) {
   const kelas = i < 0 ? null : kode.slice(i).match(/className="([^"]*)"/)[1];
   cek(kelas !== null && !/(^|\s)bg-/.test(kelas), `${berkas}: akar tembus pandang`, kelas);
 }
-// v2: gradien yang memudar KE warna latar lama (from-/via-/to-background) — di atas dinding ia jadi pita gelap. Dulu
-// area kotak ketik chat memakainya.
 const pakaiLatarLama = [];
 for (const f of ['workbench/ConversationEngine.jsx', 'workbench/AppShell.jsx', 'dashboard/HomeDashboard.jsx', 'Settings.jsx', 'os/ApplicationContainer.jsx', 'os/OSDesktopShell.jsx']) {
   const kode = tanpaKomentar(baca('frontend/src/components/' + f));
@@ -118,7 +85,6 @@ for (const f of ['workbench/ConversationEngine.jsx', 'workbench/AppShell.jsx', '
 }
 cek(pakaiLatarLama.length === 0, 'tak ada gradien yang memudar ke warna latar lama (pita gelap di atas dinding)', pakaiLatarLama);
 
-// ── 4. Terbaca di titik dinding paling terang ───────────────────────────────────────────────────
 console.log('\n-- 4. kontras di titik dinding paling terang --');
 const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
 const lum = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
@@ -131,13 +97,11 @@ const titik = (arr, p) => {
   return arr.at(-1)[1];
 };
 const tumpuk = (atas, bawah) => bawah.map((v, k) => (k < 3 ? atas[k] * atas[3] + v * (1 - atas[3]) : 1));
-// Gradien dibaca dari kelas dinding itu sendiri — bila dinding diubah, titik terangnya ikut dihitung ulang.
 const radial = DINDING.match(/radial-gradient\(ellipse_([\d.]+)%_([\d.]+)%_at_([\d.]+)%_([\d.]+)%,(.*?)\),linear/);
 const [rx, ry, cx, cy] = radial.slice(1, 5).map((n) => Number(n) / 100);
 const hentiRadial = radial[5].split(/,(?![^(]*\))/).map((s) => { const [c, p] = s.split('_'); return [parseFloat(p) / 100, warna(c)]; });
 const linier = DINDING.match(/linear-gradient\(180deg,(.*?)\)\]$/)[1].split(',');
 const hentiLinier = linier.map((s, i) => { const [c, p] = s.split('_'); return [p ? parseFloat(p) / 100 : i / (linier.length - 1), warna(c)]; });
-// Bayangan samping ikut dihitung HANYA bila ketiga kelasnya benar-benar dibuat — kalau tidak, ia tak tergambar.
 const sampingTergambar = SAMPING.split(/\s+/).every((k) => hasilLR[k]);
 const [a0, posVia, a1] = angkaLR;
 const hentiSamping = sampingTergambar
@@ -153,7 +117,6 @@ for (let x = 0; x <= 1.0001; x += 0.01) for (let y = 0; y <= 1.0001; y += 0.01) 
 const latarTerang = terang.slice(0, 3).map(Math.round);
 console.log(`     titik paling terang: rgb(${latarTerang.join(', ')})`);
 cek(lum(latarTerang) > lum(hex('#0b0806')), 'dinding memang lebih terang dari latar lama — kontrasnya perlu diukur ulang');
-// v5 (Item 128 Tahap A): nilai palet dibaca dari tema Ruangan kayu (frontend/src/tema/ruangan-kayu.css).
 const PALET = bacaPalet(AKAR, 'ruangan-kayu');
 const token = (k) => PALET.TOKEN[k];
 const slate = (n) => PALET.SLATE[String(n)];
@@ -165,10 +128,6 @@ for (const [nama, h] of [['on-surface', token('on-surface')], ['on-surface-varia
 const urut = [300, 400, 500].map((n) => lum(hex(slate(n))));
 cek(urut[0] > urut[1] && urut[1] > urut[2], 'urutan terang slate 300 > 400 > 500 tetap terjaga');
 
-// ── 4b. Lampu nyala (v6, Item 128 Tahap C) ──────────────────────────────────────────────────────
-// Pendar lampu = salinan medan cahaya LampLogin, diredam di wadahnya. Owner 20 Okt: 25% — pada kekuatan penuh teks
-// di atas latar di area terang turun ke ±3,6:1. Titik paling terang dihitung ulang DENGAN pendar (tanpa blur — blur
-// hanya meratakan puncak, jadi hitungan ini batas atas yang aman).
 console.log('\n-- 4b. lampu nyala: salinan LampLogin, diredam, tetap terbaca --');
 const PENDAR = [konst('PENDAR_1'), konst('PENDAR_2')];
 cek(PENDAR.every((p) => p && LL.includes(`className="${p}"`)), 'dua lapisan pendar = medan cahaya LampLogin (sama persis)', PENDAR.map((p) => (p || '').slice(0, 60)));
@@ -185,7 +144,6 @@ const lapisanPendar = PENDAR.map((p) => {
   const potong = g[3].split(/,(?![^(]*\))/);
   const henti = potong.map((s, i) => { const [c, pos] = s.split('_'); return [pos ? parseFloat(pos) / 100 : (i === 0 ? 0 : 1), c === 'transparent' ? [0, 0, 0, 0] : warna(c)]; });
   const T_WADAH = wadah[0] / 100;
-  // Elips "farthest-corner": melewati sudut terjauh dengan perbandingan sumbu yang sama dengan jarak ke sisi terjauh.
   const [rxP, ryP] = [Math.max(px, 1 - px) * w * Math.SQRT2, Math.max(py, 1 - py) * h * T_WADAH * Math.SQRT2];
   return { x0: l, x1: l + w, y0: t * T_WADAH, y1: (t + h) * T_WADAH, ex: l + px * w, ey: (t + py * h) * T_WADAH, rxP, ryP, henti };
 });
@@ -198,20 +156,15 @@ for (let x = 0; x <= 1.0001; x += 0.01) for (let y = 0; y <= 1.0001; y += 0.01) 
     const s = titik(L.henti, Math.hypot((x - L.ex) / L.rxP, (y - L.ey) / L.ryP));
     c = tumpuk([s[0], s[1], s[2], s[3] * opasitasLampu], c);
   }
-  // Seberapa jauh lampu menerangi titik ini dibanding dinding saja — bukti lapisannya benar-benar dihitung.
   const tanpaLampu = tumpuk(titik(hentiSamping, x), tumpuk(titik(hentiRadial, Math.hypot((x - cx) / rx, (y - cy) / ry)), titik(hentiLinier, y)));
   naikTerbesar = Math.max(naikTerbesar, lum(c) - lum(tanpaLampu));
   if (!terangLampu || lum(c) > lum(terangLampu)) terangLampu = c;
 }
 const latarLampu = terangLampu.slice(0, 3).map(Math.round);
 console.log(`     titik paling terang dengan lampu nyala: rgb(${latarLampu.join(', ')})`);
-// Pendar menerangi bagian ATAS (y < 55%) — area dinding yang semula gelap; pusat terang dinding (39%, 56%) berada di
-// luar kotak pendar, jadi titik paling terang layar bisa tetap di sana. Yang dibuktikan: lapisan pendar benar-benar
-// menerangi, dan kontras diukur di titik paling terang mana pun (dengan atau tanpa lampu).
 cek(naikTerbesar > 0.005, `lampu memang menerangi area di bawahnya (kenaikan luminans terbesar ${naikTerbesar.toFixed(3)})`);
 const metaTemaL = JSON.parse(baca('frontend/public/metadata/themes.json'));
 const PALET_TEMA = { 'ruangan-kayu': PALET.VAR };
-// v7 (Item 128 Tahap D3): dinding & lampu hanya ada di tema berdasar GELAP — tema terang tak diukur di atas dinding.
 for (const t of metaTemaL.themes.filter((x) => x.nilai && (x.dasar ?? 'gelap') === 'gelap')) PALET_TEMA[t.id] = Object.fromEntries(Object.entries(t.nilai).map(([k, v]) => [k, '#' + v.split(' ').map((n) => Number(n).toString(16).padStart(2, '0')).join('')]));
 const cssLampu = baca('frontend/src/index.css').replace(/\/\*[\s\S]*?\*\//g, '');
 const kacaLampu = cssLampu.match(/\.glass-panel \{[^}]*background:\s*rgb\(var\(--warna-([a-z0-9-]+)\)\s*\/\s*([\d.]+)\)/);
@@ -231,13 +184,9 @@ const iLampu = LR.indexOf('lampu-ruangan'), iVinyet = LR.indexOf('${VINYET}');
 cek(iLampu > LR.indexOf('${BAYANGAN_SAMPING}') && iLampu < iVinyet && /className="latar-ruangan /.test(LR),
   'pendar di dalam latar ruangan (ikut tersembunyi bila latar mati), di atas bayangan samping, di bawah vinyet');
 
-// v4 (20 Okt): jawaban model di dalam kartu bergaya Settings (`.glass-panel`, tembus sebagian) — teksnya berdiri di atas
-// campuran kartu + dinding. Latar kartu dibaca dari index.css; campurannya dihitung di titik dinding paling terang.
-// Kaca buramnya (blur) hanya meratakan dinding di baliknya, jadi tak bisa lebih terang dari titik paling terang.
 const CEteks = baca('frontend/src/components/workbench/ConversationEngine.jsx');
 const kartuDipakai = /: 'glass-panel [^']*'\}`\}>/.test(CEteks);
 const cssKaca = baca('frontend/src/index.css').replace(/\/\*[\s\S]*?\*\//g, '');
-// Latar .glass-panel = variabel tema + opasitas: `rgb(var(--warna-X) / a)` — nilainya diurai dari palet tema.
 const kaca = cssKaca.match(/\.glass-panel \{[^}]*background:\s*rgb\(var\(--warna-([a-z0-9-]+)\)\s*\/\s*([\d.]+)\)/);
 const latarKaca = kaca && PALET.VAR[kaca[1]] ? [...hex(PALET.VAR[kaca[1]]), Number(kaca[2])] : [];
 cek(kartuDipakai && latarKaca.length === 4, `kartu jawaban model memakai .glass-panel — latar rgba(${latarKaca.join(', ')})`);
@@ -254,7 +203,6 @@ if (bingkai) {
   cek(lum(dalamBingkai) > lum([r0, g0, b0]), 'dinding memang ikut terlihat di dalam bingkai (bingkai tidak pekat penuh)');
 }
 
-// ── 5. Bilah gulir tipis berlaku global ─────────────────────────────────────────────────────────
 console.log('\n-- 5. bilah gulir --');
 const css = baca('frontend/src/index.css').replace(/\/\*[\s\S]*?\*\//g, '');
 const blokGlobal = (css.match(/\n\*::-webkit-scrollbar \{([^}]*)\}/) || [])[1] || '';

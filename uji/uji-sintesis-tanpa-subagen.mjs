@@ -1,13 +1,3 @@
-// UJI 2026-10-28 — sintesis "multi-agen" hanya bila ADA hasil sub-agent (Item 126 Fase 1).
-//
-// Riwayat chat (agregat di database): 66 dari 80 sintesis multi-agen berjalan dengan NOL sub-agent — Coordinator
-// memutuskan [] atau gagal — dan model diberi "Anda telah menugaskan beberapa sub-agent… Riwayat pekerjaan sub-agent:"
-// yang kosong. Yang dijaga: tanpa hasil sub-agent → prompt = pesan asli (jawab langsung) + langkah proses yang jujur;
-// dengan hasil sub-agent → cabang multi-agen tetap; jalur lain tidak berubah.
-//
-// synthesis_handler.ts DIBUNDEL SUNGGUHAN; yang ditiru hanya pemanggil LLM, penyimpan telemetri, bus event, dan klien
-// Supabase (impor jaringan). Mode stream dipakai karena di sana handler MENGEMBALIKAN prompt yang akan dikirim ke model
-// tanpa memanggilnya — itulah yang diperiksa.
 
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -32,7 +22,7 @@ const hasil = await esbuild.build({
 const dir = mkdtempSync(join(tmpdir(), 'uji-sintesis-'));
 writeFileSync(join(dir, 'sh.mjs'), hasil.outputFiles[0].text);
 const { SynthesisHandler } = await import(pathToFileURL(join(dir, 'sh.mjs')).href);
-process.on('exit', () => { try { rmSync(dir, { recursive: true, force: true }); } catch { /* sudah bersih */ } });
+process.on('exit', () => { try { rmSync(dir, { recursive: true, force: true }); } catch {  } });
 
 console.log('uji-sintesis-tanpa-subagen v1');
 let gagal = 0;
@@ -60,7 +50,6 @@ async function sintesis({ isChatBiasa = false, orkestrasi = true, subagentRuns =
 }
 const KLAIM_PALSU = /Anda telah menugaskan beberapa sub-agent/;
 
-// ── 1. Orkestrasi jalan, NOL sub-agent → jawab langsung ────────────────────────────────────────
 console.log('\n-- orkestrasi jalan tanpa sub-agent (66 dari 80 di riwayat) --');
 let r = await sintesis({ subagentRuns: [] });
 cek(r.mode === 'STREAM' && r.prompt === PESAN, 'prompt ke model = pesan asli Owner (cabang jawab langsung)', r.prompt);
@@ -70,7 +59,6 @@ cek(!r.langkah.some((l) => /Merangkum dan menyintesis/.test(l)), 'tidak ada lang
 r = await sintesis({ subagentRuns: undefined });
 cek(r.prompt === PESAN, 'subagentRuns tak terdefinisi → juga jawab langsung', r.prompt);
 
-// ── 2. Ada hasil sub-agent → cabang multi-agen tetap ───────────────────────────────────────────
 console.log('\n-- ada hasil sub-agent (14 dari 80) --');
 r = await sintesis({ subagentRuns: [{ subagent: 'researcher', output: 'hasil riset' }] });
 cek(KLAIM_PALSU.test(r.prompt || '') && r.prompt.includes(PESAN), 'prompt sintesis multi-agen tetap dipakai', r.prompt?.slice(0, 120));
@@ -78,7 +66,6 @@ cek(r.langkah.some((l) => /Merangkum dan menyintesis/.test(l)) && !r.langkah.som
 r = await sintesis({ subagentRuns: [{ subagent: 'researcher', output: 'GAGAL: timeout' }] });
 cek(KLAIM_PALSU.test(r.prompt || ''), 'sub-agent jalan lalu gagal → tetap cabang multi-agen (kegagalannya ikut dilaporkan)');
 
-// ── 3. Jalur lain tak berubah ──────────────────────────────────────────────────────────────────
 console.log('\n-- jalur lain --');
 r = await sintesis({ isChatBiasa: true });
 cek(r.prompt === PESAN && !r.langkah.some((l) => /Tak ada sub-agent/.test(l)), 'obrolan biasa → jawab langsung tanpa baris "tak ada sub-agent" (orkestrasi memang tak dijalankan)', r.langkah);

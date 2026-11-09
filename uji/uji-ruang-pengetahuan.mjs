@@ -1,7 +1,4 @@
-// UJI workspace Research App (2026-09-21) — logika murni + lapisan DB dengan supabase tiruan.
 import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
 const M = await import(pathToFileURL(AKAR_REPO + '/frontend/src/core/runtime/services/ruangPengetahuan.js').href + '?v=' + Date.now());
@@ -25,7 +22,6 @@ cek(M.pilihRuangAwal([], null) === null, 'daftar kosong → null');
 cek(!M.bolehDihapus(daftar[1]) && M.bolehDihapus(daftar[0]), 'CORE tak boleh dihapus');
 M.ingatRuangTerpilih('k'); cek(M.ruangTerpilihTersimpan() === null || typeof M.ruangTerpilihTersimpan() === 'string', 'tanpa localStorage tidak melempar');
 
-// supabase tiruan
 function tiruan({ jumlahDok = 0, hapusBaris = 1 } = {}) {
   const log = [];
   const rantai = (tabel) => {

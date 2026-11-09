@@ -1,9 +1,3 @@
-// UJI 2026-11-02 — Item 130 Tahap A (graf Home): Directory & Menu tertutup di awal, Directory hanya berisi data
-// (dulu 481 = 458 data + 23 simpul bukan-data berlencana MEMORI), label kategori tak menumpuk, dan nama simpul di
-// tooltip tak pernah dijalankan sebagai HTML (K5: float-tooltip menulis lewat innerHTML; desktop tanpa CSP).
-//
-// Tata letak diukur dengan mesin yang SAMA dengan Home (d3-force-3d, setelan force-graph) dan penyusun simpul yang
-// SAMA (`susunGrafHome`) pada sebaran data Owner — lihat uji/lib/simulasiGrafHome.mjs.
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -13,7 +7,7 @@ const AKAR = fileURLToPath(new URL('..', import.meta.url));
 const grafHome = await import(pathToFileURL(join(AKAR, 'frontend/src/core/runtime/hooks/grafHome.js')).href);
 const { simulasikan, barisTiruan, SEBARAN_OWNER } = await import(pathToFileURL(join(AKAR, 'uji/lib/simulasiGrafHome.mjs')).href);
 const { susunGrafHome, simpulDirektori, labelTooltipAman } = grafHome;
-console.warn = () => {};   // safeLink memperingatkan simpul tiruan yang memang tak bertautan — bukan hasil uji
+console.warn = () => {};
 
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
@@ -23,16 +17,11 @@ const cek = (ok, pesan, rinci) => {
 const baca = (p) => readFileSync(join(AKAR, p), 'utf8');
 console.log('uji-graf-home-tahap-a v1');
 
-// ── 1. Label kategori tak menumpuk (simulasi) ───────────────────────────────────────────────────
-// Sejak Tahap F posisi dihitung `tataSurya` (bukan gaya fisika) — pembanding "setelan bawaan force-graph", uji gravitasi &
-// "lebih lega daripada bawaan" pensiun bersama fisikanya. Pembuktian bahwa simulasi bisa melihat tumpang: ambang label
-// data 0,75 (setelan lama) di layar 2560 menampilkan ratusan nama sekaligus.
 const lama = simulasikan({ ambangLabel: 0.75, layar: { lebar: 2240, tinggi: 1340 } });
 cek(lama.tumpang.length >= 3, `pembanding: dengan ambang lama 0,75 nama data bertumpuk di layar 2560 (${lama.tumpang.length} pasang, skala ${lama.skala.toFixed(3)})`);
 const kasus = [
   ['layar Owner 1366×768', {}],
   ['layar 1920×1080', { layar: { lebar: 1600, tinggi: 980 } }],
-  // Skala pas di antara ambang lama (0,75) dan baru — yang membuktikan AMBANG_LABEL_DATA memang bekerja.
   ['layar 2560×1440', { layar: { lebar: 2240, tinggi: 1340 } }],
   ['data dua kali lipat', { sebaran: { assistant: 260, engineer: 170, lite: 10, dokumen: 460, memori: 20 } }],
   ['120 memori tanpa relasi', { sebaran: { ...SEBARAN_OWNER, memori: 120 } }],
@@ -43,7 +32,6 @@ for (const [nama, opsi] of kasus) {
     `${nama}: 0 label bertumpuk, hanya label kategori saat dibuka (${h.label.length} label, skala ${h.skala.toFixed(3)})`, h.tumpang.slice(0, 4));
 }
 
-// ── 3. Knowledge Directory: hanya simpul data ───────────────────────────────────────────────────
 const { nodes } = susunGrafHome({ ...barisTiruan(), vitals: {} });
 const dir = simpulDirektori(nodes);
 const harap = SEBARAN_OWNER.memori + SEBARAN_OWNER.dokumen + SEBARAN_OWNER.assistant + SEBARAN_OWNER.engineer + SEBARAN_OWNER.lite;
@@ -51,21 +39,18 @@ cek(dir.length === harap, `Directory = ${harap} entitas data (memori + dokumen +
 cek(!dir.some((n) => ['Sub Agents', 'Tools', 'Skills', 'Vector DB', 'Supabase (DB/Auth)', 'LLM Provider'].includes(n.name)),
   'sub-cluster statis & layanan tak lagi terdaftar sebagai entitas berlencana MEMORI');
 
-// ── 4. Tooltip: nama sebagai TEKS ───────────────────────────────────────────────────────────────
 const jahat = '<img src=x onerror="window.electronAPI.readFile(\'C:/x\')">';
 const aman = labelTooltipAman({ name: jahat });
 cek(!/[<>"]/.test(aman) && aman.includes('&lt;img') && aman.includes('&quot;'), 'nama ber-HTML di-escape — tak bisa menjadi elemen/atribut', aman);
 cek(labelTooltipAman({ name: 'A & B \'x\'' }) === 'A &amp; B &#39;x&#39;' && labelTooltipAman({}) === '' && labelTooltipAman(null) === '',
   'teks biasa utuh (hanya karakter khusus yang diganti); nama kosong → string kosong');
 
-// ── 5. Terpasang di komponen ────────────────────────────────────────────────────────────────────
 const AG = baca('frontend/src/components/dashboard/ActivityGraph.jsx');
 cek(/\[isExplorerOpen, setIsExplorerOpen\] = useState\(false\)/.test(AG), 'Knowledge Directory tertutup di awal');
 cek(/nodeLabel=\{labelTooltipAman\}/.test(AG) && !/nodeLabel="name"/.test(AG), 'tooltip graf memakai labelTooltipAman (bukan nama mentah)');
 cek(/simpulDirektori\(graphData\?\.nodes\)/.test(AG), 'Directory diisi simpulDirektori');
 cek(/globalScale >= ambangLabelData\(skalaPas\)/.test(AG) && !/globalScale >= 0\.75/.test(AG), 'ambang nama simpul data = ambangLabelData(skala pas) (sama dengan simulasi)');
 const HD = baca('frontend/src/components/dashboard/HomeDashboard.jsx');
-// Sejak Tahap D tata letak dipasang pada graf GABUNGAN (dasar + lapisan) = `grafTampil`; sejak Tahap F lewat tataSurya.
 cek(/const graf = gabungGraf\(dasarPlus, ekor\);\s*tataSurya\(graf\);/.test(HD), 'HomeDashboard menata graf yang ditampilkan (tataSurya pada graf gabungan)');
 const MT = baca('frontend/src/components/os/MenuTeks.jsx');
 const ikuti = MT.match(/const ikutiHalaman = [^\n]*\n([\s\S]*?)\n  \};/)?.[1] || '';

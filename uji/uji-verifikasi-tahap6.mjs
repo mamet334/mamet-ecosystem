@@ -1,12 +1,3 @@
-// UJI 2026-09-28 — Tahap 6: verifikasi patch yang DIJALANKAN, bukan dicocokkan.
-//
-// Yang dijaga di sini ada tiga lapis, dan lapis ketiga yang paling penting:
-//   1. PENJALAN  — golongan hasil, dan ia HARUS BISA MERAH (langkah 8: uji yang tak bisa gagal itu hiasan)
-//   2. PUTUSAN   — kapan memulihkan, dan cara memisahkan "rusak oleh patch" dari "sudah rusak sebelumnya"
-//   3. TERPASANG — executePatchApplication yang SUNGGUHAN memanggilnya dan benar-benar berubah perilakunya
-//
-// Lapis ketiga ada karena dua kali dalam satu hari (24 September) uji lulus sementara fiturnya rusak:
-// yang diperiksa hanya "fungsinya benar", bukan "fungsinya dipanggil".
 
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
@@ -14,7 +5,6 @@ import { execFileSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 
-// Relatif terhadap berkas ini (dulu dipaku ke checkout utama — di worktree ia menguji penjalan milik checkout lain).
 const AKAR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..').replace(/\\/g, '/');
 const ENG = `${AKAR}/frontend/src/core/runtime/services/engineer/`;
 const V = await import(pathToFileURL(ENG + 'VerifikasiPatch.js').href + '?v=' + Date.now());
@@ -28,14 +18,12 @@ const cek = (ok, pesan, rinci) => {
   if (!ok) gagal++;
 };
 
-// ── 1. PENJALAN ──────────────────────────────────────────────────────────────────────────────
 console.log('\n-- penjalan uji --');
 
 cek(R.golongkan({ kodeKeluar: 0, barisTerakhir: 'SEMUA LULUS' }) === 'LULUS', 'SEMUA LULUS + kode 0 → LULUS');
 cek(R.golongkan({ kodeKeluar: 1, barisTerakhir: '3 GAGAL' }) === 'GAGAL', '3 GAGAL → GAGAL');
 cek(R.golongkan({ kodeKeluar: 0, barisTerakhir: 'DILEWATI — folder tidak ada' }) === 'DILEWATI', 'DILEWATI dikenali, bukan dihitung gagal');
 cek(R.golongkan({ kodeKeluar: 0, barisTerakhir: 'SEMUA LULUS', habisWaktu: true }) === 'GAGAL', 'habis waktu selalu GAGAL walau sempat mencetak lulus');
-// Cacat live 28 Sep: lima berkas dinyatakan gagal karena peringatan node di stderr jadi baris terakhir.
 cek(R.golongkan({ kodeKeluar: 0, barisTerakhir: '(Use `node --trace-warnings ...`)' }) === 'GAGAL'
   && R.golongkan({ kodeKeluar: 0, barisTerakhir: 'SEMUA LULUS' }) === 'LULUS',
   'putusan hanya dari baris kesimpulan — peringatan bukan kesimpulan');
@@ -48,19 +36,17 @@ const takJalan = R.daftarTakDijalankan().map((x) => x.nama);
 cek(takJalan.includes('uji-pengambilan-v5.js'),
   'tetapi ia DILAPORKAN, tidak disembunyikan — pengecualian diam adalah cara uji merah tak ketahuan 4 hari', takJalan);
 
-// Prasyarat roadmap: uji cermin ditandai, bukan dihapus.
 for (const n of ['uji-patch-crlf.mjs', 'uji-temuan-terpasang-v2.mjs', 'uji-laporan-patch-bertahan.mjs']) {
   cek(R.ujiCermin(n) === true, `uji cermin ditandai: ${n}`);
 }
 cek(R.ujiCermin('uji-pagar-immutable.mjs') === false, 'uji yang memanggil kode sungguhan TIDAK ikut ditandai cermin');
 
-// UJI KENDALI — penjalan ini harus bisa MERAH. Berkas sementara yang sengaja gagal.
 const berkasPalsu = path.join(AKAR, 'uji', 'uji-zzz-sengaja-gagal.mjs');
 try {
   writeFileSync(berkasPalsu, "console.log('uji-zzz v1');\nconsole.log('1 GAGAL');\nprocess.exit(1);\n", 'utf8');
   const keluar = path.join(AKAR, 'uji', 'hasil-kendali-tahap6.json');
   try { execFileSync(process.execPath, [`${AKAR}/uji/jalankan-semua.mjs`, `--keluar=${keluar}`, 'uji-zzz-sengaja-gagal.mjs'], { stdio: 'ignore' }); }
-  catch { /* kode keluar 1 memang yang diharapkan */ }
+  catch {  }
   const h = JSON.parse(readFileSync(keluar, 'utf8'));
   unlinkSync(keluar);
   cek(h.gagal.length === 1 && h.gagal[0].nama === 'uji-zzz-sengaja-gagal.mjs', 'KENDALI: berkas uji yang gagal sungguhan tertangkap MERAH', h.gagal);
@@ -69,8 +55,6 @@ try {
   if (existsSync(berkasPalsu)) unlinkSync(berkasPalsu);
 }
 
-// BATAS PER BERKAS (28 Okt 2026): uji-konektor-stealth dua kali dibunuh batas 120 s bersama. Berkas yang menjalankan
-// proses berat menyatakan batasnya sendiri; yang lain tetap 120 s.
 cek(R.BATAS_MS === 120000 && R.batasBerkas('uji-pagar-immutable.mjs') === 120000, 'tanpa penanda → batas bawaan 120 s');
 cek(R.batasBerkas('uji-konektor-stealth.mjs') === 300000, 'uji-konektor-stealth menyatakan batasnya sendiri: 300 s');
 {
@@ -82,8 +66,6 @@ cek(R.batasBerkas('uji-konektor-stealth.mjs') === 300000, 'uji-konektor-stealth 
     cek(R.batasBerkas('uji-a.mjs', f) === 600000, 'batas yang dinyatakan dipangkas ke 600 s — tak ada berkas yang boleh menunggu tanpa ujung');
     cek(R.batasBerkas('uji-b.mjs', f) === 120000, 'penanda hanya berlaku sebagai komentar di awal baris, bukan teks di dalam kode');
 
-    // Cucu proses (Python/Chromium pada uji sungguhan) ikut mati saat batas lewat. Bukan karena penjalan membunuh
-    // pohonnya — anak.kill() saja sudah cukup karena job object libuv; cek ini menjaga sifat itu, bukan kode kita.
     const pidCucu = path.join(f, 'pid-cucu.txt');
     tulis('uji-macet.mjs', [
       "import { spawn } from 'node:child_process';",
@@ -107,7 +89,6 @@ cek(R.batasBerkas('uji-konektor-stealth.mjs') === 300000, 'uji-konektor-stealth 
   }
 }
 
-// ── 2. PUTUSAN ───────────────────────────────────────────────────────────────────────────────
 console.log('\n-- putusan --');
 
 const hijau = { total: 50, lulus: 50, detik: 16.7, gagal: [], dilewati: [], cermin: ['uji-patch-crlf.mjs'] };
@@ -118,13 +99,11 @@ const merah = { total: 50, lulus: 48, detik: 17, dilewati: [], cermin: [], gagal
 
 cek(V.putusanVerifikasi(hijau).status === 'AMAN' && V.putusanVerifikasi(hijau).pulihkan === false, 'semua lulus → AMAN, tidak dipulihkan');
 cek(V.putusanVerifikasi(merah).pulihkan === true, 'ada yang gagal → dipulihkan');
-// Verifikasi yang TIDAK TERJADI bukan bukti patch merusak — memulihkan karenanya adalah menghukum tanpa bukti.
 for (const buruk of [{ galat: 'node tidak terpasang' }, null, undefined]) {
   const p = V.putusanVerifikasi(buruk);
   cek(p.status === 'TAK_TERVERIFIKASI' && p.pulihkan === false, `uji tak bisa dijalankan (${JSON.stringify(buruk)}) → TIDAK dipulihkan`);
 }
 
-// Inti rancangan: memisahkan "rusak oleh patch" dari "sudah merah sebelum patch".
 const pilah = V.pilahSebab(['uji-konteks-chat.mjs', 'uji-folder-label.mjs'], {
   gagal: [{ nama: 'uji-folder-label.mjs', barisTerakhir: '1 GAGAL', keluaran: '' }],
 });
@@ -132,7 +111,6 @@ cek(pilah.karenaPatch.join() === 'uji-konteks-chat.mjs', 'lulus lagi sesudah dip
 cek(pilah.sudahRusak.join() === 'uji-folder-label.mjs', 'masih gagal sesudah dipulihkan → sudah rusak SEBELUM patch', pilah);
 cek(V.pilahSebab(['a.mjs'], { gagal: [] }).karenaPatch.join() === 'a.mjs', 'tanpa sisa kegagalan, semuanya karena patch');
 
-// ── 3. LAPORAN ───────────────────────────────────────────────────────────────────────────────
 console.log('\n-- laporan --');
 
 const lapAman = V.laporanVerifikasi({ sesudahPatch: hijau });
@@ -151,9 +129,6 @@ cek(/uji-konteks-chat\.mjs/.test(lapMerah) && /jalur kirim memakai pilihan beran
 cek(/BUKAN karena patch ini/.test(lapMerah) && /uji-folder-label\.mjs/.test(lapMerah),
   'kegagalan yang sudah ada sebelumnya dipisahkan, tidak ditimpakan ke patch', lapMerah);
 
-// CACAT LIVE 1 Oktober: laporannya berbunyi "Ketiganya lulus lagi…" untuk SATU berkas uji. Kata yang
-// dipaku membuat laporan yang isinya BENAR terbaca seperti salah — dan laporan yang terbaca salah
-// akan diabaikan, persis seperti uji yang merah palsu.
 cek(/^Ia lulus lagi/m.test(lapMerah) || /Ia lulus lagi sesudah/.test(lapMerah),
   'satu berkas uji → "Ia lulus lagi", bukan "Ketiganya"', (lapMerah.match(/### Rusak oleh patch ini[\s\S]{0,120}/) || [])[0]);
 cek(!/Ketiganya/.test(lapMerah), 'kata "Ketiganya" tidak lagi dipaku di laporan');
@@ -177,7 +152,6 @@ const lapTak = V.laporanVerifikasi({ sesudahPatch: { galat: 'node tidak terpasan
 cek(/TIDAK diverifikasi/.test(lapTak) && /TIDAK dipulihkan/.test(lapTak),
   'tak terverifikasi dikatakan apa adanya — bukan "aman", bukan "merusak"', lapTak);
 
-// ── 4. TERPASANG di PatchApplier (yang sungguhan, bukan cermin) ───────────────────────────────
 console.log('\n-- terpasang di PatchApplier --');
 
 function jalankanPatch({ verifikasi }) {
@@ -217,7 +191,6 @@ cek(r.hasil.checkpointRef === null,
   'checkpoint sudah terpakai → tombol Undo tidak ditawarkan untuk sesuatu yang sudah dikembalikan', r.hasil.checkpointRef);
 cek(r.jejak.rollbackDialog === 0, 'pemulihan TIDAK lewat dialog Undo — ia otomatis, tidak menunggu klik');
 
-// Tanpa Electron (web/Mametlite) tidak ada node; verifikasi dilewati, patch tidak jadi korban.
 {
   const jejak = [];
   globalThis.window = { electronAPI: { gitCheckpoint: async () => ({ success: true, ref: 'CP-uji' }) } };
@@ -231,7 +204,6 @@ cek(r.jejak.rollbackDialog === 0, 'pemulihan TIDAK lewat dialog Undo — ia otom
   cek(hasil.verifikasi === null && hasil.success === true, 'tanpa Electron: verifikasi dilewati, patch tidak dibatalkan', hasil);
 }
 
-// ── 5. TERPASANG di proses utama & layar ─────────────────────────────────────────────────────
 console.log('\n-- terpasang di proses utama & layar --');
 
 const MAIN = readFileSync(`${AKAR}/frontend/electron/main.cjs`, 'utf8');
@@ -240,9 +212,6 @@ const CE = readFileSync(`${AKAR}/frontend/src/components/workbench/ConversationE
 
 cek(/ipcMain\.handle\('eng:verifikasi-patch'/.test(MAIN), 'jalur verifikasi ada di proses utama');
 
-// CACAT LIVE 1 Oktober: `_executePatchApplication` hasilnya DIBUANG, jadi jalur engineer.js tidak tahu
-// berkasnya sudah dipulihkan dan tetap mengumumkan "Patch Berhasil Diterapkan!" — Owner melihat DUA
-// pesan yang bertentangan dalam satu percakapan.
 const ENGINEER_JS = readFileSync(`${AKAR}/frontend/src/core/runtime/services/engineer.js`, 'utf8');
 cek(/const hasilTerap = await this\._executePatchApplication\(/.test(ENGINEER_JS), 'hasil penerapan patch DIPAKAI, tidak dibuang');
 cek(/const dipulihkan = !!hasilTerap\?\.verifikasi\?\.dipulihkan;/.test(ENGINEER_JS), 'keadaan "sudah dipulihkan" dibaca dari hasilnya');
@@ -262,7 +231,6 @@ cek(iPulih > 0 && iUlang > iPulih, 'urutannya benar: pulihkan DULU, baru jalanka
 cek(/if \(sesudahPatch\.galat \|\| !gagal\.length\) return/.test(blok),
   'uji yang tak bisa dijalankan tidak memicu pemulihan', blok);
 
-// Tombol Undo Owner HARUS tetap bertanya — yang tanpa dialog hanya jalur otomatis.
 const blokRollback = MAIN.slice(MAIN.indexOf("ipcMain.handle('eng:git-rollback'"), MAIN.indexOf("ipcMain.handle('select-folder'"));
 cek(/dialog\.showMessageBox/.test(blokRollback), 'tombol Undo Owner tetap minta konfirmasi');
 cek(!/dialog\.showMessageBox/.test(String(MAIN.slice(MAIN.indexOf('async function pulihkanDariCheckpoint'), MAIN.indexOf("ipcMain.handle('eng:git-rollback'")))),

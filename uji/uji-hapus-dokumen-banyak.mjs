@@ -1,8 +1,3 @@
-// UJI 2026-11-05 — Research App: pilih banyak dokumen lalu hapus (permintaan Owner), dan daftar yang tak lagi berlomba.
-//
-// Owner menghapus 221 Kepbup pecahan lewat SQL Editor karena tombol hapus hanya satu per satu. Sebelum fitur ini
-// dipasang, temuan yang sama hari itu harus ditutup: sesudah muat ulang, daftar "random test" sempat memuat dokumen
-// SEMUA workspace (dua pemuatan berlomba) — "pilih semua → hapus" pada daftar seperti itu menghapus dokumen workspace lain.
 
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -19,7 +14,6 @@ const cek = (ok, pesan, rinci) => {
   if (!ok) gagal++;
 };
 
-/** Supabase tiruan yang menyimpan isi; mencatat urutan operasi. Galat bisa disuntik pada operasi ke-n. */
 function sbTiruan({ dokumen, potongan, galatPada = null }) {
   const db = { dokumen: [...dokumen], potongan: [...potongan], log: [] };
   let operasi = 0;
@@ -52,7 +46,6 @@ const buatData = (n) => ({
   potongan: Array.from({ length: n * 3 }, (_, i) => ({ id: `c${i}`, document_id: `d${i % n}` })),
 });
 
-// ── 1. hapusDokumenBanyak ─────────────────────────────────────────────────────────────────────────
 console.log('\n-- 1. hapusDokumenBanyak --');
 {
   const { db, sb } = sbTiruan(buatData(60));
@@ -77,7 +70,7 @@ console.log('\n-- 1. hapusDokumenBanyak --');
   const pilih = Array.from({ length: 50 }, (_, i) => `d${i}`);
   const h = await H.hapusDokumenBanyak(sb, pilih, {}).then((x) => x);
   void h;
-  const { db: db2, sb: sb2 } = sbTiruan({ ...buatData(50), galatPada: 4 }); // operasi ke-4 = dokumen kelompok ke-2
+  const { db: db2, sb: sb2 } = sbTiruan({ ...buatData(50), galatPada: 4 });
   const h2 = await H.hapusDokumenBanyak(sb2, pilih);
   cek(h2.gagal && h2.dihapus.length === 20 && h2.gagal.belumDiproses.length === 30 && /galat documents/.test(h2.gagal.pesan),
     'galat di kelompok ke-2 → berhenti; laporan jujur: 20 terhapus, 30 belum diproses', h2);
@@ -90,12 +83,11 @@ console.log('\n-- 1. hapusDokumenBanyak --');
   cek(h.gagal && h.dihapus.length === 0 && h.gagal.belumDiproses.join() === 'd0,d1', 'galat menghapus potongan → dokumen tidak disentuh', h);
 }
 
-// ── 2. penjaga jawaban terbaru ────────────────────────────────────────────────────────────────────
 console.log('\n-- 2. daftar tak lagi berlomba --');
 {
   const p = H.buatPenjagaTerbaru();
-  const lama = p.mulai(); // pemuatan tanpa saringan (pilihan workspace belum pulih)
-  const baru = p.mulai(); // pemuatan dengan saringan
+  const lama = p.mulai();
+  const baru = p.mulai();
   cek(p.masihTerbaru(baru) && !p.masihTerbaru(lama), 'jawaban pemuatan lama yang datang belakangan dibuang');
 }
 {
@@ -106,10 +98,7 @@ console.log('\n-- 2. daftar tak lagi berlomba --');
 cek(H.ringkasRuang([{ space_id: 's1' }, { space_id: 's1' }, { space_id: 's2' }, { space_id: 'x' }], [{ id: 's1', name: 'kepbup oku' }, { id: 's2', name: 'random test' }])
   === 'kepbup oku (2), random test (1), (tanpa workspace) (1)', 'konfirmasi menyebut asal workspace tiap dokumen');
 
-// ── 3. sambungan di Research App ──────────────────────────────────────────────────────────────────
 console.log('\n-- 3. Research App --');
-// Akhir baris diseragamkan: checkout GitHub ber-CRLF (J3c) — pola `\n` di bawah gagal di CI walau lulus di laptop
-// (5 Nov, run 42057388216).
 const bacaLF = (p) => readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
 const RA = bacaLF(path.join(AKAR, 'frontend/src/components/research/ResearchApp.jsx'));
 const BILAH = bacaLF(path.join(AKAR, 'frontend/src/components/research/BilahPilihDokumen.jsx'));
@@ -123,11 +112,10 @@ cek(/hapusDokumenBanyak\(supabase, target\.map/.test(RA) && /finally \{\s*setSta
   'sesudah hapus (berhasil atau gagal): status kosong, pilihan dikosongkan, daftar dimuat ulang');
 cek(/type="checkbox"\s*\n\s*checked=\{pilihan\.has\(doc\.id\)\}/.test(RA) && /<BilahPilihDokumen/.test(RA), 'tiap baris punya kotak centang; bilah pilih tampil di atas daftar');
 
-// ── 4. kelas Tailwind benar-benar dibuat ──────────────────────────────────────────────────────────
 console.log('\n-- 4. tampilan --');
 let tailwind;
 const require = createRequire(path.join(AKAR, 'frontend', 'package.json'));
-try { tailwind = require('tailwindcss'); } catch { /* lihat di bawah */ }
+try { tailwind = require('tailwindcss'); } catch {  }
 if (!tailwind) {
   console.log('(kompilasi Tailwind dilewati — frontend/node_modules belum terpasang)');
 } else {

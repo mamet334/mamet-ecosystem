@@ -1,12 +1,3 @@
-// UJI 2026-10-27 — kata kunci misi crawler: arahan analisis untuk model SELARAS dengan cara crawler mencocokkan.
-//
-// Latar: misi "Ogan Komering Ulu" — model (sesuai arahan "sinonim") menambah "OKU"; crawler mencocokkannya sebagai
-// potongan teks sehingga 14/14 tangkapan rss_media lolos lewat "F-oku-s". Perbaikan dua sisi (keputusan Owner):
-//   - crawler (capability/ecosystem-crawler/crawler/inti/teks.py): kata ≤ 4 huruf & akronim = kata utuh;
-//     diuji pytest tests/test_kata_kunci.py;
-//   - arahan model (konektorAlat.js aturan 1): kenali entitas yang dicari, dampingi akronim dengan nama lengkap &
-//     penanda khas, pakai kata_kunci_kecuali.
-// Uji ini menjaga keduanya tidak bercerai: angka & aturan yang dikatakan ke model = yang dijalankan crawler.
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -29,7 +20,6 @@ cek(/dampingi akronim dengan nama lengkap dan penanda khasnya/.test(aturan1) && 
 cek(/secara harfiah, bukan makna/.test(aturan1), 'model diberi tahu crawler mencocokkan harfiah, bukan makna');
 cek(!/^1b\.|^2\. Jalankan/m.test(blok) && /^2\. Sumber kaskus/m.test(blok), 'penomoran aturan lain tidak bergeser');
 
-// Angka di arahan = angka di crawler (sumber kebenaran: teks.py).
 const teksPy = readFileSync(path.join(AKAR, 'capability/ecosystem-crawler/crawler/inti/teks.py'), 'utf8');
 const batasPy = Number((teksPy.match(/" " not in k and len\(k\) <= (\d+)/) || [])[1]);
 const batasPrompt = Number((aturan1.match(/kata ≤ (\d+) huruf dan akronim/) || [])[1]);

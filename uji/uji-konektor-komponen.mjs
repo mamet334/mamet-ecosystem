@@ -1,13 +1,3 @@
-// UJI 2026-10-26 — "Yang terpasang di perangkat ini" (Item 129 Tahap E3): electron/komponenKonektor.cjs,
-// daftar isi bundel di scripts/siapkan-crawler.mjs, IPC konektor:komponen & konektor:buka-folder.
-//
-// Keputusan Owner: crawler tetap satu bundel, stealth tetap dipasang saat dibutuhkan (K14), semua yang terpasang
-// TRANSPARAN. Yang dijaga:
-//   - lisensi dibaca dari metadata paket, tidak ditebak (kosong → null → "tidak tercantum");
-//   - ukuran = folder yang benar-benar ada; data crawler TIDAK menghitung subfolder stealth dua kali;
-//   - revisi browser dibaca dari browsers.json Patchright, nama folder `<nama_>-<revisi>`;
-//   - "Buka folder" hanya membuka folder dari daftar (kunci, bukan alamat dari layar);
-//   - bagian 5: runtime terbundel sungguhan memuat komponen.json yang cocok dengan isi site-packages-nya.
 
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -31,7 +21,6 @@ const sementara = (awal) => mkdtempSync(path.join(os.tmpdir(), awal));
 const tulis = (p, isi) => { mkdirSync(path.dirname(p), { recursive: true }); writeFileSync(p, isi); };
 const MB = (n) => Buffer.alloc(n * 1024 * 1024);
 
-// ── 1. Lisensi dari METADATA ────────────────────────────────────────────────────────────────
 console.log('\n-- 1. lisensi --');
 cek(S.lisensiDari('Name: a\nLicense: MIT\nLicense-Expression: Apache-2.0\n\nbadan') === 'Apache-2.0', 'License-Expression didahulukan');
 cek(S.lisensiDari('Name: a\nLicense: BSD-3-Clause\nClassifier: License :: OSI Approved :: MIT License\n') === 'BSD-3-Clause', 'License pendek dipakai sebelum Classifier');
@@ -48,7 +37,6 @@ const dp = S.daftarPaket(sp);
 cek(dp.length === 2 && dp[0].nama === 'Alpha' && dp[1].nama === 'zeta', 'daftarPaket: hanya dist-info, urut abjad tanpa peduli huruf besar', dp);
 cek(dp[0].versi === '2.1' && dp[0].lisensi === null && dp[1].lisensi === 'MIT', 'daftarPaket: versi & lisensi (kosong tetap null)', dp);
 
-// ── 2. Mode pengembangan ────────────────────────────────────────────────────────────────────
 console.log('\n-- 2. pengembangan --');
 const repoCrawler = sementara('repo-crawler-');
 const dev = await KK.bacaKomponen({ folderRepo: repoCrawler });
@@ -56,7 +44,6 @@ cek(dev.mode === 'pengembangan' && dev.bawaan.lokasi === path.join(repoCrawler, 
 cek(KK.lokasiFolder('stealth', { folderRepo: repoCrawler }) === null && KK.lokasiFolder('browser', { folderRepo: repoCrawler }) === null,
   'pengembangan: folder stealth/browser tidak bisa dibuka (bukan milik pemasang)');
 
-// ── 3. Aplikasi terpasang, stealth terpasang ────────────────────────────────────────────────
 console.log('\n-- 3. terbundel --');
 const runtime = sementara('rt-komponen-');
 tulis(path.join(runtime, 'python', 'python.exe'), MB(2));
@@ -91,7 +78,6 @@ cek(t.stealth.browser.find((b) => b.nama === 'winldd')?.ada === false, 'browser 
 cek(t.stealth.mb === 3 + 4 + 2 + 1, 'stealth: ukuran = paket + browser yang benar-benar ada', t.stealth.mb);
 cek(KK.akarBrowser({ PLAYWRIGHT_BROWSERS_PATH: 'X:\\b', LOCALAPPDATA: lad }) === 'X:\\b', 'PLAYWRIGHT_BROWSERS_PATH didahulukan (sama dengan patchright install)');
 
-// ── 4. Keadaan lain ─────────────────────────────────────────────────────────────────────────
 console.log('\n-- 4. keadaan lain --');
 const runtimeLama = sementara('rt-lama-');
 const dataBaru = sementara('data-baru-');
@@ -102,7 +88,6 @@ cek(lama.data.mb === 0, 'folder data kosong → 0 MB', lama.data);
 const hilang = await KK.bacaKomponen({ runtimeTerbundel: runtimeLama, folderData: path.join(dataBaru, 'tidak-ada'), env });
 cek(hilang.data.mb === null, 'folder data belum ada → ukuran null (bukan 0 yang menyesatkan)', hilang.data);
 
-// ── 5. Buka folder: hanya kunci yang dikenal & folder yang ada ─────────────────────────────
 console.log('\n-- 5. buka folder --');
 const o = { runtimeTerbundel: runtime, folderData: data, env };
 cek(KK.lokasiFolder('bawaan', o) === runtime && KK.lokasiFolder('data', o) === data, 'bawaan & data → alamatnya');
@@ -110,7 +95,6 @@ cek(KK.lokasiFolder('stealth', o) === l.akar && KK.lokasiFolder('browser', o) ==
 cek(['C:\\Windows', '..', 'constructor', '__proto__', ''].every((k) => KK.lokasiFolder(k, o) === null), 'kunci asing / alamat mentah dari layar → ditolak');
 cek(KK.lokasiFolder('stealth', { ...o, folderData: dataBaru }) === null, 'folder yang belum ada → null (bukan membuka folder kosong)');
 
-// ── 6. Pengelola & sambungan ────────────────────────────────────────────────────────────────
 console.log('\n-- 6. sambungan --');
 const p = K.buatPengelolaKonektor({ akarRepo: AKAR, runtimeTerbundel: runtime, folderData: data });
 cek((await p.komponen('bukan-konektor')).ok === false, 'pengelola.komponen: konektor tak dikenal ditolak');
@@ -122,9 +106,6 @@ cek(/\{\s*konektor,\s*kunci\s*\}/.test(blokBuka) && /lokasiFolder\(konektor, kun
   'IPC buka-folder: menerima kunci, alamat disusun proses utama, dibuka shell.openPath', blokBuka.slice(0, 300));
 cek(/konektor:komponen/.test(main) && /komponen:\s*\(konektor\)/.test(pre) && /bukaFolder:\s*\(konektor, kunci\)/.test(pre), 'preload: komponen & bukaFolder');
 cek(!/±300 MB/.test(main) && /±830 MB/.test(main), 'dialog stealth menyebut ruang disk terukur (±830 MB), bukan "±300 MB"');
-// Koreksi 26 Okt (terlihat di 4.3.0 terpasang): folder data = <userData>\crawler = %APPDATA%\ai-agent-frontend\crawler —
-// userData dinamai `name` package.json. Teks "%APPDATA%\Mamet AI\crawler" yang ditulis tangan salah; dialog kini
-// menyusun alamat dari folder sebenarnya.
 const namaPaket = JSON.parse(readFileSync(path.join(AKAR, 'frontend', 'package.json'), 'utf8')).name;
 cek(namaPaket === 'ai-agent-frontend', `nama paket = nama folder userData (${namaPaket}) — bila diganti, setelan pengguna pindah folder`);
 cek(/const FOLDER_DATA_CRAWLER = path\.join\(app\.getPath\('userData'\), 'crawler'\)/.test(main) && /folderData: FOLDER_DATA_CRAWLER/.test(main),
@@ -137,7 +118,6 @@ cek(kodeSalah.length === 0, 'tak ada lagi alamat "%APPDATA%\\Mamet AI\\crawler" 
 const sk = readFileSync(path.join(AKAR, 'frontend', 'scripts', 'siapkan-crawler.mjs'), 'utf8');
 cek(sk.indexOf("'komponen.json'") > sk.indexOf('ujiJabatTangan(tujuan)'), 'komponen.json ditulis SESUDAH bundel lulus uji jabat tangan');
 
-// ── 7. Runtime terbundel sungguhan ──────────────────────────────────────────────────────────
 console.log('\n-- 7. runtime sungguhan --');
 const RT = path.join(AKAR, 'frontend', 'build', 'crawler-runtime');
 if (!existsSync(path.join(RT, 'komponen.json'))) {
@@ -153,10 +133,6 @@ if (!existsSync(path.join(RT, 'komponen.json'))) {
   cek(nyata.bawaan.mb > 100 && nyata.bawaan.paket.length === m.paket.length, `ukuran bundel terukur: ${nyata.bawaan.mb} MB`, nyata.bawaan.mb);
 }
 
-// ── 8. Jalur build GitHub (rilis 4.3.0) ─────────────────────────────────────────────────────
-// Mesin build tak punya .venv (tidak di-commit): build.yml membangunnya dari requirements-bundel.txt. Yang dijaga:
-// daftar itu memuat setiap paket bundel dengan versi yang sama, Python di build.yml = Python .venv, dan Python
-// terbundel membawa pustaka C++-nya sendiri (PC bersih).
 console.log('\n-- 8. jalur build --');
 const pyKosong = sementara('py-terbundel-');
 cek(S.periksaPythonTerbundel(pyKosong).join(',') === 'python.exe,vcruntime140.dll,vcruntime140_1.dll,python3XX.dll', 'Python terbundel kosong → semua berkas wajib disebut hilang', S.periksaPythonTerbundel(pyKosong));
@@ -165,8 +141,6 @@ cek(S.periksaPythonTerbundel(pyKosong).join(',') === 'vcruntime140_1.dll', 'tanp
 const sumberSiap = readFileSync(path.join(AKAR, 'frontend', 'scripts', 'siapkan-crawler.mjs'), 'utf8');
 cek(/const hilang = periksaPythonTerbundel\(path\.join\(tujuan, 'python'\)\);\s*\n\s*if \(hilang\.length\) throw/.test(sumberSiap), 'siapkan memanggil pemeriksaan itu dan GAGAL bila ada yang hilang');
 
-// Build GitHub 4.3.0 (Node 20) lolos membawa komponen stealth meski filter salinan membuangnya di laptop (Node 24):
-// sesudah salin, paket yang dibuang dibersihkan langsung dari site-packages bundel.
 const spBundel = sementara('sp-bundel-');
 for (const n of ['patchright', 'Patchright-1.64.1.dist-info', 'playwright', '_pytest', 'scrapling', 'mcp-2.3.0.dist-info']) mkdirSync(path.join(spBundel, n));
 const dibuang = S.bersihkanPaketLewati(spBundel).sort();
@@ -174,8 +148,6 @@ cek(dibuang.join(',') === 'Patchright-1.64.1.dist-info,_pytest,patchright,playwr
   'bersihkanPaketLewati: penggerak stealth & pytest dibuang (tak peka huruf besar), paket kerja tetap', { dibuang, sisa: readdirSync(spBundel) });
 cek(/bersihkanPaketLewati\(path\.join\(tujuan, 'python', 'Lib', 'site-packages'\)\)/.test(sumberSiap), 'siapkan membersihkan site-packages bundel sesudah salin');
 
-// Build GitHub 4.3.0 kedua: filter fs.cpSync (Node 20) tak diterapkan & symlink python3.exe ikut tersalin → 7-Zip
-// pemasang gagal. Penyiap kini memakai penjalan sendiri: aturan buang diterapkan di setiap tingkat, tautan dilewati.
 const asalSalin = sementara('salin-asal-');
 tulis(path.join(asalSalin, 'python.exe'), 'x');
 tulis(path.join(asalSalin, 'Scripts', 'pipx.exe'), 'x');
@@ -193,7 +165,6 @@ cek(!ada('tautan') && hs.tautan.join(',') === 'tautan', 'salinTersaring: symlink
 cek(!/fs\.cpSync\(/.test(sumberSiap), 'siapkan tidak lagi memakai fs.cpSync (filternya tak diterapkan di Node 20)');
 
 const CRAWLER = path.join(AKAR, 'capability', 'ecosystem-crawler');
-// Format ber-hash (T20, 2026-10-28, ditulis scripts/kunci_bundel.py): "nama==versi \" lalu baris "--hash=sha256:…".
 const kunciTeks = readFileSync(path.join(CRAWLER, 'requirements-bundel.txt'), 'utf8');
 const normal = (n) => n.toLowerCase().replace(/[-_.]+/g, '-');
 const entri = kunciTeks.replace(/\\\r?\n\s*/g, ' ').split(/\r?\n/).filter((b) => b.trim() && !b.startsWith('#')).map((b) => {
@@ -208,9 +179,6 @@ cek(tanpaHash.length === 0, 'setiap paket membawa hash sha256 (dan tak ada opsi 
 const yml = readFileSync(path.join(AKAR, '.github', 'workflows', 'build.yml'), 'utf8');
 cek(/--no-deps[^\n]*-r requirements-bundel\.txt/.test(yml) && /working-directory: \.\/capability\/ecosystem-crawler/.test(yml), 'build.yml memasang daftar terkunci dengan --no-deps di folder crawler');
 cek(/--require-hashes[^\n]*-r requirements-bundel\.txt/.test(yml), 'build.yml memasang dengan --require-hashes — berkas yang isinya beda dari hash ditolak');
-// 28 Okt: `paths: frontend/package.json` memicu build pada perubahan APA PUN di berkas itu (ganti versi Electron →
-// build rilis 4.3.2 kedua, dibatalkan tangan). Build hanya boleh jalan bila job periksa-versi menyatakan versi naik.
-// 2 Nov (J3): job build juga menunggu `uji` (gerbang suite) — `needs` kini daftar, dan ada baris komentar di atasnya.
 cek(/\n  build:\n(?: {4}#[^\n]*\n)* {4}needs: \[periksa-versi(?:, [a-z-]+)*\]\n {4}if: needs\.periksa-versi\.outputs\.naik == 'true'\n/.test(yml.replace(/\r\n/g, '\n')),
   'build.yml: job build menunggu periksa-versi dan hanya jalan bila versi naik');
 cek(/::error::[^\n]*\n\s*exit 1/.test(yml) && !/naik=true[^\n]*\n[^\n]*\n\s*fi\n\s*git fetch/.test(yml),
@@ -235,9 +203,6 @@ if (existsSync(path.join(RT, 'komponen.json'))) {
   cek(S.periksaPythonTerbundel(path.join(RT, 'python')).length === 0, 'runtime terbundel sungguhan membawa python.exe, python3XX.dll, vcruntime140(_1).dll');
 }
 
-// ── 9. Menyala cepat di komputer lambat (rilis 4.3.1) ──────────────────────────────────────
-// Laptop 4 GB Windows 10 (uji Owner 26 Okt): "server tidak menjawab dalam 30 s" di percobaan pertama, berhasil di
-// kedua — bundel tanpa bytecode membuat Python mengompilasi ulang ±750 modul setiap kali menyala.
 console.log('\n-- 9. bytecode & batas tunggu --');
 const pyUji = sementara('bytecode-');
 tulis(path.join(pyUji, 'a.py'), '');

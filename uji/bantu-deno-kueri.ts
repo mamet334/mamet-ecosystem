@@ -1,8 +1,3 @@
-// Pembantu uji-kueri-pencarian.mjs (bukan berkas uji — namanya tidak diawali "uji-"), dijalankan dengan Deno:
-// membuktikan pencarian_berita.ts (server, Deno) memuat shared/kueri_pencarian.js lewat impor relatifnya dan
-// cariBerita() mengirim kata kunci hasil aturan bersama ke Bing. fetch tiruan — tanpa jaringan.
-// 29 Okt: juga mengurai contoh RSS (argumen ke-2) dengan uraiRss server — pembanding parser klien (shared/teks_rss.js) —
-// dan meringkas contoh ADR-0021 (lookbehind "soal" harus jalan di Deno juga).
 const akar = Deno.args[0];
 const rss = Deno.args[1] || '';
 const { cariBerita, uraiRss } = await import(`file:///${akar}/supabase/functions/agent-process/lib/web/pencarian_berita.ts`);

@@ -1,12 +1,4 @@
-// UJI 2026-09-24 — batas jendela model ikut dihitung dalam anggaran konteks (sisa Tahap 3a).
-//
-// Sebelum ini `batasModel` tidak pernah diisi: anggaran murni digerakkan biaya, dan dengan model
-// murah berjendela sempit anggarannya melampaui jendela model — permintaan ditolak OpenRouter.
-// Angka jendela di bawah diambil dari katalog resmi OpenRouter /api/v1/models pada 24 September 2026
-// dan sudah ditulis ke kolom `model_pricing.context_length`.
 import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -20,7 +12,6 @@ const cek = (ok, pesan, rinci) => {
   if (!ok) gagal++;
 };
 
-// Isi nyata tabel model_pricing sesudah migrasi (model, harga masukan per 1 jt, jendela).
 const TABEL = [
   ['openai/gpt-4o',                    2.5,    128000],
   ['openai/gpt-4o-mini',               0.15,   128000],
@@ -29,7 +20,6 @@ const TABEL = [
   ['deepseek/deepseek-v4-flash-0731',  0.065,  1310720],
 ];
 
-// ---------- tidak ada model yang anggarannya melampaui jendelanya ----------
 for (const [nama, harga, jendela] of TABEL) {
   for (const batasHarianUsd of [0.5, 1, 3, 10, 100]) {
     const a = K.anggaranKonteks({ batasHarianUsd, terpakaiHariIniUsd: 0, hargaInput1M: harga, batasModel: jendela });
@@ -39,22 +29,17 @@ for (const [nama, harga, jendela] of TABEL) {
   }
 }
 
-// ---------- cacat yang diukur 24 September, harus hilang ----------
-// gpt-4o-mini batas $3 dulu menghasilkan 1.000.000 token melawan jendela 128.000.
 let a = K.anggaranKonteks({ batasHarianUsd: 3, terpakaiHariIniUsd: 0, hargaInput1M: 0.15, batasModel: 128000 });
 cek(a.token === 76800, 'gpt-4o-mini batas $3: 1.000.000 → 76.800 token (60% dari 128.000)', a);
 cek(a.dibatasiJendelaModel === true && /dibatasi jendela model/.test(a.alasan), 'alasannya menyebut jendela model, bukan biaya', a.alasan);
 cek(a.batasModel === 128000, 'jendela model dilaporkan apa adanya untuk ditampilkan', a);
-// llama-3.1-8b batas $3 dulu menghasilkan 3.000.000 token melawan jendela 131.072.
 a = K.anggaranKonteks({ batasHarianUsd: 3, terpakaiHariIniUsd: 0, hargaInput1M: 0.05, batasModel: 131072 });
 cek(a.token === 78643, 'llama-3.1-8b batas $3: 3.000.000 → 78.643 token', a);
 
-// ---------- KENDALI: model berjendela lebar tidak ikut dipotong ----------
 a = K.anggaranKonteks({ batasHarianUsd: 3, terpakaiHariIniUsd: 0, hargaInput1M: 0.5795, batasModel: 1048576 });
 cek(a.token === 258843 && a.dibatasiJendelaModel === false && /batas biaya harian/.test(a.alasan),
   'KENDALI deepseek-v4-pro: biaya tetap yang membatasi, bukan jendela', a);
 
-// ---------- KENDALI: jendela belum diketahui → perilaku lama, bukan angka tebakan ----------
 a = K.anggaranKonteks({ batasHarianUsd: 3, terpakaiHariIniUsd: 0, hargaInput1M: 0.15 });
 cek(a.token === 1000000 && a.batasModel === null && a.dibatasiJendelaModel === false,
   'KENDALI tanpa data jendela: anggaran apa adanya, tidak dipotong diam-diam', a);
@@ -63,20 +48,16 @@ cek(a.token === 1000000, 'KENDALI context_length NULL di tabel diperlakukan sama
 a = K.anggaranKonteks({ batasHarianUsd: 3, hargaInput1M: 0.15, batasModel: 0 });
 cek(a.token === 1000000, 'KENDALI jendela 0 (data rusak) tidak mengunci konteks jadi nol', a);
 
-// ---------- jendela sangat sempit: minimum TIDAK boleh menembusnya ----------
-// Katalog OpenRouter memuat entri sekecil 4.095 token.
 a = K.anggaranKonteks({ batasHarianUsd: 0.01, terpakaiHariIniUsd: 0.009, hargaInput1M: 3, batasModel: 4095 });
 cek(a.token === Math.floor(4095 * 0.6), 'jendela 4.095: anggaran minimum 8.000 ikut dipotong, tidak menembus jendela', a);
 cek(a.token < K.ANGGARAN_MIN, 'anggaran boleh di bawah ANGGARAN_MIN bila jendelanya memang sesempit itu', a.token);
 cek(/dibatasi jendela model/.test(a.alasan), 'jendela model menang atas alasan "sisa harian tipis"', a.alasan);
 
-// tanpa harga/batas: anggaran bawaan 60k pun dipotong jendela
 a = K.anggaranKonteks({ batasModel: 32000 });
 cek(a.token === 19200 && /dibatasi jendela model/.test(a.alasan), 'anggaran bawaan 60k juga tunduk pada jendela model', a);
 a = K.anggaranKonteks({ batasModel: 1048576 });
 cek(a.token === K.ANGGARAN_BAWAAN && /belum diketahui/.test(a.alasan), 'KENDALI jendela lebar: anggaran bawaan tetap 60k', a);
 
-// ---------- meteran memberi tahu Owner angkanya ----------
 let m = K.meteranKonteks({ tokenTerpakai: 1000, anggaranToken: 76800, batasModel: 128000, dibatasiJendelaModel: true, alasan: 'dibatasi jendela model' });
 cek(/Dipotong jendela model 128\.000 token/.test(m.rincian), 'rincian menyebut angka jendela saat dipotong', m.rincian);
 cek(/sisanya untuk jawaban/.test(m.rincian), 'rincian menjelaskan kenapa hanya 60% yang dipakai', m.rincian);
@@ -85,7 +66,6 @@ cek(/Jendela model 1\.048\.576 token\./.test(m.rincian) && !/Dipotong/.test(m.ri
 m = K.meteranKonteks({ tokenTerpakai: 1000, anggaranToken: 60000 });
 cek(/Jendela model belum diketahui/.test(m.rincian), 'jendela tak diketahui dikatakan terus terang, tidak disembunyikan', m.rincian);
 
-// ---------- terpasang di jalur nyata ----------
 const AS = readFileSync(AKAR + 'core/runtime/services/AssistantService.js', 'utf8');
 cek(/select\('input_price_per_1m, context_length'\)/.test(AS), 'bahanAnggaranKonteks ikut mengambil context_length dari model_pricing');
 const iBahan = AS.indexOf('async bahanAnggaranKonteks(');

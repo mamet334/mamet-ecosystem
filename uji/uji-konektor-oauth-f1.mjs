@@ -1,13 +1,3 @@
-// UJI 2026-11-03 — konektor OAuth (Item 129 Tahap F1): electron/konektor/{penerimaBalikan,oauthPenyedia,alurOAuth}.cjs
-// + sambungan OAuth di resep/transport/sesiUmum. Server OAuth + MCP TIRUAN (uji/lib/serverOAuthTiruan.cjs) meniru bentuk
-// Notion MCP; "browser" = fetch yang mengikuti pengalihan login sampai ke penerima balikan. Tanpa akun, tanpa unduhan.
-//
-// Yang dijaga:
-//   - akun dipilih di halaman penyedia; Mamet hanya menerima KODE di 127.0.0.1, memeriksa `state`, menukar dengan PKCE;
-//   - token & pendaftaran klien di brankas terenkripsi; tak pernah di log;
-//   - PKCE S256 wajib; URL login hanya dari asal server otorisasi & https (http hanya ke mesin ini);
-//   - K23: login kedaluwarsa saat server dinyalakan → status "perlu hubungkan ulang", BROWSER TIDAK DIBUKA;
-//   - K22: Putuskan mencabut token di server lalu menghapus dari brankas.
 
 import { createRequire } from 'node:module';
 import { mkdtempSync, readFileSync } from 'node:fs';
@@ -37,14 +27,12 @@ const cek = (ok, pesan, rinci) => {
 };
 const tunggu = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// ── 1. Resep ────────────────────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 1. resep --');
 const notion = { id: 'notion', nama: 'Notion', jenis: 'http', http: { url: 'https://mcp.notion.com/mcp' }, oauth: true };
 cek(validasiResep(notion).ok && validasiResep(notion).resep.oauth === true && validasiResep(notion).resep.kredensial.length === 0, 'resep OAuth: URL saja, tanpa kredensial ketik');
 cek(!validasiResep({ ...notion, jenis: 'stdio', stdio: { namaProgram: 'a.exe' } }).ok && !validasiResep({ ...notion, oauth: 'ya' }).ok, '"oauth" hanya true & hanya untuk http');
 cek(!validasiResep({ ...notion, kredensial: [{ id: 'oauth-token', label: 'x', header: 'Authorization' }] }).ok, 'id kredensial oauth-* dicadangkan (token tak bisa ditimpa dari kolom ketik)');
 
-// ── 2. Penerima balikan ─────────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 2. penerima --');
 let p = await mulaiPenerima({ batasMs: 5000 });
 cek(/^http:\/\/127\.0\.0\.1:\d+\/balikan$/.test(p.url), 'mendengar di 127.0.0.1 saja, satu jalur /balikan', p.url);
@@ -72,7 +60,6 @@ let habis = null;
 try { await p.tunggu(); } catch (e) { habis = e.message; }
 cek(/batas waktu/.test(habis || ''), 'login tak diselesaikan → penerima menyerah & menutup port', habis);
 
-// ── 3. Penyedia: aturan membuka browser ─────────────────────────────────────────────────────────────────────
 console.log('\n-- 3. penyedia --');
 const dir = mkdtempSync(path.join(os.tmpdir(), 'mamet-f1-'));
 const enkripsi = { tersedia: () => true, sandikan: (t) => Buffer.from(`SANDI:${[...t].reverse().join('')}`), buka: (x) => [...x.toString().slice(6)].reverse().join('') };
@@ -95,7 +82,6 @@ cek(pi.penyedia.clientMetadata.token_endpoint_auth_method === 'none' && pi.penye
 cek(urlBolehDibuka('http://127.0.0.1:5/x') && !urlBolehDibuka('http://contoh.com') && !urlBolehDibuka('javascript:alert(1)'), 'urlBolehDibuka: https atau mesin ini saja');
 cek(!brankas.simpan('uji', 'kk', 'x'.repeat(5000)).ok && brankas.simpan('uji', 'kk', 'x'.repeat(5000), { maks: 16384 }).ok, 'brankas: batas ketik 4.096 tetap; token OAuth boleh lebih panjang');
 
-// ── 4. Alur hubungkan dengan server tiruan ──────────────────────────────────────────────────────────────────
 console.log('\n-- 4. hubungkan --');
 const srv = await mulai();
 const daftar = buatDaftarServer({ berkas: path.join(dir, 'server.json') });
@@ -151,7 +137,6 @@ cek(!h.ok && /PKCE/.test(h.alasan) && dibukaAlur.length === bukaSebelum, 'server
 const [j1, j2] = await Promise.all([alur.hubungkan('notion'), alur.hubungkan('notion')]);
 cek(j1.ok && j1 === j2, 'tombol ditekan dua kali → satu login');
 
-// ── 5. Dinyalakan, diperbarui, kedaluwarsa (K23) ────────────────────────────────────────────────────────────
 console.log('\n-- 5. sesi --');
 const sesi = buatSesiUmum({ daftar, brankas, berkasSakelar: path.join(dir, 'sakelar.json'), lingkungan: () => lingkunganServer(), versi: 'uji', msSambung: 15000 });
 try {
@@ -182,7 +167,6 @@ try {
   await sesi.matikanSemua();
 }
 
-// ── 6. Putuskan (K22) ───────────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 6. putuskan --');
 await alur.hubungkan('notion');
 const sebelum = buatPenyediaOAuth({ id: 'notion', brankas });
@@ -199,7 +183,6 @@ await sesi2.matikanSemua();
 
 await srv.tutup();
 
-// ── 7. Gaya GitHub (GH2): tanpa DCR, klien terdaftar, tanpa pencabutan ──────────────────────────────────────
 console.log('\n-- 7. gaya github --');
 const gh = await mulai({ gayaGithub: true });
 cek(validasiResep({ ...notion, oauthKlienId: 'Iv23li3SbHZO7UlcxipI' }).resep?.oauthKlienId === 'Iv23li3SbHZO7UlcxipI', 'resep menerima oauthKlienId (client_id bukan rahasia)');

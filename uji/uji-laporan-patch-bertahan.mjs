@@ -63,8 +63,8 @@ cek(!/_generateFallbackPatch/.test(eng),
   '_generateFallbackPatch benar-benar tidak ada di engineer.js — tugasnya BERHASIL');
 cek(/async _generatePatch/.test(eng),
   '_generatePatch tetap ada di kode nyata engineer.js');
-cek(eng.includes('\r\n'),
-  'CRLF dipertahankan di berkas engineer.js');
+cek(eng.includes('\r\n') && !/(^|[^\r])\n/.test(eng),
+  'CRLF dipertahankan di seluruh engineer.js — tak ada baris LF yang membuat akhir baris campur aduk');
 
 cek(/laporanSetelahMuatUlang\(\(p\) => storageManager\.read\(p\), undefined, undefined, false\)/.test(CE),
   'catatan TIDAK dihapus saat dibaca (argumen keempat false)');

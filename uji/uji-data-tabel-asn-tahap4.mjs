@@ -1,7 +1,4 @@
-// UJI Item 92 Tahap 4 — laporan kejanggalan per OPD, 53 berkas disimpan berurutan (versi lama digantikan).
 import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import fs from 'node:fs';
 import path from 'node:path';
@@ -12,10 +9,9 @@ const XLSX = require('xlsx');
 const akar = AKAR_REPO + '/frontend/src/core/runtime/services/';
 const M = await import(pathToFileURL(akar + 'dataTabelAsn.js').href + '?v=' + Date.now());
 const J = await import(pathToFileURL(akar + 'dataTabelAsnJanggal.js').href + '?v=' + Date.now());
-console.log('uji-data-tabel-asn-tahap4 v2'); // v2: kolom "Baris" (Excel / hal. PDF)
+console.log('uji-data-tabel-asn-tahap4 v2');
 let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}`); if (!ok) gagal++; };
 
-// --- uraiNip (NIP buatan, bukan NIP pegawai)
 let u = J.uraiNip('199001012015031001', 2026); cek(u.sah && u.jk === 'L' && !u.pppk, 'NIP PNS sah, L');
 u = J.uraiNip('199205122023212005', 2026); cek(u.sah && u.jk === 'P' && u.pppk, 'NIP PPPK (kode 21) sah, P');
 u = J.uraiNip('199013012015031001', 2026); cek(!u.sah && /tanggal lahir/.test(u.alasan[0]), 'bulan lahir 13 ditolak');
@@ -25,10 +21,7 @@ u = J.uraiNip('200001012010031001', 2026); cek(!u.sah && /usia 10/.test(u.alasan
 cek(J.namaLembar('DINAS [PU/PR]: KAB?*', new Set()) === 'DINAS PU PR KAB', 'nama lembar dibersihkan');
 const dp = new Set(); J.namaLembar('RSUD', dp); cek(J.namaLembar('rsud', dp) === 'rsud (2)', 'nama lembar kembar diberi nomor');
 
-// --- simulasi 53 berkas → berkas aktif + pegawai berbentuk database
 const AKAR = 'D:/REKONSIALISASI 2026';
-// J3 (2 Nov 2026): Excel pegawai SUNGGUHAN hanya di laptop Owner (tak boleh ke repo publik). Tanpanya bagian di bawah
-// DILEWATI — tetapi pemeriksaan NIP buatan di atas sudah berjalan, dan kegagalannya TIDAK boleh tertutup DILEWATI.
 if (!fs.existsSync(AKAR)) {
   if (gagal) { console.log(`\n${gagal} GAGAL`); process.exit(1); }
   console.log('DILEWATI — bagian NIP buatan lulus; simulasi 53 berkas butuh D:/REKONSIALISASI 2026 (Excel pegawai sungguhan)');
@@ -71,14 +64,12 @@ cek(!semua.some((b) => b.jenis === 'lp_ganda' && /PU PR/i.test(b.berkas)), 'PU P
 cek(semua.every((b) => b.jenis === 'jumlah_salah' || b.jenis === 'jumlah_lp_beda' || b.jenis === 'struktur' || Number.isInteger(b.baris)), 'setiap butir orang punya baris Excel');
 cek(L.perOpd.every((x, i, a) => i === 0 || a[i - 1].salah >= x.salah), 'OPD diurutkan dari kesalahan terbanyak');
 
-// --- lembar Excel
 const aoa = J.lembarExcelOpd(rsud, new Date(2026, 8, 21));
 cek(aoa[4].join('|') === 'No|Tingkat|Masalah|Sheet|Baris|Nama|NIP|Keterangan', 'kepala tabel Excel');
 cek(aoa.slice(5).every((r) => r[6] === '' || (typeof r[6] === 'string' && /^\d{18}$/.test(r[6]))), 'NIP di Excel = teks 18 digit');
 cek(aoa.length === 5 + rsud.butir.length, 'satu baris per butir');
 const ring = J.lembarRingkasan(L);
 cek(ring.length === 3 + 48 && ring[2][0] === 'OPD', 'lembar ringkasan 48 OPD');
-// tulis berkas contoh (di luar folder Owner) — memastikan SheetJS menerima semua nama lembar
 const wb = XLSX.utils.book_new(); const pakai = new Set();
 XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ring), J.namaLembar('Ringkasan', pakai));
 for (const x of L.perOpd) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(J.lembarExcelOpd(x)), J.namaLembar(x.opd, pakai));

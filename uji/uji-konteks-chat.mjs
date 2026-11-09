@@ -1,9 +1,4 @@
-// UJI 2026-09-23 — jendela konteks per percakapan (Tahap 3a).
-// Keputusan Owner: pesan lama TETAP TERLIHAT (hanya berhenti dikirim), anggaran mengikuti batas biaya di Settings,
-// berlaku di Assistant & Engineer, berdiri sendiri per percakapan.
 import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
 const AKAR = AKAR_REPO + '/frontend/src/core/runtime/services/';
@@ -16,13 +11,10 @@ const cek = (ok, pesan, rinci) => {
   if (!ok) gagal++;
 };
 
-// ---------- perkiraan token ----------
 cek(K.perkiraanToken('') === 0, 'teks kosong → 0 token');
 cek(K.perkiraanToken('a'.repeat(400)) === 100, '400 huruf ≈ 100 token');
 cek(K.tokenPesan({ content: 'a'.repeat(400) }) === 104, 'ongkos pembungkus pesan ikut dihitung');
 
-// ---------- anggaran dari batas biaya Owner ----------
-// deepseek-v4-pro-0813: $0,96 per 1 juta token masuk; batas harian $1, belum terpakai.
 let a = K.anggaranKonteks({ batasHarianUsd: 1, terpakaiHariIniUsd: 0, hargaInput1M: 0.96, batasModel: 1048576 });
 cek(a.token === Math.floor((1 * 0.05 / 0.96) * 1e6), 'anggaran = 5% sisa harian dibagi harga token masuk', a);
 cek(a.biayaPerkiraanUsd > 0.04 && a.biayaPerkiraanUsd < 0.06, 'biaya per pesan ±5% batas harian ($0,05)', a.biayaPerkiraanUsd);
@@ -37,8 +29,7 @@ cek(a.token === 60000 && /jendela model/.test(a.alasan), 'anggaran besar dibatas
 a = K.anggaranKonteks({});
 cek(a.token === K.ANGGARAN_BAWAAN && /belum diketahui/.test(a.alasan), 'tanpa data harga/batas → anggaran bawaan 60k', a);
 
-// ---------- pemilihan pesan ----------
-const pesan = Array.from({ length: 30 }, (_, i) => ({ role: i % 2 ? 'model' : 'user', content: `pesan ${i} ` + 'x'.repeat(4000) })); // ±1004 token/pesan
+const pesan = Array.from({ length: 30 }, (_, i) => ({ role: i % 2 ? 'model' : 'user', content: `pesan ${i} ` + 'x'.repeat(4000) }));
 let p = K.pilihPesanKonteks(pesan, { anggaranToken: 12000, sisakanUntukJawaban: 2000 });
 cek(p.dikirim.length === 9, 'ambil dari yang TERBARU mundur sampai anggaran habis', { dikirim: p.dikirim.length, token: p.tokenTerpakai });
 cek(p.dikirim[p.dikirim.length - 1] === pesan[29], 'pesan terakhir selalu ikut');
@@ -50,12 +41,10 @@ cek(p.dikirim.length === 3 && p.penuh === false, 'percakapan pendek → seluruhn
 p = K.pilihPesanKonteks(pesan, { anggaranToken: 3000, sisakanUntukJawaban: 2000 });
 cek(p.dikirim.length === 1, 'anggaran sangat kecil → minimal satu pesan terbaru tetap dikirim (tidak pernah kosong)', p);
 
-// "Bersihkan konteks": pesan lama TIDAK dikirim, tapi masih ada di daftar
 p = K.pilihPesanKonteks(pesan, { anggaranToken: 200000, mulaiDari: 25 });
 cek(p.dikirim.length === 5, 'mulaiDari → hanya pesan sesudah batas yang dikirim', p.dikirim.length);
 cek(pesan.length === 30, 'daftar pesan aslinya TIDAK diubah (tetap terlihat di layar)');
 
-// ---------- meteran ----------
 const m = K.meteranKonteks({ tokenTerpakai: 723800, anggaranToken: 1000000, dilewati: 4, biayaPerkiraanUsd: 0.67, sisaHarianUsd: 1, alasan: 'dari batas biaya harian' });
 cek(m.teks === '723,8k / 1,0jt (72%)', 'bentuk meteran seperti contoh Owner', m.teks);
 cek(m.warna === 'hampir', '72% → warna peringatan');
@@ -64,7 +53,6 @@ cek(K.meteranKonteks({ tokenTerpakai: 59000, anggaranToken: 60000 }).warna === '
 cek(/tetap terlihat/.test(m.rincian), 'rincian menegaskan pesan lama tetap terlihat');
 cek(/sisa harian \$1\.00/.test(m.rincian), 'rincian menyebut sisa anggaran harian', m.rincian);
 
-// ---------- batas per percakapan, tidak saling mengganggu ----------
 const ls = (() => { const x = new Map(); return { getItem: (k) => x.get(k) ?? null, setItem: (k, v) => x.set(k, v), removeItem: (k) => x.delete(k) }; })();
 K.simpanMulaiDari('chat-engineer', 12, ls);
 K.simpanMulaiDari('chat-assistant', 3, ls);
@@ -73,7 +61,6 @@ cek(K.bacaMulaiDari('chat-lain', ls) === 0, 'percakapan baru mulai dengan kontek
 K.simpanMulaiDari('chat-engineer', 0, ls);
 cek(K.bacaMulaiDari('chat-engineer', ls) === 0, 'batas bisa dilepas kembali');
 
-// ---------- terpasang di jalur yang dipakai ----------
 const { readFileSync } = await import('node:fs');
 const AS = readFileSync(AKAR_REPO + '/frontend/src/core/runtime/services/AssistantService.js', 'utf8');
 cek(!/history\.slice\(isLiteMode \? -5 : -10\)/.test(AS), 'jalur kirim TIDAK lagi memotong 10 pesan terakhir');
@@ -86,32 +73,21 @@ cek(/meteranKonteks\(/.test(CE) && /konteksInfo/.test(CE), 'meteran terpasang di
 cek(/simpanMulaiDari\(currentChatId, messages\.length\)/.test(CE), 'tombol bersihkan menyimpan batas, bukan menghapus pesan');
 cek(/tetap ada di layar dan tetap tersimpan/.test(CE), 'pesan konfirmasi menegaskan tidak ada yang dihapus');
 
-// ---------- cacat yang terlihat live 2026-09-23 (gambar Owner) ----------
-// (a) "chatId is not defined": chatId ditambahkan di processMessage tapi tidak diteruskan ke _handleConversation.
 cek(/resolvedMode, resolvedAppSource, modelTierOverride, chatId,/.test(AS), 'chatId ikut diteruskan ke handler percakapan');
 const iHandle = AS.indexOf('async _handleConversation({');
 cek(iHandle > 0 && /chatId = null/.test(AS.slice(iHandle, iHandle + 420)), '_handleConversation menerima chatId (galat "chatId is not defined")');
-// (b) meteran tampil "19 / 1 (100%)": anggaranKonteks mengembalikan `token`, meteranKonteks menunggu `anggaranToken`.
 cek(/anggaranToken: ang\.token/.test(CE), 'anggaran dipetakan ke nama yang dipakai meteran (bukan 1)');
-// (c) ikon tampil sebagai teks "DATA_USAGE": font ikon hanya memuat subset dari daftar-ikon.txt.
 const daftarIkon = readFileSync(AKAR_REPO + '/frontend/src/assets/fonts/daftar-ikon.txt', 'utf8');
 const iTombol = CE.indexOf('METERAN JENDELA KONTEKS');
 for (const ikon of (CE.slice(iTombol, iTombol + 1600).match(/\{konteksInfo\.dilewati > 0 \? '([a-z_]+)' : '([a-z_]+)'\}/) || []).slice(1)) {
   cek(new RegExp('^' + ikon + '$', 'm').test(daftarIkon), `ikon "${ikon}" ada di subset font (kalau tidak, tampil sebagai teks)`);
 }
 
-// ---------- peristiwa Engineer tidak bocor ke chat lain ----------
-// Live 22–23 September: 8 baris chat berisi laporan Engineer lahir dengan label ws-assistant/ws-lite, karena
-// EventBus global sampai ke tiga instance chat sekaligus.
 cek(/const instansiEngineerRef = useRef\(false\)/.test(CE), 'ref penanda instance Engineer ada');
 cek(/instansiEngineerRef\.current = osState\?\.workspaceId === 'ws-engineer'/.test(CE),
   'ref mengikuti workspace instance ini, bukan workspace yang sedang tampil');
-// Turun dari 6 ke 5 pada 2026-09-28: `fileContentHandler` dihapus bersama jalur READ_REPO yang mati —
-// satu-satunya pemancar `Engineer:FileContent` adalah `handleReadFiles`, yang ikut terhapus.
 const jumlahPenjaga = (CE.match(/if \(!instansiEngineerRef\.current\) return;/g) || []).length;
 cek(jumlahPenjaga >= 5, `lima langganan peristiwa Engineer dijaga (ditemukan ${jumlahPenjaga})`);
-// Yang diperiksa LANGGANANNYA, bukan penyebutannya — komentar yang menjelaskan penghapusan tetap
-// menyebut nama peristiwanya, dan versi pertama uji ini tertipu oleh komentarnya sendiri.
 cek(!/eventBus\.on\(['"]Engineer:FileContent['"]/.test(CE),
   'langganan Engineer:FileContent sudah tidak ada (jalur READ_REPO dihapus)');
 for (const h of ['reasoningReportHandler', 'confirmationHandler', 'patchAppliedHandler', 'persistedHandler']) {

@@ -1,13 +1,3 @@
-// UJI 2026-10-31 — K4 (ADR-0022): setiap akun punya ruang pengetahuan inti (CORE) sejak dibuat.
-//
-// Cacat: `rag-process` mewajibkan ruang CORE bila klien tak mengirim spaceId (Mametlite tak pernah mengirimnya), tetapi
-// tidak ada yang membuatnya — 1 dari 3 akun tanpa CORE, pengguna baru gagal mengunggah dokumen ("Core space belum
-// di-setup"). Perbaikannya pemicu di auth.users (migrasi 20261031000000).
-//
-// PERILAKUNYA dibuktikan di database (transaksi dibatalkan, sebelum & sesudah migrasi berlaku — changelog
-// 2026-10-31-k4-ruang-inti-akun-baru). Uji repo ini menjaga yang bisa membusuk diam-diam di repo: pemicu tetap di
-// sumbernya (AFTER INSERT auth.users), nilai yang ditulisnya sama dengan yang DICARI rag-process, kegagalan tidak
-// ditelan, dan fungsinya tak bisa dipanggil klien.
 
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -43,7 +33,6 @@ cek(/revoke execute on function public\.buat_ruang_inti_akun_baru\(\) from publi
 cek(/where not exists \(select 1 from public\.knowledge_spaces k where k\.user_id = u\.id and k\.space_type = 'CORE'\)/i.test(MIG),
   'isi ulang hanya untuk akun yang belum punya CORE');
 
-// ── Regresi 31 Okt: pemicu lama prevent_core_deletion menolak CASCADE dari auth.users → semua akun tak bisa dihapus ──
 const HAPUS = tanpaKomentar(baca('supabase/migrations/20261031010000_core_ikut_terhapus_bersama_akun.sql'));
 const tolak = HAPUS.indexOf("raise exception 'Akses Ditolak");
 const syaratAkun = HAPUS.search(/if exists \(select 1 from auth\.users where id = old\.user_id\) then/i);

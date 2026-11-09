@@ -1,13 +1,3 @@
-// UJI 2026-10-27 — umpan balik 👍/👎 per jawaban (Item 126 Fase 0, Data Flywheel).
-//
-// North Star = biaya per jawaban BERHASIL; sampai ini tidak ada data apa pun tentang jawaban mana yang berhasil.
-// Yang dijaga:
-//   - penilaian disambungkan ke cost_ledger lewat traceId: setiap jalur yang memanggil model MENGIRIM traceId
-//     (LOOKUP & skill dulu tidak) dan pesan jawaban MENYIMPANNYA;
-//   - hanya jawaban model yang selesai & ber-traceId yang bisa dinilai (pesan sistem/lama tidak);
-//   - klik lagi = batal (baris dihapus); tidak ada isi percakapan yang dikirim (Gerbang 1);
-//   - gagal simpan → nilai dikembalikan & alasan ditampilkan, tidak terlihat tersimpan;
-//   - tombol transparan (tanpa latar/bingkai, redup saat diam) sesuai pratinjau yang disetujui Owner.
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -24,7 +14,6 @@ const cek = (ok, pesan, rinci) => {
   if (!ok) gagal++;
 };
 
-// ── 1. Logika tombol ────────────────────────────────────────────────────────────────────────
 console.log('\n-- 1. logika --');
 cek(U.nilaiBerikutnya(0, 1) === 1 && U.nilaiBerikutnya(0, -1) === -1, 'netral → 👍 / 👎');
 cek(U.nilaiBerikutnya(1, 1) === 0 && U.nilaiBerikutnya(-1, -1) === 0, 'klik tombol yang sama lagi → batal (0)');
@@ -36,7 +25,6 @@ cek(!U.bolehDinilai({ ...jawaban, isPatchResult: true }), 'pesan sistem (hasil p
 cek(!U.bolehDinilai({ ...jawaban, role: 'user' }), 'pesan pengguna → tidak');
 cek(!U.bolehDinilai({ role: 'model', content: 'jawaban lama' }) && !U.bolehDinilai({ ...jawaban, traceId: '' }), 'tanpa traceId (jawaban lama) → tidak');
 
-// ── 2. Penyimpanan (Supabase tiruan) ────────────────────────────────────────────────────────
 console.log('\n-- 2. penyimpanan --');
 function tiruan({ userId = 'u-1', galat = null } = {}) {
   const log = [];
@@ -82,7 +70,6 @@ function tiruan({ userId = 'u-1', galat = null } = {}) {
   cek(h.ok === false && h.alasan === 'permission denied', 'galat Supabase dikembalikan apa adanya (bukan ditelan)', h);
 }
 
-// ── 3. traceId mengalir dari permintaan ke pesan ────────────────────────────────────────────
 console.log('\n-- 3. traceId --');
 const as = baca('frontend/src/core/runtime/services/AssistantService.js');
 cek(/const traceId = crypto\.randomUUID\(\);\s*\n\s*const payload = \{\s*\n\s*message: userMsg,\s*\n\s*mode: 'LOOKUP',[^\n]*\n\s*traceId,/.test(as), 'jalur LOOKUP mengirim traceId (dulu tidak → cost_ledger ber-trace_id kosong)');
@@ -96,7 +83,6 @@ cek(/const \{ hasPatch, patchOriginalTask, traceId \} = extras;/.test(ce), 'laya
 cek((ce.match(/metadata: jsonMetadata,\s*\n\s*traceId,/g) || []).length === 2 && /hasPatchProposal: hasPatch \|\| false, traceId \}\)/.test(ce),
   'traceId disimpan di pesan jawaban (stream, JSON, dan jawaban terlantar)');
 
-// ── 4. Tombol di layar ──────────────────────────────────────────────────────────────────────
 console.log('\n-- 4. tombol --');
 const pakai = ce.slice(ce.indexOf('{bolehDinilai(m) && ('), ce.indexOf('{/* Copy Button */}'));
 cek(/<TombolUmpanBalik[\s\S]*?nilai=\{m\.umpanBalik \|\| 0\}[\s\S]*?onNilai=\{\(tombol\) => nilaiJawaban\(idx, tombol\)\}/.test(pakai),
@@ -114,9 +100,6 @@ cek(/if \(!h\.ok\) \{\s*\n\s*ubah\(sebelum\);\s*\n\s*setGalatUmpanBalik/.test(pe
 cek(/Penilaian tidak tersimpan: \{galat\}/.test(blok), 'alasan gagal tampil di bawah kartu');
 cek(/thumb_up/.test(baca('frontend/src/assets/fonts/daftar-ikon.txt')) && /thumb_down/.test(baca('frontend/src/assets/fonts/daftar-ikon.txt')), 'thumb_up & thumb_down ada di subset font ikon');
 
-// ── 4b. Penilaian ikut tersimpan di chat (v2) ───────────────────────────────────────────────
-// Bukti live 27 Okt: tabel mencatat +1, tetapi pesan yang tersimpan `umpanBalik` null — kunciSimpan hanya melihat
-// jumlah pesan & pesan terakhir, jadi 👍 pada pesan lama tidak memicu simpan; chat dibuka ulang → jempol tak terpilih.
 console.log('\n-- 4b. tersimpan di chat --');
 const PC = await import(pathToFileURL(path.join(AKAR, 'frontend/src/components/workbench/pemulihanChat.js')).href);
 const percakapan = [{ role: 'user', content: 'hai' }, { ...jawaban }, { role: 'user', content: 'lagi' }, { role: 'model', content: 'ok', traceId: 't-2' }];
@@ -128,9 +111,7 @@ cek(PC.kunciSimpan({ chatId: 'c1', messages: dibalik }) !== PC.kunciSimpan({ cha
 cek(PC.kunciSimpan({ chatId: 'c1', messages: percakapan.map((m) => ({ ...m, umpanBalik: 0 })) }) === kunciAwal, 'batal (0) = kunci seperti tanpa penilaian');
 cek(kunciAwal === 'c1_4_2_model', 'chat tanpa penilaian: bentuk kunci lama tidak berubah', kunciAwal);
 
-// ── 5. Migrasi ──────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 5. migrasi --');
-// Komentar SQL dibuang dulu: kepala migrasi sendiri menyebut "Tidak ada policy `USING (true)`".
 const mig = baca('supabase/migrations/20261027000000_umpan_balik_jawaban.sql').replace(/--[^\n]*/g, '');
 const kolom = [...mig.slice(mig.indexOf('create table'), mig.indexOf('\n);')).matchAll(/^\s{2}([a-z_]+)\s+(uuid|text|smallint|timestamptz)/gm)].map((m) => `${m[1]}:${m[2]}`);
 cek(kolom.join(',') === 'id:uuid,user_id:uuid,trace_id:text,nilai:smallint,workspace:text,created_at:timestamptz,updated_at:timestamptz', 'kolom tabel — tak ada kolom isi percakapan', kolom);

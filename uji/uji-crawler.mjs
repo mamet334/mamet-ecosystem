@@ -1,11 +1,3 @@
-// UJI 2026-10-23 — Ecosystem Crawler di capability/ecosystem-crawler/ (Item 129 Tahap A).
-//
-// Crawler adalah paket Python yang disalin dari folder asalnya beserta `.venv` (keputusan Owner: dependensi disalin,
-// tidak diunduh ulang). Berkas ini menjalankan uji pytest crawler dari suite Mamet, dan menjaga satu jebakan
-// penyalinan: `.venv` asal memasang crawler mode *editable* dan menyimpan alamat folder asal di beberapa tempat —
-// bila tersisa, `import crawler` (dan `pip.exe`, `crawler-mcp.exe`) diam-diam memakai kode atau Python di folder asal.
-//
-// `.venv` tidak masuk repo (publik; .gitignore crawler) — di mesin tanpa `.venv` berkas ini DILEWATI, bukan gagal.
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -16,7 +8,6 @@ const AKAR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CRAWLER = path.join(AKAR, 'capability', 'ecosystem-crawler');
 const VENV = path.join(CRAWLER, '.venv');
 const PYTHON = path.join(VENV, 'Scripts', 'python.exe');
-// Folder asal sebelum disalin. Dipakai hanya sebagai pola yang TIDAK boleh muncul di .venv salinan.
 const ALAMAT_ASAL = /ecosystem crawler/i;
 
 console.log('uji-crawler v1');
@@ -31,7 +22,6 @@ const cek = (ok, pesan, rinci) => {
   if (!ok) gagal++;
 };
 
-/** Berkas di .venv yang dibaca Python atau Windows saat menjalankan sesuatu — tempat alamat lama bisa bersembunyi. */
 export function berkasRawan(venv) {
   const hasil = [path.join(venv, 'pyvenv.cfg')];
   const scripts = path.join(venv, 'Scripts');
@@ -42,7 +32,7 @@ export function berkasRawan(venv) {
   const site = path.join(venv, 'Lib', 'site-packages');
   for (const n of readdirSync(site)) {
     const p = path.join(site, n);
-    if (statSync(p).isFile() && /\.(pth|py)$/i.test(n)) hasil.push(p);           // .pth & finder editable
+    if (statSync(p).isFile() && /\.(pth|py)$/i.test(n)) hasil.push(p);
     if (/\.dist-info$/i.test(n) && existsSync(path.join(p, 'direct_url.json'))) hasil.push(path.join(p, 'direct_url.json'));
   }
   return hasil;

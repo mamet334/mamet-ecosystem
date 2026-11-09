@@ -1,21 +1,3 @@
-// UJI 2026-10-08 — riwayat chat Mametlite tidak boleh membuat layar putih, dan tidak boleh diam.
-//
-// Cacat yang dijaga (M2, `ROADMAP-SIAP-PENGGUNA.md`): `JSON.parse(localStorage.getItem(…))` dipanggil
-// TANPA `try` di dalam inisialisator `useState`. Satu nilai rusak = layar putih — dan karena nilai
-// buruknya tetap tersimpan, layar putih itu KEMBALI setiap muat ulang. Mametlite juga tidak punya
-// satu pun error boundary, jadi tak ada yang menangkapnya.
-//
-// Empat sifat yang diuji, dan yang ketiga paling mudah hilang saat orang "memperbaiki" ini:
-//
-//   1. TIDAK JATUH   — apa pun isi simpanannya, hasilnya riwayat yang sah.
-//   2. BENTUK        — `'{}'` itu JSON sah tetapi membuat `.find()` jatuh beberapa baris kemudian.
-//                      Menangkap `JSON.parse` saja hanya MEMINDAHKAN kejatuhannya.
-//   3. TIDAK DIAM    — gagal baca ≠ riwayat kosong. Kalau keduanya dijawab sama, pengguna menyangka
-//                      riwayatnya memang tidak ada. Aturan yang sama dengan TMN-0006.
-//   4. KOSONG WAJAR  — belum pernah ada riwayat BUKAN masalah, dan tidak boleh memunculkan peringatan.
-//
-// Simpanan disuntik, bukan `localStorage` asli: kuota penuh dan `getItem` yang melempar adalah dua
-// keadaan yang justru paling penting diuji dan paling sulit dibuat di peramban.
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -37,7 +19,6 @@ const cek = (ok, pesan, rinci) => {
   if (!ok) gagal++;
 };
 
-/** Simpanan tiruan. `lempar` memaksa kegagalan yang tak bisa dibuat di peramban sungguhan. */
 function simpananTiruan(awal = {}, lempar = {}) {
   const isi = { ...awal };
   return {
@@ -61,7 +42,6 @@ const RIWAYAT_SAH = [
   { id: 1, title: 'Percakapan Baru', messages: [{ role: 'assistant', content: 'Halo' }] },
 ];
 
-// ── 1. Tidak jatuh, apa pun isinya ──────────────────────────────────────────────────────────────
 console.log('\n-- 1. tidak jatuh & riwayatnya selalu sah --');
 
 const isiRusak = [
@@ -89,7 +69,6 @@ for (const [mentah, nama] of isiRusak) {
   cek(R.sahkanRiwayat(h.riwayat), `${nama} → riwayat sah`, h.riwayat);
 }
 
-// ── 2. Tidak diam: gagal baca ≠ riwayat kosong ──────────────────────────────────────────────────
 console.log('\n-- 2. tidak diam, dan "kosong" tidak dilaporkan sebagai masalah --');
 
 cek(
@@ -112,7 +91,6 @@ const utuh = R.bacaRiwayat(simpananTiruan({ [R.KUNCI_RIWAYAT]: JSON.stringify(RI
 cek(utuh.masalah === null, 'riwayat utuh → nol masalah');
 cek(utuh.riwayat[0].messages[0].content === 'Halo', 'dan isinya dipulangkan APA ADANYA, tidak diganti');
 
-// Pesan masalahnya untuk orang awam, bukan untuk pemrogram.
 const pesanRusak = R.bacaRiwayat(simpananTiruan({ [R.KUNCI_RIWAYAT]: '{rusak' })).masalah;
 cek(
   !/JSON|parse|localStorage|undefined|Error/i.test(pesanRusak),
@@ -121,7 +99,6 @@ cek(
 );
 cek(/percakapan/i.test(pesanRusak), 'dan memakai kata yang pengguna kenal ("percakapan")', pesanRusak);
 
-// ── 3. Simpanan yang melempar & tidak ada sama sekali ───────────────────────────────────────────
 console.log('\n-- 3. simpanan yang melempar / tidak ada --');
 
 let h = R.bacaRiwayat(simpananTiruan({}, { getItem: new Error('diblokir') }));
@@ -130,7 +107,6 @@ cek(R.sahkanRiwayat(h.riwayat) && !!h.masalah, '`getItem` melempar → tetap sah
 h = R.bacaRiwayat(null);
 cek(R.sahkanRiwayat(h.riwayat) && !!h.masalah, 'tanpa simpanan sama sekali (mode privat) → sah DAN bersuara', h);
 
-// ── 4. Menyimpan tidak pernah melempar, dan kuota dibedakan ─────────────────────────────────────
 console.log('\n-- 4. menyimpan: tidak pernah melempar, kuota punya tindakan --');
 
 const s = simpananTiruan({});
@@ -157,7 +133,6 @@ cek(
 
 cek(R.simpanRiwayat(RIWAYAT_SAH, null).ok === false, 'tanpa simpanan → false, bukan melempar');
 
-// ── 5. Hapus hanya menyentuh riwayat — bukan kunci berbayar pengguna ────────────────────────────
 console.log('\n-- 5. hapus hanya riwayat, kunci OpenRouter pengguna TIDAK disentuh --');
 
 const sDuaKunci = simpananTiruan({
@@ -173,7 +148,6 @@ cek(
 );
 cek(R.hapusRiwayat(simpananTiruan({}, { removeItem: new Error('x') })) === false, 'gagal hapus → false, bukan melempar');
 
-// ── 6. TERPASANG ────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 6. terpasang: jalur lama benar-benar hilang dari aplikasi --');
 
 const tanpaKomentar = (teks) =>
@@ -197,7 +171,6 @@ cek(
 cek(/bacaRiwayat/.test(APP_KODE) && /simpanRiwayat/.test(APP_KODE), 'App.jsx memakai modul riwayat');
 cek(/masalahRiwayat/.test(APP_KODE), 'dan masalahnya BENAR-BENAR dirender, bukan hanya disimpan di state');
 
-// Penulisan per token SSE: penundaannya harus ada, kalau tidak batas ±5 MB kembali terancam.
 cek(
   /setTimeout\([\s\S]{0,200}simpanRiwayat/.test(APP_KODE),
   'penyimpanan ditunda (tidak lagi menulis seluruh array tiap token SSE)',

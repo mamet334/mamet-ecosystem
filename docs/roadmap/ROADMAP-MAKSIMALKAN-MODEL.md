@@ -11,7 +11,15 @@ Owner dari Parkir lewat perintah di atas. Status hardening tetap ditutup dengan 
 itu akan kena batas waktu yang sama.
 
 Legenda: 📋 terdaftar · 📝 berjalan · ✅ terbukti · 🔧 server (Owner deploy dulu) · 🖥 klien (ikut rilis) · 🗄 migrasi
-(izin tersendiri)
+(izin tersendiri) · 💳 butuh saldo OpenRouter
+
+## Dampak ke Mametlite (keputusan Owner 9 Nov: cukup dipastikan tidak rusak)
+
+Mametlite memanggil `agent-process` yang sama (`mametlite/src/lib/callAgentSimple.js`), jadi setiap perubahan server di
+tahap A, C (C2/C3), D, F, H ikut mengubah perilakunya bagi pengguna luar (K4). Mametlite **tidak ikut diperbaiki** di
+Item 131: kodenya tidak disentuh, termasuk pemangkas riwayatnya sendiri (`history.slice(-5)`). Setiap tahap yang
+mengubah server wajib membuktikan Mametlite tidak rusak (satu chat + RAG di Mametlite live sesudah deploy, atau uji K4
+diulang) sebelum ditandai ✅.
 
 ## Prinsip
 
@@ -36,7 +44,7 @@ Legenda: 📋 terdaftar · 📝 berjalan · ✅ terbukti · 🔧 server (Owner d
   disaring manual. **Celah:** 43 berkas `.sql` tak masuk graf (`tree_sitter_sql` tak terpasang); fungsi RAG dibaca
   langsung dari database (`pg_get_functiondef`).
 
-## Tahap 0 — Ukur apa yang benar-benar diterima model (gerbang semua tahap) 📋 🔧🖥
+## Tahap 0 — Ukur apa yang benar-benar diterima model (gerbang semua tahap) 📋 🔧🖥💳
 
 **Kenapa ini ada (keluhan Owner 6 Nov: "selama ini membuat aplikasi mamet seperti memperbodoh model reasoningnya").**
 Suite 158/158, mutasi, dan uji K1 22/22 semuanya lulus — tetapi semuanya mengukur potongan kecil (satu fungsi, satu
@@ -83,7 +91,9 @@ potongan akun, baru menyaring ambang & memotong `limit` — indeks tak mungkin d
 4. Fungsi `match_documents` & `match_documents_judul` diperiksa dengan cara yang sama.
 
 **Selesai bila:** pencarian dingin < 1 s pada korpus penuh (terukur), 0 hasil dibuang karena tenggat, recall@8 & set K1
-tidak turun, mutasi membunuh uji urutan/indeks.
+tidak turun, mutasi membunuh uji urutan/indeks, **ukuran indeks diukur & dicatat** terhadap kuota 500 MB (9 Nov: DB
+121 MB, `document_chunks` 81 MB, `vector(768)`, pgvector 0.8.0 — iterative scan tersedia; batas per akun 25.000
+potongan), Mametlite tidak rusak.
 
 ## Tahap B — Alat RAG untuk model (K1) 📋 🔧🖥
 
@@ -121,7 +131,10 @@ Owner menulis "data yang sudah anda dapatkan jangan dicari kembali", model meman
 
 **Arah.** Anggaran klien (C1) = **satu-satunya** penentu untuk semua jalur (termasuk C7); C2 & C3 dihapus (penjaga ukuran jendela model tetap di klien).
 Hasil alat disimpan bersama jawaban dan dikirim ulang dalam anggaran; yang lama **dipadatkan menjadi catatan kerja**
-(berkas yang sudah dibaca + fakta pentingnya), bukan dibuang. C5 mengikuti anggaran yang sama. C6 **dihapus** (keputusan Owner —
+(berkas yang sudah dibaca + fakta pentingnya), bukan dibuang. **Perlu keputusan Owner sebelum C4 dikerjakan:** hasil
+alat berisi isi berkas Owner — menyimpannya di `chats` berarti isi berkas tinggal di Supabase (perluasan T12, bukan
+hanya dikirim ke penyedia model) dan menambah ukuran tabel yang dirampingkan 2 Nov; pilihan yang ditimbang: simpan
+catatan kerja saja, atau isi mentah dalam batas. C5 mengikuti anggaran yang sama. C6 **dihapus** (keputusan Owner —
 lihat bawah). Catatan palsu dihapus.
 
 **Selesai bila:** live — pertanyaan ke-N memakai hasil folder dari pertanyaan ke-(N−k) tanpa memanggil alat lagi; log
@@ -199,7 +212,10 @@ percakapan & bahan naik.
 
 ## Tahap J — Hapus semua komentar penjelas di kode Mamet Ecosystem ✅ 🔧🖥
 
-**Status: Selesai 6 Nov 2026** (13.122 baris komentar penjelas dihapus dari 329 berkas, 278 berkas JS/TS terbukti esbuild identik, 42 berkas Python AST identik, 11 uji di-upgrade ke kode nyata, suite 158/158 & build hijau; log: [`2026-11-06-item-131-tahap-j-hapus-komentar.md`](../project-memory/changelog/2026-11-06-item-131-tahap-j-hapus-komentar.md)).
+**Status: Selesai 9 Nov 2026.** 6 Nov dikerjakan sebagian ([log](../project-memory/changelog/2026-11-06-item-131-tahap-j-hapus-komentar.md))
+lalu dicatat ✅ padahal `uji/` tertinggal, tiga uji dilemahkan, dan server tak di-deploy. 9 Nov diperiksa ulang dan
+dilengkapi — 0 komentar penjelas di cakupan, uji penjaga `uji-kode-tanpa-komentar`, tiga uji dikembalikan ketat,
+`agent-process` v549 & `rag-process` v85 identik dengan repo ([log](../project-memory/changelog/2026-11-09-item-131-tahap-j-diperiksa-dan-dilengkapi.md)).
 
 **Perintah Owner (6 Nov):** *"kode tidak usah memakai komentar yang hasilnya nanti akan menyesatkan secara perlahan"* →
 *"masukkan juga tahap penghapusan semua komentar di kode mamet ecosystem."*
@@ -212,10 +228,13 @@ Isi komentar tidak hilang: tetap ada di sejarah git, dan alasan yang penting sud
 `scripts/`, `tools/`, `backend/`, `types/`, `capability/` (Python: komentar `#`).
 **Di luar cakupan:** `mametlite/` (aplikasi live pengguna eksternal — hanya bila Owner memerintahkan), berkas migrasi
 `supabase/migrations/` (catatan riwayat yang sudah diterapkan; komentar di dalam badan fungsi SQL ikut tersimpan di
-database, jadi mengubahnya tanpa menerapkan ulang membuat repo ≠ database), `node_modules`, `graphify-out/`, keluaran build.
+database, jadi mengubahnya tanpa menerapkan ulang membuat repo ≠ database), `_knowledge_archive/` (kode arsip yang tak
+dipakai — keputusan Owner 9 Nov: dibiarkan), `node_modules`, `graphify-out/`, keluaran build.
 
 **Yang DIPERTAHANKAN (perintah ke alat, bukan penjelasan):** `/* @vite-ignore */` (4 — tanpanya impor dinamis rusak),
-`// eslint-disable-next-line` (6), dan direktif sejenis bila ditemukan (`@ts-*`, `deno-lint-ignore`, shebang, lisensi).
+`// eslint-disable-next-line` (6), `// BATAS-UJI-DETIK: N` (penanda batas waktu yang dibaca `uji/jalankan-semua.mjs`),
+dan direktif sejenis bila ditemukan (`@ts-*`, `deno-lint-ignore`, shebang, lisensi). Penanda `UJI-CERMIN:` ditulis
+sebagai konstanta string. Penjaga sesudahnya: `uji/uji-kode-tanpa-komentar.mjs`.
 
 **Cara (mekanis, bukan regex — `//` juga muncul di URL & string):**
 1. Rentang komentar diambil dengan pemindai TypeScript (`ts.createScanner`, sudah terpasang di `frontend/node_modules`)
@@ -238,7 +257,8 @@ build hijau, server ter-deploy sama dengan repo.
 
 0. **Tahap 0** (ukur ujung-ke-ujung) — gerbang semua tahap; tanpa alat ukur ini kesalahan yang sama bisa terulang diam-diam.
    **J** (hapus komentar) — **keputusan Owner 6 Nov: langsung sesudah Tahap 0, sebelum A**, supaya sesi yang mengerjakan
-   A–I tidak lagi disesatkan komentar lama; perubahannya terbukti tak mengubah kode (keluaran build sama).
+   A–I tidak lagi disesatkan komentar lama; perubahannya terbukti tak mengubah kode (keluaran build sama). Dalam
+   praktik J selesai lebih dulu (9 Nov); **Tahap 0 berikutnya**, sebelum A.
 1. **A** (RAG cepat) — syarat uji K1/K2 buku utuh.
 2. **C** (konteks utuh) + **H** (kegagalan jujur) — model berhenti lupa & berhenti diam.
 3. **B** (alat RAG) — dibangun di atas A.
@@ -255,8 +275,8 @@ berikutnya sesudah 4.4.2.
 - **C6 penjaga memori lama: HAPUS** (keputusan Owner 6 Nov, atas rekomendasi) — terbukti tak pernah menolak:
   `AssistantService` mengirim konteks tanpa `source`, jadi `calculateTruthScore` selalu 0,4 ≥ ambang tolak 0,3, dan
   `latent` selalu kosong → selalu ALLOW. Penjaga yang tampak menjaga tetapi tak melakukan apa pun = keamanan semu;
-  menghapusnya tidak mengubah perilaku. Dikerjakan di Tahap C (cari pemanggil lain dulu, termasuk
-  `lib/cognitiveMemoryGovernor.ts` sisi server yang disebut di kepala berkasnya).
+  menghapusnya tidak mengubah perilaku. Dikerjakan di Tahap C. Pemanggil hidup satu-satunya (9 Nov):
+  `AssistantService.js`; versi server `cognitiveMemoryGovernor.ts` hanya ada di `_knowledge_archive/`, tidak dipakai.
 - **Graf:** hasil pindai lama dihapus, graf terbaru (6 Nov) dilacak di GitHub (`graph.json`, `graph.html`,
   `GRAPH_REPORT.md`). Celah 43 berkas SQL (`graphifyy[sql]` = unduhan paket) belum diputuskan.
 

@@ -1,14 +1,3 @@
-// UJI 2026-11-05 — K1 langkah 2: unggah dokumen besar bertahap (keputusan Owner: satu berkas mentah = satu dokumen;
-// yang gagal di tengah jalan menjadi cache; dilanjutkan dengan berkas yang sama tanpa embedding ulang dari awal).
-//
-// Bukti nyata 5 Nov: buku umum Owner berhenti di 1.856/1.986 potongan sesudah 105 s (anggaran 110 s) dan seluruhnya
-// dibuang; 385 changelog: 9× 503 gerbang Supabase, 1× penolakan lokasi Google, 1× karakter NUL.
-//
-// §1 rag-process DIBUNDEL SUNGGUHAN dengan database tiruan yang menyimpan isi + jam tiruan (anggaran 80 s per panggilan).
-// §2 vector_utils sungguhan dengan fetch tiruan (rute penyedia, penolakan lokasi diulang).
-// §3 unggahBertahap (klien) dengan panggilan tiruan. §4 cache OCR: IndexedDB tiruan + terapkanOcrHalaman dengan PDF
-// sungguhan (pdf-lib) dan penyedia OCR tiruan. §5 pencarian: migrasi & KnowledgeService menyaring dokumen belum selesai.
-// Semua tanpa jaringan & tanpa biaya; jalan di CI (butuh frontend/node_modules untuk esbuild & pdf-lib).
 
 import { mkdtempSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -35,12 +24,11 @@ const cek = (ok, pesan, rinci) => {
 tulis('uji-unggah-bertahap v1');
 
 const dir = mkdtempSync(join(tmpdir(), 'uji-unggah-bertahap-'));
-process.on('exit', () => { try { rmSync(dir, { recursive: true, force: true }); } catch { /* sudah bersih */ } });
+process.on('exit', () => { try { rmSync(dir, { recursive: true, force: true }); } catch {  } });
 const logAsli = { log: console.log, warn: console.warn, error: console.error };
 const diam = () => { console.log = () => {}; console.warn = () => {}; console.error = () => {}; };
 const bersuara = () => Object.assign(console, logAsli);
 
-// ── §1 rag-process ─────────────────────────────────────────────────────────────────────────────────
 tulis('\n-- 1. rag-process bertahap --');
 const POTONG = join(FN, 'agent-process/lib/potong_teks.ts').replace(/\\/g, '/');
 const bundel = await esbuild.build({
@@ -66,7 +54,6 @@ writeFileSync(join(dir, 'rag.mjs'), bundel.outputFiles[0].text);
 globalThis.Deno = { env: { get: () => 'x' } };
 const { BATAS_POTONGAN_PER_AKUN: BATAS_AKUN } = await import(pathToFileURL(join(dir, 'rag.mjs')).href);
 
-/** Database tiruan yang MENYIMPAN isi: documents & document_chunks (hapus dokumen = potongannya ikut). */
 function dbTiruan({ milikLain = 0 } = {}) {
   const db = { documents: [], document_chunks: [], tulisan: [], gagalSisipKe: null, sisip: 0 };
   let nomor = 0;
@@ -74,7 +61,6 @@ function dbTiruan({ milikLain = 0 } = {}) {
     if (k === 'documents.user_id') return db.documents.find((d) => d.id === row.document_id)?.user_id === v;
     return row[k] === v;
   });
-  // `.or('diproses_sampai.is.null,diproses_sampai.lt.<iso>')` — satu-satunya bentuk yang dipakai rag-process.
   const cocokAtau = (row, ekspresi) => {
     if (!ekspresi) return true;
     const m = /^diproses_sampai\.is\.null,diproses_sampai\.lt\.(.+)$/.exec(ekspresi);
@@ -111,12 +97,11 @@ function dbTiruan({ milikLain = 0 } = {}) {
         const hapus = db.documents.filter((d) => cocok(d, st.filter)).map((d) => d.id);
         db.documents = db.documents.filter((d) => !hapus.includes(d.id));
         db.document_chunks = db.document_chunks.filter((c) => !hapus.includes(c.document_id));
-        db.documents.forEach((d) => { if (hapus.includes(d.menggantikan)) d.menggantikan = null; }); // ON DELETE SET NULL
+        db.documents.forEach((d) => { if (hapus.includes(d.menggantikan)) d.menggantikan = null; });
         db.tulisan.push('documents.delete');
         return { data: hapus.map((id) => ({ id })), error: null };
       }
       if (st.opsi?.head) {
-        // 5 Nov live: HEAD document_chunks?document_id=… → 500 "statement timeout" (tanpa indeks document_id).
         if (db.gagalHitungDokumen && st.filter.some(([k]) => k === 'document_id')) return { count: null, error: { message: '' } };
         const n = db.document_chunks.filter((c) => cocok(c, st.filter)).length;
         const perAkun = st.filter.some(([k]) => k === 'documents.user_id');
@@ -139,7 +124,6 @@ function dbTiruan({ milikLain = 0 } = {}) {
     };
     return p;
   };
-  // Tiruan dua fungsi migrasi 20261105030000 (perilaku sama dengan SQL-nya: cek pemilik, salin vektor, atomik).
   const milikSama = (b, l) => {
     const db1 = db.documents.find((d) => d.id === b); const dl = db.documents.find((d) => d.id === l);
     return Boolean(db1 && dl && db1.user_id === dl.user_id);
@@ -162,8 +146,6 @@ function dbTiruan({ milikLain = 0 } = {}) {
         embedding: a.p_vektor[i] != null ? JSON.parse(a.p_vektor[i]) : vektorLama(a.p_dok_lama, isi),
         disalin: a.p_vektor[i] == null,
       }));
-      // `rpcKurang`: fungsi yang tersimpan sebagian tanpa galat (mis. versi SQL lain) — server wajib menolak, bukan
-      // menghitung seluruh kelompok tersimpan (titik lanjut dihitung dari JUMLAH potongan).
       if (db.rpcKurang) baris.pop();
       db.document_chunks.push(...baris);
       db.tulisan.push('rpc.simpan');
@@ -174,7 +156,6 @@ function dbTiruan({ milikLain = 0 } = {}) {
   return { db, sb: { auth: { getUser: async () => ({ data: { user: { id: 'akun-1' } }, error: null }) }, from, rpc } };
 }
 
-// Jam tiruan: setiap panggilan embedding memakan `langkahMs`.
 const dateAsli = Date.now;
 let jam = 1_000_000;
 const embed = { panggilan: 0, potongan: 0, gagalKe: null, langkahMs: 1000 };
@@ -207,12 +188,12 @@ async function kirim(sb, isi, judul = 'Buku.pdf', tambahan = {}) {
 }
 const ulangEmbed = (o = {}) => Object.assign(embed, { panggilan: 0, potongan: 0, gagalKe: null, langkahMs: 1000 }, o);
 const urutanSama = (db, isi) => {
-  const harap = isi; // potongan disimpan berurutan → gabungan awal tiap potongan = urutan paragraf
+  const harap = isi;
   const nomor = db.document_chunks.map((c) => Number(/Paragraf (\d+)\./.exec(c.content)?.[1] ?? -1));
   return nomor.every((n, i) => i === 0 || n >= nomor[i - 1]) && harap.length > 0;
 };
 
-{ // a. dokumen kecil: satu panggilan, langsung selesai
+{
   const { db, sb } = dbTiruan();
   ulangEmbed();
   const r = await kirim(sb, teks(12));
@@ -223,10 +204,10 @@ const urutanSama = (db, isi) => {
     'sidik SHA-256 & total potongan disimpan di dokumen');
 }
 
-{ // b. dokumen besar: berhenti di anggaran, dilanjutkan tanpa embedding ulang
+{
   const { db, sb } = dbTiruan();
   const isi = teks(220);
-  ulangEmbed({ langkahMs: 20_000 }); // 20 s per kelompok → ±5 kelompok per panggilan (anggaran 80 s)
+  ulangEmbed({ langkahMs: 20_000 });
   const r1 = await kirim(sb, isi);
   cek(r1.status === 200 && r1.isi.selesai === false && r1.isi.tersimpan > 0 && r1.isi.tersimpan < r1.isi.total,
     `panggilan 1 berhenti di anggaran: ${r1.isi.tersimpan}/${r1.isi.total}, menjawab selesai:false (bukan galat)`, r1.isi);
@@ -242,7 +223,7 @@ const urutanSama = (db, isi) => {
   cek(tersimpan1 % 32 === 0, 'berhenti tepat di batas kelompok 32 (yang tersimpan adalah kelompok utuh)', tersimpan1);
 }
 
-{ // c. gagal di tengah → sisa tetap tersimpan sebagai cache, dilanjutkan dari situ
+{
   const { db, sb } = dbTiruan();
   const isi = teks(220);
   ulangEmbed({ gagalKe: 3 });
@@ -259,7 +240,7 @@ const urutanSama = (db, isi) => {
   cek(/64 sudah tersimpan/.test(r2.isi.message), 'jawaban akhir menyebut potongan dari cache', r2.isi.message);
 }
 
-{ // d. gagal sebelum satu pun tersimpan → dokumen baru dibatalkan (tak ada cache yang berarti)
+{
   const { db, sb } = dbTiruan();
   ulangEmbed({ gagalKe: 1 });
   const r = await kirim(sb, teks(80));
@@ -267,7 +248,7 @@ const urutanSama = (db, isi) => {
     'gagal di kelompok pertama → dokumen dibatalkan, tanpa sisa', { isi: r.isi, dok: db.documents });
 }
 
-{ // e. isi berbeda dengan judul tertunda → ditolak, tidak disambung
+{
   const { db, sb } = dbTiruan();
   ulangEmbed({ gagalKe: 2 });
   await kirim(sb, teks(120));
@@ -279,7 +260,7 @@ const urutanSama = (db, isi) => {
   cek(db.documents.length === sebelum.dok && db.document_chunks.length === sebelum.pot, 'tidak ada yang ditulis');
 }
 
-{ // f. aturan pemotongan berubah (total_potongan beda) → ditolak; potongan tersimpan > isi → ditolak
+{
   const { db, sb } = dbTiruan();
   const isi = teks(120);
   ulangEmbed({ gagalKe: 2 });
@@ -294,7 +275,7 @@ const urutanSama = (db, isi) => {
   cek(r.status === 409 && r.isi.code === 'TERTUNDA_TAK_KONSISTEN' && embed.panggilan === 0, 'potongan tersimpan > isi berkas → 409', r.isi);
 }
 
-{ // g. karakter NUL dibuang (5 Nov: changelog UTF-16 campuran)
+{
   const { db, sb } = dbTiruan();
   ulangEmbed();
   const r = await kirim(sb, teks(5) + '\n\n\u0000#\u0000#\u0000 \u00007\u0000.' + teks(5, 'Akhir'));
@@ -302,7 +283,7 @@ const urutanSama = (db, isi) => {
     'teks ber-NUL tersimpan utuh tanpa NUL (dulu: DB Insert Error)', r.isi);
 }
 
-{ // h. galat simpan di tengah → yang sudah tersimpan dipertahankan
+{
   const { db, sb } = dbTiruan();
   ulangEmbed();
   db.gagalSisipKe = 2;
@@ -311,14 +292,12 @@ const urutanSama = (db, isi) => {
     'galat simpan kelompok ke-2 → 32 potongan dipertahankan', r.isi);
 }
 
-{ // i. batas volume menghitung HANYA potongan yang belum tersimpan
+{
   const { db, sb } = dbTiruan({ milikLain: BATAS_AKUN - 100 });
   const isi = teks(220);
   ulangEmbed({ gagalKe: 4 });
   const r1 = await kirim(sb, isi);
   cek(r1.status === 413 && r1.isi.code === 'KUOTA_AKUN_PENUH', `akun ${BATAS_AKUN - 100} + buku penuh → ditolak sebelum embedding`, r1.isi);
-  // Simulasikan unggahan lama yang sudah sebagian tersimpan: 160 potongan, sisa kecil. Dihitung penuh, buku ini
-  // melewati batas (BATAS − 300 + 160 + 220); dihitung dari sisanya tidak (BATAS − 300 + 160 + 60).
   const { db: db2, sb: sb2 } = dbTiruan({ milikLain: BATAS_AKUN - 300 });
   ulangEmbed({ gagalKe: 6 });
   const awal = await kirim(sb2, isi);
@@ -331,7 +310,7 @@ const urutanSama = (db, isi) => {
 
 tulis('\n-- 1b. kunci sementara: dua panggilan tak menyimpan potongan yang sama --');
 const iso = (ms) => new Date(ms).toISOString();
-{ // kunci dipegang selama embedding, dilepas sesudah jeda anggaran & sesudah selesai
+{
   const { db, sb } = dbTiruan();
   const isi = teks(220);
   ulangEmbed({ langkahMs: 20_000 });
@@ -346,25 +325,25 @@ const iso = (ms) => new Date(ms).toISOString();
     'lanjutan mengambil kunci lagi, melepasnya sesudah selesai', { t: terkunci, k: db.documents[0].diproses_sampai });
   globalThis.__saatEmbed = null;
 }
-{ // panggilan lama masih memegang kunci → panggilan baru ditolak sementara, tanpa embedding & tanpa tulisan
+{
   const { db, sb } = dbTiruan();
   const isi = teks(220);
   ulangEmbed({ gagalKe: 3 });
   await kirim(sb, isi);
   cek(db.documents[0].diproses_sampai === null, 'gagal di tengah → kunci dilepas (dokumen tetap ada)', db.documents[0]);
-  db.documents[0].diproses_sampai = iso(jam + 60_000); // panggilan lain sedang berjalan
+  db.documents[0].diproses_sampai = iso(jam + 60_000);
   const sebelum = db.document_chunks.length;
   ulangEmbed();
   const r = await kirim(sb, isi);
   cek(r.status === 423 && r.isi.code === 'SEDANG_DIPROSES' && embed.panggilan === 0 && db.document_chunks.length === sebelum,
     'masih terkunci → 423 SEDANG_DIPROSES, tanpa embedding, tanpa potongan ganda', { s: r.status, i: r.isi, e: embed.panggilan });
   cek(db.documents[0].diproses_sampai === iso(jam + 60_000), 'kunci milik panggilan lain tidak dilepas oleh yang ditolak');
-  db.documents[0].diproses_sampai = iso(jam - 1); // kedaluwarsa (fungsi lama dihentikan platform)
+  db.documents[0].diproses_sampai = iso(jam - 1);
   const r2 = await kirim(sb, isi);
   cek(r2.isi.selesai === true && db.document_chunks.length === r2.isi.total && new Set(db.document_chunks.map((c) => c.content)).size === r2.isi.total,
     'kunci kedaluwarsa → diambil alih, dilanjutkan tanpa potongan ganda', r2.isi);
 }
-{ // ditolak sesudah memegang kunci (tersimpan > isi) → kunci tetap dilepas
+{
   const { db, sb } = dbTiruan();
   const isi = teks(120);
   ulangEmbed({ gagalKe: 2 });
@@ -374,7 +353,7 @@ const iso = (ms) => new Date(ms).toISOString();
   const r = await kirim(sb, isi);
   cek(r.isi.code === 'TERTUNDA_TAK_KONSISTEN' && db.documents[0].diproses_sampai === null, '409 sesudah mengambil kunci → kunci dilepas', db.documents[0]);
 }
-{ // hitungan potongan gagal saat melanjutkan (5 Nov: statement timeout) → pesan jujur, kunci dilepas, dokumen tetap
+{
   const { db, sb } = dbTiruan();
   const isi = teks(120);
   ulangEmbed({ gagalKe: 2 });
@@ -391,7 +370,7 @@ const iso = (ms) => new Date(ms).toISOString();
   const r2 = await kirim(sb, isi);
   cek(r2.isi.selesai === true && db.document_chunks.length === r2.isi.total, 'percobaan berikutnya melanjutkan seperti biasa', r2.isi);
 }
-{ // dokumen baru langsung terkunci sejak dibuat
+{
   const { db, sb } = dbTiruan();
   ulangEmbed();
   let kunciAwal = null;
@@ -402,11 +381,10 @@ const iso = (ms) => new Date(ms).toISOString();
 }
 
 tulis('\n-- 1c. perbarui dokumen: nama sama, isi berbeda --');
-// v2 = v1 dengan paragraf 50–59 diubah + 10 paragraf baru di akhir.
 const v1 = teks(120);
 const v2 = Array.from({ length: 130 }, (_, i) => (i >= 50 && i < 60 ? `Paragraf ${i} DIUBAH. ` : `Paragraf ${i}. `) + 'kata '.repeat(150)).join('\n\n');
 const isiDok = (db, id) => db.document_chunks.filter((c) => c.document_id === id).map((c) => c.content);
-{ // perbarui penuh: hanya potongan yang berubah di-embed; versi lama dihapus sesudah versi baru selesai
+{
   const { db, sb } = dbTiruan();
   ulangEmbed();
   await kirim(sb, v1);
@@ -426,7 +404,7 @@ const isiDok = (db, id) => db.document_chunks.filter((c) => c.document_id === id
     'potongan versi lama ikut terhapus; versi baru lengkap', { n: isiBaru.length, total: r.isi.total });
   cek(db.document_chunks.filter((c) => c.disalin).every((c) => Array.isArray(c.embedding)), 'vektor salinan benar-benar terisi');
 }
-{ // isi sama persis → tidak ada yang dibangun, tanpa biaya
+{
   const { db, sb } = dbTiruan();
   ulangEmbed();
   await kirim(sb, v1);
@@ -436,7 +414,7 @@ const isiDok = (db, id) => db.document_chunks.filter((c) => c.document_id === id
   cek(r.status === 200 && r.isi.sama === true && r.isi.diperbarui === false && embed.panggilan === 0 && JSON.stringify(db.documents) === sebelum,
     'isi sama persis → "tidak ada yang diperbarui", 0 embedding, dokumen tak berubah', r.isi);
 }
-{ // tanpa penanda perbarui (klien lama) → perilaku lama: dokumen baru di samping yang lama
+{
   const { db, sb } = dbTiruan();
   ulangEmbed();
   await kirim(sb, v1);
@@ -445,14 +423,12 @@ const isiDok = (db, id) => db.document_chunks.filter((c) => c.document_id === id
   cek(r.isi.selesai === true && db.documents.length === 2 && !r.isi.diperbarui && embed.potongan === r.isi.total,
     'tanpa perbarui → dokumen kedua, tanpa salin & tanpa menghapus (klien lama tidak berubah)', { n: db.documents.length, isi: r.isi });
 }
-{ // perbarui terputus → versi lama tetap utuh & dipakai; lanjutan (bahkan tanpa penanda) menyelesaikan & menghapus versi lama
+{
   const { db, sb } = dbTiruan();
   ulangEmbed();
   await kirim(sb, v1);
   const lamaId = db.documents[0].id;
   const nLama = isiDok(db, lamaId).length;
-  // Potongan salinan tak memanggil embedding (jam tiruan tak maju) → terputus dipicu penolakan penyedia pada kelompok
-  // pertama yang berisi potongan berubah (paragraf 50–59, kelompok ke-2).
   ulangEmbed({ gagalKe: 1 });
   const r1 = await kirim(sb, v2, 'Buku.pdf', { perbarui: true });
   const baru = db.documents.find((d) => d.id !== lamaId);
@@ -464,11 +440,11 @@ const isiDok = (db, id) => db.document_chunks.filter((c) => c.document_id === id
   cek(r.isi.selesai === true && r.isi.diperbarui === true && !db.documents.some((d) => d.id === lamaId) && isiDok(db, r.isi.documentId).length === r.isi.total,
     'lanjutan (tanpa penanda) memakai `menggantikan` → versi lama dihapus di akhir', r.isi);
 }
-{ // simpan kelompok gagal → atomik: tak ada potongan setengah kelompok; lanjutan menyambung benar
+{
   const { db, sb } = dbTiruan();
   ulangEmbed();
   await kirim(sb, v1);
-  db.gagalRpcKe = (db.rpc || 0) + 4; // potongan_lama_ada(1) + simpan(1) + potongan_lama_ada(2) + simpan(2) ← gagal
+  db.gagalRpcKe = (db.rpc || 0) + 4;
   ulangEmbed();
   const r1 = await kirim(sb, v2, 'Buku.pdf', { perbarui: true });
   const baru = db.documents.find((d) => d.id === r1.isi.documentId);
@@ -480,7 +456,7 @@ const isiDok = (db, id) => db.document_chunks.filter((c) => c.document_id === id
   cek(r2.isi.selesai === true && isi2.length === r2.isi.total && new Set(isi2).size === isi2.length,
     'lanjutan melengkapi tanpa ganda', { r2: r2.isi, n: isi2.length });
 }
-{ // versi lama dihapus pengguna di tengah perbaruan → menggantikan jadi null; sisa di-embed biasa, tak macet
+{
   const { db, sb } = dbTiruan();
   ulangEmbed();
   await kirim(sb, v1);
@@ -496,7 +472,7 @@ const isiDok = (db, id) => db.document_chunks.filter((c) => c.document_id === id
   cek(r.isi.selesai === true && db.documents.length === 1 && isiDok(db, r.isi.documentId).length === r.isi.total,
     'versi lama hilang di tengah → versi baru tetap selesai (tanpa salin sisa)', r.isi);
 }
-{ // simpan_kelompok_perbarui melaporkan lebih sedikit dari isi kelompok → galat, tidak dianggap tersimpan
+{
   const { db, sb } = dbTiruan();
   ulangEmbed();
   await kirim(sb, v1);
@@ -506,7 +482,7 @@ const isiDok = (db, id) => db.document_chunks.filter((c) => c.document_id === id
   cek(r.status === 500 && r.isi.selesai !== true && /tersimpan 31 dari 32/.test(JSON.stringify(r.isi)),
     'jumlah tersimpan ≠ isi kelompok → 500, bukan "selesai"', { s: r.status, i: r.isi });
 }
-{ // `menggantikan` menunjuk dokumen akun LAIN → versi baru selesai, dokumen akun lain TIDAK terhapus
+{
   const { db, sb } = dbTiruan();
   ulangEmbed();
   await kirim(sb, v1);
@@ -518,7 +494,6 @@ const isiDok = (db, id) => db.document_chunks.filter((c) => c.document_id === id
     'penghapusan versi lama disaring pemilik: dokumen akun lain utuh, dilaporkan', { r: r.isi, dok: db.documents.map((d) => d.id) });
 }
 
-// ── §2 vector_utils ────────────────────────────────────────────────────────────────────────────────
 tulis('\n-- 2. embedding: rute penyedia & penolakan lokasi --');
 const vu = await esbuild.build({
   entryPoints: [join(FN, 'agent-process/lib/vector_utils.ts')],
@@ -541,8 +516,6 @@ const vektorOk = (n) => ({ status: 200, isi: { data: Array.from({ length: n }, (
 const LOKASI = { status: 400, isi: '{"error":{"message":"HTTP 400: {\\n  \\"error\\": {\\n    \\"code\\": 400,\\n    \\"message\\": \\"User location is not supported for the API use.\\",\\n    \\"status\\": \\"FAILED_PRECONDITION\\"\\n  }\\n}\\n","code":400}}' };
 {
   const r = await denganFetch([vektorOk(2)], () => V.embedLewatOpenRouter(['a', 'b'], 'k'));
-  // Diukur 5 Nov: google-vertex 404 untuk akun Owner; vektor tersimpan identik dengan google-ai-studio (1,0000 pada 8/8).
-  // Memaksa rute lain = vektor yang belum terbukti sebanding → rute tidak diatur.
   cek(r.hasil?.length === 2 && r.kiriman[0].provider === undefined && r.kiriman[0].model === V.EMBED_MODEL,
     'rute penyedia tidak dipaksa (vektor tetap dari rute yang sama dengan yang tersimpan)', r.kiriman[0]);
 }
@@ -558,7 +531,6 @@ cek(V.penolakanSesaat(503, '') && V.penolakanSesaat(429, '') && !V.penolakanSesa
   && !V.penolakanSesaat(400, 'invalid') && V.penolakanSesaat(400, 'User location is not supported for the API use.'),
   'penolakanSesaat: 429/5xx/lokasi ya; 400 lain, 401, 402 tidak');
 
-// ── §3 unggahBertahap (klien) ──────────────────────────────────────────────────────────────────────
 tulis('\n-- 3. klien: memanggil lagi sampai selesai, mengulang yang sesaat --');
 const U = await import(pathToFileURL(join(SVC, 'unggahBertahap.js')).href);
 const ok = (isi) => ({ data: isi, error: null });
@@ -619,7 +591,6 @@ for (const [status, kode] of [[409, 'TERTUNDA_BERBEDA'], [401, 'KUNCI_TIDAK_VALI
   cek(U.JEDA_KUNCI_MS * U.TUNGGU_KUNCI_MAKS > 130_000, 'total waktu tunggu klien > sewa kunci server');
 }
 
-// ── §4 cache OCR ───────────────────────────────────────────────────────────────────────────────────
 tulis('\n-- 4. cache OCR di perangkat --');
 const C = await import(pathToFileURL(join(SVC, 'cacheOcr.js')).href);
 function idbTiruan() {
@@ -665,11 +636,10 @@ function idbTiruan() {
 }
 {
   let pdfLib;
-  try { pdfLib = await import(pathToFileURL(join(AKAR, 'frontend/node_modules/pdf-lib/cjs/index.js')).href); } catch { /* lihat di bawah */ }
+  try { pdfLib = await import(pathToFileURL(join(AKAR, 'frontend/node_modules/pdf-lib/cjs/index.js')).href); } catch {  }
   if (!pdfLib) {
     tulis('(terapkanOcrHalaman + cache dilewati — pdf-lib belum terpasang)');
   } else {
-    // Vite memetakan import('pdf-lib') di aplikasi; di Node modul ini dibundel dengan pdf-lib dari frontend/node_modules.
     const ocr = await esbuild.build({
       entryPoints: [join(SVC, 'pdfOcrService.js')], bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent',
       nodePaths: [join(AKAR, 'frontend/node_modules')],
@@ -705,7 +675,6 @@ function idbTiruan() {
     bersuara();
     cek(kirim === 2, 'tanpa opsi cache → perilaku lama (semua halaman dikirim)', kirim);
 
-    // Saldo habis (402): buku Kepbup 5 Nov — sesudah halaman 442 semua halaman tetap dikirim & 402 satu per satu.
     const doc6 = await PDFDocument.create();
     for (let i = 0; i < 6; i++) doc6.addPage();
     const bytes6 = await doc6.save();
@@ -731,7 +700,6 @@ function idbTiruan() {
   }
 }
 
-// ── §5 pencarian tidak membaca dokumen belum selesai ───────────────────────────────────────────────
 tulis('\n-- 5. pencarian chat menyaring dokumen belum selesai --');
 const migrasi = readFileSync(join(AKAR, 'supabase/migrations/20261105000000_unggah_bertahap.sql'), 'utf8');
 for (const fn of ['match_documents', 'match_documents_hybrid', 'match_documents_judul']) {
@@ -742,7 +710,6 @@ cek(/add column if not exists selesai boolean not null default true/i.test(migra
 {
   const K = await import(pathToFileURL(join(AKAR, 'shared/KnowledgeService.js')).href);
   const catat = [];
-  // Seperti supabase-js: setiap metode mengembalikan builder yang bisa disambung (juga sesudah limit) dan di-await.
   const sb = { from: (t) => { const p = { t, f: [] }; catat.push(p); const r = {
     select(s) { p.s = s; return r; }, or() { return r; }, eq(k, v) { p.f.push([k, v]); return r; }, in() { return r; }, not() { return r; },
     ilike() { return r; }, limit() { return r; },
@@ -757,13 +724,11 @@ cek(/add column if not exists selesai boolean not null default true/i.test(migra
   cek(isi?.f.some(([k, v]) => k === 'documents.selesai' && v === true) && /selesai/.test(isi?.s || ''), 'cadangan pencocokan kata: isi hanya dari dokumen selesai', isi);
 }
 
-// ── §6 perbarui dokumen & saldo habis: klien + migrasi ────────────────────────────────────────────
 tulis('\n-- 6. perbarui dokumen & saldo OCR habis: klien + migrasi --');
 {
   const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
   const ra = baca('frontend/src/components/research/ResearchApp.jsx');
   const ml = baca('mametlite/src/App.jsx');
-  // Ecosystem: hanya judul di workspace INI yang ditawari perbarui; sisanya tetap dilewati (unggahan ganda 17 Sep).
   cek(/diRuangIni = new Set\(\(judulAda \|\| \[\]\)\s*\.filter\(\(d\) => d\.selesai !== false && \(!selectedSpace \|\| d\.space_id === selectedSpace\)\)/.test(ra),
     'Ecosystem: kandidat perbarui = judul selesai di workspace yang dipilih');
   cek(/const perbarui = kembar\.length > 0 && window\.confirm\(/.test(ra), 'Ecosystem: perbarui hanya sesudah konfirmasi pengguna');

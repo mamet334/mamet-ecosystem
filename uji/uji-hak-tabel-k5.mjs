@@ -1,18 +1,5 @@
-// uji-hak-tabel-k5 v1 — hak tabel anon/authenticated dicocokkan dengan kode klien (K5, ADR-0022, 30 Okt 2026)
-//
-// Migrasi `20261030000000_k5_hak_tabel_minimum.sql` mencabut SEMUA hak anon & authenticated di skema public, lalu
-// memberi kembali authenticated hanya metode yang dipakai klien. Bahayanya dua arah:
-//   (1) kode klien memakai metode yang tak diberi → fitur mati diam-diam di Mametlite/Ecosystem ("permission denied");
-//   (2) hak diberi padahal tak dipakai → kembali ke keadaan "semua boleh, hanya RLS yang menjaga".
-// Uji ini membaca kode klien (frontend/src, frontend/electron, mametlite/src, tools/) dan migrasinya, lalu menuntut
-// keduanya cocok persis. Menambah `.from('x').insert(...)` di klien tanpa migrasi hak baru → uji ini merah.
-//
-// Perilaku sungguhannya (baca 25 tabel, tulis 9 jalur, RPC, penolakan TRUNCATE/anon) dibuktikan di database dengan
-// peniruan peran authenticated/anon di dalam transaksi yang dibatalkan — lihat changelog 2026-10-30-k5-hak-tabel.
 
 import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -27,16 +14,13 @@ const cek = (ok, pesan, rinci) => {
   else { gagal++; console.log('  ✗ ' + pesan + (rinci === undefined ? '' : ' — ' + JSON.stringify(rinci))); }
 };
 
-// ── Pemakaian klien ────────────────────────────────────────────────────────────────────────────────
 const buangKomentar = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/[^\n]*/g, '$1');
 const METODE_KE_HAK = { select: ['SELECT'], insert: ['INSERT'], update: ['UPDATE'], upsert: ['INSERT', 'UPDATE'], delete: ['DELETE'] };
 
-// RPC SECURITY INVOKER berjalan dengan hak pemanggil — tabel yang disentuhnya ikut butuh hak (isi fungsi di database).
 const RPC_INVOKER = {
   asn_simpan_berkas: { asn_berkas: ['INSERT', 'UPDATE'], asn_pegawai: ['INSERT'] },
   conversion_worker_heartbeat: { conversion_workers: ['INSERT', 'UPDATE', 'SELECT'] },
   conversion_worker_status: { conversion_workers: ['SELECT'] },
-  // Item 130 Tahap E (migrasi 20261102000000): graf Home — angka & ekor pesan, baca-saja.
   hitungan_graf_home: { chats: ['SELECT'], documents: ['SELECT'], document_chunks: ['SELECT'], api_usage: ['SELECT'] },
   pesan_percakapan_graf: { chats: ['SELECT'] },
 };
@@ -55,22 +39,19 @@ function bacaKlien() {
   return berkas;
 }
 
-/** Peta tabel → Set hak yang dibutuhkan klien, plus rantai yang metodenya tak terbaca dan nama RPC yang dipanggil. */
 export function pemakaianKlien(berkas) {
   const butuh = {}; const takTerbaca = []; const rpc = new Set();
   const tambah = (t, haks) => { (butuh[t] ??= new Set()); haks.forEach((h) => butuh[t].add(h)); };
   for (const { p, s } of berkas) {
     for (const m of s.matchAll(/(storage\s*)?\.from\(\s*(['"`])([a-z_]+)\2\s*\)/g)) {
-      if (m[1]) continue; // supabase.storage.from('bucket') — bukan tabel
+      if (m[1]) continue;
       const rantai = s.slice(m.index + m[0].length).split(/;|\.from\(/)[0];
       const metode = [...rantai.matchAll(/\.(select|insert|update|upsert|delete)\(/g)].map((x) => x[1]);
       if (!metode.length) { takTerbaca.push(`${p}: from('${m[3]}')`); continue; }
-      metode.forEach((x) => tambah(m[3], METODE_KE_HAK[x])); // `.insert(..).select()` (returning) ikut terhitung SELECT
+      metode.forEach((x) => tambah(m[3], METODE_KE_HAK[x]));
     }
     for (const m of s.matchAll(/\.rpc\(\s*['"`]([a-z_]+)/g)) rpc.add(m[1]);
-    // Realtime postgres_changes butuh SELECT pada tabelnya.
     for (const m of s.matchAll(/postgres_changes['"`]\s*,\s*\{[^}]*table:\s*['"`]([a-z_]+)/g)) tambah(m[1], ['SELECT']);
-    // Rujukan dinamis yang diketahui.
     if (/_tableName\s*=\s*'assistant_audit_log'/.test(s)) {
       if (/from\(this\._tableName\)\.insert\(/.test(s)) tambah('assistant_audit_log', ['INSERT']);
       if (/from\(this\._tableName\)\s*\.select\(/.test(s)) tambah('assistant_audit_log', ['SELECT']);
@@ -82,7 +63,6 @@ export function pemakaianKlien(berkas) {
   return { butuh, takTerbaca, rpc };
 }
 
-// ── Migrasi ────────────────────────────────────────────────────────────────────────────────────────
 export function bacaMigrasi(teks) {
   const sql = teks.replace(/--[^\n]*/g, '');
   const diberi = {}; const keAnon = []; const aneh = [];
@@ -101,7 +81,6 @@ export function bacaMigrasi(teks) {
   return { diberi, keAnon, aneh, cabutSemua, fnCabutAuth, fnAnon };
 }
 
-/** Daftar pelanggaran; kosong = cocok. */
 export function periksa(mig, pakai) {
   const salah = [];
   if (!mig.cabutSemua) salah.push('tak ada `revoke all on all tables in schema public from anon, authenticated`');
@@ -116,7 +95,6 @@ export function periksa(mig, pakai) {
   return salah;
 }
 
-// ── Jalankan ───────────────────────────────────────────────────────────────────────────────────────
 const teksMigrasi = readFileSync(MIGRASI, 'utf8');
 const mig = bacaMigrasi(teksMigrasi);
 const pakai = pemakaianKlien(bacaKlien());
@@ -131,7 +109,6 @@ cek(salah.length === 0, 'migrasi memberi authenticated PERSIS hak yang dipakai k
 cek(/grant\s+execute\s+on\s+function\s+public\.check_daily_quota\(uuid\)\s+to\s+authenticated/i.test(teksMigrasi),
   'check_daily_quota tetap bisa dipanggil pengguna masuk (BillingDashboard)');
 
-// ── Pagar mutasi: pemeriksa ini sendiri harus menggigit ──────────────────────────────────────────
 console.log('\nPagar mutasi');
 const gigit = (nama, teks, pk = pakai) => cek(periksa(bacaMigrasi(teks), pk).length > 0, `menggigit: ${nama}`);
 gigit('INSERT user_memories dibuang', teksMigrasi.replace('select, insert, update, delete on public.user_memories', 'select, update, delete on public.user_memories'));

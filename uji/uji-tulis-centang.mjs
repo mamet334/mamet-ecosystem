@@ -1,14 +1,3 @@
-// UJI 2026-11-05 — centang ditulis sebagai kata saat unggah (K1 / BUKU-10, keputusan Owner: rapikan saat unggah,
-// tanpa LLM).
-//
-// Masalahnya: tabel OCR menggeser sel, jadi "| | √ | |" tidak menunjukkan kolom mana yang dicentang. Jabatan 177:
-// "Pengalaman Kerja … | | Ö | | |" terbaca Penting, padahal di PDF tanda itu di bawah "Mutlak" (4 dari 5 jawaban
-// salah). Kolom yang pasti dibaca dari koordinat pdf.js (Item 88), lalu ditulis di samping tandanya:
-//   OCR    — tulisCentangDiTeks: tanda ke-k di PDF ↔ tanda ke-k di teks OCR, dengan penjaga kata;
-//   pdf.js — tulisCentangDiItems: langsung pada item tanda (teks disusun dari item yang sama).
-//
-// §1–§4 tanpa data (jalan di CI). §5 korpus 221 Kepbup + OCR nyata 217 halaman — butuh uji/data-lokal (di luar git):
-//   kepbup-per-jabatan/, ocr-centang-kepbup.json + ocr-centang-kepbup-tambahan.json (uji/ukur-ocr-centang.js).
 
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -27,14 +16,12 @@ const cek = (ok, pesan, rinci) => {
   if (ok) lulus++; else gagal++;
 };
 
-// ── 1. Menghitung tanda di teks OCR ─────────────────────────────────────────────────────────────
 console.log('\n-- 1. cariCentangTeks --');
 cek(T.hitungCentangTeks('| a | √ | ✓ | ☑ |') === 3, 'tiga bentuk tanda dihitung');
 cek(T.hitungCentangTeks('| C. | Pengalaman | | Ö | |') === 1, '"Ö" sendirian di sel tabel = tanda (jabatan 177)');
 cek(T.hitungCentangTeks('Ödem Ömer | ÖZ |') === 0, '"Ö" di dalam kata/sel berisi teks bukan tanda');
 cek(T.hitungCentangTeks('|Ö|') === 1, '"Ö" tanpa spasi di sel tetap tanda');
 
-// ── 2. Pemasangan urutan di teks OCR ────────────────────────────────────────────────────────────
 console.log('\n-- 2. tulisCentangDiTeks --');
 const ocr177 = [
   '| Jenis | Uraian | Mutlak | Penting | Perlu |',
@@ -65,13 +52,10 @@ const tanda177 = [
   cek(h.ditulis === 0 && h.teks === ocr177, 'tanda PDF tanpa label → apa adanya', JSON.stringify(h));
 }
 {
-  // Urutan tertukar: tanda ke-1 (baris Diklat) dipasangkan label Pengalaman Kerja — harus ditolak.
   const h = T.tulisCentangDiTeks(ocr177, [tanda177[1], tanda177[0]]);
   cek(h.ditulis === 0 && h.teks === ocr177, 'urutan tertukar (kolom berbeda) → ditolak', JSON.stringify(h));
 }
 {
-  // Bentuk 052/053/077/099 (diukur: lolos penjaga satu kata saat digeser). Baris Pengalaman memuat "tugas"
-  // (kata label Diklat) tetapi lebih mirip labelnya sendiri; baris Diklat tidak memuat kata label Pengalaman.
   const teks = [
     '| | | 2. Teknis | Diklat Teknis yang relevan dengan tugas jabatan | | √ | |',
     '| C. | Pengalaman Kerja | Memiliki pengalaman pada jabatan pengawas sesuai dengan bidang tugas jabatan | | √ | | |'
@@ -83,20 +67,17 @@ const tanda177 = [
   cek(T.tulisCentangDiTeks(teks, benar).ditulis === 2, '052: urutan benar ditulis');
   const geser = T.tulisCentangDiTeks(teks, [benar[1], benar[0]]);
   cek(geser.ditulis === 0, '052: urutan digeser → ditolak (baris lebih mirip label lain berkolom beda)', JSON.stringify(geser));
-  // Label lain berkolom berbeda yang SAMA mirip juga ditolak (≥, bukan >).
   const sama = T.tulisCentangDiTeks('| Diklat Teknis | √ |\n| Diklat Teknis | √ |',
     [{ kolom: 'Penting', label: 'Diklat Teknis' }, { kolom: 'Mutlak', label: 'Diklat Teknis Lanjut' }]);
   cek(sama.ditulis === 0, 'baris sama mirip dengan label berkolom berbeda → ditolak', JSON.stringify(sama));
 }
 {
-  // 057: satu baris dicentang di tiga kolom — label identik, kolom berbeda, urutan kiri-ke-kanan sama.
   const teks = '| C. | Pengalaman Kerja | 1. Memiliki sertifikasi dalam bidang pengawasan; | | ✓ | ✓ | ✓ |';
   const lab = 'C. Pengalaman 1. Memiliki sertifikasi dalam bidang';
   const h = T.tulisCentangDiTeks(teks, [{ kolom: 'Mutlak', label: lab }, { kolom: 'Penting', label: lab }, { kolom: 'Perlu', label: lab }]);
   cek(h.ditulis === 3 && /✓ Mutlak \| ✓ Penting \| ✓ Perlu \|/.test(h.teks), '057: satu baris tiga kolom ditulis urut', h.teks);
 }
 {
-  // 004: label PDF hanya baris pertama sel yang terbelah, seluruhnya kata umum.
   const teks = '| | | 1. Memiliki pengalaman jabatan pemerintahan | ✓ | | |\n| | | 2. Sedang atau pernah menduduki jabatan administrator | ✓ | | |';
   const h = T.tulisCentangDiTeks(teks, [
     { kolom: 'Mutlak', label: '1. Memiliki pengalaman jabatan pemerintahan' },
@@ -111,7 +92,6 @@ const tanda177 = [
   cek(h.ditulis === 0 && /tidak memuat kata/.test(h.alasan), 'baris OCR tanpa kata labelnya → ditolak', JSON.stringify(h));
 }
 
-// ── 3. Penulisan langsung di item pdf.js ────────────────────────────────────────────────────────
 console.log('\n-- 3. tulisCentangDiItems & bacaTabelCentang().tanda --');
 const it = (str, x, y, w) => ({ str, transform: [1, 0, 0, 1, x, y], width: w ?? str.length * 5, hasEOL: true });
 const halamanPdf = [
@@ -129,13 +109,12 @@ cek(/Pengalaman Kerja/.test(tc.tanda[0].label) && /Diklat Teknis/.test(tc.tanda[
   cek(ditulis === 2 && items[5].str === '√ Mutlak' && items[7].str === '√ Penting', 'item tanda ditulis kolomnya', JSON.stringify(items.map((i) => i.str)));
   cek(halamanPdf[5].str === '√' && halamanPdf[7].str === '√', 'item asli tidak diubah');
   cek(items[4] === halamanPdf[4], 'item bukan tanda tetap objek yang sama');
-  const tebal = [...halamanPdf, it('√', 312.4, 680.3, 6)];   // salinan cetak-ulang (efek tebal)
+  const tebal = [...halamanPdf, it('√', 312.4, 680.3, 6)];
   cek(T.tulisCentangDiItems(tebal, tc.tanda).items[9].str === '√ Mutlak', 'salinan cetak-ulang ikut ditulis (kunci sama)');
   const sebagian = T.tulisCentangDiItems(halamanPdf, [tc.tanda[0], { ...tc.tanda[1], kolom: null }]);
   cek(sebagian.ditulis === 1 && sebagian.items[7].str === '√', 'tanda tak pasti dibiarkan, yang pasti tetap ditulis');
 }
 
-// ── 4. Ujung ke ujung lewat ekstrakPdfDariData (pdfjs tiruan) ───────────────────────────────────
 console.log('\n-- 4. ekstrakPdfDariData --');
 const pdfjsTiruan = (halaman) => ({
   getDocument: () => ({
@@ -159,7 +138,7 @@ const pdfjsTiruan = (halaman) => ({
     'OCR bergeser: kolom dari PDF yang ditulis, bukan posisi sel', h.teks);
 }
 {
-  const ocrHal = '| A. Pengalaman Kerja | | √ | |';   // OCR kehilangan satu tanda → apa adanya
+  const ocrHal = '| A. Pengalaman Kerja | | √ | |';
   const h = await E.ekstrakPdfDariData(new Uint8Array(1), pdfjsTiruan([halamanPdf]), null, new Map([[1, ocrHal]]));
   cek(h.teks.includes(ocrHal) && !/√ (Mutlak|Penting)/.test(h.teks.split('[TABEL CENTANG')[0]) && h.halamanCentangDitulis.length === 0,
     'OCR tak cocok jumlahnya → teks OCR tidak ditulisi', h.teks);
@@ -170,12 +149,11 @@ const pdfjsTiruan = (halaman) => ({
   cek(h.teks === '[Halaman 1]\nBab I Pendahuluan\nIsi paragraf biasa.', 'halaman tanpa tanda tidak berubah', JSON.stringify(h.teks));
 }
 
-// ── 5. Korpus Kepbup + OCR nyata ────────────────────────────────────────────────────────────────
 console.log('\n-- 5. korpus Kepbup (221 berkas, 217 halaman OCR nyata) --');
 const DATA = `${AKAR}/uji/data-lokal`;
 const sumberOcr = ['ocr-centang-kepbup.json', 'ocr-centang-kepbup-tambahan.json'].map((f) => `${DATA}/${f}`);
 let pdfjs = null;
-try { pdfjs = await import(pathToFileURL(`${AKAR}/frontend/node_modules/pdfjs-dist/legacy/build/pdf.mjs`).href); } catch { /* CI tanpa node_modules */ }
+try { pdfjs = await import(pathToFileURL(`${AKAR}/frontend/node_modules/pdfjs-dist/legacy/build/pdf.mjs`).href); } catch {  }
 if (!pdfjs || !sumberOcr.every(existsSync) || !existsSync(`${DATA}/kepbup-per-jabatan`)) {
   console.log('(korpus dilewati — butuh frontend/node_modules dan uji/data-lokal: kepbup-per-jabatan/ + ocr-centang-kepbup*.json)');
 } else {
@@ -195,7 +173,6 @@ if (!pdfjs || !sumberOcr.every(existsSync) || !existsSync(`${DATA}/kepbup-per-ja
       if (peta.has(n)) { s.halOcr++; if (ditulis.has(n)) s.ditulisOcr++; } else { s.halPdfjs++; if (ditulis.has(n)) s.ditulisPdfjs++; }
     }
     if (b.nama.includes(' - 177 - ')) teks177 = h.teks;
-    // Pembanding: setiap baris OCR yang ditulisi berbagi ≥50% kata labelnya di blok? (diukur: terendah 0,50)
     for (const [n, t] of peta) {
       if (!ditulis.has(n)) continue;
       const hal = h.teks.split(/\n\n(?=\[Halaman )/).find((x) => x.startsWith(`[Halaman ${n}]\n`)) || '';
@@ -217,8 +194,6 @@ if (!pdfjs || !sumberOcr.every(existsSync) || !existsSync(`${DATA}/kepbup-per-ja
   cek(/Diklat Teknis Manajemen Kesekretariatan \| \| Ö Penting \|/.test(teks177), 'BUKU-10 (177): Diklat Teknis → Penting tertulis di tabel');
   cek(!/teks OCR 0/.test(teks177), '177: tidak lagi "di teks OCR 0" (Ö dihitung)');
 
-  // Daya penjaga di korpus: setiap halaman OCR yang ditulis, pasangkan tanda bergeser satu. Yang lolos hanya boleh
-  // halaman yang geserannya tidak mengubah kata (kolom tanda bergeser sama). Diukur 5 Nov: 188 ditolak, 3 lolos-aman.
   let tolak = 0, lolosAman = 0, lolosBahaya = 0;
   for (const b of berkas) {
     if (!Object.keys(b.ocr).length) continue;
@@ -242,7 +217,6 @@ if (!pdfjs || !sumberOcr.every(existsSync) || !existsSync(`${DATA}/kepbup-per-ja
   cek(lolosBahaya === 0 && tolak >= 180, 'pasangan bergeser yang mengubah kata selalu ditolak');
 }
 
-// Baris terakhir mengikuti jalankan-semua.mjs: "SEMUA LULUS" + kode 0 = lulus.
 console.log(`\nselesai: ${lulus} lulus, ${gagal} gagal`);
 console.log(gagal ? `${gagal} GAGAL` : 'SEMUA LULUS');
 process.exit(gagal ? 1 : 0);

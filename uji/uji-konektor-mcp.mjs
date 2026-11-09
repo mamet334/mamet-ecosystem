@@ -1,10 +1,3 @@
-// UJI 2026-10-23 — klien MCP di proses utama (Item 129 Tahap B): electron/konektorMcp.cjs.
-//
-// Yang dijaga (keputusan Owner, docs/roadmap/ROADMAP-KONEKTOR-MCP.md):
-//   K3  per workspace — Assistant & Engineer punya proses server sendiri; mematikan satu tidak menyentuh yang lain.
-//   K2  belum ada jalur dari layar ke tools/call — gerbang persetujuan dibangun Tahap D di proses utama.
-//   —   kunci API di proses Electron tidak sampai ke server konektor (lingkungan daftar putih).
-// Bagian 3 menyalakan server crawler sungguhan; tanpa .venv crawler (tidak masuk repo) seluruh berkas DILEWATI.
 
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
@@ -16,10 +9,6 @@ const AKAR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(path.join(AKAR, 'frontend', 'package.json'));
 const K = require(path.join(AKAR, 'frontend', 'electron', 'konektorMcp.cjs'));
 
-// v2 (23 Okt, Tahap C): sakelar Settings disimpan di perangkat (K7) & dipulihkan saat aplikasi dibuka; `katalog`
-// dibaca Mamet sendiri saat nyala (ringkasan akses untuk Settings); sakelar ditekan dua kali → satu proses.
-// v5 (27 Okt): crawler sungguhan memakai akar data SEMENTARA (`folderDataPengembangan`), bukan folder repo — data
-// `npm run desktop` Owner tidak disentuh uji. Bagian 1 menjaga bahwa tanpa opsi itu perilaku Owner tetap sama.
 console.log('uji-konektor-mcp v5');
 const PY = path.join(AKAR, 'capability', 'ecosystem-crawler', '.venv', 'Scripts', 'python.exe');
 if (!existsSync(PY)) {
@@ -35,7 +24,6 @@ const cek = (ok, pesan, rinci) => {
 const tunggu = (ms) => new Promise((r) => setTimeout(r, ms));
 const hidup = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
 
-// ── 1. Peluncuran: alamat absolut, Python milik konektor, lingkungan tanpa rahasia ────────────────────────────────
 console.log('\n-- 1. peluncuran --');
 process.env.MAMET_UJI_API_KEY = 'rahasia-uji';
 process.env.OPENROUTER_API_KEY_UJI = 'rahasia-uji';
@@ -48,8 +36,6 @@ const bocor = Object.keys(p.env).filter((k) => /KEY|TOKEN|SECRET|OPENROUTER|SUPA
 cek(bocor.length === 0, 'tak ada variabel rahasia di lingkungan server (MAMET_UJI_API_KEY ditanam di proses ini)', bocor);
 cek(!('MAMET_UJI_API_KEY' in p.env) && ('PATH' in p.env || 'Path' in p.env), 'lingkungan daftar putih: PATH ada, kunci tidak', Object.keys(p.env));
 cek(!K.peluncuran(AKAR, 'tak-dikenal').ok, 'konektor tak dikenal ditolak');
-// main.cjs SELALU mengirim folderData (%APPDATA%) — juga di npm run desktop. Bila mode pengembangan mulai memakainya,
-// data crawler Owner pindah diam-diam. Hanya folderDataPengembangan (khusus uji) yang memindahkan akar data.
 const pDesktop = K.peluncuran(AKAR, 'ecosystem-crawler', { folderData: path.join(os.tmpdir(), 'appdata-palsu') });
 cek(pDesktop.ok && !('CRAWLER_ROOT' in pDesktop.env) && pDesktop.cwd === p.cwd && !pDesktop.folderData,
   'npm run desktop (folderData dikirim seperti main.cjs): tanpa CRAWLER_ROOT → data tetap di folder crawler repo', pDesktop);
@@ -57,9 +43,6 @@ const akarUji = path.join(os.tmpdir(), 'crawler-uji-x');
 const pUji = K.peluncuran(AKAR, 'ecosystem-crawler', { folderDataPengembangan: akarUji });
 cek(pUji.ok && pUji.env.CRAWLER_ROOT === akarUji && pUji.folderData === akarUji && pUji.command === PY && pUji.cwd === p.cwd && !pUji.terbundel,
   'uji: folderDataPengembangan → CRAWLER_ROOT folder sementara; Python & kode tetap dari repo', pUji);
-// Celah yang ditemukan saat pemeriksaan (27 Okt): jaminan di atas hanya pada `peluncuran`. Pengelola yang dibangun
-// PERSIS seperti main.cjs (folderData selalu dikirim, tanpa runtimeTerbundel) juga wajib tidak memindahkan akar data.
-// Diuji lewat rencanaPeluncuran — tanpa menjalankan crawler, jadi data Owner tidak tersentuh.
 const rencanaDesktop = K.buatPengelolaKonektor({ akarRepo: AKAR, folderData: path.join(os.tmpdir(), 'appdata-palsu') }).rencanaPeluncuran('ecosystem-crawler');
 cek(rencanaDesktop.ok && rencanaDesktop.akarData === null && rencanaDesktop.cwd === p.cwd && !rencanaDesktop.terbundel,
   'pengelola seperti main.cjs (npm run desktop): akar data tetap folder crawler repo, bukan folderData', rencanaDesktop);
@@ -71,13 +54,11 @@ writeFileSync(path.join(tanpaVenv, 'capability', 'ecosystem-crawler', 'crawler',
 const pt = K.peluncuran(tanpaVenv, 'ecosystem-crawler');
 cek(!pt.ok && /Python konektor tidak ada/.test(pt.alasan), 'tanpa .venv: ditolak dengan alasan jelas, tidak jatuh ke Python di PATH', pt);
 
-// ── 2. Hasil alat berbatas ─────────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 2. hasil berbatas --');
 const panjang = K.teksHasil({ content: [{ type: 'text', text: 'x'.repeat(K.BATAS.hasilHuruf + 10) }] });
 cek(panjang.terpotong && panjang.teks.length === K.BATAS.hasilHuruf, `hasil > ${K.BATAS.hasilHuruf} huruf dipotong & ditandai`, { ...panjang, teks: undefined });
 cek(!K.teksHasil({ content: [{ type: 'text', text: 'pendek' }] }).terpotong, 'hasil pendek utuh');
 
-// ── 3. Server sungguhan: per workspace (K3) ───────────────────────────────────────────────────────────────────
 console.log('\n-- 3. server crawler sungguhan, per workspace --');
 const log = [];
 const dataUji = mkdtempSync(path.join(os.tmpdir(), 'crawler-uji-mcp-'));
@@ -98,7 +79,7 @@ try {
 
   const kat = await m.panggil('ws-assistant', 'ecosystem-crawler', 'katalog', {});
   let isi = null;
-  try { isi = JSON.parse(kat.teks); } catch { /* */ }
+  try { isi = JSON.parse(kat.teks); } catch {  }
   cek(kat.ok && isi?.akses && typeof isi.akses.patuhi_robots === 'boolean', 'tools/call katalog → JSON berisi `akses` (sakelar robots/stealth)', kat);
   cek(!(await m.panggil('ws-assistant', 'ecosystem-crawler', 'hapus_semua', {})).ok, 'alat yang tidak ada di tools/list ditolak');
   cek(!(await m.panggil('ws-assistant', 'ecosystem-crawler', 'katalog', [1])).ok, 'argumen bukan objek ditolak');
@@ -111,7 +92,6 @@ try {
   cek(!(await m.panggil('ws-assistant', 'ecosystem-crawler', 'katalog', {})).ok, 'Assistant yang dimatikan tidak bisa dipanggil');
   cek(!hidup(a.pid), `proses Assistant (pid ${a.pid}) benar-benar berhenti`);
   cek((await m.panggil('ws-engineer', 'ecosystem-crawler', 'katalog', {})).ok, 'Engineer tetap bisa dipanggil');
-  // katalog membuka gudang (skema) & menulis garam ke .env akar data — keduanya harus mendarat di folder sementara.
   cek(existsSync(path.join(dataUji, 'data', 'gudang.db')) && existsSync(path.join(dataUji, '.env')) && existsSync(path.join(dataUji, 'inbox')),
     'crawler sungguhan memakai akar data SEMENTARA (gudang.db, .env garam, inbox) — bukan folder crawler repo');
 
@@ -123,7 +103,6 @@ try {
   await m.matikanSemua();
 }
 
-// ── 4. K2: jalur dari layar ke tools/call HANYA lewat gerbang ────────────────────────────────────────────────
 console.log('\n-- 4. K2: tools/call dari layar hanya lewat gerbang persetujuan --');
 const preload = readFileSync(path.join(AKAR, 'frontend', 'electron', 'preload.cjs'), 'utf8');
 const main = readFileSync(path.join(AKAR, 'frontend', 'electron', 'main.cjs'), 'utf8');
@@ -131,7 +110,6 @@ cek(/konektor:status/.test(preload) && /konektor:atur/.test(preload),
   'layar bisa melihat status dan memakai sakelar Settings');
 cek(!/konektor:nyalakan|konektor:matikan/.test(preload),
   'satu jalur saja dari layar: sakelar (atur) — menyala tanpa tersimpan tidak mungkin, setelan = kebenaran');
-// v3 (Tahap D): jalurnya kini ada — dan HANYA lewat gerbang. Pengelola tidak pernah dipanggil langsung dari IPC.
 const ipcPanggil = main.match(/ipcMain\.handle\('konektor:panggil'[\s\S]*?\n\s*[^\n]*\);/)?.[0] || '';
 cek(/gerbangKonektor\.panggil\(/.test(ipcPanggil), 'IPC konektor:panggil diteruskan ke gerbangKonektor.panggil', ipcPanggil);
 cek(!/pengelolaKonektor\.panggil\(/.test(main), 'proses utama tidak pernah memanggil pengelolaKonektor.panggil langsung (melewati gerbang)');
@@ -141,7 +119,6 @@ cek(/matikanSemua/.test(main) && /will-quit/.test(main), 'proses konektor dimati
 cek(/berkasSetelan: path\.join\(app\.getPath\('userData'\), 'konektor\.json'\)/.test(main) && /pengelolaKonektor\.pulihkan\(\)/.test(main),
   'K7: setelan di userData perangkat & dipulihkan saat aplikasi siap');
 
-// ── 5. Setelan sakelar di perangkat (K7) ──────────────────────────────────────────────────────────────────────
 console.log('\n-- 5. sakelar Settings: disimpan di perangkat, dipulihkan saat dibuka --');
 const berkas = path.join(mkdtempSync(path.join(os.tmpdir(), 'konektor-setelan-')), 'konektor.json');
 const m1 = K.buatPengelolaKonektor({ akarRepo: AKAR, berkasSetelan: berkas, folderDataPengembangan: dataUji });
@@ -156,7 +133,6 @@ try {
   cek(!(await m1.atur('ws-assistant', 'ecosystem-crawler', 'ya')).ok, 'nilai sakelar selain true/false ditolak');
 } finally { await m1.matikanSemua(); }
 
-// "Aplikasi dibuka lagi": pengelola baru dengan berkas yang sama.
 const m2 = K.buatPengelolaKonektor({ akarRepo: AKAR, berkasSetelan: berkas, folderDataPengembangan: dataUji });
 try {
   const pulih = await m2.pulihkan();
@@ -174,7 +150,6 @@ cek(JSON.stringify(K.buatPengelolaKonektor({ akarRepo: AKAR, berkasSetelan: berk
 cek(JSON.stringify(K.normalisasiSetelan({ 'ws-assistant': { 'ecosystem-crawler': 'true', lain: true }, 'ws-x': { 'ecosystem-crawler': true } })) === '{}',
   'setelan hanya menerima workspace & konektor yang dikenal dengan nilai true');
 
-// ── 5b. Aplikasi terpasang (Tahap E, K10): runtime terbundel + data di folder yang bisa ditulis ───────────────
 console.log('\n-- 5b. mode terpasang: runtime terbundel, CRAWLER_ROOT di folder data --');
 const runtimePalsu = mkdtempSync(path.join(os.tmpdir(), 'runtime-palsu-'));
 mkdirSync(path.join(runtimePalsu, 'crawler', 'wajah'), { recursive: true });
@@ -210,7 +185,6 @@ if (existsSync(path.join(runtimeAsli, 'python', 'python.exe'))) {
   console.log('  (frontend/build/crawler-runtime belum disiapkan — `npm run crawler:siapkan`; bagian sungguhan dilewati)');
 }
 
-// ── 6. Gerbang persetujuan (Tahap D, K2/K8) — pengelola tiruan, dialog tiruan ─────────────────────────────────
 console.log('\n-- 6. gerbang: sekali per misi, per workspace --');
 const dipanggil = [];
 let jawabDialog = true;

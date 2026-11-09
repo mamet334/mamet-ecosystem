@@ -1,32 +1,9 @@
-/**
- * MODUL BERSAMA — aturan kata sandi untuk DUA klien: Mamet Ecosystem (`frontend/`: LampLogin, App, Settings) dan
- * Mametlite (`mametlite/`). Murni: tanpa impor, tanpa I/O. T19 lupa & ganti kata sandi (ADR-0022 K4, 29 Okt 2026).
- *
- * Kenapa satu salinan: dua aplikasi yang memeriksa kata sandi atau membaca tautan pemulihan dengan aturan berbeda akan
- * suatu hari berperilaku berbeda diam-diam (pola T15 / ADR-0021 #6). Uji: uji/uji-kata-sandi.mjs.
- */
 
-/** Panjang minimal kata sandi BARU (lupa & ganti). Supabase sendiri menolak < 6; kita minta 8. */
 export const PANJANG_MINIMAL_SANDI = 8;
 
-/**
- * Pesan sesudah meminta tautan pemulihan — SENGAJA sama untuk email terdaftar maupun tidak, supaya formulir ini tak bisa
- * dipakai mengecek email siapa yang punya akun.
- */
 export const PESAN_TAUTAN_TERKIRIM =
   'Bila email itu terdaftar, tautan untuk membuat kata sandi baru sudah dikirim. Periksa kotak masuk (dan folder spam).';
 
-/**
- * Jenis tautan otentikasi yang sedang dibuka, dari `location.hash` / `location.search` — dibaca SEBELUM klien Supabase
- * membersihkan alamat. Supabase (alur implicit) mengembalikan `#access_token=…&type=recovery`; tautan basi kembali
- * dengan `#error=…&error_code=otp_expired&error_description=…`.
- *
- * Undangan (`type=invite`, 31 Okt 2026): Owner mendaftarkan akun lewat "Send invitation" di dashboard Supabase. Tanpa
- * ini orang yang diundang masuk lewat tautan TANPA pernah membuat kata sandi — dan tak bisa masuk lagi begitu sesinya
- * habis. Diperlakukan sama dengan pemulihan: layar "Buat kata sandi baru untuk akun Anda".
- * @param {string} [hash] @param {string} [search]
- * @returns {'pemulihan'|'kedaluwarsa'|null}
- */
 export function jenisTautanAuth(hash = '', search = '') {
   const h = new URLSearchParams(String(hash || '').replace(/^#/, ''));
   const q = new URLSearchParams(String(search || '').replace(/^\?/, ''));
@@ -39,19 +16,10 @@ export function jenisTautanAuth(hash = '', search = '') {
   return null;
 }
 
-/**
- * Alamat yang dibuka tautan di email. Aplikasi web → asal halaman itu sendiri. Desktop (`mamet://`, `file:`) tak bisa
- * dibuka dari email → versi web (`cadanganWeb`); kata sandi baru dipakai juga untuk masuk di desktop.
- * @param {{ protocol: string, origin: string }} lokasi @param {string} cadanganWeb
- */
 export function alamatKembaliPemulihan(lokasi, cadanganWeb) {
   return /^https?:$/.test(lokasi?.protocol || '') ? `${lokasi.origin}/` : cadanganWeb;
 }
 
-/**
- * @param {string} sandi @param {string} ulang
- * @returns {string|null} pesan salah untuk pengguna, atau null bila boleh disimpan
- */
 export function periksaSandiBaru(sandi, ulang) {
   if (!sandi || sandi.length < PANJANG_MINIMAL_SANDI) return `Kata sandi minimal ${PANJANG_MINIMAL_SANDI} karakter.`;
   if (sandi !== ulang) return 'Kedua isian kata sandi tidak sama.';
@@ -60,10 +28,6 @@ export function periksaSandiBaru(sandi, ulang) {
 
 const ada = (teks, ...kata) => kata.some((k) => teks.toLowerCase().includes(k));
 
-/**
- * Galat Supabase pada alur kata sandi → kalimat Indonesia. Pesan teknis tetap dikembalikan untuk laporan.
- * @returns {{ judul: string, saran: string, teknis: string }}
- */
 export function pesanGalatSandi(galat) {
   const teknis = String(galat?.message ?? galat ?? '').trim() || 'tanpa keterangan';
   if (ada(teknis, 'for security purposes', 'rate limit', 'too many requests', '429')) {

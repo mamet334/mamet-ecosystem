@@ -1,9 +1,5 @@
-// tools-config.js
-// Konfigurasi lengkap tools untuk AI Agent
-// Edit file ini untuk menambah/mengubah tools sesuai kebutuhan
 
 export const TOOLS_CONFIG = {
-  // ===== WEB SEARCH TOOL =====
   web_search: {
     enabled: true,
     name: 'Web Search',
@@ -11,7 +7,7 @@ export const TOOLS_CONFIG = {
     icon: 'Zap',
     category: 'research',
     config: {
-      provider: 'google', // 'google', 'bing', 'duckduckgo'
+      provider: 'google',
       apiKey: process.env.SEARCH_API_KEY,
       maxResults: 10,
       timeout: 30000,
@@ -23,7 +19,6 @@ export const TOOLS_CONFIG = {
     },
   },
 
-  // ===== CODE EXECUTOR TOOL =====
   code_executor: {
     enabled: true,
     name: 'Code Executor',
@@ -34,7 +29,7 @@ export const TOOLS_CONFIG = {
       languages: ['javascript', 'python', 'bash'],
       sandbox: true,
       timeout: 30000,
-      memoryLimit: 512, // MB
+      memoryLimit: 512,
       allowedModules: [
         'lodash',
         'axios',
@@ -55,7 +50,6 @@ export const TOOLS_CONFIG = {
     },
   },
 
-  // ===== API CALLER TOOL =====
   api_caller: {
     enabled: true,
     name: 'API Caller',
@@ -91,7 +85,6 @@ export const TOOLS_CONFIG = {
     },
   },
 
-  // ===== SLACK INTEGRATION TOOL =====
   slack_integration: {
     enabled: true,
     name: 'Slack Integration',
@@ -109,7 +102,7 @@ export const TOOLS_CONFIG = {
         enabled: true,
         description: 'Send a message to a Slack channel',
         requiredParams: ['channelId', 'message'],
-        rateLimit: 60, // per minute
+        rateLimit: 60,
       },
       get_user_info: {
         enabled: true,
@@ -143,7 +136,6 @@ export const TOOLS_CONFIG = {
     },
   },
 
-  // ===== DATABASE TOOL =====
   database: {
     enabled: true,
     name: 'Database Query',
@@ -151,7 +143,7 @@ export const TOOLS_CONFIG = {
     icon: 'Database',
     category: 'data',
     config: {
-      type: 'postgresql', // 'postgresql', 'mongodb', 'mysql'
+      type: 'postgresql',
       host: process.env.DB_HOST,
       port: process.env.DB_PORT || 5432,
       database: process.env.DB_NAME,
@@ -173,15 +165,14 @@ export const TOOLS_CONFIG = {
     },
   },
 
-  // ===== EMAIL TOOL =====
   email: {
-    enabled: false, // Disable by default for security
+    enabled: false,
     name: 'Email Sender',
     description: 'Send emails via SMTP',
     icon: 'Mail',
     category: 'communication',
     config: {
-      provider: 'smtp', // 'smtp', 'sendgrid', 'mailgun'
+      provider: 'smtp',
       host: process.env.SMTP_HOST,
       port: process.env.SMTP_PORT || 587,
       secure: true,
@@ -191,7 +182,7 @@ export const TOOLS_CONFIG = {
       },
     },
     restrictions: {
-      allowedRecipients: [], // Whitelist specific emails
+      allowedRecipients: [],
       maxRecipientsPerMessage: 1,
       blockAttachments: true,
     },
@@ -202,16 +193,15 @@ export const TOOLS_CONFIG = {
     },
   },
 
-  // ===== FILE SYSTEM TOOL =====
   file_system: {
-    enabled: false, // Disable by default for security
+    enabled: false,
     name: 'File System',
     description: 'Read and write files',
     icon: 'FileText',
     category: 'data',
     config: {
       rootDir: '/app/safe-files',
-      maxFileSize: 10 * 1024 * 1024, // 10 MB
+      maxFileSize: 10 * 1024 * 1024,
     },
     allowedPaths: [
       '/app/safe-files/*',
@@ -230,7 +220,6 @@ export const TOOLS_CONFIG = {
     },
   },
 
-  // ===== CUSTOM API TOOL =====
   custom_api: {
     enabled: true,
     name: 'Custom API',
@@ -270,7 +259,6 @@ export const TOOLS_CONFIG = {
   },
 };
 
-// ===== TOOL MANAGER =====
 export class ToolManager {
   constructor(config = TOOLS_CONFIG) {
     this.config = config;
@@ -278,9 +266,6 @@ export class ToolManager {
     this.initializeRateLimiters();
   }
 
-  /**
-   * Get all enabled tools
-   */
   getEnabledTools() {
     return Object.entries(this.config)
       .filter(([_, toolConfig]) => toolConfig.enabled)
@@ -292,31 +277,21 @@ export class ToolManager {
       }));
   }
 
-  /**
-   * Get tools by category
-   */
   getToolsByCategory(category) {
     return this.getEnabledTools().filter(
       tool => this.config[tool.id].category === category
     );
   }
 
-  /**
-   * Check if tool is available for user
-   */
   isToolAvailable(toolId, userId) {
     const tool = this.config[toolId];
     if (!tool || !tool.enabled) {
       return false;
     }
 
-    // Check rate limit
     return this.checkRateLimit(toolId, userId);
   }
 
-  /**
-   * Initialize rate limiters
-   */
   initializeRateLimiters() {
     Object.entries(this.config).forEach(([toolId, toolConfig]) => {
       if (toolConfig.rateLimit) {
@@ -325,9 +300,6 @@ export class ToolManager {
     });
   }
 
-  /**
-   * Check and enforce rate limits
-   */
   checkRateLimit(toolId, userId) {
     const tool = this.config[toolId];
     if (!tool.rateLimit) return true;
@@ -341,13 +313,11 @@ export class ToolManager {
     const now = Date.now();
     const oneMinute = 60 * 1000;
 
-    // Reset per minute counter
     if (now - tracker.lastReset > oneMinute) {
       tracker.requests = 0;
       tracker.lastReset = now;
     }
 
-    // Check limit
     if (tracker.requests >= tool.rateLimit.maxPerMinute) {
       return false;
     }
@@ -357,16 +327,10 @@ export class ToolManager {
     return true;
   }
 
-  /**
-   * Get tool configuration
-   */
   getToolConfig(toolId) {
     return this.config[toolId];
   }
 
-  /**
-   * Validate tool request
-   */
   validateToolRequest(toolId, params, userId) {
     const tool = this.config[toolId];
 
@@ -380,7 +344,6 @@ export class ToolManager {
       );
     }
 
-    // Tool-specific validation
     if (toolId === 'api_caller') {
       this.validateApiCall(params, tool);
     }
@@ -392,23 +355,17 @@ export class ToolManager {
     return true;
   }
 
-  /**
-   * Validate API call parameters
-   */
   validateApiCall(params, tool) {
     const { url, method } = params;
 
-    // Check method
     if (!tool.config.supportedMethods.includes(method)) {
       throw new Error(`Method ${method} not allowed`);
     }
 
-    // Check domain whitelist/blacklist
     try {
       const urlObj = new URL(url);
       const domain = urlObj.hostname;
 
-      // Check if domain is blocked
       if (tool.blockedDomains) {
         for (const blockedDomain of tool.blockedDomains) {
           if (
@@ -423,7 +380,6 @@ export class ToolManager {
         }
       }
 
-      // Check if domain is in whitelist (if whitelist exists)
       if (tool.allowedDomains && tool.allowedDomains.length > 0) {
         const isAllowed = tool.allowedDomains.some(allowedDomain => {
           if (allowedDomain === '*') return true;
@@ -445,9 +401,6 @@ export class ToolManager {
     }
   }
 
-  /**
-   * Validate code execution parameters
-   */
   validateCodeExecution(params, tool) {
     const { language, code } = params;
 
@@ -455,7 +408,6 @@ export class ToolManager {
       throw new Error(`Language ${language} is not supported`);
     }
 
-    // Check for dangerous code patterns
     const dangerousPatterns = [
       /rm\s+(-rf|-f|--force)?\s+\//,
       /sudo/,

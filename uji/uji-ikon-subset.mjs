@@ -1,32 +1,11 @@
-// UJI 2026-09-29 — setiap ikon yang dipakai layar HARUS ada di subset font.
-//
-// Ini kelas cacat yang sudah terjadi TIGA kali:
-//   23 Sep  `data_usage`, `history_toggle_off` → tampil sebagai tulisan "DATA_USAGE"
-//   14 Sep  `expand_more`                      → diganti `chevron_right` diputar 90°
-//   29 Sep  `system_update`                    → tampil sebagai "TEM_UPDATE" menimpa judul panel
-//
-// Sebabnya selalu sama: font ikon yang dibundel bukan font penuh, melainkan SUBSET yang dibuat
-// `scripts/perbarui-ikon.mjs` dari `daftar-ikon.txt` (72 ikon). Nama di luar subset tidak menjadi
-// gambar — ia dirender sebagai LIGATUR GAGAL, yaitu teksnya sendiri, berukuran ikon.
-//
-// Kenapa selalu lolos: tidak ada yang merah. Build sukses, uji hijau, dan cacatnya hanya terlihat
-// oleh mata manusia yang kebetulan membuka layar itu. Uji ini mengubahnya jadi merah.
-//
-// Dua uji sebelumnya (uji-konteks-chat, uji-padatkan-konteks) memeriksa ikon TERTENTU di layar
-// tertentu. Yang ini memeriksa SELURUH src sekaligus, jadi ikon baru di layar mana pun ikut terjaga.
 
 import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
 const AKAR = AKAR_REPO + '/frontend/src';
 
-// v2 (20 Okt) — satu set ikon (Item 128, keputusan Owner): lucide-react diganti komponen <Ikon nama="…">
-// (components/Ikon.jsx) dan ikon aplikasi kini dibaca dari metadata system.json. Keduanya ikut diperiksa, dan
-// lucide tak boleh kembali.
 console.log('uji-ikon-subset v2');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
@@ -40,14 +19,6 @@ const subset = new Set(
 );
 cek(subset.size > 50, `subset font terbaca (${subset.size} ikon)`);
 
-/**
- * Hanya nama LITERAL yang diperiksa:
- *   <span className="material-symbols-outlined">refresh</span>     ← diperiksa
- *   <span className="material-symbols-outlined">{'refresh'}</span> ← diperiksa
- *   <span className="material-symbols-outlined">{icon}</span>      ← DILEWATI (nilainya dari data)
- * Tanpa pengecualian terakhir, `MobileBottomNav.jsx` akan merah karena variabelnya bernama `icon` —
- * merah palsu, dan merah palsu membuat uji diabaikan.
- */
 export function namaIkonLiteral(isi) {
   const hasil = [];
   const pola = /material-symbols-outlined[^>]*>\s*([^<]*?)\s*</g;
@@ -56,19 +27,12 @@ export function namaIkonLiteral(isi) {
     if (!teks) continue;
     const kutip = teks.match(/^\{\s*['"]([a-z0-9_]+)['"]\s*\}$/);
     if (kutip) { hasil.push(kutip[1]); continue; }
-    if (teks.startsWith('{')) continue;              // ekspresi/variabel — nilainya tak diketahui di sini
+    if (teks.startsWith('{')) continue;
     if (/^[a-z0-9_]+$/.test(teks)) hasil.push(teks);
   }
   return hasil;
 }
 
-/**
- * Nama ikon lewat komponen <Ikon> (v2):
- *   <Ikon nama="close" />                              ← diperiksa
- *   <Ikon nama={buka ? 'expand_more' : 'chevron_right'} />  ← setiap nama berkutip di dalamnya diperiksa
- *   <Ikon nama={icon.ikon} />                          ← DILEWATI; nilainya ditulis di tempat lain sebagai
- *   ikon = 'data_object' · ikon: 'draft' · icon: 'bolt' · icon="memory"   ← diperiksa
- */
 export function namaIkonKomponen(isi) {
   const hasil = [];
   for (const m of isi.matchAll(/<Ikon\b[^>]*?\bnama="([a-z0-9_]+)"/g)) hasil.push(m[1]);
@@ -80,7 +44,6 @@ export function namaIkonKomponen(isi) {
   return hasil;
 }
 
-// Pemindaian
 const dipakai = new Map();
 (function jalan(dir) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -101,14 +64,12 @@ cek(hilang.length === 0,
   'SEMUA ikon yang dipakai ada di subset font — tak ada yang akan tampil sebagai tulisan',
   hilang.map((h) => `${h} (${[...dipakai.get(h)].join(', ')})`));
 
-// Ikon yang pernah gagal, dijaga namanya supaya tidak dipakai lagi tanpa menambah subset.
 for (const buruk of ['system_update', 'data_usage', 'history_toggle_off', 'expand_more']) {
   cek(!dipakai.has(buruk) || subset.has(buruk),
     `ikon yang pernah gagal tidak dipakai lagi tanpa masuk subset: ${buruk}`);
 }
 cek(dipakai.has('refresh') && subset.has('refresh'), 'panel Pembaruan memakai ikon yang ada di subset');
 
-// ── UJI KENDALI (langkah 8) — pemindainya harus BISA merah ───────────────────────────────────
 console.log('\n-- kendali: pemindai bisa merah --');
 const contohSalah = '<span className="material-symbols-outlined text-primary">system_update</span>';
 cek(namaIkonLiteral(contohSalah).join() === 'system_update', 'nama literal tertangkap', namaIkonLiteral(contohSalah));
@@ -120,7 +81,6 @@ cek(namaIkonLiteral(`<span className="material-symbols-outlined">{'refresh'}</sp
   "bentuk {'nama'} tetap diperiksa");
 cek(namaIkonLiteral('<span className="lain">refresh</span>').length === 0, 'span lain tidak ikut terbaca');
 
-// ── v2: komponen <Ikon>, ikon aplikasi di metadata, dan lucide tak kembali ────────────────────────
 console.log('\n-- v2: satu set ikon --');
 cek(namaIkonKomponen('<Ikon nama="system_update" ukuran={16} />').join() === 'system_update', '<Ikon nama="…"> tertangkap');
 cek(namaIkonKomponen(`<Ikon nama={buka ? 'expand_more' : 'system_update'} ukuran={16} />`).join() === 'expand_more,system_update',
@@ -141,7 +101,6 @@ cek(kembar.length === 0, `metadata: ${ikonApp.length} aplikasi, tak ada ikon kem
 const forge = APPS.find((a) => a.id === 'app:agent-forge')?.icon;
 cek(forge && forge !== 'architecture', `Agent Forge (${forge}) tak lagi memakai ikon logo Mamet (architecture)`);
 
-// Kode mati K6 (Login, EngineerChat, ActivityBar) — pemakai lucide terakhir — dihapus 20 Okt bersama paketnya.
 const masihLucide = [];
 (function jalan(dir) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {

@@ -1,14 +1,10 @@
-// UJI Item 93 Tahap 1 — cadanganData.js dengan supabase tiruan (paginasi, hitungan, pemeriksaan berkas).
 import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
 const C = await import(pathToFileURL(AKAR_REPO + '/frontend/src/core/runtime/services/cadanganData.js').href + '?v=' + Date.now());
 console.log('uji-cadangan-data v2');
 let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}`); if (!ok) gagal++; };
 
-// Tiruan: tiap tabel punya N baris; range() menghormati batas; count exact; opsi "tambahSaatHitung" meniru baris baru.
 function tiruan(jumlah, { tambahSaatHitung = {}, galat = {} } = {}) {
   const panggilan = [];
   return {
@@ -46,32 +42,26 @@ const teks = JSON.stringify(berkas);
 cek(C.periksaBerkasCadangan(JSON.parse(teks)).sah, 'berkas dibaca ulang: sah');
 cek(berkas.format === 'mamet-cadangan' && berkas.versi === 1 && berkas.akun === 'u1', 'format, versi, akun');
 
-// Baris baru masuk saat mencadangkan → terlihat sebagai tidak cocok (bukan tersembunyi)
 sb = tiruan(jumlah, { tambahSaatHitung: { api_usage: 1 } });
 const r2 = await C.buatCadangan(sb, { userId: 'u1' });
 cek(!r2.ringkas.cocok && r2.ringkas.tabel.find((t) => t.nama === 'api_usage').db === 815, 'baris baru di tengah → api_usage tidak cocok (814 vs 815)');
 const p2 = C.periksaBerkasCadangan(r2.berkas);
 cek(!p2.sah && p2.masalah.some((m) => /api_usage: database 815, tercadang 814/.test(m)), `pemeriksaan menyebut tabelnya (${p2.masalah.join('; ')})`);
 
-// Halaman gagal → melempar, tidak ada berkas setengah jadi
 sb = tiruan(jumlah, { galat: { chats: 'permission denied' } });
 try { await C.buatCadangan(sb, { userId: 'u1' }); cek(false, 'galat harus dilempar'); } catch (e) { cek(/chats: permission denied/.test(e.message), 'galat satu tabel dilempar dengan nama tabel'); }
 
-// Berkas rusak / bukan cadangan
 const rusak = JSON.parse(teks); rusak.data.documents.pop();
 cek(!C.periksaBerkasCadangan(rusak).sah, 'isi berkurang terdeteksi');
 cek(!C.periksaBerkasCadangan({ format: 'lain' }).sah, 'bukan berkas cadangan ditolak');
 cek(C.namaBerkasCadangan(new Date('2026-09-22T01:05:00Z')) === 'mamet-cadangan-2026-09-22-01-05.json', 'nama berkas');
 
-// v2 (Item 126, 27 Okt): bahan Data Flywheel ikut dicadangkan, dan skema pemulihan lokal sanggup memuatnya —
-// pulih-cadangan.mjs mengisi lewat jsonb_populate_record(null::public.<tabel>), tabel tanpa definisi = pemulihan gagal.
 const { readFileSync } = await import('node:fs');
 const namaCadangan = C.TABEL_CADANGAN.map((t) => t.nama);
 cek(namaCadangan.includes('cost_ledger') && namaCadangan.includes('umpan_balik_jawaban'), 'cost_ledger & umpan_balik_jawaban ikut dicadangkan');
 const sbFw = tiruan({ ...jumlah, cost_ledger: 9, umpan_balik_jawaban: 1 });
 const fw = await C.buatCadangan(sbFw, { userId: 'u1' });
 cek(fw.ringkas.cocok && fw.berkas.data.cost_ledger.length === 9 && fw.berkas.data.umpan_balik_jawaban.length === 1, 'isi keduanya masuk berkas & cocok dengan hitungan');
-// v3 (K6, 3 Nov): sumber asli memori ikut — dulu hanya ringkasannya (user_memories) yang tercadang.
 cek(namaCadangan.includes('raw_memory_content') && namaCadangan.indexOf('raw_memory_content') < namaCadangan.indexOf('user_memories'),
   'raw_memory_content ikut dicadangkan, sebelum user_memories yang menunjuknya');
 const sbRaw = tiruan({ ...jumlah, raw_memory_content: 22 });

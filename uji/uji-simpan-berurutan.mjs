@@ -1,13 +1,3 @@
-// UJI 2026-10-29 — T17: penyimpanan otomatis chat tak lagi melewatkan perubahan yang datang saat penyimpanan sebelumnya
-// masih berjalan.
-//
-// Dulu (ConversationEngine): timer yang berbunyi saat `isSavingRef` menyala langsung `return` tanpa menjadwal ulang — perubahan
-// itu baru tersimpan pada perubahan BERIKUTNYA; jawaban terakhir percakapan bisa tak pernah sampai ke tabel `chats`. Tanda
-// juga baru dipasang sesudah `await getSession()`, jadi dua penyimpanan bisa berjalan bersamaan.
-//
-// Bagian 1 menjalankan simpanBerurutan.js ASLI dengan penyimpanan lambat buatan + "pengamat" yang meniru simpanOtomatis
-// (membaca keadaan SEKARANG, menyimpan bila kuncinya beda dari yang terakhir tersimpan). Bagian 2 memeriksa sambungannya di
-// ConversationEngine.
 
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -24,7 +14,6 @@ const cek = (ok, pesan, rinci) => {
 };
 const tidur = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** Dunia kecil: keadaan pesan, database tiruan, dan pengamat yang meniru simpanOtomatis (tanpa jeda 1 detik). */
 function dunia({ lama = 50, gagalPada = new Set() } = {}) {
   const w = { pesan: ['tanya'], db: null, tersimpan: '', jalan: 0, bersamaan: 0, maksBersamaan: 0, panggilan: 0 };
   const sedangRef = { current: false }, tertundaRef = { current: false };
@@ -35,23 +24,22 @@ function dunia({ lama = 50, gagalPada = new Set() } = {}) {
     return simpanBerurutan(sedangRef, tertundaRef, async () => {
       const ke = ++w.jalan;
       w.bersamaan++; w.maksBersamaan = Math.max(w.maksBersamaan, w.bersamaan);
-      const salinan = [...w.pesan]; // seperti closure lama: keadaan saat penyimpanan DIMULAI
+      const salinan = [...w.pesan];
       await tidur(lama);
       w.bersamaan--;
       if (gagalPada.has(ke)) throw new Error('jaringan putus');
       w.db = salinan;
       w.tersimpan = salinan.join('|');
-    }, w.pengamat)?.catch(() => { /* galat penyimpanan dilaporkan pemanggil; di sini cukup tak menghentikan uji */ });
+    }, w.pengamat)?.catch(() => {  });
   };
   return w;
 }
 
-// ── 1. Perilaku ─────────────────────────────────────────────────────────────────────────────────
 let w = dunia();
-w.pengamat();                       // simpan pertama mulai (lambat)
+w.pengamat();
 await tidur(10);
-w.pesan.push('jawaban terakhir');   // jawaban selesai SAAT penyimpanan pertama berjalan
-w.pengamat();                       // timer berbunyi — dulu: return, hilang
+w.pesan.push('jawaban terakhir');
+w.pengamat();
 await tidur(200);
 cek(w.db?.join('|') === 'tanya|jawaban terakhir', 'jawaban yang datang selama penyimpanan berjalan tetap tersimpan — tanpa perubahan ketiga', w.db);
 cek(w.jalan === 2, `tepat dua penyimpanan (bukan lingkaran): ${w.jalan}`, w.jalan);
@@ -60,7 +48,7 @@ cek(w.maksBersamaan === 1, 'tak pernah dua penyimpanan bersamaan', w.maksBersama
 w = dunia();
 w.pengamat(); await tidur(10);
 w.pesan.push('a'); w.pengamat(); await tidur(5);
-w.pesan.push('b'); w.pengamat();    // DUA permintaan tertunda → cukup satu penyimpanan lanjutan berisi keadaan terbaru
+w.pesan.push('b'); w.pengamat();
 await tidur(250);
 cek(w.db?.join('|') === 'tanya|a|b' && w.jalan === 2, 'beberapa permintaan tertunda → SATU penyimpanan lanjutan dengan keadaan terbaru', { db: w.db, jalan: w.jalan });
 
@@ -80,7 +68,6 @@ w.pengamat(); await tidur(120);
 w.pengamat(); await tidur(20);
 cek(w.jalan === 1, 'keadaan tak berubah sesudah tersimpan → tak menyimpan lagi', w.jalan);
 
-// ── 2. Sambungan di ConversationEngine ───────────────────────────────────────────────────────────
 const CE = readFileSync(join(AKAR, 'frontend/src/components/workbench/ConversationEngine.jsx'), 'utf8');
 const kodeSaja = CE.replace(/\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
 cek(!/if \(isSavingRef\.current\) return;/.test(kodeSaja),'penjaga lama "if (isSavingRef.current) return;" (membuang permintaan) sudah tak ada');

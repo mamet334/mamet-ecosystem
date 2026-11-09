@@ -1,20 +1,5 @@
-// UJI KONTEKS POTONGAN v2 (T16, 2026-10-29) — dipindah dari `frontend/node_modules/.uji-rag/` (hilang sejak 24 Sep) ke `uji/`;
-// data dibaca dari `uji/data-lokal/` RELATIF terhadap berkas ini (import.meta.url). Server dev mengizinkan `../uji`.
-// v1: UJI KONTEKS POTONGAN (Item 89 Tahap 2 / Item 90 Tahap C, 2026-09-17) — skor potongan KELUARAN KODE sebelum deploy.
-//
-// Pemakaian — dari konsol DevTools `npm run desktop` (mode dev), sudah login:
-//   await (await import('/@fs/D:/SLAMET/other/mamet os ecosystem/uji/uji-konteks-potongan-v2.js')).uji()
-//
-// Yang dilakukan (tanpa chat, tanpa menulis ke database):
-//  1. Embedding 17 pertanyaan set uji + 32 potongan berkas uji Kepbup (16 dipotong kode LAMA, 16 kode BARU —
-//     teks sumber sama) lewat MemoryGovernorService._requestEmbedding (jalur & model sama dengan unggahan).
-//  2. match_documents ambang -1 → skor potongan HCDP yang tersimpan (potongan UJI-Kepbup yang tersimpan
-//     dibuang dari daftar — digantikan varian lama/baru).
-//  3. Unduh berkas berisi skor semua potongan per pertanyaan; peringkat kata kunci & penggabungan RRF
-//     dihitung terpisah (SQL + Node), sama dengan match_documents_hybrid.
-// Biaya: 49 embedding (< $0,002). Kunci tidak dibaca skrip ini.
 
-const DIR = new URL('./data-lokal', import.meta.url).href; // uji/data-lokal/ — diabaikan git (NIP & nama pegawai)
+const DIR = new URL('./data-lokal', import.meta.url).href;
 const JUDUL_UJI = 'UJI-Kepbup-Sekretaris-DPRD-hal4-9.pdf';
 const bulat = (x) => Math.round(x * 1e6) / 1e6;
 const cosine = (a, b) => {

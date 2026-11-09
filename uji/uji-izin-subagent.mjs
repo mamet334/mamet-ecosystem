@@ -1,13 +1,3 @@
-// UJI 2026-10-30 — T1 (K5, ADR-0022): izin sub-agent di server, pagar alamat communicator/scraper/proxy_fetch,
-// token Apify hanya untuk akun pemilik. Model ancaman TM-001..003/005.
-//
-// Dulu: `tools` dari klien hanya menyaring daftar yang DITAWARKAN ke Coordinator — nama apa pun yang dikembalikan
-// model tetap dijalankan; `communicator` mengirim HTTP sembarang buatan model tanpa pagar; `scraper` & `proxy_fetch`
-// mengikuti pengalihan tanpa memeriksa tujuannya; `youtube_analyst` membaca token Apify server untuk siapa pun.
-// Pendaftaran akun Supabase terbuka, jadi "wajib masuk" tidak menghalangi siapa pun.
-//
-// Modul asli DIBUNDEL (esbuild); hanya `handleAuth`, impor https: (cheerio, youtube-transcript), `fetch`, dan
-// `Deno.env` yang ditiru.
 
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -47,13 +37,12 @@ const hasil = await esbuild.build({
 });
 const dir = mkdtempSync(join(tmpdir(), 'uji-izin-'));
 writeFileSync(join(dir, 'm.mjs'), hasil.outputFiles[0].text);
-process.on('exit', () => { try { rmSync(dir, { recursive: true, force: true }); } catch { /* sudah bersih */ } });
+process.on('exit', () => { try { rmSync(dir, { recursive: true, force: true }); } catch {  } });
 
 let ENV = {};
 globalThis.Deno = { env: { get: (k) => ENV[k] } };
 const M = await import(pathToFileURL(join(dir, 'm.mjs')).href);
 
-// Modul server mencatat ke konsol; keluaran uji ditulis langsung supaya penilaian penjalan tak tercampur.
 console.log = () => {}; console.warn = () => {}; console.error = () => {};
 const tulis = (s) => process.stdout.write(s + '\n');
 let gagal = 0;
@@ -63,7 +52,6 @@ const cek = (ok, pesan, rinci) => {
 };
 tulis('uji-izin-subagent v1');
 
-// ── 1. Aturan izin (izin_subagent.ts) ──────────────────────────────────────────────────────────
 const T = M.alasanTolakSubagent;
 cek(T('researcher', { tools: ['web_search'], pemilik: false }) === null, 'researcher lewat alias web_search → boleh');
 cek(T('communicator', { tools: ['web_search'], pemilik: false }) !== null, 'sub-agent yang TIDAK diminta di tools → ditolak (dulu dijalankan)');
@@ -76,7 +64,6 @@ cek(T('researcher', { tools: undefined, pemilik: true }) !== null, 'tanpa tools 
 cek(!M.adalahPemilik('a', undefined) && !M.adalahPemilik('a', '') && M.adalahPemilik('A', ' x , a ') && !M.adalahPemilik('', 'a'),
   'adalahPemilik: rahasia kosong → tak ada pemilik (gagal tertutup); daftar dipisah koma, huruf besar/kecil sama');
 
-// ── 2. execution_handler sungguhan: hanya yang lolos izin yang dipancarkan `Tool.Requested` ────────
 const diminta = [];
 M.eventBus.subscribe('Tool.Requested', (e) => {
   diminta.push(e.payload);
@@ -102,7 +89,6 @@ cek(r.nama.join() === 'youtube_analyst' && r.env[0]?.APIFY_API_TOKEN === 'TOKEN-
 r = await jalankan([{ subagent: 'researcher', task: 'y' }], { tools: ['web_search'], userId: 'u-asing', env: { MAMET_PEMILIK_IDS: 'u-pemilik' } });
 cek(r.nama.join() === 'researcher' && r.env[0]?.APIFY_API_TOKEN === '', 'akun asing: token Apify TIDAK ikut ke sub-agent mana pun', r.env[0]);
 
-// ── 3. ambilAman: alamat awal & setiap pengalihan diperiksa ─────────────────────────────────────
 function fetchPeta(peta) {
   const log = [];
   const f = async (u, init) => {
@@ -132,7 +118,6 @@ F = fetchPeta({}); galat = null;
 try { await M.ambilAman('http://10.0.0.5/admin', {}, F.f); } catch (e) { galat = e; }
 cek(galat instanceof M.AlamatDitolakError && F.log.length === 0, 'alamat awal privat → nol permintaan keluar');
 
-// ── 4. Sub-agent sungguhan memakai pagar ─────────────────────────────────────────────────────────
 const fetchAsli = globalThis.fetch;
 let keluar = [];
 globalThis.fetch = async (u, init) => { keluar.push({ u: String(u), redirect: init?.redirect }); return new Response('{"ok":true}', { status: 200 }); };
@@ -153,13 +138,11 @@ await M.youtube.execute({ task: 'https://youtu.be/abcdefghijk', runLLM: async ()
 cek(keluar.some((k) => k.u.includes('apify')), 'youtube_analyst dengan token pemilik di env → Apify dipanggil', keluar);
 globalThis.fetch = fetchAsli;
 
-// ── 5. proxy_fetch: pengalihan ke alamat internal ditolak ────────────────────────────────────────
 globalThis.__auth = () => ({ user: { id: 'u' }, authErrorResponse: null });
 F = fetchPeta({ 'https://publik.example/rss': [302, 'http://127.0.0.1:54321/rest/v1/'] });
 const rp = await M.handleProxyFetchRequest(new Request('https://x.supabase.co/f', { method: 'POST' }), { action: 'proxy_fetch', url: 'https://publik.example/rss' }, {}, F.f);
 cek(rp?.status === 400 && F.log.length === 1, 'proxy_fetch: RSS publik yang dialihkan ke 127.0.0.1 → 400, tujuan tak diminta', { status: rp?.status, log: F.log });
 
-// ── 6. Sambungan ─────────────────────────────────────────────────────────────────────────────────
 const EH = readFileSync(join(AP, 'lib/orchestration/handlers/execution_handler.ts'), 'utf8');
 const iSaring = EH.indexOf('alasanTolakSubagent(');
 cek(iSaring > 0 && iSaring < EH.indexOf("type: 'Tool.Requested'"), 'execution_handler menyaring rencana SEBELUM memancarkan Tool.Requested');

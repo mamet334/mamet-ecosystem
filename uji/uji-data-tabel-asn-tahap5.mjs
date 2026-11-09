@@ -1,8 +1,4 @@
-// UJI Item 92 Tahap 5 — PDF pindaian: hasil OCR nyata 10 PDF (ocr-tahap5/*.md, di luar git) → adaptor → pembaca,
-// dibandingkan dengan xlsx pasangannya. Keluaran tanpa nama/NIP.
 import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,9 +14,7 @@ const J = await import(pathToFileURL(akar + 'dataTabelAsnJanggal.js').href + v);
 console.log('uji-data-tabel-asn-tahap5 v1');
 let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}`); if (!ok) gagal++; };
 
-const DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'data-lokal', 'ocr-tahap5')  // data berisi NIP — di luar git, lihat README;
-// J3 (2 Nov 2026): data pegawai sungguhan (OCR + Excel rekonsiliasi) hanya ada di laptop Owner — tanpa keduanya uji ini
-// DILEWATI dengan jujur (penjalan menghitungnya terpisah), bukan jatuh ENOENT di mesin lain (CI GitHub).
+const DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'data-lokal', 'ocr-tahap5')
 if (!fs.existsSync(DIR) || !fs.existsSync('D:/REKONSIALISASI 2026')) {
   console.log('DILEWATI — butuh uji/data-lokal/ocr-tahap5 & D:/REKONSIALISASI 2026 (data berisi NIP, sengaja di luar git)');
   process.exit(0);
@@ -35,7 +29,6 @@ function banding(ocr, x) {
   return { tepat: tepat.length, jkBeda: tepat.filter((o) => o.jenis_kelamin && nipX.get(o.nip).jenis_kelamin && o.jenis_kelamin !== nipX.get(o.nip).jenis_kelamin).length };
 }
 
-// --- Disdik: 4 PDF vs DINAS PENDIDIKAN.xlsx
 const disdik = baca('DINAS PENDIDIKAN');
 const oD = orangDari(disdik); const xD = xlsx('DINAS PENDIDIKAN/DINAS PENDIDIKAN.xlsx');
 const bD = banding(oD, xD);
@@ -47,7 +40,6 @@ const fung = disdik.find((h) => /Fungsional/.test(h.berkas));
 cek(fung.catatanOcr.filter((c) => c.jenis === 'halaman_ganda').length === 2, 'Disdik fungsional: hal. 1–2 dikenali sebagai pindaian ganda');
 cek(fung.catatanOcr.some((c) => c.jenis === 'kolom_beda'), 'tabel lanjutan dengan jumlah kolom berbeda dicatat');
 
-// --- Semidang Aji & Ulu Ogan: surat pengantar tidak terbaca sebagai orang
 const semidang = baca('kamis'); const oS = orangDari(semidang); const xS = xlsx('kamis/KECAMATAN SEMIDANG AJI.xlsx');
 cek(oS.length === xS.length && oS.length === 16, `Semidang Aji 16 orang = xlsx (${oS.length} / ${xS.length}); baris templat "-" & surat pengantar bukan orang`);
 cek(banding(oS, xS).tepat === 15, 'Semidang Aji 15 NIP tepat');
@@ -59,7 +51,6 @@ cek(!oU.some((o) => o.pelatihan.some((p) => /^[=_-]+$/.test(p))), 'tanda "=" has
 const terpotong = ulu.flatMap((h) => h.sheets.flatMap((s) => s.kejanggalan.filter((k) => k.jenis === 'nip_tak_lengkap')));
 cek(terpotong.length >= 3 && terpotong.every((k) => Number.isInteger(k.baris) && k.baris < 0), `NIP terpotong OCR dicatat per orang (${terpotong.length})`);
 
-// --- semua berkas: kelompok & baris asal
 const semua = baca('');
 cek(semua.length === 10, '10 PDF');
 cek(semua.every((h) => h.sumber === O.SUMBER_OCR && h.sheets.every((s) => s.sumber === O.SUMBER_OCR)), 'semua ditandai sumber OCR');
@@ -70,7 +61,6 @@ cek(O.uraiBaris(-3005) === 'hal. 3 baris 5' && O.uraiBaris(12) === '12' && O.lab
 cek(M.opdDariNamaBerkas('KELURAHAN BATURAJA LAMA.pdf') === 'KELURAHAN BATURAJA LAMA', 'usulan OPD tanpa ".pdf"');
 console.log(`   total PDF: ${oSemua.length} orang, NIP 18 digit ${oSemua.filter((o) => o.nip).length}`);
 
-// --- simpan & laporan kejanggalan dari hasil OCR
 const hU = ulu[0];
 const { p_berkas, p_pegawai } = M.siapkanSimpan(hU, 'KEC. ULU OGAN');
 cek(p_berkas.ringkasan_sheet.every((s) => s.sumber === 'ocr'), 'ringkasan_sheet menyimpan sumber OCR');

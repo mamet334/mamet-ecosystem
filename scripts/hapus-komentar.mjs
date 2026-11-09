@@ -8,7 +8,7 @@ const butuh = createRequire(join(AKAR, 'frontend/package.json'));
 const ts = butuh('typescript');
 const esbuild = await import(pathToFileURL(butuh.resolve('esbuild')).href);
 
-export const POLA_DIREKTIF = /@vite-ignore|eslint-(disable|enable)|@ts-(ignore|expect-error|nocheck|check)|deno-lint-ignore|deno-fmt-ignore|@license|@preserve|^\/\*!|^#!|@jsx|webpackChunkName|istanbul ignore|prettier-ignore|c8 ignore/;
+export const POLA_DIREKTIF = /@vite-ignore|eslint-(disable|enable)|@ts-(ignore|expect-error|nocheck|check)|deno-lint-ignore|deno-fmt-ignore|@license|@preserve|^\/\*!|^#!|@jsx|webpackChunkName|istanbul ignore|prettier-ignore|c8 ignore|^\/\/ BATAS-UJI-DETIK: \d+$/;
 
 const LOADER = { '.js': 'js', '.mjs': 'js', '.cjs': 'js', '.jsx': 'jsx', '.ts': 'ts', '.tsx': 'tsx' };
 

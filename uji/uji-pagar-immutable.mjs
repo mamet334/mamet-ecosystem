@@ -1,8 +1,4 @@
-// UJI 2026-09-23 (TUGAS-03) — pagar CORE IMMUTABLE benar-benar menggigit di PatchApplier,
-// bukan hanya "model sopan menolak". Memanggil modul yang dipakai aplikasi, dengan deps tiruan.
 import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
 const AKAR = AKAR_REPO + '/frontend/src/core/runtime/services/engineer/';
@@ -16,7 +12,6 @@ const cek = (ok, pesan, rinci) => {
   if (!ok) gagal++;
 };
 
-// ---------- daftar CORE IMMUTABLE ----------
 for (const p of [
   'frontend/src/core/runtime/module-loader.js',
   'frontend/src/core/runtime/Kernel.js',
@@ -28,7 +23,6 @@ for (const p of [
 cek(CG.isImmutableFile('frontend/src/core/runtime/services/SkillGuardService.js') === false,
   'berkas biasa TIDAK ikut diblokir (pagar tidak kebablasan)');
 
-// ---------- pagar di jalur penerapan patch ----------
 function jalankan(patch) {
   const jejak = { tulis: [], checkpoint: 0, rekom: [], blokirDipanggil: 0 };
   const deps = {
@@ -59,7 +53,6 @@ cek(r.jejak.rekom.some((x) => x.type === 'CORE_MODIFICATION_BLOCKED' && /IMMUTAB
   'pesan CORE_MODIFICATION_BLOCKED dipancarkan ke layar');
 cek(r.jejak.blokirDipanggil === 1, 'percobaan dicatat (capability Engineer diturunkan oleh engineer.js)');
 
-// Patch campuran: satu berkas terlarang membatalkan SELURUH patch, bukan cuma berkasnya.
 r = await jalankan({ id: 'P-campur', taskId: 'T-campur', files: [berkasBiasa, berkasInti] });
 cek(r.hasil?.success === false, 'patch campuran (berkas biasa + berkas inti) DITOLAK seluruhnya', r.hasil);
 cek(r.jejak.tulis.length === 0, 'berkas biasa dalam patch campuran pun tidak ikut tertulis');

@@ -1,13 +1,3 @@
-// UJI 2026-10-27 — "Black October": pengambil web Tier 3 (`net:fetchWeb`) pindah dari `fetch()` Node ke `net.fetch`.
-//
-// CVE-2026-111497: dekoder Brotli Node bawaan Electron 42.3.3 (Node 24.15.0) rentan; jalur ini mengambil situs pihak
-// ketiga di PROSES UTAMA. Brotli Chromium 148 sudah tertambal (alasan & buktinya di electron/ambilWeb.cjs).
-//
-// Yang dijaga:
-//   1. logika ambilWeb dengan tiruan: hanya http/https, kredensial tidak dikirim, header, batas waktu, bentuk hasil;
-//   2. kabel: main.cjs memakai `net.fetch`, dan TIDAK ADA `fetch()` Node di kode proses utama;
-//   3. Electron SUNGGUHAN: Brotli diurai Chromium, `file://` & cookie tertutup — masing-masing dengan KONTROL POSITIF
-//      (`net.fetch` mentah memang membaca `file://` dan mengirim cookie), supaya lulusnya bukan karena ujinya buta.
 
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -30,7 +20,6 @@ const cek = (ok, pesan, rinci) => {
   if (!ok) gagal++;
 };
 
-// ── 1. Logika dengan tiruan ───────────────────────────────────────────────────────────────────
 console.log('\n-- 1. logika (tiruan) --');
 {
   const panggilan = [];
@@ -63,7 +52,6 @@ console.log('\n-- 1. logika (tiruan) --');
   const melempar = await ambilWeb(async () => { throw new Error('net::ERR_NAME_NOT_RESOLVED'); }, { url: 'https://tak-ada.invalid/' });
   cek(melempar.ok === false && melempar.status === 0 && melempar.error === 'net::ERR_NAME_NOT_RESOLVED', 'galat jaringan → {ok:false,status:0,error}', melempar);
 
-  // Batas waktu berlaku sampai BADAN selesai dibaca (versi lama membersihkannya begitu header tiba).
   const macet = (url, i) => new Promise((resolve, reject) => {
     i.signal.addEventListener('abort', () => reject(new Error('dibatalkan')));
     if (url.endsWith('/badan')) resolve({ ok: true, status: 200, text: () => new Promise((_, rej) => i.signal.addEventListener('abort', () => rej(new Error('badan dibatalkan')))) });
@@ -72,8 +60,6 @@ console.log('\n-- 1. logika (tiruan) --');
   const habis = await ambilWeb(macet, { url: 'https://lambat.id/', options: { timeoutMs: 80 } });
   cek(habis.ok === false && habis.error === 'dibatalkan' && Date.now() - t0 < 2000, `tak ada jawaban → dibatalkan sesudah timeoutMs (${Date.now() - t0} ms)`, habis);
   t0 = Date.now();
-  // Dibatasi sendiri: bila timeout tidak menjangkau badan, janji ini tak pernah selesai — tanpa batas ini ujinya
-  // menggantung alih-alih melapor GAGAL (ketahuan lewat uji mutasi).
   const badan = await Promise.race([
     ambilWeb(macet, { url: 'https://lambat.id/badan', options: { timeoutMs: 80 } }),
     new Promise((r) => setTimeout(() => r({ menggantung: true }), 2000)),
@@ -81,11 +67,8 @@ console.log('\n-- 1. logika (tiruan) --');
   cek(badan.ok === false && badan.error === 'badan dibatalkan' && Date.now() - t0 < 2000, 'header tiba tapi badan macet → tetap dibatalkan', badan);
 }
 
-// ── 2. Kabel di main.cjs & tak ada fetch() Node di proses utama ──────────────────────────────
 console.log('\n-- 2. kabel --');
 {
-  // Hanya baris komentar utuh yang dibuang (pola uji-cangkang-electron): membuang `/* … */` dengan regex ikut memakan
-  // string yang berisi `/*` (mis. '*/*' di header Accept) — kode di antaranya lenyap dan asersi jadi buta.
   const tanpaKomentar = (s) => s.replace(/\r\n/g, '\n').split('\n').filter((b) => !/^\s*(\/\/|\*|\/\*)/.test(b)).join('\n');
   const M = tanpaKomentar(readFileSync(path.join(AKAR, 'frontend', 'electron', 'main.cjs'), 'utf8'));
   cek(/ipcMain\.handle\('net:fetchWeb',\s*\(event, permintaan\) => ambilWeb\(net\.fetch, permintaan\)\)/.test(M),
@@ -93,7 +76,6 @@ console.log('\n-- 2. kabel --');
   cek(/const \{[^}]*\bnet\b[^}]*\} = require\('electron'\)/.test(M), '`net` diambil dari electron');
   cek(/require\('\.\/ambilWeb\.cjs'\)/.test(M), 'ambilWeb.cjs dimuat');
 
-  // `fetch(` yang bukan metode objek (`net.fetch(`, `ses.fetch(`) = fetch() global Node.
   const folder = path.join(AKAR, 'frontend', 'electron');
   const berkas = [];
   const jelajah = (d) => { for (const n of readdirSync(d, { withFileTypes: true })) { const p = path.join(d, n.name); if (n.isDirectory()) jelajah(p); else if (/\.(c?js|mjs)$/.test(n.name)) berkas.push(p); } };
@@ -103,10 +85,9 @@ console.log('\n-- 2. kabel --');
   cek(berkas.length > 5 && pelanggar.length === 0, `tak ada fetch() Node di ${berkas.length} berkas proses utama`, pelanggar);
 }
 
-// ── 3. Electron sungguhan ─────────────────────────────────────────────────────────────────────
 console.log('\n-- 3. Electron sungguhan (net.fetch) --');
 let electronExe = null;
-try { electronExe = require('electron'); } catch { /* tidak terpasang */ }
+try { electronExe = require('electron'); } catch {  }
 if (typeof electronExe !== 'string' || !existsSync(electronExe)) {
   console.log('(bagian 3 dilewati: electron tidak terpasang di checkout ini)');
 } else {
@@ -131,8 +112,6 @@ if (typeof electronExe !== 'string' || !existsSync(electronExe)) {
   writeFileSync(rahasia, 'ISI-LOKAL-RAHASIA');
   const keluaran = path.join(kerja, 'hasil.json');
   writeFileSync(path.join(kerja, 'package.json'), JSON.stringify({ name: 'uji-ambil-web', main: 'main.js' }));
-  // Parameter lewat berkas, bukan argumen: Electron keluar dengan -1 tanpa menjalankan main.js begitu diberi
-  // argumen tambahan berupa URL/jalur (dicoba 27 Okt), sedangkan aplikasi yang sama tanpa argumen berjalan.
   writeFileSync(path.join(kerja, 'parameter.json'), JSON.stringify({ modul: BERKAS_MODUL, asal, berkasRahasia: rahasia, keluaran }));
   writeFileSync(path.join(kerja, 'main.js'), `
 const { app, net, session } = require('electron');

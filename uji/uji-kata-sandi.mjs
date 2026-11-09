@@ -1,13 +1,3 @@
-// UJI 2026-10-29 — T19 lupa & ganti kata sandi di Mamet Ecosystem DAN Mametlite (ADR-0022 K4).
-//
-// Yang dijaga:
-//   1. aturan bersama shared/kata_sandi.js (jenis tautan, alamat kembali, pemeriksa sandi baru, terjemahan galat);
-//   2. tautan pemulihan dibaca SEBELUM klien Supabase dibuat (klien membersihkan `#…type=recovery` dari alamat);
-//   3. sesi dari tautan pemulihan TIDAK langsung membuka aplikasi — layar "kata sandi baru" dulu (kedua aplikasi);
-//   4. pesan sesudah meminta tautan SAMA untuk email terdaftar maupun tidak (tak bisa dipakai mengecek akun);
-//   5. ganti kata sandi memeriksa kata sandi LAMA dulu;
-//   6. kelas tampilan Ecosystem yang baru benar-benar dibuat Tailwind.
-// Tampilan keempat keadaan (masuk, lupa, kata sandi baru, tautan basi) dilihat di peramban sungguhan — changelog 29 Okt.
 
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -25,7 +15,6 @@ const cek = (ok, pesan, rinci) => {
   if (!ok) gagal++;
 };
 
-// ── 1. Aturan bersama ──────────────────────────────────────────────────────────────────────────
 cek(K.jenisTautanAuth('#access_token=abc&expires_in=3600&refresh_token=x&token_type=bearer&type=recovery') === 'pemulihan',
   'tautan pemulihan Supabase (#…&type=recovery) → pemulihan');
 cek(K.jenisTautanAuth('#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired') === 'kedaluwarsa',
@@ -33,7 +22,6 @@ cek(K.jenisTautanAuth('#error=access_denied&error_code=otp_expired&error_descrip
 cek(K.jenisTautanAuth('#access_token=abc&type=signup') === null && K.jenisTautanAuth('') === null && K.jenisTautanAuth(undefined) === null,
   'tautan lain (daftar) / tanpa hash → bukan pemulihan');
 cek(K.jenisTautanAuth('', '?type=recovery') === 'pemulihan', 'type=recovery di query juga dikenali');
-// 31 Okt 2026: undangan dashboard Supabase — tanpa ini yang diundang masuk tanpa pernah membuat kata sandi.
 cek(K.jenisTautanAuth('#access_token=abc&expires_in=3600&refresh_token=x&token_type=bearer&type=invite') === 'pemulihan',
   'tautan undangan Supabase (#…&type=invite) → layar buat kata sandi');
 cek(K.jenisTautanAuth('#access_token=abc&type=magiclink') === null, 'tautan masuk sekali klik (magiclink) → bukan layar kata sandi');
@@ -53,7 +41,6 @@ cek(T('For security purposes, you can only request this after 52 seconds.') === 
   'galat Supabase → kalimat Indonesia, pesan teknis tetap dibawa');
 cek(/Bila email itu terdaftar/.test(K.PESAN_TAUTAN_TERKIRIM), 'pesan "tautan terkirim" netral — tak mengaku email terdaftar');
 
-// ── 2–5. Sambungan di kedua aplikasi ───────────────────────────────────────────────────────────
 const tanpaKomentar = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
 for (const [nama, berkas] of [['Ecosystem', 'frontend/src/supabase.js'], ['Mametlite', 'mametlite/src/lib/supabase.js']]) {
   const s = baca(berkas);
@@ -84,7 +71,6 @@ const iLamaLite = KS.indexOf('signInWithPassword({ email, password: lama })');
 cek(iLamaLite > 0 && KS.indexOf('updateUser({ password: baru })', iLamaLite) > iLamaLite, 'Mametlite: ganti sandi memeriksa kata sandi LAMA dulu');
 cek(/fs: \{ allow: \['\.', '\.\.\/shared'\] \}/.test(baca('mametlite/vite.config.js')), "Mametlite: server dev mengizinkan '../shared'");
 
-// ── 6. Kelas tampilan Ecosystem dikompilasi Tailwind sungguhan ──────────────────────────────────
 const reqFE = createRequire(join(AKAR, 'frontend', 'package.json'));
 const postcss = reqFE('postcss'), tailwind = reqFE('tailwindcss'), loadConfig = reqFE('tailwindcss/loadConfig');
 const escTW = reqFE('tailwindcss/lib/util/escapeClassName').default;

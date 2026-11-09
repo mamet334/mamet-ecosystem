@@ -1,10 +1,3 @@
-// UJI 2026-10-30 — K5 (ADR-0022, model ancaman TM-004): batas volume RAG per akun & total di `rag-process`.
-//
-// Pendaftaran akun terbuka → akun asing bisa mengunggah teks tanpa batas; embedding dibayar kuncinya sendiri, tetapi
-// penyimpanannya memakan kuota database Owner (500 MB). Lewat kuota = database hanya-baca = seluruh aplikasi berhenti.
-//
-// rag-process/index.ts DIBUNDEL SUNGGUHAN; yang ditiru: `serve` (menangkap handler), klien Supabase (hitungan &
-// penulisan dicatat), dan `embedLewatOpenRouter` (mencatat jumlah potongan yang divektorkan). `chunkText` asli.
 
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -39,7 +32,7 @@ const hasil = await esbuild.build({
 });
 const dir = mkdtempSync(join(tmpdir(), 'uji-rag-batas-'));
 writeFileSync(join(dir, 'r.mjs'), hasil.outputFiles[0].text);
-process.on('exit', () => { try { rmSync(dir, { recursive: true, force: true }); } catch { /* sudah bersih */ } });
+process.on('exit', () => { try { rmSync(dir, { recursive: true, force: true }); } catch {  } });
 globalThis.Deno = { env: { get: () => 'x' } };
 const M = await import(pathToFileURL(join(dir, 'r.mjs')).href);
 
@@ -52,7 +45,6 @@ const cek = (ok, pesan, rinci) => {
 };
 tulis('uji-batas-rag-process v1');
 
-/** Klien Supabase tiruan: rantai apa pun; hasil ditentukan tabel + operasi. Mencatat setiap penulisan. */
 function sbTiruan({ milik, total, galatHitung = false }) {
   const tulisan = [];
   const rantai = (tabel) => {
@@ -64,7 +56,6 @@ function sbTiruan({ milik, total, galatHitung = false }) {
         const perAkun = st.filter.some(([k]) => k === 'documents.user_id');
         return { count: perAkun ? milik : total, error: null, data: null };
       }
-      // Unggah bertahap (5 Nov): tidak ada unggahan tertunda di uji ini.
       if (st.tabel === 'documents' && st.op === 'select') return { data: [], error: null };
       if (st.tabel === 'documents' && st.op === 'insert') return { data: { id: 'dok-1' }, error: null };
       return { data: null, error: null };
@@ -103,33 +94,27 @@ async function unggah({ milik, total, galatHitung, isi }) {
 }
 const ISI = teks(12);
 
-// ── 1. Di bawah batas: jalan seperti dulu ──────────────────────────────────────────────────────
 let r = await unggah({ milik: 3480, total: 3629, isi: ISI });
 cek(r.status === 200 && r.divektorkan > 0 && r.tulisan.some((t) => t.tabel === 'document_chunks'), 'akun 3.480 potongan (Owner hari ini) → unggahan jalan', r);
 const nPotongan = r.isi.chunks;
 
-// ── 2. Batas per akun ───────────────────────────────────────────────────────────────────────────
 r = await unggah({ milik: M.BATAS_POTONGAN_PER_AKUN - nPotongan + 1, total: 5000, isi: ISI });
 cek(r.status === 413 && r.isi.code === 'KUOTA_AKUN_PENUH', `akun melewati ${M.BATAS_POTONGAN_PER_AKUN.toLocaleString('id-ID')} potongan → 413 KUOTA_AKUN_PENUH`, r.isi);
 cek(r.divektorkan === 0 && r.tulisan.length === 0, 'ditolak SEBELUM embedding & sebelum dokumen dibuat (tanpa biaya, tanpa sisa)', r);
 cek(/Hapus dokumen/.test(r.isi.error) && r.isi.error.includes(M.BATAS_POTONGAN_PER_AKUN.toLocaleString('id-ID')), 'pesan per akun menyebut batas & jalan keluarnya', r.isi.error);
-// 5 Nov 2026: batas per akun dinaikkan Owner 10.000 → 25.000 (akun hanya lewat undangan sejak 31 Okt); total tetap.
 cek(M.BATAS_POTONGAN_PER_AKUN === 25_000 && M.BATAS_POTONGAN_TOTAL === 45_000, 'batas sesuai keputusan Owner 5 Nov: per akun 25.000, total 45.000');
 r = await unggah({ milik: M.BATAS_POTONGAN_PER_AKUN - nPotongan, total: 5000, isi: ISI });
 cek(r.status === 200, 'tepat di batas akun → masih boleh', r.isi);
 
-// ── 3. Batas total sistem ───────────────────────────────────────────────────────────────────────
 r = await unggah({ milik: 10, total: M.BATAS_POTONGAN_TOTAL - nPotongan + 1, isi: ISI });
 cek(r.status === 413 && r.isi.code === 'KUOTA_SISTEM_PENUH' && r.divektorkan === 0 && r.tulisan.length === 0,
   'total sistem melewati 45.000 → 413 KUOTA_SISTEM_PENUH, tanpa embedding & tanpa tulisan', r);
 
-// ── 4. Hitungan gagal → ditolak jujur, bukan diloloskan ─────────────────────────────────────────
 r = await unggah({ milik: 0, total: 0, galatHitung: true, isi: ISI });
 cek(r.status === 503 && r.isi.code === 'KUOTA_TAK_TERBACA' && r.divektorkan === 0 && r.tulisan.length === 0,
   'hitungan volume gagal → 503 KUOTA_TAK_TERBACA (gagal tertutup, bersuara)', r);
 
-// ── 5. Angka batas masuk akal terhadap kuota 500 MB ─────────────────────────────────────────────
-const BITA = 6528; // diukur 30 Okt: pg_total_relation_size(document_chunks) / jumlah baris
+const BITA = 6528;
 cek(M.BATAS_POTONGAN_TOTAL * BITA < 0.7 * 500 * 1024 * 1024, `batas total ×6,5 KB = ${Math.round(M.BATAS_POTONGAN_TOTAL * BITA / 1048576)} MB < 70% kuota 500 MB`);
 cek(M.BATAS_POTONGAN_PER_AKUN >= 2 * 3480, 'batas per akun ≥ 2× akun terbesar hari ini (3.480) — Owner tak tertahan');
 

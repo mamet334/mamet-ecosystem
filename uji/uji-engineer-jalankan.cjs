@@ -1,15 +1,12 @@
-// UJI T8 (2026-09-22) — tombol [MAMET_CMD] Engineer: pecahPerintah (tanpa shell) + pelaksana folder_run dengan akar
-// "repo" sementara + jalur lama (run-terminal-command, edit-file-surgical, CommandRegistry) benar-benar hilang.
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { pecahPerintah, jalankanAlatJalan, PROFIL } = require('../frontend/electron/alatFolderJalan.cjs');
-console.log('uji-engineer-jalankan v4'); // v2: profil + klaim · v3: blok bash → penanda · v4: % $ ^ sah (tanpa shell)
+console.log('uji-engineer-jalankan v4');
 let gagal = 0;
 const cek = (ok, pesan, rinci) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n      → ${JSON.stringify(rinci).slice(0, 300)}` : ''}`); if (!ok) gagal++; };
 const sama = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-// 1. Pemecah perintah — contoh dari prompt Engineer & bentuk yang biasa ditulis model
 cek(sama(pecahPerintah('npm install'), { program: 'npm', argumen: ['install'] }), 'npm install');
 cek(sama(pecahPerintah('  git   status  '), { program: 'git', argumen: ['status'] }), 'spasi berlebih');
 cek(sama(pecahPerintah('npm run build'), { program: 'npm', argumen: ['run', 'build'] }), 'npm run build');
@@ -25,11 +22,9 @@ for (const [t, nama] of [
   ['python "tak ditutup', 'kutip tak ditutup'], ['', 'kosong'],
 ]) cek(pecahPerintah(t).galat, `ditolak: ${nama} — ${pecahPerintah(t).galat}`);
 
-// 2. Jalankan lewat pelaksana dengan akar "repo" sementara (jalur yang sama dengan IPC engineer:jalankan)
 const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'uji-eng-'));
 fs.writeFileSync(path.join(repo, 'package.json'), JSON.stringify({ name: 'r', version: '1.0.0', scripts: { test: 'node -e "console.log(\'uji-lulus\')"' } }));
 const dialog = [];
-// v2: jalur Engineer memakai PROFIL.engineer (seperti main.cjs depsEngineer) — tanpa "waktu" di permintaan.
 const izinkan = { profil: PROFIL.engineer, mintaIzin: async (p) => { dialog.push(p); return true; } };
 const tolak = { profil: PROFIL.engineer, mintaIzin: async (p) => { dialog.push(p); return false; } };
 const asisten = { mintaIzin: async (p) => { dialog.push(p); return true; } };
@@ -42,7 +37,6 @@ const jalan = async (teks, deps = izinkan) => {
   let h = await jalan('npm test');
   cek(h.ok && h.kodeKeluar === 0 && h.keluaran.includes('uji-lulus') && dialog.at(-1)?.pratinjau.includes('test: node -e'), 'npm test → "uji-lulus", dialog memuat script', h);
   cek(h.waktuBatasS === 180 && /di repo Mamet\?/.test(dialog.at(-1)?.judul) && /Folder asal: repo Mamet · batas waktu 180 detik/.test(dialog.at(-1)?.rincian), 'profil Engineer: batas 180 s, dialog menyebut "repo Mamet"', dialog.at(-1));
-  // Repo git disiapkan lewat profil Assistant (Engineer tak boleh init/add/commit).
   h = await jalan('git init', asisten);
   cek(h.ok && fs.existsSync(path.join(repo, '.git')), 'git init (profil Assistant: boleh)', h);
   h = await jalan('git status --short');
@@ -65,12 +59,10 @@ const jalan = async (teks, deps = izinkan) => {
   cek(dialog.length === sebelum, 'tak ada dialog untuk perintah terlarang');
   h = await jalan('npm test', tolak);
   cek(!h.ok && h.ditolakOwner, 'Tolak → DITOLAK OWNER, tidak dijalankan', h);
-  // Profil Assistant tak berubah: install tetap boleh (dengan peringatan 🌐), commit boleh.
   dialog.length = 0;
   h = await jalan('npm install left-pad', { profil: PROFIL.assistant, mintaIzin: async (p) => { dialog.push(p); return false; } });
   cek(h.ditolakOwner && /MENGUNDUH/.test(dialog[0]?.rincian || ''), 'profil Assistant: npm install sampai dialog (🌐), bukan ditolak aturan');
 
-  // 2b. Peringatan klaim Engineer (pemeriksa layar, murni)
   const F = await import(require('url').pathToFileURL(path.join(__dirname, '../shared/folderKerjaAlat.js')).href);
   const keluaranAsli = '[TERMINAL OUTPUT for: npm test]\nuji-lulus\n\nKode keluar 0 (0,4 s).';
   cek(F.peringatanKlaimEngineer('Test sudah saya jalankan, hasilnya lulus semua.', 'jalankan test dong') !== null, 'klaim "sudah saya jalankan" tanpa keluaran terminal → peringatan');
@@ -79,7 +71,6 @@ const jalan = async (teks, deps = izinkan) => {
   cek(F.peringatanKlaimEngineer('Saya akan cek dulu:\n[MAMET_CMD: npm test]\nOutput yang diharapkan: semua test berhasil dijalankan.', 'cek test') === null, 'jawaban yang masih mengusulkan [MAMET_CMD] (harapan) → tidak dinilai');
   cek(F.peringatanKlaimEngineer('Saya ubah fungsi hitung agar aman, patch siap diterapkan.', 'perbaiki bug') === null, 'klaim ubah (jalur patch) → tidak dinilai');
 
-  // v3: blok ```bash satu baris → [MAMET_CMD] (teks persis live: aturan sampai, model menulis blok kode)
   const B = (t) => F.blokKodeKeMametCmd(t);
   cek(B('Saya akan cek status git terlebih dahulu:\n\n```bash\ngit status\n```\n\nSilakan tunggu sebentar untuk hasilnya.').includes('[MAMET_CMD: git status]'), 'live: ```bash git status``` → [MAMET_CMD: git status]');
   cek(B('Saya akan menampilkan 5 commit terakhir dari repositori git:\n\n```bash\ngit log -n 5\n```').includes('[MAMET_CMD: git log -n 5]'), 'live: ```bash git log -n 5``` → penanda');
@@ -89,7 +80,6 @@ const jalan = async (teks, deps = izinkan) => {
   }
   cek(F.peringatanKlaimEngineer(B('Saya akan cek:\n```bash\ngit status\n```\nberhasil dijalankan nanti.'), 'cek git') === null, 'setelah diubah jadi penanda → dianggap usulan, bukan klaim');
 
-  // 3. Jalur lama benar-benar hilang
   const main = fs.readFileSync(path.join(__dirname, '../frontend/electron/main.cjs'), 'utf8');
   const preload = fs.readFileSync(path.join(__dirname, '../frontend/electron/preload.cjs'), 'utf8');
   cek(!/ipcMain\.handle\('run-terminal-command'/.test(main) && !/ipcMain\.handle\('edit-file-surgical'/.test(main) && !/checkBlockedCommand/.test(main), 'main.cjs: run-terminal-command, edit-file-surgical, blocklist hilang');

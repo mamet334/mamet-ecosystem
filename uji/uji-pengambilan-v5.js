@@ -1,26 +1,5 @@
-// UJI PENGAMBILAN POTONGAN v5 (T16, 2026-10-29) — dipindah dari `frontend/node_modules/.uji-rag/` (hilang sejak 24 Sep) ke
-// `uji/`: data dibaca dari `uji/data-lokal/` dan KnowledgeService dari `shared/`, keduanya RELATIF terhadap berkas ini
-// (import.meta.url), tidak lagi jalur mati. Server dev mengizinkan `../uji` (vite.config). Gantikan v1–v4.
-// v4 (Item 88 set buku penuh, 2026-09-21) — opsi { set: 'set-uji-buku-penuh.json' } memilih berkas set.
-// v3 (Item 90 Tahap B, 2026-09-17) — opsi { rpc: 'hybrid' } memanggil match_documents_hybrid
-// (kata kunci dari kataKunciPencarian di KnowledgeService.js = aturan server). Default tetap match_documents.
-// Asal: Tahap A — alat ukur pencarian dokumen, bukan mutu jawaban.
-//
-// Pemakaian — dari konsol DevTools `npm run desktop` (mode dev), sudah login:
-//   await (await import('/@fs/D:/SLAMET/other/mamet os ecosystem/uji/uji-pengambilan-v5.js')).uji({ rpc: 'hybrid', set: 'set-uji-buku-penuh.json' })
-// Opsi: .uji({ ulang: 2 })   → putaran kedua membandingkan peringkat & skor (bukti hasil bisa diulang)
-//       .uji({ hanya: ['KEP-01'] })
-//
-// Yang dilakukan (tanpa chat, tanpa menulis ke database):
-//  1. Embedding tiap pertanyaan lewat MemoryGovernorService._requestEmbedding → agent-process {action:'embed'}
-//     (model, dimensi, kunci OpenRouter pengguna SAMA dengan pencarian dokumen server). Kunci tak dibaca skrip.
-//  2. match_documents dengan ambang -1 → peringkat SEMUA potongan milik pengguna.
-//  3. Peringkat potongan bukti (teks, bukan ID), skor, skor ke-8, recall@8 (peringkat ≤ 8 & skor > 0,55).
-//     NEG: skor ke-1 dan jumlah potongan > 0,55 yang akan masuk konteks.
-//  4. Kontrol: cosine lokal (vektor pertanyaan × embedding tersimpan potongan ke-1) harus = skor RPC.
-// Biaya: 16 embedding pendek per putaran (< $0,001). Hasil: tabel konsol + berkas `uji-pengambilan-<waktu>.json`.
 
-const DIR = new URL('./data-lokal', import.meta.url).href; // uji/data-lokal/ — diabaikan git (NIP & nama pegawai)
+const DIR = new URL('./data-lokal', import.meta.url).href;
 const AMBIL_SERVER = 8;
 const AMBANG_SERVER = 0.55;
 
@@ -32,7 +11,6 @@ const cosine = (a, b) => {
   return d / (Math.sqrt(na) * Math.sqrt(nb));
 };
 
-/** Peringkat (1-based) potongan pertama yang memuat SEMUA teks salah satu alternatif bukti. */
 function cariBukti(peringkat, bukti) {
   for (let i = 0; i < peringkat.length; i++) {
     const isi = rapat(peringkat[i].content);
@@ -78,7 +56,7 @@ async function satuPutaran({ set, governor, supabase, userId, hanya, rpc, kataKu
       skor_8: bulat(ke8),
       masuk_konteks: Math.min(AMBIL_SERVER, diAtasAmbang),
       teratas: peringkat.slice(0, AMBIL_SERVER).map((r, i) => ({ ke: i + 1, skor: bulat(r.similarity), dokumen: r.title, awal: r.content.replace(/\s+/g, ' ').slice(0, 90) })),
-      _peringkat_penuh: peringkat.map((r) => [r.id, bulat(r.similarity)]),   // untuk penggabungan Tahap B (RRF)
+      _peringkat_penuh: peringkat.map((r) => [r.id, bulat(r.similarity)]),
       _jumlah_potongan: peringkat.length,
       _dokumen: [...new Set(peringkat.map((r) => r.title))]
     });

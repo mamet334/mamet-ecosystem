@@ -1,16 +1,3 @@
-// UJI 2026-10-20 — Item 128 Tahap B: Settings › Tampilan, dua tema gelap, disimpan per akun, tanpa kedipan.
-//
-// Kenapa ada: Owner memutuskan tema sebagai pilihan pengguna (ROADMAP-TEMA-APLIKASI.md). Yang dijaga:
-//   1. METADATA — public/metadata/themes.json sah (MUS §21) dan memuat keputusan Owner 20 Okt: nama berbahasa
-//      Indonesia (T1), "Ikuti sistem" Windows terang → Gelap netral (T2), bawaan Ruangan kayu (T3).
-//   2. LENGKAP — tema non-bawaan mendefinisikan PERSIS variabel yang sama dengan tema bawaan (kurang satu = warna
-//      bocor dari tema lain).
-//   3. TERBACA — SETIAP tema lulus kontras: di latar polos, di atas dinding ruangan (latar bisa dinyalakan di tema
-//      apa pun), dan di dalam kartu kaca di atas dinding. Gelap netral benar-benar netral (tanpa nuansa hangat).
-//   4. LOGIKA — pilihan tema, "Ikuti sistem", latar ruangan, dan aturan CSS tema (tema.js, murni).
-//   5. TERPASANG — tema diterapkan saat boot SEBELUM tampilan dipasang (tanpa kedipan), disinkronkan dari akun
-//      sesudah masuk, disimpan ke akun (user_metadata.tampilan) + salinan lokal; latar ruangan bisa dimatikan.
-//   6. DIBUAT — kelas komponen Tampilan benar-benar dibuat Tailwind (pelajaran Item 127).
 
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -33,15 +20,12 @@ const cek = (syarat, pesan, detail) => {
 const T = await import(pathToFileURL(join(AKAR, 'frontend/src/core/runtime/services/tema.js')).href);
 const meta = JSON.parse(baca('frontend/public/metadata/themes.json'));
 
-// ── 1. Metadata & keputusan Owner ───────────────────────────────────────────────────────────────
 console.log('\n-- 1. metadata tema & keputusan Owner 20 Okt --');
 const WAJIB = ['schemaVersion', 'version', 'id', 'description', 'owner', 'updatedAt'];
 cek(WAJIB.every((k) => meta[k]), 'medan skema wajib MetadataService ada', WAJIB.filter((k) => !meta[k]));
 cek(T.periksaMeta(meta).length === 0, 'bentuk metadata sah (periksaMeta)', T.periksaMeta(meta));
 const nama = Object.fromEntries(meta.themes.map((t) => [t.id, t.nama]));
 cek(nama['ruangan-kayu'] === 'Ruangan kayu' && nama['gelap-netral'] === 'Gelap netral', 'T1 — nama tema berbahasa Indonesia', nama);
-// v2 (Tahap D3): T2 berbunyi "Gelap netral SAMPAI tema Terang ada" — kini tema berdasar terang ada, jadi "Ikuti
-// sistem" saat Windows terang wajib menunjuk tema berdasar terang (bila ada), dan Gelap netral bila belum ada.
 const adaTerang = meta.themes.find((t) => t.dasar === 'terang');
 const temaUntukTerang = meta.themes.find((t) => t.id === meta.ikutiSistem.terang);
 cek(adaTerang ? temaUntukTerang?.dasar === 'terang' : meta.ikutiSistem.terang === 'gelap-netral',
@@ -49,7 +33,6 @@ cek(adaTerang ? temaUntukTerang?.dasar === 'terang' : meta.ikutiSistem.terang ==
 cek(meta.bawaan === 'ruangan-kayu' && meta.themes.find((t) => t.id === 'ruangan-kayu')?.nilai === null,
   'T3 — bawaan Ruangan kayu, nilainya dari berkas tema (frontend/src/tema/ruangan-kayu.css)');
 
-// ── 2. Kelengkapan variabel ─────────────────────────────────────────────────────────────────────
 console.log('\n-- 2. setiap tema mendefinisikan variabel yang sama --');
 const bawaan = bacaPalet(AKAR, meta.bawaan).VAR;
 const kunciBawaan = Object.keys(bawaan).sort();
@@ -62,13 +45,11 @@ for (const t of meta.themes.filter((x) => x.nilai)) {
   PALET[t.id] = Object.fromEntries(Object.entries(t.nilai).map(([k, v]) => [k, keHex(v)]));
 }
 
-// ── 3. Kontras setiap tema ──────────────────────────────────────────────────────────────────────
 console.log('\n-- 3. kontras setiap tema --');
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
 const lum = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 const rasio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
-// Titik dinding paling terang — dihitung dari gradien LatarRuangan oleh uji-latar-ruangan (bayangan samping tergambar).
 const DINDING = [77, 45, 23];
 const cssGlobal = baca('frontend/src/index.css');
 const kaca = cssGlobal.match(/\.glass-panel \{[^}]*background:\s*rgb\(var\(--warna-([a-z0-9-]+)\)\s*\/\s*([\d.]+)\)/);
@@ -87,7 +68,6 @@ for (const [id, P] of Object.entries(PALET)) {
   cek(gagalPolos.length === 0, `${nm}: ${PASANGAN.length} pasangan di latar polos lulus`, gagalPolos);
   const utama = rasio(hex(P['on-surface']), hex(P.surface));
   cek(utama >= 7 && utama <= 14, `${nm}: teks utama ${utama.toFixed(2)}:1 — nyaman dibaca lama (7–14:1)`);
-  // Dinding kayu hanya bisa dinyalakan di tema berdasar GELAP (tema terang: latarNyala selalu false — Tahap D3).
   const bisaBerdinding = (meta.themes.find((t) => t.id === id)?.dasar ?? 'gelap') === 'gelap';
   if (!bisaBerdinding) {
     cek(T.latarNyala({ tema: id, latarRuangan: true }, id, meta) === false, `${nm}: tema terang — dinding tak pernah tampil (meski pengguna menyalakannya)`);
@@ -108,7 +88,6 @@ const GN = PALET['gelap-netral'];
 const hangatDiGN = Object.entries(GN || {}).filter(([k]) => !/error/.test(k)).filter(([, h]) => { const [r, g, b] = hex(h); return Math.abs(r - g) > 4 || Math.abs(g - b) > 4; }).map(([k, h]) => `${k}=${h}`);
 cek(GN && hangatDiGN.length === 0, 'Gelap netral benar-benar netral — tak ada nuansa hangat (selisih R/G/B ≤ 4)', hangatDiGN);
 
-// ── 4. Logika (tema.js) ─────────────────────────────────────────────────────────────────────────
 console.log('\n-- 4. logika pilihan tema --');
 cek(T.pilihTema({ tema: 'gelap-netral' }, true, meta) === 'gelap-netral', 'tema pilihan dipakai apa adanya');
 cek(T.pilihTema({ tema: 'sistem' }, true, meta) === meta.ikutiSistem.gelap && T.pilihTema({ tema: 'sistem' }, false, meta) === meta.ikutiSistem.terang,
@@ -123,7 +102,6 @@ cek(/html\[data-tema="gelap-netral"\],\n\[data-tema="gelap-netral"\] \{/.test(cs
 cek(!/ruangan-kayu/.test(css), 'tema bawaan tidak diulang di aturan (nilainya dari berkas CSS-nya sendiri)');
 cek((css.match(/--warna-/g) || []).length === kunciBawaan.length * meta.themes.filter((t) => t.nilai).length, 'setiap variabel tema non-bawaan tertulis di aturan');
 
-// ── 5. Terpasang ────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 5. terpasang dari boot sampai akun --');
 const KR = tanpaKomentar(baca('frontend/src/core/runtime/Kernel.js'));
 const iMeta = KR.indexOf("serviceManager.register('MetadataService', metadataService);"), iPasang = KR.indexOf('temaService.pasang(metadataService.getThemes());');
@@ -148,7 +126,6 @@ const subset = baca('frontend/src/assets/fonts/daftar-ikon.txt').split('\n').map
 const ikonDipakai = ['visibility', 'check_circle', 'toggle_on', 'toggle_off'];
 cek(ikonDipakai.every((i) => subset.includes(i)) && ikonDipakai.every((i) => BT.includes(`'${i}'`) || BT.includes(`>${i}<`)), 'ikon yang dipakai ada di subset font (tanpa unduh)', { ikonBT });
 
-// ── 6. Kelas dibuat Tailwind ────────────────────────────────────────────────────────────────────
 console.log('\n-- 6. kelas BagianTampilan dikompilasi Tailwind --');
 const reqFE = createRequire(join(AKAR, 'frontend', 'package.json'));
 const postcss = reqFE('postcss'), tailwind = reqFE('tailwindcss'), loadConfig = reqFE('tailwindcss/loadConfig');
@@ -158,7 +135,6 @@ const kelas = [...new Set([...BT.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\})
 const { css: hasil } = await postcss([tailwind({ ...loadConfig(join(AKAR, 'frontend', 'tailwind.config.js')), content: [{ raw: `<div className="${kelas.join(' ')}">`, extension: 'jsx' }] })])
   .process('@tailwind utilities;', { from: undefined });
 const GLOBAL = ['glass-panel', 'rim-light', 'material-symbols-outlined'];
-// Selektor kelas berpengubah (`hover:`) berakhir dengan pseudo-kelasnya: `.hover\:bg-x:hover`.
 const mati = kelas.filter((k) => !GLOBAL.includes(k) && !['.' + esc(k) + ' ', '.' + esc(k) + '{', '.' + esc(k) + ':'].some((s) => hasil.includes(s)));
 cek(kelas.length > 40 && mati.length === 0, `${kelas.length} kelas BagianTampilan semuanya dibuat Tailwind`, mati);
 

@@ -1,7 +1,3 @@
-// UJI 2026-11-02 — Parkir ADR-0022: metadata chat membengkak. Langkah proses server tersimpan DUA KALI di setiap
-// jawaban (`steps` dan `metadata.processingSteps`, 418/418 pesan sama persis) dan salinan itu ikut terkirim di
-// `history` tiap kiriman. Uji ini menjaga: salinan dibuang, `steps` (termasuk [SYSTEM CONTEXT FINAL]) UTUH, dan kunci
-// yang dipakai server/tampilan tetap ada.
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -19,8 +15,6 @@ const cek = (ok, pesan, rinci) => {
 };
 console.log(`uji-pesan-ramping v1 — ${VERSI_PESAN_RAMPING}`);
 
-// Bentuk yang SUNGGUHAN disusun AssistantService.onDone: steps = [...langkahAwal klien, ...processingSteps server],
-// metadata = seluruh respons server (jsonData).
 const konteks = `[SYSTEM CONTEXT FINAL] fullSystemContext="${'[BLOK 4: KNOWLEDGE] potongan dokumen '.repeat(600)}"`;
 const langkahServer = ['Menganalisis permintaan…', '📋 Rencana: cari dokumen', konteks];
 const jsonData = {
@@ -31,7 +25,6 @@ const jawaban = {
   role: 'model', content: 'Jawaban', steps: ['🔍 Dicari (web): harga', ...langkahServer], metadata: jsonData, traceId: 't1',
 };
 
-// ── 1. Disimpan: salinan dibuang, sisanya utuh ──────────────────────────────────────────────────
 const r = rampingkanPesan(jawaban);
 cek(!('processingSteps' in r.metadata), 'disimpan: metadata.processingSteps (salinan) dibuang');
 cek(JSON.stringify(r.steps) === JSON.stringify(jawaban.steps) && r.steps.includes(konteks),
@@ -44,7 +37,6 @@ const sebelum = JSON.stringify(jawaban).length, sesudah = JSON.stringify(r).leng
 cek(sesudah < sebelum * 0.55, `ukuran tersimpan turun ±separuh (${sebelum} → ${sesudah} huruf)`);
 cek('processingSteps' in jawaban.metadata, 'pesan asli (state layar) tidak diubah');
 
-// ── 2. Bukan salinan → tidak disentuh ───────────────────────────────────────────────────────────
 const beda = { role: 'model', content: 'x', steps: ['a', 'b'], metadata: { processingSteps: ['a', 'c'] } };
 cek(rampingkanPesan(beda) === beda, 'langkah metadata yang BUKAN ekor steps tidak dibuang');
 const tanpaSteps = { role: 'model', content: 'x', metadata: { processingSteps: ['a'] } };
@@ -52,7 +44,6 @@ cek(rampingkanPesan(tanpaSteps) === tanpaSteps, 'pesan tanpa steps (satu-satunya
 const pengguna = { role: 'user', content: 'halo' };
 cek(rampingkanPesan(pengguna) === pengguna && rampingkanPesan(null) === null, 'pesan pengguna & nilai kosong lewat apa adanya');
 
-// ── 3. Dikirim sebagai history: tanpa langkah proses, kunci yang dibaca server tetap ikut ───────
 const kirim = pesanUntukServer(jawaban);
 cek(!('steps' in kirim) && !('processingSteps' in kirim.metadata), 'dikirim: steps & metadata.processingSteps tidak ikut');
 cek(kirim.metadata.terpotong === true && kirim.metadata.bahanLanjutan?.sisa === 1 && kirim.role === 'model' && kirim.content === 'Jawaban',
@@ -61,7 +52,6 @@ const patok = { role: 'user', content: 'peta repo', _patok: true };
 cek(pesanUntukServer(patok)._patok === true, 'dikirim: penanda patok sisipan tetap ikut (pemangkas riwayat server membacanya)');
 cek(Array.isArray(jawaban.steps) && 'processingSteps' in jawaban.metadata, 'dikirim: pesan asli tidak diubah');
 
-// ── 4. Terpasang di AssistantService ────────────────────────────────────────────────────────────
 const AS = readFileSync(join(AKAR, 'frontend/src/core/runtime/services/AssistantService.js'), 'utf8');
 cek(/messages:\s*messages\.map\(rampingkanPesan\)/.test(AS), 'saveChatToDB menyimpan messages.map(rampingkanPesan)');
 const barisHistory = AS.split(/\r?\n/).filter((b) => /^\s*history:\s*(konteks\.dikirim|history\.slice)/.test(b));

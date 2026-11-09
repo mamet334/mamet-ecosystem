@@ -1,11 +1,3 @@
-// UJI 2026-11-02 — Item 130 Tahap E (graf Home): percakapan berekor pesan + label tak pernah saling tindih.
-//
-//   - Migrasi 20261102000000: dua fungsi baca-saja (SECURITY INVOKER, saring auth.uid(), EXECUTE hanya authenticated);
-//     ekor mengembalikan angka/kode alat + cuplikan 80 huruf — tak pernah konteks, teks memori, atau isi utuh.
-//   - Ukuran percakapan dari jumlah pesan; ekor dimuat saat diklik; garis pesan → alat hanya ke simpul yang ADA.
-//   - Penghindar tabrakan label (dilukis di akhir bingkai, menurut prioritas): label INTI tak pernah disembunyikan.
-//   - Inspektur hanya untuk simpul data; panel LLM CALLS dari total sebenarnya.
-// Perilaku fungsi di basis data diuji terpisah di dalam transaksi yang digulung balik (changelog Tahap E).
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -29,7 +21,6 @@ const baca = (p) => readFileSync(join(AKAR, p), 'utf8');
 const kode = (p) => baca(p).split(/\r?\n/).filter((b) => !/^\s*(\/\/|\*)/.test(b)).join('\n');
 console.log('uji-graf-home-tahap-e v1');
 
-// ── 1. Migrasi ──────────────────────────────────────────────────────────────────────────────────
 const MIG = baca('supabase/migrations/20261102000000_graf_home_hitungan_pesan.sql').replace(/--[^\n]*/g, '');
 const fungsi = (nama) => MIG.match(new RegExp(`create or replace function public\\.${nama}\\([\\s\\S]*?\\$\\$;`))?.[0] || '';
 for (const f of ['hitungan_graf_home', 'pesan_percakapan_graf']) {
@@ -52,7 +43,6 @@ cek(/ragArray size=\$\{ctx\.state\.ragArray\.length\} \(termasuk \$\{externalDoc
   && /memoryArray size=\$\{projectMemResult\.memoryArray\.length\}`\)/.test(baca('supabase/functions/agent-process/lib/orchestration/handlers/context_builder.ts')),
   'format baris langkah yang dibaca migrasi masih sama dengan yang ditulis server');
 
-// ── 2. Angka → graf ─────────────────────────────────────────────────────────────────────────────
 const h = G.bacaHitunganGraf([{ jenis: 'pesan', id: 'c1', jumlah: 138 }, { jenis: 'potongan', id: 'd1', jumlah: 12 }, { jenis: 'pemakaian_model', id: null, jumlah: 1255 }, { jenis: 'pesan', id: 'c2', jumlah: 'x' }]);
 cek(h.pesanPerChat.c1 === 138 && !('c2' in h.pesanPerChat) && h.docChunkCounts.d1 === 12 && h.pemakaianModel === 1255, 'bacaHitunganGraf memetakan pesan, potongan, pemakaian model', h);
 cek(G.ukuranPercakapan(undefined) === 8 && G.ukuranPercakapan(0) === 4 && G.ukuranPercakapan(138) === 24 && G.ukuranPercakapan(20) === 10, 'ukuran percakapan 4–24 menurut jumlah pesan; tanpa angka tetap 8');
@@ -62,7 +52,6 @@ const graf = G.susunGrafHome({ ...tiruan, vitals: {}, pesanPerChat: { [id0]: 50 
 const c0 = graf.nodes.find((n) => n.id === `chat-${id0}`), c1 = graf.nodes.find((n) => n.id === `chat-${tiruan.chats[1].id}`);
 cek(c0.val === G.ukuranPercakapan(50) && c0.data.pesan === 50 && c1.val === 8 && !('pesan' in c1.data), 'simpul percakapan berukuran & membawa jumlah pesannya');
 
-// ── 3. Ekor pesan ───────────────────────────────────────────────────────────────────────────────
 const alatChat = ['web_search', 'memory_manager', 'deep_research', 'data_tabel', 'word_to_pdf'].map((name) => ({ name, aktif: true }));
 const lapisan = G.susunLapisanKemampuan({ alatChat, alatFolder: ALAT_SEMUA, konektorDikenal: KONEKTOR_DIKENAL, konektor: [], subagen: SUBAGEN });
 const baris = [
@@ -87,7 +76,6 @@ cek(/^Mamet · riset \[deep_research, knowledge_manager, researcher\]$/.test(n3.
 cek(G.labelTooltipAman({ name: 'Anda · <img src=x onerror=alert(1)>' }).includes('&lt;img'), 'cuplikan di tooltip tetap di-escape (teks, bukan HTML)');
 cek(G.simpulDirektori(G.gabungGraf(graf, tanpaLap).nodes).length === G.simpulDirektori(graf.nodes).length, 'pesan tak masuk Knowledge Directory');
 
-// ── 4. Penghindar tabrakan label ────────────────────────────────────────────────────────────────
 const terpakai = [];
 cek(G.bolehLabel([0, 0, 10, 10], terpakai) && !G.bolehLabel([5, 5, 15, 15], terpakai) && G.bolehLabel([10, 0, 20, 10], terpakai) && terpakai.length === 2,
   'bolehLabel: yang menindih dilewati, yang bersentuhan tepi boleh');
@@ -110,7 +98,6 @@ for (const [nama, opsi] of [['layar Owner', {}], ['1920×1080', { layar: { lebar
   }
 }
 
-// ── 5. Terpasang ────────────────────────────────────────────────────────────────────────────────
 const AG = kode('frontend/src/components/dashboard/ActivityGraph.jsx');
 cek((AG.match(/fillText\(/g) || []).length === 1 && /onRenderFramePost=\{[\s\S]*bolehLabel\(kotakLabel\([\s\S]*fillText\(/.test(AG) && /onRenderFramePre=\{\(\) => \{ antreanLabelRef\.current = \[\]; \}\}/.test(AG),
   'label dilukis SEKALI di akhir bingkai (onRenderFramePost) lewat bolehLabel/kotakLabel; antrean dikosongkan tiap bingkai');

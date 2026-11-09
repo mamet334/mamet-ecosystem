@@ -1,34 +1,11 @@
-// UJI 2026-10-02 — RAG yang mati sendiri tanpa memberi tahu.
-//
-// ── Cacatnya ────────────────────────────────────────────────────────────────────────────────
-// `generateEmbedding` mengembalikan array KOSONG untuk SEMUA kegagalan: tanpa kunci BYOK,
-// OpenRouter menolak, atau dimensi tak cocok. Sebabnya hilang di situ, dan akibatnya berbeda
-// di dua jalur:
-//
-//   DOKUMEN  — turun ke pencocokan KATA (KnowledgeService). Itu justru perilaku yang Item 64/65
-//              buktikan jauh lebih buruk: dokumen yang pertanyaannya tak memuat kata dari
-//              judulnya TIDAK DITEMUKAN SAMA SEKALI.
-//   MEMORI   — dilewati SELURUHNYA. Memori hanya bisa ditemukan lewat vektor; tak ada cadangan.
-//
-// Keduanya dulu hanya meninggalkan console.warn/console.error di sisi server, sementara
-// `processingSteps` — yang sampai ke pengguna — tetap melaporkan "✅ [RAG TIER 1 OK]" beserta
-// nama strategi internal. Jawabannya tampak normal. Mutunya tidak.
-//
-// ── Yang diuji sebagai PERILAKU ─────────────────────────────────────────────────────────────
-// Pintu embedding yang asli dijalankan di Node: sumber .ts-nya ditransformasi dengan esbuild
-// (paket lokal, bukan unduhan), lalu satu-satunya impornya ditukar penyedia vektor palsu yang
-// bisa disuruh gagal dengan cara tertentu. Jadi yang diuji kodenya, bukan teks kodenya.
 
 import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 
-// fileURLToPath, BUKAN .pathname: jalur repo ini memuat spasi ("mamet os ecosystem") dan
-// pathname menyimpannya sebagai %20 — menyusunnya kembali jadi URL menghasilkan %2520.
 const AKAR = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const baca = (p) => readFileSync(join(AKAR, p), 'utf8').replace(/\r\n/g, '\n');
-// Jebakan yang sudah dua kali menggigit di repo ini: uji tertipu komentar penjelas saya sendiri.
 const tanpaKomentar = (s) => s.split('\n').filter((b) => !/^\s*(\/\/|\*|\/\*)/.test(b)).join('\n');
 
 console.log('uji-rag-turun-bersuara v1');
@@ -38,7 +15,6 @@ const cek = (ok, pesan, rinci) => {
   if (!ok) gagal++;
 };
 
-// ── Siapkan pintu embedding yang asli agar bisa dijalankan ──────────────────────────────────
 const esbuild = await import(pathToFileURL(join(AKAR, 'frontend/node_modules/esbuild/lib/main.js')).href);
 const dir = mkdtempSync(join(tmpdir(), 'uji-embed-'));
 let generateEmbedding, kalimatSebabEmbedding;
@@ -61,7 +37,6 @@ export async function embedLewatOpenRouter() {
   const vektorBenar = new Array(768).fill(0.1);
   const rctxBerkunci = { keys: { openRouterByok: 'sk-palsu' } };
 
-  // ── A. Berhasil: tidak ada sebab yang dicatat ────────────────────────────────────────────
   console.log('\n-- A. jalan normal --');
   {
     globalThis.__palsu = { kembalikan: [vektorBenar] };
@@ -71,7 +46,6 @@ export async function embedLewatOpenRouter() {
     cek(jejak.sebab === undefined, 'tidak ada sebab yang dicatat saat berhasil', jejak);
   }
 
-  // ── B. Tiga sebab kegagalan dibedakan ────────────────────────────────────────────────────
   console.log('\n-- B. sebab kegagalan dibedakan --');
   {
     globalThis.__palsu = { kembalikan: [vektorBenar] };
@@ -90,7 +64,6 @@ export async function embedLewatOpenRouter() {
     cek(/402/.test(jejak.pesan || ''), 'kodenya ikut — 402 saldo habis bisa dibedakan dari galat jaringan', jejak.pesan);
   }
   {
-    // Dimensi tak cocok pernah berjalan diam-diam berminggu-minggu (Item 39).
     globalThis.__palsu = { kembalikan: [[1, 2, 3]] };
     const jejak = {};
     const v = await generateEmbedding('halo', rctxBerkunci, jejak);
@@ -100,14 +73,6 @@ export async function embedLewatOpenRouter() {
     cek(v.length === 3, 'nilai kembaliannya TIDAK diubah — pemanggil yang memeriksa dimensi', v);
   }
 
-  // ── C. Pengerasan `?? []`: yang berubah adalah TUDUHANNYA, bukan kembaliannya ────────────
-  // `const [vektor] = []` bernilai undefined. Tanpa `?? []`, `hasil.length` di bawahnya
-  // melempar TypeError — yang DITELAN oleh catch milik fungsi itu sendiri dan dilaporkan
-  // sebagai sebab 'galat' berisi "Cannot read properties of undefined". Jadi penyedia yang
-  // mengembalikan daftar kosong akan dituduh sebagai "OpenRouter menolak atau gagal".
-  //
-  // Kembaliannya `[]` pada KEDUA versi — itulah sebabnya asersi pada nilai kembalian hijau
-  // secara hampa dan uji mutasi M3 lolos sampai asersi ini ditulis ulang.
   console.log('\n-- C. daftar kosong dituduh dengan benar --');
   {
     globalThis.__palsu = { kembalikan: [] };
@@ -119,7 +84,6 @@ export async function embedLewatOpenRouter() {
       'tak ada TypeError internal yang menyamar sebagai sebab', jejak.pesan);
   }
 
-  // ── D. TIDAK merusak lima pemanggil yang tak mengirim jejak ──────────────────────────────
   console.log('\n-- D. tambahan, bukan perubahan --');
   {
     for (const [nama, palsu, rctx] of [
@@ -135,7 +99,6 @@ export async function embedLewatOpenRouter() {
     }
   }
 
-  // ── E. Kalimatnya bisa ditindaklanjuti, bukan nama keadaan internal ──────────────────────
   console.log('\n-- E. kalimat untuk Owner --');
   {
     cek(/BYOK|kunci/i.test(kalimatSebabEmbedding({ sebab: 'tanpa-kunci' })),
@@ -150,10 +113,6 @@ export async function embedLewatOpenRouter() {
   rmSync(dir, { recursive: true, force: true });
 }
 
-// ── F. Penurunannya BENAR-BENAR sampai ke processingSteps ───────────────────────────────────
-// Bagian ini diukur pada kode (menjalankan seluruh pipeline edge function di Node tidak
-// sepadan), tetapi pada kode TANPA KOMENTAR — komentar penjelas di atasnya menyebut
-// "processingSteps" dan "console.log", dan pernah membuat uji lain hijau secara keliru.
 console.log('\n-- F. sampai ke layar, bukan hanya log server --');
 {
   const CB = tanpaKomentar(baca('supabase/functions/agent-process/lib/orchestration/handlers/context_builder.ts'));
@@ -163,7 +122,6 @@ console.log('\n-- F. sampai ke layar, bukan hanya log server --');
     'ditandai ⚠️, bukan ikut tenggelam di antara penanda ✅');
   cek(/kalimatSebabEmbedding\(jejakVektor\)/.test(CB), 'sebabnya yang nyata dipakai, bukan kalimat umum');
   cek(/generateEmbedding\(pesan, rctx, jejakVektor\)/.test(CB), 'jejaknya benar-benar dikirim ke pintu embedding');
-  // Akibatnya yang harus Owner tahu: bukan "lebih lambat", tetapi BISA TIDAK DITEMUKAN.
   cek(/TIDAK ditemukan/.test(CB), 'akibatnya dikatakan terus terang pada pesannya');
   cek(/vektor yang dipakai ulang tak sesuai dimensi/.test(CB),
     'vektor pakai-ulang yang cacat juga punya sebab sendiri (jejak tak terisi di jalur itu)');
@@ -174,7 +132,6 @@ console.log('\n-- F. sampai ke layar, bukan hanya log server --');
     'dibedakan dari dokumen: memori TIDAK punya cadangan', (RP.match(/.*cadangan pencocokan kata.*/g) || []));
   cek(/generateEmbeddingThroughAdapter\(parsed\.finalMessage, rctx, jejakVektorMemori\)/.test(RP),
     'jejaknya dikirim lewat pembungkus pencarian memori');
-  // Galat RAG lain (bukan embedding) tidak boleh ikut mengaku sebagai kegagalan vektor.
   cek(/if \(jejakVektorMemori\.sebab\)/.test(RP) && /else \{/.test(RP),
     'galat non-embedding tetap punya cabangnya sendiri');
 }

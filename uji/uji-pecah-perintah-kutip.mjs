@@ -1,8 +1,4 @@
-// UJI 2026-09-23 — pecahPerintah: penyambung shell diperiksa HANYA di luar tanda kutip.
-// Bahan uji = perintah live yang ditolak 2026-09-23 (deepseek-v4-pro, TUGAS-04 lanjutan).
 import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { createRequire } from 'node:module';
 const require = createRequire(AKAR_REPO + '/frontend/');
@@ -15,7 +11,6 @@ const cek = (ok, pesan, rinci) => {
   if (!ok) gagal++;
 };
 
-// ---------- yang DULU ditolak padahal sah ----------
 const skrip = `node -e "const fs=require('fs');const p='frontend/src/core/runtime/services/engineer/IntentClassifier.js';const l=fs.readFileSync(p,'utf8').split('\\n');l.forEach((t,i)=>console.log(i+1,t))"`;
 let r = pecahPerintah(skrip);
 cek(!r.galat, 'skrip node -e dengan ";" DI DALAM kutip → diterima (live TUGAS-04 lanjutan)', r.galat);
@@ -27,7 +22,6 @@ cek(!r.galat, 'format git dengan "|" di dalam kutip → diterima', r.galat);
 r = pecahPerintah(`python -c "print(1);print(2)"`);
 cek(!r.galat, 'python -c dengan ";" di dalam kutip → diterima', r.galat);
 
-// ---------- yang HARUS tetap ditolak ----------
 for (const [p, alasan] of [
   ['git status && npm test', '&&'],
   ['git log | head -5', 'pipa'],
@@ -44,7 +38,6 @@ cek(!!r.galat && /baris baru/.test(r.galat), 'baris baru tetap ditolak di mana p
 r = pecahPerintah('node -e "const a=1');
 cek(!!r.galat && /kutip tidak ditutup/.test(r.galat), 'kutip tidak ditutup tetap ditolak');
 
-// ---------- perintah biasa tidak berubah ----------
 r = pecahPerintah('git grep -n logCommand -- frontend/src');
 cek(!r.galat && r.program === 'git' && r.argumen.join(' ') === 'grep -n logCommand -- frontend/src',
   'perintah biasa tetap terpecah seperti sebelumnya', r);

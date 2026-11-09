@@ -1,25 +1,5 @@
-// UJI 2026-10-01 — perintah BACA dijalankan tanpa persetujuan; yang krusial tetap ditanyakan.
-//
-// ── Keputusan Owner ─────────────────────────────────────────────────────────────────────────
-// *"perintah yang krusial saja yang perlu persetujuan saya… seperti anda menjalankan perintah dari
-// saya ini, anda tidak meminta approval. Baru hal yang akan kritis baru bertanya. Ini seperti
-// membuat ribet dengan hal yang sebenarnya aman."*
-//
-// Sebelum ini satu `git grep` menuntut DUA persetujuan — tombol Jalankan di chat, lalu dialog asli
-// dari proses utama — jadi lima perintah baca = sepuluh kali menyetujui, dan Owner jadi tangan model.
-//
-// ── Yang membuatnya aman bukan aturan baru ──────────────────────────────────────────────────
-// Melainkan yang SUDAH ada di PROFIL.engineer: git baca saja, `git branch` yang mengubah ditolak,
-// opsi yang menulis berkas / memanggil alat luar ditolak. Untuk git, dialog itu tidak menambah
-// perlindungan apa pun. Yang TETAP ditanyakan: `node -e`, `python -c`, program lain — itu kode
-// bebas yang tidak dibatasi pagar folder.
-//
-// Uji ini sebagian besar berisi percobaan MENEMBUS garis itu. Pelonggaran izin yang hanya diuji
-// dengan contoh yang seharusnya lolos bukan uji keamanan, itu hanya uji keberuntungan.
 
 import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
@@ -35,14 +15,12 @@ const cek = (ok, pesan, rinci) => {
   if (!ok) gagal++;
 };
 
-/** Menilai satu kalimat perintah lewat pemecah YANG SAMA dengan pelaksana. */
 const nilai = (teks, profil = PROFIL.engineer) => {
   const p = pecahPerintah(teks);
   if (p.galat) return { galatPecah: p.galat };
   return { aman: tanpaPersetujuan({ program: p.program, argumen: p.argumen, profil }) };
 };
 
-// ── 1. Yang memang aman: dijalankan tanpa bertanya ──────────────────────────────────────────
 console.log('\n-- baca: tanpa persetujuan --');
 for (const t of [
   `git grep -c "" -- frontend/src`,
@@ -61,7 +39,6 @@ for (const t of [
   cek(nilai(t).aman === true, `aman: ${t}`, nilai(t));
 }
 
-// ── 2. Yang TETAP ditanyakan ────────────────────────────────────────────────────────────────
 console.log('\n-- krusial: tetap minta izin --');
 for (const [t, sebab] of [
   [`node -e "console.log(1)"`, 'kode bebas — tidak dibatasi pagar folder'],
@@ -79,9 +56,6 @@ for (const [t, sebab] of [
   cek(h.aman === false || !!h.galatPecah, `minta izin: ${t} — ${sebab}`, h);
 }
 
-// ── 3. Percobaan menembus lewat opsi ────────────────────────────────────────────────────────
-// Inilah yang membuat "git itu cuma baca" bisa salah: beberapa opsi git MENJALANKAN program luar
-// atau MENULIS berkas, walau sub-perintahnya membaca.
 console.log('\n-- tembusan lewat opsi --');
 for (const [t, sebab] of [
   ['git diff --ext-diff', 'memanggil alat diff luar'],
@@ -95,17 +69,12 @@ for (const [t, sebab] of [
   cek(h.aman === false || !!h.galatPecah, `ditolak: ${t} — ${sebab}`, h);
 }
 
-// `git -c core.pager=…` menyisipkan konfigurasi SEBELUM sub-perintah: kalau penentu hanya mencari
-// sub-perintah di mana pun, perintah ini akan dikira "log" yang aman.
 console.log('\n-- sisipan konfigurasi sebelum sub-perintah --');
 {
   const h = tanpaPersetujuan({ program: 'git', argumen: ['-c', 'core.pager=kalkulator', 'log'], profil: PROFIL.engineer });
   cek(h === false, 'git -c <konfigurasi> log TIDAK dianggap aman', h);
 }
 
-// ── 4. Peran lain tidak ikut dilonggarkan ───────────────────────────────────────────────────
-// Profil assistant boleh `git add`/`commit` dan bekerja di folder pilihan Owner — pelonggaran ini
-// hanya untuk peran yang memang sudah dikunci ke git-baca.
 console.log('\n-- hanya peran engineer --');
 {
   cek(tanpaPersetujuan({ program: 'git', argumen: ['status'], profil: PROFIL.assistant }) === false,
@@ -116,7 +85,6 @@ console.log('\n-- hanya peran engineer --');
     'git tanpa sub-perintah tidak dianggap aman');
 }
 
-// ── 5. Terpasang di proses utama & layar ────────────────────────────────────────────────────
 console.log('\n-- terpasang --');
 {
   const MAIN = readFileSync(`${AKAR}/frontend/electron/main.cjs`, 'utf8').replace(/\r\n/g, '\n');
@@ -128,7 +96,6 @@ console.log('\n-- terpasang --');
   cek(/perintahAman: \(teks\) => ipcRenderer\.invoke\('engineer:perintah-aman', teks\)/.test(PRELOAD), 'dijembatani preload');
   cek(/tanpaPersetujuan \}\s*=\s*require\('\.\/alatFolderJalan\.cjs'\)/.test(MAIN), 'proses utama memakai penentu yang sama');
 
-  // Penegakannya ada di pelaksana, bukan di layar: layar hanya tahu perlu menunggu atau tidak.
   const JALAN = readFileSync(`${AKAR}/frontend/electron/alatFolderJalan.cjs`, 'utf8').replace(/\r\n/g, '\n');
   cek(/if \(tanpaPersetujuan\(\{ program, argumen, profil \}\)\) \{/.test(JALAN),
     'dialog dilewati di PELAKSANA, bukan hanya di layar');
@@ -138,9 +105,6 @@ console.log('\n-- terpasang --');
   cek(/handleSend\(null, hasil\.join\('\\n\\n'\)\)/.test(CE_KODE),
     'SATU kiriman untuk semua hasil — bukan satu panggilan model berbayar per perintah',
     (CE_KODE.match(/.*hasil\.join.*/g) || []));
-  // v2 (2026-10-19, Item 127 Tahap 1): ingatan "sudah dijalankan" kini hidup DI LUAR layar
-  // (`useRefTersimpan`) — tanpa itu, layar yang dipasang ulang lupa dan bisa menjalankan ulang perintahnya.
-  // Niat yang dijaga sama: sebuah Set di ref, bukan nama fungsi pembuatnya.
   cek(/const cmdOtomatisRef = (?:useRef\(new Set\(\)\)|useRefTersimpan\(kunciSesi, '[a-zA-Z]+', \(\) => new Set\(\)\))/.test(CE_KODE),
     'perintah yang sudah jalan tidak diulang');
   cek(/if \(chatOtomatisRef\.current !== currentChatId\)/.test(CE_KODE),

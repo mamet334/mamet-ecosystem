@@ -1,15 +1,3 @@
-// UJI 2026-10-20 — Item 128 Tahap C: pilihan "Kurangi gerakan" di Settings › Tampilan.
-//
-// Kenapa ada: gerak dekoratif (51 animasi — kedipan peringatan, ikon putar, titik berdenyut) ditunda Owner sebagai
-// pekerjaan tetap dan dibawa ke tema sebagai PILIHAN PENGGUNA (ROADMAP-TEMA-APLIKASI.md §2). Bawaannya mengikuti
-// setelan animasi Windows, jadi pengguna yang tak mengubah apa pun melihat aplikasi persis seperti sebelumnya. Yang
-// dijaga:
-//   1. LOGIKA — 'sistem' (bawaan) mengikuti prefers-reduced-motion; 'kurangi' selalu; 'normal' tak pernah.
-//   2. CSS — saat dikurangi, SEMUA animasi & transisi berhenti (WCAG 2.2: 2.2.2, 2.3.3), dengan durasi sangat
-//      kecil (bukan `none`) supaya peristiwa animationend tetap terjadi.
-//   3. TERPASANG — TemaService menulis data-gerak, mendengarkan perubahan setelan Windows; pilihan ikut tersimpan
-//      di akun bersama tema (satu objek `tampilan`).
-//   4. SETTINGS — tiga pilihan sebagai radiogroup (dapat diakses), keadaan saat ini diberitahukan.
 
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -31,7 +19,6 @@ const cek = (syarat, pesan, detail) => {
 const T = await import(pathToFileURL(join(AKAR, 'frontend/src/core/runtime/services/tema.js')).href);
 const meta = JSON.parse(baca('frontend/public/metadata/themes.json'));
 
-// ── 1. Logika ───────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 1. logika kurangi gerakan --');
 cek(T.normalisasiSetelan(null, meta).gerak === 'sistem' && T.normalisasiSetelan({ gerak: 'aneh' }, meta).gerak === 'sistem',
   'bawaan & nilai tak dikenal → ikuti sistem (aplikasi tampil seperti sebelumnya)');
@@ -40,7 +27,6 @@ cek(T.gerakDikurangi({ gerak: 'kurangi' }, false) === true, '"Kurangi" selalu me
 cek(T.gerakDikurangi({ gerak: 'normal' }, true) === false, '"Normal" tak pernah mengurangi, apa pun setelan Windows');
 cek(JSON.stringify(T.PILIHAN_GERAK) === JSON.stringify(['sistem', 'kurangi', 'normal']), 'tiga pilihan: sistem · kurangi · normal');
 
-// ── 2. CSS ──────────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 2. aturan CSS --');
 const css = baca('frontend/src/index.css').replace(/\/\*[\s\S]*?\*\//g, '');
 const blok = (css.match(/html\[data-gerak="kurangi"\] \*,\s*html\[data-gerak="kurangi"\] \*::before,\s*html\[data-gerak="kurangi"\] \*::after \{([^}]*)\}/) || [])[1] || '';
@@ -50,14 +36,12 @@ for (const [sifat, nilai] of [['animation-duration', '0.01ms'], ['animation-iter
 cek(!/animation:\s*none/.test(blok), 'durasi sangat kecil, BUKAN `animation: none` — animationend tetap terjadi');
 cek(/html\[data-gerak="kurangi"\] \{\s*scroll-behavior: auto !important;/.test(css), 'gulir halus pada <html> ikut dimatikan');
 
-// Peramban (Chromium) — dibuktikan 20 Okt di pane: ikon putar memakai animation-duration 1e-05s saat dikurangi.
 const reqFE = createRequire(join(AKAR, 'frontend', 'package.json'));
 const postcss = reqFE('postcss'), tailwind = reqFE('tailwindcss'), loadConfig = reqFE('tailwindcss/loadConfig');
 const { css: keluar } = await postcss([tailwind({ ...loadConfig(join(AKAR, 'frontend', 'tailwind.config.js')), content: [{ raw: '<i className="animate-spin animate-pulse animate-ping">', extension: 'jsx' }] })])
   .process('@tailwind utilities;', { from: undefined });
 cek(/\.animate-spin\s*\{\s*animation:/.test(keluar), 'kelas animasi Tailwind memakai `animation:` (shorthand) — diwarisi oleh aturan !important di atas');
 
-// ── 3. Terpasang ────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 3. terpasang di TemaService --');
 const TS = tanpaKomentar(baca('frontend/src/core/runtime/services/TemaService.js'));
 cek(/html\.dataset\.gerak = this\.gerakTampilDikurangi\(\) \? 'kurangi' : 'normal';/.test(TS), 'data-gerak ditulis ke <html> setiap kali tampilan diterapkan');
@@ -66,7 +50,6 @@ cek(/matchMedia\('\(prefers-reduced-motion: reduce\)'\)/.test(TS) && /this\.mqGe
 cek(/s\.gerak === this\.setelan\.gerak/.test(TS), 'sinkron dari akun membandingkan pilihan gerakan juga');
 cek(/updateUser\(\{ data: \{ tampilan: this\.setelan \} \}\)/.test(TS), 'pilihan gerakan tersimpan di akun bersama tema (satu objek tampilan)');
 
-// ── 4. Settings ─────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 4. Settings › Tampilan › Gerakan --');
 const BT = tanpaKomentar(baca('frontend/src/components/BagianTampilan.jsx'));
 const pilihan = [...BT.matchAll(/\{ id: '(sistem|kurangi|normal)', nama: '([^']+)'/g)].map((m) => `${m[1]}=${m[2]}`);
@@ -75,9 +58,6 @@ cek(/role="radiogroup" aria-label="Gerakan"/.test(BT) && /role="radio"\s+aria-ch
 cek(/onClick=\{\(\) => simpan\(\{ gerak: g\.id \}\)\}/.test(BT), 'memilih = menyimpan lewat TemaService');
 cek(/temaService\.gerakTampilDikurangi\(\)/.test(BT), 'keadaan gerakan SAAT INI diberitahukan (termasuk bila mengikuti Windows)');
 
-// ── 5. Lampu (v2) ───────────────────────────────────────────────────────────────────────────────
-// Owner 20 Okt: wujud A (pendar saja), 25% kekuatan layar masuk, bisa dinyalakan/dimatikan. Kontras & salinan
-// LampLogin-nya dijaga uji-latar-ruangan (4b). Di sini: logika, penerapan, dan saklarnya.
 console.log('\n-- 5. lampu ruangan --');
 cek(T.normalisasiSetelan(null, meta).lampu === false && T.normalisasiSetelan({ lampu: 'ya' }, meta).lampu === false, 'lampu MATI bawaannya (keputusan Owner) — nilai tak sah juga mati');
 cek(T.lampuNyala({ lampu: true }, true) === true, 'lampu nyala + latar nyala → pendar tampil');

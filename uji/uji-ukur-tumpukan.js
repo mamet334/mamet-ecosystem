@@ -1,24 +1,3 @@
-// UKUR TUMPUKAN APLIKASI (Item 127 Tahap 0, 2026-10-19) — berapa biaya 11 aplikasi yang hidup bersamaan.
-//
-// Kenapa ada: `ApplicationContainer.jsx` merender SEMUA aplikasi terdaftar dan hanya menyembunyikan yang
-// tidak aktif (`hidden`) — termasuk tiga salinan ConversationEngine (Assistant · Mametlite · Engineer).
-// Tahap 1 roadmap mengubahnya jadi satu halaman pada satu waktu. Skrip ini mengambil GARIS DASAR
-// sebelum perubahan itu, supaya manfaatnya kelak diukur, bukan dikira. Kalau ternyata kecil, roadmap
-// mencatatnya apa adanya (ROADMAP-TAMPILAN-MENU-GAME.md §7 Tahap 0 butir 2).
-//
-// HANYA MEMBACA. Tidak menulis ke database, localStorage, atau keadaan aplikasi. Tidak memanggil model.
-//
-// Pemakaian — sudah login, aplikasi diam (tidak ada jawaban yang sedang mengalir):
-//   1. buka DevTools (Ctrl+Shift+I) → tab Console
-//   2. tempel SELURUH isi berkas ini → Enter
-//   3. jalankan:  await ukurTumpukanMamet()
-//   4. salin JSON yang dicetak (juga dikembalikan sebagai nilai)
-// Di `npm run desktop` (mode dev) hasilnya paling lengkap: `window.__mamet` hanya ada di mode dev, dan
-// tanpanya jumlah pendengar EventBus & urutan nama aplikasi tidak bisa dibaca.
-//
-// Berkas `uji-*.js` tidak dijalankan `jalankan-semua.mjs` (modul konsol, bukan uji baris perintah).
-// Ia sengaja bisa DITEMPEL, bukan diimpor: `vite.config` hanya mengizinkan `.` dan `../tools` untuk
-// `/@fs/`, jadi folder `uji/` di akar repo tidak bisa diimpor dari konsol.
 
 (() => {
   const VERSI = 1;
@@ -26,12 +5,11 @@
   window.ukurTumpukanMamet = async function ukurTumpukanMamet({ detikDiam = 15 } = {}) {
     console.log(`[UKUR-TUMPUKAN] versi skrip ${VERSI} — mengamati ${detikDiam} detik, jangan sentuh aplikasi…`);
 
-    // ── Pembungkus aplikasi di <main> (ApplicationContainer) ────────────────────────────────────
     const main = document.querySelector('main');
     const pembungkus = main ? [...main.children] : [];
     const sm = window.__mamet?.serviceManager || null;
     let namaApp = [];
-    try { namaApp = sm?.get('ApplicationManager')?.getState()?.apps?.map((a) => a.id) || []; } catch { /* mode produksi */ }
+    try { namaApp = sm?.get('ApplicationManager')?.getState()?.apps?.map((a) => a.id) || []; } catch {  }
 
     const simpul = (el) => el.getElementsByTagName('*').length + 1;
     const perAplikasi = pembungkus.map((el, i) => ({
@@ -45,7 +23,6 @@
     const terlihat = perAplikasi.filter((a) => a.terlihat);
     const tersembunyi = perAplikasi.filter((a) => !a.terlihat);
 
-    // ── Pendengar EventBus (hanya mode dev) ─────────────────────────────────────────────────────
     let pendengarEventBus = null;
     try {
       const bus = sm?.get('EventBus');
@@ -56,23 +33,19 @@
         terbanyak.sort((a, b) => b[1] - a[1]);
         pendengarEventBus = { total, jenisEvent: bus.listeners.size, terbanyak: terbanyak.slice(0, 10) };
       }
-    } catch { /* biarkan null */ }
+    } catch {  }
 
-    // ── Kanal realtime Supabase yang terbuka ────────────────────────────────────────────────────
     let kanalRealtime = null;
     try {
       const { supabase } = await import('/src/supabase.js');
       kanalRealtime = supabase.getChannels().map((c) => c.topic);
-    } catch { /* mode produksi: modul tidak bisa diimpor dari konsol */ }
+    } catch {  }
 
-    // ── Tata letak workbench yang TERSIMPAN di mesin ini ────────────────────────────────────────
-    // WorkspaceManager.js:150 memulihkan tata letak dari localStorage. Inilah satu-satunya cara tahu
-    // apakah widget selain Monitor MAEF pernah/masih muncul di layar Owner — kode saja tidak bisa.
     const tataLetakTersimpan = Object.keys(localStorage)
       .filter((k) => /^mamet_v[34]_.*_layout_/.test(k))
       .map((k) => {
         let v = null;
-        try { v = JSON.parse(localStorage.getItem(k)); } catch { /* rusak */ }
+        try { v = JSON.parse(localStorage.getItem(k)); } catch {  }
         return {
           kunci: k,
           kiri: v?.left_workbench ?? null,
@@ -82,14 +55,12 @@
         };
       });
 
-    // ── Kerja di latar selama aplikasi DIAM ─────────────────────────────────────────────────────
-    // Tugas panjang (≥ 50 ms) saat Owner tidak melakukan apa pun = kerja aplikasi yang tersembunyi.
     const tugasPanjang = [];
     let obs = null;
     try {
       obs = new PerformanceObserver((l) => l.getEntries().forEach((e) => tugasPanjang.push(Math.round(e.duration))));
       obs.observe({ type: 'longtask', buffered: false });
-    } catch { /* tak didukung */ }
+    } catch {  }
     const heapAwal = performance.memory?.usedJSHeapSize ?? null;
     await new Promise((r) => setTimeout(r, detikDiam * 1000));
     obs?.disconnect();

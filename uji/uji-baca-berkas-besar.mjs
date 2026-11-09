@@ -34,7 +34,7 @@ const hasilGrep = git('grep', '-n', '-B2', '-A4', KATA_KUNCI, '--', BERKAS);
 cek(hasilGrep.length < BATAS_KELUARAN, `git grep muat dalam batas (${hasilGrep.length} bita)`, hasilGrep.length);
 cek(/engineer\.js:\d+:/.test(hasilGrep), 'git grep mengembalikan NOMOR BARIS');
 cek(hasilGrep.includes(KATA_KUNCI), 'git grep MENJANGKAU baris yang pembacaan utuh tidak bisa capai');
-cek(utuh.length / hasilGrep.length > 5,
+cek(utuh.length / hasilGrep.length > 20,
   `git grep puluhan kali lebih kecil (${Math.round(utuh.length / hasilGrep.length)}×)`,
   Math.round(utuh.length / hasilGrep.length));
 

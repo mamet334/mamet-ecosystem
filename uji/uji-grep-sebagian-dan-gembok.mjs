@@ -1,27 +1,5 @@
-// UJI 2026-10-02 — dua hal yang membuat Engineer salah membaca buktinya sendiri.
-//
-// Keduanya dilaporkan Owner dalam satu napas, dan keduanya menyangkut MUTU BUKTI — yang menentukan
-// benar-tidaknya patch yang dihasilkan:
-//
-//   *"kenapa engineer terlalu cepat mengambil kesimpulan? padahal grep yang dijalankan hanya
-//    menghasilkan separuh isinya."*
-//   *"perintah grep adalah hal wajar kan, kenapa harus terbatas (ketika ingin saya jalankan di ui
-//    engineer masih ada ikon gembok)."*
-//
-// ── A. grep terbaca sebagai isi berkas ──────────────────────────────────────────────────────
-// `git grep` mengembalikan BARIS YANG COCOK. Tidak ada yang dipotong, jadi `petunjukKeluaranTerpotong`
-// diam dan tidak ada catatan kaki apa pun. Hasil yang rapi tanpa tanda justru paling meyakinkan —
-// pandangan TERSARING disangka KESELURUHAN.
-//
-// ── B. satu gembok, dua arti ────────────────────────────────────────────────────────────────
-// `(ditolakAturan || ditolakProsedur) ? 'blocked'` membuat layar menulis kalimat yang SAMA untuk:
-//   · aturan melarang Engineer (mis. npm install) — benar
-//   · perintah sama persis sudah dijalankan tadi   — BOHONG, perintahnya boleh
-// Owner melihat gembok pada `git grep`-nya dan menyimpulkan grep dibatasi. Yang salah layarnya.
 
 import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { pathToFileURL } from 'node:url';
 import { readFileSync } from 'node:fs';
@@ -40,7 +18,6 @@ const cek = (ok, pesan, rinci) => {
 const hasil = (keluaran) => ({ ok: true, keluaran });
 const TIGA = 'a.js:1:satu\na.js:9:dua\nb.js:4:tiga';
 
-// ── A1. Menyala pada grep polos ─────────────────────────────────────────────────────────────
 console.log('\n-- menyala pada grep polos --');
 {
   const t = petunjukGrepSebagian('git grep -n "capability" -- frontend/src', hasil(TIGA));
@@ -53,8 +30,6 @@ console.log('\n-- menyala pada grep polos --');
     'TIDAK melarang kesimpulan yang memang sah dari grep — kalau tidak, penjaganya jadi gangguan', t);
 }
 
-// ── A2. DIAM ketika model sudah tahu ────────────────────────────────────────────────────────
-// Penjaga yang berbunyi di saat yang salah akan diabaikan juga di saat yang benar.
 console.log('\n-- diam ketika tak perlu --');
 for (const p of [
   'git grep -n -A4 "pola" -- frontend/src',
@@ -75,7 +50,6 @@ cek(petunjukGrepSebagian('git grep -n "x" -- src', hasil('')) === null, 'keluara
 cek(petunjukGrepSebagian('git grep -n "x" -- src', { ok: false, keluaran: TIGA }) === null, 'perintah gagal → diam');
 cek(petunjukGrepSebagian(null, null) === null, 'argumen kosong aman');
 
-// ── A3. Terpasang di jalur hasil perintah ───────────────────────────────────────────────────
 console.log('\n-- terpasang --');
 {
   const AS = readFileSync(`${AKAR}/frontend/src/core/runtime/services/AssistantService.js`, 'utf8').replace(/\r\n/g, '\n');
@@ -84,13 +58,11 @@ console.log('\n-- terpasang --');
   cek(/const petunjukGrep = petunjukGrepSebagian\(perintah, h\);/.test(KODE), 'dipanggil pada hasil perintah');
   cek(/if \(petunjukGrep\) output \+= /.test(KODE), 'ditempel ke keluaran yang dikirim ke model');
 
-  // Urutannya: sesudah dua penjaga lama, supaya yang paling spesifik dibaca lebih dulu.
   const iPotong = KODE.indexOf('petunjukKeluaranTerpotong(perintah, h)');
   const iGrep = KODE.indexOf('petunjukGrepSebagian(perintah, h)');
   cek(iPotong > 0 && iGrep > iPotong, 'ditambahkan SESUDAH penjaga pemotongan, bukan menggantikannya');
 }
 
-// ── B. Gembok tidak lagi menuduh pengulangan sebagai larangan ───────────────────────────────
 console.log('\n-- dua arti gembok dipisah --');
 {
   const CE = readFileSync(`${AKAR}/frontend/src/components/workbench/ConversationEngine.jsx`, 'utf8').replace(/\r\n/g, '\n');
@@ -109,14 +81,12 @@ console.log('\n-- dua arti gembok dipisah --');
   cek(!/Jalankan sendiri di terminal/.test(blok),
     'tidak lagi menyuruh Owner ke terminal untuk sesuatu yang hasilnya sudah ada di layar');
 
-  // Larangan yang SUNGGUHAN tidak boleh ikut melunak.
   const iBlok = KODE.indexOf("state.status === 'blocked'");
   const blokLarangan = KODE.slice(iBlok, iBlok + 500);
   cek(/Tidak diizinkan untuk Engineer/.test(blokLarangan), 'larangan sungguhan tetap tegas');
   cek(/material-symbols-outlined[^>]*>lock</.test(blokLarangan.replace(/\s+/g, ' ')) || /lock/.test(blokLarangan),
     'larangan sungguhan tetap memakai gembok');
 
-  // Ikon keadaan baru WAJIB ada di subset font (sudah 3x menggigit).
   const subset = new Set(readFileSync(`${AKAR}/frontend/src/assets/fonts/daftar-ikon.txt`, 'utf8').split(/\r?\n/).map((s) => s.trim()).filter(Boolean));
   const ikon = (blok.match(/material-symbols-outlined[^>]*>\s*([a-z0-9_]+)\s*</) || [])[1];
   cek(!!ikon && subset.has(ikon), `ikon keadaan diulang ("${ikon}") ada di subset font`);

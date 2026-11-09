@@ -1,12 +1,3 @@
-// UJI 2026-11-05 — GH3: login perangkat (device flow) untuk GitHub tanpa rahasia klien (K25), normalisasi galat OAuth
-// ber-status 200 (fetchOAuthJujur), dan tombol Batal login. Server tiruan bergaya GitHub (uji/lib/serverOAuthTiruan.cjs,
-// `gayaGithub`): tanpa DCR, klien terdaftar, galat token dengan status 200, device flow.
-//
-// Yang dijaga:
-//   - kode pengguna tampil di Mamet; halaman perangkat dibuka HANYA bila asalnya sama dengan server otorisasi;
-//   - device_code (rahasia sementara) tidak pernah sampai ke layar; token disimpan terenkripsi;
-//   - authorization_pending / slow_down / access_denied / batal ditangani; tanpa rahasia klien sama sekali;
-//   - galat 200 GitHub terbaca jujur (bukan "access_token undefined"); pembaruan yang butuh rahasia → K23.
 
 import { createRequire } from 'node:module';
 import { mkdtempSync, readFileSync } from 'node:fs';
@@ -20,7 +11,6 @@ const K = path.join(AKAR, 'frontend', 'electron', 'konektor');
 const { validasiResep } = require(path.join(K, 'resep.cjs'));
 const { buatFetchOAuthJujur } = require(path.join(K, 'fetchOAuthJujur.cjs'));
 const { buatJaringanKonektor } = require(path.join(K, 'jaringanKonektor.cjs'));
-// Dasar membaca fetch global SAAT dipanggil — bagian 2 menggantinya dengan jawaban tiruan.
 const fetchOAuthJujur = buatFetchOAuthJujur((...a) => globalThis.fetch(...a));
 const { buatAlurOAuth } = require(path.join(K, 'alurOAuth.cjs'));
 const { buatPenyediaOAuth } = require(path.join(K, 'oauthPenyedia.cjs'));
@@ -40,7 +30,6 @@ const cek = (ok, pesan, rinci) => {
 const tunggu = (ms) => new Promise((r) => setTimeout(r, ms));
 const tungguSampai = async (f, ms = 8000) => { const akhir = Date.now() + ms; while (Date.now() < akhir) { const v = f(); if (v) return v; await tunggu(50); } return null; };
 
-// ── 1. Resep ────────────────────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 1. resep --');
 const dasar = { id: 'gh', nama: 'GH', jenis: 'http', http: { url: 'https://api.githubcopilot.com/mcp/' }, oauth: true, oauthKlienId: 'Iv23li3SbHZO7UlcxipI' };
 cek(validasiResep({ ...dasar, oauthAlur: 'perangkat' }).resep?.oauthAlur === 'perangkat', 'resep: "oauthAlur": "perangkat"');
@@ -48,7 +37,6 @@ cek(!validasiResep({ ...dasar, oauthKlienId: undefined, oauthAlur: 'perangkat' }
 cek(!validasiResep({ ...dasar, oauthAlur: 'sihir' }).ok && !validasiResep({ id: 'x2', nama: 'x', jenis: 'http', http: { url: 'https://a.com' }, oauthAlur: 'perangkat' }).ok,
   'oauthAlur hanya browser/perangkat & hanya untuk resep OAuth');
 
-// ── 2. fetchOAuthJujur ──────────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 2. galat 200 --');
 const asliFetch = globalThis.fetch;
 const jawab = (status, isi, jenis = 'application/json') => async () => new Response(typeof isi === 'string' ? isi : JSON.stringify(isi), { status, headers: { 'content-type': jenis } });
@@ -63,7 +51,6 @@ globalThis.fetch = jawab(200, 'error=x', 'text/plain');
 cek((await fetchOAuthJujur('https://x')).status === 200, 'jawaban bukan JSON tidak diubah');
 globalThis.fetch = asliFetch;
 
-// ── 2b. Jaringan konektor: net.fetch, tanpa cookie, hanya http/https ("Black October") ───────────────────────
 console.log('\n-- 2b. jaringan --');
 const dikirim = [];
 const jaringan = buatJaringanKonektor(async (u, init) => { dikirim.push({ u: String(u), init }); return new Response('{}', { status: 200 }); });
@@ -81,7 +68,6 @@ cek(/ambil: net\.fetch,/.test(MAIN) && /buatJaringanKonektor\(ambil \|\| globalT
 cek(/fetchJaringan: jaringan/.test(IPCJ) && /fetchFn: jaringan/.test(IPCJ) && /\.\.\.\(ambil \? \{ fetch: ambil \} : \{\}\)/.test(baca('frontend/electron/konektor/transport.cjs')),
   'jaringan itu dipakai transport HTTP MCP & alur OAuth (bukan fetch() Node bawaan SDK)');
 
-// ── 3. Login perangkat ──────────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 3. login perangkat --');
 const srv = await mulai({ gayaGithub: true, webButuhRahasia: true });
 const dir = mkdtempSync(path.join(os.tmpdir(), 'mamet-gh3-'));
@@ -149,7 +135,6 @@ try { await loginPerangkat({ meta: { device_authorization_endpoint: `${srv.base}
 catch (e) { galatTanpaId = e.message; }
 cek(/client_id/.test(galatTanpaId || '') && srv.keadaan.perangkat.size === kodeSebelum, 'login perangkat tanpa client_id ditolak sebelum meminta kode (lapis kedua di bawah resep)', galatTanpaId);
 
-// ── 4. Login browser bergaya GitHub: alasan galat terbaca jujur ─────────────────────────────────────────────
 console.log('\n-- 4. browser github --');
 const bukaIkut = async (u) => { const r1 = await fetch(u, { redirect: 'manual' }); const l = r1.headers.get('location'); if (l) await fetch(l); };
 const alurWeb = buatAlurOAuth({ daftar, brankas, bukaBrowser: bukaIkut, versi: 'uji' });
@@ -165,7 +150,6 @@ alurDiam.batalkan('gh-browser');
 h = await janji;
 cek(!h.ok && Date.now() - mulaiB < 1500, 'Batal juga menghentikan login browser (tak menunggu 5 menit)', h);
 
-// ── 5. Sesi dengan token perangkat; pembaruan butuh rahasia (K23) ───────────────────────────────────────────
 console.log('\n-- 5. sesi --');
 janji = alur.hubungkan('gh-perangkat');
 t = await tungguSampai(() => alur.loginTertunda('gh-perangkat')?.kodePengguna && alur.loginTertunda('gh-perangkat'));
@@ -191,7 +175,6 @@ try {
 }
 cek(!log.some((m) => /at_[0-9a-f]{6}|rt_[0-9a-f]{6}|dev_[0-9a-f]{6}/.test(m)), 'log tanpa token / device_code', log);
 
-// ── 6. Sambungan & layar (statis) ───────────────────────────────────────────────────────────────────────────
 console.log('\n-- 6. sambungan --');
 const IPC = baca('frontend/electron/konektor/ipcUmum.cjs');
 const PRE = baca('frontend/electron/preload.cjs');

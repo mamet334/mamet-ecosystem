@@ -1,7 +1,3 @@
-// [BELUM FUNGSIONAL] Dipindah apa adanya dari ToolRegistryService.js (initialize()) ke folder tools/
-// untuk konsistensi lokasi ("semua tool terkumpul di tools/"). Referensi `memoryService` di bawah
-// TIDAK pernah diimport — akan error kalau benar-benar dieksekusi. Bug lama, di luar scope
-// pemindahan ini (lihat changelog 2026-09-09 folder tools/).
 export default {
   name: 'memory_manager',
   description: 'Menyimpan, mencari, dan mengelola User Memory di Supabase',

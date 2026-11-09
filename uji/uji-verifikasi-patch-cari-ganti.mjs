@@ -1,8 +1,4 @@
-// UJI T10 (2026-09-22) — pemeriksa server PATCH_ENGINEERING menerima patch cari-ganti (bentuk PatchGenerator.js).
-// Teks jawaban model PERSIS dari log live yang dulu diblokir "must be a string, got object".
 import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
@@ -43,7 +39,6 @@ for (const [nama, isi] of [
   cek(r.decision === 'FAIL', `ditolak: ${nama}`, p02(r)?.message);
 }
 
-// Pindai kode berbahaya kini membaca isi "replace" (dulu "[object Object]")
 r = periksa(JSON.stringify({ 'frontend/a.js': { __mode: 'search_replace', changes: [{ search: 'x', replace: 'const f = eval(input);' }] } }));
 cek(r.decision === 'FAIL' && r.checks.some((c) => c.id === 'CHECK_P03_NO_DANGEROUS_PATTERNS' && c.status === 'FAIL'), 'eval() di dalam "replace" tertangkap pindai P03', r.checks.map((c) => `${c.id}:${c.status}`));
 

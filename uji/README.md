@@ -82,7 +82,9 @@ Ketiganya lahir dari kegagalan nyata; rinciannya di `constitution/28`.
    tetap hijau walau kode aslinya berubah. Kalau logikanya terkurung di komponen React, pindahkan keluar
    supaya bisa diimpor — pola yang sudah terbukti di `pemulihanChat.js`, `KonteksChat.js`, `IngatanTemuan.js`.
 
-   Bila benar-benar tidak ada jalan lain, tulis satu baris `UJI-CERMIN:` di berkas itu beserta alasannya.
+   Bila benar-benar tidak ada jalan lain, tulis satu konstanta string `const CERMIN = 'UJI-CERMIN: …'` di
+   berkas itu beserta alasannya (bukan komentar — kode Ecosystem tanpa komentar penjelas, dan komentar
+   bisa terhapus oleh `scripts/hapus-komentar.mjs`).
    Penanda itu dibaca `jalankan-semua.mjs`, dan berkasnya **tidak dihitung sebagai bukti keselamatan patch**
    oleh verifikasi Tahap 6 — jumlahnya ikut dilaporkan walau semuanya hijau. Menandai bukan izin untuk
    menambah uji cermin; ia membuat utangnya terlihat.

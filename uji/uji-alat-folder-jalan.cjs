@@ -1,5 +1,3 @@
-// UJI Item 85 Tahap 3 — folder_run (alatFolderJalan.cjs) dengan program NYATA di folder sementara + larangan .git di
-// alat tulis. Jalankan: node node_modules/.uji-rag/uji-alat-folder-jalan.cjs (dari folder frontend).
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -24,7 +22,6 @@ const tolak = { mintaIzin: async (p) => { dialog.push(p); return false; } };
 const jalan = (p, deps = izinkan) => jalankanAlatJalan(akar, { alat: 'folder_run', ...p }, deps);
 
 (async () => {
-  // 1. Jalan normal + dialog menampilkan perintah & isi skrip
   dialog.length = 0;
   let h = await jalan({ program: 'python', argumen: ['app.py'] });
   cek(h.ok && h.kodeKeluar === 0 && h.keluaran.includes('TOTAL 6'), 'python app.py → keluaran "TOTAL 6", kode 0', h);
@@ -32,11 +29,9 @@ const jalan = (p, deps = izinkan) => jalankanAlatJalan(akar, { alat: 'folder_run
   h = await jalan({ program: 'python.exe', argumen: ['-c', 'import sys; sys.exit(3)'] });
   cek(h.ok && h.kodeKeluar === 3, 'kode keluar bukan 0 dilaporkan apa adanya (python.exe → python)', h);
 
-  // 2. Tolak = tidak dijalankan
   h = await jalan({ program: 'python', argumen: ['jejak.py'] }, tolak);
   cek(!h.ok && h.ditolakOwner && !fs.existsSync(path.join(akar, 'jejak.txt')), 'Tolak → skrip TIDAK jalan (jejak.txt tak tercipta)', h);
 
-  // 3. Program di luar daftar / shell → ditolak SEBELUM dialog
   const sebelum = dialog.length;
   const serangan = [
     [{ program: 'cmd', argumen: ['/c', 'dir'] }, 'cmd'],
@@ -64,15 +59,12 @@ const jalan = (p, deps = izinkan) => jalankanAlatJalan(akar, { alat: 'folder_run
   }
   cek(dialog.length === sebelum, `${serangan.length} permintaan ditolak tanpa dialog muncul`);
 
-  // 4. Argumen relatif di dalam folder & "HEAD..main" tetap boleh
   h = await jalan({ program: 'python', argumen: ['sub/../app.py'] });
   cek(h.ok && h.keluaran.includes('TOTAL 6'), 'argumen sub/../app.py (tetap di dalam) → jalan', h);
 
-  // 5. Tanpa shell: & | > diteruskan sebagai teks, bukan perintah kedua
   h = await jalan({ program: 'python', argumen: ['-c', 'import sys; print(sys.argv[1])', 'a & echo BOCOR > bocor.txt | calc'] });
   cek(h.ok && h.keluaran.trim() === 'a & echo BOCOR > bocor.txt | calc' && !fs.existsSync(path.join(akar, 'bocor.txt')), 'metakarakter shell = teks biasa (tak ada bocor.txt)', h);
 
-  // 6. Program palsu di folder kerja tidak terpilih, walau folder itu di depan PATH
   fs.writeFileSync(path.join(akar, 'python.exe'), 'bukan program');
   const exe = cariExe('python', akar, { PATH: `${akar};.;${process.env.PATH}` });
   cek(exe && !exe.toLowerCase().startsWith(akar.toLowerCase()) && !/WindowsApps/i.test(exe), `python.exe palsu di folder kerja dilewati → ${exe}`);
@@ -80,29 +72,17 @@ const jalan = (p, deps = izinkan) => jalankanAlatJalan(akar, { alat: 'folder_run
   cek(h.ok && h.keluaran.includes('TOTAL 6'), 'jalan dengan python asli walau PATH diawali folder kerja', h);
   fs.unlinkSync(path.join(akar, 'python.exe'));
 
-  // 7. Rahasia dibuang dari lingkungan
   h = await jalankanAlatJalan(akar, { alat: 'folder_run', program: 'python', argumen: ['-c', "import os; print(os.environ.get('OPENROUTER_API_KEY'), os.environ.get('MY_TOKEN'), os.environ.get('SUPABASE_URL'), os.environ.get('SystemRoot') is not None)"] },
     { ...izinkan, env: { ...process.env, OPENROUTER_API_KEY: 'sk-or-uji', MY_TOKEN: 'tok-uji', SUPABASE_URL: 'https://x' } });
   cek(h.ok && h.keluaran.trim() === 'None None None True', 'OPENROUTER_API_KEY/MY_TOKEN/SUPABASE_URL tak terbaca skrip; SystemRoot tetap ada', h);
   cek(!('NODE_OPTIONS' in envBersih({ NODE_OPTIONS: '--require x', PATH: 'y' })), 'NODE_OPTIONS dibuang');
 
-  // 8. UTF-8
   h = await jalan({ program: 'python', argumen: ['-c', "print('Rp é ✓ 😀')"] });
   cek(h.ok && h.keluaran.trim() === 'Rp é ✓ 😀', 'keluaran UTF-8 utuh', h);
 
-  // 9. Batas keluaran
   h = await jalan({ program: 'python', argumen: ['-c', "print('x' * 50000)"] });
   cek(h.ok && h.terpotong && h.keluaran.length === 20 * 1024 && h.byteKeluaran > 50000, 'keluaran dipotong 20 KB, ukuran asli dilaporkan', { terpotong: h.terpotong, pj: h.keluaran?.length, byte: h.byteKeluaran });
 
-  // 10. Batas waktu mematikan SELURUH pohon (cucu memegang pipa: tanpa taskkill /T "close" tak pernah datang)
-  //
-  // J3b (Item 125 Fase C, dipatok 30 Okt 2026): asersi lama menggabungkan empat syarat dan sekali gagal di suite penuh
-  // (7 Okt, 3.661 ms) — bukan karena lambat (toleransi 15 s), melainkan hampir pasti karena 'mulai' belum tercetak:
-  // Node menyerahkan semua data stdout sebelum 'close', dan skrip tak mungkin selesai sendiri (sleep 60), jadi yang
-  // runtuh adalah Python + Popen cucunya yang belum sempat menyala dalam 3 s saat mesin sibuk. Tak tereproduksi dalam
-  // percobaan terkendali, jadi ini penalaran, bukan bukti. Perbaikannya TIDAK melebarkan toleransi: tanpa 'mulai'
-  // prasyarat uji (cucu sudah ada sebelum batas waktu) belum terpenuhi — dicoba ulang SEKALI dengan batas 8 s.
-  // Pematian pohonnya sendiri (close datang ≤ batas + 12 s) diperiksa pada percobaan yang prasyaratnya terpenuhi.
   const SKRIP_CUCU = "import subprocess, sys, time; subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)']); print('mulai', flush=True); time.sleep(60)";
   const percobaan = [];
   for (const waktu of [3, 8]) {
@@ -118,7 +98,6 @@ const jalan = (p, deps = izinkan) => jalankanAlatJalan(akar, { alat: 'folder_run
   cek(akhir.ms < akhir.waktu * 1000 + 12000, `pohon proses dimatikan — close datang ${akhir.ms} ms (≤ batas + 12 s)`, ringkas);
   let t0;
 
-  // 11. Satu perintah pada satu waktu (kunci dipasang sebelum dialog)
   t0 = Date.now();
   const [a, b] = await Promise.all([
     jalan({ program: 'python', argumen: ['-c', 'import time; time.sleep(2); print(1)'] }),
@@ -126,7 +105,6 @@ const jalan = (p, deps = izinkan) => jalankanAlatJalan(akar, { alat: 'folder_run
   ]);
   cek(a.ok && !b.ok && /masih berjalan/.test(b.alasan), 'permintaan kedua saat pertama berjalan → ditolak', [a.ok, b.alasan]);
 
-  // 12. npm lewat node + npm-cli.js; dialog memuat script package.json; publish/install
   dialog.length = 0;
   h = await jalan({ program: 'npm', argumen: ['run', 'hello'], waktu: 120 });
   cek(h.ok && h.kodeKeluar === 0 && h.keluaran.includes('halo-npm'), 'npm run hello → "halo-npm"', h);
@@ -136,7 +114,6 @@ const jalan = (p, deps = izinkan) => jalankanAlatJalan(akar, { alat: 'folder_run
   cek(/MENGUNDUH/.test(dialog[0]?.rincian || ''), 'npm install → peringatan internet di dialog (ditolak, tak ada unduhan)');
   cek(!fs.existsSync(path.join(akar, 'node_modules')), 'npm install ditolak → node_modules tidak tercipta');
 
-  // 13. git lokal: init, status
   h = await jalan({ program: 'git', argumen: ['init'] });
   cek(h.ok && h.kodeKeluar === 0 && fs.existsSync(path.join(akar, '.git')), 'git init → .git tercipta', h);
   h = await jalan({ program: 'git', argumen: ['status', '--short'] });
@@ -144,11 +121,9 @@ const jalan = (p, deps = izinkan) => jalankanAlatJalan(akar, { alat: 'folder_run
   h = await jalan({ program: 'git', argumen: ['commit', '-a'] });
   cek(h.ok && h.kodeKeluar !== 0 && !h.habisWaktu && Date.now() - t0 < 60000, 'git commit tanpa -m → gagal cepat (editor ":"), tidak menggantung', h);
 
-  // 14. Program tak terpasang
   h = await jalan({ program: 'ruby', argumen: ['-v'] });
   cek(h.ok || /tidak terpasang/.test(h.alasan), `program tak terpasang → alasan jelas (${h.ok ? 'terpasang' : h.alasan})`);
 
-  // 15. Alat tulis tak boleh menyentuh .git
   const tulisDeps = { mintaIzin: async () => true, keTempatSampah: async () => {} };
   const t1 = await jalankanAlatTulis(akar, { alat: 'folder_write', alamat: '.git/hooks/pre-commit', isi: 'calc' }, tulisDeps);
   const t2 = await jalankanAlatTulis(akar, { alat: 'folder_edit', alamat: '.GIT/config', cari: '[core]', ganti: '[core]\n\tfsmonitor = calc' }, tulisDeps);

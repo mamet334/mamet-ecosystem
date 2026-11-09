@@ -1,17 +1,3 @@
-// UJI 2026-10-20 — Item 128 Tahap D: warna dasar bisa diganti setelan; tema Biru malam & Terang.
-//
-// Kenapa ada: Owner, 20 Okt — "buat warna dasar dari code dibuat bisa berubah-ubah sesuai setelan, agar bila nanti ingin
-// membuat tema lain bisa mudah diterapkan tanpa mengubah code source". Yang dijaga:
-//   1. DASAR GELAP SAMA PERSIS — putih, hitam, 17 rona × 11 tingkat = palet bawaan Tailwind apa adanya; warna yang
-//      dulu ditulis langsung di komponen = nilai lamanya. Tema gelap tampil persis seperti sebelum Tahap D.
-//   2. DASAR TERANG LENGKAP — variabel yang sama dengan dasar gelap; putih ↔ hitam; teks di atas warna padat tetap putih.
-//   3. CONFIG — white, black, 17 rona, dan di-warna menunjuk variabel; semua kelas rona komponen dikompilasi Tailwind
-//      dan setiap variabel yang dirujuk terdefinisi di KEDUA dasar.
-//   4. KOMPONEN — tak ada hex yang dulu ditulis langsung; teks putih di atas warna padat memakai `text-di-warna`;
-//      kanvas graf membaca variabel tema; layar masuk selalu Ruangan kayu.
-//   5. TERANG TERBACA — setiap kelas teks rona yang dipakai komponen, sesudah dibalik, ≥ 4,5:1 di latar tema Terang;
-//      teks putih di atas latar padat rona yang dipakai ≥ 4,5:1.
-//   6. TEMA BARU = METADATA — Biru malam (dasar gelap) & Terang (dasar terang) hanya entri themes.json.
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -38,7 +24,6 @@ const varDari = (berkas) => Object.fromEntries([...baca(berkas).replace(/\/\*[\s
 const GELAP = varDari('frontend/src/tema/dasar-gelap.css');
 const TERANG = varDari('frontend/src/tema/dasar-terang.css');
 
-// ── 1. Dasar gelap sama persis ──────────────────────────────────────────────────────────────────
 console.log('\n-- 1. dasar gelap = palet bawaan Tailwind & nilai lama komponen --');
 cek(GELAP.white === '255 255 255' && GELAP.black === '0 0 0' && GELAP['di-warna'] === '255 255 255', 'putih, hitam, di-warna = nilai bawaan');
 const ronaBeda = RONA.flatMap((r) => TINGKAT.filter((t) => GELAP[`${r}-${t}`] !== keRgb(warnaTw[r][t])).map((t) => `${r}-${t}`));
@@ -47,7 +32,6 @@ const LAMA = { 'panel-sisi': '#0a0a0a', 'neon-hijau': '#00ff88', 'neon-merah': '
 const khususBeda = Object.entries(LAMA).filter(([k, h]) => GELAP[k] !== keRgb(h)).map(([k, h]) => `${k}: ${GELAP[k]} ≠ ${h}`);
 cek(khususBeda.length === 0, `${Object.keys(LAMA).length} warna yang dulu ditulis di komponen = nilai lamanya`, khususBeda);
 
-// ── 2. Dasar terang lengkap ─────────────────────────────────────────────────────────────────────
 console.log('\n-- 2. dasar terang --');
 const kG = Object.keys(GELAP).sort(), kT = Object.keys(TERANG).sort();
 cek(JSON.stringify(kG) === JSON.stringify(kT), `dasar terang mendefinisikan ${kT.length} variabel — sama persis dengan dasar gelap`, { kurang: kG.filter((k) => !kT.includes(k)), lebih: kT.filter((k) => !kG.includes(k)) });
@@ -62,7 +46,6 @@ cek(urut.every((i, n) => i >= 0 && (n === 0 || i > urut[n - 1])), 'urutan impor:
 cek(/^\[data-dasar="terang"\] \{/m.test(baca('frontend/src/tema/dasar-terang.css')) && /^:root,\n\[data-dasar="gelap"\] \{/m.test(baca('frontend/src/tema/dasar-gelap.css')),
   'dasar gelap = bawaan (:root); dasar terang dipilih lewat data-dasar');
 
-// ── 3. Config & kompilasi ───────────────────────────────────────────────────────────────────────
 console.log('\n-- 3. tailwind.config.js & kompilasi --');
 const conf = baca('frontend/tailwind.config.js');
 const v = (n) => `"rgb(var(--warna-${n}) / <alpha-value>)"`;
@@ -81,7 +64,6 @@ const takAda = dirujuk.filter((n) => !GELAP[n] || !TERANG[n]);
 cek(kelas.size > 150 && dirujuk.length > 50 && takAda.length === 0, `${kelas.size} kelas rona/putih/hitam dikompilasi; ${dirujuk.length} variabel dirujuk — semuanya ada di kedua dasar`, takAda);
 cek(!/#[0-9a-fA-F]{6}/.test(hasil.replace(/\/\*[\s\S]*?\*\//g, '')), 'kelas rona tak lagi berisi hex tetap — semuanya lewat variabel');
 
-// ── 4. Komponen ─────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 4. komponen --');
 const semua = BERKAS.filter((f) => !/LampLogin\.jsx$|[\\/]Login\.jsx$/.test(f)).map((f) => [f, tanpaKomentar(readFileSync(f, 'utf8'))]);
 const hexLama = semua.flatMap(([f, k]) => (k.match(/-\[#(?:0a0a0a|00ff88|ff4444|ffcc00|e4b84f|ffe29a)\]/gi) || []).map((m) => `${f.split('components')[1]}: ${m}`));
@@ -99,7 +81,6 @@ cek(/getPropertyValue\(`--warna-\$\{n\}`\)/.test(AG), 'kanvas membaca variabel -
 const APP = tanpaKomentar(baca('frontend/src/App.jsx'));
 cek(/<div data-tema="ruangan-kayu" data-dasar="gelap" className="contents">\s*<LampLogin/.test(APP), 'layar masuk selalu Ruangan kayu, apa pun tema pilihan (LampLogin.jsx tak disentuh)');
 
-// ── 5. Tema Terang terbaca ──────────────────────────────────────────────────────────────────────
 console.log('\n-- 5. tema Terang: teks rona terbaca --');
 const meta = JSON.parse(baca('frontend/public/metadata/themes.json'));
 const terang = meta.themes.find((t) => t.dasar === 'terang');
@@ -120,7 +101,6 @@ if (terang) {
   cek(T.dasarTema(terang.id, meta) === 'terang' && T.latarNyala({ latarRuangan: true, lampu: true }, terang.id, meta) === false, 'tema terang: dinding & lampu tak tampil');
 }
 
-// ── 6. Tema baru = metadata ─────────────────────────────────────────────────────────────────────
 console.log('\n-- 6. tema baru cukup metadata --');
 cek(meta.themes.every((t) => ['gelap', 'terang'].includes(t.dasar)), 'setiap tema memilih dasarnya', meta.themes.map((t) => `${t.id}:${t.dasar}`));
 const biru = meta.themes.find((t) => t.id === 'biru-malam');

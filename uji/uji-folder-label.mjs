@@ -1,8 +1,4 @@
-// UJI Item 85 Tahap 1 — label VERIFIED untuk jawaban dari berkas folder kerja: pemeriksa label SERVER asli
-// (label_sumber.ts, dibundel esbuild) + sumberDariHasilAlat, dengan hasil alat NYATA dari folder engine.
 import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -20,11 +16,6 @@ const A = require(path.join(akar, 'frontend/electron/alatFolder.cjs'));
 console.log('uji-folder-label v2');
 let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}`); if (!ok) gagal++; };
 
-// Folder ini DI LUAR repo, jadi ia bisa berubah tanpa satu pun commit di sini — dan itu sudah terjadi:
-// `gabut/engine` diganti nama menjadi `gabut/engine-vector` pada 24 Sep 2026, dan uji ini diam-diam
-// merah selama empat hari sampai ketahuan saat menjalankan seluruh berkas uji (28 Sep). Karena itu
-// sekarang: alamatnya dicari, dan bila tak ada ujinya DILEWATI — bukan gagal — seperti aturan
-// `uji/data-lokal/` di uji/README.md.
 const KANDIDAT_ENGINE = ['D:/SLAMET/other/gabut/engine-vector', 'D:/SLAMET/other/gabut/engine'];
 const ENGINE = KANDIDAT_ENGINE.find((p) => fs.existsSync(path.join(p, 'core/math.go')));
 if (!ENGINE) {
@@ -39,9 +30,6 @@ const pesan2 = F.susunPesanHasil(hasil2, { putaran: 2, pertanyaanAsli: 'cari Cos
 const s = F.sumberDariHasilAlat([pesan2, 'pertanyaan biasa bukan hasil alat', pesan1]);
 cek(s.judul.length === 1 && s.judul[0] === 'core/math.go', `judul sumber = berkas yang dibaca saja (${s.judul.join(', ')})`);
 cek(s.isi.some((t) => t.includes('func CosineSimilarity(a, b []float32)')), 'isi berkas terpotong tepat di pembatas');
-// Dulu baris ini memaku `core/engine.go:177`. Nomor itu bergeser ke 258 saat engine-nya dikembangkan,
-// padahal yang hendak dibuktikan cuma "hasil pencarian ikut masuk sebagai isi" — nomor barisnya kebetulan.
-// Uji yang memaku hal yang mudah bergeser akan merah karena alasan yang bukan pokok persoalannya.
 cek(s.isi.some((t) => /core\/engine\.go:\d+/.test(t) && t.includes('CosineSimilarity')),
   'hasil pencarian ikut sebagai isi (core/engine.go:<baris>)');
 cek(s.isi.some((t) => t.includes('vektor_wal.log')), 'daftar folder ikut sebagai isi');

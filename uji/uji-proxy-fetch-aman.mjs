@@ -1,10 +1,3 @@
-// UJI 2026-10-30 — K5 (ADR-0022): `proxy_fetch` agent-process wajib token & hanya alamat publik; log auth tanpa email.
-//
-// Terbukti live 29 Okt: tanpa token apa pun, server mengambilkan `example.com` — fungsi di-deploy `--no-verify-jwt` dan
-// blok proxy_fetch di index.ts berjalan SEBELUM pemeriksaan token. `auth_middleware.ts` juga menulis seluruh objek
-// pengguna (email & metadata) ke log tiap permintaan.
-//
-// proxy_fetch_endpoint.ts DIBUNDEL SUNGGUHAN (esbuild); hanya `handleAuth` & `fetch` ditiru.
 
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -24,7 +17,7 @@ const hasil = await esbuild.build({
 });
 const dir = mkdtempSync(join(tmpdir(), 'uji-proxy-'));
 writeFileSync(join(dir, 'p.mjs'), hasil.outputFiles[0].text);
-process.on('exit', () => { try { rmSync(dir, { recursive: true, force: true }); } catch { /* sudah bersih */ } });
+process.on('exit', () => { try { rmSync(dir, { recursive: true, force: true }); } catch {  } });
 globalThis.Deno = { env: { get: () => '' } };
 const { handleProxyFetchRequest, alamatBolehDiambil } = await import(pathToFileURL(join(dir, 'p.mjs')).href);
 
@@ -45,14 +38,12 @@ async function coba(auth, url) {
   return { r, diminta };
 }
 
-// ── 1. Token wajib ─────────────────────────────────────────────────────────────────────────────
 let x = await coba(tolak401, 'https://www.bing.com/news/search?q=OKU&format=rss');
 cek(x.r?.status === 401 && x.diminta.length === 0, 'tanpa token → 401 dan TIDAK ada permintaan keluar (dulu: example.com diambilkan)', { status: x.r?.status, diminta: x.diminta });
 x = await coba(sah, 'https://www.bing.com/news/search?q=OKU&format=rss');
 const isi = x.r ? JSON.parse(await x.r.text()) : null;
 cek(x.r?.status === 200 && x.diminta.length === 1 && isi?.ok === true && isi.data.includes('<rss'), 'dengan token sah → diambilkan seperti dulu (web Tier 3 tetap jalan)', isi);
 
-// ── 2. Hanya alamat publik http/https ──────────────────────────────────────────────────────────
 const TOLAK = ['http://localhost:54321/x', 'http://127.0.0.1/', 'http://169.254.169.254/latest/meta-data', 'http://10.0.0.5/',
   'http://192.168.1.1/', 'http://172.16.0.1/', 'http://[::1]/', 'file:///etc/passwd', 'ftp://contoh.id/a', 'bukan url'];
 const lolos = TOLAK.filter((u) => alamatBolehDiambil(u));
@@ -63,7 +54,6 @@ x = await coba(sah, 'http://169.254.169.254/latest/meta-data');
 cek(x.r?.status === 400 && x.diminta.length === 0, 'token sah + alamat metadata → 400, tak ada permintaan keluar', { status: x.r?.status, diminta: x.diminta });
 cek((await handleProxyFetchRequest(req, { action: 'embed', text: 'x' }, {})) === null, 'aksi lain → bukan urusan endpoint ini (null)');
 
-// ── 3. Sambungan & log ─────────────────────────────────────────────────────────────────────────
 const INDEX = readFileSync(join(AP, 'index.ts'), 'utf8');
 cek(!/body\?\.action === 'proxy_fetch'/.test(INDEX), 'index.ts tak lagi punya blok proxy_fetch tanpa token');
 const iProxy = INDEX.indexOf('await handleProxyFetchRequest(req, parsedBody, corsHeaders)');

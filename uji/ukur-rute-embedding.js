@@ -1,15 +1,3 @@
-// UKUR RUTE EMBEDDING — apakah google-vertex dan google-ai-studio memberi vektor yang sebanding (K1 langkah 2, 5 Nov 2026).
-//
-// Kenapa: sejak langkah 2 `vector_utils.ts` mengutamakan rute google-vertex (penolakan lokasi 5 Nov datang dari rute
-// lain). Vektor yang SUDAH tersimpan dibuat lewat rute campuran OpenRouter. Bila dua rute memberi vektor berbeda,
-// pencarian makna diam-diam memburuk — jadi diukur, bukan dianggap sama.
-//
-// Cara: ambil N potongan tersimpan milik akun ini (acak), vektorkan ulang ISI-nya lewat masing-masing rute saja
-// (`allow_fallbacks: false`), bandingkan kemiripan kosinus dengan vektor tersimpan. Sama persis ≈ 1,0000.
-// Isi potongan & kunci TIDAK dicetak; hanya angka kemiripan. Biaya: 2 × N embedding (N = 8 → ±16 potongan, < $0,001).
-//
-// Pemakaian — konsol DevTools `npm run desktop` (mode dev), sudah login, kunci OpenRouter di Settings:
-//   await (await import(`/@fs/D:/SLAMET/other/mamet os ecosystem/uji/ukur-rute-embedding.js?t=${Date.now()}`)).ukur()
 
 const VERSI = 're-1';
 const MODEL = 'google/gemini-embedding-2';
@@ -28,7 +16,7 @@ export async function ukur({ n = 8 } = {}) {
   if (!sm) throw new Error('window.__mamet tidak ada — jalankan dari `npm run desktop` (mode dev).');
   const { supabase } = await import('/src/supabase.js');
   let kunci = null;
-  try { kunci = sm.get('VaultService')?.getKey('openrouter') || null; } catch { /* vault belum siap */ }
+  try { kunci = sm.get('VaultService')?.getKey('openrouter') || null; } catch {  }
   if (!kunci) throw new Error('Kunci OpenRouter belum ada di Settings.');
 
   const { data: { session } } = await supabase.auth.getSession();

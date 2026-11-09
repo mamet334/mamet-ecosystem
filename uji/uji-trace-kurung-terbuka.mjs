@@ -1,17 +1,4 @@
-// UJI 2026-09-24 — pemotongan SOURCE TRACE tidak boleh membelah struktur (kurung terbuka).
-//
-// KEGAGALAN LIVE, DUA PUTARAN BERTURUT-TURUT:
-//   01:37:07 dan 01:42:54 — CHECK_P02_VALID_JSON_PATCH_FORMAT FAIL,
-//   "Response has 112 chars. Has braces: {=true, }=false" → [HARD GATE] BLOCKED, patch yang BENAR ditolak.
-//
-// KOREKSI ATAS DUGAAN SAYA SENDIRI: setelah putaran pertama saya menyimpulkan sebabnya "ID di dalam pagar
-// kode ```" dan memasang aturan pagar. Putaran kedua GAGAL DENGAN ANGKA YANG SAMA PERSIS. Sebabnya bukan itu:
-// PatchGenerator meminta model menulis patch sebagai JSON TELANJANG, TANPA pagar — jadi aturan pagar tidak
-// pernah menyentuh kasus ini. Diukur ulang terhadap parser ber-aturan-pagar: sisa 113 huruf, {=3 }=0 —
-// cocok dengan log live. Aturan pagar tetap benar untuk kasusnya sendiri, tapi ia BUKAN perbaikan ini.
 import { fileURLToPath as alamatBerkasUji__ } from 'node:url';
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = alamatBerkasUji__(new URL('..', import.meta.url)).replace(/\\/g, '/').replace(/\/$/, '');
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -20,22 +7,11 @@ import { pathToFileURL } from 'node:url';
 const AKAR = AKAR_REPO + '/';
 const SRC = AKAR + 'supabase/functions/agent-process/lib/coordinator/trace_parser.ts';
 
-// Keluaran sementara ditaruh di folder sementara SISTEM, bukan di dalam `node_modules` (8 Okt 2026).
-//
-// Dulu: `frontend/node_modules/.uji-rag/`. Itu folder yang suite ini JUSTRU dipindahkan dari sana —
-// `npm ci` menghapus `node_modules`, dan itulah yang dulu melenyapkan 48 berkas uji sekaligus
-// (lihat `uji/README.md`). Berkas ujinya ikut pindah ke repo; alamat keluaran sementaranya tidak,
-// jadi separuh masalahnya tertinggal. Dibuktikan 8 Okt: folder itu disembunyikan sesaat, dan empat
-// berkas uji langsung jatuh dengan ENOENT — kegagalan yang tidak terlihat seperti "kode rusak".
-//
-// Alasan asli memilih `node_modules` (Vite tidak memantaunya, jadi menulis di sana tidak memicu
-// aplikasi memuat ulang saat Owner sedang memakainya) justru LEBIH terpenuhi di sini: Vite tidak
-// memantau folder sementara sistem sama sekali.
 const DIR_SEMENTARA = join(tmpdir(), 'uji-mamet');
 mkdirSync(DIR_SEMENTARA, { recursive: true });
 
 const TMP = join(DIR_SEMENTARA, '_trace_kurung.mjs');
-const { build } = await import(new URL('frontend/node_modules/esbuild/lib/main.js', new URL('../', import.meta.url)).href); // esbuild ada di frontend/node_modules; dirujuk lewat ALAMAT, bukan nama paket, karena berkas uji ini kini di akar repo (di luar frontend/) — lihat uji/README.md
+const { build } = await import(new URL('frontend/node_modules/esbuild/lib/main.js', new URL('../', import.meta.url)).href);
 const hasil = await build({ entryPoints: [SRC], bundle: false, write: false, format: 'esm', loader: { '.ts': 'ts' } });
 writeFileSync(TMP, hasil.outputFiles[0].text);
 const { extractSourceTrace } = await import(pathToFileURL(TMP).href + '?v=' + Date.now());
@@ -48,7 +24,6 @@ const cek = (ok, pesan, rinci) => {
 };
 const seimbang = (t) => (t.split('{').length === t.split('}').length) && (t.split('[').length === t.split(']').length);
 
-// Bahan uji = bentuk balasan PatchGenerator yang live: JSON TELANJANG, komentar memuat "[ADR-0017 Fase 7]".
 const patchTelanjang = [
   '{',
   '  "files": [',
@@ -72,16 +47,13 @@ cek(seimbang(r.replyWithoutTrace), 'kurung seimbang — syarat yang persis gagal
 cek(JSON.parse(r.replyWithoutTrace).files[0].changes.length === 1, 'hasilnya benar-benar JSON yang bisa diurai');
 cek(r.replyWithoutTrace.length > 112, `jauh lebih panjang dari 112 huruf sisa saat gagal (${r.replyWithoutTrace.length})`);
 
-// Patch berpagar (aturan pagar) juga harus tetap selamat.
 const patchBerpagar = ['Saya perbaiki.', '', '```json', patchTelanjang, '```', '', '[MAMET_PATCH_READY]'].join('\n');
 r = extractSourceTrace(patchBerpagar);
 cek(r.sourceTrace === undefined && r.replyWithoutTrace === patchBerpagar, 'patch berpagar juga utuh');
 
-// Struktur yang dipotong oleh keyword, bukan oleh ID.
 r = extractSourceTrace(['{', '  "a": [', '  Referensi: lihat ADR-0007', '  ]', '}'].join('\n'));
 cek(seimbang(r.replyWithoutTrace), 'kata "Referensi" di dalam struktur pun tidak membelah kurung', r);
 
-// ---------- perilaku normal TIDAK berubah ----------
 r = extractSourceTrace(['Berikut analisisnya.', '', 'SOURCE TRACE:', '- [ADR-0007] Engineering Metrics'].join('\n'));
 cek(/Berikut analisisnya/.test(r.replyWithoutTrace) && !/SOURCE TRACE/.test(r.replyWithoutTrace), 'trace prosa di ekor TETAP dipisah', r.replyWithoutTrace);
 cek(/ADR-0007/.test(r.sourceTrace || ''), 'isi trace tetap terambil');
@@ -92,15 +64,10 @@ cek(/ADR-0012/.test(r.replyWithoutTrace) && /ADR-0005/.test(r.sourceTrace || '')
   'kutipan berkurung SEIMBANG di badan jawaban tidak menghalangi pemisahan trace', r);
 cek(extractSourceTrace('Halo, apa kabar?').sourceTrace === undefined, 'jawaban tanpa trace tidak berubah');
 
-// Harga yang disadari: prosa dengan kurung tak seimbang menahan trace-nya menempel.
 r = extractSourceTrace(['Lihat berkas [penting', '', 'SOURCE TRACE:', '- [ADR-0005] Safety'].join('\n'));
 cek(r.sourceTrace === undefined, 'HARGA YANG DISADARI: prosa berkurung tak seimbang menahan trace di badan jawaban (rugi tampilan, bukan rugi fungsi)', r);
 
-// ---------- UJI KENDALI: versi sebelum perbaikan harus MENUNJUKKAN gejalanya ----------
-// Revisi dipaku, bukan HEAD.
 const REVISI_SEBELUM = 'd548881';
-// J3 (2 Nov 2026): isi revisi itu DISIMPAN di uji/kendali-revisi/ — d548881 tak terhubung ke cabang mana pun, jadi
-// `git show` hanya berhasil di laptop Owner, tidak di clone (CI GitHub). Isinya byte-sama dengan `git show` dulu.
 const { readFileSync: bacaKendali } = await import('node:fs');
 const lamaTs = bacaKendali(new URL(`./kendali-revisi/trace_parser-${REVISI_SEBELUM}.ts.txt`, import.meta.url), 'utf8');
 const TMP_LAMA = TMP.replace('_trace_kurung', '_trace_kurung_lama');

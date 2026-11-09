@@ -1,7 +1,3 @@
-// UJI Item 85 Tahap 2 — alat tulis folder kerja (alatFolderTulis.cjs) dengan folder & junction NYATA di %TEMP%.
-// Izin & Recycle Bin DITIRU: izin mengikuti skenario (setuju/tolak), "Recycle Bin" = folder sampah di luar akar.
-// J3 (2 Nov 2026): akar repo dihitung dari letak berkas ini — dulu alamat laptop Owner dipaku, jadi suite tak bisa
-// berjalan di mesin lain (CI GitHub, worktree).
 const AKAR_REPO = require('node:path').resolve(__dirname, '..').replace(/\\/g, '/');
 const fs = require('fs');
 const os = require('os');
@@ -30,7 +26,6 @@ let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL
   const baca = (r) => fs.readFileSync(path.join(akar, r), 'utf8');
 
   try {
-    // --- tulis
     let h = await T.jalankanAlatTulis(akar, { alat: 'folder_write', alamat: 'laporan.md', isi: '# Laporan\nIsi ringkasan.\n' }, setuju);
     cek(h.ok && h.dibuat && baca('laporan.md') === '# Laporan\nIsi ringkasan.\n', 'folder_write: berkas baru dibuat sesudah izin');
     cek(log.at(-1).judul.includes('Buat berkas baru "laporan.md"') && log.at(-1).pratinjau.includes('# Laporan'), 'dialog izin: judul & pratinjau isi');
@@ -49,7 +44,6 @@ let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL
     cek(!(await T.jalankanAlatTulis(akar, { alat: 'folder_write', alamat: 'besar.txt', isi: 'x'.repeat(201 * 1024) }, setuju)).ok, 'isi > 200 KB ditolak');
     cek(!(await T.jalankanAlatTulis(akar, { alat: 'folder_write', alamat: 'src', isi: 'x' }, setuju)).ok, 'menulis ke alamat folder ditolak');
 
-    // --- edit
     const n0 = log.length;
     h = await T.jalankanAlatTulis(akar, { alat: 'folder_edit', alamat: 'src/app.js.txt', cari: 'fungsi lama()', ganti: 'fungsi baru()' }, setuju);
     cek(h.ok && baca('src/app.js.txt') === 'baris satu\r\nfungsi baru()\r\nbaris tiga\r\n' && h.baris === 2, 'folder_edit: hanya potongan diganti, CRLF & baris lain utuh');
@@ -62,7 +56,6 @@ let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL
     cek(h.ditolakOwner && baca('ganda.txt') === 'x = 1\nx = 1\n', 'edit ditolak Owner → berkas utuh');
     cek(!(await T.jalankanAlatTulis(akar, { alat: 'folder_edit', alamat: 'gambar.png', cari: 'P', ganti: 'Q' }, setuju)).ok, 'edit berkas biner ditolak');
 
-    // --- mkdir, rename
     h = await T.jalankanAlatTulis(akar, { alat: 'folder_mkdir', alamat: 'arsip' }, setuju);
     cek(h.ok && fs.statSync(path.join(akar, 'arsip')).isDirectory(), 'folder_mkdir');
     h = await T.jalankanAlatTulis(akar, { alat: 'folder_rename', alamat: 'laporan.md', ke: 'arsip/laporan-lama.md' }, setuju);
@@ -71,14 +64,12 @@ let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL
     cek(!(await T.jalankanAlatTulis(akar, { alat: 'folder_rename', alamat: 'ganda.txt', ke: 'jalan.bat' }, setuju)).ok && fs.existsSync(path.join(akar, 'ganda.txt')), 'ganti nama menjadi .bat ditolak');
     cek(!(await T.jalankanAlatTulis(akar, { alat: 'folder_rename', alamat: 'arsip', ke: 'arsip/dalam' }, setuju)).ok, 'folder ke dalam dirinya sendiri ditolak');
 
-    // --- hapus
     h = await T.jalankanAlatTulis(akar, { alat: 'folder_delete', alamat: 'ganda.txt' }, tolak);
     cek(h.ditolakOwner && fs.existsSync(path.join(akar, 'ganda.txt')), 'hapus ditolak Owner → berkas masih ada');
     h = await T.jalankanAlatTulis(akar, { alat: 'folder_delete', alamat: 'ganda.txt' }, setuju);
     cek(h.ok && h.keRecycleBin && !fs.existsSync(path.join(akar, 'ganda.txt')) && fs.readdirSync(sampah).some((n) => n.startsWith('ganda.txt')), 'hapus = ke "Recycle Bin", bukan permanen');
     cek(log.at(-1).berbahaya === true && /Recycle Bin/.test(log.at(-1).rincian), 'dialog hapus bertanda berbahaya & menyebut Recycle Bin');
 
-    // --- serangan & akar
     const akarAman = [['folder_delete', { alamat: '.' }], ['folder_rename', { alamat: '.', ke: 'x' }], ['folder_write', { alamat: '.', isi: 'x' }]];
     for (const [alat, arg] of akarAman) cek(!(await T.jalankanAlatTulis(akar, { alat, ...arg }, setuju)).ok && fs.existsSync(akar), `${alat} pada akar ditolak`);
     const serang = [
@@ -102,7 +93,7 @@ let gagal = 0; const cek = (ok, pesan) => { console.log(`${ok ? 'LULUS' : 'GAGAL
     cek(!(await T.jalankanAlatTulis(akar, { alat: 'folder_write', alamat: 'x.txt', isi: 'x' }, {})).ok, 'tanpa dialog izin → tidak ada yang ditulis');
     cek(!(await T.jalankanAlatTulis(null, { alat: 'folder_write', alamat: 'x.txt', isi: 'x' }, setuju)).ok, 'tanpa folder kerja → ditolak');
   } finally {
-    try { fs.unlinkSync(path.join(akar, 'pintu')); } catch { try { fs.rmSync(path.join(akar, 'pintu'), { force: true }); } catch { /* */ } }
+    try { fs.unlinkSync(path.join(akar, 'pintu')); } catch { try { fs.rmSync(path.join(akar, 'pintu'), { force: true }); } catch {  } }
     fs.rmSync(dasar, { recursive: true, force: true });
   }
   console.log(`\n${gagal === 0 ? 'SEMUA LULUS' : gagal + ' GAGAL'}`);

@@ -16,23 +16,13 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(cors());
 
-// Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date() });
 });
 
-/**
- * /api/chat — Endpoint utama yang digunakan oleh AIAgent UI.
- * Menerima provider, model, dan apiKey langsung dari frontend (dari Settings/VaultService).
- * Ini memungkinkan pengguna menggunakan API key mereka sendiri tanpa perlu edit .env.
- * 
- * FIX: Sebelumnya AIAgent hanya melakukan simulasi, bukan memanggil backend nyata.
- * Sekarang koneksi AI berjalan end-to-end.
- */
 app.post('/api/chat', async (req, res) => {
   const requestStartedAt = Date.now();
   const traceId = resolveTraceId({
@@ -61,7 +51,6 @@ app.post('/api/chat', async (req, res) => {
       return res.status(400).json({ error: 'Parameter "provider" dan "model" wajib diisi.' });
     }
 
-    // Gunakan apiKey dari request body (dari VaultService frontend), fallback ke ENV
     const resolvedKey = apiKey || (
       provider === 'openrouter' ? process.env.OPENROUTER_API_KEY :
       provider === 'openai'     ? process.env.OPENAI_API_KEY :
@@ -89,7 +78,6 @@ app.post('/api/chat', async (req, res) => {
     const memoryContext = globalMemory ? `\n\n[MEMORI]:\n${globalMemory}` : '';
     const systemPrompt = agentIdentity + userContext + memoryContext;
 
-    // Bangun history messages (format OpenAI-compatible)
     const buildMessages = (sys, hist) => {
       const msgs = [{ role: 'system', content: sys }];
       if (hist && hist.length > 0) {
@@ -103,7 +91,6 @@ app.post('/api/chat', async (req, res) => {
 
     let replyText = '';
 
-    // ── OPENROUTER ──────────────────────────────────────────────────────────
     if (provider === 'openrouter') {
       if (!resolvedKey) {
         return res.status(400).json({ error: 'OpenRouter API Key tidak ditemukan. Silakan masukkan API Key di Settings → API Key.' });
@@ -121,7 +108,6 @@ app.post('/api/chat', async (req, res) => {
       });
       replyText = resp.data.choices?.[0]?.message?.content || 'Tidak ada respons dari model.';
 
-    // ── OPENAI ───────────────────────────────────────────────────────────────
     } else if (provider === 'openai') {
       if (!resolvedKey) {
         return res.status(400).json({ error: 'OpenAI API Key tidak ditemukan. Silakan masukkan API Key di Settings.' });
@@ -137,7 +123,6 @@ app.post('/api/chat', async (req, res) => {
       });
       replyText = resp.data.choices?.[0]?.message?.content || 'Tidak ada respons dari model.';
 
-    // ── GROQ ─────────────────────────────────────────────────────────────────
     } else if (provider === 'groq') {
       if (!resolvedKey) {
         return res.status(400).json({ error: 'Groq API Key tidak ditemukan. Silakan masukkan API Key di Settings.' });
@@ -153,7 +138,6 @@ app.post('/api/chat', async (req, res) => {
       });
       replyText = resp.data.choices?.[0]?.message?.content || 'Tidak ada respons dari model.';
 
-    // ── ANTHROPIC ────────────────────────────────────────────────────────────
     } else if (provider === 'anthropic') {
       if (!resolvedKey) {
         return res.status(400).json({ error: 'Anthropic API Key tidak ditemukan. Silakan masukkan API Key di Settings.' });
@@ -179,7 +163,6 @@ app.post('/api/chat', async (req, res) => {
       });
       replyText = resp.data.content?.[0]?.text || 'Tidak ada respons dari model.';
 
-    // ── GEMINI ───────────────────────────────────────────────────────────────
     } else if (provider === 'gemini') {
       if (!resolvedKey) {
         return res.status(400).json({ error: 'Gemini API Key tidak ditemukan. Silakan masukkan API Key di Settings.' });
@@ -306,7 +289,6 @@ app.post('/api/chat', async (req, res) => {
 });
 
 
-// Get available tools
 app.get('/api/tools', (req, res) => {
   const tools = [
     { id: 'web_search', name: 'Web Search', category: 'research' },
@@ -318,7 +300,6 @@ app.get('/api/tools', (req, res) => {
   res.json({ tools });
 });
 
-// Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
   res.status(err.status || 500).json({
@@ -327,7 +308,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
 app.use((req, res) => {
   res.status(404).json({ 
     error: 'Endpoint not found',
@@ -335,7 +315,6 @@ app.use((req, res) => {
   });
 });
 
-// Start server
 app.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════╗
@@ -348,7 +327,6 @@ app.listen(PORT, () => {
   `);
 });
 
-// Graceful shutdown
 process.on('SIGINT', () => {
   console.log('\n🛑 Server shutting down...');
   process.exit(0);

@@ -1,13 +1,3 @@
-// UJI 2026-11-03 — menu tombol + di chat (Item 129 Tahap G5, keputusan Owner 3 Nov): components/konektor/{menuKonektor.js,
-// arahSettings.js, MenuTambah.jsx} dan sambungannya di ConversationEngine & Settings.
-//
-// Yang dijaga:
-//   - "Percakapan baru" tetap ada (baris pertama menu + tombol di laci riwayat);
-//   - konektor workspace ini tampil dengan keadaan yang benar; sakelar hanya untuk yang siap (yang menyala selalu
-//     bisa dimatikan); penanda di tombol + (masalah didahulukan);
-//   - menu hanya MENYALAKAN/MEMATIKAN — tak memasang, tak menyimpan kredensial, tak meninjau, tak memanggil alat;
-//   - "Atur di Settings ›" membuka tab Konektor (Settings terpasang atau belum);
-//   - kelas Tailwind benar-benar dibuat.
 
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
@@ -26,7 +16,6 @@ const cek = (ok, pesan, rinci) => {
   if (!ok) gagal++;
 };
 
-// ── 1. Daftar konektor untuk menu ────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 1. daftar --');
 const M = await imp('frontend/src/components/konektor/menuKonektor.js');
 const bawaan = [
@@ -58,7 +47,6 @@ cek(M.penandaKonektor(dA) === 'masalah' && M.penandaKonektor([per.github]) === '
   'penanda tombol +: masalah didahulukan, lalu nyala, lalu tidak ada');
 cek(M.susunMenuKonektor(null, undefined, 'ws-assistant').length === 0, 'status tak terbaca → daftar kosong, tidak galat');
 
-// ── 2. Arah ke Settings ──────────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 2. arah settings --');
 const S = await imp('frontend/src/components/konektor/arahSettings.js');
 globalThis.window = new EventTarget();
@@ -69,7 +57,6 @@ cek(diterima === 'konektor', 'Settings yang sudah terpasang menerima peristiwa g
 cek(S.ambilBagianSettings() === 'konektor' && S.ambilBagianSettings() === null, 'Settings yang baru terpasang membaca permintaan SEKALI (tak menyangkut di kunjungan berikutnya)');
 delete globalThis.window;
 
-// ── 3. Sambungan (statis) ────────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 3. sambungan --');
 const CE = baca('frontend/src/components/workbench/ConversationEngine.jsx');
 const MT = baca('frontend/src/components/konektor/MenuTambah.jsx');
@@ -89,7 +76,6 @@ cek(/useState\(\(\) => ambilBagianSettings\(\) \|\| 'model'\)/.test(ST) && /addE
   'Settings membuka tab yang diminta (saat terpasang & lewat peristiwa); tab konektor ada');
 cek(!/dangerouslySetInnerHTML\s*=|\.innerHTML\s*=/.test(MT), 'nama & keterangan konektor tampil sebagai teks');
 
-// ── 4. Tailwind sungguhan ────────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 4. tailwind --');
 const postcss = require('postcss'), tailwind = require('tailwindcss'), loadConfig = require('tailwindcss/loadConfig');
 const escTW = require('tailwindcss/lib/util/escapeClassName').default;

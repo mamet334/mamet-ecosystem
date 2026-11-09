@@ -1,18 +1,3 @@
-// UJI 2026-10-19 — PenyimpanKeadaan: keadaan layar yang hidup di luar layarnya (Item 127 Tahap 1, langkah 1).
-//
-// Kenapa ada: Tahap 1 memindahkan keadaan chat keluar dari `ConversationEngine.jsx` supaya layar boleh
-// dilepas tanpa kehilangan jawaban yang sedang mengalir. Penyimpan ini menggantikan `useState`, `useRef`,
-// dan (untuk penyimpanan otomatis) `useEffect` — jadi ia harus berperilaku PERSIS seperti yang digantinya.
-// Satu beda kecil di sini menjadi bug di layar paling rapuh aplikasi.
-//
-// Yang dijaga:
-//   1. SAMA DENGAN useState — inisialisasi malas sekali, pengubah fungsi menerima nilai TERBARU,
-//      nilai identik tidak memberi tahu siapa pun.
-//   2. TERPISAH PER APLIKASI — Assistant, Mametlite, Engineer tidak saling menimpa.
-//   3. SELAMAT LEPAS-PASANG — ref yang sama dikembalikan sesudah "layar dipasang ulang".
-//   4. PENGAMAT JALAN TANPA LAYAR — digabung per detak, menggantikan dirinya saat didaftar ulang,
-//      galatnya tidak mematikan penulisan.
-//   5. DILUPAKAN SAAT PENGGUNA BERGANTI — tanpa itu orang berikutnya melihat percakapan orang sebelumnya.
 
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -34,7 +19,6 @@ const cek = (syarat, pesan, detail) => {
   else { gagal++; console.log('  ✗ ' + pesan + (detail !== undefined ? '\n      ' + JSON.stringify(detail) : '')); }
 };
 
-// ── 1. Sama dengan useState ─────────────────────────────────────────────────────────────────────
 console.log('\n-- 1. semantik useState --');
 {
   const p = new PenyimpanKeadaan();
@@ -65,7 +49,6 @@ console.log('\n-- 1. semantik useState --');
   cek(p.ada('app:a', 'baru'), 'menulis undefined ke nama baru tetap menyimpannya (bukan dianggap "tak berubah")');
 }
 
-// ── 2. Terpisah per aplikasi ────────────────────────────────────────────────────────────────────
 console.log('\n-- 2. kunci terpisah --');
 {
   const p = new PenyimpanKeadaan();
@@ -78,23 +61,20 @@ console.log('\n-- 2. kunci terpisah --');
   cek(tertolak, 'kunci kosong DITOLAK — bukan diam-diam jatuh ke satu kunci bersama');
 }
 
-// ── 3. Selamat lepas-pasang ─────────────────────────────────────────────────────────────────────
 console.log('\n-- 3. ref & nilai selamat sesudah "layar dipasang ulang" --');
 {
   const p = new PenyimpanKeadaan();
   const r1 = p.ref('app:a', 'percakapanSeq', 0);
   r1.current += 3;
-  const r2 = p.ref('app:a', 'percakapanSeq', 0); // pemasangan kedua: awal TIDAK boleh menimpa
+  const r2 = p.ref('app:a', 'percakapanSeq', 0);
   cek(r1 === r2 && r2.current === 3, 'ref yang sama dikembalikan, nilainya tidak direset oleh "awal"', r2.current);
 
-  // Penyetel yang dipegang closure lama (callback jawaban) tetap menulis ke tempat yang dibaca layar baru.
   const setelLama = (v) => p.tulis('app:a', 'messages', v);
   p.siapkan('app:a', 'messages', []);
   setelLama((m) => [...m, 'jawaban datang saat layar dilepas']);
   cek(p.baca('app:a', 'messages', []).length === 1, 'penulisan lewat penyetel lama terbaca oleh layar yang dipasang ulang');
 }
 
-// ── 4. Pengamat ─────────────────────────────────────────────────────────────────────────────────
 console.log('\n-- 4. pengamat jalan tanpa layar --');
 {
   const p = new PenyimpanKeadaan();
@@ -112,7 +92,7 @@ console.log('\n-- 4. pengamat jalan tanpa layar --');
   cek(jalan === 1, 'penulisan ke nama yang tidak diamati tidak menjalankannya', jalan);
 
   let jalanBaru = 0;
-  p.amati('app:a', 'simpan', ['messages'], () => jalanBaru++); // layar dipasang ulang → closure baru
+  p.amati('app:a', 'simpan', ['messages'], () => jalanBaru++);
   p.tulis('app:a', 'messages', [9]);
   await detak();
   cek(jalan === 1 && jalanBaru === 1, 'mendaftar ulang id yang sama MENGGANTI (bukan menambah) — tak ada simpan ganda',
@@ -130,7 +110,6 @@ console.log('\n-- 4. pengamat jalan tanpa layar --');
   cek(dicatat === 1 && jalanBaru === 2, 'galatnya DICATAT (tidak ditelan) dan pengamat lain tetap jalan', { dicatat, jalanBaru });
 }
 
-// ── 5. Dilupakan saat pengguna berganti ─────────────────────────────────────────────────────────
 console.log('\n-- 5. lupakanSemua --');
 {
   const p = new PenyimpanKeadaan();
@@ -138,15 +117,14 @@ console.log('\n-- 5. lupakanSemua --');
   const r = p.ref('app:a', 'seq', 0); r.current = 7;
   let jalan = 0;
   p.amati('app:a', 'simpan', ['messages'], () => jalan++);
-  p.tulis('app:a', 'messages', ['menunggu detak']);  // terjadwal…
-  p.lupakanSemua();                                  // …lalu pengguna keluar sebelum detaknya
+  p.tulis('app:a', 'messages', ['menunggu detak']);
+  p.lupakanSemua();
   await detak();
   cek(jalan === 0, 'pengamat yang terjadwal sebelum logout TIDAK jalan sesudahnya (tak menyimpan atas nama pengguna lama)');
   cek(p.baca('app:a', 'messages', []).length === 0, 'pesan pengguna lama hilang');
   cek(p.ref('app:a', 'seq', 0).current === 0, 'ref pengguna lama hilang');
 }
 
-// ── 6. Sambungan ke aplikasi ────────────────────────────────────────────────────────────────────
 console.log('\n-- 6. sambungan --');
 const app = tanpaKomentar(baca('frontend/src/App.jsx'));
 cek(/penyimpanKeadaan\.lupakanSemua\(\)/.test(app), 'App.jsx memanggil lupakanSemua()');
