@@ -11,7 +11,7 @@ const H = await imp('supabase/functions/agent-process/lib/request/history_compre
 const { pilihPesanKonteks, PATOK } = K;
 const { rapikanRiwayat } = H;
 
-console.log('uji-patok-sampai-server v1');
+console.log("uji-patok-sampai-server v2");
 let gagal = 0;
 const cek = (ok, pesan, rinci) => {
   console.log(`${ok ? 'LULUS' : 'GAGAL'}  ${pesan}${!ok && rinci !== undefined ? `\n       -> ${JSON.stringify(rinci).slice(0, 300)}` : ''}`);
@@ -43,12 +43,12 @@ console.log('\n-- server tidak memangkas sisipan --');
   cek(total === 17311, `total tetap 17.311 huruf (sebelum perbaikan: 2.065)`, total);
 }
 
-console.log('\n-- pesan biasa tetap dipangkas --');
+console.log('\n-- pesan biasa tidak dipangkas server (anggaran klien satu-satunya penentu) --');
 {
   const riwayat = [biasa(isi(5000)), biasa(isi(5000), 'model'), biasa(isi(900)), biasa(isi(900), 'model')];
   const h = rapikanRiwayat(riwayat, 'pertanyaan lain');
-  cek(h[0].content.length === 800 + '… [dipangkas]'.length, 'pesan lama yang panjang tetap dipangkas ke 800', h[0].content.length);
-  cek(h[3].content.length === 900, 'dua pesan terakhir tetap utuh', h[3].content.length);
+  cek(h.length === 4 && h.every((m, i) => m.content.length === riwayat[i].content.length), 'pesan lama yang panjang sampai utuh', h.map((m) => m.content.length));
+  cek(!h.some((m) => /\[dipangkas\]/.test(m.content)), 'tak ada penanda terpangkas');
 }
 
 console.log('\n-- dua terakhir tetap pesan percakapan --');

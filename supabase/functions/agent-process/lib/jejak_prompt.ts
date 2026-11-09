@@ -12,6 +12,7 @@ export interface UkuranRiwayat {
   hasilAlatPesan: number;
   hasilAlatHuruf: number;
   patok: number;
+  catatanKerjaPesan: number;
 }
 
 export interface LapisRiwayat {
@@ -59,6 +60,8 @@ export interface JejakPrompt {
   penolakan: { lapis: string; sebab: string }[];
   panggilanModel: PanggilanModel[];
   panggilanTakTercatat: number;
+  riwayatDilewatiKlien: number;
+  catatanJujur: string[];
 }
 
 export function hurufThink(riwayat: any): number {
@@ -83,7 +86,14 @@ export function buatJejak(awal: { traceId?: string | null; appSource?: string; m
     penolakan: [],
     panggilanModel: [],
     panggilanTakTercatat: 0,
+    riwayatDilewatiKlien: 0,
+    catatanJujur: [],
   };
+}
+
+export function catatCatatanJujur(jejak: JejakPrompt | null | undefined, nama: string) {
+  if (!jejak || !nama || jejak.catatanJujur.includes(nama)) return;
+  jejak.catatanJujur.push(nama);
 }
 
 export function catatLapis(jejak: JejakPrompt | null | undefined, nama: string, sebelum: any[], sesudah: any[], opsi: { melindungi?: boolean; pesanDisisipkan?: number; hurufThinkDibuang?: number; duplikatPesanSaatIni?: boolean } = {}) {

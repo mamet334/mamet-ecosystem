@@ -186,6 +186,12 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - Graf Home → peta sistem Mamet: **terdaftar sebagai Item 130** ([rancangan](./ROADMAP-GRAF-HOME-PETA-SISTEM.md)) ·
   `graf-bercahaya` (graphify) terpisah, belum ditanggapi
 - Engineer: T10 Tahap 2–3, Engineer Mandiri Tahap 1 & 4
+- **Cloudflare di depan Supabase memblokir (HTTP 403) kiriman yang memuat pola path traversal** seperti
+  `../../etc/passwd` — terbukti 9 Nov dengan kiriman uji (SQL injection, `<script>`, perintah shell lolos; base64 lolos
+  semua). Satu jawaban model tentang keamanan cukup mematikan sisa percakapan karena ikut di setiap riwayat; membaca
+  berkas berisi contoh semacam itu juga diblokir. **Keputusan Owner 9 Nov: tidak dibungkus base64, dicatat saja.** Yang
+  dikerjakan: pesan galat kini menyebut Cloudflare & menyarankan percakapan baru (dulu: "periksa API Key"), dan galat
+  "body stream already read" yang menutupi sebab asli diperbaiki (`galatRespons.js`).
 - `agent-process` `/health` melaporkan `deployed_commit_sha`/`deployed_at` 10 Sep — data deteksi *drift* (Item 8) basi
   karena deploy biasa tidak lewat `scripts/deploy-agent-process.ps1` (terlihat 9 Nov, v549 —
   [log](../project-memory/changelog/2026-11-09-item-131-tahap-j-diperiksa-dan-dilengkapi.md))

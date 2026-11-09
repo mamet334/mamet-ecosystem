@@ -27,12 +27,14 @@ function periksaPasangan(p, tambah) {
     if (klien.semantik && klien.semantik.sesudah < klien.semantik.sebelum) {
       tambah(MERAH, 'semantik_dipotong_klien', `konteks semantik ${klien.semantik.sebelum} → ${klien.semantik.sesudah} huruf di klien`);
     }
-    if (klien.cmg === 'REJECT') tambah(MERAH, 'cmg_menolak', 'penjaga memori lama membuang seluruh konteks memori & dokumen klien');
-    if ((klien.jalur === 'LOOKUP' || klien.jalur === 'SKILL') && klien.dikirim.pesan < klien.riwayatTersedia.pesan) {
+    if ((klien.jalur === 'LOOKUP' || klien.jalur === 'SKILL') && !klien.anggaran && klien.dikirim.pesan < klien.riwayatTersedia.pesan) {
       tambah(MERAH, 'jalur_memotong_riwayat', `jalur ${klien.jalur} mengirim ${klien.dikirim.pesan} dari ${klien.riwayatTersedia.pesan} pesan, di luar anggaran`);
     }
     if (klien.anggaran && klien.anggaran.dilewati > 0) {
       tambah(INFO, 'anggaran_klien', `${klien.anggaran.dilewati} pesan lama dilewati anggaran Settings (${klien.anggaran.terpakai}/${klien.anggaran.token} token)`);
+      if (server.riwayatDilewatiKlien !== klien.anggaran.dilewati || !(server.catatanJujur || []).includes('riwayat_dilewati')) {
+        tambah(MERAH, 'pemotongan_tanpa_pemberitahuan', `${klien.anggaran.dilewati} pesan dilewati anggaran tetapi model tidak diberi tahu (server mencatat ${server.riwayatDilewatiKlien ?? '—'})`);
+      }
     }
   }
 
@@ -62,7 +64,10 @@ function periksaPasangan(p, tambah) {
     if (r.datangTerlambat && r.datangTerlambat.potongan > 0) {
       tambah(MERAH, 'rag_ketemu_dibuang', `${r.datangTerlambat.potongan} potongan ditemukan pada ${r.datangTerlambat.ms} ms, sesudah dibuang batas ${r.batasWaktuMs} ms`);
     }
-    if (r.galat) tambah(MERAH, 'rag_galat', r.galat);
+    if (r.galat) {
+      tambah(MERAH, 'rag_galat', r.galat);
+      if (!(server.catatanJujur || []).includes('rag_gagal')) tambah(MERAH, 'rag_gagal_diam', 'pencarian dokumen gagal tetapi model tidak diberi tahu');
+    }
     if (r.turunKeKata) tambah(KUNING, 'rag_turun_ke_kata', 'pencarian makna tak jalan, turun ke pencocokan kata');
     if (r.ditemukan != null && r.dikirim < r.ditemukan && !r.dataTabelMenggantikan) {
       tambah(MERAH, 'rag_tak_terkirim', `${r.ditemukan} potongan ditemukan, ${r.dikirim} dikirim ke model`);
@@ -94,11 +99,12 @@ export function nilaiGiliran(giliran) {
     if (!sebelumnya || g.harapan?.pakaiHasilAlatSebelumnya !== true) return;
     const alatSebelumnya = (sebelumnya.pasangan || []).some((p) => p.klien?.putaranAlat === true || (p.klien?.dikirim?.hasilAlatPesan || 0) > 0 || (p.server?.riwayatDiterima?.hasilAlatPesan || 0) > 0);
     const pertama = (g.pasangan || [])[0];
-    const terbawa = pertama?.server?.panggilanModel?.filter((m) => m.utama).at(-1)?.riwayat?.hasilAlatPesan ?? pertama?.server?.riwayatDiterima?.hasilAlatPesan ?? 0;
+    const ukuranKeModel = pertama?.server?.panggilanModel?.filter((m) => m.utama).at(-1)?.riwayat ?? pertama?.server?.riwayatDiterima ?? {};
+    const terbawa = (ukuranKeModel.hasilAlatPesan || 0) + (ukuranKeModel.catatanKerjaPesan || 0);
     if (!alatSebelumnya) {
       temuan.push({ giliran: g.nomor ?? i + 1, traceId: null, tingkat: KUNING, kode: 'alat_tak_terpakai_sebelumnya', rinci: 'giliran sebelumnya tidak memakai alat — harapan hasil alat tak bisa diuji' });
     } else if (terbawa === 0) {
-      temuan.push({ giliran: g.nomor ?? i + 1, traceId: pertama?.server?.traceId || null, tingkat: MERAH, kode: 'hasil_alat_hilang', rinci: 'hasil alat giliran sebelumnya tidak sampai ke model di giliran ini' });
+      temuan.push({ giliran: g.nomor ?? i + 1, traceId: pertama?.server?.traceId || null, tingkat: MERAH, kode: 'catatan_kerja_hilang', rinci: 'hasil alat maupun catatan kerja giliran sebelumnya tidak sampai ke model di giliran ini' });
     }
   });
   const hitung = (t) => temuan.filter((x) => x.tingkat === t).length;

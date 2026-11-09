@@ -54,7 +54,7 @@ cek(Array.isArray(jawaban.steps) && 'processingSteps' in jawaban.metadata, 'diki
 
 const AS = readFileSync(join(AKAR, 'frontend/src/core/runtime/services/AssistantService.js'), 'utf8');
 cek(/messages:\s*messages\.map\(rampingkanPesan\)/.test(AS), 'saveChatToDB menyimpan messages.map(rampingkanPesan)');
-const barisHistory = AS.split(/\r?\n/).filter((b) => /^\s*history:\s*(konteks\.dikirim|history\.slice)/.test(b));
+const barisHistory = AS.split(/\r?\n/).filter((b) => /^\s*history:\s*(konteks(Lookup|Skill)?\.dikirim|history\.slice)/.test(b));
 cek(barisHistory.length === 3 && barisHistory.every((b) => /\.map\(pesanUntukServer\)/.test(b)),
   `setiap payload history ke server lewat pesanUntukServer (${barisHistory.length} jalur)`, barisHistory);
 

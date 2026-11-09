@@ -72,8 +72,8 @@ function tiruan({ userId = 'u-1', galat = null } = {}) {
 
 console.log('\n-- 3. traceId --');
 const as = baca('frontend/src/core/runtime/services/AssistantService.js');
-cek(/const traceId = crypto\.randomUUID\(\);\s*\n\s*const payload = \{\s*\n\s*message: userMsg,\s*\n\s*mode: 'LOOKUP',[^\n]*\n\s*traceId,/.test(as), 'jalur LOOKUP mengirim traceId (dulu tidak → cost_ledger ber-trace_id kosong)');
-cek(/const traceIdLangkah = crypto\.randomUUID\(\);[\s\S]{0,200}traceId: traceIdLangkah,/.test(as), 'jalur skill mengirim traceId per langkah');
+cek(/const traceId = crypto\.randomUUID\(\);[^\n]*\n(?:[^\n]*\n){0,3}\s*const payload = \{\s*\n\s*message: userMsg,\s*\n\s*mode: 'LOOKUP',[^\n]*\n\s*traceId,/.test(as), 'jalur LOOKUP mengirim traceId (dulu tidak → cost_ledger ber-trace_id kosong)');
+cek(/const traceIdLangkah = crypto\.randomUUID\(\);[\s\S]{0,400}traceId: traceIdLangkah,/.test(as), 'jalur skill mengirim traceId per langkah');
 const panggilan = [...as.matchAll(/await this\._handleResponseStream\(response, \{[\s\S]*?\}\);/g)].map((m) => m[0]);
 cek(panggilan.length === 3 && panggilan.every((p) => /traceId/.test(p)), `ketiga pemanggil _handleResponseStream meneruskan traceId (${panggilan.length})`, panggilan.map((p) => /traceId/.test(p)));
 const kirimanOnDone = [...as.matchAll(/onDone\?\.\((cleanContent|finalText), [^;]*?\{[\s\S]*?\}\);/g)].map((m) => m[0]);

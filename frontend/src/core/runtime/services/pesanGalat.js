@@ -23,6 +23,10 @@ const KODE = {
     saran: 'Kirim ulang. Bila terus terjadi, sebutkan teks teknis di bawah saat melapor.',
   },
 
+  DIBLOKIR_CLOUDFLARE: {
+    judul: 'Permintaan diblokir pelindung jaringan Supabase (Cloudflare), bukan oleh API Key Anda.',
+    saran: 'Isi percakapan ini memuat pola yang dikira serangan (misalnya contoh alamat seperti ../../etc/passwd). Pesan itu ikut terkirim di setiap pertanyaan berikutnya, jadi mulai percakapan baru (tombol +) agar bisa lanjut.',
+  },
   JARINGAN: {
     judul: 'Tidak bisa menghubungi server.',
     saran: 'Periksa koneksi internet Anda, lalu kirim ulang pertanyaannya.',

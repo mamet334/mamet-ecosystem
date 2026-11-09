@@ -8,18 +8,14 @@ import { ambilPermintaanKonektor, susunPesanHasilKonektor, catatanHasilKonektor,
 import { bacaKonektorAktif, petaAlatAktif, muatanKonektor, panggilKonektor, labelAlat } from './konektorAktif.js';
 import { cekPerintahBerulang, petunjukHasilKosong, petunjukKeluaranTerpotong, petunjukGrepSebagian, peringatanTugasTakDiumumkan, adaPenandaPatch, buangPenandaPatch } from './engineer/ProsedurEngineer.js';
 import { peringatanKlaimTakTeruji } from './engineer/UjiKlaim.js';
-import { anggaranKonteks, pilihPesanKonteks, bacaMulaiDari } from './KonteksChat.js';
+import { anggaranKonteks, pilihPesanKonteks, bacaMulaiDari, bagiAnggaranKonteks } from './KonteksChat.js';
 import { rampingkanPesan, pesanUntukServer } from './pesanRamping.js';
 import { susunJejakKlien } from './JejakKlien.js';
+import { bacaGalatRespons } from './galatRespons.js';
 
 const FOLDER_BATAS_BACA_BYTE = 150 * 1024;
 
 import { dibatalkanPemakai } from './pembatalan.js';
-
-import {
-  runCognitiveMemoryGovernor,
-  LEGACY_COGNITION_ENABLED
-} from './CognitiveMemoryGovernorService.js';
 
 function estimateTokens(text = '') {
   return Math.ceil(text.length / 4);
@@ -28,9 +24,6 @@ function estimateTokens(text = '') {
 function zonaWaktuBrowser() {
   try { return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined; } catch (_) { return undefined; }
 }
-
-const MAX_RAG_CONTEXT_CHARS = 4000;
-const MAX_SEMANTIC_CONTEXT_CHARS = 2000;
 
 export class AssistantService {
   constructor(serviceManager) {
@@ -691,6 +684,8 @@ export class AssistantService {
     }
 
     const traceId = crypto.randomUUID();
+    const angLookup = anggaranKonteks(await this.bahanAnggaranKonteks(formattedModel));
+    const konteksLookup = pilihPesanKonteks(history, { anggaranToken: angLookup.token });
     const payload = {
       message: userMsg,
       mode: 'LOOKUP',
@@ -698,7 +693,8 @@ export class AssistantService {
       pemilihModel: 'tier-auto',
       appSource: resolvedAppSource,
       workspaceTarget: null,
-      history: history.slice(-3).map(pesanUntukServer),
+      history: konteksLookup.dikirim.map(pesanUntukServer),
+      riwayatDilewati: konteksLookup.dilewati,
       globalMemory: '',
       semanticContext: '',
       stream: false,
@@ -714,7 +710,7 @@ export class AssistantService {
       _request_type: 'LOOKUP'
     };
     Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
-    this._catatJejakKlien(susunJejakKlien({ jalur: 'LOOKUP', traceId, riwayatTersedia: history, dikirim: payload.history }));
+    this._catatJejakKlien(susunJejakKlien({ jalur: 'LOOKUP', traceId, riwayatTersedia: history, dikirim: payload.history, anggaran: { token: angLookup.token, terpakai: konteksLookup.tokenTerpakai, dilewati: konteksLookup.dilewati } }));
 
     const headers = this.buildHeaders(token, aiProvider, aiKey);
 
@@ -730,11 +726,9 @@ export class AssistantService {
     console.log(`[LIFECYCLE] LOOKUP response received (HTTP ${response.status})`);
 
     if (!response.ok) {
-      let kode = null, pesan = null, teknis = null;
-      try { const e = await response.json(); kode = e?.error || null; pesan = e?.message || null; }
-      catch (_) { teknis = (await response.text()) || null; }
-      console.error('[LIFECYCLE] Edge Function Error:', kode || teknis || `HTTP ${response.status}`);
-      onError?.({ kode, pesan, status: response.status, teknis });
+      const galat = await bacaGalatRespons(response);
+      console.error('[LIFECYCLE] Edge Function Error:', galat.kode || galat.teknis || `HTTP ${response.status}`);
+      onError?.(galat);
       return;
     }
 
@@ -812,13 +806,16 @@ export class AssistantService {
 
         const { aiProvider, formattedModel, aiKey } = await this._resolveAIProvider();
         const traceIdLangkah = crypto.randomUUID();
+        const angSkill = anggaranKonteks(await this.bahanAnggaranKonteks(formattedModel));
+        const konteksSkill = pilihPesanKonteks(history, { anggaranToken: angSkill.token });
         const payload = {
           message: generatePrompt,
           mode: resolvedMode || 'STANDARD',
           traceId: traceIdLangkah,
           pemilihModel: 'owner-settings',
           appSource: resolvedAppSource,
-          history: history.slice(-5).map(pesanUntukServer),
+          history: konteksSkill.dikirim.map(pesanUntukServer),
+          riwayatDilewati: konteksSkill.dilewati,
           globalMemory: '',
           semanticContext: '',
           stream: false,
@@ -829,7 +826,7 @@ export class AssistantService {
           _skill_id: skill.id
         };
         Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
-        this._catatJejakKlien(susunJejakKlien({ jalur: 'SKILL', traceId: traceIdLangkah, riwayatTersedia: history, dikirim: payload.history }));
+        this._catatJejakKlien(susunJejakKlien({ jalur: 'SKILL', traceId: traceIdLangkah, riwayatTersedia: history, dikirim: payload.history, anggaran: { token: angSkill.token, terpakai: konteksSkill.tokenTerpakai, dilewati: konteksSkill.dilewati } }));
 
         const headers = this.buildHeaders(token, aiProvider, aiKey);
         let response;
@@ -1034,57 +1031,29 @@ export class AssistantService {
       combinedContext = localContext;
     }
 
-    let enhancedRagContext = combinedContext;
-    let statusCmg = null;
-
-    if (enhancedRagContext && LEGACY_COGNITION_ENABLED) {
-      try {
-        const governorResult = runCognitiveMemoryGovernor({
-          final_decision_context: { memory: { active: { content: enhancedRagContext } }, confidence_score: 0.8 },
-          memory_context: { tgml_nodes: [], conflict_edges: [] },
-          truth_score_bundle: null,
-          behavior_profile: null,
-          global_loop_result: null
-        });
-        statusCmg = governorResult.status || null;
-        if (governorResult.status === 'REJECT') {
-          console.warn('[AssistantService] CMG REJECT — mengirim tanpa memory context');
-          enhancedRagContext = '';
-        } else if (governorResult.status === 'REWRITE') {
-          console.warn('[AssistantService] CMG REWRITE — confidence diturunkan');
-        }
-      } catch (e) {
-        statusCmg = 'GALAT';
-        console.warn('[AssistantService] CMG error (skip):', e.message);
-      }
-    }
+    const enhancedRagContext = combinedContext;
 
     const fileData = await this.buildFileData(attachedFile);
 
     const rawRagLen = (enhancedRagContext || '').length;
     const rawSemLen = (semanticContext || '').length;
 
-    let trimmedRagContext = enhancedRagContext || '';
-    if (trimmedRagContext.length > MAX_RAG_CONTEXT_CHARS) {
-      trimmedRagContext = trimmedRagContext.slice(0, MAX_RAG_CONTEXT_CHARS) +
-        '\n[...konteks RAG dipotong untuk efisiensi token...]';
-    }
-
-    let trimmedSemanticContext = semanticContext || '';
-    if (trimmedSemanticContext.length > MAX_SEMANTIC_CONTEXT_CHARS) {
-      trimmedSemanticContext = trimmedSemanticContext.slice(0, MAX_SEMANTIC_CONTEXT_CHARS) +
-        '\n[...konteks semantik dipotong...]';
+    const biaya = await this.bahanAnggaranKonteks(formattedModel);
+    const ang = anggaranKonteks({ ...biaya, porsi: isLiteMode ? 0.02 : undefined });
+    const ragDibagi = bagiAnggaranKonteks(ang.token, enhancedRagContext || '');
+    const semantikDibagi = bagiAnggaranKonteks(Math.max(0, ang.token - 2 * ragDibagi.tokenTerpakai), semanticContext || '');
+    const trimmedRagContext = ragDibagi.teks;
+    const trimmedSemanticContext = semantikDibagi.teks;
+    const tokenKonteksTambahan = ragDibagi.tokenTerpakai + semantikDibagi.tokenTerpakai;
+    if (ragDibagi.hurufDipotong || semantikDibagi.hurufDipotong) {
+      console.warn(`[Konteks] konteks tambahan melebihi separuh anggaran — ${ragDibagi.hurufDipotong + semantikDibagi.hurufDipotong} huruf tidak dikirim (dicatat jujur ke model)`);
     }
 
     const tokensBefore = estimateTokens(enhancedRagContext) + estimateTokens(semanticContext) + estimateTokens(userMsg);
     const tokensAfter  = estimateTokens(trimmedRagContext) + estimateTokens(trimmedSemanticContext) + estimateTokens(userMsg);
     const tokensSaved  = tokensBefore - tokensAfter;
-    console.log(`[PR#6 TokenEfficiency] RAG: ${rawRagLen}→${trimmedRagContext.length} chars | Semantic: ${rawSemLen}→${trimmedSemanticContext.length} chars`);
-    console.log(`[PR#6 TokenEfficiency] Estimasi token: ${tokensBefore} → ${tokensAfter} (hemat ~${tokensSaved} token)`);
 
-    const biaya = await this.bahanAnggaranKonteks(formattedModel);
-    const ang = anggaranKonteks({ ...biaya, porsi: isLiteMode ? 0.02 : undefined });
-    const konteks = pilihPesanKonteks(history, { anggaranToken: ang.token, mulaiDari: bacaMulaiDari(chatId) });
+    const konteks = pilihPesanKonteks(history, { anggaranToken: Math.max(0, ang.token - tokenKonteksTambahan), mulaiDari: bacaMulaiDari(chatId) });
     this.konteksTerakhir = { ...konteks, ...ang, chatId, dikirim: undefined };
     console.log(`[Konteks] ${konteks.tokenTerpakai} / ${ang.token} token (${konteks.dikirim.length} pesan dikirim, ${konteks.dilewati} dilewati) — ${ang.alasan}`);
 
@@ -1096,6 +1065,7 @@ export class AssistantService {
       workspaceTarget: workspaceId,
       traceId: requestTraceId,
       history: konteks.dikirim.map(pesanUntukServer),
+      riwayatDilewati: konteks.dilewati,
       globalMemory: trimmedRagContext,
       semanticContext: trimmedSemanticContext,
       stream: false,
@@ -1126,7 +1096,6 @@ export class AssistantService {
       dikirim: payload.history,
       konteksRag: { sebelum: rawRagLen, sesudah: trimmedRagContext.length },
       semantik: { sebelum: rawSemLen, sesudah: trimmedSemanticContext.length },
-      cmg: statusCmg,
       anggaran: { token: ang.token, terpakai: konteks.tokenTerpakai, dilewati: konteks.dilewati },
     }));
 
@@ -1143,11 +1112,9 @@ export class AssistantService {
     console.log(`[LIFECYCLE] LLM response received (HTTP Status: ${response.status})`);
 
     if (!response.ok) {
-      let kode = null, pesan = null, teknis = null;
-      try { const e = await response.json(); kode = e?.error || null; pesan = e?.message || null; }
-      catch (_) { teknis = (await response.text()) || null; }
-      console.error('[LIFECYCLE] Edge Function Error:', kode || teknis || `HTTP ${response.status}`);
-      onError?.({ kode, pesan, status: response.status, teknis });
+      const galat = await bacaGalatRespons(response);
+      console.error('[LIFECYCLE] Edge Function Error:', galat.kode || galat.teknis || `HTTP ${response.status}`);
+      onError?.(galat);
       return;
     }
 

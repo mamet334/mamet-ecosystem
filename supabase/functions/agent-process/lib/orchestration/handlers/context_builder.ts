@@ -14,7 +14,8 @@ import { PolicyEngine } from '../../verification/policy_engine.ts';
 import { getActiveConflictsCount } from '../../verification/verification_service.ts';
 import { eventBus } from '../../event/event_bus.ts';
 import { runLLM } from '../../llm_orchestrator.ts';
-import { catatPenolakan, catatRagGagal } from '../../jejak_prompt.ts';
+import { catatPenolakan, catatRagGagal, catatCatatanJujur } from '../../jejak_prompt.ts';
+import { catatanModelRagGagal } from '../../catatan_jujur.ts';
 
 import { KnowledgeService } from '../../../../../../shared/KnowledgeService.js';
 import { RetrievalStrategyService } from '../../../../../../shared/RetrievalStrategyService.js';
@@ -466,6 +467,11 @@ export const ContextBuilderHandler = {
     let systemBasePrompt = (ctx.request.agentIdentityPrompt || '') + (ctx.request.userContextPrompt || '') + memoryPrompt;
     if (ctx.policy.mode === 'ENGINEER' && engineerCtx?.engineerContextPrompt) {
       systemBasePrompt += engineerCtx.engineerContextPrompt;
+    }
+    const catatanRagGagal = catatanModelRagGagal(ctx.state.tier1Retrieval?.success === false ? ctx.state.tier1Retrieval.error : '');
+    if (catatanRagGagal) {
+      systemBasePrompt += catatanRagGagal;
+      catatCatatanJujur(ctx.state.jejakPrompt, 'rag_gagal');
     }
     if (ctx.policy.webHint === "HIGH_PRIORITY") {
       systemBasePrompt += `\n[WEB vs RAG COMPARISON CONTRACT]: Jika terdapat perbedaan antara dokumen RAG internal dan Web/Internet, identifikasi mana yang lebih baru secara eksplisit.`;

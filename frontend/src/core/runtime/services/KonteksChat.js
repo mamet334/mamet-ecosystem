@@ -153,3 +153,16 @@ export function simpanMulaiDari(chatId, nilai, ls) {
     else s?.removeItem(kunciMulaiDari(chatId));
   } catch {  }
 }
+
+export const PORSI_KONTEKS_TAMBAHAN = 0.5;
+
+export function bagiAnggaranKonteks(anggaranToken, teks, porsi = PORSI_KONTEKS_TAMBAHAN) {
+  const t = String(teks ?? '');
+  const batasToken = Math.floor(Math.max(0, Number(anggaranToken) || 0) * porsi);
+  const token = perkiraanToken(t);
+  if (token <= batasToken) return { teks: t, hurufDipotong: 0, tokenTerpakai: token };
+  const potongan = t.slice(0, batasToken * 4);
+  const sisa = t.length - potongan.length;
+  const teksAkhir = `${potongan}\n[CATATAN SISTEM: ${sisa.toLocaleString('id-ID')} huruf konteks dokumen/web/memori tidak dikirim karena anggaran konteks di Settings.]`;
+  return { teks: teksAkhir, hurufDipotong: sisa, tokenTerpakai: perkiraanToken(teksAkhir) };
+}

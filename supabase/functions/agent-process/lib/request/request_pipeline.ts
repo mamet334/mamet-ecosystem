@@ -10,7 +10,8 @@ import { getPluginPromptList } from '../../plugins/registry.ts';
 import { CapabilityRegistry } from '../adapters/adapter_registry.ts';
 import { generateEmbedding, EMBEDDING_DIMENSIONS, kalimatSebabEmbedding, type JejakEmbedding } from '../rag/embedding.ts';
 import { siapkanRiwayatUntukModel } from './history_compressor.ts';
-import { buatJejak, ukurRiwayat, catatLapis, catatPenolakan, barisLogJejak } from '../jejak_prompt.ts';
+import { buatJejak, ukurRiwayat, catatLapis, catatPenolakan, barisLogJejak, catatCatatanJujur } from '../jejak_prompt.ts';
+import { catatanModelRiwayatDilewati } from '../catatan_jujur.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { konteksWaktuPengguna, zonaWaktuSah } from './waktu_pengguna.ts';
 import { blokPromptFolder } from '../../../../../shared/folderKerjaAlat.js';
@@ -139,7 +140,6 @@ export async function executeRequestPipeline(
 
   const jejakPrompt = buatJejak({ traceId: parsed.traceId, appSource: parsed.appSource, mode: parsed.mode, riwayatDiterima: ukurRiwayat(parsed.riwayatAsli) });
   catatLapis(jejakPrompt, 'buang_tag_call', parsed.riwayatAsli, parsed.riwayatSesudahTag);
-  catatLapis(jejakPrompt, 'parser_15_pesan', parsed.riwayatSesudahTag, parsed.history || [], { pesanDisisipkan: parsed.healerDisisipkan ? 1 : 0 });
   jejakPrompt.kebijakan = {
     keputusan: ctx.policy.decision,
     skorRisiko: ctx.policy.riskScore,
@@ -315,6 +315,10 @@ Baik, ini file zip-nya:
 Wajib ikuti struktur persis seperti contoh di atas!`;
   }
 
+  const catatanRiwayat = catatanModelRiwayatDilewati(parsed.riwayatDilewati);
+  agentIdentityPrompt += catatanRiwayat;
+  jejakPrompt.riwayatDilewatiKlien = parsed.riwayatDilewati;
+  if (catatanRiwayat) catatCatatanJujur(jejakPrompt, 'riwayat_dilewati');
   ctx.request.agentIdentityPrompt = agentIdentityPrompt;
 
   if (parsed.folderKerja) {

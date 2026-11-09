@@ -127,7 +127,12 @@ Tetap hanya data milik akun itu (RLS/service role + `user_id`), hanya dokumen `s
 **Selesai bila:** live — model menjawab "dokumen paling awal di space X" dan membandingkan dua changelog tanpa Owner
 menempelkan isinya; uji mutasi untuk isolasi akun & saringan `selesai`.
 
-## Tahap C — Konteks percakapan utuh (K1, K2) 📋 🔧🖥
+## Tahap C — Konteks percakapan utuh (K1, K2) 📝 🔧🖥
+
+**Status 9 Nov — terbukti di Ecosystem, menunggu Mametlite** ([log](../project-memory/changelog/2026-11-09-item-131-tahap-c-h-konteks-utuh-gagal-jujur.md)):
+C2, C3, C5, C7 dicabut, C6 dihapus, C4 = catatan kerja terbawa (keputusan Owner). Skenario v553: riwayat 15 pesan →
+model 14 (selisih `<think>` & duplikat saja), tanpa catatan palsu, catatan kerja 0 → 3. **Sisa:** Mametlite tidak rusak
+(satu chat + RAG live); apakah model memakai catatan kerja alih-alih membaca ulang belum diukur tersendiri.
 
 **Masalah.** Model sudah mencari tetapi tidak ingat. Tiga pemangkas bertumpuk + satu lubang:
 
@@ -147,10 +152,9 @@ Owner menulis "data yang sudah anda dapatkan jangan dicari kembali", model meman
 
 **Arah.** Anggaran klien (C1) = **satu-satunya** penentu untuk semua jalur (termasuk C7); C2 & C3 dihapus (penjaga ukuran jendela model tetap di klien).
 Hasil alat disimpan bersama jawaban dan dikirim ulang dalam anggaran; yang lama **dipadatkan menjadi catatan kerja**
-(berkas yang sudah dibaca + fakta pentingnya), bukan dibuang. **Perlu keputusan Owner sebelum C4 dikerjakan:** hasil
-alat berisi isi berkas Owner — menyimpannya di `chats` berarti isi berkas tinggal di Supabase (perluasan T12, bukan
-hanya dikirim ke penyedia model) dan menambah ukuran tabel yang dirampingkan 2 Nov; pilihan yang ditimbang: simpan
-catatan kerja saja, atau isi mentah dalam batas. C5 mengikuti anggaran yang sama. C6 **dihapus** (keputusan Owner —
+(berkas yang sudah dibaca + fakta pentingnya), bukan dibuang. **Keputusan Owner 9 Nov (C4): catatan kerja saja** — yang
+disimpan bersama jawaban hanya nama berkas yang dibaca/diubah, perintah yang dijalankan, dan fakta penting; isi berkas
+mentah tidak tinggal di Supabase (bila model butuh detail, ia membaca ulang). C5 mengikuti anggaran yang sama. C6 **dihapus** (keputusan Owner —
 lihat bawah). Catatan palsu dihapus.
 
 **Selesai bila:** live — pertanyaan ke-N memakai hasil folder dari pertanyaan ke-(N−k) tanpa memanggil alat lagi; log
@@ -204,7 +208,12 @@ blok `[isi resource]` kosong — isi resource (embedded resource MCP) tak diteru
 **Arah.** `teksHasil` (konektorMcp.cjs / sesiUmum.cjs) membaca isi resource teks (dan blob teks) dari hasil alat; uji
 dengan bentuk balasan server GitHub yang sebenarnya.
 
-## Tahap H — Kegagalan jujur, sebagai jaring terakhir (K2) 📋 🔧🖥
+## Tahap H — Kegagalan jujur, sebagai jaring terakhir (K2) 📝 🔧🖥
+
+**Status 9 Nov — sebagian** ([log](../project-memory/changelog/2026-11-09-item-131-tahap-c-h-konteks-utuh-gagal-jujur.md)):
+RAG gagal → catatan ke model & pengguna (skenario v553: 4/4 kegagalan disertai catatan); riwayat dilewati anggaran →
+catatan ke model; galat klien tidak lagi tertutup "body stream already read", blokir Cloudflare disebut apa adanya.
+**Sisa:** sub-agen dihentikan & label "MAMET HEALER" (bersama Tahap E).
 
 Bila setelah A–G sesuatu tetap gagal, model & pengguna diberi tahu apa adanya, sebagai "Catatan sistem" (pola yang sudah
 dipakai `ragTurunKeKata`):
@@ -274,7 +283,7 @@ build hijau, server ter-deploy sama dengan repo.
 0. **Tahap 0** (ukur ujung-ke-ujung) — gerbang semua tahap; tanpa alat ukur ini kesalahan yang sama bisa terulang diam-diam.
    **J** (hapus komentar) — **keputusan Owner 6 Nov: langsung sesudah Tahap 0, sebelum A**, supaya sesi yang mengerjakan
    A–I tidak lagi disesatkan komentar lama; perubahannya terbukti tak mengubah kode (keluaran build sama). Dalam
-   praktik J selesai lebih dulu (9 Nov); Tahap 0 ✅ 9 Nov — **berikutnya Tahap A**.
+   praktik J selesai lebih dulu (9 Nov); Tahap 0 ✅ 9 Nov; A sebagian, C + H dikerjakan 9 Nov — **berikutnya sisa A (lambat) atau B**.
 1. **A** (RAG cepat) — syarat uji K1/K2 buku utuh.
 2. **C** (konteks utuh) + **H** (kegagalan jujur) — model berhenti lupa & berhenti diam.
 3. **B** (alat RAG) — dibangun di atas A.

@@ -71,7 +71,7 @@ cek(/workspaceId === 'ws-engineer' \|\| workspaceId === 'ENGINEER'/.test(AS),
 console.log('\n-- jalur ringan tetap hidup untuk yang lain --');
 
 cek(/getActiveBrainContext\('KECIL'\)/.test(AS), '_handleLookup masih memakai tier ringan');
-cek(/history\.slice\(-3\)/.test(AS), '_handleLookup masih memangkas riwayat');
+cek(/history: konteksLookup\.dikirim\.map\(pesanUntukServer\)/.test(AS) && /pilihPesanKonteks\(history, \{ anggaranToken: angLookup\.token \}\)/.test(AS), '_handleLookup memilih riwayat lewat anggaran Settings');
 cek(/mode: 'LOOKUP',/.test(AS), "_handleLookup masih mengirim mode 'LOOKUP'");
 
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));

@@ -1,7 +1,7 @@
 {
   "catatan": "Patokan catch DIAM per berkas. HANYA BOLEH TURUN. Perbarui dengan: node uji/uji-catch-diam.mjs --perbarui",
   "diperbarui": "2026-11-09",
-  "total": 173,
+  "total": 171,
   "berkas": {
     "frontend/src/components/BagianKonektor.jsx": 1,
     "frontend/src/components/dashboard/ActivityGraph.jsx": 1,
@@ -24,7 +24,7 @@
     "frontend/src/core/runtime/hooks/useDashboardData.js": 1,
     "frontend/src/core/runtime/hooks/useService.js": 1,
     "frontend/src/core/runtime/Kernel.js": 3,
-    "frontend/src/core/runtime/services/AssistantService.js": 8,
+    "frontend/src/core/runtime/services/AssistantService.js": 6,
     "frontend/src/core/runtime/services/BrainService.js": 2,
     "frontend/src/core/runtime/services/cacheOcr.js": 3,
     "frontend/src/core/runtime/services/engineer/CatatanPatch.js": 4,

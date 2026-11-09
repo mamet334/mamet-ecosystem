@@ -1,6 +1,7 @@
 import { WorkspaceGuardian } from '../workspace_guardian.ts';
 import { infoKonektorAman } from '../../../../../shared/konektorAlat.js';
 import { muatanKonektorUmumAman } from '../../../../../shared/konektorUmum.js';
+import { jumlahDilewatiAman } from '../catatan_jujur.ts';
 
 export async function parseRequestParams(req: Request, user: any) {
   let reqJson;
@@ -9,7 +10,7 @@ export async function parseRequestParams(req: Request, user: any) {
   } catch(e) {
     reqJson = {};
   }
-  let { message, tools, model, userId: _clientUserId, userName, file, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource: clientAppSource = 'assistant', workspaceTarget = 'AUTO', auditMode = 'OFF', mode: clientMode, provider, thinking, traceId: clientTraceId, requestId, clientTimezone, streamNalar, memoryEnabled, dataTabel, folderKerja, konektor, konektorUmum, pemilihModel } = reqJson;
+  let { message, tools, model, userId: _clientUserId, userName, file, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource: clientAppSource = 'assistant', workspaceTarget = 'AUTO', auditMode = 'OFF', mode: clientMode, provider, thinking, traceId: clientTraceId, requestId, clientTimezone, streamNalar, memoryEnabled, dataTabel, folderKerja, konektor, konektorUmum, pemilihModel, riwayatDilewati } = reqJson;
   const traceId = clientTraceId || requestId || null;
   const mode = clientMode || 'ASSISTANT';
   console.log('[RequestParser] Mode diterima:', mode);
@@ -40,16 +41,6 @@ export async function parseRequestParams(req: Request, user: any) {
   }
   const riwayatSesudahTag: any[] = Array.isArray(history) ? history : [];
 
-  let healerDisisipkan = false;
-  if (history && history.length > 15) {
-    history = [
-      history[0],
-      { role: 'model', content: '[MAMET HEALER: Memori obrolan lama telah diringkas untuk mencegah kepenuhan memori dan menjaga kestabilan.]' },
-      ...history.slice(-10)
-    ];
-    healerDisisipkan = true;
-  }
-
   let extractedImage = null;
   let finalMessage = message;
 
@@ -78,7 +69,8 @@ export async function parseRequestParams(req: Request, user: any) {
   return {
     message, finalMessage, tools, model, userName, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource, auditMode, extractedImage, guardianPromptDirective, storageTarget, workspaceTarget, mode, provider, thinking, traceId, clientTimezone, streamNalar,
     pemilihModel,
-    riwayatAsli, riwayatSesudahTag, healerDisisipkan,
+    riwayatAsli, riwayatSesudahTag,
+    riwayatDilewati: jumlahDilewatiAman(riwayatDilewati),
     memoryEnabled: memoryEnabled !== false,
     dataTabel: dataTabel === true,
     folderKerja: folderKerjaAman(folderKerja),

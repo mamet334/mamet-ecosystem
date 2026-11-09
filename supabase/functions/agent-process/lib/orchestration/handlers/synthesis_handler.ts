@@ -1,4 +1,5 @@
 import { runLLMDenganNalar } from '../../llm_orchestrator.ts';
+import { catatanPenggunaRagGagal } from '../../catatan_jujur.ts';
 import { executeResponsePipeline } from '../../coordinator/parser_pipeline.ts';
 import { VerificationEngine } from '../../verification/verification_engine.ts';
 import { persistTelemetryLog } from '../../verification/verification_service.ts';
@@ -313,6 +314,8 @@ export const SynthesisHandler = {
     const sebelumLabel = replyMessage;
     replyMessage = koreksiLabel(replyMessage, judulDokumen, requestMode, isiDokumen);
     if (catatanRag) replyMessage = `${replyMessage}\n\n${catatanRag}`;
+    const catatanRagGagal = catatanPenggunaRagGagal(ctx.state.tier1Retrieval?.success === false ? ctx.state.tier1Retrieval.error : '');
+    if (catatanRagGagal) replyMessage = `${replyMessage}\n\n${catatanRagGagal}`;
 
     await jalankanHakimBayangan(rctx, {
       jawaban: sebelumLabel,

@@ -44,28 +44,29 @@ console.log('\n-- ukuran riwayat (shared, dipakai klien & server) --');
   cek(r.pesan === 6 && r.huruf === 3 + folder.length + konektor.length + 5 + tengah, `pesan & huruf dihitung (${r.pesan}/${r.huruf})`, r);
   cek(r.hasilAlatPesan === 2 && r.hasilAlatHuruf === folder.length + konektor.length, `hasil alat folder & konektor dikenali, penyebutan di tengah teks tidak (${r.hasilAlatPesan})`, r);
   cek(r.patok === 1, 'sisipan berpatok dihitung', r);
-  const kl = K.susunJejakKlien({ jalur: 'CONVERSATION', traceId: 't1', riwayatTersedia: percakapan(4), dikirim: percakapan(3), konteksRag: { sebelum: 9000, sesudah: 4040 }, cmg: 'ALLOW', anggaran: { token: 6000, terpakai: 5000, dilewati: 1 } });
+  const kl = K.susunJejakKlien({ jalur: 'CONVERSATION', traceId: 't1', riwayatTersedia: percakapan(4), dikirim: percakapan(3), konteksRag: { sebelum: 9000, sesudah: 4040 }, anggaran: { token: 6000, terpakai: 5000, dilewati: 1 } });
   cek(kl.riwayatTersedia.pesan === 4 && kl.dikirim.pesan === 3 && kl.konteksRag.sesudah === 4040 && kl.anggaran.dilewati === 1, 'jejak klien memakai pengukur yang sama', kl);
   cek(!JSON.stringify(kl).includes(RAHASIA), 'jejak klien tidak membawa isi pesan');
 }
 
-console.log('\n-- parser: riwayat asli, tag call, batas 15 pesan --');
+console.log('\n-- parser: riwayat asli, tag call, tanpa batas jumlah pesan (Tahap C) --');
 {
-  const riwayat = percakapan(20, { huruf: 300, tag: true });
-  const p = await terimaParser({ message: 'halo', tools: [], history: riwayat });
-  cek(p.riwayatAsli.length === 20 && p.riwayatSesudahTag.length === 20, 'riwayat asli & sesudah tag tetap 20 pesan');
+  const riwayat = percakapan(40, { huruf: 300, tag: true });
+  const p = await terimaParser({ message: 'halo', tools: [], history: riwayat, riwayatDilewati: 7 });
+  cek(p.riwayatAsli.length === 40 && p.riwayatSesudahTag.length === 40, 'riwayat asli & sesudah tag tetap 40 pesan');
   cek(p.riwayatAsli[1].content.includes('<call:folder_list>'), 'riwayat asli tidak ikut diubah (tak dimutasi di tempat)');
   cek(!p.riwayatSesudahTag[1].content.includes('<call:'), 'tag <call:…> dibuang sesudah tag');
-  cek(p.history.length === 12 && p.healerDisisipkan === true, `riwayat > 15 pesan dipangkas ke 12 dengan catatan sisipan (${p.history.length})`);
-  const jp = J.buatJejak({ riwayatDiterima: J.ukurRiwayat(p.riwayatAsli) });
-  J.catatLapis(jp, 'parser_15_pesan', p.riwayatSesudahTag, p.history, { pesanDisisipkan: 1 });
-  cek(jp.lapisRiwayat[0].pesanDipotong === 0, `parser membuang & menyisipkan, tidak memendekkan — tak salah hitung karena urutan bergeser (${jp.lapisRiwayat[0].pesanDipotong})`);
+  cek(p.history.length === 40, `riwayat 40 pesan sampai utuh — tak ada lagi batas 15 pesan (${p.history.length})`);
+  cek(!p.history.some((m) => /MAMET HEALER|diringkas/.test(m.content)), 'tak ada catatan palsu "diringkas" yang disisipkan');
+  cek(p.riwayatDilewati === 7, 'jumlah pesan yang dilewati anggaran klien diterima');
+  for (const salah of [-3, 2.5, 'x', null, 1e9]) {
+    const q = await terimaParser({ message: 'halo', tools: [], history: [], riwayatDilewati: salah });
+    cek(q.riwayatDilewati === (salah === 1e9 ? 100000 : 0), `riwayatDilewati tak sah dinormalkan (${JSON.stringify(salah)} → ${q.riwayatDilewati})`);
+  }
   const geser = [{ content: 'a'.repeat(50) }, { content: 'b'.repeat(900) }, { content: 'c'.repeat(900) }, { content: 'd'.repeat(10) }];
   const jg = J.buatJejak({ riwayatDiterima: J.ukurRiwayat(geser) });
   J.catatLapis(jg, 'uji', geser, [geser[0], geser[2]]);
   cek(jg.lapisRiwayat[0].pesanDipotong === 0, 'pesan yang dibuang tidak dihitung sebagai dipendekkan');
-  const pendek = await terimaParser({ message: 'halo', tools: [], history: percakapan(4, { huruf: 50 }) });
-  cek(pendek.history.length === 4 && pendek.healerDisisipkan === false, 'riwayat pendek tidak disentuh parser');
 }
 
 console.log('\n-- siapkanRiwayatUntukModel: lapis yang benar-benar dijalankan --');
@@ -83,7 +84,7 @@ console.log('\n-- siapkanRiwayatUntukModel: lapis yang benar-benar dijalankan --
   const [think, rapi, bersih] = jejak.lapisRiwayat;
   cek(think.hurufThinkDibuang === 3 * '<think>nalar lama</think> '.length, `huruf nalar yang dibuang dihitung (${think.hurufThinkDibuang})`, think);
   cek(rapi.duplikatPesanSaatIni === true && rapi.sesudah.pesan === rapi.sebelum.pesan - 1, 'pesan saat ini yang terkirim ganda dibuang & ditandai', rapi);
-  cek(rapi.pesanDipotong === 5, `pesan lama yang dipendekkan ke 800 huruf dihitung (${rapi.pesanDipotong})`, rapi);
+  cek(rapi.pesanDipotong === 0 && rapi.sesudah.huruf === rapi.sebelum.huruf - 'pertanyaan sekarang'.length, `pesan lama 1.500 huruf tidak dipendekkan lagi (${rapi.pesanDipotong})`, rapi);
   cek(bersih.melindungi === true && !hasil.some((m) => /\d{18}/.test(m.content)), 'tabel ber-NIP dibuang dari riwayat & lapisnya ditandai melindungi', bersih);
   cek(JSON.stringify(hasil) === JSON.stringify(H.siapkanRiwayatUntukModel(riwayat, 'pertanyaan sekarang', null)), 'hasilnya sama dengan atau tanpa jejak (pencatat tidak mengubah riwayat)');
 }
@@ -125,24 +126,29 @@ const susunJejakPipeline = async (riwayat, pesan, kebijakan = { keputusan: 'ALLO
   const p = await terimaParser({ message: pesan, tools: [], history: riwayat });
   const jejak = J.buatJejak({ traceId: 't', riwayatDiterima: J.ukurRiwayat(p.riwayatAsli) });
   J.catatLapis(jejak, 'buang_tag_call', p.riwayatAsli, p.riwayatSesudahTag);
-  J.catatLapis(jejak, 'parser_15_pesan', p.riwayatSesudahTag, p.history, { pesanDisisipkan: p.healerDisisipkan ? 1 : 0 });
   jejak.kebijakan = kebijakan;
   const keModel = H.siapkanRiwayatUntukModel(p.history, pesan, jejak);
   J.catatPanggilanModel(jejak, { utama: true, sistemHuruf: 9000, pesanHuruf: pesan.length, riwayat: keModel, segmen: {} });
   return jejak;
 };
 
-console.log('\n-- gerbang: keadaan sekarang harus MERAH di percakapan panjang --');
+console.log('\n-- gerbang: percakapan panjang kini sampai utuh (Tahap C) --');
 {
-  const riwayat = percakapan(20, { huruf: 1500 });
+  const riwayat = percakapan(40, { huruf: 1500 });
   const server = await susunJejakPipeline(riwayat, 'lanjutkan');
   const klien = K.susunJejakKlien({ jalur: 'CONVERSATION', traceId: 't', riwayatTersedia: riwayat, dikirim: riwayat });
-  const n = G.nilaiGiliran([{ nomor: 16, pasangan: [{ klien, server }] }]);
-  cek(!n.hijau, `percakapan 20 pesan tidak hijau (${n.merah} merah)`, n.perKode);
-  cek(n.perKode.catatan_palsu === 1, 'catatan palsu "diringkas" terdeteksi', n.perKode);
-  cek(n.perKode.pesan_dibuang >= 1 && n.temuan.some((t) => t.kode === 'pesan_dibuang' && /parser_15_pesan .*9 pesan/.test(t.rinci)), 'parser membuang 9 pesan terdeteksi', n.temuan.filter((t) => t.kode === 'pesan_dibuang'));
-  cek(n.temuan.some((t) => t.kode === 'pesan_dipotong' && /rapikan_riwayat/.test(t.rinci)), 'pemotongan 800 huruf terdeteksi', n.perKode);
+  const n = G.nilaiGiliran([{ nomor: 20, pasangan: [{ klien, server }] }]);
+  cek(n.hijau, `percakapan 40 pesan × 1.500 huruf: hijau (${n.merah} merah)`, n.temuan);
+  const keModel = server.panggilanModel[0].riwayat;
+  cek(keModel.pesan === 40 && keModel.huruf === J.ukurRiwayat(riwayat).huruf - 20 * '<think>nalar lama</think> '.length, `yang sampai ke model = yang dikirim klien, dikurangi nalar lama saja (${keModel.pesan}/${keModel.huruf})`);
   cek(!n.perKode.riwayat_berubah_sebelum_model, 'yang sampai ke model sama dengan lapis terakhir (tak ada pemangkas tak tercatat)', n.perKode);
+
+  const tiruan = await susunJejakPipeline(percakapan(20, { huruf: 1500 }), 'lanjutkan');
+  const asli = percakapan(20, { huruf: 1500 });
+  const terpangkas = [asli[0], { role: 'model', content: '[diringkas]' }, ...asli.slice(-10).map((m) => ({ ...m, content: m.content.slice(0, 800) }))];
+  tiruan.lapisRiwayat.splice(1, 0, { nama: 'pemangkas_tiruan', sebelum: J.ukurRiwayat(asli), sesudah: J.ukurRiwayat(terpangkas), melindungi: false, pesanDipotong: 10, pesanDisisipkan: 1 });
+  const nt = G.nilaiGiliran([{ pasangan: [{ klien: null, server: tiruan }] }]);
+  cek(nt.perKode.catatan_palsu === 1 && nt.perKode.pesan_dibuang === 1 && nt.perKode.pesan_dipotong === 1, 'gerbang tetap mengenali pemangkas & catatan palsu bila muncul lagi', nt.perKode);
 
   const pendek = percakapan(3, { huruf: 200 });
   const s2 = await susunJejakPipeline(pendek, 'tanya');
@@ -167,7 +173,6 @@ console.log('\n-- gerbang: setiap sebab merah dikenali --');
   cek(!(await kode((s) => { Object.assign(s.rag, { diminta: true, ditemukan: 8, dikirim: 0, dataTabelMenggantikan: true }); })).rag_tak_terkirim, 'data tabel menggantikan RAG tidak dihitung merah');
   cek((await kode(() => {}, (k) => ({ ...k, dikirim: { ...k.dikirim, pesan: k.dikirim.pesan + 1 } }))).riwayat_hilang_di_jalan === 1, 'riwayat klien ≠ yang diterima server merah');
   cek((await kode(() => {}, (k) => ({ ...k, konteksRag: { sebelum: 9000, sesudah: 4040 } }))).konteks_dipotong_klien === 1, 'pemotong konteks 4.000 huruf di klien merah');
-  cek((await kode(() => {}, (k) => ({ ...k, cmg: 'REJECT' }))).cmg_menolak === 1, 'penjaga memori lama menolak merah');
   cek((await kode(() => {}, (k) => ({ ...k, jalur: 'LOOKUP', riwayatTersedia: { ...k.riwayatTersedia, pesan: 9 } }))).jalur_memotong_riwayat === 1, 'jalur LOOKUP memotong ke 3 pesan merah');
   cek((await kode((s) => { s.panggilanModel[0].riwayat = { ...s.panggilanModel[0].riwayat, huruf: 1 }; })).riwayat_berubah_sebelum_model === 1, 'pemangkas tak tercatat sebelum model merah');
   cek((await kode((s) => { s.panggilanModel = []; s.lapisRiwayat = []; }, (k) => k)).tanpa_panggilan_utama === 1, 'tanpa panggilan utama dilaporkan');
@@ -182,10 +187,10 @@ console.log('\n-- gerbang: hasil alat antar giliran --');
   const tanpa = [{ role: 'user', content: 'baca folder' }, { role: 'model', content: 'isinya begini' }];
   const s2 = await susunJejakPipeline(tanpa, 'jangan dicari lagi, apa isi berkas tadi?');
   const g2 = { nomor: 2, harapan: { pakaiHasilAlatSebelumnya: true }, pasangan: [{ klien: K.susunJejakKlien({ jalur: 'CONVERSATION', riwayatTersedia: tanpa, dikirim: tanpa, traceId: 't' }), server: s2 }] };
-  cek(G.nilaiGiliran([g1, g2]).perKode.hasil_alat_hilang === 1, 'hasil alat yang tak terbawa ke giliran berikutnya merah');
+  cek(G.nilaiGiliran([g1, g2]).perKode.catatan_kerja_hilang === 1, 'hasil alat & catatan kerja yang tak terbawa ke giliran berikutnya merah');
   const s3 = await susunJejakPipeline(alat, 'apa isi berkas tadi?');
   const g3 = { nomor: 2, harapan: { pakaiHasilAlatSebelumnya: true }, pasangan: [{ klien: K.susunJejakKlien({ jalur: 'CONVERSATION', riwayatTersedia: alat, dikirim: alat, traceId: 't' }), server: s3 }] };
-  cek(!G.nilaiGiliran([g1, g3]).perKode.hasil_alat_hilang, 'hasil alat yang terbawa tidak merah');
+  cek(!G.nilaiGiliran([g1, g3]).perKode.catatan_kerja_hilang, 'hasil alat yang terbawa tidak merah');
 
   const hasilSaatIni = '[HASIL ALAT FOLDER] putaran 1/4\n' + 'y'.repeat(500);
   const putaran = [{ role: 'user', content: 'baca folder' }, { role: 'model', content: 'membaca' }, { role: 'user', content: hasilSaatIni }];
@@ -208,13 +213,13 @@ console.log('\n-- gerbang: hasil alat antar giliran --');
   const gil = G.kelompokkanGiliran(urutan);
   cek(gil.length === 3 && gil[0].pasangan.length === 3 && gil[1].pasangan.length === 1, `putaran alat digabung ke giliran pertanyaannya (${gil.map((g) => g.pasangan.length).join('+')})`);
   cek(gil[1].harapan?.pakaiHasilAlatSebelumnya === true && !gil[2].harapan && !gil[0].harapan, 'hanya giliran sesudah pemakaian alat yang diharapkan membawa hasil alat');
-  cek(G.nilaiGiliran(gil).perKode.hasil_alat_hilang === 1, 'urutan nyata (alat dipakai lalu tak terbawa) merah');
+  cek(G.nilaiGiliran(gil).perKode.catatan_kerja_hilang === 1, 'urutan nyata (alat dipakai lalu tak terbawa) merah');
 }
 
 console.log('\n-- alat uji skenario (uji-jejak-prompt-t0.js) dengan aplikasi tiruan --');
 {
   const panjang16 = percakapan(20, { huruf: 1500 });
-  const server = await susunJejakPipeline(panjang16, 'lanjutkan');
+  const server = await susunJejakPipeline(panjang16, 'lanjutkan', { keputusan: 'ALLOW_WITH_LIMIT', skorRisiko: 3, alatDimatikan: true, webDimatikan: true, ragTopK: 2 });
   const riwayatJejak = [{ klien: K.susunJejakKlien({ jalur: 'CONVERSATION', traceId: 't', riwayatTersedia: panjang16, dikirim: panjang16 }), server }];
   globalThis.window = { __mamet: { serviceManager: { get: (n) => (n === 'AssistantService' ? { riwayatJejak } : null) } } };
   const T0 = await imp('uji/uji-jejak-prompt-t0.js');
@@ -224,7 +229,7 @@ console.log('\n-- alat uji skenario (uji-jejak-prompt-t0.js) dengan aplikasi tir
   let lap;
   try { lap = await T0.laporan(); } finally { console.table = asliTable; console.log = asliLog; }
   cek(T0.SKENARIO.length >= 15, `skenario ≥ 15 giliran (${T0.SKENARIO.length})`);
-  cek(lap && lap.hijau === false && lap.perKode.catatan_palsu === 1 && lap.giliran[0].merah.includes('pesan_dibuang'), 'laporan menilai jejak dengan gerbang yang sama', lap?.perKode);
+  cek(lap && lap.hijau === false && lap.perKode.kebijakan_membatasi === 1 && lap.giliran[0].merah === 'kebijakan_membatasi' && lap.giliran[0].keModel === '20/' + server.panggilanModel[0].riwayat.huruf, 'laporan menilai jejak dengan gerbang yang sama', lap?.giliran?.[0]);
   const keluar = tertangkap.join('\n');
   cek(!keluar.includes(RAHASIA) && !JSON.stringify(lap).includes(RAHASIA), 'laporan yang disalin Owner tidak membawa isi pesan');
   delete globalThis.window;

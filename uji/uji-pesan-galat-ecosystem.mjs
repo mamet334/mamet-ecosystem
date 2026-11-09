@@ -127,10 +127,11 @@ const RK = tanpaKomentar(baca('frontend/src/components/workbench/RiwayatKonversi
 cek(!/onError\?\.\(`⚠️ Error:/.test(AS), 'AssistantService tidak lagi menulis "⚠️ Error:" ke layar');
 cek(!/onError\?\.\(`Gagal menghubungi server/.test(AS), 'teks "Gagal menghubungi server: …" tidak lagi disusun di layanan');
 cek(!/\.error \|\| errorText/.test(AS), 'cacat `e.error || errorText` (kalimat server dibuang) tidak ada lagi');
-cek(/pesan = e\?\.message/.test(AS), 'dan `message` dari server benar-benar dibaca');
+const GR = tanpaKomentar(baca('frontend/src/core/runtime/services/galatRespons.js'));
+cek(/pesan: e\?\.message/.test(GR) && (AS.match(/const galat = await bacaGalatRespons\(response\);/g) || []).length === 2, 'dan `message` dari server benar-benar dibaca (lewat bacaGalatRespons)');
 
 const panggilan = (AS.match(/onError\?\.\(/g) || []).length;
-const terstruktur = (AS.match(/onError\?\.\(\{/g) || []).length;
+const terstruktur = (AS.match(/onError\?\.\(\{/g) || []).length + (AS.match(/onError\?\.\(galat\);/g) || []).length;
 cek(panggilan === terstruktur && terstruktur >= 11,
   `SEMUA ${panggilan} panggilan onError memakai tanda terstruktur (${terstruktur})`, { panggilan, terstruktur });
 
