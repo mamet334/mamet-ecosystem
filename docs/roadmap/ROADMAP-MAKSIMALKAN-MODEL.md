@@ -75,7 +75,14 @@ korpus penuh dan alat.** Karena itu pembatas bertumpuk berbulan-bulan tanpa keta
 **Selesai bila:** skenario jalan di aplikasi sungguhan dan angka "sebelum" untuk keadaan sekarang tercatat (harus merah
 di C2/C3/C4 dan A — itulah bukti alat ukurnya bekerja); mutasi: mencabut satu pemangkas mengubah angkanya.
 
-## Tahap A — RAG cepat & tak membuang hasil (K1, K2) 📋 🗄🔧
+## Tahap A — RAG cepat & tak membuang hasil (K1, K2) 📝 🗄🔧
+
+**Status 9 Nov — sebagian** ([log](../project-memory/changelog/2026-11-09-item-131-tahap-a-rag-tak-dibuang.md)): hasil
+RAG tidak dibuang lagi (skenario: habis waktu 14 → 0, ketemu-dibuang 11 → 0); `match_documents_hybrid` disusun ulang
+(hasil identik, 20 kasus) dan vektor disimpan di baris; HNSW sengaja belum dipakai. **Sisa:** di pemakaian nyata
+pencarian masih berayun 0,1–17 s dan bisa kena batas query 8 s (5/5 di uji terakhir) — dugaan: CPU/IO paket gratis
+dibatasi sesudah pemakaian berat; periksa grafik CPU & Disk IO budget dashboard Supabase, ukur ulang sesudah database
+istirahat, bila tetap lambat → HNSW dengan recall@8 diukur terhadap hasil tepat (izin migrasi tersendiri).
 
 **Masalah.** Lima pertanyaan awal tentang changelog: log server `Tier 1 RAG timeout after 5000ms`, lalu 2–3 detik
 kemudian `pencarian makna: 8 potongan (skor teratas 0.72–0.76)` — **ketemu, tetapi dibuang**. Sekali

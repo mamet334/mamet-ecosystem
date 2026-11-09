@@ -244,7 +244,10 @@ console.log('\n-- sambungan di kode sungguhan --');
   const LO = baca('supabase/functions/agent-process/lib/llm_orchestrator.ts');
   cek((LO.match(/catatKomposisiPrompt\(promptText, systemPromptText, chatHistory, rctx\?\.jejakPrompt\)/g) || []).length === 2, 'kedua jalur model (biasa & stream) mencatat ukuran prompt');
   const CB = baca('supabase/functions/agent-process/lib/orchestration/handlers/context_builder.ts');
-  cek(/catatRagGagal\(jejakRag, err, tenggatTier1 - mulaiTier1, tier1Berjalan, mulaiTier1\)/.test(CB) && /tier1Berjalan = executeTier1\(\);/.test(CB), 'RAG yang gagal/terlambat dicatat dengan janji yang benar-benar berjalan');
+  const ragBlok = CB.slice(CB.indexOf('const ragPromise = (async () => {'), CB.indexOf('const memoryPromise'));
+  cek(ragBlok.length > 1000 && /const adaptiveResult: any = await executeTier1\(\);/.test(ragBlok), 'hasil RAG ditunggu sampai selesai (Tahap A)');
+  cek(!/Promise\.race|setTimeout|TIER1_RETRIEVAL_TIMEOUT_MS|tenggat/i.test(ragBlok), 'tak ada batas waktu yang membuang hasil RAG yang sudah ketemu (Tahap A)', (ragBlok.match(/Promise\.race|setTimeout|TIER1_RETRIEVAL_TIMEOUT_MS|tenggat\w*/gi) || []));
+  cek(/catatRagGagal\(jejakRag, err, null, null, mulaiTier1\)/.test(ragBlok) && /jejakRag\.msSelesai = Date\.now\(\) - mulaiTier1; jejakRag\.ditemukan = finalChunks\.length;/.test(ragBlok), 'RAG yang gagal dicatat sebagai galat, waktu selesai tercatat');
   cek(/jejakRagAkhir\.dikirim = /.test(CB) && /catatPenolakan\(ctx\.state\.jejakPrompt, 'evidence_gate'/.test(CB), 'potongan yang dikirim & penolakan evidence gate dicatat');
   const AS = baca('frontend/src/core/runtime/services/AssistantService.js');
   cek(/const \{ jejakPrompt: jejakServer, \.\.\.jsonTanpaJejak \}/.test(AS) && /this\._catatJejakServer\(jejakServer\)/.test(AS)

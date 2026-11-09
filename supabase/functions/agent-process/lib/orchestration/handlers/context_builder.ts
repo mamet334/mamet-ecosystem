@@ -79,15 +79,12 @@ export const ContextBuilderHandler = {
       console.log(`[MEMORY_GATEWAY] Edge Function hanya validasi auth dan memproses LLM. Tidak ada auto-save sembunyi.`);
     }
 
-    const TIER1_RETRIEVAL_TIMEOUT_MS = 5000;
-    const TULIS_ULANG_ANGGARAN_MS = 6000;
     const ragPromise = (async () => {
         if (!ctx.auth.userId || !ctx.request.isRagEnabled || ragEngineerTanpaSpace) return [];
 
         const mulaiTier1 = Date.now();
-        let tenggatTier1 = mulaiTier1 + TIER1_RETRIEVAL_TIMEOUT_MS;
         const jejakRag = ctx.state.jejakPrompt?.rag;
-        if (jejakRag) { jejakRag.diminta = true; jejakRag.batasWaktuMs = TIER1_RETRIEVAL_TIMEOUT_MS; }
+        if (jejakRag) jejakRag.diminta = true;
 
         const executeTier1 = async () => {
             const pesan = ctx.request.finalMessage || '';
@@ -116,7 +113,6 @@ export const ContextBuilderHandler = {
                 if (vectorDocs.length === 0) {
                     const riwayat = riwayatSebelumPesan(ctx.request.history, pesan);
                     if (riwayat.length > 0) {
-                        tenggatTier1 = Math.max(tenggatTier1, Date.now() + TULIS_ULANG_ANGGARAN_MS);
                         const ulang = await tulisUlangPertanyaan(pesan, riwayat, rctx, { batasWaktuMs: 4000 });
                         if (!ulang) {
                             catatanUlang = ', tulis ulang gagal';
@@ -164,22 +160,11 @@ export const ContextBuilderHandler = {
             return await retrievalStrategy.apply(rawChunks, supabase);
         };
 
-        let pengaturWaktu: number | undefined;
-        let tier1Berjalan: Promise<any> | null = null;
         try {
-            const timeoutPromise = new Promise((_, reject) => {
-                const periksa = () => {
-                    const sisa = tenggatTier1 - Date.now();
-                    if (sisa > 0) { pengaturWaktu = setTimeout(periksa, sisa); return; }
-                    reject(new Error(`Tier 1 RAG timeout after ${Date.now() - mulaiTier1}ms`));
-                };
-                pengaturWaktu = setTimeout(periksa, TIER1_RETRIEVAL_TIMEOUT_MS);
-            });
-
-            tier1Berjalan = executeTier1();
-            const adaptiveResult: any = await Promise.race([tier1Berjalan, timeoutPromise]);
+            const adaptiveResult: any = await executeTier1();
             const finalChunks = adaptiveResult?.chunks || [];
-            if (jejakRag) { jejakRag.msSelesai = Date.now() - mulaiTier1; jejakRag.ditemukan = finalChunks.length; jejakRag.batasWaktuMs = tenggatTier1 - mulaiTier1; }
+            if (jejakRag) { jejakRag.msSelesai = Date.now() - mulaiTier1; jejakRag.ditemukan = finalChunks.length; }
+            console.log(`[RAG] Tier 1 selesai dalam ${Date.now() - mulaiTier1} ms — ${finalChunks.length} potongan`);
 
             ctx.state.tier1Retrieval = {
                 success: true,
@@ -201,8 +186,9 @@ export const ContextBuilderHandler = {
                 _sufficiency: adaptiveResult.sufficiency
             }));
         } catch (err: any) {
-            console.warn('[RAG] Tier 1 Retrieval failed or timed out:', err.message);
-            catatRagGagal(jejakRag, err, tenggatTier1 - mulaiTier1, tier1Berjalan, mulaiTier1);
+            console.warn(`[RAG] Tier 1 gagal sesudah ${Date.now() - mulaiTier1} ms:`, err.message);
+            catatRagGagal(jejakRag, err, null, null, mulaiTier1);
+            if (jejakRag) jejakRag.msSelesai = Date.now() - mulaiTier1;
             ctx.state.tier1Retrieval = {
                 success: false,
                 tier: 1,
@@ -212,8 +198,6 @@ export const ContextBuilderHandler = {
             };
             ctx.state.processingSteps.push(`⚠️ [RAG TIER 1 FALLBACK] ${err.message}`);
             return [];
-        } finally {
-            clearTimeout(pengaturWaktu);
         }
     })();
 

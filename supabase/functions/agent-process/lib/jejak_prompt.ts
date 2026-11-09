@@ -116,7 +116,7 @@ export function catatPenolakan(jejak: JejakPrompt | null | undefined, lapis: str
 
 export const POLA_HABIS_WAKTU_RAG = /^Tier 1 RAG timeout/;
 
-export function catatRagGagal(jejakRag: JejakRag | null | undefined, galat: any, batasWaktuMs: number, janjiBerjalan: Promise<any> | null, mulai: number, sekarang: () => number = Date.now) {
+export function catatRagGagal(jejakRag: JejakRag | null | undefined, galat: any, batasWaktuMs: number | null, janjiBerjalan: Promise<any> | null, mulai: number, sekarang: () => number = Date.now) {
   if (!jejakRag) return;
   const pesan = String(galat?.message || galat || '');
   jejakRag.batasWaktuMs = batasWaktuMs;
