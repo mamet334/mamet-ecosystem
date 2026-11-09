@@ -1,3 +1,5 @@
+import type { JejakPrompt } from '../jejak_prompt.ts';
+
 export type MametCapabilityMode = "AI" | "LITE" | "ENGINEER";
 
 export interface UnifiedExecutionContext {
@@ -32,7 +34,7 @@ export interface UnifiedExecutionContext {
     guardianPromptDirective?: string;
   };
   policy: { mode: MametCapabilityMode; decision: "ALLOW" | "ALLOW_WITH_LIMIT" | "BLOCK"; toolsEnabled: boolean; webSearchEnabled: boolean; riskScore: number; ragTopK: number; ragThreshold: number; webHint?: string; canReadRAG: boolean; canReadMemory: boolean; canWriteMemory: boolean; canWriteKnowledge: boolean; canUseWorkspace: boolean; canUseAutomation: boolean; };
-  state: { ragArray: any[]; memoryArray: any[]; processingSteps: string[]; };
+  state: { ragArray: any[]; memoryArray: any[]; processingSteps: string[]; jejakPrompt?: JejakPrompt; };
   rag: { topK: number; threshold: number; allowLongDocs: boolean; compressionLevel: "low" | "high"; };
   execution: { memoryPriority: "memory_first" | "balanced"; webSearchEnabled: boolean; subAgentEnabled: boolean; webHint?: string; };
   trace: { riskScore: number; retrievalStrategy: string; timestamp: number; };

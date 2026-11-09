@@ -1,5 +1,7 @@
 
 
+import type { JejakPrompt } from './jejak_prompt.ts';
+
 export interface EnvironmentConfig {
   supabaseUrl: string;
   supabaseServiceKey: string;
@@ -97,6 +99,8 @@ export interface RuntimeContext {
   tasks: BackgroundTaskTracker;
 
   env: EnvironmentConfig;
+
+  jejakPrompt?: JejakPrompt;
 }
 
 

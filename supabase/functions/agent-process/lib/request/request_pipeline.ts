@@ -9,10 +9,10 @@ import { RuntimeContext, createBackgroundTaskTracker, createRuntimeLogger } from
 import { getPluginPromptList } from '../../plugins/registry.ts';
 import { CapabilityRegistry } from '../adapters/adapter_registry.ts';
 import { generateEmbedding, EMBEDDING_DIMENSIONS, kalimatSebabEmbedding, type JejakEmbedding } from '../rag/embedding.ts';
-import { rapikanRiwayat } from './history_compressor.ts';
+import { siapkanRiwayatUntukModel } from './history_compressor.ts';
+import { buatJejak, ukurRiwayat, catatLapis, catatPenolakan, barisLogJejak } from '../jejak_prompt.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { konteksWaktuPengguna, zonaWaktuSah } from './waktu_pengguna.ts';
-import { bersihkanRiwayatDataTabel } from '../../../../../shared/dataTabelAsnSaring.js';
 import { blokPromptFolder } from '../../../../../shared/folderKerjaAlat.js';
 import { blokPromptKonektor } from '../../../../../shared/konektorAlat.js';
 import { blokPromptKonektorUmum } from '../../../../../shared/konektorUmum.js';
@@ -137,11 +137,27 @@ export async function executeRequestPipeline(
 
   ctx.request = { ...ctx.request, tools: parsed.tools, model: parsed.model, stream: parsed.stream, history: parsed.history, globalMemory: parsed.globalMemory, semanticContext: parsed.semanticContext || '', extractedImage: parsed.extractedImage, guardianPromptDirective: parsed.guardianPromptDirective, desktopOSMode: parsed.desktopOSMode, auditMode: parsed.auditMode, ragEnabled: parsed.ragEnabled, memoryEnabled: parsed.memoryEnabled, dataTabel: parsed.dataTabel === true, folderKerja: parsed.folderKerja, workspaceTarget: parsed.workspaceTarget, storageTarget: parsed.storageTarget, finalMessage: parsed.finalMessage };
 
+  const jejakPrompt = buatJejak({ traceId: parsed.traceId, appSource: parsed.appSource, mode: parsed.mode, riwayatDiterima: ukurRiwayat(parsed.riwayatAsli) });
+  catatLapis(jejakPrompt, 'buang_tag_call', parsed.riwayatAsli, parsed.riwayatSesudahTag);
+  catatLapis(jejakPrompt, 'parser_15_pesan', parsed.riwayatSesudahTag, parsed.history || [], { pesanDisisipkan: parsed.healerDisisipkan ? 1 : 0 });
+  jejakPrompt.kebijakan = {
+    keputusan: ctx.policy.decision,
+    skorRisiko: ctx.policy.riskScore,
+    alatDimatikan: ctx.policy.toolsEnabled === false,
+    webDimatikan: ctx.policy.webSearchEnabled === false,
+    ragTopK: ctx.policy.ragTopK,
+  };
+  ctx.state.jejakPrompt = jejakPrompt;
+
   const policyResponse = enforcePolicy(ctx, !!parsed.stream, corsHeaders);
   if (policyResponse) return { ctx: {} as any, rctx: {} as any, response: policyResponse };
 
   const quotaResponse = await checkQuota(ctx.auth.userId, runtimeEnv.supabaseUrl, runtimeEnv.supabaseServiceKey, !!parsed.stream, corsHeaders);
-  if (quotaResponse) return { ctx: {} as any, rctx: {} as any, response: quotaResponse };
+  if (quotaResponse) {
+    catatPenolakan(jejakPrompt, 'kuota', `HTTP ${quotaResponse.status}`);
+    console.log(barisLogJejak(jejakPrompt));
+    return { ctx: {} as any, rctx: {} as any, response: quotaResponse };
+  }
 
   const traceId = parsed.traceId || crypto.randomUUID();
   const backgroundTasks = createBackgroundTaskTracker(traceId);
@@ -166,7 +182,8 @@ export async function executeRequestPipeline(
     logger: createRuntimeLogger(ctx.auth.userId, backgroundTasks, !!parsed.stream, runtimeEnv),
     userId: ctx.auth?.userId || 'anonymous',
     state: { explicitModelErrors: '' },
-    tasks: backgroundTasks
+    tasks: backgroundTasks,
+    jejakPrompt
   };
 
   let memoriVektor = '';
@@ -351,9 +368,7 @@ Instruksi ENGINEER lain (RULE 1-6 di konteks Two-Brain) merujuk ke sini, tidak m
   ctx.request.effectiveRagMatchCount = ctx.policy.ragTopK;
   ctx.request.effectiveRagThreshold = ctx.policy.ragThreshold;
 
-  ctx.request.history = rapikanRiwayat(ctx.request.history || [], parsed.message);
-  ctx.request.history = (ctx.request.history || []).map((m: any) =>
-    m && m.role !== 'user' && typeof m.content === 'string' ? { ...m, content: bersihkanRiwayatDataTabel(m.content) } : m);
+  ctx.request.history = siapkanRiwayatUntukModel(ctx.request.history || [], parsed.message, jejakPrompt);
 
   return { ctx, rctx };
 }

@@ -22,7 +22,8 @@ try {
     .replace("'./runtime_context.ts'", "'./stub.mjs'")
     .replace("'./event/event_bus.ts'", "'./stub.mjs'")
     .replace("'./adapters/adapter_registry.ts'", "'./stub.mjs'")
-    .replace("'./streaming/pesan_gagal_stream.ts'", "'./stub.mjs'");
+    .replace("'./streaming/pesan_gagal_stream.ts'", "'./stub.mjs'")
+    .replace("'./jejak_prompt.ts'", `'${pathToFileURL(join(AKAR, 'supabase/functions/agent-process/lib/jejak_prompt.ts')).href}'`);
   const { code } = await esbuild.transform(src, { loader: 'ts', format: 'esm' });
   writeFileSync(join(dir, 'o.mjs'), code);
   const { catatKomposisiPrompt } = await import(pathToFileURL(join(dir, 'o.mjs')).href);

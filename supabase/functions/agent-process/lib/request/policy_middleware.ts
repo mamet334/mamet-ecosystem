@@ -1,4 +1,5 @@
 import { UnifiedExecutionContext } from './types.ts';
+import { catatPenolakan, barisLogJejak, salinJejak } from '../jejak_prompt.ts';
 
 export function enforcePolicy(ctx: UnifiedExecutionContext, stream: boolean, corsHeaders: HeadersInit): Response | null {
   if (ctx.request.tools && Array.isArray(ctx.request.tools)) {
@@ -11,8 +12,10 @@ export function enforcePolicy(ctx: UnifiedExecutionContext, stream: boolean, cor
   if (ctx.policy.decision === "BLOCK") {
     console.warn(`[EXECUTION POLICY] Blocked request from user ${ctx.auth.userId} due to HIGH risk. Trace:`, ctx.trace);
     const blockMsg = "Permintaan ditolak oleh Sistem Kebijakan Eksekusi. Deteksi injeksi atau pola berbahaya.";
+    catatPenolakan(ctx.state.jejakPrompt, 'kebijakan_eksekusi', `BLOCK skor ${ctx.policy.riskScore}`);
+    console.log(barisLogJejak(ctx.state.jejakPrompt));
     if (!stream) {
-      return new Response(JSON.stringify({ message: blockMsg }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ message: blockMsg, jejakPrompt: salinJejak(ctx.state.jejakPrompt) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     } else {
       const streamRes = new ReadableStream({
         start(controller) {

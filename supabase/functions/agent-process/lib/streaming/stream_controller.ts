@@ -1,10 +1,12 @@
 import { MAEFExecutionResult } from '../maef/maef_contract.ts';
 import { corsHeaders, getStreamResponse } from '../stream_handler.ts';
+import { barisLogJejak, salinJejak } from '../jejak_prompt.ts';
 
 export const streamController = {
     pipe(result: MAEFExecutionResult, rctx: any): Response {
 
         if (result.mode === 'STREAM') {
+            console.log(barisLogJejak(rctx?.jejakPrompt));
             if (result.type === 'BLOCKED') {
                 const blockedStream = new ReadableStream({
                   start(controller) {
@@ -24,7 +26,11 @@ export const streamController = {
         }
         
         if (result.mode === 'DIRECT') {
-            return new Response(JSON.stringify(result.aiResponse), {
+            console.log(barisLogJejak(rctx?.jejakPrompt));
+            const badan = rctx?.jejakPrompt && result.aiResponse && typeof result.aiResponse === 'object'
+                ? { ...result.aiResponse, jejakPrompt: salinJejak(rctx.jejakPrompt) }
+                : result.aiResponse;
+            return new Response(JSON.stringify(badan), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
         }

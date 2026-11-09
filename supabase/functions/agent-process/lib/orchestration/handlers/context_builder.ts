@@ -14,6 +14,7 @@ import { PolicyEngine } from '../../verification/policy_engine.ts';
 import { getActiveConflictsCount } from '../../verification/verification_service.ts';
 import { eventBus } from '../../event/event_bus.ts';
 import { runLLM } from '../../llm_orchestrator.ts';
+import { catatPenolakan, catatRagGagal } from '../../jejak_prompt.ts';
 
 import { KnowledgeService } from '../../../../../../shared/KnowledgeService.js';
 import { RetrievalStrategyService } from '../../../../../../shared/RetrievalStrategyService.js';
@@ -85,6 +86,8 @@ export const ContextBuilderHandler = {
 
         const mulaiTier1 = Date.now();
         let tenggatTier1 = mulaiTier1 + TIER1_RETRIEVAL_TIMEOUT_MS;
+        const jejakRag = ctx.state.jejakPrompt?.rag;
+        if (jejakRag) { jejakRag.diminta = true; jejakRag.batasWaktuMs = TIER1_RETRIEVAL_TIMEOUT_MS; }
 
         const executeTier1 = async () => {
             const pesan = ctx.request.finalMessage || '';
@@ -139,6 +142,7 @@ export const ContextBuilderHandler = {
                 : kalimatSebabEmbedding(jejakVektor);
             console.log(`[RAG] Mode: ${ctx.policy.mode} — vektor tidak tersedia (${sebabTurun}${gagalDiHulu ? ', sudah gagal di hulu — TIDAK diulang' : ''}), cadangan pencocokan kata (KnowledgeService).`);
             ctx.state.ragTurunKeKata = sebabTurun;
+            if (jejakRag) jejakRag.turunKeKata = true;
             ctx.state.processingSteps.push(
                 `⚠️ [RAG TURUN KE PENCOCOKAN KATA] Pencarian makna tidak jalan: ${sebabTurun}. ` +
                 `Dokumen yang pertanyaannya tak memuat kata dari judulnya bisa TIDAK ditemukan — ` +
@@ -161,6 +165,7 @@ export const ContextBuilderHandler = {
         };
 
         let pengaturWaktu: number | undefined;
+        let tier1Berjalan: Promise<any> | null = null;
         try {
             const timeoutPromise = new Promise((_, reject) => {
                 const periksa = () => {
@@ -171,8 +176,10 @@ export const ContextBuilderHandler = {
                 pengaturWaktu = setTimeout(periksa, TIER1_RETRIEVAL_TIMEOUT_MS);
             });
 
-            const adaptiveResult: any = await Promise.race([executeTier1(), timeoutPromise]);
+            tier1Berjalan = executeTier1();
+            const adaptiveResult: any = await Promise.race([tier1Berjalan, timeoutPromise]);
             const finalChunks = adaptiveResult?.chunks || [];
+            if (jejakRag) { jejakRag.msSelesai = Date.now() - mulaiTier1; jejakRag.ditemukan = finalChunks.length; jejakRag.batasWaktuMs = tenggatTier1 - mulaiTier1; }
 
             ctx.state.tier1Retrieval = {
                 success: true,
@@ -195,6 +202,7 @@ export const ContextBuilderHandler = {
             }));
         } catch (err: any) {
             console.warn('[RAG] Tier 1 Retrieval failed or timed out:', err.message);
+            catatRagGagal(jejakRag, err, tenggatTier1 - mulaiTier1, tier1Berjalan, mulaiTier1);
             ctx.state.tier1Retrieval = {
                 success: false,
                 tier: 1,
@@ -304,6 +312,12 @@ export const ContextBuilderHandler = {
       ctx.state.processingSteps.push(`📊 [DATA TABEL] ${(ragArray || []).length + processedExternalDocs.length} potongan RAG/web tidak dikirim — jawaban dari data tabel`);
     }
     const combinedRawRag = dataTabelSelesai ? [...dokumenDataTabel] : [...dokumenDataTabel, ...(ragArray || []), ...processedExternalDocs];
+    const jejakRagAkhir = ctx.state.jejakPrompt?.rag;
+    if (jejakRagAkhir) {
+      jejakRagAkhir.dikirim = dataTabelSelesai ? 0 : (ragArray || []).length;
+      jejakRagAkhir.dikirimWeb = dataTabelSelesai ? 0 : processedExternalDocs.length;
+      jejakRagAkhir.dataTabelMenggantikan = dataTabelSelesai && ((ragArray || []).length + processedExternalDocs.length) > 0;
+    }
 
 
     ctx.state.ragArray = (combinedRawRag || []).map((r: any, idx: number) => {
@@ -398,6 +412,7 @@ export const ContextBuilderHandler = {
     if (!evidenceReport.isValid) {
       const blockedMsg = buildBlockedResponse(evidenceReport, ctx.request.finalMessage);
       console.warn(`[EVIDENCE_GATE BLOCKED] User=${ctx.auth.userId} Mode=${ctx.policy.mode} Reason=${evidenceReport.blockReason}`);
+      catatPenolakan(ctx.state.jejakPrompt, 'evidence_gate', String(evidenceReport.blockReason || 'tanpa sebab'));
       const aiResponse = { message: blockedMsg };
       const response = stream ? { mode: 'STREAM', type: 'BLOCKED', blockedMsg, snapshot: maef.getSnapshot() } : { mode: 'DIRECT', aiResponse, snapshot: maef.getSnapshot() };
       return { isBlocked: true, response };

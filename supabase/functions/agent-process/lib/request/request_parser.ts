@@ -30,21 +30,24 @@ export async function parseRequestParams(req: Request, user: any) {
   tools = guardian.filterTools(tools, storageTarget);
   const guardianPromptDirective = guardian.getGuardianPrompt(storageTarget);
 
+  const riwayatAsli: any[] = Array.isArray(history) ? history : [];
   if (history && Array.isArray(history)) {
-    history = history.map((msg: any) => {
-      if (msg.role === 'model' && typeof msg.content === 'string') {
-        msg.content = msg.content.replace(/<call:[^>]+>/gi, '').trim();
-      }
-      return msg;
-    });
+    history = history.map((msg: any) =>
+      msg?.role === 'model' && typeof msg.content === 'string'
+        ? { ...msg, content: msg.content.replace(/<call:[^>]+>/gi, '').trim() }
+        : msg
+    );
   }
+  const riwayatSesudahTag: any[] = Array.isArray(history) ? history : [];
 
+  let healerDisisipkan = false;
   if (history && history.length > 15) {
     history = [
-      history[0], 
-      { role: 'model', content: '[MAMET HEALER: Memori obrolan lama telah diringkas untuk mencegah kepenuhan memori dan menjaga kestabilan.]' }, 
+      history[0],
+      { role: 'model', content: '[MAMET HEALER: Memori obrolan lama telah diringkas untuk mencegah kepenuhan memori dan menjaga kestabilan.]' },
       ...history.slice(-10)
     ];
+    healerDisisipkan = true;
   }
 
   let extractedImage = null;
@@ -75,6 +78,7 @@ export async function parseRequestParams(req: Request, user: any) {
   return {
     message, finalMessage, tools, model, userName, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource, auditMode, extractedImage, guardianPromptDirective, storageTarget, workspaceTarget, mode, provider, thinking, traceId, clientTimezone, streamNalar,
     pemilihModel,
+    riwayatAsli, riwayatSesudahTag, healerDisisipkan,
     memoryEnabled: memoryEnabled !== false,
     dataTabel: dataTabel === true,
     folderKerja: folderKerjaAman(folderKerja),

@@ -14,7 +14,7 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 
 | # | Kriteria | Status | Sisa |
 |---|---|---|---|
-| K1 | RAG menemukan & menjawab benar | ❌ 6 Nov: RAG chat kosong karena batas waktu (korpus 12.445 potongan) — [Item 131](./ROADMAP-MAKSIMALKAN-MODEL.md) A–C; sebelumnya lulus di korpus pecahan 5 Nov (pokok 22/22, BUKU-10 5/5); unggah dokumen besar ✅ live | 2 (Item 131 A → 💳 buku utuh + uji penuh) |
+| K1 | RAG menemukan & menjawab benar | ❌ 6 Nov: RAG chat kosong karena batas waktu (korpus 12.445 potongan); **terukur 9 Nov (Item 131 Tahap 0): 14/16 giliran dihentikan 5 s, 11× potongan ketemu lalu dibuang** — [Item 131](./ROADMAP-MAKSIMALKAN-MODEL.md) A–C; sebelumnya lulus di korpus pecahan 5 Nov (pokok 22/22, BUKU-10 5/5); unggah dokumen besar ✅ live | 2 (Item 131 A → 💳 buku utuh + uji penuh) |
 | K2 | RAG jujur saat gagal | ❌ 6 Nov: kegagalan batas waktu RAG & pemangkasan konteks tak diberitahukan — Item 131 C, H; sebelumnya tidak_ada 8/8 JUJUR (5 Nov) | ikut K1 |
 | K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ final 5 Nov (5/5 VERIFIED, 0 NIP ke model) | — |
 | K4 | Mametlite layak bagi orang awam | ✅ (T19, isolasi dua akun, CORE, undangan, ganti sandi — live) | — |

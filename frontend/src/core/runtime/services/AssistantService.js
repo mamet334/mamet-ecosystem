@@ -10,6 +10,7 @@ import { cekPerintahBerulang, petunjukHasilKosong, petunjukKeluaranTerpotong, pe
 import { peringatanKlaimTakTeruji } from './engineer/UjiKlaim.js';
 import { anggaranKonteks, pilihPesanKonteks, bacaMulaiDari } from './KonteksChat.js';
 import { rampingkanPesan, pesanUntukServer } from './pesanRamping.js';
+import { susunJejakKlien } from './JejakKlien.js';
 
 const FOLDER_BATAS_BACA_BYTE = 150 * 1024;
 
@@ -35,6 +36,23 @@ export class AssistantService {
   constructor(serviceManager) {
     this.serviceManager = serviceManager;
     this._initialized = false;
+    this.riwayatJejak = [];
+  }
+
+  _catatJejakKlien(jejakKlien) {
+    this.jejakKlienTerakhir = jejakKlien;
+    this.riwayatJejak.push({ klien: jejakKlien, server: null });
+    if (this.riwayatJejak.length > 50) this.riwayatJejak.shift();
+  }
+
+  _catatJejakServer(jejakServer) {
+    if (!jejakServer || typeof jejakServer !== 'object') return;
+    const pasangan = [...this.riwayatJejak].reverse().find((p) => p.server === null && (!jejakServer.traceId || p.klien?.traceId === jejakServer.traceId));
+    if (pasangan) pasangan.server = jejakServer;
+    else {
+      this.riwayatJejak.push({ klien: null, server: jejakServer });
+      if (this.riwayatJejak.length > 50) this.riwayatJejak.shift();
+    }
   }
 
   async initialize() {
@@ -696,6 +714,7 @@ export class AssistantService {
       _request_type: 'LOOKUP'
     };
     Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+    this._catatJejakKlien(susunJejakKlien({ jalur: 'LOOKUP', traceId, riwayatTersedia: history, dikirim: payload.history }));
 
     const headers = this.buildHeaders(token, aiProvider, aiKey);
 
@@ -810,6 +829,7 @@ export class AssistantService {
           _skill_id: skill.id
         };
         Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+        this._catatJejakKlien(susunJejakKlien({ jalur: 'SKILL', traceId: traceIdLangkah, riwayatTersedia: history, dikirim: payload.history }));
 
         const headers = this.buildHeaders(token, aiProvider, aiKey);
         let response;
@@ -1015,6 +1035,7 @@ export class AssistantService {
     }
 
     let enhancedRagContext = combinedContext;
+    let statusCmg = null;
 
     if (enhancedRagContext && LEGACY_COGNITION_ENABLED) {
       try {
@@ -1025,6 +1046,7 @@ export class AssistantService {
           behavior_profile: null,
           global_loop_result: null
         });
+        statusCmg = governorResult.status || null;
         if (governorResult.status === 'REJECT') {
           console.warn('[AssistantService] CMG REJECT — mengirim tanpa memory context');
           enhancedRagContext = '';
@@ -1032,6 +1054,7 @@ export class AssistantService {
           console.warn('[AssistantService] CMG REWRITE — confidence diturunkan');
         }
       } catch (e) {
+        statusCmg = 'GALAT';
         console.warn('[AssistantService] CMG error (skip):', e.message);
       }
     }
@@ -1095,6 +1118,17 @@ export class AssistantService {
       _request_type: 'CONVERSATION'
     };
     Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+    this._catatJejakKlien(susunJejakKlien({
+      jalur: 'CONVERSATION',
+      traceId: requestTraceId,
+      putaranAlat: pesanHasilMesin,
+      riwayatTersedia: history,
+      dikirim: payload.history,
+      konteksRag: { sebelum: rawRagLen, sesudah: trimmedRagContext.length },
+      semantik: { sebelum: rawSemLen, sesudah: trimmedSemanticContext.length },
+      cmg: statusCmg,
+      anggaran: { token: ang.token, terpakai: konteks.tokenTerpakai, dilewati: konteks.dilewati },
+    }));
 
     const headers = this.buildHeaders(token, aiProvider, aiKey);
     let response;
@@ -1182,7 +1216,10 @@ export class AssistantService {
 
     if (jsonHybrid || contentType.includes('application/json')) {
       console.log(jsonHybrid ? '[LIFECYCLE] Received JSON response (HYBRID mode)' : '[LIFECYCLE] Received JSON response (DIRECT mode)');
-      const jsonData = jsonHybrid || await response.json();
+      const jsonMentah = jsonHybrid || await response.json();
+      const { jejakPrompt: jejakServer, ...jsonTanpaJejak } = jsonMentah && typeof jsonMentah === 'object' ? jsonMentah : {};
+      const jsonData = jsonMentah && typeof jsonMentah === 'object' ? jsonTanpaJejak : jsonMentah;
+      this._catatJejakServer(jejakServer);
       const rawContent = typeof (jsonData.message || jsonData) === 'string'
         ? (jsonData.message || jsonData)
         : JSON.stringify(jsonData.message || jsonData);

@@ -44,7 +44,16 @@ diulang) sebelum ditandai ✅.
   disaring manual. **Celah:** 43 berkas `.sql` tak masuk graf (`tree_sitter_sql` tak terpasang); fungsi RAG dibaca
   langsung dari database (`pg_get_functiondef`).
 
-## Tahap 0 — Ukur apa yang benar-benar diterima model (gerbang semua tahap) 📋 🔧🖥💳
+## Tahap 0 — Ukur apa yang benar-benar diterima model (gerbang semua tahap) ✅ 🔧🖥💳
+
+**Status: Selesai 9 Nov 2026** — jejak per permintaan (server + klien, angka saja), gerbang `uji/lib/gerbangJejak.mjs`,
+skenario `uji/uji-jejak-prompt-t0.js` (16 giliran); `agent-process` v551. Angka "sebelum": **MERAH 77** — RAG ketemu
+lalu dibuang 11×, riwayat ke model ±7% di giliran terakhir, catatan palsu 11×, hasil alat hilang 6×, 1× dibatasi & 1×
+BLOCK pada baca berkas ([log](../project-memory/changelog/2026-11-09-item-131-tahap-0-ukur-yang-sampai-ke-model.md)).
+**Cara memakainya di setiap tahap:** percakapan BARU di Assistant → DevTools
+`const t0 = await import('/@fs/D:/SLAMET/other/mamet os ecosystem/uji/uji-jejak-prompt-t0.js'); t0.mulai();` →
+`await t0.jalankan()` → bandingkan `perKode` dengan angka "sebelum"; log server `[JEJAK_PROMPT]`. Sisa: jalur STREAM
+(Mametlite) belum mencatat ukuran prompt panggilan model.
 
 **Kenapa ini ada (keluhan Owner 6 Nov: "selama ini membuat aplikasi mamet seperti memperbodoh model reasoningnya").**
 Suite 158/158, mutasi, dan uji K1 22/22 semuanya lulus — tetapi semuanya mengukur potongan kecil (satu fungsi, satu
@@ -258,7 +267,7 @@ build hijau, server ter-deploy sama dengan repo.
 0. **Tahap 0** (ukur ujung-ke-ujung) — gerbang semua tahap; tanpa alat ukur ini kesalahan yang sama bisa terulang diam-diam.
    **J** (hapus komentar) — **keputusan Owner 6 Nov: langsung sesudah Tahap 0, sebelum A**, supaya sesi yang mengerjakan
    A–I tidak lagi disesatkan komentar lama; perubahannya terbukti tak mengubah kode (keluaran build sama). Dalam
-   praktik J selesai lebih dulu (9 Nov); **Tahap 0 berikutnya**, sebelum A.
+   praktik J selesai lebih dulu (9 Nov); Tahap 0 ✅ 9 Nov — **berikutnya Tahap A**.
 1. **A** (RAG cepat) — syarat uji K1/K2 buku utuh.
 2. **C** (konteks utuh) + **H** (kegagalan jujur) — model berhenti lupa & berhenti diam.
 3. **B** (alat RAG) — dibangun di atas A.

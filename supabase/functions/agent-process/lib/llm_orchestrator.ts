@@ -2,6 +2,7 @@ import { RuntimeContext } from './runtime_context.ts';
 import { eventBus } from './event/event_bus.ts';
 import { CapabilityRegistry } from './adapters/adapter_registry.ts';
 import { pesanSemuaPenyediaGagal } from './streaming/pesan_gagal_stream.ts';
+import { catatPanggilanModel, type JejakPrompt } from './jejak_prompt.ts';
 
 
 
@@ -167,10 +168,13 @@ export const callLLMWithCascade = async (
   return res.result;
 };
 
-export function catatKomposisiPrompt(promptText: string, systemPromptText: string, chatHistory: any[]) {
+export function catatKomposisiPrompt(promptText: string, systemPromptText: string, chatHistory: any[], jejak?: JejakPrompt | null) {
   const s = systemPromptText || '';
   const awalKontrak = s.indexOf('[UNIVERSAL EVIDENCE CONTRACT');
-  if (awalKontrak < 0) return;
+  if (awalKontrak < 0) {
+    catatPanggilanModel(jejak, { utama: false, sistemHuruf: s.length, pesanHuruf: (promptText || '').length, riwayat: chatHistory, segmen: {} });
+    return;
+  }
   const cari = (penanda: string) => s.indexOf(penanda, awalKontrak);
   const blok4 = cari('[BLOK 4:');
   const segmen = ([
@@ -193,6 +197,7 @@ export function catatKomposisiPrompt(promptText: string, systemPromptText: strin
   const riwayat = Array.isArray(chatHistory) ? chatHistory : [];
   const hurufRiwayat = riwayat.reduce((n, m) => n + String(m?.content ?? '').length, 0);
   const hurufPesan = (promptText || '').length;
+  catatPanggilanModel(jejak, { utama: true, sistemHuruf: s.length, pesanHuruf: hurufPesan, riwayat, segmen: ukuran });
   console.log(`[PROMPT_KOMPOSISI] sistem=${s.length} ${JSON.stringify(ukuran)} | riwayat=${riwayat.length} pesan/${hurufRiwayat} huruf | pesan=${hurufPesan} | total=${s.length + hurufRiwayat + hurufPesan} huruf`);
 }
 
@@ -200,7 +205,7 @@ export const runLLMDenganNalar = async (
   promptText: string, systemPromptText = '', chatHistory: any[] = [], rctx: RuntimeContext,
   opsi: { onNalar?: (teks: string) => void; onIsiMulai?: () => void; tenggat?: number; thinking?: boolean } = {}
 ): Promise<{ result: string; metadata?: any; reasoning?: string; terpotong?: boolean }> => {
-  catatKomposisiPrompt(promptText, systemPromptText, chatHistory);
+  catatKomposisiPrompt(promptText, systemPromptText, chatHistory, rctx?.jejakPrompt);
 
   let preferredProvider = 'openrouter';
 
@@ -241,7 +246,7 @@ export const runLLM = async (promptText: string, systemPromptText = '', chatHist
   (await runLLMDenganNalar(promptText, systemPromptText, chatHistory, rctx)).result;
 
 export const runStreamLLM = async function*(promptText: string, systemPromptText = '', chatHistory: any[] = [], rctx: RuntimeContext): AsyncGenerator<string, void, unknown> {
-  catatKomposisiPrompt(promptText, systemPromptText, chatHistory);
+  catatKomposisiPrompt(promptText, systemPromptText, chatHistory, rctx?.jejakPrompt);
   await CapabilityRegistry.initializeAdapters(rctx);
   const input = { promptText, systemPromptText, chatHistory, image: rctx.stream.extractedImage };
 
