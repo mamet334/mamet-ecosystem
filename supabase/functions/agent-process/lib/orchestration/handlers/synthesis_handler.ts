@@ -7,6 +7,7 @@ import { eventBus } from '../../event/event_bus.ts';
 import { koreksiLabel, catatanRagTurun } from '../../verification/label_sumber.ts';
 import { jalankanHakimBayangan } from '../../verification/hakim_bayangan.ts';
 import { sumberDariHasilAlat, sumberDariKeluaranTerminal } from '../../../../../../shared/folderKerjaAlat.js';
+import { sumberDariHasilRag } from '../../../../../../shared/ragAlat.js';
 import { tutupJawabanDataTabel } from '../../data_tabel/data_tabel.ts';
 import { sisipkanNalar } from '../../adapters/reasoning_openrouter.ts';
 import { CATATAN_TERPOTONG, susunBahanLanjutan, susunPromptLanjutan, tenggatJawaban } from '../../streaming/batas_waktu.ts';
@@ -63,6 +64,15 @@ export const SynthesisHandler = {
       judulDokumen.push(...sumberFolder.judul);
       isiDokumen.push(...sumberFolder.isi);
       ctx.state.processingSteps.push(`📂 Sumber folder kerja untuk pemeriksa label: ${sumberFolder.judul.length} berkas dibaca`);
+    }
+    const sumberRag = sumberDariHasilRag([
+      ctx.request.originalMessage || ctx.request.finalMessage,
+      ...(history || []).filter((h: any) => h?.role === 'user').map((h: any) => String(h.content || '')),
+    ]);
+    if (sumberRag.judul.length || sumberRag.isi.length) {
+      judulDokumen.push(...sumberRag.judul);
+      isiDokumen.push(...sumberRag.isi);
+      ctx.state.processingSteps.push(`📚 Sumber alat RAG untuk pemeriksa label: ${sumberRag.judul.length} dokumen`);
     }
     if (requestMode === 'ENGINEER') {
       const sumberTerminal = sumberDariKeluaranTerminal([

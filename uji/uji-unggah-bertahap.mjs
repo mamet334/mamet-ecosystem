@@ -59,6 +59,7 @@ function dbTiruan({ milikLain = 0 } = {}) {
   let nomor = 0;
   const cocok = (row, filter) => filter.every(([k, v]) => {
     if (k === 'documents.user_id') return db.documents.find((d) => d.id === row.document_id)?.user_id === v;
+    if (v === null) return row[k] === null || row[k] === undefined;
     return row[k] === v;
   });
   const cocokAtau = (row, ekspresi) => {
@@ -115,6 +116,7 @@ function dbTiruan({ milikLain = 0 } = {}) {
       update(isi) { st.op = 'update'; st.isi = isi; return p; },
       delete() { st.op = 'delete'; return p; },
       eq(k, v) { st.filter.push([k, v]); return p; },
+      is(k, v) { st.filter.push([k, v]); return p; },
       or(ekspresi) { st.atau = ekspresi; return p; },
       order() { return p; },
       limit() { return p; },
@@ -145,6 +147,7 @@ function dbTiruan({ milikLain = 0 } = {}) {
         document_id: a.p_dok_baru, content: isi,
         embedding: a.p_vektor[i] != null ? JSON.parse(a.p_vektor[i]) : vektorLama(a.p_dok_lama, isi),
         disalin: a.p_vektor[i] == null,
+        urutan: Number.isInteger(a.p_mulai) ? a.p_mulai + i : null,
       }));
       if (db.rpcKurang) baris.pop();
       db.document_chunks.push(...baris);

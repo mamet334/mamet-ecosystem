@@ -17,6 +17,7 @@ import { konteksWaktuPengguna, zonaWaktuSah } from './waktu_pengguna.ts';
 import { blokPromptFolder } from '../../../../../shared/folderKerjaAlat.js';
 import { blokPromptKonektor } from '../../../../../shared/konektorAlat.js';
 import { blokPromptKonektorUmum } from '../../../../../shared/konektorUmum.js';
+import { blokPromptRag } from '../../../../../shared/ragAlat.js';
 
 
 async function generateEmbeddingThroughAdapter(
@@ -316,6 +317,12 @@ Wajib ikuti struktur persis seperti contoh di atas!`;
   if (parsed.folderKerja) {
     ctx.request.agentIdentityPrompt += blokPromptFolder(parsed.folderKerja.nama, parsed.folderKerja.putaran);
     console.log(`[FolderKerja] aktif "${parsed.folderKerja.nama}" · putaran alat ${parsed.folderKerja.putaran}`);
+  }
+
+  if (parsed.alatRag && ctx.policy.mode !== 'LITE' && ctx.auth.appSource !== 'mametlite') {
+    const engineer = ctx.policy.mode === 'ENGINEER';
+    ctx.request.agentIdentityPrompt += blokPromptRag({ putaran: parsed.alatRag.putaran, engineer });
+    console.log(`[AlatRag] aktif · putaran alat ${parsed.alatRag.putaran}${engineer ? ' · Engineer' : ''}`);
   }
 
   if (parsed.konektor) {

@@ -1,4 +1,4 @@
-export const POLA_HASIL_ALAT = /^\s*\[HASIL ALAT (FOLDER|KONEKTOR)/;
+export const POLA_HASIL_ALAT = /^\s*\[HASIL ALAT (FOLDER|KONEKTOR|RAG)/;
 export const POLA_CATATAN_KERJA = /📂 _Dibaca dari folder |\(dicatat dari proses utama, bukan dari kata model\)/;
 
 const hurufIsi = (m) => (typeof m?.content === 'string' ? m.content.length : 0);

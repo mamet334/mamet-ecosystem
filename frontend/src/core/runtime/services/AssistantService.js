@@ -5,6 +5,7 @@ import { supabase } from '../../../supabase.js';
 import { statusLaptop, kirimKeLaptop, sidikJari, cariDiCache, KUOTA_CACHE_MB } from './remoteConversionClient.js';
 import { ambilPermintaanAlat, susunPesanHasil, susunPesanKoreksi, namaFolderAman, buangKakiTiruan, peringatanKlaimTanpaAlat, peringatanKlaimEngineer, blokKodeKeMametCmd, MAKS_PUTARAN } from '../../../../../shared/folderKerjaAlat.js';
 import { ambilPermintaanKonektor, susunPesanHasilKonektor, catatanHasilKonektor, MAKS_PUTARAN_KONEKTOR } from '../../../../../shared/konektorAlat.js';
+import { ambilPermintaanRag, susunPesanHasilRag, catatanHasilRag, MAKS_PUTARAN_RAG } from '../../../../../shared/ragAlat.js';
 import { bacaKonektorAktif, petaAlatAktif, muatanKonektor, panggilKonektor, labelAlat } from './konektorAktif.js';
 import { cekPerintahBerulang, petunjukHasilKosong, petunjukKeluaranTerpotong, petunjukGrepSebagian, peringatanTugasTakDiumumkan, adaPenandaPatch, buangPenandaPatch } from './engineer/ProsedurEngineer.js';
 import { peringatanKlaimTakTeruji } from './engineer/UjiKlaim.js';
@@ -249,6 +250,35 @@ export class AssistantService {
     return bacaKonektorAktif(workspaceId);
   }
 
+  _statusAlatRag(workspaceId, resolvedMode) {
+    if (resolvedMode === 'LITE') return null;
+    if (workspaceId !== 'ws-assistant' && resolvedMode !== 'ENGINEER') return null;
+    const preferensi = this.serviceManager?.has?.('ToolPreferencesService') ? this.serviceManager.get('ToolPreferencesService') : null;
+    const aktif = preferensi ? preferensi.getEffective(workspaceId, 'rag') : true;
+    return aktif ? { aktif: true } : null;
+  }
+
+  async _jalankanAlatRag(permintaan, { token, mode, signal }) {
+    const brain = this.serviceManager?.has?.('BrainService') ? this.serviceManager.get('BrainService') : null;
+    const cfg = (await brain?.getActiveBrainContext?.()) || {};
+    const headers = this.buildHeaders(token, cfg.provider, cfg.key);
+    const gagalSemua = (alasan) => permintaan.map((p) => ({ ok: false, alat: p.alat, kueri: p.kueri, dokumen: p.dokumen, alasan }));
+    let response;
+    try {
+      response = await fetch(AGENT_ENDPOINT, { method: 'POST', headers, body: JSON.stringify({ action: 'rag_alat', mode, permintaan }), signal });
+    } catch (e) {
+      return gagalSemua(`server tidak bisa dihubungi: ${e.message || e}`);
+    }
+    if (!response.ok) {
+      const galat = await bacaGalatRespons(response);
+      return gagalSemua([galat.kode, galat.pesan, galat.teknis].filter(Boolean).join(' · ') || `HTTP ${response.status}`);
+    }
+    let data;
+    try { data = await response.json(); } catch (e) { return gagalSemua(`jawaban server tak terbaca: ${e.message || e}`); }
+    const hasil = Array.isArray(data?.hasil) ? data.hasil : [];
+    return permintaan.map((p, i) => hasil[i] || { ok: false, alat: p.alat, kueri: p.kueri, dokumen: p.dokumen, alasan: 'server tidak mengembalikan hasil untuk permintaan ini' });
+  }
+
   async processMessage({
     userMsg,
     history,
@@ -274,7 +304,10 @@ export class AssistantService {
     _folderKoreksi = false,
     _konektorPutaran = 0,
     _konektorPertanyaan = null,
-    _konektorCatatan = null
+    _konektorCatatan = null,
+    _ragPutaran = 0,
+    _ragPertanyaan = null,
+    _ragCatatan = null
   }) {
     if (!userMsg || !token) {
       onError?.({ kode: 'PESAN_KOSONG', teknis: !userMsg ? 'pesan kosong' : 'token tidak ada' });
@@ -286,6 +319,20 @@ export class AssistantService {
     console.log('[LIFECYCLE] Chat request sent');
 
     const { resolvedMode, resolvedAppSource } = this.resolveMode(workspaceId);
+
+    const onDoneAwal = onDone;
+    const alatRag = this._statusAlatRag(workspaceId, resolvedMode);
+    const infoAlatRag = alatRag ? { putaran: _ragPutaran, tingkat: null } : null;
+    const catatanRag = _ragCatatan || [];
+    if (alatRag) {
+      const onDoneTerakhir = onDone;
+      onDone = (finalText, ...sisa) => onDoneTerakhir?.(
+        catatanRag.length && typeof finalText === 'string'
+          ? `${finalText}\n\n---\n📚 _RAG (dicatat dari proses utama, bukan dari kata model): ${catatanRag.join(' · ')}_`
+          : finalText,
+        ...sisa,
+      );
+    }
 
     const konektor = await this._statusKonektor(workspaceId);
     const infoKonektor = konektor ? { ...konektor, putaran: _konektorPutaran, tingkat: null } : null;
@@ -432,10 +479,41 @@ export class AssistantService {
       };
     }
 
+    if (alatRag) {
+      const onDoneLanjut = onDone;
+      const pertanyaanRag = _ragPertanyaan || userMsg;
+      onDone = async (finalText, steps, jsonMetadata, extras = {}) => {
+        const { permintaan, galat, teksTanpaTag, adaTag } = ambilPermintaanRag(finalText);
+        const perluPutaran = permintaan.length > 0 || (adaTag && galat.length > 0);
+        if (perluPutaran && _ragPutaran < MAKS_PUTARAN_RAG) {
+          const putaran = _ragPutaran + 1;
+          onChunk?.('📚 menelusuri RAG…', `_📚 menelusuri dokumen RAG (${permintaan.map((p) => p.alat).join(', ') || 'permintaan tidak sah — dikembalikan ke model'}) — putaran ${putaran}/${MAKS_PUTARAN_RAG}…_`, steps || []);
+          const hasil = permintaan.length ? await this._jalankanAlatRag(permintaan, { token, mode: resolvedMode, signal }) : [];
+          for (const h of hasil) catatanRag.push(catatanHasilRag(h));
+          if (!permintaan.length) catatanRag.push(`⚠️ permintaan alat tidak sah dikembalikan ke model (${galat.length} catatan)`);
+          const pesanHasil = susunPesanHasilRag(hasil, { putaran, pertanyaanAsli: pertanyaanRag, galat });
+          return this.processMessage({
+            userMsg: pesanHasil,
+            history: [...(history || []), { role: 'model', content: finalText }, { role: 'user', content: pesanHasil }],
+            workspaceId, userId, token, signal, attachedFile: null, workspaceManager, chatId,
+            onChunk, onDone: onDoneAwal, onError, onNalar,
+            modelTierOverride: modelTierOverride || infoAlatRag.tingkat || null,
+            _folderPutaran, _folderPertanyaan, _folderDibaca: dibaca, _folderDiubah: diubah, _folderByte, _folderKoreksi,
+            _konektorPutaran, _konektorPertanyaan, _konektorCatatan,
+            _ragPutaran: putaran, _ragPertanyaan: pertanyaanRag, _ragCatatan: catatanRag,
+          });
+        }
+        let teks = adaTag || permintaan.length ? teksTanpaTag : finalText;
+        if (perluPutaran) teks += `\n\n_⚠️ Batas ${MAKS_PUTARAN_RAG} putaran alat RAG tercapai — sebagian permintaan alat RAG tidak dijalankan${galat.length ? ` (${galat.join('; ').slice(0, 300)})` : ''}._`;
+        if (_ragPutaran > 0 && typeof teks === 'string') teks = buangKakiTiruan(teks);
+        return onDoneLanjut?.(teks, steps, jsonMetadata, extras);
+      };
+    }
+
     const classifier = this.serviceManager.has('RequestClassifierService')
       ? this.serviceManager.get('RequestClassifierService')
       : null;
-    const classifiedResult = _folderPutaran > 0 || _konektorPutaran > 0
+    const classifiedResult = _folderPutaran > 0 || _konektorPutaran > 0 || _ragPutaran > 0
       ? { type: 'CONVERSATION', metadata: {} }
       : (classifier?.classify(userMsg, history, resolvedMode) || { type: 'CONVERSATION', metadata: {} });
     const requestType = classifiedResult.type;
@@ -447,7 +525,8 @@ export class AssistantService {
       resolvedMode, resolvedAppSource, modelTierOverride, chatId,
       _isPostHocWebRetry, _injectedKnowledgeContext,
       _folderKerja: infoFolder,
-      _konektor: infoKonektor
+      _konektor: infoKonektor,
+      _alatRag: infoAlatRag
     };
 
     const jalurRinganTerlarang = resolvedMode === 'ENGINEER';
@@ -653,7 +732,7 @@ export class AssistantService {
 
   async _handleLookup({
     userMsg, history, workspaceId, userId, token, workspaceManager, signal = null,
-    resolvedMode, resolvedAppSource, onChunk, onDone, onError, _folderKerja = null, _konektor = null
+    resolvedMode, resolvedAppSource, onChunk, onDone, onError, _folderKerja = null, _konektor = null, _alatRag = null
   }) {
     console.log('[AssistantService] PR#8 → _handleLookup (skip memory/semantic; dokumen dicari server bila RAG nyala)');
 
@@ -673,6 +752,7 @@ export class AssistantService {
         const context = await brainService.getActiveBrainContext('KECIL');
         if (_folderKerja) _folderKerja.tingkat = 'KECIL';
         if (_konektor) _konektor.tingkat = 'KECIL';
+        if (_alatRag) _alatRag.tingkat = 'KECIL';
         aiProvider = context.provider || 'gemini';
         formattedModel = context.model || '';
         aiKey = context.key || '';
@@ -705,6 +785,7 @@ export class AssistantService {
       clientTimezone: zonaWaktuBrowser(),
       dataTabel: dataTabelToolEnabled && !lookupLite ? true : undefined,
       folderKerja: _folderKerja || undefined,
+      alatRag: _alatRag ? { putaran: _alatRag.putaran } : undefined,
       ...muatanKonektor(_konektor),
       cache_hint: true,
       _request_type: 'LOOKUP'
@@ -922,10 +1003,10 @@ export class AssistantService {
     attachedFile, workspaceManager, resolvedMode, resolvedAppSource,
     onChunk, onDone, onError, onNalar, modelTierOverride = null,
     chatId = null,
-    _isPostHocWebRetry = false, _injectedKnowledgeContext = '', _folderKerja = null, _konektor = null
+    _isPostHocWebRetry = false, _injectedKnowledgeContext = '', _folderKerja = null, _konektor = null, _alatRag = null
   }) {
     const isEngineerMode = resolvedMode === 'ENGINEER';
-    const folderLanjutan = (_folderKerja?.putaran || 0) > 0 || (_konektor?.putaran || 0) > 0;
+    const folderLanjutan = (_folderKerja?.putaran || 0) > 0 || (_konektor?.putaran || 0) > 0 || (_alatRag?.putaran || 0) > 0;
     const isLiteMode = resolvedMode === 'LITE';
 
     console.log(`[AssistantService] Mode check: workspace=${workspaceId}, resolvedMode=${resolvedMode}`);
@@ -979,7 +1060,7 @@ export class AssistantService {
     const toolPreferencesService = this.serviceManager?.get('ToolPreferencesService');
     const memoryToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'memory_manager') : true;
 
-    const pesanHasilMesin = folderLanjutan || /^\s*\[(TERMINAL OUTPUT for: |HASIL ALAT FOLDER\]|HASIL ALAT KONEKTOR\])/.test(userMsg || '');
+    const pesanHasilMesin = folderLanjutan || /^\s*\[(TERMINAL OUTPUT for: |HASIL ALAT FOLDER\]|HASIL ALAT KONEKTOR\]|HASIL ALAT RAG\])/.test(userMsg || '');
     const memoryAktif = memoryToolEnabled && !pesanHasilMesin;
 
     const { localContext, semanticContext } = await this.buildContextInjection(
@@ -1082,6 +1163,7 @@ export class AssistantService {
         : (deepResearchToolEnabled && !isEngineerMode ? ['deep_research'] : undefined),
       dataTabel: dataTabelToolEnabled && !isLiteMode && !isEngineerMode && !folderLanjutan ? true : undefined,
       folderKerja: _folderKerja || undefined,
+      alatRag: _alatRag ? { putaran: _alatRag.putaran } : undefined,
       ...muatanKonektor(_konektor),
       cache_hint: true,
       _token_meta: { estimated_before: tokensBefore, estimated_after: tokensAfter, saved: tokensSaved },

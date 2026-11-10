@@ -48,7 +48,7 @@ console.log('\n-- dipakai di kedua jalur kirim --');
 {
   const AS = readFileSync(join(AKAR, 'frontend/src/core/runtime/services/AssistantService.js'), 'utf8');
   cek(!/await response\.json\(\); kode/.test(AS) && !/teknis = \(await response\.text\(\)\)/.test(AS), 'pola baca-ganda lama tidak ada lagi');
-  cek((AS.match(/const galat = await bacaGalatRespons\(response\);/g) || []).length === 2 && (AS.match(/onError\?\.\(galat\);/g) || []).length === 2, 'jalur LOOKUP & percakapan melaporkan galat lewat bacaGalatRespons');
+  cek((AS.match(/const galat = await bacaGalatRespons\(response\);\r?\n[^\n]*\r?\n\s*onError\?\.\(galat\);/g) || []).length === 2, 'jalur LOOKUP & percakapan melaporkan galat lewat bacaGalatRespons');
 }
 
 console.log('\n' + (gagal === 0 ? 'SEMUA LULUS' : `${gagal} GAGAL`));

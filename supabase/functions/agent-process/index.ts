@@ -8,6 +8,7 @@ import { handleEmbedRequest } from './lib/request/embed_endpoint.ts';
 import { handleJudgeConflictRequest } from './lib/request/judge_endpoint.ts';
 import { handlePadatkanRequest } from './lib/request/padatkan_endpoint.ts';
 import { handleProxyFetchRequest } from './lib/request/proxy_fetch_endpoint.ts';
+import { handleRagAlatRequest } from './lib/request/rag_alat_endpoint.ts';
 
 const REQUIRED_ENV_VARS = [
   'SUPABASE_URL',
@@ -90,6 +91,9 @@ serve(async (req) => {
 
         const proxyResponse = await handleProxyFetchRequest(req, parsedBody, corsHeaders);
         if (proxyResponse) return proxyResponse;
+
+        const ragAlatResponse = await handleRagAlatRequest(req, parsedBody, corsHeaders);
+        if (ragAlatResponse) return ragAlatResponse;
       }
     }
 

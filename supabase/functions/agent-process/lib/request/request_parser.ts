@@ -1,6 +1,7 @@
 import { WorkspaceGuardian } from '../workspace_guardian.ts';
 import { infoKonektorAman } from '../../../../../shared/konektorAlat.js';
 import { muatanKonektorUmumAman } from '../../../../../shared/konektorUmum.js';
+import { alatRagAman } from '../../../../../shared/ragAlat.js';
 import { jumlahDilewatiAman } from '../catatan_jujur.ts';
 
 export async function parseRequestParams(req: Request, user: any) {
@@ -10,7 +11,7 @@ export async function parseRequestParams(req: Request, user: any) {
   } catch(e) {
     reqJson = {};
   }
-  let { message, tools, model, userId: _clientUserId, userName, file, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource: clientAppSource = 'assistant', workspaceTarget = 'AUTO', auditMode = 'OFF', mode: clientMode, provider, thinking, traceId: clientTraceId, requestId, clientTimezone, streamNalar, memoryEnabled, dataTabel, folderKerja, konektor, konektorUmum, pemilihModel, riwayatDilewati } = reqJson;
+  let { message, tools, model, userId: _clientUserId, userName, file, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource: clientAppSource = 'assistant', workspaceTarget = 'AUTO', auditMode = 'OFF', mode: clientMode, provider, thinking, traceId: clientTraceId, requestId, clientTimezone, streamNalar, memoryEnabled, dataTabel, folderKerja, konektor, konektorUmum, pemilihModel, riwayatDilewati, alatRag } = reqJson;
   const traceId = clientTraceId || requestId || null;
   const mode = clientMode || 'ASSISTANT';
   console.log('[RequestParser] Mode diterima:', mode);
@@ -75,7 +76,8 @@ export async function parseRequestParams(req: Request, user: any) {
     dataTabel: dataTabel === true,
     folderKerja: folderKerjaAman(folderKerja),
     konektor: infoKonektorAman(konektor),
-    konektorUmum: muatanKonektorUmumAman(konektorUmum)
+    konektorUmum: muatanKonektorUmumAman(konektorUmum),
+    alatRag: alatRagAman(alatRag)
   };
 }
 

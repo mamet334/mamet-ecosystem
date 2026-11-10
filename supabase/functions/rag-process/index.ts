@@ -163,7 +163,14 @@ serve(async (req) => {
         .order('created_at', { ascending: false }).limit(1);
       if (errVersi) throw new Error(`DB Error: ${errVersi.message}`);
       const v = Array.isArray(versi) ? versi[0] : null;
-      if (v && v.sidik === sidik && v.total_potongan === chunks.length) {
+      let urutanLengkap = false;
+      if (v) {
+        const { count: tanpaUrutan, error: errUrutan } = await supabase
+          .from('document_chunks').select('id', { count: 'exact', head: true }).eq('document_id', v.id).is('urutan', null);
+        if (errUrutan || typeof tanpaUrutan !== 'number') throw new Error(`DB Error: ${errUrutan?.message || 'hitungan urutan kosong'}`);
+        urutanLengkap = tanpaUrutan === 0;
+      }
+      if (v && v.sidik === sidik && v.total_potongan === chunks.length && urutanLengkap) {
         return jawab({
           success: true, selesai: true, diperbarui: false, sama: true, documentId: v.id,
           message: `"${title}" isinya sama persis dengan yang tersimpan — tidak ada yang diperbarui.`,
@@ -227,7 +234,7 @@ serve(async (req) => {
         perlu.forEach((k, j) => { pVektor[k] = JSON.stringify(vektorBaru[j]); });
         const { data: n, error: errSimpan } = await supabase.rpc('simpan_kelompok_perbarui', {
           p_dok_baru: documentId, p_dok_lama: versiLamaId, p_isi: kelompok, p_vektor: pVektor,
-          p_source_url: source_url ?? null, p_source_type: source_type ?? null
+          p_source_url: source_url ?? null, p_source_type: source_type ?? null, p_mulai: i + 1
         });
         if (errSimpan) throw new Error(`DB Insert Error: ${errSimpan.message}`);
         if (Number(n) !== kelompok.length) throw new Error(`DB Insert Error: tersimpan ${n} dari ${kelompok.length} potongan`);
@@ -239,7 +246,7 @@ serve(async (req) => {
       const vektor = await embedLewatOpenRouter(kelompok, kunci, { batasWaktuMs: BATAS_KERAS_MS - (Date.now() - mulai) });
 
       const baris = kelompok.map((content, k) => {
-        const row: Record<string, unknown> = { document_id: documentId, content, embedding: vektor[k] };
+        const row: Record<string, unknown> = { document_id: documentId, content, embedding: vektor[k], urutan: i + k + 1 };
         if (source_url !== undefined) row.source_url = source_url;
         if (source_type !== undefined) row.source_type = source_type;
         return row;

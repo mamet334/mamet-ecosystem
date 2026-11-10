@@ -128,7 +128,7 @@ cek(!/onError\?\.\(`⚠️ Error:/.test(AS), 'AssistantService tidak lagi menuli
 cek(!/onError\?\.\(`Gagal menghubungi server/.test(AS), 'teks "Gagal menghubungi server: …" tidak lagi disusun di layanan');
 cek(!/\.error \|\| errorText/.test(AS), 'cacat `e.error || errorText` (kalimat server dibuang) tidak ada lagi');
 const GR = tanpaKomentar(baca('frontend/src/core/runtime/services/galatRespons.js'));
-cek(/pesan: e\?\.message/.test(GR) && (AS.match(/const galat = await bacaGalatRespons\(response\);/g) || []).length === 2, 'dan `message` dari server benar-benar dibaca (lewat bacaGalatRespons)');
+cek(/pesan: e\?\.message/.test(GR) && (AS.match(/const galat = await bacaGalatRespons\(response\);\r?\n[^\n]*\r?\n\s*onError\?\.\(galat\);/g) || []).length === 2, 'dan `message` dari server benar-benar dibaca (lewat bacaGalatRespons)');
 
 const panggilan = (AS.match(/onError\?\.\(/g) || []).length;
 const terstruktur = (AS.match(/onError\?\.\(\{/g) || []).length + (AS.match(/onError\?\.\(galat\);/g) || []).length;

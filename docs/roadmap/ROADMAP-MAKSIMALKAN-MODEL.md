@@ -111,7 +111,12 @@ tidak turun, mutasi membunuh uji urutan/indeks, **ukuran indeks diukur & dicatat
 121 MB, `document_chunks` 81 MB, `vector(768)`, pgvector 0.8.0 — iterative scan tersedia; batas per akun 25.000
 potongan), Mametlite tidak rusak.
 
-## Tahap B — Alat RAG untuk model (K1) 📋 🔧🖥
+## Tahap B — Alat RAG untuk model (K1) 📝 🔧🖥🗄
+
+**Status 10 Nov — terbukti di Ecosystem, menunggu Mametlite** ([log](../project-memory/changelog/2026-11-10-item-131-tahap-b-alat-rag.md)): `rag_daftar`/`rag_cari`/`rag_baca`
+live (Assistant + Engineer), kolom `urutan` (migrasi `20261109090057`); live menjawab "dokumen paling awal" (benar) &
+membandingkan dua changelog tanpa ditempel; mutasi 27/27. **Sisa:** Mametlite tidak rusak; keterangan `urut: "judul"`
+untuk judul bertanggal; dokumen lama berurutan sesudah "Perbarui".
 
 **Masalah.** Model tidak punya alat RAG sama sekali: ia hanya menerima ±8 potongan sekali di awal pertanyaan. Ia tak bisa
 mencari ulang dengan kata-katanya sendiri, melihat daftar dokumen, atau membaca satu dokumen utuh — permintaan Owner
@@ -227,6 +232,9 @@ dipakai `ragTurunKeKata`):
 
 ## Tahap I — Prompt sistem melayani tugas, bukan sebaliknya (K1) 📋 🔧
 
+**Temuan 10 Nov (uji live Tahap B):** model menyebut blok contoh `xml_zip` di prompt sistem (`request_pipeline.ts`) sebagai
+"perintah sistem aneh" yang diabaikannya pada pertanyaan membandingkan changelog — contoh aturan yang tak melayani tugas.
+
 **Masalah.** Log `[PROMPT_KOMPOSISI]` 5 Nov: `dasar_identitas_panduan` **8.100–13.500 huruf** (prompt sistem total
 10.500–16.600) melawan riwayat percakapan ±2.800–4.200 huruf. Aturan 3–4× lebih panjang daripada percakapan yang sedang
 dikerjakan — model menghabiskan perhatian dan nalarnya untuk mematuhi aturan, bukan untuk tugas Owner.
@@ -287,7 +295,7 @@ build hijau, server ter-deploy sama dengan repo.
 0. **Tahap 0** (ukur ujung-ke-ujung) — gerbang semua tahap; tanpa alat ukur ini kesalahan yang sama bisa terulang diam-diam.
    **J** (hapus komentar) — **keputusan Owner 6 Nov: langsung sesudah Tahap 0, sebelum A**, supaya sesi yang mengerjakan
    A–I tidak lagi disesatkan komentar lama; perubahannya terbukti tak mengubah kode (keluaran build sama). Dalam
-   praktik J selesai lebih dulu (9 Nov); Tahap 0 ✅ 9 Nov; A sebagian, C + H + D dikerjakan 9 Nov — **berikutnya sisa A (lambat) atau B**.
+   praktik J selesai lebih dulu (9 Nov); Tahap 0 ✅ 9 Nov; A sebagian, C + H + D 9 Nov, B 10 Nov — **berikutnya sisa A (lambat), lalu E/F/G/I**.
 1. **A** (RAG cepat) — syarat uji K1/K2 buku utuh.
 2. **C** (konteks utuh) + **H** (kegagalan jujur) — model berhenti lupa & berhenti diam.
 3. **B** (alat RAG) — dibangun di atas A.

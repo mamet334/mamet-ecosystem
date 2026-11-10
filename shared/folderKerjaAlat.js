@@ -55,7 +55,7 @@ export function sumberDariKeluaranTerminal(pesan) {
   return { judul, isi };
 }
 
-const BARIS_KAKI = /^\s*(?:📂|✍️?|▶️?|⚠️?|🚫|⛔|⏱️?|🔁)\s*_.*_\s*$/u;
+const BARIS_KAKI = /^\s*(?:📂|📚|✍️?|▶️?|⚠️?|🚫|⛔|⏱️?|🔁)\s*_.*_\s*$/u;
 const KLAIM_SISTEM = /dicatat dari proses utama/i;
 
 export function buangKakiTiruan(teks) {
