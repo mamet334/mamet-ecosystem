@@ -84,6 +84,11 @@ pencarian masih berayun 0,1–17 s dan bisa kena batas query 8 s (5/5 di uji ter
 dibatasi sesudah pemakaian berat; periksa grafik CPU & Disk IO budget dashboard Supabase, ukur ulang sesudah database
 istirahat, bila tetap lambat → HNSW dengan recall@8 diukur terhadap hasil tepat (izin migrasi tersendiri).
 
+**Status 10 Nov — sisa diukur, prafilter biner dibatalkan** ([log](../project-memory/changelog/2026-11-10-item-131-tahap-a-prafilter-biner-dibatalkan.md)): akar lambat = CPU Nano (jarak ke 12 ribu
+potongan 5 s, jarak biner sama lambatnya); prafilter biner + HNSW 1,5 s tetapi irisan 8 teratas dengan fungsi lama hanya
+1–3 (peringkat vektor global hilang) → dibatalkan atas pilihan Owner. **Sisa:** compute Supabase lebih besar (keputusan
+biaya Owner) atau ukur mutu fungsi pemotong kandidat dengan Item 90 & set K1.
+
 **Masalah.** Lima pertanyaan awal tentang changelog: log server `Tier 1 RAG timeout after 5000ms`, lalu 2–3 detik
 kemudian `pencarian makna: 8 potongan (skor teratas 0.72–0.76)` — **ketemu, tetapi dibuang**. Sekali
 `match_documents_hybrid` dibatalkan database (`statement timeout`, batas peran authenticator 8 s). Dokumen yang ditanya

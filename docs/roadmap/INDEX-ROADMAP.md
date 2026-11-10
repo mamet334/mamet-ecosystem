@@ -27,7 +27,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 > pemangkas, batas waktu, atau penjaga: apa yang benar-benar dilindunginya, apa yang hilang dari model? Keamanan hanya di
 > titik yang melindungi (izin aksi berefek, isolasi akun, saring rahasia); tak ada kegagalan diam atau catatan palsu;
 > ukur apa yang benar-benar sampai ke model. Aturan lengkap: `CLAUDE.md` "Memaksimalkan model" · kerja:
-> [Item 131](./ROADMAP-MAKSIMALKAN-MODEL.md): **J ✅ · 0 ✅ · A 📝** (sisa: lambat saat database dibatasi) · **C 📝** (terbukti di Ecosystem, menunggu Mametlite) · **H 📝** sebagian · **D 📝** (blokir kata dicabut, menunggu Mametlite) · **B 📝** (alat RAG live, menunggu Mametlite).
+> [Item 131](./ROADMAP-MAKSIMALKAN-MODEL.md): **J ✅ · 0 ✅ · A 📝** (sisa: CPU Nano — prafilter biner dicoba & dibatalkan 10 Nov; tinggal compute atau uji mutu) · **C 📝** (terbukti di Ecosystem, menunggu Mametlite) · **H 📝** sebagian · **D 📝** (blokir kata dicabut, menunggu Mametlite) · **B 📝** (alat RAG live, menunggu Mametlite).
 
 > ⚠️ **Pengingat Owner (5 Nov): VACUUM FULL `document_chunks`** sesudah dokumen besar dihapus (mis. 221 Kepbup pecahan di
 > K1 langkah 3). Paket Supabase gratis 500 MB; DELETE tidak menurunkan pemakaian kuota sampai VACUUM FULL —
