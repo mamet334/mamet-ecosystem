@@ -13,43 +13,11 @@ import { buildUniversalContract } from '../../verification/universal_contract.ts
 import { PolicyEngine } from '../../verification/policy_engine.ts';
 import { getActiveConflictsCount } from '../../verification/verification_service.ts';
 import { eventBus } from '../../event/event_bus.ts';
-import { runLLM } from '../../llm_orchestrator.ts';
 import { catatPenolakan, catatRagGagal, catatCatatanJujur } from '../../jejak_prompt.ts';
 import { catatanModelRagGagal } from '../../catatan_jujur.ts';
 
 import { KnowledgeService } from '../../../../../../shared/KnowledgeService.js';
 import { RetrievalStrategyService } from '../../../../../../shared/RetrievalStrategyService.js';
-
-const WEB_CONTEXT_TOTAL_THRESHOLD = 6000;
-const WEB_CONTEXT_PER_ARTICLE_MAX = 800;
-
-async function summarizeWebDoc(doc: any, rctx: any): Promise<any> {
-  const contentLen = (doc.content || '').length;
-  if (contentLen <= WEB_CONTEXT_PER_ARTICLE_MAX) return doc;
-
-  const summaryPrompt = `Ringkas artikel web berikut menjadi maksimal 3 kalimat padat yang mempertahankan fakta kunci dan URL sumber. Jangan tambahkan kalimat pengantar.
-
-Judul: ${doc.title || 'Tidak diketahui'}
-Sumber: ${doc.source_url || '-'}
-Konten:
-${(doc.content || '').substring(0, 4000)}`;
-
-  try {
-    const summarized = await runLLM(summaryPrompt, 'Anda adalah peringkas konten web yang objektif dan ringkas.', [], rctx);
-    const trimmed = (summarized || '').trim().substring(0, WEB_CONTEXT_PER_ARTICLE_MAX);
-    console.log(`[PR#6 WebSummarizer] Artikel "${doc.title || 'untitled'}" diringkas: ${contentLen} -> ${trimmed.length} chars`);
-    return {
-      ...doc,
-      content: `${doc.content?.match(/---\s*Konteks\s*\d+[^\n]*/)?.[0] || ''}\nJudul: ${doc.title || '-'}\n[Sumber: ${doc.source_url || '-'}]\n${trimmed}`
-    };
-  } catch (err: any) {
-    console.warn(`[PR#6 WebSummarizer] Gagal meringkas artikel, menggunakan truncate: ${err.message}`);
-    const header = doc.content?.match(/^(---\s*Konteks[^\n]*\n(?:Judul:[^\n]*\n)?(?:\[Sumber:[^\n]*\]\n)?)/)?.[0] || '';
-    const body = (doc.content || '').substring(header.length, WEB_CONTEXT_PER_ARTICLE_MAX - header.length);
-    return { ...doc, content: header + body + '...[diringkas]' };
-  }
-}
-
 
 export const ContextBuilderHandler = {
   async handle(ctx: any, rctx: any, maef: any): Promise<any> {
@@ -263,23 +231,11 @@ export const ContextBuilderHandler = {
       }
     }
 
-    let processedExternalDocs = externalDocs;
+    const processedExternalDocs = externalDocs;
     if (externalDocs.length > 0) {
       const totalWebChars = externalDocs.reduce((acc: number, d: any) => acc + (d.content || '').length, 0);
-      console.log(`[PR#6] Web context total: ${totalWebChars} chars dari ${externalDocs.length} artikel.`);
-      if (totalWebChars > WEB_CONTEXT_TOTAL_THRESHOLD) {
-        console.log(`[PR#6] Melebihi threshold ${WEB_CONTEXT_TOTAL_THRESHOLD} chars. Memulai summarization...`);
-        try {
-          processedExternalDocs = await Promise.all(externalDocs.map((doc: any) => summarizeWebDoc(doc, rctx)));
-          const newTotal = processedExternalDocs.reduce((acc: number, d: any) => acc + (d.content || '').length, 0);
-          console.log(`[PR#6] Setelah summarization: ${newTotal} chars (hemat ${totalWebChars - newTotal} chars / ~${Math.round((totalWebChars - newTotal) / 4)} token).`);
-          ctx.state.processingSteps.push(`[PR#6 TOKEN] Web summarization: ${totalWebChars} -> ${newTotal} chars (hemat ~${Math.round((totalWebChars - newTotal) / 4)} token)`);
-        } catch (sumErr: any) {
-          console.warn(`[PR#6] Summarization batch gagal, pakai externalDocs asli: ${sumErr.message}`);
-        }
-      } else {
-        ctx.state.processingSteps.push(`[PR#6 TOKEN] Web context ${totalWebChars} chars — di bawah threshold, tidak diringkas.`);
-      }
+      console.log(`[Web] ${externalDocs.length} artikel, ${totalWebChars} huruf — diteruskan utuh ke model.`);
+      ctx.state.processingSteps.push(`🌐 [WEB] ${externalDocs.length} artikel (${totalWebChars} huruf) diteruskan utuh — tanpa peringkasan ulang`);
     }
 
     const dokumenDataTabel: any[] = [];

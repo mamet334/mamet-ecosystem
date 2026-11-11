@@ -8,6 +8,7 @@ import BagianTampilan from './BagianTampilan';
 import BagianKonektor from './BagianKonektor';
 import { ambilBagianSettings, PERISTIWA_BAGIAN_SETTINGS } from './konektor/arahSettings';
 import GantiKataSandi from './GantiKataSandi';
+import { PUTARAN_ALAT_BAWAAN, PAGAR_PUTARAN_ALAT } from '../../../shared/anggaranAlat.js';
 
 const TOGGLEABLE_WORKSPACES = [
   { id: 'ws-assistant', label: 'Assistant' },
@@ -81,6 +82,8 @@ export default function Settings() {
   const [dailyCap, setDailyCap] = useState('');
   const [systemCap, setSystemCap] = useState(null);
   const [capStatus, setCapStatus] = useState('');
+  const [putaranAlat, setPutaranAlat] = useState('');
+  const [putaranStatus, setPutaranStatus] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -94,6 +97,8 @@ export default function Settings() {
         if (cancelled) return;
         const saved = user?.user_metadata?.daily_budget_cap_usd;
         if (saved !== undefined && saved !== null) setDailyCap(String(saved));
+        const putaranTersimpan = user?.user_metadata?.putaran_alat;
+        if (putaranTersimpan !== undefined && putaranTersimpan !== null) setPutaranAlat(String(putaranTersimpan));
         if (config?.daily_budget_cap_usd != null) setSystemCap(Number(config.daily_budget_cap_usd));
       } catch (e) {
         console.warn('[Settings] Gagal memuat batas harian:', e.message);
@@ -115,6 +120,25 @@ export default function Settings() {
       setTimeout(() => setCapStatus(''), 2500);
     } catch (e) {
       setCapStatus(`error:${e.message}`);
+    }
+  };
+
+  const handleSavePutaranAlat = async () => {
+    setPutaranStatus('saving');
+    try {
+      const kosong = String(putaranAlat).trim() === '';
+      const angkaPutaran = Number(putaranAlat);
+      if (!kosong && (!Number.isInteger(angkaPutaran) || angkaPutaran < 1 || angkaPutaran > PAGAR_PUTARAN_ALAT)) {
+        setPutaranStatus(`error:Isi bilangan bulat 1–${PAGAR_PUTARAN_ALAT}, atau kosongkan untuk memakai bawaan (${PUTARAN_ALAT_BAWAAN}).`);
+        return;
+      }
+      await supabase.auth.updateUser({ data: { putaran_alat: kosong ? null : angkaPutaran } });
+      const layananAsisten = kernel.serviceManager?.get('AssistantService');
+      if (layananAsisten) layananAsisten._putaranAlatCache = null;
+      setPutaranStatus('done');
+      setTimeout(() => setPutaranStatus(''), 2500);
+    } catch (e) {
+      setPutaranStatus(`error:${e.message}`);
     }
   };
 
@@ -547,6 +571,42 @@ export default function Settings() {
                 <p className="text-[12px] text-error leading-relaxed break-words">{capStatus.replace('error:', '')}</p>
               </div>
             )}
+
+            <div className="mt-6 pt-5 border-t border-outline-variant">
+              <h3 className="text-sm font-semibold text-on-surface mb-1">Putaran alat per pertanyaan</h3>
+              <p className="text-[12px] text-on-surface-variant leading-relaxed mb-4">
+                Berapa kali Mamet boleh memakai alat (folder kerja, konektor, penelusuran RAG) untuk satu pertanyaan sebelum wajib menjawab.
+                Setiap putaran adalah satu panggilan model tambahan yang membawa seluruh percakapan dan hasil alat sebelumnya,
+                jadi makin banyak putaran makin besar biayanya. Bawaan <strong>{PUTARAN_ALAT_BAWAAN}</strong>, paling banyak <strong>{PAGAR_PUTARAN_ALAT}</strong>.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+                <div className="flex items-center gap-2 flex-1">
+                  <input
+                    type="number"
+                    step="1"
+                    min="1"
+                    max={PAGAR_PUTARAN_ALAT}
+                    value={putaranAlat}
+                    onChange={(e) => setPutaranAlat(e.target.value)}
+                    placeholder={String(PUTARAN_ALAT_BAWAAN)}
+                    className="w-full bg-surface-container-lowest border border-outline-variant px-4 py-3 rounded-lg text-on-surface font-mono text-sm focus:border-primary focus:ring-0 transition-all"
+                  />
+                  <span className="text-on-surface-variant text-xs whitespace-nowrap">putaran</span>
+                </div>
+                <button
+                  onClick={handleSavePutaranAlat}
+                  disabled={putaranStatus === 'saving'}
+                  className="px-5 py-3 rounded-lg border border-primary/40 text-primary hover:bg-primary/10 text-sm font-semibold transition-all active:scale-95 disabled:opacity-50"
+                >
+                  {putaranStatus === 'saving' ? 'Menyimpan...' : putaranStatus === 'done' ? 'Tersimpan' : 'Simpan Putaran'}
+                </button>
+              </div>
+              {putaranStatus.startsWith('error:') && (
+                <div className="mt-3 p-3 rounded-lg bg-error/10 border border-error/30">
+                  <p className="text-[12px] text-error leading-relaxed break-words">{putaranStatus.replace('error:', '')}</p>
+                </div>
+              )}
+            </div>
           </section>
           )}
 

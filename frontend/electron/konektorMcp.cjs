@@ -87,8 +87,37 @@ function denganBatasWaktu(janji, ms, pesan) {
     .finally(() => clearTimeout(t));
 }
 
+const POLA_MIME_TEKS = /^text\/|^application\/(json|xml|yaml|x-yaml|toml|javascript|typescript|x-sh|x-httpd-php|sql|graphql|ld\+json|xhtml\+xml|x-ndjson)\b|\+(json|xml|yaml)\b/i;
+
+function isiResource(r) {
+  const alamat = String(r?.uri || 'tanpa alamat').slice(0, 300);
+  const mime = String(r?.mimeType || '').slice(0, 80);
+  const kepala = `[resource ${alamat}${mime ? ` · ${mime}` : ''}]`;
+  if (typeof r?.text === 'string') return `${kepala}\n${r.text}`;
+  if (typeof r?.blob === 'string') {
+    const byte = Buffer.from(r.blob, 'base64');
+    const teks = byte.toString('utf8');
+    const tampakTeks = (POLA_MIME_TEKS.test(mime) || !mime) && !teks.includes(String.fromCharCode(0)) && !teks.includes(String.fromCharCode(0xFFFD));
+    return tampakTeks
+      ? `${kepala}\n${teks}`
+      : `[resource biner ${alamat}${mime ? ` · ${mime}` : ''} · ${byte.length} byte — isinya bukan teks, tidak diteruskan]`;
+  }
+  return `${kepala}\n(resource tanpa isi)`;
+}
+
+function bagianHasil(c) {
+  if (c?.type === 'text') return String(c.text ?? '');
+  if (c?.type === 'resource') return isiResource(c.resource);
+  if (c?.type === 'resource_link') {
+    const nama = [c.name, c.description].filter((x) => typeof x === 'string' && x.trim()).join(' — ').slice(0, 300);
+    return `[tautan resource ${String(c.uri || 'tanpa alamat').slice(0, 300)}${nama ? ` · ${nama}` : ''} — isinya belum dibaca; minta alat baca bila perlu]`;
+  }
+  if (c?.type === 'image' || c?.type === 'audio') return `[isi ${c.type}${c.mimeType ? ` · ${String(c.mimeType).slice(0, 80)}` : ''} — bukan teks, tidak diteruskan]`;
+  return `[isi ${c?.type || 'tak dikenal'} — jenis ini tidak dikenali, tidak diteruskan]`;
+}
+
 function teksHasil(hasil, batasHuruf = BATAS.hasilHuruf) {
-  const bagian = (hasil?.content || []).map((c) => (c?.type === 'text' ? c.text : `[isi ${c?.type || 'tak dikenal'}]`));
+  const bagian = (hasil?.content || []).map(bagianHasil);
   if (hasil?.structuredContent && !bagian.length) bagian.push(JSON.stringify(hasil.structuredContent));
   const teks = bagian.join('\n');
   return teks.length > batasHuruf

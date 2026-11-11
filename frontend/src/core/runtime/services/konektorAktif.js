@@ -38,8 +38,8 @@ export function petaAlatAktif(k) {
 export function muatanKonektor(info) {
   if (!info) return {};
   return {
-    konektor: info.crawler ? payloadKonektor({ ...info.crawler, putaran: info.putaran || 0 }) : undefined,
-    konektorUmum: info.umum ? { putaran: info.putaran || 0, daftar: info.umum.daftar } : undefined,
+    konektor: info.crawler ? payloadKonektor({ ...info.crawler, putaran: info.putaran || 0, maks: info.maks, sisa: info.sisa }) : undefined,
+    konektorUmum: info.umum ? { putaran: info.putaran || 0, ...(Number.isInteger(info.maks) ? { maks: info.maks, sisa: info.sisa } : {}), daftar: info.umum.daftar } : undefined,
   };
 }
 

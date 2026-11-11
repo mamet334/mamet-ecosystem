@@ -13,8 +13,8 @@ r = F.ambilPermintaanAlat('<think>mungkin saya perlu <alat_folder>{"alat":"folde
 cek(r.permintaan.length === 0, 'tag di dalam <think> BUKAN permintaan');
 r = F.ambilPermintaanAlat('<alat_folder>{"alat":"folder_shell","perintah":"dir"}</alat_folder><alat_folder>{rusak}</alat_folder>');
 cek(r.permintaan.length === 0 && r.galat.length === 2, 'alat belum tersedia & JSON rusak ditolak dengan catatan');
-r = F.ambilPermintaanAlat(Array.from({ length: 7 }, (_, i) => `<alat_folder>{"alat":"folder_read","alamat":"f${i}.txt"}</alat_folder>`).join(''));
-cek(r.permintaan.length === F.MAKS_ALAT_PER_PUTARAN && r.galat.some((g) => /lebih dari/.test(g)), 'maksimal 5 alat per putaran');
+r = F.ambilPermintaanAlat(Array.from({ length: F.MAKS_ALAT_PER_PUTARAN + 2 }, (_, i) => `<alat_folder>{"alat":"folder_read","alamat":"f${i}.txt"}</alat_folder>`).join(''));
+cek(r.permintaan.length === F.MAKS_ALAT_PER_PUTARAN && F.MAKS_ALAT_PER_PUTARAN === 10 && r.galat.some((g) => /lebih dari 10 alat/.test(g)), 'maksimal 10 alat per putaran; kelebihannya dilaporkan');
 r = F.ambilPermintaanAlat('<ALAT_FOLDER>{"alat":"folder_list"}</ALAT_FOLDER>');
 cek(r.permintaan.length === 1, 'huruf besar tag tetap dikenali');
 cek(F.ambilPermintaanAlat('Jawaban biasa tanpa alat. [STATUS: VERIFIED]').permintaan.length === 0, 'jawaban biasa: tanpa permintaan');

@@ -242,8 +242,9 @@ console.log('\n-- satu sumber plafon --');
   const AD = tanpaKomentar(baca('supabase/functions/agent-process/lib/adapters/ai_adapter.ts'));
   cek(!/max_tokens: 8192/.test(AD), 'tak ada lagi 8192 yang dipaku di ai_adapter');
   const pakai = (AD.match(/max_tokens: MAKS_TOKEN_JAWABAN/g) || []).length;
-  cek(pakai === 6, `keenam titik panggil memakai konstanta yang sama (${pakai})`);
-  cek(/pesanSaldoTakCukup\(teks, MAKS_TOKEN_JAWABAN\)/.test(AD), 'pesan 402 yang bisa ditindaklanjuti dipakai');
+  const pakaiKatalog = (AD.match(/max_tokens: plafonDiminta(Stream)?[,} ]/g) || []).length;
+  cek(pakai === 4 && pakaiKatalog === 2, `empat titik non-OpenRouter memakai konstanta, dua jalur OpenRouter memakai plafon dari katalog model (${pakai} + ${pakaiKatalog})`);
+  cek((AD.match(/pesanSaldoTakCukup\(teks, plafonDiminta(Stream)?\)/g) || []).length === 2, 'pesan 402 yang bisa ditindaklanjuti dipakai, dengan plafon yang benar-benar diminta');
   const jumlah402 = (AD.match(/if \(res\.status === 402\) throw new Error\(pesanSaldoTakCukup/g) || []).length;
   cek(jumlah402 === 2, `kedua jalur OpenRouter (stream & non-stream) memakainya (${jumlah402})`);
 
@@ -253,7 +254,7 @@ console.log('\n-- satu sumber plafon --');
   cek(/terpotongKarenaPlafon\(infoStream\)/.test(AD), 'jalur stream memeriksanya dari bingkai terakhir aliran');
   cek(/yield label/.test(AD), 'dan di jalur stream labelnya IKUT DIALIRKAN ke layar, bukan hanya ditambahkan ke variabel');
   cek(/info\.sebabSelesai = fr/.test(AD), 'processOpenAIStream merekam finish_reason — tanpa ini jalur stream buta');
-  const jejakDipakai = (AD.match(/jejakPlafon(Stream)?\.plafonDipakai \|\| MAKS_TOKEN_JAWABAN/g) || []).length;
+  const jejakDipakai = (AD.match(/jejakPlafon(Stream)?\.plafonDipakai \|\| plafonDiminta(Stream)?;/g) || []).length;
   cek(jejakDipakai === 2, `kedua label memakai plafon yang sebenarnya dipakai (${jejakDipakai})`);
 }
 

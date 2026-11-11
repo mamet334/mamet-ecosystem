@@ -160,9 +160,28 @@ export function bagiAnggaranKonteks(anggaranToken, teks, porsi = PORSI_KONTEKS_T
   const t = String(teks ?? '');
   const batasToken = Math.floor(Math.max(0, Number(anggaranToken) || 0) * porsi);
   const token = perkiraanToken(t);
-  if (token <= batasToken) return { teks: t, hurufDipotong: 0, tokenTerpakai: token };
-  const potongan = t.slice(0, batasToken * 4);
+  if (token <= batasToken) return { teks: t, hurufDipotong: 0, tokenTerpakai: token, artikelDilewati: 0 };
+  const batasHuruf = batasToken * 4;
+  const bagian = t.split(POLA_AWAL_ARTIKEL);
+  if (bagian.length > 1) {
+    let utuh = bagian[0];
+    let diambil = 0;
+    for (const artikel of bagian.slice(1)) {
+      if (utuh.length + artikel.length > batasHuruf) break;
+      utuh += artikel;
+      diambil++;
+    }
+    if (diambil > 0) {
+      const dilewati = bagian.length - 1 - diambil;
+      const sisaArtikel = t.length - utuh.length;
+      const teksUtuh = `${utuh.replace(/\s+$/, '')}\n[CATATAN SISTEM: ${dilewati} artikel/konteks terakhir (${sisaArtikel.toLocaleString('id-ID')} huruf) tidak dikirim karena anggaran konteks di Settings; ${diambil} artikel pertama dikirim utuh.]`;
+      return { teks: teksUtuh, hurufDipotong: sisaArtikel, tokenTerpakai: perkiraanToken(teksUtuh), artikelDilewati: dilewati };
+    }
+  }
+  const potongan = t.slice(0, batasHuruf);
   const sisa = t.length - potongan.length;
   const teksAkhir = `${potongan}\n[CATATAN SISTEM: ${sisa.toLocaleString('id-ID')} huruf konteks dokumen/web/memori tidak dikirim karena anggaran konteks di Settings.]`;
-  return { teks: teksAkhir, hurufDipotong: sisa, tokenTerpakai: perkiraanToken(teksAkhir) };
+  return { teks: teksAkhir, hurufDipotong: sisa, tokenTerpakai: perkiraanToken(teksAkhir), artikelDilewati: 0 };
 }
+
+const POLA_AWAL_ARTIKEL = /(?=---\s*Konteks\s*\d+)/;

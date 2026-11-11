@@ -106,13 +106,19 @@ export function buildUniversalContract(params: ContractBuilderInput): UniversalE
     canUseDesktopTools: false,
     canWriteKnowledge: false,
     activeConstraints: policyConstraints,
-    forbidden: [
-      'Mengaku tahu isi kode tanpa menengoknya lebih dulu lewat perintah git baca',
-      'Menyatakan "tidak ada evidence" atau "tidak ditemukan" untuk pertanyaan tentang KODE tanpa pernah menjalankan satu pun pencarian di repo',
-      'Menyebut ADR, Task, atau knowledge yang tidak ada di bagian KNOWLEDGE di atas',
-      'Memberikan informasi yang tidak dapat ditelusuri ke evidence — kode sumber repo TERMASUK evidence yang sah, asalkan alamat berkas dan nomor barisnya disebut',
-      ...policyForbidden,
-    ],
+    forbidden: mode === 'ENGINEER'
+      ? [
+        'Mengaku tahu isi kode tanpa menengoknya lebih dulu lewat perintah git baca',
+        'Menyatakan "tidak ada evidence" atau "tidak ditemukan" untuk pertanyaan tentang KODE tanpa pernah menjalankan satu pun pencarian di repo',
+        'Menyebut ADR, Task, atau knowledge yang tidak ada di bagian KNOWLEDGE di atas',
+        'Memberikan informasi yang tidak dapat ditelusuri ke evidence — kode sumber repo TERMASUK evidence yang sah, asalkan alamat berkas dan nomor barisnya disebut',
+        ...policyForbidden,
+      ]
+      : [
+        'Menyebut dokumen, judul, atau sumber yang tidak ada di BLOK 4 atau di hasil alat percakapan ini',
+        'Menyajikan dugaan atau pengetahuan sendiri seolah-olah berasal dari dokumen pengguna',
+        ...policyForbidden,
+      ],
   };
 
   const labelVariant: 'full' | 'short' = mode === 'LOOKUP' ? 'short' : 'full';
@@ -154,15 +160,13 @@ function renderContractAsText(
 
   let text = systemBasePrompt + '\n';
 
-  text += `\n\n${'═'.repeat(60)}\n`;
-  text += `[UNIVERSAL EVIDENCE CONTRACT v2.0]\n`;
-  text += `${'═'.repeat(60)}\n`;
+  text += `\n\n[UNIVERSAL EVIDENCE CONTRACT v2.0]\n`;
   text += `System: ${identity.name} | Mode: ${identity.mode} | v${identity.version}\n`;
   text += `Request ID: ${runtime.requestId} | Waktu server (DATA SISTEM, bukan dokumen): ${runtime.timestamp}\n\n`;
 
   text += `[BLOK 1: IDENTITY]\n`;
   text += `Mode Aktif: ${identity.mode}\n`;
-  text += `Kapabilitas: ${identity.capabilities.join(', ')}\n`;
+  if (identity.mode === 'ENGINEER' || identity.mode === 'LITE') text += `Kapabilitas: ${identity.capabilities.join(', ')}\n`;
   text += `Batasan: ${identity.restrictions.join(' | ')}\n\n`;
 
   text += `[BLOK 2: RUNTIME STATUS]\n`;
@@ -186,15 +190,19 @@ function renderContractAsText(
   if (knowledge.hasBrain1) {
     text += `--- Brain 1 (Static Knowledge: ADR, Lesson, Vision) ---\n`;
     text += knowledge.brain1Summary + '\n';
-  } else {
+  } else if (identity.mode === 'ENGINEER') {
     text += `--- Brain 1: KOSONG (tidak ada static knowledge yang qualified) ---\n\n`;
   }
 
   if (knowledge.hasBrain2) {
     text += `--- Brain 2 (Dynamic Context: Task, Gap, Verification) ---\n`;
     text += knowledge.brain2Summary + '\n';
-  } else {
+  } else if (identity.mode === 'ENGINEER') {
     text += `--- Brain 2: KOSONG (tidak ada task/gap aktif) ---\n\n`;
+  }
+
+  if (!knowledge.hasRAG && !knowledge.hasBrain1 && !knowledge.hasBrain2 && identity.mode !== 'ENGINEER') {
+    text += `(tidak ada dokumen yang disertakan pada pesan ini)\n\n`;
   }
 
   if (knowledge.hasRAG) {

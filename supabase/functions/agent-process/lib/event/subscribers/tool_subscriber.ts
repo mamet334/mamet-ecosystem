@@ -3,6 +3,8 @@ import { getPluginByName } from '../../../plugins/registry.ts';
 import { CapabilityRegistry } from '../../adapters/adapter_registry.ts';
 import { ToolDispatcher } from '../../orchestration/dispatcher/tool_dispatcher.ts';
 
+import { catatanSubagenBerhenti } from '../../catatan_jujur.ts';
+
 const PER_PLUGIN_TIMEOUT_MS = 12000;
 const BATAS_WAKTU_KHUSUS_MS: Record<string, number> = { deep_research: 25000 };
 
@@ -172,9 +174,9 @@ export const initializeToolSubscriber = () => {
         
         let subagentResText = '';
         if (status === 'timeout') {
-            subagentResText = `[SISTEM DILINDUNGI OLEH MAMET HEALER]: Eksekusi sub-agent "${subagent}" dibatalkan permanen (Hard Timeout ${batasWaktuMs/1000}s).`;
+            subagentResText = catatanSubagenBerhenti(subagent, 'waktu', `${batasWaktuMs / 1000} detik`);
         } else {
-            subagentResText = `[SISTEM DILINDUNGI OLEH MAMET HEALER]: Eksekusi sub-agent gagal pada mode terisolasi (${err.message || 'Unknown'}).`;
+            subagentResText = catatanSubagenBerhenti(subagent, 'gagal', String(err.message || 'tanpa keterangan'));
         }
 
         eventBus.emit({

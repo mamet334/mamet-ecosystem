@@ -2,6 +2,8 @@ import { WorkspaceGuardian } from '../workspace_guardian.ts';
 import { infoKonektorAman } from '../../../../../shared/konektorAlat.js';
 import { muatanKonektorUmumAman } from '../../../../../shared/konektorUmum.js';
 import { alatRagAman } from '../../../../../shared/ragAlat.js';
+import { anggaranAlatAman } from '../../../../../shared/anggaranAlat.js';
+import { MAKS_PUTARAN } from '../../../../../shared/folderKerjaAlat.js';
 import { jumlahDilewatiAman } from '../catatan_jujur.ts';
 
 export async function parseRequestParams(req: Request, user: any) {
@@ -81,10 +83,9 @@ export async function parseRequestParams(req: Request, user: any) {
   };
 }
 
-function folderKerjaAman(f: any): { nama: string; putaran: number } | null {
+function folderKerjaAman(f: any): { nama: string; putaran: number; maks: number; sisa: number } | null {
   if (!f || typeof f !== 'object') return null;
   const nama = String(f.nama ?? '').replace(/[\\/:\x00-\x1f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 100);
   if (!nama) return null;
-  const putaran = Number.isInteger(f.putaran) ? Math.min(Math.max(f.putaran, 0), 4) : 0;
-  return { nama, putaran };
+  return { nama, ...anggaranAlatAman(f, MAKS_PUTARAN) };
 }

@@ -22,3 +22,18 @@ export function catatanPenggunaRagGagal(sebab: unknown): string {
   if (!s) return '';
   return `_Catatan sistem: pencarian dokumen Anda gagal pada pesan ini (${s}) — jawaban di atas disusun tanpa dokumen. Silakan ulangi pertanyaannya._`;
 }
+
+export function catatanSubagenBerhenti(subagen: string, jenis: 'waktu' | 'waktu-total' | 'gagal', rinci: string): string {
+  const nama = String(subagen || 'tak dikenal').replace(/[\r\n`]+/g, ' ').trim().slice(0, 200);
+  const sebab = String(rinci || '').replace(/[\r\n`]+/g, ' ').trim().slice(0, 300);
+  const apa = jenis === 'waktu'
+    ? `dihentikan karena melewati batas waktu ${sebab}`
+    : jenis === 'waktu-total'
+      ? `tidak dijalankan karena batas waktu total sub-agent (${sebab}) sudah terlampaui`
+      : `gagal (${sebab})`;
+  return `[CATATAN SISTEM] Sub-agent "${nama}" ${apa}. Hasilnya TIDAK ADA — jangan mengarang isinya; sampaikan kepada pengguna bahwa bagian ini tidak selesai dan boleh dicoba lagi.`;
+}
+
+export function catatanTugasSubagenDilewati(jumlah: number, batas: number): string {
+  return `[CATATAN SISTEM] ${jumlah} tugas sub-agent tidak dijalankan karena batas ${batas} tugas per pertanyaan. Hasil tugas itu TIDAK ADA — sebutkan kepada pengguna bila jawaban jadi kurang lengkap.\n\n`;
+}

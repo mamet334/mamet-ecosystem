@@ -104,9 +104,11 @@ for (const nama of ['CATATAN_KOREKSI', 'CATATAN_TANPA_LABEL']) {
   }
 }
 
-const PIPE = readFileSync(`${AKAR}/supabase/functions/agent-process/lib/request/request_pipeline.ts`, 'utf8');
-cek(PIPE.includes('[STATUS: INSUFFICIENT]'), 'prompt server memang masih menyuruh [STATUS: INSUFFICIENT]');
-cek(PIPE.includes('[Pengetahuan umum AI'), 'prompt server memang masih memakai [Pengetahuan umum AI …]');
+const KONTRAK = readFileSync(`${AKAR}/supabase/functions/agent-process/lib/verification/universal_contract.ts`, 'utf8');
+cek(KONTRAK.includes('[STATUS: INSUFFICIENT]'), 'prompt server (BLOK 6) memang masih menyuruh [STATUS: INSUFFICIENT]');
+cek(KONTRAK.includes('[Pengetahuan umum AI'), 'prompt server (BLOK 6) memang masih memakai [Pengetahuan umum AI …]');
+const DASAR = readFileSync(`${AKAR}/supabase/functions/agent-process/lib/request/prompt_dasar.ts`, 'utf8');
+cek(DASAR.includes('[BLOK 6: OUTPUT FORMAT & STATUS LABEL]') && !DASAR.includes('[STATUS: VERIFIED]'), 'prompt dasar merujuk BLOK 6 sebagai satu-satunya sumber aturan label (tidak mengulangnya)');
 
 console.log('\n-- terpasang di App.jsx --');
 

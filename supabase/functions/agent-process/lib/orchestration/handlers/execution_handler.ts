@@ -1,6 +1,9 @@
 import { eventBus } from '../../event/event_bus.ts';
 import { barisDicariSubagent } from '../langkah_terlihat.ts';
 import { adalahPemilik, alasanTolakSubagent } from '../izin_subagent.ts';
+import { catatanSubagenBerhenti, catatanTugasSubagenDilewati } from '../../catatan_jujur.ts';
+
+const MAKS_TUGAS_SUBAGEN = 5;
 
 export const ExecutionPlannerHandler = {
   async execute(plan: any[], ctx: any, rctx: any, maef: any, initialAccumulatedContext: string, initialModel: string): Promise<{ accumulatedContext: string, subagentRuns: any[] }> {
@@ -31,8 +34,11 @@ export const ExecutionPlannerHandler = {
     const seenTasks = new Set();
     
     for (let i = 0; i < plan.length; i++) {
-      if (i >= 5) {
-        console.log("Mamet Healer: Membatasi maksimal 5 tugas (Budget Limit).");
+      if (i >= MAKS_TUGAS_SUBAGEN) {
+        const lewat = plan.length - MAKS_TUGAS_SUBAGEN;
+        console.warn(`[SubAgen] ${lewat} tugas tidak dijalankan: batas ${MAKS_TUGAS_SUBAGEN} tugas per pertanyaan.`);
+        ctx.state.processingSteps.push(`⚠️ ${lewat} tugas sub-agent tidak dijalankan (batas ${MAKS_TUGAS_SUBAGEN} tugas per pertanyaan)`);
+        accumulatedContext += catatanTugasSubagenDilewati(lewat, MAKS_TUGAS_SUBAGEN);
         break;
       }
       
@@ -66,8 +72,10 @@ export const ExecutionPlannerHandler = {
           const tierTasks = executionTiers[tierIdx];
           
           if (Date.now() - orchestrationStartTime > GLOBAL_TIMEOUT_MS) {
-              console.warn(`[BUDGET_ENFORCER] Global Orchestration Budget Exceeded! Sisa tugas dibatalkan.`);
-              ctx.state.processingSteps.push(`⚠️ Eksekusi dibatalkan karena melebihi total waktu budget (24s).`);
+              const sisaTugas = executionTiers.slice(tierIdx).flat().map((t: any) => String(t.subagent));
+              console.warn(`[SubAgen] batas waktu total ${GLOBAL_TIMEOUT_MS / 1000} s terlampaui — ${sisaTugas.length} tugas tidak dijalankan.`);
+              ctx.state.processingSteps.push(`⚠️ ${sisaTugas.length} tugas sub-agent tidak dijalankan: batas waktu total ${GLOBAL_TIMEOUT_MS / 1000} detik terlampaui`);
+              accumulatedContext += catatanSubagenBerhenti(sisaTugas.join(', '), 'waktu-total', `${GLOBAL_TIMEOUT_MS / 1000} detik`) + '\n\n';
               break;
           }
 
@@ -101,9 +109,9 @@ export const ExecutionPlannerHandler = {
                        } else if (res.status === 'FAIL_NOT_FOUND') {
                            ctx.state.processingSteps.push(`⚠️ Sub-Agent "${subagent}" tidak ditemukan`);
                        } else if (res.status === 'timeout') {
-                           ctx.state.processingSteps.push(`⏳ [Tier ${tierIdx+1}] "${subagent}" tereliminasi (Hard Timeout Gated)`);
+                           ctx.state.processingSteps.push(`⏳ [Tier ${tierIdx+1}] "${subagent}" dihentikan: melewati batas waktu — tanpa hasil`);
                        } else {
-                           ctx.state.processingSteps.push(`❌ [Tier ${tierIdx+1}] "${subagent}" gagal terisolasi: ${res.error_message || 'Unknown'}`);
+                           ctx.state.processingSteps.push(`❌ [Tier ${tierIdx+1}] "${subagent}" gagal: ${res.error_message || 'tanpa keterangan'}`);
                        }
                        resolve({ 
                            subagent, task, 

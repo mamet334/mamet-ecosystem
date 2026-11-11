@@ -3,9 +3,10 @@ const AGENT_ENDPOINT = 'https://uuyzdjifhdfyyvpxsofu.supabase.co/functions/v1/ag
 
 import { supabase } from '../../../supabase.js';
 import { statusLaptop, kirimKeLaptop, sidikJari, cariDiCache, KUOTA_CACHE_MB } from './remoteConversionClient.js';
-import { ambilPermintaanAlat, susunPesanHasil, susunPesanKoreksi, namaFolderAman, buangKakiTiruan, peringatanKlaimTanpaAlat, peringatanKlaimEngineer, blokKodeKeMametCmd, MAKS_PUTARAN } from '../../../../../shared/folderKerjaAlat.js';
-import { ambilPermintaanKonektor, susunPesanHasilKonektor, catatanHasilKonektor, MAKS_PUTARAN_KONEKTOR } from '../../../../../shared/konektorAlat.js';
-import { ambilPermintaanRag, susunPesanHasilRag, catatanHasilRag, MAKS_PUTARAN_RAG } from '../../../../../shared/ragAlat.js';
+import { ambilPermintaanAlat, susunPesanHasil, susunPesanKoreksi, namaFolderAman, buangKakiTiruan, peringatanKlaimTanpaAlat, peringatanKlaimEngineer, blokKodeKeMametCmd } from '../../../../../shared/folderKerjaAlat.js';
+import { ambilPermintaanKonektor, susunPesanHasilKonektor, catatanHasilKonektor } from '../../../../../shared/konektorAlat.js';
+import { ambilPermintaanRag, susunPesanHasilRag, catatanHasilRag } from '../../../../../shared/ragAlat.js';
+import { putaranAlatAman } from '../../../../../shared/anggaranAlat.js';
 import { bacaKonektorAktif, petaAlatAktif, muatanKonektor, panggilKonektor, labelAlat } from './konektorAktif.js';
 import { cekPerintahBerulang, petunjukHasilKosong, petunjukKeluaranTerpotong, petunjukGrepSebagian, peringatanTugasTakDiumumkan, adaPenandaPatch, buangPenandaPatch } from './engineer/ProsedurEngineer.js';
 import { peringatanKlaimTakTeruji } from './engineer/UjiKlaim.js';
@@ -14,7 +15,6 @@ import { rampingkanPesan, pesanUntukServer } from './pesanRamping.js';
 import { susunJejakKlien } from './JejakKlien.js';
 import { bacaGalatRespons } from './galatRespons.js';
 
-const FOLDER_BATAS_BACA_BYTE = 150 * 1024;
 
 import { dibatalkanPemakai } from './pembatalan.js';
 
@@ -250,6 +250,26 @@ export class AssistantService {
     return bacaKonektorAktif(workspaceId);
   }
 
+  async _anggaranPutaranAlat() {
+    const sekarang = Date.now();
+    if (this._putaranAlatCache && sekarang - this._putaranAlatCache.waktu < 120000) return this._putaranAlatCache.nilai;
+    let nilai = putaranAlatAman(undefined);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      nilai = putaranAlatAman(user?.user_metadata?.putaran_alat);
+    } catch (e) {
+      console.warn('[AnggaranAlat] setelan putaran alat tak terbaca, memakai bawaan:', e.message);
+    }
+    this._putaranAlatCache = { waktu: sekarang, nilai };
+    return nilai;
+  }
+
+  async _batasBacaFolderHuruf() {
+    const brain = this.serviceManager?.has?.('BrainService') ? this.serviceManager.get('BrainService') : null;
+    const cfg = (await brain?.getActiveBrainContext?.()) || {};
+    return anggaranKonteks(await this.bahanAnggaranKonteks(cfg.model || '')).token * 4;
+  }
+
   _statusAlatRag(workspaceId, resolvedMode) {
     if (resolvedMode === 'LITE') return null;
     if (workspaceId !== 'ws-assistant' && resolvedMode !== 'ENGINEER') return null;
@@ -321,8 +341,14 @@ export class AssistantService {
     const { resolvedMode, resolvedAppSource } = this.resolveMode(workspaceId);
 
     const onDoneAwal = onDone;
+    const maksPutaranAlat = await this._anggaranPutaranAlat();
+    const putaranAlatTerpakai = _folderPutaran + _konektorPutaran + _ragPutaran;
+    const sisaPutaranAlat = Math.max(0, maksPutaranAlat - putaranAlatTerpakai);
+    const nomorPutaranAlat = putaranAlatTerpakai + 1;
+    const anggaranPutaran = { maks: maksPutaranAlat, sisa: sisaPutaranAlat };
+    const catatanHabisPutaran = `_⚠️ Anggaran ${maksPutaranAlat} putaran alat per pertanyaan (Settings → Batas Biaya) habis — sebagian permintaan alat tidak dijalankan._`;
     const alatRag = this._statusAlatRag(workspaceId, resolvedMode);
-    const infoAlatRag = alatRag ? { putaran: _ragPutaran, tingkat: null } : null;
+    const infoAlatRag = alatRag ? { putaran: _ragPutaran, ...anggaranPutaran, tingkat: null } : null;
     const catatanRag = _ragCatatan || [];
     if (alatRag) {
       const onDoneTerakhir = onDone;
@@ -335,19 +361,18 @@ export class AssistantService {
     }
 
     const konektor = await this._statusKonektor(workspaceId);
-    const infoKonektor = konektor ? { ...konektor, putaran: _konektorPutaran, tingkat: null } : null;
+    const infoKonektor = konektor ? { ...konektor, putaran: _konektorPutaran, ...anggaranPutaran, tingkat: null } : null;
     if (konektor) {
       const onDoneKonektor = onDone;
       const pertanyaanKonektor = _konektorPertanyaan || userMsg;
       const catatanKonektor = _konektorCatatan || [];
       onDone = async (finalText, steps, jsonMetadata, extras = {}) => {
         const { permintaan, galat, teksTanpaTag } = ambilPermintaanKonektor(finalText, petaAlatAktif(konektor));
-        if (permintaan.length && _konektorPutaran < MAKS_PUTARAN_KONEKTOR) {
-          const putaran = _konektorPutaran + 1;
+        if (permintaan.length && sisaPutaranAlat > 0) {
           const hasil = [];
           for (const p of permintaan) {
             const label = labelAlat(p);
-            onChunk?.(`${label}…`, `_${label}… (putaran konektor ${putaran}/${MAKS_PUTARAN_KONEKTOR})_`, steps || []);
+            onChunk?.(`${label}…`, `_${label}… (putaran alat ${nomorPutaranAlat}/${maksPutaranAlat})_`, steps || []);
             let h;
             try { h = await panggilKonektor(workspaceId, p, chatId); }
             catch (e) { h = { ok: false, alasan: `alat gagal: ${e.message || e}` }; }
@@ -355,18 +380,20 @@ export class AssistantService {
             catatanKonektor.push(catatanHasilKonektor(h));
             hasil.push(h);
           }
-          const pesanHasil = susunPesanHasilKonektor(hasil, { putaran, pertanyaanAsli: pertanyaanKonektor, galat });
+          const pesanHasil = susunPesanHasilKonektor(hasil, { putaran: nomorPutaranAlat, pertanyaanAsli: pertanyaanKonektor, galat, maks: maksPutaranAlat });
           return this.processMessage({
             userMsg: pesanHasil,
             history: [...(history || []), { role: 'model', content: finalText }, { role: 'user', content: pesanHasil }],
             workspaceId, userId, token, signal, attachedFile: null, workspaceManager, chatId,
-            onChunk, onDone: onDoneKonektor, onError, onNalar,
+            onChunk, onDone: onDoneAwal, onError, onNalar,
             modelTierOverride: modelTierOverride || infoKonektor.tingkat || null,
-            _konektorPutaran: putaran, _konektorPertanyaan: pertanyaanKonektor, _konektorCatatan: catatanKonektor,
+            _folderPutaran, _folderPertanyaan: pertanyaanAsli, _folderDibaca: dibaca, _folderDiubah: diubah, _folderByte, _folderKoreksi,
+            _konektorPutaran: _konektorPutaran + 1, _konektorPertanyaan: pertanyaanKonektor, _konektorCatatan: catatanKonektor,
+            _ragPutaran, _ragPertanyaan, _ragCatatan: catatanRag,
           });
         }
         let teks = permintaan.length ? teksTanpaTag : finalText;
-        if (permintaan.length) teks += `\n\n_⚠️ Batas ${MAKS_PUTARAN_KONEKTOR} putaran alat konektor tercapai — sebagian permintaan alat tidak dijalankan._`;
+        if (permintaan.length) teks += `\n\n${catatanHabisPutaran}`;
         if (catatanKonektor.length) {
           teks += `\n\n---\n🛰️ _${konektor.nama} (dicatat dari proses utama, bukan dari kata model): ${catatanKonektor.join(' · ')}_`;
         }
@@ -378,15 +405,15 @@ export class AssistantService {
     const pertanyaanAsli = _folderPertanyaan || userMsg;
     const dibaca = _folderDibaca || [];
     const diubah = _folderDiubah || [];
-    const infoFolder = folderKerja ? { nama: folderKerja.nama, putaran: _folderPutaran, tingkat: null } : null;
+    const infoFolder = folderKerja ? { nama: folderKerja.nama, putaran: _folderPutaran, ...anggaranPutaran, tingkat: null } : null;
     if (folderKerja) {
       const onDoneAsli = onDone;
       onDone = async (finalText, steps, jsonMetadata, extras = {}) => {
         const { permintaan, galat } = ambilPermintaanAlat(finalText);
-        if (permintaan.length && _folderPutaran < MAKS_PUTARAN) {
-          const putaran = _folderPutaran + 1;
+        if (permintaan.length && sisaPutaranAlat > 0) {
           const hasil = [];
           let byte = _folderByte;
+          const batasBacaHuruf = await this._batasBacaFolderHuruf();
           for (const p of permintaan) {
             const label = {
               folder_search: `🔎 mencari "${p.kueri}"`,
@@ -399,10 +426,10 @@ export class AssistantService {
               folder_delete: `🗑️ menunggu izin Anda untuk memindah \`${p.alamat}\` ke Recycle Bin`,
               folder_run: `▶️ menunggu izin Anda untuk menjalankan \`${[p.program, ...(p.argumen || [])].join(' ')}\` (lihat dialog), lalu menunggu programnya selesai`,
             }[p.alat] || `⚙️ ${p.alat}`;
-            onChunk?.(`${label}…`, `_${label}… (putaran ${putaran}/${MAKS_PUTARAN})_`, steps || []);
+            onChunk?.(`${label}…`, `_${label}… (putaran alat ${nomorPutaranAlat}/${maksPutaranAlat})_`, steps || []);
             let h;
-            if (p.alat === 'folder_read' && byte >= FOLDER_BATAS_BACA_BYTE) {
-              h = { ok: false, alat: p.alat, alamat: p.alamat, alasan: `batas baca per pertanyaan (${FOLDER_BATAS_BACA_BYTE / 1024} KB) tercapai — jawab dari yang sudah dibaca` };
+            if (p.alat === 'folder_read' && byte >= batasBacaHuruf) {
+              h = { ok: false, alat: p.alat, alamat: p.alamat, alasan: `bacaan pertanyaan ini (${byte.toLocaleString('id-ID')} huruf) sudah memenuhi anggaran konteks dari Settings (${batasBacaHuruf.toLocaleString('id-ID')} huruf) — jawab dari yang sudah dibaca, atau minta pengguna menaikkan batas biaya harian bila perlu membaca lebih banyak` };
             } else {
               try { h = await window.electronAPI.folderKerja.alat(p); }
               catch (e) { h = { ok: false, alat: p.alat, alamat: p.alamat, alasan: `alat gagal: ${e.message || e}` }; }
@@ -418,36 +445,39 @@ export class AssistantService {
             }
             hasil.push(h);
           }
-          const pesanHasil = susunPesanHasil(hasil, { putaran, pertanyaanAsli, galat });
+          const pesanHasil = susunPesanHasil(hasil, { putaran: nomorPutaranAlat, pertanyaanAsli, galat, maks: maksPutaranAlat });
           return this.processMessage({
             userMsg: pesanHasil,
             history: [...(history || []), { role: 'model', content: finalText }, { role: 'user', content: pesanHasil }],
             workspaceId, userId, token, signal, attachedFile: null, workspaceManager,
-            onChunk, onDone: onDoneAsli, onError, onNalar,
+            onChunk, onDone: onDoneAwal, onError, onNalar,
             modelTierOverride: modelTierOverride || infoFolder.tingkat || null,
-            _folderPutaran: putaran, _folderPertanyaan: pertanyaanAsli, _folderDibaca: dibaca, _folderDiubah: diubah, _folderByte: byte,
+            _folderPutaran: _folderPutaran + 1, _folderPertanyaan: pertanyaanAsli, _folderDibaca: dibaca, _folderDiubah: diubah, _folderByte: byte,
             _folderKoreksi,
+            _konektorPutaran, _konektorPertanyaan, _konektorCatatan,
+            _ragPutaran, _ragPertanyaan, _ragCatatan: catatanRag,
           });
         }
         let teks = buangKakiTiruan(permintaan.length ? ambilPermintaanAlat(finalText).teksTanpaTag : finalText);
-        if (permintaan.length) teks += `\n\n_⚠️ Batas ${MAKS_PUTARAN} putaran alat folder tercapai — sebagian permintaan alat tidak dijalankan._`;
+        if (permintaan.length) teks += `\n\n${catatanHabisPutaran}`;
         const tercatat = {
           jalan: diubah.some((d) => /^(▶️|⚠️ kode|⏱️)/.test(d)),
           ubah: diubah.some((d) => d.startsWith('✅')),
         };
         const peringatan = peringatanKlaimTanpaAlat(teks, tercatat);
-        if (peringatan && !_folderKoreksi && _folderPutaran < MAKS_PUTARAN) {
-          const putaran = _folderPutaran + 1;
-          onChunk?.('🔁 koreksi…', `_🔁 Jawaban mengaku menjalankan/mengubah tanpa alat — meminta model mengulang dengan alat (putaran ${putaran}/${MAKS_PUTARAN})…_`, steps || []);
-          const pesanKoreksi = susunPesanKoreksi({ putaran, pertanyaanAsli, tercatat });
+        if (peringatan && !_folderKoreksi && sisaPutaranAlat > 0) {
+          onChunk?.('🔁 koreksi…', `_🔁 Jawaban mengaku menjalankan/mengubah tanpa alat — meminta model mengulang dengan alat (putaran alat ${nomorPutaranAlat}/${maksPutaranAlat})…_`, steps || []);
+          const pesanKoreksi = susunPesanKoreksi({ putaran: nomorPutaranAlat, pertanyaanAsli, tercatat, maks: maksPutaranAlat });
           return this.processMessage({
             userMsg: pesanKoreksi,
             history: [...(history || []), { role: 'model', content: finalText }, { role: 'user', content: pesanKoreksi }],
             workspaceId, userId, token, signal, attachedFile: null, workspaceManager,
-            onChunk, onDone: onDoneAsli, onError, onNalar,
+            onChunk, onDone: onDoneAwal, onError, onNalar,
             modelTierOverride: modelTierOverride || infoFolder.tingkat || null,
-            _folderPutaran: putaran, _folderPertanyaan: pertanyaanAsli, _folderDibaca: dibaca, _folderDiubah: diubah, _folderByte,
+            _folderPutaran: _folderPutaran + 1, _folderPertanyaan: pertanyaanAsli, _folderDibaca: dibaca, _folderDiubah: diubah, _folderByte,
             _folderKoreksi: true,
+            _konektorPutaran, _konektorPertanyaan, _konektorCatatan,
+            _ragPutaran, _ragPertanyaan, _ragCatatan: catatanRag,
           });
         }
         if (peringatan) teks += `\n\n${peringatan}`;
@@ -485,13 +515,12 @@ export class AssistantService {
       onDone = async (finalText, steps, jsonMetadata, extras = {}) => {
         const { permintaan, galat, teksTanpaTag, adaTag } = ambilPermintaanRag(finalText);
         const perluPutaran = permintaan.length > 0 || (adaTag && galat.length > 0);
-        if (perluPutaran && _ragPutaran < MAKS_PUTARAN_RAG) {
-          const putaran = _ragPutaran + 1;
-          onChunk?.('📚 menelusuri RAG…', `_📚 menelusuri dokumen RAG (${permintaan.map((p) => p.alat).join(', ') || 'permintaan tidak sah — dikembalikan ke model'}) — putaran ${putaran}/${MAKS_PUTARAN_RAG}…_`, steps || []);
+        if (perluPutaran && sisaPutaranAlat > 0) {
+          onChunk?.('📚 menelusuri RAG…', `_📚 menelusuri dokumen RAG (${permintaan.map((p) => p.alat).join(', ') || 'permintaan tidak sah — dikembalikan ke model'}) — putaran alat ${nomorPutaranAlat}/${maksPutaranAlat}…_`, steps || []);
           const hasil = permintaan.length ? await this._jalankanAlatRag(permintaan, { token, mode: resolvedMode, signal }) : [];
           for (const h of hasil) catatanRag.push(catatanHasilRag(h));
           if (!permintaan.length) catatanRag.push(`⚠️ permintaan alat tidak sah dikembalikan ke model (${galat.length} catatan)`);
-          const pesanHasil = susunPesanHasilRag(hasil, { putaran, pertanyaanAsli: pertanyaanRag, galat });
+          const pesanHasil = susunPesanHasilRag(hasil, { putaran: nomorPutaranAlat, pertanyaanAsli: pertanyaanRag, galat, maks: maksPutaranAlat });
           return this.processMessage({
             userMsg: pesanHasil,
             history: [...(history || []), { role: 'model', content: finalText }, { role: 'user', content: pesanHasil }],
@@ -500,11 +529,11 @@ export class AssistantService {
             modelTierOverride: modelTierOverride || infoAlatRag.tingkat || null,
             _folderPutaran, _folderPertanyaan, _folderDibaca: dibaca, _folderDiubah: diubah, _folderByte, _folderKoreksi,
             _konektorPutaran, _konektorPertanyaan, _konektorCatatan,
-            _ragPutaran: putaran, _ragPertanyaan: pertanyaanRag, _ragCatatan: catatanRag,
+            _ragPutaran: _ragPutaran + 1, _ragPertanyaan: pertanyaanRag, _ragCatatan: catatanRag,
           });
         }
         let teks = adaTag || permintaan.length ? teksTanpaTag : finalText;
-        if (perluPutaran) teks += `\n\n_⚠️ Batas ${MAKS_PUTARAN_RAG} putaran alat RAG tercapai — sebagian permintaan alat RAG tidak dijalankan${galat.length ? ` (${galat.join('; ').slice(0, 300)})` : ''}._`;
+        if (perluPutaran) teks += `\n\n${catatanHabisPutaran}${galat.length ? `\n_(catatan alat RAG: ${galat.join('; ').slice(0, 300)})_` : ''}`;
         if (_ragPutaran > 0 && typeof teks === 'string') teks = buangKakiTiruan(teks);
         return onDoneLanjut?.(teks, steps, jsonMetadata, extras);
       };
@@ -785,7 +814,7 @@ export class AssistantService {
       clientTimezone: zonaWaktuBrowser(),
       dataTabel: dataTabelToolEnabled && !lookupLite ? true : undefined,
       folderKerja: _folderKerja || undefined,
-      alatRag: _alatRag ? { putaran: _alatRag.putaran } : undefined,
+      alatRag: _alatRag ? { putaran: _alatRag.putaran, maks: _alatRag.maks, sisa: _alatRag.sisa } : undefined,
       ...muatanKonektor(_konektor),
       cache_hint: true,
       _request_type: 'LOOKUP'
@@ -1163,7 +1192,7 @@ export class AssistantService {
         : (deepResearchToolEnabled && !isEngineerMode ? ['deep_research'] : undefined),
       dataTabel: dataTabelToolEnabled && !isLiteMode && !isEngineerMode && !folderLanjutan ? true : undefined,
       folderKerja: _folderKerja || undefined,
-      alatRag: _alatRag ? { putaran: _alatRag.putaran } : undefined,
+      alatRag: _alatRag ? { putaran: _alatRag.putaran, maks: _alatRag.maks, sisa: _alatRag.sisa } : undefined,
       ...muatanKonektor(_konektor),
       cache_hint: true,
       _token_meta: { estimated_before: tokensBefore, estimated_after: tokensAfter, saved: tokensSaved },

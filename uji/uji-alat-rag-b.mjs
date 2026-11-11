@@ -250,15 +250,15 @@ console.log('\n-- sambungan server & klien --');
   const IX = baca('supabase/functions/agent-process/index.ts');
   cek(/const ragAlatResponse = await handleRagAlatRequest\(req, parsedBody, corsHeaders\);\n\s*if \(ragAlatResponse\) return ragAlatResponse;/.test(IX), 'index.ts merutekan action rag_alat');
   const RP = baca('supabase/functions/agent-process/lib/request/request_pipeline.ts');
-  cek(/if \(parsed\.alatRag && ctx\.policy\.mode !== 'LITE' && ctx\.auth\.appSource !== 'mametlite'\)/.test(RP) && /blokPromptRag\(\{ putaran: parsed\.alatRag\.putaran, engineer \}\)/.test(RP), 'prompt alat RAG hanya bila klien memintanya, tidak untuk Mametlite');
+  cek(/if \(parsed\.alatRag && ctx\.policy\.mode !== 'LITE' && ctx\.auth\.appSource !== 'mametlite'\)/.test(RP) && /blokPromptRag\(\{ putaran: parsed\.alatRag\.putaran, maks: parsed\.alatRag\.maks, sisa: parsed\.alatRag\.sisa, engineer \}\)/.test(RP), 'prompt alat RAG hanya bila klien memintanya, tidak untuk Mametlite');
   cek(/alatRag: alatRagAman\(alatRag\)/.test(baca('supabase/functions/agent-process/lib/request/request_parser.ts')), 'parser memeriksa muatan alatRag');
   cek(/sumberDariHasilRag\(\[/.test(baca('supabase/functions/agent-process/lib/orchestration/handlers/synthesis_handler.ts')), 'hasil alat RAG menjadi sumber pemeriksa label');
   const AS = baca('frontend/src/core/runtime/services/AssistantService.js');
   cek(/if \(resolvedMode === 'LITE'\) return null;\n\s*if \(workspaceId !== 'ws-assistant' && resolvedMode !== 'ENGINEER'\) return null;/.test(AS) && /getEffective\(workspaceId, 'rag'\)/.test(AS), 'klien: hanya Assistant & Engineer, mengikuti tombol RAG');
-  cek(/onDone: onDoneAwal,/.test(AS) && /_ragPutaran: putaran, _ragPertanyaan: pertanyaanRag, _ragCatatan: catatanRag/.test(AS) && /const perluPutaran = permintaan\.length > 0 \|\| \(adaTag && galat\.length > 0\);\s*if \(perluPutaran && _ragPutaran < MAKS_PUTARAN_RAG\)/.test(AS), 'klien: putaran berikutnya memakai onDone asli (tak membungkus ganda) & membawa catatan; tag tak sah dikembalikan ke model, bukan diam');
+  cek(/onDone: onDoneAwal,/.test(AS) && /_ragPutaran: _ragPutaran \+ 1, _ragPertanyaan: pertanyaanRag, _ragCatatan: catatanRag/.test(AS) && /const perluPutaran = permintaan\.length > 0 \|\| \(adaTag && galat\.length > 0\);\s*if \(perluPutaran && sisaPutaranAlat > 0\)/.test(AS), 'klien: putaran berikutnya memakai onDone asli (tak membungkus ganda) & membawa catatan; tag tak sah dikembalikan ke model, bukan diam');
   cek(/const hasil = permintaan\.length \? await this\._jalankanAlatRag\(/.test(AS) && /let teks = adaTag \|\| permintaan\.length \? teksTanpaTag : finalText;/.test(AS), 'klien: tanpa permintaan sah server tak dipanggil; tag tak tampil mentah di layar');
   cek(/📚 _RAG \(dicatat dari proses utama, bukan dari kata model\)/.test(AS) && /HASIL ALAT RAG\\\]\)/.test(AS), 'klien: catatan kerja RAG & pesan hasil RAG dikenali sebagai putaran alat');
-  cek((AS.match(/alatRag: _alatRag \? \{ putaran: _alatRag\.putaran \} : undefined,/g) || []).length === 2, 'muatan alatRag dikirim di jalur LOOKUP & percakapan');
+  cek((AS.match(/alatRag: _alatRag \? \{ putaran: _alatRag\.putaran, maks: _alatRag\.maks, sisa: _alatRag\.sisa \} : undefined,/g) || []).length === 2, 'muatan alatRag dikirim di jalur LOOKUP & percakapan');
   cek(/body: JSON\.stringify\(\{ action: 'rag_alat', mode, permintaan \}\), signal \}\)/.test(AS) && /const galat = await bacaGalatRespons\(response\);\n\s*return gagalSemua/.test(AS), 'klien memanggil endpoint; galat HTTP sampai ke model sebagai GAGAL');
 }
 

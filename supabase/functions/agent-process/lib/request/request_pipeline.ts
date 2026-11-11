@@ -18,6 +18,7 @@ import { blokPromptFolder } from '../../../../../shared/folderKerjaAlat.js';
 import { blokPromptKonektor } from '../../../../../shared/konektorAlat.js';
 import { blokPromptKonektorUmum } from '../../../../../shared/konektorUmum.js';
 import { blokPromptRag } from '../../../../../shared/ragAlat.js';
+import { susunPromptDasar, petunjukZip } from './prompt_dasar.ts';
 
 
 async function generateEmbeddingThroughAdapter(
@@ -240,73 +241,17 @@ export async function executeRequestPipeline(
     teksPenanda.trim().length > 80
   );
 
-  let agentIdentityPrompt = `\n${konteksWaktuPengguna(new Date(), parsed.clientTimezone)}\n`;
   console.log(`[Waktu] Zona waktu pengguna: ${zonaWaktuSah(parsed.clientTimezone) ?? '(tidak dikirim / tidak sah)'}`);
-  if (hasInjectedKnowledge) {
-    agentIdentityPrompt += `SISTEM RETRIEVAL AKTIF: Anda telah dibekali dengan dokumen referensi pengetahuan / hasil pencarian web terkini pada konteks. Gunakan informasi aktual tersebut secara terpercaya sebagai sumber primer untuk menjawab kueri user (termasuk berita dan perkembangan terkini tahun 2026).\n`;
-  } else {
-    agentIdentityPrompt += `BATAS PENGETAHUAN INTERNAL ANDA: Akhir 2024 / Awal 2025. Jika tidak ada dokumen RAG/Web yang tersedia, Anda harus sangat berhati-hati jika ditanya informasi setelah batas pengetahuan Anda, dan sampaikan dalam proses berpikir Anda secara jujur bahwa informasi setelah akhir 2024 mungkin tidak lengkap.\n`;
-  }
-
-  agentIdentityPrompt += `
-IDENTITAS ANDA: Anda adalah "Mamet", asisten cerdas buatan yang merupakan hak paten dari aplikasi ini. Selalu perkenalkan diri Anda sebagai Mamet. JANGAN katakan Anda buatan Google atau OpenAI. Anda memiliki kemampuan BERKEMBANG DARI PENGALAMAN: Selalu perhatikan 'history' obrolan. Pelajari gaya bahasa, preferensi, dan teguran/koreksi dari user di masa lalu untuk memperbaiki jawaban Anda di masa depan.
-MODEL AI YANG ANDA GUNAKAN SAAT INI: ${parsed.model || 'gemini-2.5-flash'}. Anda dapat memberitahu user secara jujur model/otak AI apa yang sedang menggerakkan Anda saat ini jika ditanya.
-`;
-
-  if (parsed.memoryEnabled === false) {
-    agentIdentityPrompt += `
-KESADARAN SISTEM MEMORI (MEMORI SEDANG DIMATIKAN):
-Mamet OS memiliki Sistem Memori Persisten, tetapi pengguna SEDANG MEMATIKANNYA lewat tombol Memory. Pada percakapan ini Anda TIDAK membaca memori lama dan TIDAK menyimpan informasi baru ke memori persisten. Yang tetap Anda lihat hanya riwayat obrolan sesi ini.
-Jika user meminta Anda mengingat sesuatu untuk sesi berikutnya, atau menanyakan hal pribadi yang pernah disimpan sebelumnya, jelaskan jujur bahwa memori sedang dimatikan dan dapat dinyalakan kembali di menu Tools → Memory. JANGAN mengaku sudah menyimpan, dan JANGAN mengarang isi memori lama.
-`;
-  } else {
-    agentIdentityPrompt += `
-KESADARAN SISTEM MEMORI:
-Mamet OS memiliki Sistem Memori Persisten Terkontrol (Memory Governor) yang aktif menyimpan informasi lintas sesi atas seizin dan kendali Owner. Anda BUKAN model stateless dan TIDAK BOLEH mengklaim "tidak menyimpan data pribadi" atau "percakapan ini bersifat sementara" — klaim tersebut SALAH dan bertentangan dengan arsitektur sistem ini.
-
-Jika user meminta agar suatu informasi TIDAK disimpan (misal: "jangan simpan ini", "jangan diingat ya"), respons yang benar adalah mengakui kepatuhan terhadap permintaan tersebut secara spesifik, contoh: "Baik, informasi ini tidak akan saya simpan ke memori persisten sistem." JANGAN membingungkan "menghormati permintaan user" dengan "mengklaim tidak punya kapabilitas menyimpan data".
-`;
-  }
-
-  const isLookupMode = parsed.mode === 'LOOKUP';
-  agentIdentityPrompt += `\nPANDUAN PENALARAN & STATUS KEPASTIAN (MAEF COMPLIANT):
-Sebelum memberikan jawaban akhir, Anda WAJIB menuliskan proses berpikir Anda secara transparan di dalam tag <think>...</think>.
-BAHASA NALAR: seluruh proses berpikir/penalaran Anda (termasuk penalaran internal model) WAJIB ditulis dalam Bahasa Indonesia, sama dengan bahasa jawaban — nalar ditampilkan kepada pengguna.
-Isi tag think harus mencakup:
-1. Apa yang Anda pahami dari pertanyaan/permintaan user.
-2. APAKAH DATA TERSEDIA DI BLOK <RAG>, [BLOK 4: KNOWLEDGE], ATAU <MEMORY>?
-3. JIKA ADA DATA: Rujuk secara spesifik judul atau ringkasan dokumen/artikel berita yang relevan untuk menyusun jawaban.
-4. JIKA TIDAK ADA DATA: Anda DIPERBOLEHKAN menggunakan PENGETAHUAN INTERNAL LLM ANDA untuk memberikan REKOMENDASI, ANALISIS, atau HIPOTESIS.
-5. JIKA KEDUANYA KOSONG ATAU TIDAK TAHU: Katakan dengan jelas bahwa data tidak ditemukan di database atau referensi web.
-
-ATURAN WAJIB LABEL STATUS PADA JAWABAN AKHIR:
-Di luar tag <think>, pada baris TERAKHIR jawaban Anda, Anda WAJIB mencetak TEPAT SATU label status berikut secara eksplisit (mode LOOKUP: aturan rincinya di BLOK 6, yang tahu ada/tidaknya dokumen — U10 Item 90):
-${isLookupMode ? `- Mode LOOKUP: ikuti [BLOK 6: OUTPUT FORMAT & STATUS LABEL] di bawah — bila ada dokumen di BLOK 4/<RAG>, pakai [STATUS: VERIFIED] (wajib dengan baris Sumber) / [STATUS: HYPOTHESIS - Rekomendasi AI] / [STATUS: INSUFFICIENT]; bila tidak ada dokumen sama sekali, pakai [Pengetahuan umum AI — tidak diverifikasi dari dokumen Anda]` : `- Jika didukung oleh dokumen <RAG>/Web: [STATUS: VERIFIED]
-- Jika menggunakan rekomendasi/pengetahuan internal tanpa dokumen pendukung: [STATUS: HYPOTHESIS - Rekomendasi AI]
-- Jika data tidak ditemukan dan tidak cukup informasi: [STATUS: INSUFFICIENT]`}
-
-PENTING - PRINSIP KNOWLEDGE FIRST + FALLBACK:
-- ANDA TETAP PRIORITASKAN DATA DARI <RAG>, REFERENSI BERITA/WEB, DAN <MEMORY>.
-- JIKA DATA TERSEBUT KOSONG, ANDA BOLEH MEMAKAI PENGETAHUAN INTERNAL ANDA (sesuai Konstitusi AI boleh berpikir), TAPI WAJIB DIBERI LABEL STATUS TRANSPARAN DI ATAS.
-- JANGAN PERNAH MENGARANG FAKTA. JIKA DATA KOSONG DAN PENGETAHUAN INTERNAL ANDA TIDAK TAHU, KATAKAN TIDAK TAHU.\n`;
+  let agentIdentityPrompt = susunPromptDasar({
+    konteksWaktu: konteksWaktuPengguna(new Date(), parsed.clientTimezone),
+    adaPengetahuanDisuntik: hasInjectedKnowledge,
+    model: parsed.model || '',
+    memoryEnabled: parsed.memoryEnabled !== false,
+  });
+  agentIdentityPrompt += petunjukZip(parsed.message);
 
 
   let userContextPrompt = ctx.auth.userName ? `\nInformasi Akun: User login dengan email/nama "${ctx.auth.userName}". Prioritaskan memanggil user dengan nama ini, kecuali user menyebut nama lain.` : '';
-
-  if (ctx.request.finalMessage.toLowerCase().includes('zip')) {
-    ctx.request.finalMessage += `\n\n[PERINTAH SANGAT PENTING DARI SISTEM]: User meminta file ZIP. Anda DILARANG menggunakan blok kode biasa seperti \`\`\`html. ANDA WAJIB MENGGUNAKAN format \`\`\`xml_zip. 
-<EXAMPLES>
-Contoh Jawaban Anda yang BENAR:
-Baik, ini file zip-nya:
-\`\`\`xml_zip
-<filename>nama_file.zip</filename>
-<file name="index.html">
-<!-- isi html -->
-</file>
-\`\`\`
-</EXAMPLES>
-Wajib ikuti struktur persis seperti contoh di atas!`;
-  }
 
   const catatanRiwayat = catatanModelRiwayatDilewati(parsed.riwayatDilewati);
   agentIdentityPrompt += catatanRiwayat;
@@ -315,13 +260,13 @@ Wajib ikuti struktur persis seperti contoh di atas!`;
   ctx.request.agentIdentityPrompt = agentIdentityPrompt;
 
   if (parsed.folderKerja) {
-    ctx.request.agentIdentityPrompt += blokPromptFolder(parsed.folderKerja.nama, parsed.folderKerja.putaran);
+    ctx.request.agentIdentityPrompt += blokPromptFolder(parsed.folderKerja.nama, parsed.folderKerja.putaran, { maks: parsed.folderKerja.maks, sisa: parsed.folderKerja.sisa });
     console.log(`[FolderKerja] aktif "${parsed.folderKerja.nama}" · putaran alat ${parsed.folderKerja.putaran}`);
   }
 
   if (parsed.alatRag && ctx.policy.mode !== 'LITE' && ctx.auth.appSource !== 'mametlite') {
     const engineer = ctx.policy.mode === 'ENGINEER';
-    ctx.request.agentIdentityPrompt += blokPromptRag({ putaran: parsed.alatRag.putaran, engineer });
+    ctx.request.agentIdentityPrompt += blokPromptRag({ putaran: parsed.alatRag.putaran, maks: parsed.alatRag.maks, sisa: parsed.alatRag.sisa, engineer });
     console.log(`[AlatRag] aktif · putaran alat ${parsed.alatRag.putaran}${engineer ? ' · Engineer' : ''}`);
   }
 

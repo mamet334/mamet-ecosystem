@@ -193,7 +193,11 @@ panjang > 5.000 huruf, dan kata berulang:
 **Selesai bila:** membaca seluruh `constitution/` tidak ditolak; tak ada jalur yang mematikan alat/RAG tanpa
 pemberitahuan; uji K5 lain tetap hijau.
 
-## Tahap E — Batas kerja berdasar anggaran (K1) 📋 🖥🔧
+## Tahap E — Batas kerja berdasar anggaran (K1) 📝 🖥🔧
+
+**Status 11 Nov — terbukti di Ecosystem, menunggu Mametlite** ([log](../project-memory/changelog/2026-11-11-item-131-tahap-i-e-f-g.md)): E1/E2 satu anggaran putaran alat di
+Settings (bawaan 8, pagar 40), E3 plafon jawaban dari katalog model dalam jendela, E4 catatan jujur sub-agen. **Sisa:**
+batas waktu sub-agen & 5 tugas belum berdasar anggaran (butuh ukuran durasi).
 
 | # | Di mana | Sekarang | Arah |
 |---|---|---|---|
@@ -205,7 +209,10 @@ pemberitahuan; uji K5 lain tetap hijau.
 Yang **dipertahankan**: baca folder 60 KB / 400 baris per panggilan (asal putaran cukup), keluaran perintah 20 KB,
 hasil konektor 60.000 huruf per hasil, tunggu sambung MCP 90 s.
 
-## Tahap F — Hasil web tidak diringkas ulang (K1) 📋 🔧
+## Tahap F — Hasil web tidak diringkas ulang (K1) 📝 🔧🖥
+
+**Status 11 Nov — terbukti di Ecosystem, menunggu Mametlite** ([log](../project-memory/changelog/2026-11-11-item-131-tahap-i-e-f-g.md)): peringkas LLM dicabut, artikel utuh,
+anggaran sempit → dilewati per artikel dengan catatan. **Sisa:** alat meminta isi lengkap satu artikel.
 
 **Masalah.** `context_builder.ts`: bila total artikel web > 6.000 huruf (`WEB_CONTEXT_TOTAL_THRESHOLD`), tiap artikel
 diringkas **LLM tambahan** ke 800 huruf (`WEB_CONTEXT_PER_ARTICLE_MAX`) — dibayar dua kali dan detail hilang; lalu di klien
@@ -214,7 +221,9 @@ dipotong lagi 4.000 huruf (C5).
 **Arah.** Artikel masuk utuh dalam anggaran konteks; bila anggaran sempit, pilih artikel paling relevan (bukan
 meringkas semuanya); model boleh meminta isi lengkap satu artikel.
 
-## Tahap G — Isi berkas konektor GitHub sampai ke model 📋 🖥
+## Tahap G — Isi berkas konektor GitHub sampai ke model ✅ 🖥
+
+**Status 11 Nov — terbukti live** ([log](../project-memory/changelog/2026-11-11-item-131-tahap-i-e-f-g.md)): `README.md` repo terbaca lewat `get_file_contents`.
 
 **Masalah.** Membaca `README.md` & `INIT.md`: konektor melapor "successfully downloaded text file (SHA …)", tetapi
 blok `[isi resource]` kosong — isi resource (embedded resource MCP) tak diteruskan ke prompt.
@@ -235,7 +244,11 @@ dipakai `ragTurunKeKata`):
 - penolakan penjaga memori (C6), pemangkasan konteks yang tersisa, sub-agen yang dihentikan (E4);
 - tidak ada lagi catatan yang tidak benar (C2) atau label pemasaran (E4).
 
-## Tahap I — Prompt sistem melayani tugas, bukan sebaliknya (K1) 📋 🔧
+## Tahap I — Prompt sistem melayani tugas, bukan sebaliknya (K1) 📝 🔧
+
+**Status 11 Nov — sebagian** ([log](../project-memory/changelog/2026-11-11-item-131-tahap-i-e-f-g.md)): prompt dasar ±3.500 → ±1.650 huruf, aturan label satu sumber,
+klaim yang bisa salah dibuang, perintah ZIP tak lagi dipicu isi dokumen. **Sisa:** ukur set K1/K2, rampingkan blok
+petunjuk alat (folder ±4.300, RAG ±2.000, konektor), rapikan label untuk hasil `rag_daftar`.
 
 **Temuan 10 Nov (uji live Tahap B):** model menyebut blok contoh `xml_zip` di prompt sistem (`request_pipeline.ts`) sebagai
 "perintah sistem aneh" yang diabaikannya pada pertanyaan membandingkan changelog — contoh aturan yang tak melayani tugas.
@@ -300,7 +313,7 @@ build hijau, server ter-deploy sama dengan repo.
 0. **Tahap 0** (ukur ujung-ke-ujung) — gerbang semua tahap; tanpa alat ukur ini kesalahan yang sama bisa terulang diam-diam.
    **J** (hapus komentar) — **keputusan Owner 6 Nov: langsung sesudah Tahap 0, sebelum A**, supaya sesi yang mengerjakan
    A–I tidak lagi disesatkan komentar lama; perubahannya terbukti tak mengubah kode (keluaran build sama). Dalam
-   praktik J selesai lebih dulu (9 Nov); Tahap 0 ✅ 9 Nov; A sebagian, C + H + D 9 Nov, B 10 Nov — **berikutnya sisa A (lambat), lalu E/F/G/I**.
+   praktik J selesai lebih dulu (9 Nov); Tahap 0 ✅ 9 Nov; A sebagian, C + H + D 9 Nov, B 10 Nov, I/E/F/G 11 Nov — **berikutnya: bukti Mametlite, ukur K1/K2, sisa A (compute)**.
 1. **A** (RAG cepat) — syarat uji K1/K2 buku utuh.
 2. **C** (konteks utuh) + **H** (kegagalan jujur) — model berhenti lupa & berhenti diam.
 3. **B** (alat RAG) — dibangun di atas A.

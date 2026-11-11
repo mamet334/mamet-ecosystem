@@ -2,6 +2,7 @@ import { CapabilityAdapter, AdapterContext, AdapterResult } from './capability_a
 import { RuntimeContext } from '../runtime_context.ts';
 import { checkGuardrails, recordUsage } from '../cost/costTracker.ts';
 import { kirimOpenRouterDenganReasoning, teksNalar, pembungkusNalarStream, bacaSseOpenRouter, MAKS_TOKEN_JAWABAN, pesanSaldoTakCukup, terpotongKarenaPlafon, pesanTerpotongPlafon } from './reasoning_openrouter.ts';
+import { plafonUntukPermintaan, ingatPlafonTerjangkau } from './kemampuan_model.ts';
 
 async function* processOpenAIStream(res: Response, info?: { provider?: string; sebabSelesai?: string }, tampilkanNalar = false): AsyncGenerator<string, void, unknown> {
   const reader = res.body?.getReader();
@@ -264,8 +265,9 @@ export class OpenRouterAdapter implements CapabilityAdapter {
 
     const pakaiStream = typeof input.onNalar === 'function' || typeof input.tenggat === 'number';
     const jejakPlafon: { plafonDipakai?: number } = {};
+    const plafonDiminta = await plafonUntukPermintaan(openRouterModel, this.rctx.keys.openRouter, fetch, Date.now(), JSON.stringify(messages || []).length);
     const res = await kirimOpenRouterDenganReasoning(
-      { model: openRouterModel, messages, temperature: 0.1, max_tokens: MAKS_TOKEN_JAWABAN, ...(pakaiStream ? { stream: true } : {}) },
+      { model: openRouterModel, messages, temperature: 0.1, max_tokens: plafonDiminta, ...(pakaiStream ? { stream: true } : {}) },
       typeof input.thinking === 'boolean' ? input.thinking : this.rctx.model.thinking,
       (body) => fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -279,9 +281,10 @@ export class OpenRouterAdapter implements CapabilityAdapter {
       }),
       jejakPlafon
     );
+    ingatPlafonTerjangkau(this.rctx.keys.openRouter, jejakPlafon.plafonDipakai, plafonDiminta);
     if (!res.ok) {
       const teks = await res.text();
-      if (res.status === 402) throw new Error(pesanSaldoTakCukup(teks, MAKS_TOKEN_JAWABAN));
+      if (res.status === 402) throw new Error(pesanSaldoTakCukup(teks, plafonDiminta));
       throw new Error(`OpenRouter API Error: ${res.status} ${teks}`);
     }
     const data = pakaiStream
@@ -294,9 +297,9 @@ export class OpenRouterAdapter implements CapabilityAdapter {
     const terpotongPlafon = terpotongKarenaPlafon(data);
     let answer = data.choices?.[0]?.message?.content || '';
     if (terpotongPlafon) {
-      const plafon = jejakPlafon.plafonDipakai || MAKS_TOKEN_JAWABAN;
+      const plafon = jejakPlafon.plafonDipakai || plafonDiminta;
       console.warn(`[Saldo] jawaban TERPOTONG pada plafon ${plafon} token (finish_reason=length): isi ${answer.length} huruf. Label terpotong ditempelkan.`);
-      answer += pesanTerpotongPlafon(plafon);
+      answer += pesanTerpotongPlafon(plafon, plafon < plafonDiminta);
     }
 
     const usage = data.usage || {};
@@ -386,8 +389,9 @@ export class OpenRouterAdapter implements CapabilityAdapter {
     );
 
     const jejakPlafonStream: { plafonDipakai?: number } = {};
+    const plafonDimintaStream = await plafonUntukPermintaan(orModel, this.rctx.keys.openRouter, fetch, Date.now(), JSON.stringify(messages || []).length);
     const res = await kirimOpenRouterDenganReasoning(
-      { model: orModel, messages, temperature: 0.1, max_tokens: MAKS_TOKEN_JAWABAN, stream: true },
+      { model: orModel, messages, temperature: 0.1, max_tokens: plafonDimintaStream, stream: true },
       this.rctx.model.thinking,
       (body) => fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -398,9 +402,10 @@ export class OpenRouterAdapter implements CapabilityAdapter {
       jejakPlafonStream
     );
     clearTimeout(id);
+    ingatPlafonTerjangkau(this.rctx.keys.openRouter, jejakPlafonStream.plafonDipakai, plafonDimintaStream);
     if (!res.ok) {
       const teks = await res.text();
-      if (res.status === 402) throw new Error(pesanSaldoTakCukup(teks, MAKS_TOKEN_JAWABAN));
+      if (res.status === 402) throw new Error(pesanSaldoTakCukup(teks, plafonDimintaStream));
       throw new Error(`OpenRouter HTTP ${res.status}: ${teks}`);
     }
 
@@ -411,9 +416,9 @@ export class OpenRouterAdapter implements CapabilityAdapter {
       yield chunk;
     }
     if (terpotongKarenaPlafon(infoStream)) {
-      const plafon = jejakPlafonStream.plafonDipakai || MAKS_TOKEN_JAWABAN;
+      const plafon = jejakPlafonStream.plafonDipakai || plafonDimintaStream;
       console.warn(`[Saldo] aliran TERPOTONG pada plafon ${plafon} token (finish_reason=length): ${accumulatedText.length} huruf terkirim.`);
-      const label = pesanTerpotongPlafon(plafon);
+      const label = pesanTerpotongPlafon(plafon, plafon < plafonDimintaStream);
       accumulatedText += label;
       yield label;
     }

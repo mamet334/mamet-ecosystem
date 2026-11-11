@@ -5,7 +5,10 @@ export const MAKS_TOKEN_JAWABAN = 8192;
 
 export const MIN_TOKEN_LAYAK = 128;
 
-export function pesanTerpotongPlafon(plafon: number): string {
+export function pesanTerpotongPlafon(plafon: number, karenaSaldo: boolean = true): string {
+  if (!karenaSaldo) {
+    return `\n\n⚠️ [JAWABAN TERPOTONG] Batas keluaran model untuk satu jawaban tercapai (max_tokens=${plafon}) sebelum model selesai menulis. Kalimat terakhir terputus di tengah — ini BUKAN saldo habis dan BUKAN model gagal. Ketik "lanjutkan" untuk meneruskan dari titik ini.`;
+  }
   return `\n\n⚠️ [JAWABAN TERPOTONG] Plafon token jawaban habis (max_tokens=${plafon}) sebelum model selesai menulis. Kalimat terakhir terputus di tengah — ini BUKAN model gagal atau kehabisan bahan. Saldo OpenRouter sedang tipis; isi ulang untuk jawaban utuh.`;
 }
 

@@ -57,7 +57,7 @@ cek(p68.token > 0 && Math.abs(p68.huruf - U.blokPromptKonektorUmum({ daftar: [no
   'perkiraan beban = panjang baris alat di blok server yang sebenarnya', p68);
 cek(U.muatanKonektorUmumAman(undefined) === null && U.muatanKonektorUmumAman({ daftar: [] }) === null, 'S4: klien lama tak mengirim bidang ini → null, tak ada blok tambahan');
 const enam = U.muatanKonektorUmumAman({ putaran: 99, daftar: Array.from({ length: 7 }, (_, i) => ({ id: `srv${i}`, alat: [{ name: 'a' }] })) });
-cek(enam.daftar.length === U.BATAS_UMUM.konektor && enam.putaran === A.MAKS_PUTARAN_KONEKTOR, 'jumlah konektor & putaran dibatasi', enam);
+cek(enam.daftar.length === U.BATAS_UMUM.konektor && enam.putaran === 40 && enam.maks === A.MAKS_PUTARAN_KONEKTOR && enam.sisa === 0, 'jumlah konektor & putaran dibatasi (klien lama tanpa setelan: anggaran lama, sisa 0)', enam);
 const blok = U.blokPromptKonektorUmum({ putaran: 0, daftar: [gh] });
 cek(/\[KONEKTOR UMUM AKTIF\]/.test(blok) && /Konektor "github" \(GitHub\)/.test(blok) && /get_file_contents\(owner\*: string, repo\*: string, path: string\|null\)/.test(blok),
   'blok prompt: konektor, alat, parameter (* = wajib)');
