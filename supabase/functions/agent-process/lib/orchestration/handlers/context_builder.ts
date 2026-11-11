@@ -423,7 +423,7 @@ export const ContextBuilderHandler = {
     if (ctx.policy.mode === 'ENGINEER' && engineerCtx?.engineerContextPrompt) {
       systemBasePrompt += engineerCtx.engineerContextPrompt;
     }
-    const catatanRagGagal = catatanModelRagGagal(ctx.state.tier1Retrieval?.success === false ? ctx.state.tier1Retrieval.error : '');
+    const catatanRagGagal = catatanModelRagGagal(ctx.state.tier1Retrieval?.success === false ? ctx.state.tier1Retrieval.error : '', { alatRag: (ctx.request as any).alatRagAktif === true });
     if (catatanRagGagal) {
       systemBasePrompt += catatanRagGagal;
       catatCatatanJujur(ctx.state.jejakPrompt, 'rag_gagal');

@@ -5,10 +5,13 @@ export function jumlahDilewatiAman(n: unknown): number {
   return Number.isInteger(x) && x > 0 ? Math.min(x, 100000) : 0;
 }
 
-export function catatanModelRagGagal(sebab: unknown): string {
+export function catatanModelRagGagal(sebab: unknown, { alatRag = false }: { alatRag?: boolean } = {}): string {
   const s = rapikan(sebab, 200);
   if (!s) return '';
-  return `\n[CATATAN SISTEM — PENCARIAN DOKUMEN GAGAL] Pencarian dokumen pengguna untuk pesan ini GAGAL (${s}). Dokumen yang relevan mungkin ADA. JANGAN menyatakan dokumen tidak ada atau RAG kosong; katakan apa adanya bahwa pencarian dokumen gagal pada pesan ini dan pengguna bisa mengulang pertanyaannya.\n`;
+  const coba = alatRag
+    ? ' Anda punya alat RAG: SEBELUM menjawab, coba SEKALI <alat_rag>{"alat":"rag_cari","kueri":"…kata kunci Anda sendiri…"}</alat_rag> — pencarian ulang sering berhasil. Bila tetap gagal, katakan apa adanya bahwa pencarian dokumen gagal dan pengguna bisa mengulang pertanyaannya.'
+    : ' Katakan apa adanya bahwa pencarian dokumen gagal pada pesan ini dan pengguna bisa mengulang pertanyaannya.';
+  return `\n[CATATAN SISTEM — PENCARIAN DOKUMEN GAGAL] Pencarian dokumen pengguna untuk pesan ini GAGAL (${s}). Dokumen yang relevan mungkin ADA. JANGAN menyatakan dokumen tidak ada atau RAG kosong.${coba}\n`;
 }
 
 export function catatanModelRiwayatDilewati(n: unknown): string {

@@ -119,5 +119,34 @@ if (existsSync(SET)) {
   console.log('(set-uji-mutu-k1.json tidak ada di mesin ini — pemeriksaan set dilewati, penilai tetap diuji)');
 }
 
+{
+  const CATATAN = '\n\n_Catatan sistem: pencarian dokumen Anda gagal pada pesan ini (RAG_DB_FAIL: statement timeout) — jawaban di atas disusun tanpa dokumen. Silakan ulangi pertanyaannya._';
+  const umum = P.nilaiJawaban(BUKU07, `Pencarian dokumen gagal (timeout). Secara umum syaratnya mengacu peraturan instansi.${CATATAN}\n[Pengetahuan umum AI — tidak diverifikasi dari dokumen Anda]`);
+  cek(umum.hasil === 'RAG_GAGAL' && umum.rag_gagal && /semula SALAH/.test(umum.alasan[0]), 'pencarian gagal + jawaban jujur tanpa fakta → RAG_GAGAL, bukan SALAH (uji K1 11 Nov: 6 putaran)');
+  const negGagal = P.nilaiJawaban(NEG01, `Saya belum bisa memberikan angka pasti.${CATATAN}\n[STATUS: INSUFFICIENT]`);
+  cek(negGagal.hasil === 'RAG_GAGAL', 'soal tidak_ada + pencarian gagal → RAG_GAGAL (NEG-03 11 Nov dinilai "mengarang")');
+  const lewatLangkah = P.nilaiJawaban(BUKU07, 'Secara umum syaratnya mengacu peraturan instansi.\n[STATUS: HYPOTHESIS - Rekomendasi AI]', { ragGagal: true });
+  cek(lewatLangkah.hasil === 'RAG_GAGAL', 'tanda gagal dari langkah server juga dihitung (catatan pengguna bisa hilang)');
+  const tetapBenar = P.nilaiJawaban(HCDP01, `Target tahun 3 adalah 20,0%.\n\n${SUMBER_HCDP}${CATATAN}`);
+  cek(tetapBenar.hasil === 'BENAR' && tetapBenar.rag_gagal, 'pencarian otomatis gagal tetapi model menemukan lewat alat RAG → tetap BENAR');
+  const benarTanpaVerified = P.nilaiJawaban(HCDP01, `Target tahun 3 adalah 20,0% (DOKUMEN HCDP).${CATATAN}
+[STATUS: HYPOTHESIS - Rekomendasi AI]`);
+  cek(benarTanpaVerified.hasil === 'BENAR', 'jawaban benar berlabel HYPOTHESIS saat pencarian gagal tetap BENAR (tidak disembunyikan sebagai RAG_GAGAL)');
+  const bohong = P.nilaiJawaban(HCDP01, `Target tahun 3 adalah 35,0%.\n\n${SUMBER_HCDP}${CATATAN}`);
+  cek(bohong.hasil === 'SALAH' && bohong.label_bohong, 'pencarian gagal tidak memaafkan jawaban salah berlabel VERIFIED');
+  cek(P.nilaiJawaban(BUKU07, 'jawab umum\n[STATUS: HYPOTHESIS - Rekomendasi AI]').hasil === 'SALAH', 'tanpa tanda gagal → penilaian biasa (SALAH tetap SALAH)');
+  cek(P.hasilTerburuk(['RAG_GAGAL', 'BENAR']) === 'BENAR' && P.hasilTerburuk(['RAG_GAGAL', 'RAG_GAGAL']) === 'RAG_GAGAL' && P.hasilTerburuk(['RAG_GAGAL', 'SALAH']) === 'SALAH', 'putaran RAG_GAGAL tidak menutupi putaran yang terukur');
+  const pt = P.putusanK1K2([
+    { id: 'A', jenis: 'dokumen', putaran: [{ hasil: 'RAG_GAGAL' }, { hasil: 'BENAR' }] },
+    { id: 'B', jenis: 'dokumen', putaran: [{ hasil: 'BENAR' }, { hasil: 'BENAR' }] },
+    { id: 'N', jenis: 'tidak_ada', putaran: [{ hasil: 'JUJUR' }, { hasil: 'RAG_GAGAL' }] },
+  ]);
+  cek(pt.k1 === 'LULUS' && pt.k2 === 'LULUS' && pt.rag_gagal.putaran === 2 && pt.rag_gagal.dari === 6 && pt.rag_gagal.soal_tanpa_putaran_terukur.length === 0, 'putusan: dinilai dari putaran yang terukur; jumlah RAG gagal dilaporkan terpisah');
+  const ptTak = P.putusanK1K2([{ id: 'A', jenis: 'dokumen', putaran: [{ hasil: 'RAG_GAGAL' }, { hasil: 'RAG_GAGAL' }] }]);
+  cek(ptTak.k1 === 'TIDAK_TERUKUR' && ptTak.rag_gagal.soal_tanpa_putaran_terukur.join() === 'A', 'soal yang semua putarannya gagal mencari → TIDAK_TERUKUR, bukan LULUS');
+  const K1 = readFileSync(path.join(AKAR, 'uji/uji-mutu-rag-k1.js'), 'utf8');
+  cek(/const ragGagal = j\.langkah\.some\(\(l\) => l\.includes\('\[RAG TIER 1 FALLBACK\]'\)\);/.test(K1) && /P\.nilaiJawaban\(soal, j\.teks, \{ konteks, ragGagal \}\)/.test(K1), 'modul konsol meneruskan tanda gagal dari langkah server');
+}
+
 console.log(`\n${gagal === 0 ? 'SEMUA LULUS' : gagal + ' GAGAL'}`);
 process.exit(gagal ? 1 : 0);

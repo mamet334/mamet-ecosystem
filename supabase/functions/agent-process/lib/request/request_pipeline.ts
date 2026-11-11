@@ -266,6 +266,7 @@ export async function executeRequestPipeline(
 
   if (parsed.alatRag && ctx.policy.mode !== 'LITE' && ctx.auth.appSource !== 'mametlite') {
     const engineer = ctx.policy.mode === 'ENGINEER';
+    (ctx.request as any).alatRagAktif = true;
     ctx.request.agentIdentityPrompt += blokPromptRag({ putaran: parsed.alatRag.putaran, maks: parsed.alatRag.maks, sisa: parsed.alatRag.sisa, engineer });
     console.log(`[AlatRag] aktif · putaran alat ${parsed.alatRag.putaran}${engineer ? ' · Engineer' : ''}`);
   }

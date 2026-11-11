@@ -1,5 +1,5 @@
 
-const VERSI = 'k1-3';
+const VERSI = 'k1-4';
 const DIR = new URL('./data-lokal', import.meta.url).href;
 const WS = 'ws-assistant';
 const ALAT_UJI = { rag: true, web_search: false, deep_research: false, data_tabel: false, memory_manager: false };
@@ -72,7 +72,8 @@ export async function uji({ ulang = 2, hanya = null } = {}) {
           continue;
         }
         const konteks = j.langkah.find((l) => l.startsWith('[SYSTEM CONTEXT FINAL]')) ?? null;
-        const n = P.nilaiJawaban(soal, j.teks, { konteks });
+        const ragGagal = j.langkah.some((l) => l.includes('[RAG TIER 1 FALLBACK]'));
+        const n = P.nilaiJawaban(soal, j.teks, { konteks, ragGagal });
         const blokCentang = konteks == null ? null : konteks.includes('[TABEL CENTANG —') ? 'ada' : konteks.includes('[TABEL CENTANG') ? 'hanya-tidak-pasti' : 'tidak';
         putaran.push({ ...n, jawaban: j.teks, penyedia: j.penyedia, detik: j.detik, konteks_ada: konteks != null, blok_centang: blokCentang });
         console.log(`[uji-mutu-k1] ${soal.id} #${i + 1} ${n.hasil} · label ${n.label || '—'} · ${j.detik} dtk${n.alasan.length ? ' · ' + n.alasan.join('; ') : ''}`);
@@ -92,7 +93,7 @@ export async function uji({ ulang = 2, hanya = null } = {}) {
     alasan: [...new Set(b.putaran.flatMap((p) => p.alasan))].join('; '),
   })));
   console.log(`[uji-mutu-k1] K1 ${putusan.k1} · K2 ${putusan.k2}`, putusan.dokumen, putusan.tidak_ada,
-    `label bohong ${putusan.label_bohong} · label turun ${putusan.label_turun} · RAG turun ${putusan.rag_turun}`);
+    `label bohong ${putusan.label_bohong} · label turun ${putusan.label_turun} · RAG turun ${putusan.rag_turun} · RAG gagal ${putusan.rag_gagal.putaran}/${putusan.rag_gagal.dari} putaran`);
 
   const keluaran = { versi_skrip: VERSI, set: set.versi, waktu: new Date().toISOString(), ulang, putusan, baris };
   const berkas = new Blob([JSON.stringify(keluaran, null, 2)], { type: 'application/json' });

@@ -64,13 +64,16 @@ export function mengakuTidakAda(teks) {
   return POLA_MENGAKU.test(normalisasi(teks));
 }
 
-export function nilaiJawaban(soal, teks, { konteks = null } = {}) {
+export const POLA_RAG_GAGAL = /Catatan sistem: pencarian dokumen Anda gagal pada pesan ini/i;
+
+export function nilaiJawaban(soal, teks, { konteks = null, ragGagal = null } = {}) {
   const label = labelJawaban(teks);
   const alasan = [];
   const catatan = {
     label,
     label_diturunkan: /label VERIFIED diturunkan/i.test(teks || ''),
     rag_turun: /pencarian makna dokumen tidak jalan/i.test(teks || ''),
+    rag_gagal: ragGagal === true || POLA_RAG_GAGAL.test(teks || ''),
   };
   if (konteks != null && soal.bukti_konteks?.length) {
     catatan.bukti_di_konteks = soal.bukti_konteks.every((b) => memuat(konteks, b));
@@ -106,19 +109,25 @@ export function nilaiJawaban(soal, teks, { konteks = null } = {}) {
       hasil = alasan.length ? 'PERLU_CEK' : 'BENAR';
     }
   }
+  if (catatan.rag_gagal && hasil !== 'BENAR' && label !== 'VERIFIED') {
+    alasan.unshift(`pencarian dokumen gagal di server (bukan mutu jawaban) — semula ${hasil}`);
+    hasil = 'RAG_GAGAL';
+  }
   catatan.label_bohong = hasil === 'SALAH' && label === 'VERIFIED';
   catatan.label_turun = hasil === 'BENAR' && label !== 'VERIFIED';
   return { hasil, alasan, ...catatan };
 }
 
-const PERINGKAT = { BENAR: 0, JUJUR: 1, PERLU_CEK: 2, GALAT: 3, SALAH: 4 };
+const PERINGKAT = { BENAR: 0, JUJUR: 1, PERLU_CEK: 2, GALAT: 3, SALAH: 4, RAG_GAGAL: -1 };
 
 export function hasilGalat(galat) {
-  return { hasil: 'GALAT', alasan: [`galat: ${galat}`], galat: String(galat), label: null, label_bohong: false, label_turun: false, rag_turun: false };
+  return { hasil: 'GALAT', alasan: [`galat: ${galat}`], galat: String(galat), label: null, label_bohong: false, label_turun: false, rag_turun: false, rag_gagal: false };
 }
 
 export function hasilTerburuk(daftar) {
-  return daftar.reduce((a, b) => (PERINGKAT[b] > PERINGKAT[a] ? b : a), 'BENAR');
+  const dinilai = daftar.filter((h) => h !== 'RAG_GAGAL');
+  if (!dinilai.length) return daftar.length ? 'RAG_GAGAL' : 'BENAR';
+  return dinilai.reduce((a, b) => (PERINGKAT[b] > PERINGKAT[a] ? b : a), 'BENAR');
 }
 
 export function putusanK1K2(baris) {
@@ -127,8 +136,10 @@ export function putusanK1K2(baris) {
   const neg = per.filter((b) => b.jenis === 'tidak_ada');
   const hitung = (xs, h) => xs.filter((b) => b.akhir === h).length;
   const bohong = per.flatMap((b) => b.putaran).filter((p) => p.label_bohong).length;
-  const k1 = hitung(dok, 'SALAH') ? 'GAGAL' : hitung(dok, 'GALAT') ? 'TIDAK_TERUKUR' : hitung(dok, 'PERLU_CEK') ? 'PERIKSA' : 'LULUS';
-  const k2 = hitung(neg, 'SALAH') || bohong ? 'GAGAL' : hitung(neg, 'GALAT') ? 'TIDAK_TERUKUR' : hitung(neg, 'PERLU_CEK') ? 'PERIKSA' : 'LULUS';
+  const tak = (xs) => hitung(xs, 'GALAT') + hitung(xs, 'RAG_GAGAL');
+  const k1 = hitung(dok, 'SALAH') ? 'GAGAL' : tak(dok) ? 'TIDAK_TERUKUR' : hitung(dok, 'PERLU_CEK') ? 'PERIKSA' : 'LULUS';
+  const k2 = hitung(neg, 'SALAH') || bohong ? 'GAGAL' : tak(neg) ? 'TIDAK_TERUKUR' : hitung(neg, 'PERLU_CEK') ? 'PERIKSA' : 'LULUS';
+  const semua = per.flatMap((b) => b.putaran);
   return {
     k1, k2,
     dokumen: { total: dok.length, benar: hitung(dok, 'BENAR'), jujur: hitung(dok, 'JUJUR'), perlu_cek: hitung(dok, 'PERLU_CEK'), galat: hitung(dok, 'GALAT'), salah: hitung(dok, 'SALAH') },
@@ -136,6 +147,7 @@ export function putusanK1K2(baris) {
     label_bohong: bohong,
     label_turun: per.flatMap((b) => b.putaran).filter((p) => p.label_turun).length,
     rag_turun: per.flatMap((b) => b.putaran).filter((p) => p.rag_turun).length,
+    rag_gagal: { putaran: semua.filter((p) => p.hasil === 'RAG_GAGAL').length, dari: semua.length, soal_tanpa_putaran_terukur: per.filter((b) => b.akhir === 'RAG_GAGAL').map((b) => b.id) },
     per_soal: per.map((b) => ({ id: b.id, akhir: b.akhir })),
   };
 }
