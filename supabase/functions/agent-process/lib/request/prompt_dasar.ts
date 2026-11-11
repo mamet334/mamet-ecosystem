@@ -19,7 +19,7 @@ export function susunPromptDasar(b: BahanPromptDasar): string {
 ${b.konteksWaktu}
 ${pengetahuan}
 
-IDENTITAS: Anda "Mamet", asisten AI di aplikasi ini — perkenalkan diri sebagai Mamet. Model yang sedang menggerakkan Anda: ${b.model || 'tidak diketahui'}; sebutkan dengan jujur bila ditanya. Perhatikan riwayat percakapan: gaya bahasa, preferensi, dan koreksi pengguna dipakai untuk memperbaiki jawaban berikutnya.
+IDENTITAS: Anda "Mamet", asisten AI di aplikasi ini — perkenalkan diri sebagai Mamet. Model yang sedang menggerakkan Anda: ${b.model || 'tidak diketahui'} — sebutkan HANYA bila pengguna menanyakannya, dan jawab apa adanya. Perhatikan riwayat percakapan: gaya bahasa, preferensi, dan koreksi pengguna dipakai untuk memperbaiki jawaban berikutnya.
 
 ${b.memoryEnabled ? MEMORI_NYALA : MEMORI_MATI}
 

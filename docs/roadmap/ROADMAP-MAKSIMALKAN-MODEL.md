@@ -15,6 +15,10 @@ Legenda: 📋 terdaftar · 📝 berjalan · ✅ terbukti · 🔧 server (Owner d
 
 ## Dampak ke Mametlite (keputusan Owner 9 Nov: cukup dipastikan tidak rusak)
 
+**Bukti 11 Nov** ([log](../project-memory/changelog/2026-11-11-item-131-bukti-mametlite-dan-label-daftar-rag.md)): chat + RAG
+di Mametlite web live terhadap v559/v562 berjalan (dokumen ditemukan & dikutip, label benar) — berlaku untuk tahap B, C, D,
+E, F, H, I.
+
 Mametlite memanggil `agent-process` yang sama (`mametlite/src/lib/callAgentSimple.js`), jadi setiap perubahan server di
 tahap A, C (C2/C3), D, F, H ikut mengubah perilakunya bagi pengguna luar (K4). Mametlite **tidak ikut diperbaiki** di
 Item 131: kodenya tidak disentuh, termasuk pemangkas riwayatnya sendiri (`history.slice(-5)`). Setiap tahap yang
@@ -116,12 +120,12 @@ tidak turun, mutasi membunuh uji urutan/indeks, **ukuran indeks diukur & dicatat
 121 MB, `document_chunks` 81 MB, `vector(768)`, pgvector 0.8.0 — iterative scan tersedia; batas per akun 25.000
 potongan), Mametlite tidak rusak.
 
-## Tahap B — Alat RAG untuk model (K1) 📝 🔧🖥🗄
+## Tahap B — Alat RAG untuk model (K1) ✅ 🔧🖥🗄
 
-**Status 10 Nov — terbukti di Ecosystem, menunggu Mametlite** ([log](../project-memory/changelog/2026-11-10-item-131-tahap-b-alat-rag.md)): `rag_daftar`/`rag_cari`/`rag_baca`
+**Status 10 Nov — terbukti di Ecosystem & Mametlite (11 Nov)** ([log](../project-memory/changelog/2026-11-10-item-131-tahap-b-alat-rag.md)): `rag_daftar`/`rag_cari`/`rag_baca`
 live (Assistant + Engineer), kolom `urutan` (migrasi `20261109090057`); live menjawab "dokumen paling awal" (benar) &
-membandingkan dua changelog tanpa ditempel; mutasi 27/27. **Sisa:** Mametlite tidak rusak; keterangan `urut: "judul"`
-untuk judul bertanggal; dokumen lama berurutan sesudah "Perbarui".
+membandingkan dua changelog tanpa ditempel; mutasi 27/27. **Sisa:** dokumen lama baru berurutan sesudah diunggah ulang dengan "Perbarui"
+(keterangan `urut: "judul"` & label daftar ✅ 11 Nov).
 
 **Masalah.** Model tidak punya alat RAG sama sekali: ia hanya menerima ±8 potongan sekali di awal pertanyaan. Ia tak bisa
 mencari ulang dengan kata-katanya sendiri, melihat daftar dokumen, atau membaca satu dokumen utuh — permintaan Owner
@@ -139,10 +143,9 @@ menempelkan isinya; uji mutasi untuk isolasi akun & saringan `selesai`.
 
 ## Tahap C — Konteks percakapan utuh (K1, K2) 📝 🔧🖥
 
-**Status 9 Nov — terbukti di Ecosystem, menunggu Mametlite** ([log](../project-memory/changelog/2026-11-09-item-131-tahap-c-h-konteks-utuh-gagal-jujur.md)):
+**Status 9 Nov — terbukti di Ecosystem & Mametlite (11 Nov)** ([log](../project-memory/changelog/2026-11-09-item-131-tahap-c-h-konteks-utuh-gagal-jujur.md)):
 C2, C3, C5, C7 dicabut, C6 dihapus, C4 = catatan kerja terbawa (keputusan Owner). Skenario v553: riwayat 15 pesan →
-model 14 (selisih `<think>` & duplikat saja), tanpa catatan palsu, catatan kerja 0 → 3. **Sisa:** Mametlite tidak rusak
-(satu chat + RAG live); apakah model memakai catatan kerja alih-alih membaca ulang belum diukur tersendiri.
+model 14 (selisih `<think>` & duplikat saja), tanpa catatan palsu, catatan kerja 0 → 3. **Sisa:** apakah model memakai catatan kerja alih-alih membaca ulang belum diukur tersendiri.
 
 **Masalah.** Model sudah mencari tetapi tidak ingat. Tiga pemangkas bertumpuk + satu lubang:
 
@@ -170,11 +173,11 @@ lihat bawah). Catatan palsu dihapus.
 **Selesai bila:** live — pertanyaan ke-N memakai hasil folder dari pertanyaan ke-(N−k) tanpa memanggil alat lagi; log
 `[Riwayat]` = jumlah yang dipilih klien; uji mutasi untuk tiap pemangkas yang dicabut.
 
-## Tahap D — Cabut keamanan semu (K5) 📝 🔧
+## Tahap D — Cabut keamanan semu (K5) ✅ 🔧
 
-**Status 9 Nov — terbukti di Ecosystem, menunggu Mametlite** ([log](../project-memory/changelog/2026-11-09-item-131-tahap-d-cabut-blokir-kata.md)): daftar kata, skor
+**Status 9 Nov — terbukti di Ecosystem & Mametlite (11 Nov)** ([log](../project-memory/changelog/2026-11-09-item-131-tahap-d-cabut-blokir-kata.md)): daftar kata, skor
 panjang & kata berulang dicabut, BLOCK/ALLOW_WITH_LIMIT & P-002 dihapus; v554 — 15 permintaan Owner (putaran alat
-19–33 ribu huruf, riwayat sampai 106 ribu) 0 penolakan. **Sisa:** Mametlite tidak rusak (satu chat + RAG live).
+19–33 ribu huruf, riwayat sampai 106 ribu) 0 penolakan. Tak ada sisa.
 
 **Masalah.** `execution_context.ts` menilai **seluruh teks yang dikirim** — termasuk isi berkas hasil alat — dengan daftar
 kata ("ignore previous instructions", "system prompt", "developer mode", "reveal memory", "bypass", "all data", …),
@@ -195,7 +198,7 @@ pemberitahuan; uji K5 lain tetap hijau.
 
 ## Tahap E — Batas kerja berdasar anggaran (K1) 📝 🖥🔧
 
-**Status 11 Nov — terbukti di Ecosystem, menunggu Mametlite** ([log](../project-memory/changelog/2026-11-11-item-131-tahap-i-e-f-g.md)): E1/E2 satu anggaran putaran alat di
+**Status 11 Nov — terbukti di Ecosystem & Mametlite (11 Nov)** ([log](../project-memory/changelog/2026-11-11-item-131-tahap-i-e-f-g.md)): E1/E2 satu anggaran putaran alat di
 Settings (bawaan 8, pagar 40), E3 plafon jawaban dari katalog model dalam jendela, E4 catatan jujur sub-agen. **Sisa:**
 batas waktu sub-agen & 5 tugas belum berdasar anggaran (butuh ukuran durasi).
 
@@ -211,7 +214,7 @@ hasil konektor 60.000 huruf per hasil, tunggu sambung MCP 90 s.
 
 ## Tahap F — Hasil web tidak diringkas ulang (K1) 📝 🔧🖥
 
-**Status 11 Nov — terbukti di Ecosystem, menunggu Mametlite** ([log](../project-memory/changelog/2026-11-11-item-131-tahap-i-e-f-g.md)): peringkas LLM dicabut, artikel utuh,
+**Status 11 Nov — terbukti di Ecosystem & Mametlite (11 Nov)** ([log](../project-memory/changelog/2026-11-11-item-131-tahap-i-e-f-g.md)): peringkas LLM dicabut, artikel utuh,
 anggaran sempit → dilewati per artikel dengan catatan. **Sisa:** alat meminta isi lengkap satu artikel.
 
 **Masalah.** `context_builder.ts`: bila total artikel web > 6.000 huruf (`WEB_CONTEXT_TOTAL_THRESHOLD`), tiap artikel

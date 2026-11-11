@@ -175,6 +175,7 @@ console.log('\n-- I: prompt sistem ramping & benar secara harfiah --');
   cek(ada.length < 1900 && tanpa.length < 1900, `prompt dasar < 1.900 huruf (dulu ±3.500): ${ada.length} / ${tanpa.length}`);
   cek(ada.includes(waktu) && /Anda "Mamet"/.test(ada) && /deepseek\/deepseek-v3\.2/.test(ada) && /<think>\.\.\.<\/think>/.test(ada) && /Bahasa Indonesia/.test(ada) && /\[BLOK 6: OUTPUT FORMAT & STATUS LABEL\]/.test(ada) && /[Jj]angan pernah mengarang fakta/.test(ada) && /Memory Governor/.test(ada), 'yang mengarahkan tetap ada: waktu, identitas, model, nalar tampil, label, kejujuran, memori');
   cek(!/2024|2025/.test(ada + tanpa) && !/hak paten|Google|OpenAI|gemini-2\.5-flash/.test(ada + tanpa) && /Model yang sedang menggerakkan Anda: tidak diketahui/.test(tanpa), 'tak ada klaim yang bisa salah: batas pengetahuan bertanggal, "hak paten", model bawaan palsu');
+  cek(/sebutkan HANYA bila pengguna menanyakannya/.test(ada), 'nama model hanya disebut bila ditanya (temuan Mametlite 11 Nov: model menyebutnya saat disapa)');
   cek(/SEDANG DIMATIKAN/.test(tanpa) && !/SEDANG DIMATIKAN/.test(ada) && /Tools → Memory/.test(tanpa), 'memori mati/nyala tetap dibedakan');
   cek(!/Tidak ada dokumen RAG\/Web/.test(tanpa) && /Bila konteks di bawah tidak memuat dokumen/.test(tanpa), 'tanpa dokumen dari klien: kalimatnya bersyarat (RAG server bisa menemukan dokumen sesudahnya)');
   cek((ada.match(/\[STATUS: /g) || []).length === 0, 'aturan label tidak diulang di prompt dasar (satu sumber: BLOK 6)');
