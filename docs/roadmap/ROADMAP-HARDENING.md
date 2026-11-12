@@ -19,8 +19,8 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 | K3 | Data tabel ASN benar, NIP/nama tak ke model | ✅ final 5 Nov (5/5 VERIFIED, 0 NIP ke model) | — |
 | K4 | Mametlite layak bagi orang awam | ✅ (T19, isolasi dua akun, CORE, undangan, ganti sandi — live) | — |
 | K5 | Keamanan | ⏳ 9 Nov: pemblokir kata kunci **dicabut** (Item 131 D, v554 — [log](../project-memory/changelog/2026-11-09-item-131-tahap-d-cabut-blokir-kata.md)), Mametlite tidak rusak — terbukti 11 Nov ([log](../project-memory/changelog/2026-11-11-item-131-bukti-mametlite-dan-label-daftar-rag.md)); log `[L1]` tak lagi mencatat isi pesan; 6 Nov: pemblokir kata kunci = keamanan semu (memblokir dokumen Owner, mematikan alat diam-diam) — [Item 131](./ROADMAP-MAKSIMALKAN-MODEL.md) D; email akun tertulis di 3 dokumen publik (menunggu keputusan Owner); sebelumnya ✅ OpenRouter diganti, Apify dicabut (3 Nov) | 1–2 |
-| K6 | Data aman & bisa dipulihkan | ✅ 16 tabel (ulang sebelum rilis) | 1 (👤 cadangkan → uji pulih) |
-| K7 | Stabil & sampai ke aplikasi terpasang | ⏳ 4.4.2 draf (build GitHub ✅, menunggu Publish) | 1 (rilis 5.0.0 💳👤 sesudah K1–K6) |
+| K6 | Data aman & bisa dipulihkan | ✅ **12 Nov: pulih 16/16 tabel dari cadangan Owner 11 Nov**; skema pulih yang tertinggal 7 kolom diperbaiki & kini menolak bila tertinggal lagi ([log](../project-memory/changelog/2026-11-11-rilis-4.5.0.md)) | 1 (👤 cadangkan → uji pulih) |
+| K7 | Stabil & sampai ke aplikasi terpasang | ✅ **11 Nov: 4.5.0 terbit** (build ✅, `releases/latest` = v4.5.0, terpasang di laptop Owner — [log](../project-memory/changelog/2026-11-11-rilis-4.5.0.md)); 4.4.2 tetap draf, isinya termasuk di 4.5.0 | 1 (rilis 5.0.0 💳👤 sesudah K1–K6) |
 
 ## Daftar kerja
 

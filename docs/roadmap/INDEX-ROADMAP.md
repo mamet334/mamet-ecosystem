@@ -288,7 +288,7 @@ dokumen ini:
 | **v4.4.1** | **TERBIT** `2026-11-03T04:35:33Z` (Publish oleh Owner; `latest.yml` cocok dengan aset) — graf Home tata surya + hardening klien ([log](../project-memory/changelog/2026-11-03-rilis-4.4.1.md)) | `Mamet-AI-Setup-4.4.1.exe` (294.577.865 byte) |
 | **v4.4.2** | **DRAF** (diperiksa lewat API 6 Nov: `draft=true`) — build GitHub `e5dcd87a` hijau; **menunggu Publish oleh Owner** ([log](../project-memory/changelog/2026-11-06-rilis-4.4.2.md)) | `Mamet-AI-Setup-4.4.2.exe`, `.blockmap`, `latest.yml` |
 
-> **Yang betul-betul menunggu sekarang (11 Nov):** versi **4.5.0** dinaikkan (muatan Item 131) — build GitHub membuat draf; Owner menjalankan K6 (Cadangkan data → uji pulih) lalu menekan Publish. Draf v4.4.2 tak perlu diterbitkan (isinya termasuk di 4.5.0) — [log](../project-memory/changelog/2026-11-11-rilis-4.5.0.md).
+> **Yang betul-betul menunggu sekarang (12 Nov):** **4.5.0 terbit & terpasang** (muatan Item 131), K6 pulih 16/16. Sisa garis dasar 5.0.0: keputusan Owner soal email di 3 dokumen publik (K5). Draf v4.4.2 tak perlu diterbitkan (isinya termasuk di 4.5.0) — [log](../project-memory/changelog/2026-11-11-rilis-4.5.0.md).
 
 > ⚠️ **KOREKSI 8 Okt, dan pelajarannya sama dengan T11.** Bagian ini sebelumnya berbunyi *"Tiga
 > muatan menunggu build"* untuk 4.2.14 — dan itu **sudah basi sejak 6 Okt 22:36**: rilisnya dibangun

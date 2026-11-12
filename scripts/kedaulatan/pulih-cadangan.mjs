@@ -35,6 +35,17 @@ jalankan('postgres', ['-c', `create database ${db}`]);
 const skema = path.join(path.dirname(fileURLToPath(import.meta.url)), 'skema-pulih.sql');
 jalankan(db, ['-f', skema]);
 
+const kolomLokal = jalankan(db, ['-At', '-c', "select table_name || '.' || column_name from information_schema.columns where table_schema = 'public'"]);
+const adaLokal = new Set(kolomLokal.trim().split(/\r?\n/));
+const kolomHilang = tabel.flatMap((t) => [...new Set(berkas.data[t].flatMap((r) => Object.keys(r)))]
+  .filter((k) => !adaLokal.has(`${t}.${k}`))
+  .map((k) => `${t}.${k}`));
+if (kolomHilang.length) {
+  console.log(`  ✗ kolom di berkas cadangan yang tidak ada di skema-pulih.sql (isinya akan hilang): ${kolomHilang.join(', ')}`);
+  console.log('\nPULIH TIDAK LENGKAP — perbarui skema-pulih.sql dari skema Supabase, lalu ulangi.');
+  process.exit(1);
+}
+
 const kerja = fs.mkdtempSync(path.join(os.tmpdir(), 'mamet-pulih-'));
 try {
   const baris = [];
@@ -72,6 +83,7 @@ jalankan(db, ['-c', [
   'alter table workspace_summaries add foreign key (space_id) references knowledge_spaces(id)',
   'alter table asn_pegawai add foreign key (berkas_id) references asn_berkas(id)',
   'alter table asn_berkas add foreign key (digantikan_oleh) references asn_berkas(id)',
+  'alter table documents add foreign key (menggantikan) references documents(id) on delete set null',
 ].join('; ')]);
 
 const hitung = jalankan(db, ['-At', '-c', tabel.map((t) => `select '${t}', count(*) from public.${t}`).join(' union all ')]);

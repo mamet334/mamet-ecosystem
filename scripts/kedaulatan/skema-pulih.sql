@@ -1,7 +1,3 @@
--- Skema Postgres lokal untuk memulihkan berkas cadangan Mamet (Item 93 Tahap 2, 2026-09-22).
--- Disalin dari database Supabase (definisi kolom via pg_attribute, fungsi via pg_get_functiondef), bukan ditulis
--- ulang dari ingatan. Butuh Postgres >= 16 + ekstensi pgvector. Tanpa skema auth Supabase: satu pengguna, tanpa RLS.
--- Kunci asing antar-tabel ditambahkan SESUDAH data dimuat (lihat pulih-cadangan.mjs) — sekaligus menguji keutuhan.
 
 create extension if not exists vector;
 
@@ -29,9 +25,14 @@ create table public.documents (
   source_url text,
   source_type text,
   retrieved_at timestamp with time zone,
+  fts_judul tsvector generated always as (to_tsvector('simple'::regconfig, coalesce(title, ''::text))) stored,
+  selesai boolean default true not null,
+  sidik text,
+  total_potongan integer,
+  diproses_sampai timestamp with time zone,
+  menggantikan uuid,
   primary key (id)
 );
--- fts: di Supabase kolom GENERATED STORED — dibangun ulang dari teks, tidak diambil dari berkas.
 create table public.document_chunks (
   id uuid default gen_random_uuid() not null,
   document_id uuid not null,
@@ -40,6 +41,7 @@ create table public.document_chunks (
   source_url text,
   source_type text,
   fts tsvector generated always as (to_tsvector('simple'::regconfig, coalesce(content, ''::text))) stored,
+  urutan integer,
   primary key (id)
 );
 create table public.workspace_summaries (
@@ -61,7 +63,6 @@ create table public.asn_berkas (
   created_at timestamp with time zone default now() not null,
   primary key (id)
 );
--- id di Supabase: identity always — di sini angka biasa supaya id asli ikut dipulihkan.
 create table public.asn_pegawai (
   id bigint not null,
   berkas_id uuid not null,
@@ -95,8 +96,6 @@ create table public.chats (
   workspace_type text default 'OWNER'::text,
   primary key (id)
 );
--- K6 (3 Nov): sumber asli memori ikut dicadangkan. Kolom disalin dari information_schema database live; user_id
--- memang text di sana (bukan uuid). Tanpa kunci asing di live, maka tak ditambahkan di sini.
 create table public.raw_memory_content (
   id uuid default gen_random_uuid() not null,
   user_id text not null,
@@ -217,9 +216,6 @@ create table public.verification_runs (
   user_id uuid not null,
   primary key (id)
 );
--- Item 126 (27 Okt): dua tabel Data Flywheel ikut dicadangkan — penilaian 👍/👎 + catatan biaya yang disambungkannya
--- lewat trace_id. Kolom disalin dari information_schema database live. `auth.uid()` (bawaan user_id umpan balik)
--- tidak ada di Postgres lokal tanpa skema auth — tak dipakai: pemulihan selalu membawa user_id dari berkas.
 create table public.cost_ledger (
   id uuid default gen_random_uuid() not null,
   created_at timestamp with time zone default now() not null,
@@ -249,7 +245,6 @@ create table public.umpan_balik_jawaban (
   unique (user_id, trace_id)
 );
 
--- Pencarian gabungan vektor + kata kunci (RRF k=60) — salinan persis fungsi live (Item 90 Tahap B).
 create or replace function public.match_documents_hybrid(query_embedding vector, query_words text[], match_threshold double precision, match_count integer, p_user_id uuid, p_space_id uuid default null::uuid, rrf_k integer default 60)
  returns table(id uuid, document_id uuid, title text, content text, space_name text, similarity double precision, rank_vektor bigint, rank_kata bigint, skor_rrf double precision)
  language sql
