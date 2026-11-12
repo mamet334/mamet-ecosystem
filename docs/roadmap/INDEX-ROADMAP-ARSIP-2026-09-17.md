@@ -73,7 +73,7 @@
     - Timeout 8s (AbortController), atribusi sumber transparan ([Sumber: Web — {url}, akurasi tidak terverifikasi]), fallback jujur saat ditolak/gagal/timeout, didaftarkan di Kernel Phase 3, mitigasi CSP Chromium via Electron IPC bridge, multi-provider RSS fallback, pengangkatan dokumen web ke RAG first-class, serta standarisasi universal label status epistemik (format ringkas LOOKUP vs format penuh).
     ↓
 [SELESAI] ZERO-LEAKAGE RAG TENANT ISOLATION & MULTI-ACCOUNT AUDIT (2026-09-04, Live-Verified by Owner)
-    Audit kepemilikan 45 dokumen di Supabase RAG (29 milik akun andreanastasya798@gmail.com, 16 milik akun slametbro798@gmail.com).
+    Audit kepemilikan 45 dokumen di Supabase RAG (29 milik akun Owner, 16 milik akun kedua).
     - Hardening KnowledgeService.js: PostgREST Resource Embedding Inner Join documents!inner(id, title, user_id, space_id) pada fallback content search, guard proteksi missing userId, dan penghapusan filter kolom user_id yang salah pada tabel document_chunks.
     - Penyambungan parameter userId di seluruh alur: RetrievalOrchestrator.js, AssistantService.js, dan Edge Function context_builder.ts.
     - Scoping useDashboardData.js ke currentUserId.

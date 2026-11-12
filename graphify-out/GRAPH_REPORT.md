@@ -1,17 +1,17 @@
-# Graph Report - mamet os ecosystem  (2026-11-09)
+# Graph Report - mamet os ecosystem  (2026-11-12)
 
 ## Corpus Check
-- 1246 files · ~969,277 words
+- 1283 files · ~999,151 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 22 file(s) not represented in the graph (top: (none) 9, .css 6, .example 4)
 
 ## Summary
-- 13056 nodes · 19955 edges · 688 communities (657 shown, 31 thin omitted)
-- Extraction: 88% EXTRACTED · 12% INFERRED · 0% AMBIGUOUS · INFERRED: 2457 edges (avg confidence: 0.94)
+- 13312 nodes · 20491 edges · 731 communities (700 shown, 31 thin omitted)
+- Extraction: 88% EXTRACTED · 12% INFERRED · 0% AMBIGUOUS · INFERRED: 2481 edges (avg confidence: 0.94)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `b44b5399`
+- Built from commit: `31863285`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -19,7 +19,7 @@
 - label_sumber.ts
 - main.cjs
 - uji-penilai-mutu-rag.mjs
-- RuntimeContext
+- Changelog: Cost Ledger Instrumentation & Guardrail Enforcement (ADR-015 Phase 1)
 - services/documentTextExtractor.js
 - frontend/package.json
 - WorkspaceManager
@@ -43,17 +43,17 @@
 - ref_https
 - Sumber
 - uji-graf-home-tahap-d.mjs
-- NavigationService
-- MemoryGovernorService
+- ragAlat.js
+- Audit Menyeluruh Kernel→UI (2026-09-10)
 - mametlite/src/App.jsx
 - payload
-- dataTabelAsn.js
+- LaporanKejanggalan.jsx
 - StorageManager
 - SystemGovernorService
 - uji-data-tabel-asn-tahap4.mjs
 - lib/documentTextExtractor.js
 - verification/types.ts
-- runtime_context.ts
+- agent-process/index.ts
 - MAEFStateMachine
 - alatFolderTulis.cjs
 - with
@@ -67,7 +67,7 @@
 - Mamet AI — Architecture Report (Wave 5.2G.1)
 - engineer.js
 - context_builder.ts
-- uji-akar-repo.cjs
+- uji-berkas-rahasia.cjs
 - uji-langkah-terlihat.mjs
 - ai_adapter.ts
 - uji-graf-home-tahap-e.mjs
@@ -78,16 +78,16 @@
 - pulih-cadangan.mjs
 - uji-kueri-pencarian.mjs
 - ADR-0022: Definisi "Mamet Cukup" & Fase Hardening
-- uji-chimera-verifier-nyata.mjs
-- INDEX-ROADMAP.md
+- uji-hentikan-kiriman.mjs
+- ROADMAP-HARDENING.md
 - dependencies
 - dependencies
 - scripts
 - with
 - hakim_bayangan.ts
 - lib_deprecated_cognition/memoryEngine.ts
-- MetadataService
-- uji-hentikan-kiriman.mjs
+- dataTabelAsn.js
+- 3. Log Eksekusi Terminal Tahap 3
 - uji-ingatan-temuan.mjs
 - build
 - MenuTeks.jsx
@@ -98,9 +98,9 @@
 - Kernel.js
 - uji-folder-label-tindakan.mjs
 - ipcUmum.cjs
-- 2. Urutan Pengerjaan & Status Eksekusi
+- HomeDashboard.jsx
 - intent_router.ts
-- ref_node_module
+- uji-data-tabel-asn-tahap2.mjs
 - uji-hakim-bayangan.mjs
 - uji-kiriman-percakapan.mjs
 - ApplicationManager
@@ -111,12 +111,12 @@
 - RemoteConversionWorkerService
 - BatasGalat
 - AUDIT-03: Single Instrumentation Point Design
-- WindowManager
+- BAB 3: DAFTAR MASALAH & ANALISIS ROOT CAUSE (LENGKAP)
 - ToolManager
 - Bagian 1: lib/ — 11 Modul TypeScript
 - uji-graf-home-tahap-c.mjs
 - widgets
-- ADR-0017-engineer-js-decomposition.md
+- ADR-0017: engineer.js Decomposition Plan
 - ToolPreferencesService
 - parser_pipeline.ts
 - Gudang
@@ -129,7 +129,7 @@
 - uji-izin-subagent.mjs
 - uji-shared-t15.mjs
 - tool_dispatcher.ts
-- ._handleConversation
+- 1 Oktober 2026 — Tombol Berhenti: kiriman akhirnya bisa dibatalkan
 - Roadmap Data Flywheel — Mamet Ecosystem.md
 - uji-konektor-oauth-gh3.mjs
 - ref_node_path
@@ -142,16 +142,16 @@
 - uji-data-tabel-asn.mjs
 - ModuleDiscoveryService
 - Bagian 2: Root-Level Files
-- 2026-06-27 - Vision Baseline And Engineering Foundation
+- 2026-06-27 - Mamet Engineer Blueprint And Roadmap
 - lib_deprecated_cognition/truthGraphMemory.ts
 - klaim_sumber.ts
 - Laporan Verifikasi Ponytail Audit
-- uji-berkas-rahasia.cjs
+- services/pdfOcrService.js
 - Bagian 5: Docs & Constitution
 - uji-patch-crlf.mjs
 - uji-prosedur-engineer.mjs
 - periksaLabelSumber
-- BrainService
+- TierClassifierService
 - uji-hak-tabel-k5.mjs
 - TAHAP 4 — IMPLEMENTATION PLAN
 - markdown.js
@@ -161,9 +161,9 @@
 - lib_deprecated_cognition/unifiedCognition.ts
 - siapkan-crawler.mjs
 - stealthKonektor.cjs
-- 28 Oktober 2026 — Rilis 4.3.2: paket keamanan "Black October" (T20) + bundel crawler ber-hash
+- Uji Pulih Cadangan ke Postgres Lokal (Item 93 Tahap 2)
 - Misi
-- Unduh aplikasi desktop langsung dari web
+- uji-label-ramah.mjs
 - uji-settings-bertab.mjs
 - ROADMAP: KONTEKS POTONGAN RAG — BAGIAN TIDAK TERCAMPUR & JUDUL KONTEKS DI SETIAP POTONGAN
 - sesiUmum.cjs
@@ -173,10 +173,10 @@
 - Temuan Review: Area Yang Tidak Selaras
 - uji-unggah-bertahap.mjs
 - uji-konektor-oauth-f1.mjs
-- .storeGoldenMemory
+- kemampuan_model.ts
 - grafHome.js
 - lib_deprecated_cognition/intentPreprocessor.ts
-- ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI
+- metadata
 - uji-cadangan-data.mjs
 - ROADMAP: DATA TABEL REKONSILIASI ASN — HITUNG & SARING OLEH KODE, BUKAN OLEH RAG
 - mametlite/src/App.jsx
@@ -185,24 +185,24 @@
 - 📋 RENCANA IMPLEMENTASI: Engineer Self-Maintenance Pipeline (Fase 2)
 - Riwayat chat hilang setiap muat ulang + chat siluman dari pesan sistem
 - 19 Oktober 2026 — seluruh aplikasi memakai palet LampLogin (Item 127, Tahap 3)
-- 2. Rekapitulasi Rinci 9 Bug & Resolusi Permanen
+- uji-akar-repo.cjs
 - remoteConversionClient.js
 - ref_node_fs
 - uji-graf-home-tahap-a.mjs
-- Ikon
+- 26 Oktober 2026 — Konektor MCP Tahap E2: tombol pasang komponen stealth (Item 129)
 - lib_deprecated_cognition/behaviorMemoryEngine.ts
 - globalCognitionLoop.ts
 - lib_deprecated_cognition/shortTermMemory.ts
 - uji-graf-home-tahap-b.mjs
-- WidgetRegistry
-- Detail Perubahan
-- metadata
+- useDashboardData
+- buatSesiUmum
+- 📝 Changelog: Implementasi Halaman Login Interaktif, Neon Branding & Perbaikan UI (2026-08-13)
 - uji-konektor-umum-g2.mjs
 - serverOAuthTiruan.cjs
 - ROADMAP: KEDAULATAN DATA — Salinan Sendiri yang Terbukti Bisa Dipulihkan, lalu Postgres Lokal (Item 93)
-- K1 Langkah 2 — Unggah Dokumen Besar Bertahap (Satu Berkas Mentah = Satu Dokumen)
+- uji-cari-judul.mjs
 - Pencarian Memori Semantik Akhirnya Hidup — dan Ambang 0,8 yang Nyaris Membuatnya Sia-Sia
-- uji-folder-jalan-protokol.mjs
+- InternalKnowledgeFallbackService
 - uji-rag-turun-catatan.mjs
 - 2. Jaring keselamatan — temuan paling berdampak
 - uji-konektor-komponen.mjs
@@ -217,48 +217,48 @@
 - uji-ikon-subset.mjs
 - INDEX — Peta Dokumen Roadmap Mamet OS Ecosystem
 - uji-baca-pdf-ecosystem.mjs
-- uji-proxy-fetch-aman.mjs
+- dataTabelAsnOcr.js
 - scripts
 - Changelog: Remediasi Akurasi Retrieval RAG — Smart Title-Aware Matching, Expanded Stopwords, & Multi-Term Scoring
 - konektorAlat.js
 - uji-hapus-dokumen-banyak.mjs
 - Misi
-- detectBreakingChanges
+- deps
 - uji-tema-tahap-b.mjs
 - uji-konteks-chat.mjs
 - lib_deprecated_cognition/cognitiveMemoryGovernor.ts
 - uji-simpan-berurutan.mjs
-- SystemLogsApp
+- ruangPengetahuan.js
 - SemanticContextService
 - synthesis_handler.ts
 - uji-penyedia-per-pesan.mjs
 - CLAUDE.md — Aturan Kerja Praktis AI Coding
 - backend/vercel.json
-- CHANGELOG: Audit & Rencana Implementasi - Engineer Workspace
+- uji-klaim-engineer.mjs
 - Label VERIFIED Ikut Memeriksa Angka dan Pasangan Label–Angka
 - lib_deprecated_cognition/singleCognitiveCore.ts
 - imports
-- Uji Mutu RAG Putaran 3, Memori Chat Pulih, Nalar Model Mengalir Sebelum Jawaban, Label Memeriksa Rujukan
+- BrainService
 - memory.ts
-- ROADMAP-ENGINEER-MANDIRI.md
+- Jendela konteks per percakapan + peristiwa Engineer tak lagi bocor
 - uji-folder-label.mjs
 - hapus-komentar.mjs
 - uji-uraian-markdown.mjs
 - uji-tema-tahap-a.mjs
-- VaultService
+- CHANGELOG: Fix AI Connectivity — Settings Dashboard
 - lib_deprecated_cognition/memoryStabilityCore.ts
 - mametlite/vercel.json
 - mametlite/vite.config.js
 - uji-konektor-umum-g5.mjs
-- Temuan
+- .ambil
 - 1 Oktober 2026 — Kacamata kuda Engineer dilepas: kode sumber jadi evidence yang sah
 - 2026-08-14_engineer-safety-upgrade.md
 - 4 Oktober 2026 — Peta repo jadi INDEKS: −83,8% sisipan, tiap pesan
 - uji-trace-parser-kendali-tetap.mjs
 - uji-hapus-akun-beserta-data.mjs
 - mcp_server.py
-- Sub B — CP4b: UI Purge Lifecycle & Conflict Resolution
-- 2 Oktober 2026 — RAG yang mati sendiri akhirnya bersuara
+- Implementation Plan: Intent Classifier Unification & Memory Store Guarding
+- 19 Oktober 2026 — kolom baca chat tidak lagi dijepit (Item 127 Tahap 2, langkah 2a)
 - uji-batas-rag-process.mjs
 - kunci_bundel.py
 - adr/README.md
@@ -276,7 +276,7 @@
 - 03_CAPABILITY_PORT.md
 - 12_CAPABILITY_ADAPTER_SPEC.md
 - 3. Log Eksekusi Terminal Tahap 3
-- Enam Kegagalan yang Ditelan Diam-diam
+- uji-tema-tahap-c.mjs
 - TemaService
 - Engineer
 - 🏗️ AI Agent - Architecture Guide
@@ -286,7 +286,7 @@
 - SPESIFIKASI TEKNIS & IMPLEMENTASI MAMET OS ECOSYSTEM (v2)
 - 06_MEMORY_SYSTEM.md
 - 22_MUS_UI_SPECIFICATION.md
-- 2. Peta Tanggung Jawab `index.ts`
+- ADR-0009: index.ts Decomposition Plan
 - MAMET ECOSYSTEM WORKSPACE ARCHITECTURE
 - Architecture Gaps
 - MAMET AI VISION DOCUMENT.md
@@ -324,7 +324,7 @@
 - komponenKonektor.cjs
 - 09_DNA.md
 - MAMET AI ENGINEERING FRAMEWORK (MAEF)
-- Execution Steps
+- Mamet AI — Architecture Gate Review (Post-Wave 5.2F)
 - 3. Chronological Timeline
 - Audit Menyeluruh Kernel→UI (2026-09-10)
 - Konteks Potongan: Bagian Tidak Tercampur & Baris Identitas Jabatan (Item 89 = Item 90 Tahap C)
@@ -369,12 +369,12 @@
 - RequestClassifierService
 - 🚀 Perbaikan Utama
 - 2026-07-14 UI Constitution Amendment: AI Workspace Transformation
-- 8 Oktober 2026 — Sisa perancah Vite dibersihkan dari Mametlite
+- ROADMAP — Adaptive Model Tiering (Kecil / Sedang / Thinking)
 - AUDIT-01: Runtime Evidence Analysis
 - 5 Oktober 2026 — Tiga kebocoran token dari SATU sesi nyata
 - Changelog: Archive Dead Memory/Cognition Cluster (lib/ + api/memory/)
 - 2. Rincian Solusi & Perubahan Kode
-- samakan-crlf.mjs
+- uji-tanpa-blokir-kata-d.mjs
 - FileExplorer.jsx
 - 1 Oktober 2026 — Patokan sisipan sampai ke server: misteri peta hilang TERPECAHKAN
 - uji-catch-diam.mjs
@@ -383,7 +383,7 @@
 - ChatHistory
 - 1. Mametlite — yang menyentuh pengguna di luar Owner
 - ROADMAP: TABEL CENTANG PDF — POSISI KOLOM DARI KOORDINAT, BUKAN DARI OCR
-- ROADMAP: TEMA APLIKASI — MAMET ECOSYSTEM
+- Jalur yang diputus bila Memory mati
 - 0.1.0 — 2026-10-07/08 — Mamet Lite digarap untuk penggunanya
 - teks.py
 - MAMET KNOWLEDGE GRAPH DASHBOARD CONSTITUTION
@@ -391,10 +391,10 @@
 - PatchApplier.js
 - Mamet Engineer Blueprint
 - Mamet AI Vision
-- MAMET OS DESKTOP ENVIRONMENT - PROJECT HANDOFF V3.0.0
+- 2 Oktober 2026 — Engineer diberi mata: lampiran gambar & dokumen (dan satu medan yang tak pernah cocok)
 - FULL REPOSITORY PRODUCTION READINESS AUDIT
 - Fitur yang Tercakup
-- uji-embedding-sekali-per-pesan.mjs
+- 🔄 OUT-OF-BAND SYSTEM UPDATE (21 Juni 2026)
 - Tabel DOCX Dibaca sebagai Tabel, dan Riset Jalur PDF untuk RAG
 - 2026-09-28 — Hakim bayangan per kalimat (T13, mode bayangan)
 - .runCommand
@@ -406,17 +406,17 @@
 - uji-lampiran-engineer.mjs
 - 🔍 LAPORAN AUDIT LENGKAP — MAMET AI PROJECT
 - 1 Oktober 2026 — Sisipan konteks dipatok: peta repo berhenti dibuang diam-diam
-- uji-data-per-akun.mjs
-- uji-pesan-galat.mjs
+- 2026-06-27 - Vision Baseline And Engineering Foundation
+- uji-trace-kurung-terbuka.mjs
 - ROADMAP: ZERO-LEAKAGE RAG TENANT ISOLATION & MULTI-ACCOUNT AUDIT
 - Changelog: Audit Dokumen RAG Multi-Akun & Penegakan Isolasi Tenant (Zero-Leakage)
 - Apa yang Sudah Dipasang
 - uji-folder-tulis-protokol.mjs
 - Technical Specification: Project Memory Service
 - uji-ciri-tampilan.mjs
-- 10. Tahap F — OAuth: server MCP jarak jauh yang meminta login — 🟡 F1 ✅ F2 ✅ 3 Nov 2026 (jawaban model dengan alat Notion menunggu saldo)
+- 5 Oktober 2026 — Konstitusi berhenti dibaca-lalu-dibuang
 - penilaiMutuRag.mjs
-- uji-analysis-review-dihapus.mjs
+- izin_subagent.ts
 - Mamet AI Architecture Gate Review (Post Wave 5.2E.2)
 - uji-saldo-plafon-token.mjs
 - Daftar 8 Tools Web3 untuk Mamet AI
@@ -424,7 +424,7 @@
 - 🔍 Ponytail Audit — Mamet OS Ecosystem
 - ref_fs
 - 2. Temuan Utama & Resolusi
-- Laporan Audit: Rutinitas Booting MAEF Kernel.js
+- Inbox
 - Tool Word ke PDF — Dua Word di Satu Mesin, dan Berkas yang "Sudah Ada" Padahal Belum Selesai
 - 2026-09-28 — Tahap 5: akar repo dipilih Owner, bukan ditebak dari folder aplikasi
 - Dokumen bisa ditemukan lewat judulnya — 221 Kepbup yang selama ini tak terjangkau nomornya
@@ -432,31 +432,31 @@
 - 5b. MENUNGGU RILIS BERIKUTNYA (per 2026-10-01)
 - EntityExtractor
 - 2 Oktober 2026 — Engineer diberi mata: lampiran gambar & dokumen (dan satu medan yang tak pernah cocok)
-- 1. Temuan per File
+- 5 Oktober 2026 — `finish_reason` akhirnya dibaca; lantai 512 turun ke 128
 - Mamet AI Roadmap
 - Uji Mutu RAG Putaran 6–7: Pasangan Angka–Tahun di Kalimat Bebas, Sumber Parafrase Diterima
 - uji-konektor-kata-kunci.mjs
 - Bagian B — Perbaikan yang Diusulkan (setelah Bagian A dikonfirmasi)
-- uji-ingatan-temuan-bersuara.mjs
+- 7 Oktober 2026 — Mametlite berhenti menyuntikkan HTML
 - Laporan Audit Database: Memori Pengguna
 - AGENTS.md
 - 27_DECISION_HEURISTICS.md
 - Brain Cluster Visualization V4 - Solar System Architecture
 - 2026-07-15: Workspace Architecture Audit
-- Set Uji Pengambilan Buku Kepbup Penuh — recall@8 13/14 (Item 88)
+- ROADMAP-PENGAMBILAN-POTONGAN-RAG.md
 - 🏢 MAMET AI FULL-STACK AUDIT REPORT
 - Daftar 8 Tools Baru yang Bisa Ditambahkan ke Mamet AI
 - 📝 Template Pengisian Profil Web3.career
 - Temuan Engineer
-- 2. Rincian Perubahan Kode
+- 28 Oktober 2026 — Electron 42.3.3 → 45.1.0 di repo; rilis 4.4.0 menunggu uji chat & PDF (T20)
 - services/unggahBertahap.js
 - Changelog: Mekanisme Deteksi Deployment Drift (Edge Function vs Git HEAD)
 - ._loadStaticKnowledge
 - Konversi Word → PDF dari Versi Web — Laptop sebagai Pekerja
 - Buku Kepbup Dipecah per Jabatan + Unggah Banyak Berkas Sekaligus (Item 88 Keputusan 3)
 - 2 Oktober 2026 — Brain 1 dibersihkan, dan Engineer akhirnya bisa menambahnya
-- CHANGELOG: Step 4 Implementation (Backend Persistence Adaptation) - Engineer Workspace
-- Potongan RAG Tidak Lagi Memenggal Daftar Bernomor
+- susunGrafHome
+- akhirTanpaDaftarTerpenggal
 - ProsedurEngineer.js
 - document_search.ts
 - 🔄 OUT-OF-BAND SYSTEM UPDATE (21 Juni 2026)
@@ -476,32 +476,32 @@
 - Root Cause (3 Titik)
 - 2. Rincian Perubahan yang Diimplementasikan
 - 2. Temuan & Resolusi
-- Mametlite: Layar Pengaturan Kunci + Label VERIFIED di Jalur Streaming (U8a Item 90)
+- 2026-06-29 — Constitution v2 Enforcement & Architecture Audit
 - Versi Web Kembali Ber-CSP
 - Deteksi Konflik Memori — Aturan yang Dijamin Salah, dan Kemiripan Vektor yang Ternyata Tidak Cukup
 - Groq 404 Terbukti — Provider Ketiga yang Modelnya Dipensiunkan Diam-Diam
-- 8 Oktober 2026 — Mametlite bicara dalam bahasa penggunanya saat gagal
-- 19 Oktober 2026 — menu utama bergaya menu game: kotak melayang + tombol MENU (Item 127, K2)
+- serverMcpTiruan.cjs
+- 4. Urutan Extraction yang Paling Aman
 - Panel Pembaruan di Pengaturan — jembatan yang tidak pernah dipakai
 - 1 Oktober 2026 — Engineer tidak boleh pernah jatuh ke jalur ringan
-- 27 Oktober 2026 — Umpan balik 👍/👎 per jawaban (Item 126 Fase 0)
+- Plumbing Parameter `thinking` dari Slot Tier sampai ke Provider
 - 4 Oktober 2026 — TEMUAN-ENGINEER bersih: tiga komentar yang berbohong
 - ADR-CRW-0006: Crawler Dapat Dipakai Mandiri Sebelum Integrasi Mamet
 - 8 Oktober 2026 — jendela putih 4.2.15: renderer mati, dan aplikasi tak punya mulut untuk mengatakannya
-- CHANGELOG: Final Metadata Audit - Engineer Workspace
-- INDEX-ROADMAP — Titik Masuk AI Coding
+- EngineeringState
+- TUGAS-04 selesai + pagar perintah dilonggarkan tepat sasaran
 - Audit Menyeluruh Arsitektur Memory Manager
 - Data Tabel Rekonsiliasi ASN — Tahap 1: Pembaca Excel & Pratinjau (Item 92)
-- 📋 ROADMAP PENGEMBANGAN MAMET OS ECOSYSTEM
+- Bagian 2 — Cacat yang hanya bisa muncul setelah uji kendali
 - uji-cari-judul-nomor.mjs
 - IntentParser
 - CORE METRICS
 - ARCHITECTURE ANALYSIS: GAP-010 (Telemetry Leakage via Event Bus)
 - RFC-016: Backend Authoritative Execution Architecture
-- Penyaring Kategori di Tahap 1 — Akar Sebenarnya di Balik "AI Lupa Terus"
+- MemoryService
 - CHANGELOG: Post Implementation Audit - Engineer Workspace
 - 2026-07-23: Fix Verification Engine — Audit Forensik Double Source of Truth
-- Tabel Centang PDF — Kolom dari Koordinat pdf.js, Bukan dari OCR
+- 3 November 2026 — Item 130 Tahap F: graf Home menjadi tata surya
 - Changelog: Security Hardening — Supabase (BrainBox AI)
 - .verify
 - Changelog Governance & Audit: Tahap 1 Memory System Finalization Live Verification
@@ -513,31 +513,31 @@
 - 2026-09-28 — Model diberi tahu akar repo-nya (sisa Tahap 5)
 - Cache Hasil Konversi — Tidak Memproses Hal yang Sama Dua Kali
 - Embedding Pindah ke OpenRouter — Hasil Uji
-- 19 Oktober 2026 — keadaan chat hidup di luar layarnya (Item 127 Tahap 1, langkah 1–4)
+- uji-audit-perintah.mjs
 - Jalur Upload RAG yang Tak Pernah Memvektorkan, dan Satu Policy RLS `USING (true)`
 - CHANGELOG: Step 5 Implementation (Backend Wiring) - Engineer Workspace
 - uji-tulis-centang.mjs
-- ROADMAP-TEMUAN-TERBUKA.md
+- T14 — nama penyedia hulu disimpan per pesan
 - 1 Oktober 2026 — Engineer berhenti menulis memori pribadi Owner
 - ConversationEngine
 - 20 Oktober 2026 — satu set ikon; cabang desktop Sidebar dihapus (sisa Item 127, di Item 128)
 - 4 Oktober 2026 — Cadangan kunci sistem yang terlewat, dan dua catatan yang salah
 - 4 Oktober 2026 — Satu pesan = satu percobaan embedding
-- 8 Oktober 2026 — Mametlite akhirnya bisa dipakai dari HP
-- ROADMAP-TAMPILAN-MENU-GAME.md
+- uji-catatan-akar-repo.mjs
+- INDEX-ROADMAP.md
 - 31 Oktober 2026 — K4: setiap akun punya ruang pengetahuan inti (CORE) sejak dibuat (ADR-0022)
-- 1. Skenario Pengujian & Hasil Eksekusi
-- dataPerAkun.js
-- 31 Oktober 2026 — K5/K6: pendaftaran publik ditutup; menghapus akun = menghapus seluruh datanya (ADR-0022)
-- 2 November 2026 — Bersih-bersih Parkir: kode mati, sampah uji di basis data, `.gitignore` folder terlarang
+- uji-jejak-prompt-t0.js
+- 29 Oktober 2026 — K4: uji isolasi data antar-akun — database & server terisolasi, peramban Mametlite bocor lalu diperbaiki
+- uji-jejak-prompt.mjs
+- uji-penyimpan-keadaan.mjs
 - Deprecated: Legacy Cognition Layer + api/memory routes
 - uji-ukuran-huruf.mjs
 - ADR-CRW-0001: Crawler sebagai Capability Indra dan Tangan Mamet
 - Referensi Sumber Kandidat
 - LOG TYPES
 - Decision
-- K1 Langkah 1 — Tanda Centang Ditulis sebagai Kata saat Unggah
-- Handoff: Next Session (MAEF Execution Monitor & Dependency Map)
+- 2. Peta Tanggung Jawab `index.ts`
+- Laporan Audit: ConversationEngine vs MemoryService
 - 3. Definisi Status Artefak
 - 🚨 Daftar File & Baris yang Berpotensi Error (Terdampak)
 - 27 Oktober 2026 — Uji konektor tidak lagi menulis ke data crawler Owner (Item 129)
@@ -550,31 +550,31 @@
 - Mamet Knowledge Observatory V2.0 - Home Dashboard Upgrade
 - 2026-07-14 UI Migration: Obsidian Deep & Mamet UI Constitution
 - Masalah & Perbaikan Utama
-- Mamet AI v4.0.0 - Layout Engine & UI Constitution Amendment
-- Changelog: Fitur Baru — Toggle Preferensi Tool (RAG & Web Search)
+- Laporan Audit: Kegagalan Pembacaan User Memory (RAG)
+- A. Tangga Eskalasi 4 Level (Bagian 3.2):
 - Changelog: PR#6 — Token Efficiency Implementation
 - memory_manager_v1.ts
-- T4 Hak `anon` pada `match_documents` Dicabut · T6 Kueri `verification_audit_logs.metadata` Dihapus
+- 2026-09-08-backlog-11-13-system-logs-archive-history-prompt-rules.md
 - AssistantService
 - Database 238 MB → 32 MB
 - CHANGELOG: Step 3 Implementation - Engineer Workspace
 - Folder Kerja Assistant — Tahap 2: Tulis & Perbarui (Item 85)
 - Tabel Centang PDF — Kontrak Jawaban & Penurunan Label VERIFIED
-- T8 — Perintah Engineer Tanpa Shell, Profil Peran, dan Pesan Hasil Mesin Bukan Kueri
+- loadProjectMemory
 - 2026-09-28 — Lapisan per-klaim dimatikan sesudah uji live (T13)
 - 3 November 2026 — Menuju 5.0.0: penguji mutu jawaban K1/K2 dibangun ulang, `raw_memory_content` ikut dicadangkan (K6)
 - Peta repo untuk Engineer — dari "bisa mencari" menjadi "tahu apa yang ada"
-- Set Uji Pengambilan Potongan & Angka Acuan (Item 90 Tahap A)
+- 28 Oktober 2026 — Rilis 4.3.2: paket keamanan "Black October" (T20) + bundel crawler ber-hash
 - 9 November 2026 — Item 131 Tahap J: pekerjaan 6 Nov diperiksa ulang dan dilengkapi
 - 📅 1 Agustus 2026 — Hari Kemajuan Besar: Stabilitas Sistem & UI Notification Center
 - 🧠 Engineer Chat Upgrade — Seperti Antigravity
 - 8. Konsekuensi
 - README.md
 - 4. Konsekuensi
-- kirim
+- [SELESAI] Architectural Decoupling & Memory Isolation for Mametlite
 - Laporan Kebugaran Fondasi (Infrastructure Health Check)
-- FASE 2 — State Layer (Sebelum Bikin Shell)
-- PR#1 — Safe Command Execution
+- uji-penjaga-lamplogin.mjs
+- Roadmap: Mamet AI — Assistant Capability Hardening & Modularization
 - ADR-CRW-0003: Misi Terstruktur dari MAEF, Crawler Tanpa LLM
 - ADR-CRW-0004: Kebijakan Sumber Tahap Awal, Tanpa Login Medsos
 - ADR-CRW-0002: Gudang Data Mentah Milik Crawler, Ditarik oleh Mamet
@@ -584,22 +584,33 @@
 - ADR-CRW-0009: Kebijakan Akses — Hanya Jalur yang Diizinkan atau API Resmi
 - ADR-CRW-0010: Fork Tool ke Akun Owner dan Mengaktifkan Fitur Bypass Anti-Bot
 - Ecosystem Crawler
-- ✅ TERBUKTI LIVE — 1 Oktober 2026, 14.46–14.48
-- MemoryService
-- Uji Mutu RAG Putaran 4–5: Label Menilai Jawaban Akhir Saja, Sumber Tanpa Kutip Diterima
+- uji-folder-klaim-palsu.mjs
+- WidgetRegistry
+- uji-kacamata-kuda-engineer.mjs
 - RFC-014: Self Engineering Lifecycle (SEL)
+- 9 November 2026 — Item 131 Tahap C + H: riwayat sampai utuh ke model, kegagalan disebut apa adanya
 - ADR-0001: Adopt MAEF As Highest Engineering Authority
+- 3. RANCANGAN TRANSISI EVENT-DRIVEN (PHASE 1)
 - CHANGELOG: Production Validation Audit - Backup & Restore
 - CHANGELOG: Retrospective Design - Engineer Workspace
 - CHANGELOG: Implementation Readiness Assessment - Engineer Workspace
-- CHANGELOG: Integration Validation - Engineer Workspace Backend
+- EngineeringLifecycleManager
+- 📋 Changelog Engineer — Mamet OS
 - Animated Knowledge Flow - Home Dashboard Upgrade
 - AppShell
 - 2026-07-15: Architecture Realignment Execution
 - 2026-07-16 — Execution Trace Upgrade / Phase 0 — Trace Propagation Audit (STARTED)
 - 2026-07-23 — Activity Graph Visibility & Orphan Node Enhancement
+- Changelog: Tahap 2 — Pembangunan SystemGovernorService.js (Opsi B)
 - Changelog: Deprecation of `cron-agent` (Legacy Shopee Ninja / Task Executor)
-- 📝 Changelog: Perbaikan Sistem Memori, Filter Chat, & Cleanup Database (2026-07-25)
+- 2 Oktober 2026 — Dua hal yang membuat Engineer salah membaca buktinya sendiri
+- FASE 1 — Device & Capability Detection (Fondasi)
+- ROADMAP-GRAF-HOME-PETA-SISTEM — Item 130: Graf Home menjadi peta sistem Mamet
+- TASK-0002: Repair Agent Process Execution Context
+- cadanganData.js
+- simulasiGrafHome.mjs
+- uji-anggaran-keluaran.mjs
+- uji-memori-engineer-bersih.mjs
 - Fallback Embedding OpenAI Dihapus
 - Chat Kini Mencari Dokumen Berdasarkan Makna
 - Potongan 800 Huruf dan Vektor 768 Angka
@@ -607,29 +618,56 @@
 - Unggah Dokumen Kini 5,6 Detik — dan Vektor yang Tak Pernah Dipakai Chat
 - Unggah RAG Menerima PDF dan Word
 - Uji Mutu RAG Putaran 1: Angka Awal, Bug Sub-Agent, dan Label yang Keliru Turun
+- uji-salinan-mametlite.mjs
 - K1/K2 Uji Penuh Pertama + Penilai Membaca Pasangan Baris → Nilai
+- 2. Decision
 - Pencarian Potongan Gabungan Vektor + Kata Kunci (Item 90 Tahap B)
-- idbTiruan
+- Changelog: Adaptive Model Tiering (Kecil/Sedang/Thinking) + Batas Biaya Harian Per-User
+- Hapus Dokumen RAG: Cek Baris yang Benar-Benar Terhapus (Item 91)
 - T11 — `check-keys` dihapus
 - Versi 4.2.0 — dan kenapa rilisnya sengaja tetap draf
+- Data Tabel Rekonsiliasi ASN — Tahap 2: Simpan & Versi (Item 92)
+- Data Tabel Rekonsiliasi ASN — Tahap 3: Tanya-Jawab di Chat (Item 92)
+- T3: Rute Mati `/api/agent/process` Dihapus dari Backend
+- 19 Oktober 2026 — "tidak ada fungsi yang hilang" kini diuji, bukan dijanjikan (Item 127 Tahap 2, langkah 2c)
 - ROADMAP-KONEKTOR-MCP.md
 - Implementation Plan: CHECK_P02 JSON Patch Schema Alignment & Defensive Unwrap
 - Tombol Memory Memutus Lima Jalur Memori
+- 2 November 2026 — Item 130 Tahap E: percakapan berekor pesan + label graf tak pernah saling tindih
+- 9 November 2026 — Item 131 Tahap A (bagian 1): RAG yang sudah ketemu tidak dibuang lagi
 - Changelog: Audit `ROADMAP-DASHBOARD-OBSERVABILITY-REALTIME.md` — Ternyata Sudah Terimplementasi
+- 11 November 2026 — Item 131 Tahap I, E, F, G: prompt ramping, batas dari anggaran, web utuh, isi konektor sampai
 - 🛡️ MAMET AI — SECURITY AUDIT FINAL REPORT
 - TASK-0004: Repair Windows Build Pipeline
+- 4. Hak 39 tabel — artefak prasyarat T11, sekarang lengkap
 - OWNER CONTROL DOMAIN
 - KNOWLEDGE LIFECYCLE
+- gerbangJejak.mjs
+- Changelog: Perbaikan Tabrakan Nomor ADR-008 & Index PROJECT-MEMORY.md
+- Data Tabel Rekonsiliasi ASN — Tahap 5: PDF Pindaian lewat OCR (Item 92)
 - Laporan Audit Forensik: Jejak Asal Usul Nama "Slamet"
-- EngineeringLifecycleManager
+- T2: Enam Komponen Dasbor Yatim Dihapus
+- Cadangan Data Lengkap dari Aplikasi (Item 93 Tahap 1)
+- CHANGELOG: Implementation Preparation & Execution Plan - Engineer Workspace
+- RLS — Aturan "Baca Semua" & "Tulis Publik" Ditutup (temuan Item 93)
 - CHANGELOG: Metadata Design - Engineer Workspace
 - CHANGELOG: Step 1 Implementation - Engineer Workspace
 - CHANGELOG: Step 2 Implementation - Engineer Workspace
+- 19 Oktober 2026 — pemeriksaan "error tersembunyi": empat temuan diperbaiki (Item 127, Tahap 3)
 - CHANGELOG: Architecture Design - Ephemeral Approval Mechanism
 - Home Dashboard - Full Brain Observation Context
+- 19 Oktober 2026 — kenyamanan mata: Markdown & kode di chat, latar dinding LampLogin (Item 127, Tahap 3)
 - Ecosystem Health - Node Interconnectivity Counters
 - Ecosystem Health - Overall System Status & Live Timestamp
+- 23 Oktober 2026 — Pesan galat: saldo OpenRouter tidak lagi dilaporkan sebagai "batas biaya harian"
+- 26 Oktober 2026 — Konektor MCP Tahap E: pemasang membawa Python + crawler (Item 129)
+- 27 Oktober 2026 — "Black October": pengambil web pindah ke jaringan Chromium, CI naik ke Node 24 (T20)
 - 2026-09-03-cleanup-deadcode-tokensaver-orchestrator.md
+- 3 November 2026 — Konektor MCP Tahap G1: pipa konektor umum ("banyak tangan") di proses utama
+- 10 November 2026 — Item 131 sisa Tahap A: prafilter biner dicoba, lalu dibatalkan
+- gudangCrawler.mjs
+- ref_crypto
+- 🚀 Changelog: Phase 3 Metadata-Driven UI
 - Changelog: Eksekusi Trilogi Cleanup Dead-Code (PR-01, PR-02, PR-04)
 - Changelog: MAEF V2/V3 & Vision Constitution V2 Dihapus, Diserap ke `constitution/`
 - Changelog: MAEF V3.md dan Dokumen Legacy "AI Agent" Ditandai
@@ -639,6 +677,12 @@
 - Ikon dan Huruf Tidak Lagi Menumpang Google
 - Nalar yang Benar-Benar Mati, Penyedia yang Tercatat, dan Jam yang Bukan Tebakan
 - Uji Mutu RAG Putaran 2: Label Tak Lagi Keliru Turun; Label & Sumber Wajib di Luar Nalar
+- CHANGELOG: UI Compliance & Metadata Parser Refactoring (Priority 4)
+- Data Tabel Rekonsiliasi ASN — Tahap 4: Laporan Kejanggalan per OPD (Item 92)
+- ✅ UJI LIVE KEDUA — kendalanya PINDAH, dan membuka temuan yang lebih besar
+- ✅ DIUJI LIVE — separuh berhasil, separuh gagal, dan gagalnya mengajari
+- 29 Oktober 2026 — T16: modul konsol uji RAG dirapikan & tersambung lagi
+- Research App — Pilih Banyak Dokumen untuk Dihapus + Daftar Tak Lagi Berlomba
 - ROADMAP-SIAP-PENGGUNA.md
 - Diskusi dengan Instruktur — 2 Juli 2026
 - Diskusi dengan Instruktur — 2 Juli 2026 (Sesi Eksekusi)
@@ -655,10 +699,8 @@
 - ADR-0016: Terminal Command Isolation — Roadmap Bertahap (Belum Diimplementasi)
 - RFC-013: Unified Confidence Model
 - Laporan Architecture Audit: Mamet OS Ecosystem
-- Mamet OS Engineering Changelog & RCA
 - CHANGELOG: Audit Eksekutif (RFC-015, RFC-016, GAP-NEW-009)
 - 2026-07-15: Finalisasi Policy Workspace (Phase 4)
-- Changelog: Anotasi Status Implementasi di `SPESIFIKASI-TEKNIS-MAMET-OS-v2.md`
 - Riwayat Percakapan Dipangkas Tanpa AI — Jeda 36 Detik Hilang
 - 2026-09-28 — Jawaban mendarat di percakapan yang salah (dilaporkan Owner)
 - 2026-09-28 — CHIMERA WASM ditolak masuk `agent-process` (T13)
@@ -693,14 +735,14 @@
 ## God Nodes (most connected - your core abstractions)
 1. `ConversationEngine()` - 93 edges
 2. `Misi` - 80 edges
-3. `AssistantService` - 74 edges
+3. `AssistantService` - 80 edges
 4. `Ikon()` - 71 edges
 5. `Temuan` - 62 edges
 6. `Audit Menyeluruh Kernel→UI (2026-09-10)` - 62 edges
 7. `WorkspaceManager` - 52 edges
 8. `Sumber` - 51 edges
-9. `ResearchApp()` - 47 edges
-10. `RuntimeContext` - 47 edges
+9. `RuntimeContext` - 49 edges
+10. `ResearchApp()` - 47 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Yang dibuat` --references--> `akses()`  [INFERRED]
@@ -709,46 +751,46 @@
   docs/project-memory/changelog/2026-09-28-tahap5-akar-repo.md → frontend/electron/akarRepo.cjs
 - `Yang sengaja DIPERTAHANKAN` --references--> `tanpaPersetujuan()`  [INFERRED]
   docs/project-memory/changelog/2026-10-01-kacamata-kuda-engineer.md → frontend/electron/alatFolderJalan.cjs
-- `Koreksi: alamat folder data` --references--> `akarBrowser()`  [INFERRED]
-  docs/project-memory/changelog/2026-10-26-rilis-4.3.0-crawler-terbundel.md → frontend/electron/komponenKonektor.cjs
 - `Yang dibuat` --references--> `peluncuran()`  [INFERRED]
   docs/project-memory/changelog/2026-10-27-isolasi-data-uji-crawler.md → frontend/electron/konektorMcp.cjs
+- `Tahap G — Isi berkas konektor GitHub sampai ke model ✅ 🖥` --references--> `teksHasil()`  [INFERRED]
+  docs/roadmap/ROADMAP-MAKSIMALKAN-MODEL.md → frontend/electron/konektorMcp.cjs
 
 ## Import Cycles
 - None detected.
 
-## Communities (688 total, 31 thin omitted)
+## Communities (731 total, 31 thin omitted)
 
 ### Community 0 - "label_sumber.ts"
-Cohesion: 0.14
-Nodes (31): Bukti live — `npm run desktop` dan web (2026-09-14), Perbaikan, Perubahan `label_sumber.ts`, Perubahan (`supabase/functions/agent-process/lib/verification/`), bacaBlokCentang(), barisPemisah(), barisTabel(), bersihMarkdown() (+23 more)
+Cohesion: 0.13
+Nodes (31): Bukti live — `npm run desktop` dan web (2026-09-14), Perbaikan, Perubahan (`supabase/functions/agent-process/lib/verification/`), corsHeaders, bacaBlokCentang(), barisPemisah(), barisTabel(), bersihMarkdown() (+23 more)
 
 ### Community 1 - "main.cjs"
-Cohesion: 0.05
-Nodes (50): Handler yang dijaga, Berkas, 28 Oktober 2026 — Electron 42.3.3 → 45.1.0 di repo; rilis 4.4.0 menunggu uji chat & PDF (T20), Analisis sebelum memasang, Bukti, Catatan untuk build berikutnya, Menunggu (rilis 4.4.0), Sesudah push: build rilis terpicu tanpa kenaikan versi — dibatalkan, lalu pemicunya diperbaiki (+42 more)
+Cohesion: 0.06
+Nodes (41): Handler yang dijaga, Berkas, akarRepoAktif(), akarRepoSah(), diDalam(), fs, path, tolak() (+33 more)
 
 ### Community 2 - "uji-penilai-mutu-rag.mjs"
 Cohesion: 0.05
 Nodes (35): AKAR, benar, BUKU07, BUKU10, buku10Keliru, BUKU10P, BUKU13, deret (+27 more)
 
-### Community 3 - "RuntimeContext"
-Cohesion: 0.07
-Nodes (20): 1. Analisis Arsitektur, 2. Proposal Desain, 4. Rencana Verifikasi, ARCHITECTURE ANALYSIS: GAP-006 (Context Compressor Capability Integration), 1. Ringkasan & Latar Belakang, 2. Rincian Implementasi, 3. Catatan Workflow & Resolusi Insiden, 4. Live Verification Result (+12 more)
+### Community 3 - "Changelog: Cost Ledger Instrumentation & Guardrail Enforcement (ADR-015 Phase 1)"
+Cohesion: 0.20
+Nodes (9): 1. Ringkasan & Latar Belakang, 2. Rincian Implementasi, 3. Catatan Workflow & Resolusi Insiden, 4. Live Verification Result, 5. Kesimpulan, A. Modul Cost & Guardrails (`costTracker.ts`), C. Plumbing Konteks (`runtime_context.ts` & `request_pipeline.ts`), Changelog: Cost Ledger Instrumentation & Guardrail Enforcement (ADR-015 Phase 1) (+1 more)
 
 ### Community 4 - "services/documentTextExtractor.js"
 Cohesion: 0.14
 Nodes (21): ACCEPT_UNGGAH, dekodeEntitas(), deteksiTabelHalaman(), ekstensi(), EKSTENSI_DIDUKUNG, EKSTENSI_TEKS, ekstrakPdfDariData(), ekstrakTeksDokumen() (+13 more)
 
 ### Community 5 - "frontend/package.json"
-Cohesion: 0.05
-Nodes (50): setupAutoUpdater(), dependencies, axios@^1.6.0, deno-bin@^2.2.7, @dnd-kit/core@^6.3.1, @dnd-kit/sortable@^10.0.0, @dnd-kit/utilities@^3.2.2, dotenv@^17.4.2 (+42 more)
+Cohesion: 0.06
+Nodes (51): setupAutoUpdater(), dependencies, axios@^1.6.0, deno-bin@^2.2.7, @dnd-kit/core@^6.3.1, @dnd-kit/sortable@^10.0.0, @dnd-kit/utilities@^3.2.2, dotenv@^17.4.2 (+43 more)
 
 ### Community 6 - "WorkspaceManager"
-Cohesion: 0.16
-Nodes (8): 6. Remaining Technical Debt, 2. Chip Toolbar Diganti Jadi Panel "Tools" Generik, 3. Bug: RAG Mati Ikut Mematikan Web Search (Ditemukan Live, Diperbaiki), 4. MAEF Monitor: Panel Terbuka Paksa Setiap Respons (Minimize Tidak Efektif), 5. Investigasi Turunan: Kenapa Ada Dua `WorkspaceManager`, Apa Tugas Kernel Sesungguhnya, 7. Ringkasan Perilaku Baru vs Lama, Changelog: Tool Panel Generik, RAG/Web Search Dilepas, MAEF Monitor Fix, Dead Widget Cleanup, WorkspaceManager
+Cohesion: 0.04
+Nodes (58): 1. Architecture Validation Report, 2. Dependency Graph (Runtime Hierarchy), 3. Lifecycle Validation, 4. State Validation, 5. Performance Comparison, 6. Remaining Technical Debt, 8. RFC Candidate (For Future Phase), MAMET OS ARCHITECTURE V2.0 VALIDATION REPORT (+50 more)
 
 ### Community 7 - "KataSandi.jsx"
-Cohesion: 0.19
+Cohesion: 0.18
 Nodes (21): 29 Oktober 2026 — T19: lupa & ganti kata sandi di Mamet Ecosystem dan Mametlite (ADR-0022 K4), Bukti, Bukti live (Owner, akun Mametlite, 29 Okt) — dua ujung, Deploy web — pelajaran pengaturan Vercel, Ketahuan saat merancang, Menunggu Owner (sudah dikerjakan — dicatat untuk riwayat), Sisa (bukan tindakan wajib), Yang dibuat (+13 more)
 
 ### Community 8 - "uji-klaim-sumber.mjs"
@@ -756,28 +798,28 @@ Cohesion: 0.07
 Nodes (26): akar, AKAR_REPO, baru, contoh, DIR_SEMENTARA, dituduh, ISI, jawabanBenarPenuh (+18 more)
 
 ### Community 9 - "alatFolderJalan.cjs"
-Cohesion: 0.06
-Nodes (51): Yang dikerjakan, Penegakannya di proses utama, bukan di layar, barisPerintah(), BATAS_JALAN, cariExe(), DAFTAR_PROGRAM, envBersih(), fs (+43 more)
+Cohesion: 0.05
+Nodes (56): Bukti live, Catatan terbuka, T8 — Perintah Engineer Tanpa Shell, Profil Peran, dan Pesan Hasil Mesin Bukan Kueri, Temuan saat diperiksa ulang (hasil baca kode, lalu dibuktikan live), Uji otomatis (di luar git, `frontend/node_modules/.uji-rag/`) — semua lulus, Yang dikerjakan, Penegakannya di proses utama, bukan di layar, barisPerintah() (+48 more)
 
 ### Community 10 - "request_pipeline.ts"
-Cohesion: 0.09
-Nodes (29): 1. Dependency Graph Audit, 2. LLM Execution Audit, 4. Public API Audit, 5. RuntimeContext Audit, 6. Remaining Monolith (Risk Level), 7. Candidate Extraction (Wave 5.2G), 8. Risk Analysis (Risk Matrix), 9. Architecture Score (+21 more)
+Cohesion: 0.05
+Nodes (61): ADR-0003: Engineer Capability Mode in Agent Process, Consequences, Context, Decision, Rationale, References, 3. RuntimeContext Audit, 1. Dependency Graph Audit (+53 more)
 
 ### Community 11 - "uji-verifikasi-tahap6.mjs"
 Cohesion: 0.09
 Nodes (20): AKAR, berkasPalsu, blok, blokRollback, CE, daftar, ENGINEER_JS, hijau (+12 more)
 
 ### Community 12 - "ResearchApp.jsx"
-Cohesion: 0.05
-Nodes (78): Aplikasi, Perubahan, 8 Oktober 2026 — Tiga salinan tangan Mametlite akhirnya bersuara bila menyimpang, Aturannya BUKAN "harus identik" — dan itu diputuskan dari pengukuran, bukan dari selera, Berkas, Bukti, Satu bug di uji ini sendiri, dan ia pantas dicatat, Sisa (+70 more)
+Cohesion: 0.12
+Nodes (34): Aplikasi, Yang dipasang, BilahPilihDokumen(), DaftarDataTabel(), tanggal(), ResearchApp(), adalahExcel(), adalahPdf() (+26 more)
 
 ### Community 13 - "INDEX-ROADMAP-ARSIP-2026-09-17.md"
 Cohesion: 0.03
-Nodes (42): 1. Latar Belakang & Masalah Arsitektur, 3. Hasil Verifikasi, CHANGELOG — PR#9 Fase 2: Implementasi Tier 2 Internal LLM Fallback, 1. Konteks & Latar Belakang, 2. Akar Masalah (Root Cause), 3. Rincian Perubahan, 4. Validasi & Batasan Scope, Changelog: Persona & System Prompt Memory Awareness Alignment (+34 more)
+Nodes (21): 1. Konteks & Latar Belakang, 2. Akar Masalah (Root Cause), 3. Rincian Perubahan, 4. Validasi & Batasan Scope, Changelog: Persona & System Prompt Memory Awareness Alignment, Changelog — 2026-09-05: Pencatatan Backlog Tier 3 Web Search Chrome/Vercel (Tanpa Perubahan Kode), Rencana Aksi Mendatang (Future Remediation), Rincian Temuan & Akar Masalah (+13 more)
 
 ### Community 14 - "data_tabel.ts"
 Cohesion: 0.13
-Nodes (32): angka(), BIDANG, cocokSyarat(), kecil(), KELOMPOK, KELOMPOK_TAMPIL, KELOMPOKKAN, KOSONG_ISI() (+24 more)
+Nodes (33): Alur, angka(), BIDANG, cocokSyarat(), kecil(), KELOMPOK, KELOMPOK_TAMPIL, KELOMPOKKAN (+25 more)
 
 ### Community 15 - "uji-graf-home-tahap-f.mjs"
 Cohesion: 0.05
@@ -788,20 +830,20 @@ Cohesion: 0.09
 Nodes (19): AKAR_REPO, aneh, bersih, besar, ins, ins2, judul, lampiran (+11 more)
 
 ### Community 17 - "CapabilityRegistry"
-Cohesion: 0.08
-Nodes (35): 1. Analisis Arsitektur, 2. Proposal Desain, 3. Rencana Implementasi, 4. Rencana Verifikasi, ARCHITECTURE ANALYSIS: GAP-007 (Legacy Plugin Dispatcher Monolith), 1. Analisis Arsitektur, 2. Proposal Desain, 3. Rencana Implementasi (+27 more)
+Cohesion: 0.06
+Nodes (45): 1. Analisis Arsitektur, 2. Proposal Desain, 3. Rencana Implementasi, 4. Rencana Verifikasi, ARCHITECTURE ANALYSIS: GAP-007 (Legacy Plugin Dispatcher Monolith), 1. Analisis Arsitektur, 2. Proposal Desain, 3. Rencana Implementasi (+37 more)
 
 ### Community 18 - "kernel"
-Cohesion: 0.12
-Nodes (15): 🛡️ 2. Implementasi Anti-Kernel Panic (Graceful Degradation), 1.1 Strategi Pengarsipan Pengetahuan (Bukan Menghapus), 1.2 Membuat Indeks Pengetahuan (Knowledge Distillation) — ✅ SELESAI, 2.1 Modifikasi `_handleBootFailure()` di `Kernel.js` — ✅ SELESAI, 2.2 Pasang "Circuit Breaker" (Pemutus Sirkuit) di `engineer.js` — ✅ SELESAI, 3.1 Memperketat ATURAN KODE dalam `_buildPatchPrompt()` — ✅ SELESAI, 4.1 Buat Komponen `SystemNotificationCenter.jsx` — ✅ SELESAI, 4.2 Bangun "System Diagnostic App" — ✅ SELESAI (+7 more)
+Cohesion: 0.06
+Nodes (34): 🚀 1. Dashboard UX Restructuring (MAEF + MUS + ADR-008 Compliant), 🛠️ 2. Resolusi Kritis Pipeline Build (Vite & Vercel), ⚙️ 3. Arsitektur Kernel Boot Sequence & Dependency Guards (ADR-008), 🪲 4. Perbaikan Komponen UI & Kesalahan Rendering, Mamet OS Engineering Changelog & RCA, 🛡️ 2. Implementasi Anti-Kernel Panic (Graceful Degradation), 1. Latar Belakang, 2.1 Bug Prasyarat yang Ditemukan (+26 more)
 
 ### Community 19 - "chunkText"
-Cohesion: 0.21
-Nodes (20): 3. Identitas dari baris tabel OCR (`agent-process/lib/konteks_potongan.ts`), Kode, Tahap 3 — Bukti live, akhirTanpaDaftarTerpenggal(), batasBaris(), KELIPATAN_BATAS_DAFTAR, nomorButirTerakhir(), akhirSebelumBagian() (+12 more)
+Cohesion: 0.25
+Nodes (18): Kode, Tahap 3 — Bukti live, batasBaris(), judulTabelUntuk(), tambahJudulTabel(), akhirSebelumBagian(), awalBagianSesudah(), barisKunciNilai() (+10 more)
 
 ### Community 20 - "AssistantService.js"
-Cohesion: 0.07
-Nodes (45): 3. `AssistantService.js` (Refactor `processMessage`), `_handleConversation()` — Extracted (alur penuh), `processMessage()` — Thin Dispatcher (~50 baris), 3. Kejujuran laporan tindakan (`folderKerjaAlat.js`, `AssistantService.js`), 5. Keadaan kode hari ini (dibaca 23 Okt 2026), Titik sambung (ditelusuri dari graf graphify, 3 Nov — 12.383 node, 0 berkas mati, tanpa siklus impor), calculateTruthScore(), LEGACY_COGNITION_ENABLED (+37 more)
+Cohesion: 0.08
+Nodes (37): 3. `AssistantService.js` (Refactor `processMessage`), `_handleConversation()` — Extracted (alur penuh), `processMessage()` — Thin Dispatcher (~50 baris), 3. Kejujuran laporan tindakan (`folderKerjaAlat.js`, `AssistantService.js`), 5. Keadaan kode hari ini (dibaca 23 Okt 2026), estimateTokens(), peringatanKlaimTakTeruji(), MAKS_TEKNIS_GALAT (+29 more)
 
 ### Community 21 - "uji-data-tabel-asn-tahap5.mjs"
 Cohesion: 0.07
@@ -816,24 +858,24 @@ Cohesion: 0.06
 Nodes (39): if, needs, permissions, runs-on, steps, GH_TOKEN, GITHUB_TOKEN, PEMICU (+31 more)
 
 ### Community 24 - "ref_https"
-Cohesion: 0.06
-Nodes (28): Bukti, Efek samping yang dipahami, Kenapa dihapus, bukan diperbaiki (bukti database), Perubahan, T9 — Sub-agent `knowledge_manager` Dihapus, Temuan sampingan (bukan akibat T9), 30 Oktober 2026 — K5 / T1: izin sub-agent di server, pagar alamat di setiap pengalihan, token Apify hanya pemilik, Bukti (+20 more)
+Cohesion: 0.08
+Nodes (12): Bukti, Efek samping yang dipahami, Kenapa dihapus, bukan diperbaiki (bukti database), Perubahan, T9 — Sub-agent `knowledge_manager` Dihapus, Temuan sampingan (bukan akibat T9), Temuan, getPluginPromptList() (+4 more)
 
 ### Community 25 - "Sumber"
 Cohesion: 0.07
-Nodes (20): Sumber, bersihkan(), ke_iso(), sebagai_daftar(), DilarangRobots, Terblokir, Arxiv, Bluesky (+12 more)
+Nodes (26): Sumber, Temuan, bersihkan(), ke_iso(), sebagai_daftar(), DilarangRobots, Terblokir, Arxiv (+18 more)
 
 ### Community 26 - "uji-graf-home-tahap-d.mjs"
 Cohesion: 0.06
 Nodes (33): AG, AKAR, alatChat, baca(), by, dasar, dibuat(), DS (+25 more)
 
-### Community 27 - "NavigationService"
-Cohesion: 0.09
-Nodes (17): 1. Konteks, 3. Boot Sequence (Urutan Inisialisasi Aplikasi), 4. Non-Goals (Batasan Cakupan), 5. Konsekuensi, ADR-0019: Application Bootstrap Architecture, 1. Paradigma "Zero-React Modification", 2. Arsitektur "Capability-Based Security" (Graph Mapping), 5. Diskusi Lanjutan (Next Action Plan) (+9 more)
+### Community 27 - "ragAlat.js"
+Cohesion: 0.10
+Nodes (35): MAKS_ALAT_PER_PUTARAN, adalahUuid(), ALAT_RAG, ambilPermintaanRag(), argumenRagAman(), BATAS_BACA_HURUF, bilangan(), catatanHasilRag() (+27 more)
 
-### Community 28 - "MemoryGovernorService"
-Cohesion: 0.19
-Nodes (4): Backfill, ADDENDUM FASE 1: Retrieval, Conflict, Access Tier, Lifecycle, ✅ FASE 1: Membangun `MemoryGovernorService` & Integrasi Assistant/Engineer (SELESAI — 2026-09-02), MemoryGovernorService
+### Community 28 - "Audit Menyeluruh Kernel→UI (2026-09-10)"
+Cohesion: 0.06
+Nodes (42): Bagian 1 — Memory Governor Addendum Fase 1, ConversationEngine.jsx, Latar Belakang, MemoryContextPanel.jsx, MemoryGovernorService.js, MemoryService.js, SQL Migration, C. Delegasi Metadata di MemoryService.js (+34 more)
 
 ### Community 29 - "mametlite/src/App.jsx"
 Cohesion: 0.10
@@ -843,33 +885,29 @@ Nodes (20): Bukti, Cacat kecil yang ikut ketahuan, Empat keputusan di dalamnya, 
 Cohesion: 0.06
 Nodes (33): maks_utas_komentar, subreddit, per_sumber, total, kecualikan_penulis, context, bahasa, owner_intent (+25 more)
 
-### Community 31 - "dataTabelAsn.js"
-Cohesion: 0.06
-Nodes (65): Alur, Bukti putaran 3 (chat baru, chip RAG + Data Tabel menyala), Data Tabel Rekonsiliasi ASN — Tahap 3: Tanya-Jawab di Chat (Item 92), Perbaikan (di KODE — putaran 1 membuktikan perintah ke model tidak cukup), T9 — `knowledge_manager` dicabut dari Coordinator (keputusan Owner), Uji live putaran 1 — gagal, dan kenapa (dilaporkan apa adanya), Uji otomatis (di luar git, `frontend/node_modules/.uji-rag/`) — SEMUA LULUS, Yang dibuat (+57 more)
+### Community 31 - "LaporanKejanggalan.jsx"
+Cohesion: 0.15
+Nodes (25): Yang dibuat, Yang dibuat, aman(), hariIni(), LaporanKejanggalan(), LEBAR, BagianSimpan(), KartuSheet() (+17 more)
 
 ### Community 32 - "StorageManager"
-Cohesion: 0.08
-Nodes (13): 1. Engineer Repository Reader (`READ_REPO`), Changelog: Engineer Repository Reader & Kernel Panic Fix (2026-07-30), Masalah Sebelumnya, Overview, Solusi yang Diimplementasikan, Testing & Verification, Bukti, Folder Kerja Assistant — Tahap 0 Selesai: Pagar Alamat `folder:*` (Item 85) (+5 more)
-
-### Community 33 - "SystemGovernorService"
-Cohesion: 0.06
-Nodes (26): 1. Tujuan & Sasaran Kerja, 2. Langkah-Langkah Pengerjaan Tahap 2, 3. Log Eksekusi Terminal Tahap 2, BAGIAN I: TAHAP 2 — `SystemGovernorService.js` (Opsi B), BAGIAN III: REKAPITULASI STATUS AKHIR REPOSITORI, Changelog Komprehensif: Rincian Langkah Kerja & Log Eksekusi Terminal (Tahap 2 & Tahap 3), Langkah 2.1: Pembuatan Service Mandiri, Langkah 2.2: Registrasi di Kernel.js Phase 3 (+18 more)
+Cohesion: 0.07
+Nodes (14): 1. Engineer Repository Reader (`READ_REPO`), Changelog: Engineer Repository Reader & Kernel Panic Fix (2026-07-30), Masalah Sebelumnya, Overview, Solusi yang Diimplementasikan, Testing & Verification, 5. Langkah Selanjutnya, Bukti (+6 more)
 
 ### Community 34 - "uji-data-tabel-asn-tahap4.mjs"
 Cohesion: 0.09
 Nodes (22): AKAR_REPO, aktif, aoa, baca, berkas, daftar, dp, js (+14 more)
 
 ### Community 35 - "lib/documentTextExtractor.js"
-Cohesion: 0.17
-Nodes (21): ACCEPT_UNGGAH, dekodeEntitas(), deteksiTabelHalaman(), ekstensi(), EKSTENSI_DIDUKUNG, EKSTENSI_TEKS, ekstrakPdfDariData(), ekstrakTeksDokumen() (+13 more)
+Cohesion: 0.16
+Nodes (22): ACCEPT_UNGGAH, dekodeEntitas(), deteksiTabelHalaman(), ekstensi(), EKSTENSI_DIDUKUNG, EKSTENSI_TEKS, ekstrakPdfDariData(), ekstrakTeksDokumen() (+14 more)
 
 ### Community 36 - "verification/types.ts"
-Cohesion: 0.09
-Nodes (36): 2.1 `buildContextFusion` (Jalur A), 2.2 `buildUniversalContract` (Jalur B), 2. Analisis Kedua Jalur, 2.8 Kelompok H — Evidence & Confidence Pipeline, Auth Binding Layer (2026-06-23), Capability-Based Permission Model (2026-06-26), Engineering Metrics — ADR-0007, Knowledge Workspace Architecture (2026-06-24) (+28 more)
+Cohesion: 0.10
+Nodes (29): 2.1 `buildContextFusion` (Jalur A), 2.2 `buildUniversalContract` (Jalur B), 2. Analisis Kedua Jalur, 2.8 Kelompok H — Evidence & Confidence Pipeline, Auth Binding Layer (2026-06-23), Capability-Based Permission Model (2026-06-26), Engineering Metrics — ADR-0007, Knowledge Workspace Architecture (2026-06-24) (+21 more)
 
-### Community 37 - "runtime_context.ts"
-Cohesion: 0.08
-Nodes (35): 1. Ringkasan Eksekutif, 2. Diagram & Analisis Akar Masalah: Dua Konsep Tercampur (Item 3), 3. Daftar File yang Berubah, 4. Hasil Verifikasi & Uji Regresi, Changelog: Runtime & Observability Gap Fixes (CP1–CP5), 2. Memori chat tidak pernah dimuat sejak 1 Juli 2026, 30 Oktober 2026 — K5: `proxy_fetch` wajib token & hanya alamat publik; log autentikasi tanpa email (ADR-0022), Bukti (+27 more)
+### Community 37 - "agent-process/index.ts"
+Cohesion: 0.07
+Nodes (44): 1. Ringkasan Eksekutif, 2. Diagram & Analisis Akar Masalah: Dua Konsep Tercampur (Item 3), 3. Daftar File yang Berubah, 4. Hasil Verifikasi & Uji Regresi, Changelog: Runtime & Observability Gap Fixes (CP1–CP5), 2. Memori chat tidak pernah dimuat sejak 1 Juli 2026, 30 Oktober 2026 — K5: `proxy_fetch` wajib token & hanya alamat publik; log autentikasi tanpa email (ADR-0022), Bukti (+36 more)
 
 ### Community 38 - "MAEFStateMachine"
 Cohesion: 0.11
@@ -885,15 +923,15 @@ Nodes (30): needs, runs-on, steps, if, needs, runs-on, steps, jobs (+22 more)
 
 ### Community 41 - "verification_service.ts"
 Cohesion: 0.06
-Nodes (41): 2. Public API Audit, 1. Analisis Arsitektur, 2. Proposal Desain, 3. Rencana Implementasi, 4. Rencana Verifikasi, ARCHITECTURE ANALYSIS: GAP-009 (Tight Coupling in Execution Phase Dispatcher), Batas yang disadari, Bukti (+33 more)
+Nodes (44): 2. Public API Audit, 1. Analisis Arsitektur, 2. Proposal Desain, 3. Rencana Implementasi, 4. Rencana Verifikasi, ARCHITECTURE ANALYSIS: GAP-009 (Tight Coupling in Execution Phase Dispatcher), Batas yang disadari, Bukti (+36 more)
 
 ### Community 42 - "pencarian_berita.ts"
-Cohesion: 0.16
-Nodes (23): 2. Pembersih RSS bersama — `shared/teks_rss.js` (modul baru), 29 Oktober 2026 — Tanggal terbit hasil web sampai ke model; kueri "terbaru" sengaja tidak diubah (Item 126 Fase 1, ADR-0021 §7), Bukti, Ketahuan dari uji live — belum dikerjakan, Pengukuran (Bing/Google News RSS live, 29 Okt), entitas(), tanpaTag(), urlAsliBing() (+15 more)
+Cohesion: 0.14
+Nodes (25): 2. Pembersih RSS bersama — `shared/teks_rss.js` (modul baru), 29 Oktober 2026 — Tanggal terbit hasil web sampai ke model; kueri "terbaru" sengaja tidak diubah (Item 126 Fase 1, ADR-0021 §7), Bukti, Ketahuan dari uji live — belum dikerjakan, Pengukuran (Bing/Google News RSS live, 29 Okt), WEB_SEARCH_TIMEOUT_MS, WEB_SUFFICIENCY_SCORE, entitas() (+17 more)
 
 ### Community 43 - "alatFolder.cjs"
 Cohesion: 0.09
-Nodes (37): Yang dibuat, Batas yang TIDAK ditutup — harus tertulis, Bukti, Empat keputusan, Kenapa, Penolakan yang memberi jalan lain, T12 — penjaga berkas rahasia, Yang berubah (+29 more)
+Nodes (36): Yang dibuat, Batas yang TIDAK ditutup — harus tertulis, Bukti, Empat keputusan, Kenapa, Penolakan yang memberi jalan lain, T12 — penjaga berkas rahasia, Yang berubah (+28 more)
 
 ### Community 44 - "lib/tabelCentang.js"
 Cohesion: 0.16
@@ -916,16 +954,16 @@ Cohesion: 0.17
 Nodes (11): 10. Architecture Score, 1. File Baru, 2. File Berubah, 3. LOC Sebelum / Sesudah (index.ts), 4. Dependency Graph, 5. Public API, 6. Compile Validation, 7. Regression Analysis (+3 more)
 
 ### Community 49 - "engineer.js"
-Cohesion: 0.10
-Nodes (35): Fase 4 — File System Gateway & Memory Store (Risiko Rendah-Sedang) ✅ SELESAI (2026-09-08), Fase 5 — Reasoning Lock & Approval Gateway (Risiko Sedang) ✅ SELESAI (2026-09-08), 1. Ringkasan, 2. Tantangan Baru Dibanding Fase 2-3, 3. Perubahan, 4. Verifikasi, 5. Langkah Selanjutnya, Changelog: ADR-0017 Fase 4 — Ekstraksi FileSystemGateway & EngineerMemoryStore dari engineer.js (+27 more)
+Cohesion: 0.09
+Nodes (40): 2.8 Kelompok H — File System Gateway, 4. Urutan Extraction yang Paling Aman, Fase 4 — File System Gateway & Memory Store (Risiko Rendah-Sedang) ✅ SELESAI (2026-09-08), Fase 5 — Reasoning Lock & Approval Gateway (Risiko Sedang) ✅ SELESAI (2026-09-08), Fase 6 — Read-Only Task Handlers (Risiko Sedang) ✅ SELESAI (2026-09-08), 1. Ringkasan, 2. Tantangan Baru Dibanding Fase 2-3, 3. Perubahan (+32 more)
 
 ### Community 50 - "context_builder.ts"
-Cohesion: 0.06
-Nodes (41): 1. KONDISI SAAT INI (THE PROCEDURAL MONOLITH), 2. DILEMA TEKNIS EDGE FUNCTION, 3. RANCANGAN TRANSISI EVENT-DRIVEN (PHASE 1), ARCHITECTURE AUDIT: RAG PIPELINE MONOLITH (GAP-004), Langkah 1: Penguraian Monolith Menjadi Service Independen, Langkah 2: Mekanisme Scatter-Gather, Rencana Aksi (Action Plan):, 1. Ringkasan (+33 more)
-
-### Community 51 - "uji-akar-repo.cjs"
 Cohesion: 0.05
-Nodes (31): AKAR_REPO, belum, berkasBiasa, bukanRepo, dev, diInstalasi, fs, instalasi (+23 more)
+Nodes (54): 1. KONDISI SAAT INI (THE PROCEDURAL MONOLITH), Berikutnya, T10 — Sumber Pengetahuan Engineer + Perbaikan Jalur Patch Engineer (uji TUGAS-01), T10 Tahap 1 — RAG Engineer hanya dari space "Pengetahuan Engineer" (live ✅), Temuan uji TUGAS-01 & perbaikannya, Uji otomatis (di luar git) — semua lulus, 1. Sebabnya dicatat, tanpa mengubah kontraknya, 2 Oktober 2026 — RAG yang mati sendiri akhirnya bersuara (+46 more)
+
+### Community 51 - "uji-berkas-rahasia.cjs"
+Cohesion: 0.06
+Nodes (25): A, akar, AKAR_REPO, dasar, fs, luar, os, path (+17 more)
 
 ### Community 52 - "uji-langkah-terlihat.mjs"
 Cohesion: 0.07
@@ -933,7 +971,7 @@ Nodes (23): AKAR, CE, ctxE, ctxR, dir, iDicari, iLangkah, iNalar (+15 more)
 
 ### Community 53 - "ai_adapter.ts"
 Cohesion: 0.05
-Nodes (63): Verifikasi & Live Test Confirmation, 5d. Hybrid: nalar mengalir sebelum jawaban, 4. Penjaga batas waktu dinding Supabase & "lanjutkan", Apa yang terjadi, Apa artinya untuk saldo setipis ini, Dari mana 14.250 token itu — diukur, bukan ditebak, Dua temuan yang sebenarnya, dan keduanya besar, ✅ UJI LIVE KEDUA — kendalanya PINDAH, dan membuka temuan yang lebih besar (+55 more)
+Nodes (54): 1. Analisis Arsitektur, 2. Proposal Desain, 4. Rencana Verifikasi, ARCHITECTURE ANALYSIS: GAP-006 (Context Compressor Capability Integration), B. Instrumentasi Adapter LLM (`ai_adapter.ts`), Verifikasi & Live Test Confirmation, 5d. Hybrid: nalar mengalir sebelum jawaban, Apa yang terjadi (+46 more)
 
 ### Community 54 - "uji-graf-home-tahap-e.mjs"
 Cohesion: 0.07
@@ -948,16 +986,16 @@ Cohesion: 0.11
 Nodes (15): AKAR, APP, APP_KODE, BATAS, galatKuota, h, hs, isiRusak (+7 more)
 
 ### Community 57 - "PatchGenerator.js"
-Cohesion: 0.12
-Nodes (31): Fase 7 — Patch Generator + CodeSnippetExtractor §2.1 (Risiko Tinggi — Digabung Sengaja) ✅ SELESAI (2026-09-08), 1. Ringkasan, 2. Apa yang Diganti (§2.1), 3. Brace-Matching String-Aware (§2.1.4) — Bagian Tersulit, 4. Perubahan Lain, 5. Verifikasi, 6. Langkah Selanjutnya, Changelog: ADR-0017 Fase 7 — PatchGenerator + Implementasi §2.1 CodeSnippetExtractor (+23 more)
+Cohesion: 0.11
+Nodes (32): Fase 7 — Patch Generator + CodeSnippetExtractor §2.1 (Risiko Tinggi — Digabung Sengaja) ✅ SELESAI (2026-09-08), 1. Ringkasan, 2. Apa yang Diganti (§2.1), 3. Brace-Matching String-Aware (§2.1.4) — Bagian Tersulit, 4. Perubahan Lain, 5. Verifikasi, 6. Langkah Selanjutnya, Changelog: ADR-0017 Fase 7 — PatchGenerator + Implementasi §2.1 CodeSnippetExtractor (+24 more)
 
 ### Community 58 - "lib_deprecated_cognition/decisionEngine.ts"
 Cohesion: 0.21
 Nodes (11): buildDecisionContext(), buildExceptionPolicy(), buildExecutionContract(), CognitiveExecutionContract, DecisionEngineInput, IntentSpec, MemoryResult, PreprocessorOutput (+3 more)
 
 ### Community 59 - "pulih-cadangan.mjs"
-Cohesion: 0.11
-Nodes (16): berkas, berkasPath, db, di, env, fts, hitung, kerja (+8 more)
+Cohesion: 0.09
+Nodes (19): adaLokal, berkas, berkasPath, db, di, env, fts, hitung (+11 more)
 
 ### Community 60 - "uji-kueri-pencarian.mjs"
 Cohesion: 0.08
@@ -967,13 +1005,13 @@ Nodes (21): AKAR, AS, beda, CONTOH, definisi, definisiRss, deno, dir (+13 more)
 Cohesion: 0.12
 Nodes (16): 1.1 Pertanyaan Owner (29 Okt 2026), 1.2 Yang dikatakan Constitution, 1. Context, 2.1 Arti "cukup", 2.2 Pekerjaan inti (keputusan Owner), 2.3 Kriteria garis dasar, 2.4 Aturan temuan baru (berlaku sejak ADR ini diterima), 2.5 Fitur baru (+8 more)
 
-### Community 62 - "uji-chimera-verifier-nyata.mjs"
-Cohesion: 0.11
-Nodes (14): b64, bagian, bagianEkspor, biner, dec, ekspor, enc, instance (+6 more)
-
-### Community 63 - "INDEX-ROADMAP.md"
+### Community 62 - "uji-hentikan-kiriman.mjs"
 Cohesion: 0.05
-Nodes (24): Catatan, Folder Kerja Assistant — Tahap 1: Baca Saja (Item 85), Uji otomatis (di luar git, `frontend/node_modules/.uji-rag/`) — semua lulus, 20 Oktober 2026 — tema aplikasi Tahap A: token palet menjadi variabel CSS (Item 128), Bukti tampilan tidak berubah, Hasil, Uji, 30 Oktober 2026 — Rilis 4.4.0: Electron 45 + hasil fase hardening sisi klien (ADR-0022) (+16 more)
+Nodes (28): b64, bagian, bagianEkspor, biner, dec, ekspor, enc, instance (+20 more)
+
+### Community 63 - "ROADMAP-HARDENING.md"
+Cohesion: 0.03
+Nodes (62): 30 Oktober 2026 — Rilis 4.4.0: Electron 45 + hasil fase hardening sisi klien (ADR-0022), Build & terbit (diperiksa lewat API GitHub), Bukti sebelum rilis, Isi rilis (perubahan KLIEN sejak 4.3.2), 1. K5 — pendaftaran publik ditutup (Owner), 2. Regresi pemicu CORE: semua akun tak bisa dihapus, 31 Oktober 2026 — K5/K6: pendaftaran publik ditutup; menghapus akun = menghapus seluruh datanya (ADR-0022), 3. K6 — hapus akun = hapus seluruh datanya (pilihan A Owner) (+54 more)
 
 ### Community 64 - "dependencies"
 Cohesion: 0.09
@@ -999,45 +1037,45 @@ Nodes (21): bacaPutusanHakim(), BahanHakim, HAKIM_AKTIF(), jalankanHakimBayangan
 Cohesion: 0.29
 Nodes (5): overrideMemory(), writeMemory(), supabase, recalculateTruthScores(), logTruthEvaluation()
 
-### Community 70 - "MetadataService"
-Cohesion: 0.10
-Nodes (11): 3. Strict Metadata Validation, 2.1 Tabrakan Nomor ADR-008, 2.2 Index ADR di `PROJECT-MEMORY.md` Stale, 2.3 Status `TASK-0002`/`TASK-0003` Tidak Sinkron, 2. Temuan & Resolusi, 20 Oktober 2026 — tema aplikasi Tahap B: Settings › Tampilan, dua tema gelap, per akun (Item 128), Belum ikut tema, Bukti (+3 more)
+### Community 70 - "dataTabelAsn.js"
+Cohesion: 0.13
+Nodes (26): bacaBerkasExcelAsn(), EKSTENSI_EXCEL, unduhExcelJanggal(), AMBANG_VERSI, ATURAN_KOLOM, bacaSheetAsn(), bacaWorkbookAsn(), bandingkanIsi() (+18 more)
 
-### Community 71 - "uji-hentikan-kiriman.mjs"
-Cohesion: 0.11
-Nodes (14): AKAR_REPO, AS, AS_KODE, blokBaca, blokHenti, CE, CE_KODE, iBaca (+6 more)
+### Community 71 - "3. Log Eksekusi Terminal Tahap 3"
+Cohesion: 0.08
+Nodes (24): 1. Tujuan & Sasaran Kerja, 1. Tujuan & Sasaran Kerja, 3. Log Eksekusi Terminal Tahap 2, 3. Log Eksekusi Terminal Tahap 3, BAGIAN I: TAHAP 2 — `SystemGovernorService.js` (Opsi B), BAGIAN II: TAHAP 3 — `WebComparisonService.js` (PR#9 Fase 3), BAGIAN III: REKAPITULASI STATUS AKHIR REPOSITORI, Changelog Komprehensif: Rincian Langkah Kerja & Log Eksekusi Terminal (Tahap 2 & Tahap 3) (+16 more)
 
 ### Community 72 - "uji-ingatan-temuan.mjs"
-Cohesion: 0.11
-Nodes (15): AKAR_REPO, balik, { daftar, baru }, ditutup, dua, g2, g3, g4 (+7 more)
+Cohesion: 0.06
+Nodes (25): AKAR_REPO, b, galat, habis, ok, palsu, pesan, r (+17 more)
 
 ### Community 73 - "build"
 Cohesion: 0.09
 Nodes (23): build, appId, asarUnpack, directories, extraResources, files, nsis, portable (+15 more)
 
 ### Community 74 - "MenuTeks.jsx"
-Cohesion: 0.10
-Nodes (32): Changelog - v4.1.2 (2026-07-16), Features & Improvements, Fixes, 2. Fix MAMET OS KERNEL PANIC (Vercel Production), Masalah Sebelumnya, Solusi yang Diimplementasikan, Berkas, Yang dibuat (+24 more)
+Cohesion: 0.08
+Nodes (37): Engineering Strictness, Changelog - v4.1.2 (2026-07-16), Features & Improvements, Fixes, 2. Fix MAMET OS KERNEL PANIC (Vercel Production), Masalah Sebelumnya, Solusi yang Diimplementasikan, 19 Oktober 2026 — menu utama bergaya menu game: kotak melayang + tombol MENU (Item 127, K2) (+29 more)
 
 ### Community 75 - "with"
 Cohesion: 0.07
 Nodes (28): jobs, suite, name, on, pull_request, push, workflow_call, workflow_dispatch (+20 more)
 
 ### Community 76 - "RepositoryReaderService"
-Cohesion: 0.08
-Nodes (19): 🔍 1. Penemuan Akar Masalah (3 Bug Berantai), 🛠️ 2. Perbaikan yang Diterapkan, 🚀 3. Hasil & Status Saat Ini, 📅 4 Agustus 2026 — Perbaikan Akar Masalah File Explorer & Rollout ke GitHub, 💡 4. Catatan Teknis (Untuk Engineer Internal), Berawal dari pertanyaan, Bug 2: pewarna yang tidak mengenal string, Bug 3: ditangkap oleh uji sendiri (+11 more)
+Cohesion: 0.10
+Nodes (14): 🔍 1. Penemuan Akar Masalah (3 Bug Berantai), 🛠️ 2. Perbaikan yang Diterapkan, 🚀 3. Hasil & Status Saat Ini, 📅 4 Agustus 2026 — Perbaikan Akar Masalah File Explorer & Rollout ke GitHub, 💡 4. Catatan Teknis (Untuk Engineer Internal), Berawal dari pertanyaan, Bug 2: pewarna yang tidak mengenal string, Bug 3: ditangkap oleh uji sendiri (+6 more)
 
 ### Community 77 - "lib/pdfOcrService.js"
-Cohesion: 0.18
-Nodes (16): bacaHasilOcr(), bersihkanHasilOcr(), bolehCobaUlang(), bytesKeBase64(), ELEMEN_HTML, ENTITAS, GagalOcr, kirimOcr() (+8 more)
+Cohesion: 0.17
+Nodes (15): bacaHasilOcr(), bersihkanHasilOcr(), bolehCobaUlang(), bytesKeBase64(), ELEMEN_HTML, ENTITAS, GagalOcr, kirimOcr() (+7 more)
 
 ### Community 78 - "uji-pesan-galat-ecosystem.mjs"
 Cohesion: 0.11
-Nodes (14): AKAR, AS, blok, blokPanjang, CE, dariServer, dikenali, harian (+6 more)
+Nodes (15): AKAR, AS, blok, blokPanjang, CE, dariServer, dikenali, GR (+7 more)
 
 ### Community 79 - "Kernel.js"
 Cohesion: 0.05
-Nodes (46): 2.1. Architecture Gap, 2.2. Design Decision, 2.3. Implementation Plan, 2. RFC-012: Task Scheduler Service, ⛓️ Analisis Titik Putus (The Broken Chain), 3. Audit Visual Berbasis Identitas, ✅ STATUS EVALUASI FONDASI, 6. Pembersihan: 7 Widget Dashboard Adalah Kode Mati (+38 more)
+Nodes (49): 1. Validasi & Dekopling Metadata Parser (100% Valid), 2. Penambahan Disaster Recovery Widget, 3. Audit Visual Berbasis Identitas, IMPLEMENTASI, ✅ STATUS EVALUASI FONDASI, Changelog - v4.1.3 (2026-07-16), Features & UI/UX Improvements, Fixes (+41 more)
 
 ### Community 80 - "uji-folder-label-tindakan.mjs"
 Cohesion: 0.10
@@ -1047,17 +1085,17 @@ Nodes (16): AKAR_REPO, b, chat1Karang, chat1TanpaSumber, dasar, esbuild, p1, p2 
 Cohesion: 0.09
 Nodes (40): File Target: `frontend/src/core/runtime/services/engineer.js`, 3.1. Intent Detection (Pemahaman Tujuan), File Target: `frontend/src/core/runtime/services/engineer.js`, alatDisetujuiSah(), buatDaftarServer(), baca(), hapus(), tambah() (+32 more)
 
-### Community 82 - "2. Urutan Pengerjaan & Status Eksekusi"
-Cohesion: 0.17
-Nodes (11): Bagian 1 — Memory Governor Addendum Fase 1, ConversationEngine.jsx, Latar Belakang, MemoryContextPanel.jsx, MemoryGovernorService.js, MemoryService.js, SQL Migration, 2. Akar Masalah (+3 more)
+### Community 82 - "HomeDashboard.jsx"
+Cohesion: 0.16
+Nodes (22): 2 November 2026 — Item 130 Tahap C: pusat graf Home = MAMET dua belahan; Konstitusi 23 direvisi, Bukti, Graf (`grafHome.js` `susunGrafHome` ditulis ulang), Konstitusi 23 (`constitution/23_HOME_DASHBOARD_SPEC.md`), Tata letak — diukur, bukan ditebak (`uji/lib/simulasiGrafHome.mjs`, sebaran data Owner), 2 November 2026 — Item 130 Tahap D: lapisan Kemampuan di graf Home + daftar resmi sub-agent di `shared/`, Bukti, Daftar resmi sub-agent (keputusan Owner: pilihan a) (+14 more)
 
 ### Community 83 - "intent_router.ts"
 Cohesion: 0.11
-Nodes (18): 28 Oktober 2026 — Router gagal ke jalur aman; sintesis "multi-agen" hanya bila ada hasil sub-agent (Item 126 Fase 1), Bukti, Bukti dulu (riwayat chat, hanya agregat di database — nol isi pesan keluar), Deploy (diperiksa di platform), Efek yang diharapkan, Menunggu, Yang dibuat, 28 Oktober 2026 — Intent Router: kata kunci dicocokkan sebagai kata, bukan potongan (Item 126 Fase 1) (+10 more)
+Nodes (17): 28 Oktober 2026 — Router gagal ke jalur aman; sintesis "multi-agen" hanya bila ada hasil sub-agent (Item 126 Fase 1), Bukti, Bukti dulu (riwayat chat, hanya agregat di database — nol isi pesan keluar), Deploy (diperiksa di platform), Efek yang diharapkan, Menunggu, Yang dibuat, 28 Oktober 2026 — Intent Router: kata kunci dicocokkan sebagai kata, bukan potongan (Item 126 Fase 1) (+9 more)
 
-### Community 84 - "ref_node_module"
-Cohesion: 0.03
-Nodes (47): AKAR_REPO, aktif, beda, berkas, dugaan, harap, require, sama (+39 more)
+### Community 84 - "uji-data-tabel-asn-tahap2.mjs"
+Cohesion: 0.12
+Nodes (12): AKAR_REPO, aktif, beda, berkas, dugaan, harap, require, sama (+4 more)
 
 ### Community 85 - "uji-hakim-bayangan.mjs"
 Cohesion: 0.12
@@ -1068,8 +1106,8 @@ Cohesion: 0.12
 Nodes (13): AKAR_REPO, baru, baruA, baruB, lama, penanda, penanda2, pesanAwal (+5 more)
 
 ### Community 87 - "ApplicationManager"
-Cohesion: 0.10
-Nodes (18): 2.1. Siapa yang bertanggung jawab melakukan registrasi aplikasi?, 2.2. Siapa yang menentukan Default Workspace?, 2.3. Siapa yang menentukan Default Application (Entry Point)?, 2.5. Siapa yang membangun Navigation?, 2.6. Siapa yang menginisialisasi Dashboard Home?, 2. Keputusan (Architecture Decision), 6. Current Code Status, 1. Audit Arsitektur Sekarang (+10 more)
+Cohesion: 0.04
+Nodes (43): 1. Konteks, 2.1. Siapa yang bertanggung jawab melakukan registrasi aplikasi?, 2.2. Siapa yang menentukan Default Workspace?, 2.3. Siapa yang menentukan Default Application (Entry Point)?, 2.5. Siapa yang membangun Navigation?, 2.6. Siapa yang menginisialisasi Dashboard Home?, 2. Keputusan (Architecture Decision), 3. Boot Sequence (Urutan Inisialisasi Aplikasi) (+35 more)
 
 ### Community 88 - "uji-latar-ruangan.mjs"
 Cohesion: 0.04
@@ -1080,24 +1118,24 @@ Cohesion: 0.14
 Nodes (13): AKAR, baru, berkasSumber(), BUKAN_IKON, daftar, hilang, kumpulkanNama(), METADATA (+5 more)
 
 ### Community 90 - "ringkasKueri"
-Cohesion: 0.07
-Nodes (34): 1.1 Prinsip awal, 1.2 Kenyataan pembangunan (diperiksa di kode, 28 Okt 2026), 1.3 Pola pembanding (sistem Claude), 1. Context, 2.1 Pembagian peran, 2.2 Tangga keputusan: kapan LLM dipakai di depan, 2.3 Aturan wajib bila LLM mengusulkan, 2. Decision (+26 more)
+Cohesion: 0.06
+Nodes (40): 1.1 Prinsip awal, 1.2 Kenyataan pembangunan (diperiksa di kode, 28 Okt 2026), 1.3 Pola pembanding (sistem Claude), 1. Context, 2.1 Pembagian peran, 2.2 Tangga keputusan: kapan LLM dipakai di depan, 2.3 Aturan wajib bila LLM mengusulkan, 2. Decision (+32 more)
 
 ### Community 91 - "LampLogin"
 Cohesion: 0.04
-Nodes (49): 1. Halaman Login Kurang Menarik dan Terlihat "Kaku", 2. Input Login Berubah Putih Cerah Saat Autofill Chrome, 3. Branding Mamet OS Terlalu Kecil dan Tidak Terlihat (Ikon Terpotong), 4. Panel Login Terpotong dan Tidak Responsif di Layar Laptop, 5. Tekstur Dinding Terlihat Seperti Garis-Garis Kisi, 6. React DOM Property Error pada SVG Filter, 7. Sakelar Tidak Bisa Diklik Saat DevTools Terbuka, Catatan untuk Kedepannya (+41 more)
+Nodes (62): Berkas, Bukti, Dua cacat yang dijaga — keduanya DIAM, Kenapa boleh diunduh tanpa login, Masalahnya, Satu keputusan kecil yang penting, Unduh aplikasi desktop langsung dari web, Yang ditambahkan (+54 more)
 
 ### Community 93 - "BatasGalat"
-Cohesion: 0.11
-Nodes (17): 8 Oktober 2026 — Mametlite tidak lagi bisa jadi layar putih, Berkas, Bukti, Cacatnya, Sisa blok M, Tiga keputusan yang pantas disebut, Yang dikerjakan, BatasGalat (+9 more)
+Cohesion: 0.10
+Nodes (20): Tiga perbaikan yang ikut, karena ada di jalur yang sama, Yang dikerjakan, 8 Oktober 2026 — Mametlite tidak lagi bisa jadi layar putih, Berkas, Bukti, Cacatnya, Sisa blok M, Tiga keputusan yang pantas disebut (+12 more)
 
 ### Community 94 - "AUDIT-03: Single Instrumentation Point Design"
 Cohesion: 0.09
 Nodes (21): Analysis of All Possible Instrumentation Points, AUDIT-03: Single Instrumentation Point Design, Background, Confidence Level, Confirmed Data Capacity, Confirmed Facts, Execution Flow (Critical Path), Files Examined (+13 more)
 
-### Community 95 - "WindowManager"
-Cohesion: 0.14
-Nodes (9): 13. SEJARAH & EVOLUSI DESAIN (Konsolidasi 2026-09-09), 1. Architecture Validation Report, 2. Dependency Graph (Runtime Hierarchy), 3. Lifecycle Validation, 5. Performance Comparison, 7. Known Limitations, 8. RFC Candidate (For Future Phase), MAMET OS ARCHITECTURE V2.0 VALIDATION REPORT (+1 more)
+### Community 95 - "BAB 3: DAFTAR MASALAH & ANALISIS ROOT CAUSE (LENGKAP)"
+Cohesion: 0.09
+Nodes (21): 1.1. Lapisan Frontend (UI / Renderer), 1.2. Lapisan Backend / Serverless (Supabase Edge Function), 1.3. Lapisan Database & Observability (Supabase PostgreSQL), 1.4. Lapisan Desktop & Bot (Electron Node.js), BAB 1: GAMBARAN UMUM ARSITEKTUR (TELAAH LENGKAP), BAB 2: ALUR DATA EKSEKUSI (DARI CHAT KE BOT) - DETAIL TEKNIS, BAB 3: DAFTAR MASALAH & ANALISIS ROOT CAUSE (LENGKAP), BAB 4: SOLUSI & LANGKAH PERBAIKAN DETAIL (+13 more)
 
 ### Community 97 - "Bagian 1: lib/ — 11 Modul TypeScript"
 Cohesion: 0.15
@@ -1111,21 +1149,21 @@ Nodes (21): AKAR, baca(), baris, byId, capai, fon, garis, harapBelahan (+13 more
 Cohesion: 0.15
 Nodes (12): version, widgets, active_phases, capability, fallback_behavior, id, priority, refresh_policy (+4 more)
 
-### Community 100 - "ADR-0017-engineer-js-decomposition.md"
-Cohesion: 0.06
-Nodes (31): 10. Referensi, 1.1 Kondisi Saat Ini, 1.2 Kenapa Ini Penting (Bukan Cuma Kerapian), 1. Konteks dan Latar Belakang, 3. Modul Target yang Diusulkan, 5. `engineer.js` Setelah Decomposition (Target State), 6. Aturan Backward Compatibility, 7. Kriteria Verifikasi per Fase (+23 more)
+### Community 100 - "ADR-0017: engineer.js Decomposition Plan"
+Cohesion: 0.18
+Nodes (11): 10. Referensi, 1.1 Kondisi Saat Ini, 1.2 Kenapa Ini Penting (Bukan Cuma Kerapian), 1. Konteks dan Latar Belakang, 3. Modul Target yang Diusulkan, 5. `engineer.js` Setelah Decomposition (Target State), 6. Aturan Backward Compatibility, 7. Kriteria Verifikasi per Fase (+3 more)
 
 ### Community 101 - "ToolPreferencesService"
-Cohesion: 0.16
-Nodes (7): 2.1 `ToolPreferencesService.js` (baru), 2.2 Wiring ke `AssistantService.js` (`_handleConversation`), 2.3 UI — dua tempat, 2. Yang Dibangun, 5. Verifikasi & Keterbatasan, DEFAULT_TOOLS, ToolPreferencesService
+Cohesion: 0.13
+Nodes (11): 1. Latar Belakang, 2.1 `ToolPreferencesService.js` (baru), 2.2 Wiring ke `AssistantService.js` (`_handleConversation`), 2.3 UI — dua tempat, 2. Yang Dibangun, 3. Catatan Penting untuk Owner (soal ekspektasi RAG), 4. File yang Diubah/Ditambah, 5. Verifikasi & Keterbatasan (+3 more)
 
 ### Community 102 - "parser_pipeline.ts"
-Cohesion: 0.16
-Nodes (15): 1. Dependency Graph, 2. Public API Audit, 3. RuntimeContext Audit, 4. Remaining Monolith, 5. Coupling Audit, 6. Regression Risk, 8. Roadmap (Rekomendasi Wave Berikutnya), 9. Final Score (+7 more)
+Cohesion: 0.17
+Nodes (14): 1. Dependency Graph, 2. Public API Audit, 3. RuntimeContext Audit, 5. Coupling Audit, 6. Regression Risk, 8. Roadmap (Rekomendasi Wave Berikutnya), 9. Final Score, DECISION (+6 more)
 
 ### Community 103 - "Gudang"
-Cohesion: 0.07
-Nodes (8): Gudang, url_kanonis(), pseudonim(), sekarang_iso(), ulid(), garam(), gudang(), gudang()
+Cohesion: 0.05
+Nodes (26): Gudang, url_kanonis(), pseudonim(), lapor(), _daftar(), MisiTidakValid, sekarang_iso(), ulid() (+18 more)
 
 ### Community 104 - "EventBus"
 Cohesion: 0.14
@@ -1140,12 +1178,16 @@ Cohesion: 0.14
 Nodes (12): AKAR_REPO, asing, baris, bentukLive, ENG, iBaku, iLoop, iPesan (+4 more)
 
 ### Community 107 - "alurOAuth.cjs"
-Cohesion: 0.14
+Cohesion: 0.15
 Nodes (20): Susunan berkas (satu berkas satu tugas), { auth, discoverOAuthServerInfo }, buatAlurOAuth(), hubungkan(), hubungkanPerangkat(), hubungkanSekali(), putuskan(), tolak() (+12 more)
 
 ### Community 108 - "uji-kata-sandi.mjs"
 Cohesion: 0.10
 Nodes (15): AKAR, APP, cssGlobal, GANTI, iLama, iLamaLite, kelasBaru, KS (+7 more)
+
+### Community 109 - "ProcessManager"
+Cohesion: 0.20
+Nodes (4): 5.1. Local AI Integration (Zero-Cost Triage) *(direvisi v2 — distribusi model)*, 5.2. Core 7 Files Portability, 5. SPESIFIKASI JANGKA PANJANG (LONG-TERM ARCHITECTURE), ProcessManager
 
 ### Community 110 - "uji-izin-subagent.mjs"
 Cohesion: 0.06
@@ -1156,12 +1198,12 @@ Cohesion: 0.12
 Nodes (14): AKAR, daftarBerkas(), dariFrontend, dariShared, folderShared, keFrontend, keShared, masukan (+6 more)
 
 ### Community 112 - "tool_dispatcher.ts"
-Cohesion: 0.17
-Nodes (8): 2026-07-15: Implementasi Hard Policy Enforcement, Bukti Penyelarasan (Alignment Proofs), Perubahan Arsitektur Runtime, MemoryType, PolicyDecision, PolicyEnforcer, RagScope, WorkspaceType
+Cohesion: 0.14
+Nodes (10): 2026-07-15: Implementasi Hard Policy Enforcement, Bukti Penyelarasan (Alignment Proofs), Perubahan Arsitektur Runtime, DispatcherDecision, DispatcherResult, MemoryType, PolicyDecision, PolicyEnforcer (+2 more)
 
-### Community 113 - "._handleConversation"
-Cohesion: 0.07
-Nodes (30): `_handleResponseStream()` — BARU (shared), File yang Dibuat / Dimodifikasi, Jalur yang diputus bila Memory mati, 1 Oktober 2026 — Tombol Berhenti: kiriman akhirnya bisa dibatalkan, Bagaimana ketahuan, Jebakan yang tertangkap saat membuat ujinya, Pemutusan di tengah aliran, Putaran alat ikut berhenti (+22 more)
+### Community 113 - "1 Oktober 2026 — Tombol Berhenti: kiriman akhirnya bisa dibatalkan"
+Cohesion: 0.20
+Nodes (9): 1 Oktober 2026 — Tombol Berhenti: kiriman akhirnya bisa dibatalkan, Bagaimana ketahuan, Catatan: dua temuan lain dari sesi yang sama, Pemutusan di tengah aliran, Putaran alat ikut berhenti, Satu tempat, dua watak, ✅ TERBUKTI LIVE — 1 Oktober 2026, 15.11, Yang dikerjakan (+1 more)
 
 ### Community 114 - "Roadmap Data Flywheel — Mamet Ecosystem.md"
 Cohesion: 0.22
@@ -1173,15 +1215,15 @@ Nodes (38): AKAR, alur, alurDiam, alurWeb, brankas, { buatAlurOAuth }, { buatBra
 
 ### Community 116 - "ref_node_path"
 Cohesion: 0.03
-Nodes (41): AKAR, HURUF, TUJUAN, AKAR, ASAL, html, lama, sudahAda (+33 more)
+Nodes (37): AKAR, ASAL, html, lama, sudahAda, terapkan, AKAR, h1 (+29 more)
 
 ### Community 117 - "uji-peta-repo.mjs"
 Cohesion: 0.15
 Nodes (11): AKAR_REPO, blokKirim, blokMain, c, CE, iPeta, iPetaMain, MAIN (+3 more)
 
 ### Community 118 - "ref_node_os"
-Cohesion: 0.02
-Nodes (46): AKAR, baca(), dir, muat(), AKAR, asli, dirUji, DS (+38 more)
+Cohesion: 0.03
+Nodes (33): AKAR, dir, AKAR, BENAR, dir, MELENCENG, AKAR, dirUji (+25 more)
 
 ### Community 119 - "uji-verifikasi-penambahan.mjs"
 Cohesion: 0.17
@@ -1193,43 +1235,43 @@ Nodes (20): { app }, autoMetamaskSign(), autoSocialSign(), { createCursor }, pat
 
 ### Community 121 - "Misi"
 Cohesion: 0.12
-Nodes (5): SesiSopan, ArcticShift, _waktu(), _temuan(), _url()
+Nodes (4): SesiSopan, ArcticShift, _waktu(), _abstrak()
 
 ### Community 122 - "AksesWeb"
-Cohesion: 0.10
-Nodes (11): AksesWeb, _terblokir(), proxies(), proxy_tersamar(), _ke_www(), url_kaskus(), MediaKonsumen, RssMedia (+3 more)
+Cohesion: 0.11
+Nodes (10): AksesWeb, _terblokir(), proxies(), proxy_tersamar(), _ke_www(), MediaKonsumen, RssMedia, TurnBackHoax (+2 more)
 
 ### Community 123 - "uji-data-tabel-asn.mjs"
 Cohesion: 0.10
 Nodes (18): AKAR_REPO, berJumlah, berkas, dprd, harapSalah, hasil, J, lpBeda (+10 more)
 
 ### Community 124 - "ModuleDiscoveryService"
-Cohesion: 0.16
-Nodes (7): 1. `RequestClassifierService.js` (BARU), 2. `Kernel.js` (Dimodifikasi), Detail Perubahan, 1. Konteks & Latar Belakang Masalah, ModuleDiscoveryService, REQUIRED_MANIFEST_FIELDS, VALID_MODULE_TYPES
+Cohesion: 0.14
+Nodes (9): 1. Konteks & Latar Belakang Masalah, 2. Rincian Solusi & Perubahan Teknis, 3. Verifikasi & Pengujian, A. Migrasi Safe Filesystem pada `ModuleDiscoveryService.js`, B. Stabilisasi Siklus Render pada `WorkbenchZone.jsx` & `WorkspaceContext.jsx`, Changelog: Remediasi Backlog Runtime — Safe Module Discovery & React Render Warning Fix, ModuleDiscoveryService, REQUIRED_MANIFEST_FIELDS (+1 more)
 
 ### Community 125 - "Bagian 2: Root-Level Files"
 Cohesion: 0.22
 Nodes (9): #17 — `_DEAD_CODE_ARCHIVE_LIST.md`, #18 — `_check_archived_deps.js`, #19 — `Runtime Pipeline Audit.txt`, #20 — `TODO.md`, #21 — `Acceptance Test Suite Phase 2-5.md` + `.txt`, #22 — `.tmp_search_agent.ps1`, #23 — `mamet_fs`, #24 — `node-fetch` di root `package.json` (+1 more)
 
-### Community 126 - "2026-06-27 - Vision Baseline And Engineering Foundation"
-Cohesion: 0.05
-Nodes (39): 2026-06-23 to 2026-06-27 — Major Runtime Hardening Phase, 2026-06-27 - Mamet Engineer Blueprint And Roadmap, 2026-06-27 - Vision Baseline And Engineering Foundation, 2026-06-29 — Constitution v2 Enforcement & Architecture Audit, 2026-07-11 — Tool Dispatcher Shadow Mode + Backend Authority Architecture, ADRs Created, Agent Process Context Repair, Code Changes (+31 more)
+### Community 126 - "2026-06-27 - Mamet Engineer Blueprint And Roadmap"
+Cohesion: 0.11
+Nodes (17): 2026-06-23 to 2026-06-27 — Major Runtime Hardening Phase, 2026-06-27 - Mamet Engineer Blueprint And Roadmap, 2026-07-11 — Tool Dispatcher Shadow Mode + Backend Authority Architecture, ADRs Created, Decision, Files Added, Gaps Closed / Evolved, Lessons Learned (+9 more)
 
 ### Community 127 - "lib_deprecated_cognition/truthGraphMemory.ts"
 Cohesion: 0.15
 Nodes (7): GraphEdge, GraphNode, LEGACY_COGNITION_ENABLED, memoryGraph, traverseTruthGraph(), traverse(), TruthGraph
 
 ### Community 128 - "klaim_sumber.ts"
-Cohesion: 0.14
-Nodes (21): Bagian yang dipakai ulang, akarKata(), akarTeks(), AKHIRAN, AMBANG_TUDUH, AWALAN, barisPemisahTabel(), KATA_MIN_DINILAI (+13 more)
+Cohesion: 0.13
+Nodes (22): Bagian yang dipakai ulang, akarKata(), akarTeks(), AKHIRAN, AMBANG_TUDUH, AWALAN, barisPemisahTabel(), KATA_MIN_DINILAI (+14 more)
 
 ### Community 129 - "Laporan Verifikasi Ponytail Audit"
 Cohesion: 0.13
 Nodes (14): #25 — `backend/tools-config.js`, #26–27 — Duplikasi `runSandbox()` dan telemetry boilerplate di `server.js`, #28 — `frontend/vite.config.js.timestamp-*.mjs`, #29 — `frontend/dist/`, #30 — `frontend/.githubworkflows/` (folder typo), #39 — `mametlite/mantra mametlite.txt`, #40 — `.github/workflows/production-pipeline.yml`, Bagian 3: Backend (+6 more)
 
-### Community 130 - "uji-berkas-rahasia.cjs"
-Cohesion: 0.15
-Nodes (11): A, AKAR_REPO, alasan, blokRead, folder, fs, iRead, os (+3 more)
+### Community 130 - "services/pdfOcrService.js"
+Cohesion: 0.16
+Nodes (18): bacaHasilOcr(), bersihkanHasilOcr(), bolehCobaUlang(), bytesKeBase64(), ELEMEN_HTML, ENTITAS, GagalOcr, kirimOcr() (+10 more)
 
 ### Community 131 - "Bagian 5: Docs & Constitution"
 Cohesion: 0.22
@@ -1244,12 +1286,12 @@ Cohesion: 0.17
 Nodes (10): AKAR_REPO, as, as0, ce, peringatanSalah, pesanChat, pLive, r (+2 more)
 
 ### Community 134 - "periksaLabelSumber"
-Cohesion: 0.15
-Nodes (17): 4. Label: Sumber tanpa akhiran berkas, rujukan "Nomor N Tahun YYYY", CHIMERA sudah melarangnya sendiri, Diuji live lalu DIMATIKAN hari yang sama (keputusan Owner 2026-09-28), Dokumen itu meminta PENGGANTIAN, bukan "otak belakang", ✅ Gagasan per-klaim diserap sebagai TypeScript (keputusan Owner 2026-09-28), Hakim bayangan per kalimat — dibangun, belum dinyalakan (keputusan Owner 2026-09-28), Hipotesis Owner: "kosong karena belum diuji dengan data Mamet" — dipertimbangkan, dua bagian, Keamanan: bersih, dan itu terbukti (+9 more)
+Cohesion: 0.07
+Nodes (33): Belum dikerjakan, Graf kode (graphify), Keputusan Owner B dan perbaikan, Putaran 4 (v434, Thinking menyala → jalur hybrid, 14.32 UTC), Putaran 5 (v435, 14.46 UTC) — hanya 17 dari 26 terjawab, Uji Mutu RAG Putaran 4–5: Label Menilai Jawaban Akhir Saja, Sumber Tanpa Kutip Diterima, 4. Label: Sumber tanpa akhiran berkas, rujukan "Nomor N Tahun YYYY", Yang berubah (+25 more)
 
-### Community 135 - "BrainService"
-Cohesion: 0.05
-Nodes (38): 1. Verifikasi Dokumen Sebelum Implementasi, 2. `TierClassifierService` (Baru), 3. `BrainService` Multi-Tier, 4. Wiring & UI, 5. Batas Biaya Harian Per-User (Muncul dari Live Test), 6. Verifikasi Live, 7. Yang Sengaja TIDAK Dikerjakan, Changelog: Adaptive Model Tiering (Kecil/Sedang/Thinking) + Batas Biaya Harian Per-User (+30 more)
+### Community 135 - "TierClassifierService"
+Cohesion: 0.14
+Nodes (12): 4.1 Settings UI — dari 1 slot jadi 3 slot, 4.2 `TierClassifierService` (baru), 4.3 `BrainService.js` — routing per tingkat, 4.4 Override Manual Per-Percakapan (Client-Side-Only, Sesi Aktif Saja), 4.5 Sinkronisasi Lintas Device, 4. Arsitektur & Komponen, 5. Rencana Implementasi Bertahap, containsAny() (+4 more)
 
 ### Community 136 - "uji-hak-tabel-k5.mjs"
 Cohesion: 0.12
@@ -1260,20 +1302,20 @@ Cohesion: 0.07
 Nodes (27): CRITICAL (Menghambat integritas konstitusi), Gelombang 1 — Documentation & Governance Cleanup, Gelombang 2 — Database Schema & Metrics Foundation, Gelombang 3 — Project Memory Unification, Gelombang 4 — Context Fusion Consolidation, Gelombang 5 — `index.ts` Decomposition, Gelombang 6 — Verification Engine Hardening, INFORMATIONAL (Catatan untuk masa depan) (+19 more)
 
 ### Community 138 - "markdown.js"
-Cohesion: 0.13
-Nodes (19): 7 Oktober 2026 — Mametlite berhenti menyuntikkan HTML, Berkas, Bobotnya, apa adanya, Bukti, CSP yang teruji sebelum produksi, bukan sesudah, Lubangnya, Permintaan Owner, Satu uji yang GOYAH, dan ia bukan disebabkan pekerjaan ini (+11 more)
+Cohesion: 0.31
+Nodes (9): alamatAman(), dorongTeks(), siapkanNalar(), SKEMA_AMAN, uraikanInline(), uraikanMarkdown(), VERSI_URAIAN, SimpulKaya() (+1 more)
 
 ### Community 139 - "ref_node_url"
 Cohesion: 0.03
-Nodes (40): AKAR_REPO, blokKirim, c, CE, iAkar, iHistory, iSisipan, AKAR_REPO (+32 more)
+Nodes (36): AKAR_REPO, blokTolak, ENG, IC, iTolak, TH, AKAR_REPO, AS (+28 more)
 
 ### Community 140 - "workspace"
 Cohesion: 0.22
 Nodes (8): version, workspace, capabilities_required, description, icon, id, layout_type, title
 
 ### Community 141 - "ROADMAP-MAKSIMALKAN-MODEL — Item 131: Mamet Memaksimalkan Model, Bukan Membatasinya"
-Cohesion: 0.11
-Nodes (19): Agar tidak terulang, Dampak ke Mametlite (keputusan Owner 9 Nov: cukup dipastikan tidak rusak), Keputusan Owner (6 Nov), Pemetaan ke catatan temuan 6 Nov, Prinsip, ROADMAP-MAKSIMALKAN-MODEL — Item 131: Mamet Memaksimalkan Model, Bukan Membatasinya, Sumber temuan, Tahap 0 — Ukur apa yang benar-benar diterima model (gerbang semua tahap) 📋 🔧🖥💳 (+11 more)
+Cohesion: 0.10
+Nodes (20): Agar tidak terulang, Dampak ke Mametlite (keputusan Owner 9 Nov: cukup dipastikan tidak rusak), Keputusan Owner (6 Nov), Pemetaan ke catatan temuan 6 Nov, Prinsip, ROADMAP-MAKSIMALKAN-MODEL — Item 131: Mamet Memaksimalkan Model, Bukan Membatasinya, Sumber temuan, Tahap 0 — Ukur apa yang benar-benar diterima model (gerbang semua tahap) ✅ 🔧🖥💳 (+12 more)
 
 ### Community 142 - "lib_deprecated_cognition/unifiedCognition.ts"
 Cohesion: 0.29
@@ -1281,35 +1323,35 @@ Nodes (9): computeContextPriority(), executeCognition(), ExecutionPlan, generate
 
 ### Community 143 - "siapkan-crawler.mjs"
 Cohesion: 0.08
-Nodes (38): 26 Oktober 2026 — Rilis 4.3.0: build GitHub membangun crawler terbundel (Item 129), Belum dibuktikan / belum dijelaskan, Build di GitHub: dua kegagalan, satu akar, Bukti (sebelum push), Hasil — TERBIT, Koreksi: alamat folder data, Masalah yang ditemukan sebelum menaikkan versi, Terbukti sesudah terbit (laptop Owner, 26 Okt) (+30 more)
+Nodes (37): 26 Oktober 2026 — Rilis 4.3.0: build GitHub membangun crawler terbundel (Item 129), Belum dibuktikan / belum dijelaskan, Build di GitHub: dua kegagalan, satu akar, Bukti (sebelum push), Hasil — TERBIT, Masalah yang ditemukan sebelum menaikkan versi, Terbukti sesudah terbit (laptop Owner, 26 Okt), Yang dibuat (+29 more)
 
 ### Community 144 - "stealthKonektor.cjs"
 Cohesion: 0.06
 Nodes (32): 1. Uji stealth (sesi terpisah), 28 Oktober 2026 — Kenapa uji & build hari ini lambat: uji stealth yang goyah, dan Vite yang mengawasi hasil build, 2. Vite (sesi ini), 3. Pembersihan (atas izin Owner), Bukti penggabungan, Sisa, BATAS_MS, fs (+24 more)
 
-### Community 145 - "28 Oktober 2026 — Rilis 4.3.2: paket keamanan "Black October" (T20) + bundel crawler ber-hash"
-Cohesion: 0.05
-Nodes (32): Bukti, Cadangan Data Lengkap dari Aplikasi (Item 93 Tahap 1), Catatan, Kenapa cadangan lama dibuang, Yang dibuat, Bukti (SET ROLE di transaksi yang di-ROLLBACK), Perubahan (migrasi), RLS — Aturan "Baca Semua" & "Tulis Publik" Ditutup (temuan Item 93) (+24 more)
+### Community 145 - "Uji Pulih Cadangan ke Postgres Lokal (Item 93 Tahap 2)"
+Cohesion: 0.18
+Nodes (9): Alat (di repo, `scripts/kedaulatan/`), Bukti (berkas `mamet-cadangan-2026-09-22-01-35.json`, 47,9 MB), Pemasangan (izin unduh Owner), Sesudah uji, Uji Pulih Cadangan ke Postgres Lokal (Item 93 Tahap 2), Catatan, Kedaulatan Data — Pulihkan Cadangan ke Postgres Lokal (Item 93 Tahap 2), Sekali pasang (Windows, tanpa admin, tanpa Docker) (+1 more)
 
 ### Community 146 - "Misi"
 Cohesion: 0.10
-Nodes (20): slug(), _abstrak(), AksesPalsu, BlueskyPalsu, diam(), Respon, _rss(), SesiPalsu (+12 more)
+Nodes (25): Dispatcher, Misi, slug(), AksesPalsu, BlueskyPalsu, diam(), Respon, _rss() (+17 more)
 
-### Community 147 - "Unduh aplikasi desktop langsung dari web"
-Cohesion: 0.15
-Nodes (16): Berkas, Bukti, Dua cacat yang dijaga — keduanya DIAM, Kenapa boleh diunduh tanpa login, Masalahnya, Satu keputusan kecil yang penting, Unduh aplikasi desktop langsung dari web, Yang ditambahkan (+8 more)
+### Community 147 - "uji-label-ramah.mjs"
+Cohesion: 0.10
+Nodes (14): AKAR, esbuild, AKAR_REPO, ambil(), APP, blok, cabangPesan, DASAR (+6 more)
 
 ### Community 148 - "uji-settings-bertab.mjs"
 Cohesion: 0.14
 Nodes (10): AKAR, baris, daftar, idBagian, iIdentitas, iSection, S, subset (+2 more)
 
 ### Community 149 - "ROADMAP: KONTEKS POTONGAN RAG — BAGIAN TIDAK TERCAMPUR & JUDUL KONTEKS DI SETIAP POTONGAN"
-Cohesion: 0.14
-Nodes (16): Perubahan, 1. Masalah, 2. Bukti Pengukuran (2026-09-17 02.30 UTC), 3. Tujuan, 4. Rancangan A — Pemisah Bagian, 5. Rancangan B — Baris Konteks, 6. Tahapan & Kriteria Selesai, 7. Keputusan Owner (+8 more)
+Cohesion: 0.17
+Nodes (12): 1. Masalah, 2. Bukti Pengukuran (2026-09-17 02.30 UTC), 3. Tujuan, 4. Rancangan A — Pemisah Bagian, 5. Rancangan B — Baris Konteks, 6. Tahapan & Kriteria Selesai, 7. Keputusan Owner, 8. Risiko & Batas yang Disadari (+4 more)
 
 ### Community 150 - "sesiUmum.cjs"
-Cohesion: 0.12
-Nodes (35): buatSesiUmum(), atur(), bacaSakelar(), hapus(), matikan(), matikanSemua(), mulaiUlang(), nyalakan() (+27 more)
+Cohesion: 0.13
+Nodes (21): Yang dibangun, { Client }, fs, klienSdk(), path, ringkasParameter(), bandingkan(), crypto (+13 more)
 
 ### Community 151 - "uji-konektor-umum-g3.mjs"
 Cohesion: 0.05
@@ -1324,32 +1366,32 @@ Cohesion: 0.05
 Nodes (35): AKAR, alat, B, bawaan, berkasB, brankas, cek(), D (+27 more)
 
 ### Community 154 - "Temuan Review: Area Yang Tidak Selaras"
-Cohesion: 0.12
-Nodes (17): F-001: Dua Versi MAEF Aktif Secara Bersamaan, F-002: Dua Versi Vision Aktif Secara Bersamaan, F-003: ARCHITECTURE-GAPS.md Tidak Sinkron Dengan Gap Aktual, F-004: `docs/governance/` Redundan dan Tidak Terintegrasi, F-005: Project Memory Masih Hybrid (File + DB), Tidak Unified, F-006: `index.ts` Berukuran 122KB — Monolith Anti-MAEF, F-007: Engineering Metrics Belum Dapat Dihitung (Tabel Belum Ada), F-008: VerificationEngine adalah Skeleton — Bukan Hard Gate Nyata (+9 more)
+Cohesion: 0.11
+Nodes (18): F-001: Dua Versi MAEF Aktif Secara Bersamaan, F-002: Dua Versi Vision Aktif Secara Bersamaan, F-003: ARCHITECTURE-GAPS.md Tidak Sinkron Dengan Gap Aktual, F-004: `docs/governance/` Redundan dan Tidak Terintegrasi, F-005: Project Memory Masih Hybrid (File + DB), Tidak Unified, F-006: `index.ts` Berukuran 122KB — Monolith Anti-MAEF, F-007: Engineering Metrics Belum Dapat Dihitung (Tabel Belum Ada), F-008: VerificationEngine adalah Skeleton — Bukan Hard Gate Nyata (+10 more)
 
 ### Community 155 - "uji-unggah-bertahap.mjs"
-Cohesion: 0.07
-Nodes (14): AKAR, cek(), dir, embed, FN, logAsli, LOKASI, migrasi (+6 more)
+Cohesion: 0.06
+Nodes (20): AKAR, bersuara(), cek(), denganFetch(), diam(), dir, embed, FN (+12 more)
 
 ### Community 156 - "uji-konektor-oauth-f1.mjs"
 Cohesion: 0.06
 Nodes (30): AKAR, alur, brankas, { buatAlurOAuth }, { buatBrankas }, { buatDaftarServer }, { buatPenyediaOAuth, urlBolehDibuka }, { buatSesiUmum } (+22 more)
 
-### Community 157 - ".storeGoldenMemory"
-Cohesion: 0.16
-Nodes (13): C. Delegasi Metadata di MemoryService.js, 1. Konteks & Latar Belakang, 2. Temuan Audit Jalur Penyimpanan, 3. Rincian Perubahan Kode, 4. Hasil Validasi, Changelog: Tahap 1 Sub A — Integrasi MemoryGovernorService ke Seluruh Jalur Memory, 1. Bagaimana Ini Ditemukan, 3. Cacat #2 — Konflik Memori Salah Tuduh (+5 more)
+### Community 157 - "kemampuan_model.ts"
+Cohesion: 0.14
+Nodes (18): BATAS_WAKTU_KATALOG_MS, CADANGAN_TOKEN_JENDELA, HURUF_PER_TOKEN_PROMPT, jendela, jendelaDariEndpoint(), jendelaModelTersimpan(), katalog, maksKeluaranDariEndpoint() (+10 more)
 
 ### Community 158 - "grafHome.js"
-Cohesion: 0.04
-Nodes (105): 🚀 Changelog: Phase 3 Metadata-Driven UI, ✨ Fitur Baru (New Features), 🧹 Perbaikan & Pembersihan (Fixes & Chore), 2 November 2026 — Item 130 Tahap A: tampilan Home rapi + celah K5 tooltip graf ditutup, Akar label bertumpuk (diukur, bukan ditebak), Bukti, Celah K5: tooltip graf menjalankan HTML, Penyusun graf dipindah ke modul murni (+97 more)
+Cohesion: 0.12
+Nodes (29): Yang berubah, Tata letak (`grafHome.js` `tataSurya`), ActivityGraph(), bacaWarnaKanvas(), AMBANG_LABEL_DATA, ambangLabelData(), anakStruktur(), bolehLabel() (+21 more)
 
 ### Community 159 - "lib_deprecated_cognition/intentPreprocessor.ts"
 Cohesion: 0.32
 Nodes (7): detectStyle(), getSpecForIntent(), INTENT_MODES, INTENT_RULES, preprocessIntent(), PreprocessorOutput, STYLE_KEYWORDS
 
-### Community 160 - "ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI"
-Cohesion: 0.12
-Nodes (16): Ditutup saat perampingan (tidak perlu dikerjakan), ROADMAP: TEMUAN TERBUKA TANPA RANCANGAN SENDIRI, T11 — `check-keys` bisa dipanggil dengan kunci anon (asal Item 85 Tahap 3, 2026-09-22), T12 — Membaca berkas = mengirimnya keluar, dan tak ada satu pun pemberitahuan (diskusi Owner, 2026-09-24), T16 — ✅ Lima modul konsol uji menunjuk folder yang sudah tidak ada (ketahuan saat Item 127 Tahap 0, 2026-10-19), T17 — ✅ Penyimpanan otomatis chat melewatkan perubahan yang datang saat penyimpanan sebelumnya masih berjalan (ketahuan saat Item 127 Tahap 1, 2026-10-19), T18 — 19 kelas Tailwind di komponen tak pernah dibuat — gaya yang tertulis tapi tak tampil (ketahuan saat pemeriksaan "error tersembunyi" Item 127, 2026-10-19), T19 — ✅ Fitur lupa kata sandi & ganti kata sandi belum ada (ketahuan saat Owner mencoba masuk akun lain, 2026-10-20) (+8 more)
+### Community 160 - "metadata"
+Cohesion: 0.05
+Nodes (42): 1. Memori Lintas Percakapan Tidak Berfungsi, 2. Chat Baru Otomatis Terbuka Saat Refresh/Idle, 3. Error 400 Bad Request Saat Menyimpan Memori, 4. Duplikasi Teks pada Memori, 5. Riwayat Chat Tercampur Antar Mode, Catatan untuk Kedepannya, 📝 Changelog: Perbaikan Sistem Memori, Filter Chat, & Cleanup Database (2026-07-25), Daftar Masalah yang Ditemukan & Diperbaiki (+34 more)
 
 ### Community 161 - "uji-cadangan-data.mjs"
 Cohesion: 0.14
@@ -1360,8 +1402,8 @@ Cohesion: 0.17
 Nodes (12): 1. Masalah, 2. Keputusan & Prinsip (Owner 2026-09-21), 3. Bukti Pengukuran (2026-09-21, di luar aplikasi, $0), 4. Rancangan, 5. Tahapan & Kriteria Selesai, 6. Risiko & Pertanyaan Terbuka, ROADMAP: DATA TABEL REKONSILIASI ASN — HITUNG & SARING OLEH KODE, BUKAN OLEH RAG, Tahap 1 — Pembaca & pratinjau Excel (browser, tanpa menyimpan) (+4 more)
 
 ### Community 163 - "mametlite/src/App.jsx"
-Cohesion: 0.19
-Nodes (15): App(), buatCacheOcr(), bukaDb(), sidikBerkas(), callAgentSimple(), parseSSEStream(), perkiraanUnggah(), perkiraanMenitOcr() (+7 more)
+Cohesion: 0.15
+Nodes (20): App(), buatCacheOcr(), bukaDb(), sidikBerkas(), callAgentSimple(), parseSSEStream(), ambil(), bacaKunciByok() (+12 more)
 
 ### Community 164 - "embedding.ts"
 Cohesion: 0.12
@@ -1372,36 +1414,36 @@ Cohesion: 0.06
 Nodes (31): AKAR, { bacaFolderResep, FOLDER_BAWAAN }, bawaan, { daftarkanKonektorUmum }, dasar, dialog, dialogDitanya, dibuat() (+23 more)
 
 ### Community 166 - "📋 RENCANA IMPLEMENTASI: Engineer Self-Maintenance Pipeline (Fase 2)"
-Cohesion: 0.12
-Nodes (15): 1. Inisialisasi Session Artifact, 2. Transparansi Model, 3. Strategi Testing Bertahap, 📝 Catatan Penting Sebelum Implementasi (Dari Diskusi), 📊 Dependency Graph & Urutan Implementasi, ✅ FASE 1: Intent Detection & Klarifikasi (SELESAI), ✅ FASE 2: Capability Guard Lengkap (SELESAI), 📌 FASE 3: Reasoning Lock & Laporan (CRITICAL - Gap Terbesar) (+7 more)
+Cohesion: 0.13
+Nodes (14): 2. Transparansi Model, 3. Strategi Testing Bertahap, 📝 Catatan Penting Sebelum Implementasi (Dari Diskusi), 📊 Dependency Graph & Urutan Implementasi, ✅ FASE 1: Intent Detection & Klarifikasi (SELESAI), ✅ FASE 2: Capability Guard Lengkap (SELESAI), 📌 FASE 3: Reasoning Lock & Laporan (CRITICAL - Gap Terbesar), 📌 FASE 4: Session Artifact (+6 more)
 
 ### Community 167 - "Riwayat chat hilang setiap muat ulang + chat siluman dari pesan sistem"
-Cohesion: 0.33
-Nodes (5): Bukti live (23 September 2026), Catatan, Gejala, Riwayat chat hilang setiap muat ulang + chat siluman dari pesan sistem, Uji otomatis (di luar git)
+Cohesion: 0.29
+Nodes (6): Bukti live (23 September 2026), Catatan, Gejala, Riwayat chat hilang setiap muat ulang + chat siluman dari pesan sistem, Sebab (bukti, bukan dugaan), Uji otomatis (di luar git)
 
 ### Community 168 - "19 Oktober 2026 — seluruh aplikasi memakai palet LampLogin (Item 127, Tahap 3)"
 Cohesion: 0.33
 Nodes (6): 19 Oktober 2026 — seluruh aplikasi memakai palet LampLogin (Item 127, Tahap 3), Hasil, Kontras diukur (WCAG 2.2 AA), Penilaian Owner — belum selesai, Uji, slate()
 
-### Community 169 - "2. Rekapitulasi Rinci 9 Bug & Resolusi Permanen"
-Cohesion: 0.13
-Nodes (15): 1. Latar Belakang & Ringkasan Eksekutif, 2. Rekapitulasi Rinci 9 Bug & Resolusi Permanen, 3. Hasil Verifikasi Live Desktop Bersama Owner (100% PASS), 4. Daftar Berkas yang Dibuat & Dimodifikasi, Bug 1: Prototype Loss pada State Workspace (`this._updateState is not a function`), Bug 2: Kegagalan Pemicuan Tier 3 & Pemblokiran DuckDuckGo oleh ISP, Bug 4: Pemblokiran Content Security Policy (CSP) Renderer Electron, Bug 5: Google News RSS HTTP 403 Forbidden (+7 more)
+### Community 169 - "uji-akar-repo.cjs"
+Cohesion: 0.10
+Nodes (17): AKAR_REPO, belum, berkasBiasa, bukanRepo, dev, diInstalasi, fs, instalasi (+9 more)
 
 ### Community 170 - "remoteConversionClient.js"
-Cohesion: 0.14
-Nodes (21): E8 — ✅ SELESAI 8 Okt — galat ws-assistant memakai bahasa server, dan kalimat manusianya dibuang, mb(), RiwayatKonversi(), STATUS, ada(), BATAS_TEKNIS, blokGalat(), dariTeks() (+13 more)
+Cohesion: 0.15
+Nodes (20): mb(), RiwayatKonversi(), STATUS, ada(), BATAS_TEKNIS, blokGalat(), dariTeks(), KODE (+12 more)
 
 ### Community 171 - "ref_node_fs"
 Cohesion: 0.03
-Nodes (49): AKAR_REPO, AS, badan, blokBahan, ENDPOINT, iLogApi, ORK, RC (+41 more)
+Nodes (36): AKAR, HURUF, TUJUAN, AKAR_REPO, a, AKAR_REPO, AS, CE (+28 more)
 
 ### Community 172 - "uji-graf-home-tahap-a.mjs"
 Cohesion: 0.14
 Nodes (13): AG, AKAR, aman, baca(), dash, dir, HD, html (+5 more)
 
-### Community 173 - "Ikon"
-Cohesion: 0.12
-Nodes (22): 26 Oktober 2026 — Konektor MCP Tahap E2: tombol pasang komponen stealth (Item 129), Belum dibuktikan, Bukti, Uji, Yang dibuat, 26 Oktober 2026 — Konektor MCP Tahap E3: "Yang terpasang di perangkat ini" (Item 129), Belum dibuktikan, Bukti (+14 more)
+### Community 173 - "26 Oktober 2026 — Konektor MCP Tahap E2: tombol pasang komponen stealth (Item 129)"
+Cohesion: 0.50
+Nodes (4): 26 Oktober 2026 — Konektor MCP Tahap E2: tombol pasang komponen stealth (Item 129), Belum dibuktikan, Bukti, Uji
 
 ### Community 174 - "lib_deprecated_cognition/behaviorMemoryEngine.ts"
 Cohesion: 0.38
@@ -1419,41 +1461,41 @@ Nodes (3): memoryStore, SessionBuffer, ShortTermMessage
 Cohesion: 0.10
 Nodes (19): AKAR, baca(), berkasHome, fon, galatSaja, H, HD, jalur (+11 more)
 
-### Community 178 - "WidgetRegistry"
-Cohesion: 0.09
-Nodes (19): 1. Kernel Boot Sequence, 2. Runtime Layer & EventBus, 3. Application Manager (App Isolation), 5. Performance Context, **CERTIFIED**, FINAL STATUS, MAMET OS ARCHITECTURE V2.0 ACCEPTANCE TEST, 4. Dampak Performa: Lazy Loading & Bundle Size (+11 more)
+### Community 178 - "useDashboardData"
+Cohesion: 0.15
+Nodes (22): 2 November 2026 — Item 130 Tahap B: graf Home gratis & lampu jujur, Bukti, Dua cacat warna ikut dibetulkan, Gratis — yang dibuang dari setiap buka Home, Lampu jujur (`nilaiLampu`, `grafHome.js`), bacaHitunganGraf(), bentukLogAgen(), KOLOM_LOG_AGEN (+14 more)
 
-### Community 179 - "Detail Perubahan"
-Cohesion: 0.14
-Nodes (13): 1. Format Manifest Skill (`frontend/src/skills/*.json`), 2. `SkillRegistry.js` (BARU), 3. `SkillGuardService.js` (BARU), 4. `Kernel.js` — Urutan Registrasi Phase 3, 5. `AssistantService.js` — Method Baru, 6. `RequestClassifierService.js` — Slot SKILL Diisi, Catatan untuk AI Berikutnya, Changelog: Skill Implementation (+5 more)
+### Community 179 - "buatSesiUmum"
+Cohesion: 0.29
+Nodes (18): buatSesiUmum(), atur(), bacaSakelar(), hapus(), matikan(), matikanSemua(), mulaiUlang(), nyalakan() (+10 more)
 
-### Community 180 - "metadata"
-Cohesion: 0.16
-Nodes (14): 1. Latar Belakang, 3. Solusi, 4.1 REST API Langsung, 4.2 Build Production, 4. Verifikasi, 5. Daftar Berkas yang Dimodifikasi, Changelog: Fix Regresi HTTP 400 `verification_audit_logs` — Kolom `metadata` Tidak Ada, Perubahan (+6 more)
+### Community 180 - "📝 Changelog: Implementasi Halaman Login Interaktif, Neon Branding & Perbaikan UI (2026-08-13)"
+Cohesion: 0.12
+Nodes (15): 1. Halaman Login Kurang Menarik dan Terlihat "Kaku", 2. Input Login Berubah Putih Cerah Saat Autofill Chrome, 3. Branding Mamet OS Terlalu Kecil dan Tidak Terlihat (Ikon Terpotong), 4. Panel Login Terpotong dan Tidak Responsif di Layar Laptop, 5. Tekstur Dinding Terlihat Seperti Garis-Garis Kisi, 6. React DOM Property Error pada SVG Filter, 7. Sakelar Tidak Bisa Diklik Saat DevTools Terbuka, Catatan untuk Kedepannya (+7 more)
 
 ### Community 181 - "uji-konektor-umum-g2.mjs"
 Cohesion: 0.08
 Nodes (22): AKAR, baca(), berkasDeskripsi, { buatBrankas }, { buatDaftarServer }, { buatSesiUmum, ringkasParameter }, { daftar, brankas, sesi }, dibuat() (+14 more)
 
 ### Community 182 - "serverOAuthTiruan.cjs"
-Cohesion: 0.10
-Nodes (21): { createRequire }, crypto, fs, { ListToolsRequestSchema, CallToolRequestSchema }, path, req, { Server }, { StdioServerTransport } (+13 more)
+Cohesion: 0.19
+Nodes (13): acak(), bacaBadan(), cocokBalikan(), { createRequire }, crypto, http, { ListToolsRequestSchema, CallToolRequestSchema }, mulai() (+5 more)
 
 ### Community 183 - "ROADMAP: KEDAULATAN DATA — Salinan Sendiri yang Terbukti Bisa Dipulihkan, lalu Postgres Lokal (Item 93)"
 Cohesion: 0.08
 Nodes (26): 1. Masalah & Tujuan, 2. Fakta (diukur 2026-09-21/22), 3. Peta Lapisan (keputusan arah — dari diskusi), 4. Tahapan & Kriteria Selesai, 5. Risiko & Pertanyaan Terbuka, ROADMAP: KEDAULATAN DATA — Salinan Sendiri yang Terbukti Bisa Dipulihkan, lalu Postgres Lokal (Item 93), Tahap 1 — Cadangan yang benar-benar lengkap, Tahap 2 — Uji pulih ke Postgres lokal (+18 more)
 
-### Community 184 - "K1 Langkah 2 — Unggah Dokumen Besar Bertahap (Satu Berkas Mentah = Satu Dokumen)"
-Cohesion: 0.13
-Nodes (14): Bukti live (log `rag-process` + database), Diperbaiki sambil jalan, K1 Langkah 2 — Unggah Dokumen Besar Bertahap (Satu Berkas Mentah = Satu Dokumen), Kenapa, Sisa (ROADMAP-HARDENING), Uji, Ukur rute embedding (sebelum deploy), Yang dipasang (+6 more)
+### Community 184 - "uji-cari-judul.mjs"
+Cohesion: 0.12
+Nodes (13): AKAR, asli, dirUji, DS, g, iCatch, iJudul, iTry (+5 more)
 
 ### Community 185 - "Pencarian Memori Semantik Akhirnya Hidup — dan Ambang 0,8 yang Nyaris Membuatnya Sia-Sia"
 Cohesion: 0.17
 Nodes (11): Ambang 0,8 — temuan yang hanya bisa muncul setelah datanya benar, Bukti bahwa 0,8 penyimpangan, bukan kebijakan, Bukti tiga ujung, Jalur tulis ketiga yang nyaris terlewat lagi, Keputusan Owner: 0,70, Pencarian Memori Semantik Akhirnya Hidup — dan Ambang 0,8 yang Nyaris Membuatnya Sia-Sia, Penjagaan yang wajib, Pilihan (a): endpoint di server (+3 more)
 
-### Community 186 - "uji-folder-jalan-protokol.mjs"
-Cohesion: 0.17
-Nodes (10): AKAR_REPO, b, galat, habis, ok, palsu, pesan, r (+2 more)
+### Community 186 - "InternalKnowledgeFallbackService"
+Cohesion: 0.16
+Nodes (10): 1. Latar Belakang & Masalah Arsitektur, 2. Rincian Perubahan Kode, 3. Hasil Verifikasi, A. Modul Baru `InternalKnowledgeFallbackService.js` (PR#9 Fase 2), B. Integrasi Transisi di `RetrievalOrchestrator.js`, C. Registrasi Runtime di `Kernel.js`, CHANGELOG — PR#9 Fase 2: Implementasi Tier 2 Internal LLM Fallback, D. Penyelarasan Verification Engine (`CHECK_002B`) (+2 more)
 
 ### Community 187 - "uji-rag-turun-catatan.mjs"
 Cohesion: 0.14
@@ -1472,8 +1514,8 @@ Cohesion: 0.18
 Nodes (11): Daftar kerja, K1 — RAG menemukan & menjawab benar, K2 — RAG jujur saat gagal, K3 — Data tabel ASN, K4 — Mametlite layak bagi orang awam, K5 — Keamanan, K6 — Data aman & bisa dipulihkan, K7 — Stabil & sampai ke aplikasi terpasang (+3 more)
 
 ### Community 191 - "2026-07-24: Memory System Repair — Policy Fix, UUID Error, dan Boot Crash Fix"
-Cohesion: 0.05
-Nodes (41): 2.4 Kelompok D — Auth & Execution Context, 2026-07-24: Memory System Repair — Policy Fix, UUID Error, dan Boot Crash Fix, Bug 1 — BOOT CRASH: `ReferenceError: mode is not defined`, Bug 2 — UUID ERROR: `invalid input syntax for type uuid: "ws-assistant"`, Bug 3 — MEMORY NOT SAVED: `canWriteMemory=false` untuk mode ASSISTANT, Bug 4 — RAG MAPPING: `m.content` tidak ditemukan di `user_memories`, Bug Terbuka (Dilaporkan User), Ringkasan Masalah (+33 more)
+Cohesion: 0.10
+Nodes (20): 2.4 Kelompok D — Auth & Execution Context, 2026-07-24: Memory System Repair — Policy Fix, UUID Error, dan Boot Crash Fix, Bug 1 — BOOT CRASH: `ReferenceError: mode is not defined`, Bug 2 — UUID ERROR: `invalid input syntax for type uuid: "ws-assistant"`, Bug 3 — MEMORY NOT SAVED: `canWriteMemory=false` untuk mode ASSISTANT, Bug 4 — RAG MAPPING: `m.content` tidak ditemukan di `user_memories`, Bug Terbuka (Dilaporkan User), Ringkasan Masalah (+12 more)
 
 ### Community 192 - "07_ENGINEERING_SYSTEM.md"
 Cohesion: 0.04
@@ -1492,8 +1534,8 @@ Cohesion: 0.05
 Nodes (44): AG, AKAR, APP, asingDiKode, baca(), BERKAS, biru, conf (+36 more)
 
 ### Community 196 - "ROADMAP: KONEKTOR MCP — MAMET ECOSYSTEM"
-Cohesion: 0.14
-Nodes (14): 1. Tujuan, 2. Yang sudah ada dan bersinggungan, 3. Batas dari konstitusi yang wajib dihormati, 4. Keputusan Owner, 7. Keputusan, 8. Langkah berikutnya, 9. Tahap G — Konektor umum ("banyak tangan") — 🟡 G1 ✅ G2 ✅ G3 ✅ G5 ✅ 3 Nov 2026 (G4 GitHub live menunggu unduhan, token, saldo), Cara GitHub dipasang (usulan, menunggu Owner) (+6 more)
+Cohesion: 0.25
+Nodes (8): 1. Tujuan, 2. Yang sudah ada dan bersinggungan, 3. Batas dari konstitusi yang wajib dihormati, 4. Keputusan Owner, 7. Keputusan, 8. Langkah berikutnya, Google Drive — ditunda (catatan untuk nanti, diperiksa 22 Okt 2026), ROADMAP: KONEKTOR MCP — MAMET ECOSYSTEM
 
 ### Community 197 - "FASE 3 — Adaptive Shell (Komponen Terpisah per Device)"
 Cohesion: 0.40
@@ -1504,40 +1546,40 @@ Cohesion: 0.15
 Nodes (9): AKAR_REPO, dipakai, hilang, ikonApp, kembar, masihLucide, PKG, subset (+1 more)
 
 ### Community 199 - "INDEX — Peta Dokumen Roadmap Mamet OS Ecosystem"
-Cohesion: 0.24
-Nodes (8): B. Integrasi AssistantService.js, 1. Latar Belakang & Gejala, 2. Akar Masalah (Root Cause), 3. Rencana Perubahan Kode, 4. Rencana Pengujian, A. Core Runtime (`AssistantService.js`), B. Frontend UI (`ConversationEngine.jsx`), Implementation Plan: Assistant Session Finalization & Auto-Save Throttling
+Cohesion: 0.12
+Nodes (15): 1. Latar Belakang & Masalah Arsitektur, 2. Rincian Perubahan Kode, 3. Hasil Verifikasi, A. Penyempurnaan Behavioral Contract MemoryGovernorService.js, B. Integrasi AssistantService.js, CHANGELOG — Integrasi MemoryGovernorService ke AssistantService & Observabilitas Konflik, D. Observabilitas Konflik di HomeDashboard, 1. Latar Belakang & Gejala (+7 more)
 
 ### Community 200 - "uji-baca-pdf-ecosystem.mjs"
 Cohesion: 0.15
 Nodes (11): AKAR, bacaan, contoh, h1, h2, hal, kemajuan, KODE_OCR (+3 more)
 
-### Community 201 - "uji-proxy-fetch-aman.mjs"
-Cohesion: 0.14
-Nodes (9): AKAR, AP, AUTH, dir, INDEX, iProxy, lolos, req (+1 more)
+### Community 201 - "dataTabelAsnOcr.js"
+Cohesion: 0.27
+Nodes (12): bacaBerkasPdfAsn(), bacaOcrAsn(), barisJudulKolom(), barisTabel(), dariOcr(), judulTabel(), kecil(), kosong() (+4 more)
 
 ### Community 202 - "scripts"
 Cohesion: 0.67
 Nodes (3): scripts, dev, start
 
 ### Community 203 - "Changelog: Remediasi Akurasi Retrieval RAG — Smart Title-Aware Matching, Expanded Stopwords, & Multi-Term Scoring"
-Cohesion: 0.14
+Cohesion: 0.15
 Nodes (13): 1. Latar Belakang & Temuan Uji Live Desktop, 2. Analisis Akar Masalah (Root Cause), 3. Solusi Arsitektural & Perbaikan, 4. Hasil Verifikasi & Pengujian, 5. Berkas yang Dimodifikasi, A. Perluasan Stopwords Percakapan, A. Uji Kueri Langsung ke Database Supabase, B. Smart Title-Aware Pre-Matching (+5 more)
 
 ### Community 204 - "konektorAlat.js"
-Cohesion: 0.08
-Nodes (31): 3 November 2026 — Konektor MCP Tahap F2: Notion lewat "Hubungkan akun" (OAuth), Tinjau alat untuk server besar, server v547, Bukti, Deploy (bukti platform), Di aplikasi Owner (3 Nov), Yang dibangun, Bukti, Keadaan sekarang (dibaca 3 Nov), BATAS_ARGUMEN_HURUF (+23 more)
+Cohesion: 0.05
+Nodes (58): 3 November 2026 — Konektor MCP Tahap F2: Notion lewat "Hubungkan akun" (OAuth), Tinjau alat untuk server besar, server v547, Bukti, Deploy (bukti platform), Di aplikasi Owner (3 Nov), Yang dibangun, 3 November 2026 — Konektor MCP Tahap G3: protokol konektor umum ke model, gerbang izin K17, server v546, Bukti, Deploy (bukti platform) (+50 more)
 
 ### Community 205 - "uji-hapus-dokumen-banyak.mjs"
 Cohesion: 0.15
 Nodes (7): postcss@^8.4.31, postcss, AKAR, BILAH, muat, RA, require
 
 ### Community 206 - "Misi"
-Cohesion: 0.06
-Nodes (42): EcosystemCrawler, _csv(), ekspor(), _item_md(), _jsonl(), _md(), Dispatcher, lapor() (+34 more)
+Cohesion: 0.08
+Nodes (22): EcosystemCrawler, _csv(), ekspor(), _item_md(), _jsonl(), _md(), tanggal_relatif(), baca_konfigurasi() (+14 more)
 
-### Community 207 - "detectBreakingChanges"
-Cohesion: 0.35
-Nodes (12): Fase 3 — Static Code Analyzer (Risiko Rendah) ✅ SELESAI (2026-09-08), 1. Ringkasan, 2. Temuan Saat Eksekusi (Pola Sama Seperti Fase 2), 3. Perubahan, 4. Verifikasi, 5. Langkah Selanjutnya, Changelog: ADR-0017 Fase 3 — Ekstraksi StaticCodeAnalyzer dari engineer.js, detectBreakingChanges() (+4 more)
+### Community 207 - "deps"
+Cohesion: 0.09
+Nodes (29): Fase 3 — Static Code Analyzer (Risiko Rendah) ✅ SELESAI (2026-09-08), 1. Ringkasan, 2. Temuan Saat Eksekusi (Pola Sama Seperti Fase 2), 3. Perubahan, 4. Verifikasi, Changelog: ADR-0017 Fase 3 — Ekstraksi StaticCodeAnalyzer dari engineer.js, 1. Ringkasan, 2. Keputusan Desain: `_emitRecommendation` Dipertahankan sebagai Wrapper (+21 more)
 
 ### Community 208 - "uji-tema-tahap-b.mjs"
 Cohesion: 0.05
@@ -1555,36 +1597,36 @@ Nodes (5): calculateTruthScore(), CMGInput, CMGOutput, LEGACY_COGNITION_ENABLED,
 Cohesion: 0.22
 Nodes (7): AKAR, CE, dunia(), w, kodeSaja, tidur(), w
 
-### Community 212 - "SystemLogsApp"
-Cohesion: 0.16
-Nodes (15): 1. Latar Belakang, 2.1 Bug Prasyarat yang Ditemukan, 2.2 Aplikasi `SystemLogsApp`, 2. Item 11 — System Diagnostic App (`roadmap-lanjutan.md` §4.2), 3. Item 12 — Distilasi Pengetahuan Arsip (`roadmap-lanjutan.md` §1.2), 4. Item 13 — Aturan Prompt Pengaman (`roadmap-lanjutan.md` §3.1), 5.1 Build Production, 5.2 Verifikasi Live (dev server `localhost:5173`) (+7 more)
+### Community 212 - "ruangPengetahuan.js"
+Cohesion: 0.19
+Nodes (15): Bukti, Catatan, Ke mana unggahan masuk (dijawab dari kode), Masalah, Perubahan, Workspace di Research App — Buat, Ganti Nama, Hapus Bila Kosong, Pilihan Diingat, 6.3 Halaman lain, DaftarWorkspace() (+7 more)
 
 ### Community 213 - "SemanticContextService"
-Cohesion: 0.14
-Nodes (9): 3. ALUR SEMANTIC UNDERSTANDING (SemanticContextService → IntentParser → EntityExtractor), 🔴 Temuan 4 — Semantic Context Tidak Pernah Sampai ke Backend (Lihat Temuan 1), ✅ Yang Berfungsi, `_handleLookup()` — BARU (alur ringan), 2. Isolasi Scope & Rincian Perubahan Kode, A. Perlindungan Ketat Logika Retrieval Backend (Tahap C.1):, B. Penyediaan Data Khusus Tampilan (Tahap C.2):, 1.2 `LookupHandler` (baru, di dalam AssistantService) (+1 more)
+Cohesion: 0.22
+Nodes (4): 3. ALUR SEMANTIC UNDERSTANDING (SemanticContextService → IntentParser → EntityExtractor), 🔴 Temuan 4 — Semantic Context Tidak Pernah Sampai ke Backend (Lihat Temuan 1), ✅ Yang Berfungsi, SemanticContextService
 
 ### Community 214 - "synthesis_handler.ts"
-Cohesion: 0.06
-Nodes (39): 5b. Nalar OpenRouter diteruskan, ALIAS_TOOLS, SUBAGEN, SUBAGEN_KHUSUS_PEMILIK, SUBAGEN_MAMETLITE, missingEnvs, REQUIRED_ENV_VARS, start() (+31 more)
+Cohesion: 0.08
+Nodes (35): 1. Uji mutu RAG putaran 3 (v429, 12.36 UTC), 3. Uji 7 pesan chat (13.34 UTC) — temuan, 5. Nalar model ditampilkan seperti DeepSeek, 5a. Tampilan (`ConversationEngine.jsx`), 5b. Nalar OpenRouter diteruskan, 5c. Bahasa nalar, Keterbatasan / belum dikerjakan, Uji Mutu RAG Putaran 3, Memori Chat Pulih, Nalar Model Mengalir Sebelum Jawaban, Label Memeriksa Rujukan (+27 more)
 
 ### Community 215 - "uji-penyedia-per-pesan.mjs"
 Cohesion: 0.12
 Nodes (13): ADAPTER, AKAR_REPO, AS, blokData, blokKirim, CE, iCatatStream, iLabel (+5 more)
 
 ### Community 216 - "CLAUDE.md — Aturan Kerja Praktis AI Coding"
-Cohesion: 0.22
-Nodes (8): CLAUDE.md — Aturan Kerja Praktis AI Coding, Komentar kode (keputusan Owner 6 Nov 2026), Komunikasi & Git, Memaksimalkan model (keputusan Owner 6 Nov 2026 — Item 131), Privasi, Struktur kode, Uji, Urutan selesai kerja
+Cohesion: 0.12
+Nodes (14): CLAUDE.md — Aturan Kerja Praktis AI Coding, Komentar kode (keputusan Owner 6 Nov 2026), Komunikasi & Git, Memaksimalkan model (keputusan Owner 6 Nov 2026 — Item 131), Privasi, Struktur kode, Uji, Urutan selesai kerja (+6 more)
 
 ### Community 217 - "backend/vercel.json"
 Cohesion: 0.50
 Nodes (3): builds, routes, version
 
-### Community 218 - "CHANGELOG: Audit & Rencana Implementasi - Engineer Workspace"
-Cohesion: 0.29
-Nodes (6): 1. Kesiapan Sistem (Apa yang Sudah Siap), 2. Defisit Sistem (Apa yang Belum Siap), 3. Dependensi (Blockers), 4. Urutan Implementasi (The Most Efficient Path), 5. Keputusan, CHANGELOG: Audit & Rencana Implementasi - Engineer Workspace
+### Community 218 - "uji-klaim-engineer.mjs"
+Cohesion: 0.13
+Nodes (13): a2, AKAR_REPO, alamatSkrip, { blok, galat }, blokFungsiSalah, h2, laporan, pk (+5 more)
 
 ### Community 219 - "Label VERIFIED Ikut Memeriksa Angka dan Pasangan Label–Angka"
-Cohesion: 0.20
+Cohesion: 0.22
 Nodes (11): Bukti live v426 (web, 2026-09-14 07.46 UTC), Jawaban tanpa label (uji live web sesudah v425), Keterbatasan, Label VERIFIED Ikut Memeriksa Angka dan Pasangan Label–Angka, Masalah, Nomor halaman karangan (temuan uji web), Uji, Berkas (+3 more)
 
 ### Community 220 - "lib_deprecated_cognition/singleCognitiveCore.ts"
@@ -1595,21 +1637,21 @@ Nodes (3): LEGACY_COGNITION_ENABLED, SCCInput, SCCOutput
 Cohesion: 0.50
 Nodes (3): imports, @supabase/functions-js, @supabase/server
 
-### Community 222 - "Uji Mutu RAG Putaran 3, Memori Chat Pulih, Nalar Model Mengalir Sebelum Jawaban, Label Memeriksa Rujukan"
-Cohesion: 0.29
-Nodes (7): 1. Uji mutu RAG putaran 3 (v429, 12.36 UTC), 3. Uji 7 pesan chat (13.34 UTC) — temuan, 5. Nalar model ditampilkan seperti DeepSeek, 5a. Tampilan (`ConversationEngine.jsx`), 5c. Bahasa nalar, Keterbatasan / belum dikerjakan, Uji Mutu RAG Putaran 3, Memori Chat Pulih, Nalar Model Mengalir Sebelum Jawaban, Label Memeriksa Rujukan
+### Community 222 - "BrainService"
+Cohesion: 0.26
+Nodes (3): 3. `BrainService` Multi-Tier, 4. Di Luar Daftar Item 35, Tapi Wajib: Toggle di Settings, BrainService
 
 ### Community 223 - "memory.ts"
 Cohesion: 0.50
 Nodes (3): MemoryNode, MemoryReadRequest, MemoryWriteRequest
 
-### Community 224 - "ROADMAP-ENGINEER-MANDIRI.md"
-Cohesion: 0.06
-Nodes (28): Bukti live, Jendela konteks per percakapan + peristiwa Engineer tak lagi bocor, Keputusan Owner (23 September 2026), Masalah, Peristiwa Engineer tak lagi bocor ke chat lain, Sisa pekerjaan Tahap 3a, Uji otomatis (di luar git), Yang dikerjakan (+20 more)
+### Community 224 - "Jendela konteks per percakapan + peristiwa Engineer tak lagi bocor"
+Cohesion: 0.11
+Nodes (18): Bukti live, Jendela konteks per percakapan + peristiwa Engineer tak lagi bocor, Keputusan Owner (23 September 2026), Masalah, Peristiwa Engineer tak lagi bocor ke chat lain, Sisa pekerjaan Tahap 3a, Tiga cacat yang terlihat live, semuanya kesalahan saya, Uji otomatis (di luar git) (+10 more)
 
 ### Community 225 - "uji-folder-label.mjs"
-Cohesion: 0.04
-Nodes (39): AKAR_REPO, hasilBlame, hasilGrep, jalan, konst, nomor, p, posisi (+31 more)
+Cohesion: 0.03
+Nodes (46): AKAR, arg, daftarBerkas(), keCRLF(), PERIKSA_SAJA, SEMUA, tampakBiner(), utama() (+38 more)
 
 ### Community 226 - "hapus-komentar.mjs"
 Cohesion: 0.27
@@ -1623,9 +1665,9 @@ Nodes (12): adaJenis(), AKAR, bocorHtml, csp, isiApp, isiLib, isiTeksKaya, kodeS
 Cohesion: 0.06
 Nodes (37): AKAR, aturan(), bedaGlobal, blok, blokTanpaKomentar, conf, CONTOH, css (+29 more)
 
-### Community 230 - "VaultService"
-Cohesion: 0.06
-Nodes (25): 1. `frontend/src/core/runtime/services/BrainService.js`, 2. `backend/server.js`, 3. `frontend/src/components/AIAgent/AIAgent.jsx`, 4. `frontend/src/components/Settings.jsx`, Alur Koneksi AI (Setelah Fix), Bug #1 — `AIAgent.jsx`: Pesan tidak pernah dikirim ke backend (Severity: CRITICAL), Bug #2 — `BrainService.js`: Model tidak disimpan (Severity: HIGH), Bug #3 — `backend/server.js`: Tidak ada endpoint untuk API key dari UI (Severity: HIGH) (+17 more)
+### Community 230 - "CHANGELOG: Fix AI Connectivity — Settings Dashboard"
+Cohesion: 0.12
+Nodes (15): 1. `frontend/src/core/runtime/services/BrainService.js`, 2. `backend/server.js`, 3. `frontend/src/components/AIAgent/AIAgent.jsx`, 4. `frontend/src/components/Settings.jsx`, Alur Koneksi AI (Setelah Fix), Bug #1 — `AIAgent.jsx`: Pesan tidak pernah dikirim ke backend (Severity: CRITICAL), Bug #2 — `BrainService.js`: Model tidak disimpan (Severity: HIGH), Bug #3 — `backend/server.js`: Tidak ada endpoint untuk API key dari UI (Severity: HIGH) (+7 more)
 
 ### Community 233 - "mametlite/vite.config.js"
 Cohesion: 0.29
@@ -1635,9 +1677,9 @@ Nodes (3): rollup-obfuscator@^4.1.1, HEADER, rollup-obfuscator
 Cohesion: 0.10
 Nodes (17): AKAR, bawaan, CE, CH, dA, dE, dibuat(), kelas (+9 more)
 
-### Community 235 - "Temuan"
-Cohesion: 0.09
-Nodes (15): Temuan, Inbox, _make(), _platform_for(), _read_csv(), _read_txt(), _dari_info_ytdlp(), _id_video() (+7 more)
+### Community 235 - ".ambil"
+Cohesion: 0.20
+Nodes (6): _dari_info_ytdlp(), _id_video(), _LogYtdlp, YouTube, api(), test_youtube_tanpa_kunci_pakai_ytdlp()
 
 ### Community 236 - "1 Oktober 2026 — Kacamata kuda Engineer dilepas: kode sumber jadi evidence yang sah"
 Cohesion: 0.15
@@ -1656,20 +1698,20 @@ Cohesion: 0.17
 Nodes (9): AKAR_REPO, DIR_SEMENTARA, jawabanLive, jawabanNormal, lamaTs, r, rLama, TMP (+1 more)
 
 ### Community 240 - "uji-hapus-akun-beserta-data.mjs"
-Cohesion: 0.18
+Cohesion: 0.17
 Nodes (8): AKAR, MIG, NO_ACTION, SET_NULL_MILIK_AKUN, TANPA_FK_TEKS, TANPA_FK_UUID, teks, uuid
 
 ### Community 242 - "mcp_server.py"
-Cohesion: 0.06
-Nodes (35): tanggal_relatif(), akses(), baca_tangkapan(), daftar_misi(), ekspor_misi(), jalankan_misi(), katalog(), main() (+27 more)
+Cohesion: 0.07
+Nodes (32): akses(), baca_tangkapan(), daftar_misi(), ekspor_misi(), jalankan_misi(), katalog(), main(), _status() (+24 more)
 
-### Community 243 - "Sub B — CP4b: UI Purge Lifecycle & Conflict Resolution"
-Cohesion: 0.15
-Nodes (12): 2. Solusi yang Diterapkan, A. Unifikasi ke `RequestClassifierService.js`, B. Dispatcher di `AssistantService.js`, 1. Ringkasan, 2. Urutan Sub-Task (Pengerjaan Sekuensial), 3. Validasi Akhir Tahap 1 (Exit Criteria Menyeluruh), Bagian 1 — Pengayaan `metadata.conflict_info` (Temuan Audit 2026-09-03):, Bagian 2 — Penurunan Log Level: (+4 more)
+### Community 243 - "Implementation Plan: Intent Classifier Unification & Memory Store Guarding"
+Cohesion: 0.33
+Nodes (6): 1. Latar Belakang & Akar Masalah, 2. Solusi yang Diterapkan, 3. Matriks Pengujian (15 Skenario), 4. Bukti Validasi Live Desktop (4/4 Skenario Kunci), A. Unifikasi ke `RequestClassifierService.js`, Implementation Plan: Intent Classifier Unification & Memory Store Guarding
 
-### Community 244 - "2 Oktober 2026 — RAG yang mati sendiri akhirnya bersuara"
-Cohesion: 0.18
-Nodes (10): 1. Sebabnya dicatat, tanpa mengubah kontraknya, 2 Oktober 2026 — RAG yang mati sendiri akhirnya bersuara, 2. Penurunannya ditulis ke layar, dengan akibatnya, 3. Memori dibedakan dari dokumen, 4. Satu pengerasan — dan uji mutasi yang membongkar klaim saya, Apa yang sebenarnya terjadi, Koreksi atas laporan saya sendiri, Perlu DEPLOY (+2 more)
+### Community 244 - "19 Oktober 2026 — kolom baca chat tidak lagi dijepit (Item 127 Tahap 2, langkah 2a)"
+Cohesion: 0.13
+Nodes (12): 19 Oktober 2026 — kolom baca chat tidak lagi dijepit (Item 127 Tahap 2, langkah 2a), Berkas, Bukti, Dua cacat buatan sendiri, ketahuan sebelum commit, Sisa, untuk Tahap 3, Untuk Owner, Yang berubah — diukur di 1366×720, layar Owner, 19 Oktober 2026 — Settings bertab: daftar di kiri, satu bagian di kanan (Item 127 Tahap 2, langkah 2b) (+4 more)
 
 ### Community 245 - "uji-batas-rag-process.mjs"
 Cohesion: 0.20
@@ -1684,8 +1726,8 @@ Cohesion: 0.20
 Nodes (7): ADR-CRW-0005: Crawler sebagai Layanan Python Lokal dengan Tiga Wajah (CLI, HTTP, MCP), Alternatives, Consequences, Context, Impact Scope, Related Components, ADR Ecosystem Crawler
 
 ### Community 255 - "1. RFC-011: Kernel-First Bootloader"
-Cohesion: 0.20
-Nodes (9): 1.1. Architecture Gap, 1.2. Design Decision, 1.3. Implementation Plan, 1. RFC-011: Kernel-First Bootloader, 3.1. Architecture Gap, 3.2. Design Decision, 3.3. Implementation Plan, 3. RFC-010: OS-Level Debouncer Service (+1 more)
+Cohesion: 0.17
+Nodes (11): 1.1. Architecture Gap, 1.2. Design Decision, 1.3. Implementation Plan, 1. RFC-011: Kernel-First Bootloader, 2.1. Architecture Gap, 2.2. Design Decision, 2.3. Implementation Plan, 2. RFC-012: Task Scheduler Service (+3 more)
 
 ### Community 256 - "uji-format-angka.mjs"
 Cohesion: 0.17
@@ -1724,8 +1766,8 @@ Cohesion: 0.06
 Nodes (32): AKAR, akarUji, berkas, bocor, dataUji, dialog, dipanggil, folderData (+24 more)
 
 ### Community 267 - "AUDIT-05: Verification Engine Architecture Audit — Double Source of Truth"
-Cohesion: 0.07
-Nodes (26): AUDIT-05: Verification Engine Architecture Audit — Double Source of Truth, Background, Confidence Level, Confirmed Facts, Execution Flow (Architecture Dependency Chain), Files Examined, Finding 1: Double Source of Truth is Confirmed, Finding 2: Parser is a Presentation Layer Acting as Authoritative Source (+18 more)
+Cohesion: 0.06
+Nodes (32): AUDIT-05: Verification Engine Architecture Audit — Double Source of Truth, Background, Confidence Level, Confirmed Facts, Design Intent Analysis, Execution Flow (Architecture Dependency Chain), Files Examined, Finding 1: Double Source of Truth is Confirmed (+24 more)
 
 ### Community 268 - "03_CAPABILITY_PORT.md"
 Cohesion: 0.06
@@ -1736,20 +1778,20 @@ Cohesion: 0.06
 Nodes (29): 1. AI ADAPTER, 2. DATABASE ADAPTER, 2. Execute(input), 3. Normalize(output), 3. SEARCH ADAPTER, 4. TOOL ADAPTER, 5. RUNTIME ADAPTER, ADAPTER CONTRACT (+21 more)
 
 ### Community 270 - "3. Log Eksekusi Terminal Tahap 3"
-Cohesion: 0.08
-Nodes (25): 1. Tujuan & Sasaran Kerja, 3. Log Eksekusi Terminal Tahap 3, BAGIAN II: TAHAP 3 — `WebComparisonService.js` (PR#9 Fase 3), Perintah 1: Menjalankan Test Suite Matrix Tahap 3, Perintah 2: Menjalankan Ulang Test Suite Matrix, Perintah 3: Pembersihan Berkas Pengujian di Scratch, Perintah 4: Build Produksi Frontend, Perintah 5: Pengecekan Git Status (+17 more)
+Cohesion: 0.07
+Nodes (28): Perintah 1: Menjalankan Test Suite Matrix Tahap 3, 1. Konteks Arsitektural (PR#9 §2, §3, §6), 1. Rincian Bug 1 s.d. 3 (Runtime, Sufficiency, & Approval Handshake), 2. Rincian Bug 4: Pemblokiran Content Security Policy (CSP) Renderer, 3. Hasil Pengujian & Verifikasi Menyeluruh, 3. Ketetapan Governance Baru (Mandatory Engineering Policy), 4. Berkas yang Dibuat & Dimodifikasi, 4. Rincian Bug 5 s.d. 7 (HTTP 403 Google News, Wikipedia Leak, & Electron IPC Fetch Bridge) (+20 more)
 
-### Community 271 - "Enam Kegagalan yang Ditelan Diam-diam"
-Cohesion: 0.18
-Nodes (10): 10. Pelajaran, 1. Satu Penyakit, Enam Gejala, 3. Item 39 — Penjaga Dimensi Embedding Tertinggal di 768, 4. Item 40 — Ranjau di `rag-process` yang Belum Meledak, 5. Item 41 — Circuit Breaker Memblokir Biaya yang Tidak Pernah Terjadi, 6. Item 42 — `usage.cost`: Menghapus Seluruh Kelas Kesalahan, 7. Item 43 — Sistem Menghukum Model karena Mematuhi Perintahnya Sendiri, 8. Bukti Verifikasi Akhir (+2 more)
+### Community 271 - "uji-tema-tahap-c.mjs"
+Cohesion: 0.14
+Nodes (10): AKAR, BT, css, loadConfig, meta, pilihan, postcss, reqFE (+2 more)
 
 ### Community 272 - "TemaService"
 Cohesion: 0.10
 Nodes (28): 20 Oktober 2026 — tema aplikasi Tahap C: "Kurangi gerakan" & lampu ruangan (Item 128), Juga dicatat, Kurangi gerakan, Lampu ruangan, Uji, 29 Oktober 2026 — Baris "🔍 Dicari" & "📋 Rencana" tampil langsung di gelembung jawaban (ADR-0021 §2.3, Varian B), Bukti, Pratinjau & pilihan Owner (+20 more)
 
 ### Community 273 - "Engineer"
-Cohesion: 0.09
-Nodes (33): 2.10 Kelompok J — Patch Applier & Confidence (Risiko Tinggi), 2.11 Kelompok K — Core Orchestrator (Tetap di `engineer.js`), 2.2 Kelompok B — Engineer Memory Store (Persistensi), 2.3 Kelompok C — Capability Guard & Compliance (Kebijakan, Deterministik, 0 LLM), 2.4 Kelompok D — Intent Classifier (Deterministik, 0 LLM), 2.5 Kelompok E — Reasoning Lock & Approval Gateway (Event-Driven), 2.6 Kelompok F — Read-Only Task Handlers, 2.7 Kelompok G — Static Code Analyzer (Deterministik, 0 LLM) (+25 more)
+Cohesion: 0.08
+Nodes (37): 2.10 Kelompok J — Patch Applier & Confidence (Risiko Tinggi), 2.11 Kelompok K — Core Orchestrator (Tetap di `engineer.js`), 2.2 Kelompok B — Engineer Memory Store (Persistensi), 2.3 Kelompok C — Capability Guard & Compliance (Kebijakan, Deterministik, 0 LLM), 2.4 Kelompok D — Intent Classifier (Deterministik, 0 LLM), 2.5 Kelompok E — Reasoning Lock & Approval Gateway (Event-Driven), 2.6 Kelompok F — Read-Only Task Handlers, 2.7 Kelompok G — Static Code Analyzer (Deterministik, 0 LLM) (+29 more)
 
 ### Community 274 - "🏗️ AI Agent - Architecture Guide"
 Cohesion: 0.06
@@ -1760,16 +1802,16 @@ Cohesion: 0.06
 Nodes (32): ARCHIVE_CLEANUP — Folder Besar (Evaluasi Per-Subfolder), Checklist Global Sebelum Memulai, Checklist PHASE-0, Guiding Principles, Item MANUAL_REVIEW (Belum Masuk PR), Kategori Detail, Koreksi Penting dari Audit Awal, MANUAL_REVIEW — Keputusan Manusia Diperlukan (+24 more)
 
 ### Community 276 - "uji-peringatan-skrip.mjs"
-Cohesion: 0.22
-Nodes (8): AKAR_REPO, d, dialogPalsu(), { existsSync }, { jalankanAlatJalan, pecahPerintah, PROFIL }, lewatDialog(), p, require
+Cohesion: 0.12
+Nodes (12): AKAR_REPO, { pecahPerintah }, r, require, AKAR_REPO, d, dialogPalsu(), { existsSync } (+4 more)
 
 ### Community 277 - "ROADMAP: PENGAMBILAN POTONGAN RAG — DIUKUR DULU, POLA STANDAR HANYA BILA COCOK"
 Cohesion: 0.20
 Nodes (10): 1. Latar, 2. Peta Jalur RAG Mamet terhadap Pola Umum, 3. Utang Lama RAG (diperiksa ulang 2026-09-17 terhadap kode & database), 4. Urutan Kerja (disetujui Owner 2026-09-17), 5. Hal yang Sengaja Tidak Dikerjakan Sekarang, 6. Risiko, ROADMAP: PENGAMBILAN POTONGAN RAG — DIUKUR DULU, POLA STANDAR HANYA BILA COCOK, Tahap A — Set Uji Pengambilan Potongan (alat ukur) (+2 more)
 
 ### Community 278 - "SPESIFIKASI TEKNIS & IMPLEMENTASI MAMET OS ECOSYSTEM (v2)"
-Cohesion: 0.08
-Nodes (24): 0. RASIONAL ARSITEKTUR: KENAPA SYSTEMGOVERNOR WAJIB ADA, 1.1. Pembagian Entitas, 1.2. Aturan Kernel & UI (Deferred), 1. DEFINISI PERAN & ALUR DATA (ROLE & DATA FLOW), 2.2. Pre-Send Verification & Payload Separation, 2.3. Pre-Approval Deterministic Validation, 2.4. Fallback Mechanism & `FAILED_DETERMINISTIC` Status *(direvisi v2)*, 2. SPESIFIKASI TEKNIS: `engineer.js` (REFACTORING) (+16 more)
+Cohesion: 0.10
+Nodes (21): 0. RASIONAL ARSITEKTUR: KENAPA SYSTEMGOVERNOR WAJIB ADA, 1.1. Pembagian Entitas, 1.2. Aturan Kernel & UI (Deferred), 1. DEFINISI PERAN & ALUR DATA (ROLE & DATA FLOW), 2.2. Pre-Send Verification & Payload Separation, 2.3. Pre-Approval Deterministic Validation, 2.4. Fallback Mechanism & `FAILED_DETERMINISTIC` Status *(direvisi v2)*, 2. SPESIFIKASI TEKNIS: `engineer.js` (REFACTORING) (+13 more)
 
 ### Community 279 - "06_MEMORY_SYSTEM.md"
 Cohesion: 0.06
@@ -1779,13 +1821,13 @@ Nodes (30): 1. Create, 1. Session Memory, 2. Active, 2. Working Memory, 3. Updat
 Cohesion: 0.06
 Nodes (31): 10. MAMET ENGINEER, 11. SHARED SIDEBAR, 12. SYSTEM STATUS, 13. EVENT STREAM, 14. MEMORY OVERVIEW, 15. APPROVAL CENTER, 16. WIDGET SPECIFICATION, 17. CAPABILITY → UI MAPPING (+23 more)
 
-### Community 281 - "2. Peta Tanggung Jawab `index.ts`"
-Cohesion: 0.07
-Nodes (28): 10. Referensi, 1.1 Kondisi Saat Ini, 1.2 Kenapa Ini Menjadi Critical Gap, 1. Konteks dan Latar Belakang, 2.1 Kelompok A — Infrastruktur & Konfigurasi, 2.2 Kelompok B — LLM Provider Calls, 2.3 Kelompok C — Streaming, 2.5 Kelompok E — RAG Pipeline (+20 more)
+### Community 281 - "ADR-0009: index.ts Decomposition Plan"
+Cohesion: 0.17
+Nodes (11): 10. Referensi, 1.1 Kondisi Saat Ini, 1.2 Kenapa Ini Menjadi Critical Gap, 1. Konteks dan Latar Belakang, 3. Modul Target yang Diusulkan, 5. `index.ts` Setelah Decomposition, 6. Aturan Backward Compatibility, 7. Kriteria Verifikasi per Fase (+3 more)
 
 ### Community 282 - "MAMET ECOSYSTEM WORKSPACE ARCHITECTURE"
-Cohesion: 0.06
-Nodes (30): 10. RUNTIME STATE & LAYOUT PERSISTENCE, 11. IMPLEMENTATION ROADMAP, 12. MIGRATION STRATEGY, 1. ARCHITECTURE REVIEW & GAP ANALYSIS, 2. HIERARKI SISTEM PENUH: DARI KERNEL SAMPAI WIDGET, 3. REVISED UI ARCHITECTURE: PLUGIN-FIRST OS, 4. WORKSPACE IDENTITY & MANIFEST, 5. REGISTRY ARCHITECTURE (+22 more)
+Cohesion: 0.08
+Nodes (25): 10. RUNTIME STATE & LAYOUT PERSISTENCE, 12. MIGRATION STRATEGY, 13. SEJARAH & EVOLUSI DESAIN (Konsolidasi 2026-09-09), 1. ARCHITECTURE REVIEW & GAP ANALYSIS, 2. HIERARKI SISTEM PENUH: DARI KERNEL SAMPAI WIDGET, 3. REVISED UI ARCHITECTURE: PLUGIN-FIRST OS, 4. WORKSPACE IDENTITY & MANIFEST, 5. REGISTRY ARCHITECTURE (+17 more)
 
 ### Community 283 - "Architecture Gaps"
 Cohesion: 0.07
@@ -1844,12 +1886,12 @@ Cohesion: 0.07
 Nodes (26): 1. Chatbot AI untuk Layanan Pelanggan 24/7, 1. Otak Anda Tidak Bisa "Mencuci" Dirinya Sendiri, 1. Terapkan Sistem Amplop Digital (50/30/20), 2. AI untuk Pembuatan Konten Marketing, 2. Kenali "Latte Factor" Versi Anda, 2. Sistem Imun Anda Melemah Drastis, 3. Analisis Data Penjualan dengan AI Prediktif, 3. Bangun Dana Darurat 3 Bulan Gaji (+18 more)
 
 ### Community 297 - "Change Log — 4 Juli 2026"
-Cohesion: 0.07
-Nodes (26): AGENT FORGE — FUNGSIONAL PENUH, AGENT FORGE — FUNGSIONAL PENUH, AGENT FORGE — FUNGSIONAL PENUH, Change Log — 4 Juli 2026, Change Log — 4 Juli 2026, Change Log — 4 Juli 2026, CHAT HISTORY SIDEBAR & PERSISTENSI CHAT, ENGINEER — READFILE & AUTO-WRITE (+18 more)
+Cohesion: 0.08
+Nodes (25): AGENT FORGE — FUNGSIONAL PENUH, AGENT FORGE — FUNGSIONAL PENUH, Change Log — 4 Juli 2026, Change Log — 4 Juli 2026, Change Log — 4 Juli 2026, CHAT HISTORY SIDEBAR & PERSISTENSI CHAT, ENGINEER — READFILE & AUTO-WRITE, FILE SYSTEM HANDLERS (ELECTRON) (+17 more)
 
 ### Community 298 - "uji-konektor-protokol.mjs"
 Cohesion: 0.08
-Nodes (24): berkasGudang(), idMisi(), potretGudang(), AKAR, AS, asing, banyak, bersih (+16 more)
+Nodes (21): AKAR, AS, asing, banyak, bersih, blok, blokReddit, idDariBerkas (+13 more)
 
 ### Community 299 - "02_MAEF_KERNEL.md"
 Cohesion: 0.08
@@ -1860,8 +1902,8 @@ Cohesion: 0.08
 Nodes (24): BOOTSTRAP GUARANTEE RULE, BOOTSTRAP PHASES, CORE PRINCIPLE, DEPENDENCY ORDER (CRITICAL), FINAL STATEMENT, Knowledge Seed:, MAEF BOOTSTRAP SYSTEM SPECIFICATION, Memory Seed: (+16 more)
 
 ### Community 301 - "SUMMARY — Forensik Audit "Verification Failed" (Engineer Workspace)"
-Cohesion: 0.06
-Nodes (50): 10. Roadmap Wave 5.2G (Execution & Coordination), STATUS KESIAPAN, 4. ALUR VERIFIKASI (Frontend VerificationEngine vs Backend), ⚠️ Temuan 5 — Frontend VerificationEngine Adalah Stub, ✅ Yang Berfungsi, Change Log: 2026-07-04, Implemented Mode-Aware Verification in VerificationEngine (MAEF 4.5), Functions Examined (+42 more)
+Cohesion: 0.07
+Nodes (42): 4. ALUR VERIFIKASI (Frontend VerificationEngine vs Backend), ⚠️ Temuan 5 — Frontend VerificationEngine Adalah Stub, ✅ Yang Berfungsi, Change Log: 2026-07-04, Implemented Mode-Aware Verification in VerificationEngine (MAEF 4.5), Functions Examined, Functions Examined, Functions Examined (+34 more)
 
 ### Community 302 - "uji-pesan-gagal-stream.mjs"
 Cohesion: 0.22
@@ -1872,8 +1914,8 @@ Cohesion: 0.08
 Nodes (23): 1. ENTRY POINT, 1. NO DIRECT COUPLING, 2. ALL OUTPUT MUST BE VERIFIED, 2. BOOTSTRAP FLOW, 3. ADAPTERS ARE PLUGGABLE, 3. EVENT SYSTEM CORE, 4. EVERYTHING IS TRACEABLE, 4. ORCHESTRATOR CORE (+15 more)
 
 ### Community 304 - "ADR-015: Engineer Self-Maintenance Pipeline Architecture"
-Cohesion: 0.08
-Nodes (24): 1.1 Business Need, 1.2 Technical Challenges, 1.3 Constraints, 1. Context, 2.1 Separation of Concerns via Multi-Profile Verification, 2.2 Frontend-First Delegation untuk Engineer Mode, 2.3 Multi-Layer Protection Architecture, 2.4 Desktop-First Infrastructure (+16 more)
+Cohesion: 0.11
+Nodes (18): 1.1 Business Need, 1.2 Technical Challenges, 1.3 Constraints, 1. Context, 3.1 Positive Consequences, 3.2 Negative Consequences, 3.3 Neutral Consequences, 3. Consequences (+10 more)
 
 ### Community 305 - "Audit Laporan: Koneksi Frontend ↔ Backend"
 Cohesion: 0.11
@@ -1888,8 +1930,8 @@ Cohesion: 0.08
 Nodes (24): 10. MEMORY OVER MODEL, 11. KNOWLEDGE OVER BENCHMARK, 12. LONG TERM OVER SHORT TERM, 13. PERMANENT SOLUTION OVER TEMPORARY PATCH, 14. ARCHITECTURE OVER IMPLEMENTATION, 15. IDENTITY OVER TECHNOLOGY, 16. HUMAN IN COMMAND, 17. THE ENGINEER PRINCIPLE (+16 more)
 
 ### Community 308 - "konektorMcp.cjs"
-Cohesion: 0.10
-Nodes (40): 3 November 2026 — Konektor MCP Tahap G2: Settings untuk konektor umum (pasang, kredensial, tinjau & paku, sakelar), Bukti, Yang dibangun, klienSdk(), buatGerbangKonektor(), panggil(), buatPengelolaKonektor(), atur() (+32 more)
+Cohesion: 0.11
+Nodes (38): Tahap G — isi berkas konektor sampai ke model, bagianHasil(), buatGerbangKonektor(), panggil(), buatPengelolaKonektor(), atur(), bacaSetelan(), komponen() (+30 more)
 
 ### Community 309 - "uji-konektor-stealth.mjs"
 Cohesion: 0.05
@@ -1920,8 +1962,8 @@ Cohesion: 0.22
 Nodes (7): Cara Kerja Mamet, A. GAYA KERJA OWNER, B. TITIK BUTA — PERGESERAN PERLAHAN, C. DAFTAR PERIKSA SEBELUM MELAPOR, PURPOSE, REVISI, Wajib dibaca pertama: gaya kerja Owner & titik buta pergeseran
 
 ### Community 316 - "komponenKonektor.cjs"
-Cohesion: 0.29
-Nodes (10): akarBrowser(), bacaKomponen(), bacaManifest(), BROWSER_STEALTH, browserStealth(), fs, KUNCI_FOLDER, lokasiFolder() (+2 more)
+Cohesion: 0.16
+Nodes (16): 26 Oktober 2026 — Konektor MCP Tahap E3: "Yang terpasang di perangkat ini" (Item 129), Belum dibuktikan, Bukti, Uji, Yang dibuat, Koreksi: alamat folder data, akarBrowser(), bacaKomponen() (+8 more)
 
 ### Community 317 - "09_DNA.md"
 Cohesion: 0.09
@@ -1931,17 +1973,17 @@ Nodes (21): 1. Owner Sovereignty, 2. MAEF CORE IDENTITY, 3. MODULARITY DNA, 4. V
 Cohesion: 0.09
 Nodes (22): AI Governance, Architecture First, Architecture Gap Principle, Assistant, Capability Model, Core Principles, Core Vision, Documentation First (+14 more)
 
-### Community 319 - "Execution Steps"
-Cohesion: 0.22
-Nodes (8): 1. Extract Orchestration Brain (`core_engine.ts`), 2. Isolate Streaming Layer (`stream_controller.ts`), 3. Reduce `index.ts` to Bootstrap, Architecture Restructuring Report (Mamet AI), Execution Steps, Final Control Flow, Objective Met, Validation Checks Passed
+### Community 319 - "Mamet AI — Architecture Gate Review (Post-Wave 5.2F)"
+Cohesion: 0.09
+Nodes (20): 10. Roadmap Wave 5.2G (Execution & Coordination), 2. LLM Execution Audit, 4. Public API Audit, 5. RuntimeContext Audit, 6. Remaining Monolith (Risk Level), 7. Candidate Extraction (Wave 5.2G), 8. Risk Analysis (Risk Matrix), 9. Architecture Score (+12 more)
 
 ### Community 320 - "3. Chronological Timeline"
 Cohesion: 0.09
 Nodes (22): 1. Executive Summary, 2. Development Statistics, 3. Chronological Timeline, Bugs Fixed:, Bugs Fixed:, Bugs Fixed:, Bugs Fixed:, CHANGELOG: Engineer Self-Maintenance Pipeline (+14 more)
 
 ### Community 321 - "Audit Menyeluruh Kernel→UI (2026-09-10)"
-Cohesion: 0.12
-Nodes (14): 1.1 Perluas `DiscoveryManager.js` dengan validasi silang, 1.2 Tambah deteksi orientasi sebagai bagian dari device classification, 1.3 Buat deteksi reaktif (bukan cuma sekali di `initialize()`), 1.4 Tambah override manual (mutlak, persisten), Catatan untuk AI Coding Tool yang Mengerjakan Ini, Ditunda dengan Sengaja (Kran untuk Nanti, Bukan Dikerjakan Sekarang), FASE 1 — Device & Capability Detection (Fondasi), FASE 4 — Companion Delivery (PWA) (+6 more)
+Cohesion: 0.13
+Nodes (12): 2.1 Buat `DeviceContext` (React Context), 2.2 Audit state yang ada sekarang di komponen UI, Catatan untuk AI Coding Tool yang Mengerjakan Ini, Ditunda dengan Sengaja (Kran untuk Nanti, Bukan Dikerjakan Sekarang), FASE 2 — State Layer (Sebelum Bikin Shell), FASE 4 — Companion Delivery (PWA), Konteks & Masalah, Kriteria Selesai Fase 2 (+4 more)
 
 ### Community 322 - "Konteks Potongan: Bagian Tidak Tercampur & Baris Identitas Jabatan (Item 89 = Item 90 Tahap C)"
 Cohesion: 0.25
@@ -1961,7 +2003,7 @@ Nodes (9): 1. Latar Belakang, 3. Dua Temuan Utama, 4. Klaim yang Tidak Dapat Div
 
 ### Community 326 - "detectIntent"
 Cohesion: 0.04
-Nodes (47): Berikutnya, Bukti live (TUGAS-04, `deepseek/deepseek-v4-pro-0813`), Mesin uji klaim, Mesin uji klaim Engineer (Tahap 2) + tiga bug jalur Engineer, Tiga bug jalur Engineer yang ditemukan lewat uji ini, Uji otomatis (di luar git), 1. Peringatan palsu "tugas tidak diumumkan" (`ProsedurEngineer.js`), 2. Penyambung shell diperiksa hanya DI LUAR tanda kutip (`alatFolderJalan.cjs`) (+39 more)
+Nodes (54): 1. Ringkasan, 2. Temuan Saat Eksekusi (Koreksi terhadap Asumsi ADR), 5. Langkah Selanjutnya, Changelog: ADR-0017 Fase 2 — Ekstraksi IntentClassifier & CapabilityGuard dari engineer.js, Berikutnya, Keluaran perintah Engineer diakui sebagai sumber label, Masalah, Perbaikan (+46 more)
 
 ### Community 327 - "status"
 Cohesion: 0.10
@@ -1981,11 +2023,11 @@ Nodes (20): 1. DILARANG MENEBAK ISI FILE (NO BLIND CODING), 1. 📌 Snapshot Pri
 
 ### Community 331 - "SessionArtifact"
 Cohesion: 0.07
-Nodes (38): 2.1 Kelompok A — Session Artifact (Struktur Data), Fase 1 — Struktur Data Murni (Risiko Sangat Rendah) ✅ SELESAI (2026-09-08), File Target: `frontend/src/core/runtime/services/engineer.js`, Ringkasan Gap Analysis, 1. Ringkasan, 2. Verifikasi Sebelum Eksekusi, 3. Perubahan, 4. Verifikasi (+30 more)
+Nodes (39): 2.1 Kelompok A — Session Artifact (Struktur Data), Fase 1 — Struktur Data Murni (Risiko Sangat Rendah) ✅ SELESAI (2026-09-08), 1. Inisialisasi Session Artifact, File Target: `frontend/src/core/runtime/services/engineer.js`, Ringkasan Gap Analysis, 1. Ringkasan, 2. Verifikasi Sebelum Eksekusi, 3. Perubahan (+31 more)
 
 ### Community 332 - "Changelog: Assistant Capability Hardening & Modularization (PR#1–PR#7)"
-Cohesion: 0.12
-Nodes (16): Catatan untuk AI Berikutnya, Changelog: Assistant Capability Hardening & Modularization (PR#1–PR#7), Commit History Sesi Ini, Daftar File yang Dibuat / Dimodifikasi, Dialog UI Konfirmasi (ditambahkan akhir sesi), File Baru, File Baru (untuk Vite bundle), File Dimodifikasi (+8 more)
+Cohesion: 0.11
+Nodes (17): Catatan untuk AI Berikutnya, Changelog: Assistant Capability Hardening & Modularization (PR#1–PR#7), Commit History Sesi Ini, Daftar File yang Dibuat / Dimodifikasi, Dialog UI Konfirmasi (ditambahkan akhir sesi), File Baru, File Baru (untuk Vite bundle), File Dimodifikasi (+9 more)
 
 ### Community 333 - "Batas jendela model, tombol "Padatkan", dan biaya endpoint samping yang tidak tercatat"
 Cohesion: 0.12
@@ -2036,8 +2078,8 @@ Cohesion: 0.25
 Nodes (8): 1. Latar Belakang & Visi Desain, 2. Prinsip Rekayasa (Engineering Principles), 3. Rincian Arsitektur & Spesifikasi Teknis, 4. Rencana File yang Terlibat, 5. Kriteria Keberhasilan (Definition of Done), A. Pilar A: Cosmic Filaments & Flowing Stardust (`ActivityGraph.jsx`), B. Pilar B: Live Thought Pulsing (`ConversationEngine.jsx` ➔ `ActivityGraph.jsx`), ROADMAP: KNOWLEDGE GALAXY — COSMIC ORBITS & LIVE THOUGHT PULSE
 
 ### Community 345 - "4 Oktober 2026 — Plafon token diturunkan, bukan permintaan dibuang"
-Cohesion: 0.15
-Nodes (12): 4 Oktober 2026 — Plafon token diturunkan, bukan permintaan dibuang, Akarnya: plafon diperlakukan sebagai kebutuhan, Badan 402 yang nyata itu kini jadi data uji, ✅ DIUJI LIVE — separuh berhasil, separuh gagal, dan gagalnya mengajari, Dua cacat di implementasi pertama, keduanya terbaca dari badan 402 yang nyata, Keadaannya lebih buruk daripada catatan lama, Kenapa ini yang dikejar, Lantai kelayakan — kenapa tidak selalu diulang (+4 more)
+Cohesion: 0.18
+Nodes (10): 4 Oktober 2026 — Plafon token diturunkan, bukan permintaan dibuang, Akarnya: plafon diperlakukan sebagai kebutuhan, Keadaannya lebih buruk daripada catatan lama, Kenapa ini yang dikejar, Lantai kelayakan — kenapa tidak selalu diulang, Perlu DEPLOY, tanpa rilis klien, Satu mutasi yang TIDAK menggigit, dan itu benar, Uji (+2 more)
 
 ### Community 346 - "Diskusi dengan Instruktur — 4 Juli 2026"
 Cohesion: 0.11
@@ -2064,20 +2106,20 @@ Cohesion: 0.13
 Nodes (21): 1.1 Masalah yang Ditemukan, 1.2 Urutan Eksekusi Aktual di `index.ts`, 1.3 Implikasi Masalah, 1. Konteks dan Latar Belakang, 3.1 Canonical Pipeline: Jalur B — `buildUniversalContract`, 3.2 Peran Resmi Setelah Keputusan Ini, 3.3 Apa yang Tidak Berubah, 3. Keputusan (+13 more)
 
 ### Community 352 - "1. Daftar Perbaikan yang Telah Selesai"
-Cohesion: 0.08
-Nodes (22): 1.10. CHECK_P03 False Positive (eval/new Function), 1.1. Deteksi Intent (MODIFY_CODE), 1.2. Memory Leak pada Event Listener (ConversationEngine), 1.3. Event Wrapper Unwrap (Payload Data Hilang), 1.4. Extract Code dari Response LLM (Fallback Diff & Natural Language), 1.5. Routing Verification: Patch Engineer di-Downgrade ke LITE, 1.6. Verification Engine Path Validation Terlalu Ketat, 1.7. Max Tokens di BrainService (Mencegah Truncation) (+14 more)
+Cohesion: 0.12
+Nodes (15): 1.10. CHECK_P03 False Positive (eval/new Function), 1.1. Deteksi Intent (MODIFY_CODE), 1.2. Memory Leak pada Event Listener (ConversationEngine), 1.3. Event Wrapper Unwrap (Payload Data Hilang), 1.4. Extract Code dari Response LLM (Fallback Diff & Natural Language), 1.5. Routing Verification: Patch Engineer di-Downgrade ke LITE, 1.6. Verification Engine Path Validation Terlalu Ketat, 1.8. [MAMET_PATCH_READY] Tidak Pernah Muncul (Root Cause Utama) (+7 more)
 
 ### Community 353 - "Riset Web di Server, Tombol Deep Research, Penjaga Batas Waktu & "Lanjutkan""
-Cohesion: 0.22
-Nodes (8): 1. Pencarian berita & pembacaan artikel di server (Pilihan A), 2. Sub-agent menyerahkan bahan mentah, bukan rangkuman LLM, 3. Tombol Deep Research desktop tersambung, Batas yang disadari, Bukti live, Latar, Riset Web di Server, Tombol Deep Research, Penjaga Batas Waktu & "Lanjutkan", Uji (lokal, di luar git)
+Cohesion: 0.20
+Nodes (10): 1. Pencarian berita & pembacaan artikel di server (Pilihan A), 2. Sub-agent menyerahkan bahan mentah, bukan rangkuman LLM, 3. Tombol Deep Research desktop tersambung, 4. Penjaga batas waktu dinding Supabase & "lanjutkan", Batas yang disadari, Bukti live, Latar, Riset Web di Server, Tombol Deep Research, Penjaga Batas Waktu & "Lanjutkan" (+2 more)
 
 ### Community 354 - "8 Oktober 2026 — galat ws-assistant berbicara bahasa Owner, dan pdf.js Ecosystem keluar dari rentang rentan"
-Cohesion: 0.11
-Nodes (18): 8 Oktober 2026 — galat ws-assistant berbicara bahasa Owner, dan pdf.js Ecosystem keluar dari rentang rentan, Bagian 1 — E8: sebelas tempat mengarang teks galatnya sendiri, Bagian 2 — C10b: pdf.js Ecosystem, Bukti, Bukti, Dua merah di suite, keduanya sah, keduanya diperbaiki tanpa dilemahkan, Keadaan sebelum, Kenapa BUKAN salinan dari Mametlite (+10 more)
+Cohesion: 0.08
+Nodes (26): 8 Oktober 2026 — galat ws-assistant berbicara bahasa Owner, dan pdf.js Ecosystem keluar dari rentang rentan, Bagian 1 — E8: sebelas tempat mengarang teks galatnya sendiri, Bagian 2 — C10b: pdf.js Ecosystem, Bukti, Bukti, Dua merah di suite, keduanya sah, keduanya diperbaiki tanpa dilemahkan, Keadaan sebelum, Kenapa BUKAN salinan dari Mametlite (+18 more)
 
 ### Community 355 - "Roadmap Data Flywheel — Mamet Ecosystem"
-Cohesion: 0.10
-Nodes (21): Decision, ◐ SEPARUH DITUTUP — 55.081 huruf prompt untuk pertanyaan EMPAT KATA (4 Okt), Acuan standar internasional, Apa yang berubah di Revisi 1, Fase 0: Catat dan nilai, Fase 1: Router berbasis bukti, Fase 2: Evaluasi otomatis, Fase 3: Skill dari pengalaman (+13 more)
+Cohesion: 0.17
+Nodes (12): Acuan standar internasional, Apa yang berubah di Revisi 1, Glosarium, Kondisi saat ini, Metrik dan cara mengukur, Prinsip desain, Revisi 1 — North Star wajib dipisah menurut siapa yang memilih model, Ringkasan awam (+4 more)
 
 ### Community 356 - "uji-pemulihan-chat-v6.mjs"
 Cohesion: 0.10
@@ -2096,24 +2138,24 @@ Cohesion: 0.12
 Nodes (15): 1. Ringkasan Eksekutif, 2. Rincian Tindakan per Fungsi, 3. Hasil Verifikasi Linter Supabase, 4. Rekonstruksi Riwayat Migrasi 29 Agustus 2026, 5. Ringkasan Akhir & Status Temuan Auth (Leaked Password Protection), Changelog: Security Remediation — SECURITY DEFINER RPC & Auth Guard, Kategori A: Server-Only / Maintenance / Trigger (Revoke Total dari Publik, Anon, & Authenticated), Kategori B: Client-Callable Functions dengan Strict Auth Guard Clause (+7 more)
 
 ### Community 360 - "ROADMAP — PR#6: Efisiensi Token"
-Cohesion: 0.11
-Nodes (17): 1. Alur Data Context, 2. Bagian STATIS vs DINAMIS pada System Prompt, 3. Status Web Search Result, 4. Status Token Tracking Saat Ini, (a) Prompt Caching — Gemini Provider, Analisis Implementasi Saat Ini, (b) Web Search Summarization Guard, (c) Token Metrics Logging (+9 more)
+Cohesion: 0.12
+Nodes (16): 1. Alur Data Context, 2. Bagian STATIS vs DINAMIS pada System Prompt, 3. Status Web Search Result, 4. Status Token Tracking Saat Ini, (a) Prompt Caching — Gemini Provider, Analisis Implementasi Saat Ini, (b) Web Search Summarization Guard, (c) Token Metrics Logging (+8 more)
 
 ### Community 361 - "RequestClassifierService"
-Cohesion: 0.04
-Nodes (48): 12. Next Engineering Session, 1. Analisis Fase per Fase (Phase 0 - 10), File Baru, Catatan Backward Compatibility, Catatan untuk AI Berikutnya, Changelog: PR#8 — Linux-style Request Dispatch, File yang Dibuat / Dimodifikasi, Ringkasan Eksekutif (+40 more)
+Cohesion: 0.03
+Nodes (61): 10. Known Risks, 11. Engineering Lessons Learned, 12. Next Engineering Session, 13. Final Project Status, 1. Executive Summary, 2. Current Status, 3. Completed Milestones, 4. Current Architecture (+53 more)
 
 ### Community 362 - "🚀 Perbaikan Utama"
 Cohesion: 0.12
 Nodes (15): 1. Parallel Tier Execution (Dependency-Aware Graph), 1. Strict Identity Validation Gate (UUID Enforcement), 2. Controlled Model Fallback (Invalid Model Guard), 2. Hard Isolation Gating (Anti-Zombie Tasks), 3. Guarantee SSE [DONE] Signal on Error Patches, 3. Reliable Async Delivery Layer, 4. Deterministic Multi-Tenant Isolation, 📌 Deskripsi Pembaruan (+7 more)
 
 ### Community 363 - "2026-07-14 UI Constitution Amendment: AI Workspace Transformation"
-Cohesion: 0.12
-Nodes (15): 1. AppShell Grid Overflow Bug, 1. Minimalist Icon-Only Sidebar, 2026-07-14 UI Constitution Amendment: AI Workspace Transformation, 2. ChatHistory Sidebar Violation, 2. Expanded Conversation Area, 3. Dynamic Grid Collapsing, 3. WorkspaceManager Layout Cache Buster, 4. Destruction of the Global Header (+7 more)
+Cohesion: 0.13
+Nodes (14): 1. AppShell Grid Overflow Bug, 1. Minimalist Icon-Only Sidebar, 2026-07-14 UI Constitution Amendment: AI Workspace Transformation, 2. ChatHistory Sidebar Violation, 2. Expanded Conversation Area, 3. Dynamic Grid Collapsing, 3. WorkspaceManager Layout Cache Buster, 4. Destruction of the Global Header (+6 more)
 
-### Community 364 - "8 Oktober 2026 — Sisa perancah Vite dibersihkan dari Mametlite"
-Cohesion: 0.22
-Nodes (9): 1. Nama variabel lingkungan tidak tercatat di mana pun, 2. `.gitignore` menelan contohnya sendiri, 8 Oktober 2026 — Sisa perancah Vite dibersihkan dari Mametlite, Berkas, Bukti, Dua celah yang ketahuan saat mengerjakannya, Temuan baru yang TIDAK dikerjakan di sini, Yang dihapus (+1 more)
+### Community 364 - "ROADMAP — Adaptive Model Tiering (Kecil / Sedang / Thinking)"
+Cohesion: 0.18
+Nodes (11): 1.7. Max Tokens di BrainService (Mencegah Truncation), 1. Verifikasi Dokumen Sebelum Implementasi, 9. Verifikasi Live (Update 2026-09-09, sesi lanjutan), Yang dikerjakan, 1. Latar Belakang, 2. Tujuan, 3. Prinsip Desain (Hasil Diskusi — Jangan Diubah Tanpa Diskusi Ulang), 6. Item yang Masih Perlu Keputusan Owner (+3 more)
 
 ### Community 365 - "AUDIT-01: Runtime Evidence Analysis"
 Cohesion: 0.13
@@ -2131,33 +2173,33 @@ Nodes (15): 1. Zero import aktif ke lib/ dari luar cluster, 2. Zero pemanggil ke
 Cohesion: 0.25
 Nodes (7): 1. Latar Belakang Masalah, 2. Rincian Solusi & Perubahan Kode, 3. Bukti Verifikasi Produksi Nyata (Live Vercel Log), B. Audit Menyeluruh Dynamic Import Codebase, C. Penyelarasan Skema Kolom `user_memories`, CHANGELOG — Perbaikan Kritis: Dynamic Import Supabase 404 & Schema Drift Memory Governor, Kesimpulan Verifikasi:
 
-### Community 369 - "samakan-crlf.mjs"
-Cohesion: 0.31
-Nodes (8): AKAR, arg, daftarBerkas(), keCRLF(), PERIKSA_SAJA, SEMUA, tampakBiner(), utama()
+### Community 369 - "uji-tanpa-blokir-kata-d.mjs"
+Cohesion: 0.18
+Nodes (9): AKAR, ALAT, baca(), gabungan0408, kemampuan(), konstitusi, MODE, SERANGAN (+1 more)
 
 ### Community 370 - "FileExplorer.jsx"
-Cohesion: 0.09
-Nodes (33): Bug 1: pengaman yang tidak mengamankan, Hasil, BillingDashboard(), C_LIKE, escapeHtml(), EXT_MAP, FileExplorer(), formatSize() (+25 more)
+Cohesion: 0.07
+Nodes (46): Bug 1: pengaman yang tidak mengamankan, Hasil, Yang dibuat, T2 — ✅ Lima komponen dasbor yatim (asal Item 48, 2026-09-10), BagianKonektor(), BarisStealth(), BarisTerpasang(), DaftarTerpasang() (+38 more)
 
 ### Community 371 - "1 Oktober 2026 — Patokan sisipan sampai ke server: misteri peta hilang TERPECAHKAN"
-Cohesion: 0.13
-Nodes (16): 1 Oktober 2026 — Patokan sisipan sampai ke server: misteri peta hilang TERPECAHKAN, Biaya yang kini benar-benar dibayar, Buktinya, dari log server sendiri, Cacat yang sama, di tempat yang tidak terlihat, Dan kekeliruan saya sendiri yang membuatnya mungkin, Empat teori meleset sebelum ini, Penyebabnya, Perlu DEPLOY (+8 more)
+Cohesion: 0.09
+Nodes (27): 1 Oktober 2026 — Patokan sisipan sampai ke server: misteri peta hilang TERPECAHKAN, Biaya yang kini benar-benar dibayar, Buktinya, dari log server sendiri, Cacat yang sama, di tempat yang tidak terlihat, Dan kekeliruan saya sendiri yang membuatnya mungkin, Dua tahap, dan angka `0` yang menyelamatkan dari salah kesimpulan, Empat teori meleset sebelum ini, Kiriman ketiga membuktikan hal kedua (+19 more)
 
 ### Community 372 - "uji-catch-diam.mjs"
 Cohesion: 0.22
 Nodes (6): AKAR, diam, DIR, { hasil, total, bersuara, kosong, jumlahBerkas }, PATOKAN, perbarui
 
 ### Community 373 - "🏛️ MAEF FRAMEWORK — GOVERNANCE BASELINE (27 Juni 2026)"
-Cohesion: 0.06
-Nodes (32): ADR-0003: Engineer Capability Mode in Agent Process, Consequences, Context, Decision, Rationale, References, 12. POST-BASELINE EVOLUTION — ENGINEER AUTONOMY (27 Juni 2026), 13. FULL SYSTEM AUDITS (27 Juni 2026) ✅ DONE (+24 more)
+Cohesion: 0.11
+Nodes (19): 12. POST-BASELINE EVOLUTION — ENGINEER AUTONOMY (27 Juni 2026), 13. FULL SYSTEM AUDITS (27 Juni 2026) ✅ DONE, Engineering Metrics — Derived (ADR-0007) ✅ DONE, Hierarki Otoritas (MAEF Bab 5):, 🏛️ MAEF FRAMEWORK — GOVERNANCE BASELINE (27 Juni 2026), Next Mission — Post-Baseline Evolution, Phase 0: Governance Foundation ✅ DONE, Phase 1: Stabilize Core Runtime ✅ DONE (27 Juni 2026) (+11 more)
 
 ### Community 374 - "Mamet AI Project Memory"
 Cohesion: 0.12
 Nodes (15): Architecture Decision Records (Index), Artifact Status Registry, Current Understanding, Journey Log, Mamet AI Project Memory, Memory Sync Rule (per ADR-0011), Open Engineering Tasks (Wave Status), PM-0001: Modern runtime is Supabase-first (+7 more)
 
 ### Community 375 - "ChatHistory"
-Cohesion: 0.05
-Nodes (50): 4. State Validation, 1. Identity Layer Enforced, 2. Workspace Layer Hardened, 3. Agent Forge Stripped of Workspace Status, 4. Backend Routing Decider Sandboxed, 5. Database Sanitation, Affected Files, Changelog: Architecture Migration - Mamet OS Ecosystem (+42 more)
+Cohesion: 0.07
+Nodes (35): 1. Latar Belakang & Gejala Masalah, 2. Akar Masalah (*Root Cause Analysis*), 3. Solusi & Perubahan Teknis (Commit `3d5ec25`), 4. Hasil Verifikasi, A. Guard Kesiapan Workspace di `ChatHistory.jsx`, B. Penghapusan Fallback Prematur di `ConversationEngine.jsx`, Changelog: Cross-Workspace Chat History Isolation & Workspace Readiness Guard, 1. Konteks & Latar Belakang Masalah (+27 more)
 
 ### Community 376 - "1. Mametlite — yang menyentuh pengguna di luar Owner"
 Cohesion: 0.12
@@ -2167,9 +2209,9 @@ Nodes (16): 1. Mametlite — yang menyentuh pengguna di luar Owner, M1 — ✅ S
 Cohesion: 0.12
 Nodes (16): 1. Masalah, 2. Tujuan, 3. Titik Kait di Kode, 4.1 Langkah per halaman, 4.2 Keluaran: blok fakta, bukan menulis ulang sel, 4.3 Kontrak jawaban (server, satu kalimat), 4. Rancangan A — Fakta Centang dari Koordinat, 5.1 Label jawaban (server) (+8 more)
 
-### Community 378 - "ROADMAP: TEMA APLIKASI — MAMET ECOSYSTEM"
-Cohesion: 0.12
-Nodes (16): 10. Risiko, 1. Kenapa dokumen ini dibuat, 2. Hubungan dengan Item 127, 3. Standar — dipakai hanya bila cocok, 4. Batasan konstitusi, 5.1 Lapisan, 5.2 Token menjadi variabel CSS (Tahap A — fondasi), 5.3 Penyimpanan — per akun (keputusan Owner 20 Okt) (+8 more)
+### Community 378 - "Jalur yang diputus bila Memory mati"
+Cohesion: 0.17
+Nodes (10): `_handleLookup()` — BARU (alur ringan), 1. Konteks & Masalah, 2. Isolasi Scope & Rincian Perubahan Kode, 3. Hasil Validasi (Tahap C.3), 4. Kesimpulan Tahap 1 (Memory System Finalization), A. Perlindungan Ketat Logika Retrieval Backend (Tahap C.1):, B. Penyediaan Data Khusus Tampilan (Tahap C.2):, Changelog: Tahap 1 Sub C — Memory Context Panel Category Alignment (Backlog #7) (+2 more)
 
 ### Community 379 - "0.1.0 — 2026-10-07/08 — Mamet Lite digarap untuk penggunanya"
 Cohesion: 0.12
@@ -2188,8 +2230,8 @@ Cohesion: 0.18
 Nodes (11): 1.1 Masalah yang Ditemukan, 1.2 Bukti Bahwa Ini Bukan Sekadar Dokumen Usang, 1.3 Kenapa Ini Berbahaya, 1. Konteks dan Latar Belakang, 2.1 Penetapan Otoritas Tertinggi, 2.2 Status MAEF v2, MAEF v3, dan Vision Constitution v2, 2.3 Status MAEF Sebagai Konsep, 2. Keputusan (+3 more)
 
 ### Community 383 - "PatchApplier.js"
-Cohesion: 0.09
-Nodes (32): 1. `trace_parser` membelah patch JSON, 2. Bentuk `files[]` dilewati diam-diam, 3. CRLF melawan `\n` pada cari-ganti multi-baris, 4. Pemeriksa aturan diblokir oleh aturannya sendiri, 5–7. Laporan hasil patch tidak sampai, Bagian 2 — Tujuh cacat jalur patch, Bukti, Dua cacat yang HANYA terlihat dari uji live ini (+24 more)
+Cohesion: 0.07
+Nodes (42): Fase 2 — Utilitas Deterministik Tanpa I/O (Risiko Sangat Rendah) ✅ SELESAI (2026-09-08), 4. Verifikasi, 1. Ringkasan, 2. Koreksi Ditemukan Saat Eksekusi — Primitif Tidak Bisa By-Reference, 3. Perubahan Lain, 4. Verifikasi End-to-End (5 Skenario, Bukan Mock — File Benar-Benar Berubah di Storage), 5. Dekomposisi ADR-0017 — Selesai, Changelog: ADR-0017 Fase 8 — PatchApplier & Selesainya Dekomposisi engineer.js (+34 more)
 
 ### Community 384 - "Mamet Engineer Blueprint"
 Cohesion: 0.13
@@ -2199,9 +2241,9 @@ Nodes (14): Capability Contract, Core Responsibilities, Identity, Mamet Engineer
 Cohesion: 0.13
 Nodes (14): Assistant, Capability Map, Engineer, Engineer Lifecycle, Full Custom Control, Knowledge RAG, Knowledge Status, Long Term Vision (+6 more)
 
-### Community 386 - "MAMET OS DESKTOP ENVIRONMENT - PROJECT HANDOFF V3.0.0"
-Cohesion: 0.15
-Nodes (12): 10. Known Risks, 11. Engineering Lessons Learned, 13. Final Project Status, 1. Executive Summary, 2. Current Status, 3. Completed Milestones, 4. Current Architecture, 5. Engineering Rules (+4 more)
+### Community 386 - "2 Oktober 2026 — Engineer diberi mata: lampiran gambar & dokumen (dan satu medan yang tak pernah cocok)"
+Cohesion: 0.17
+Nodes (11): 1. Medannya dipertemukan, 2. Dokumen teknis bisa dibaca, 2 Oktober 2026 — Engineer diberi mata: lampiran gambar & dokumen (dan satu medan yang tak pernah cocok), 3. Yang tidak didukung dikatakan apa adanya, 4. Tombolnya dibuka untuk Engineer, 5. Model diberi tahu, Perlu DEPLOY, Permintaan Owner (+3 more)
 
 ### Community 387 - "FULL REPOSITORY PRODUCTION READINESS AUDIT"
 Cohesion: 0.13
@@ -2211,9 +2253,9 @@ Nodes (14): 1. Critical Blockers, 2. Production Blockers, 3. Technical Debt, 4. 
 Cohesion: 0.13
 Nodes (14): 1) Solar System Layout (Graph Visualization), 2026-07-17 — Mamet Activity Cluster V2 Solar System Production Release, 2) Execution Timeline & Pipeline Monitoring, 3) UNKNOWN Telemetry Handling, 4) Failure Localization, 5) Bottleneck Visualization, 6) Recent Failures Panel, 7) Realtime Highlighting (+6 more)
 
-### Community 389 - "uji-embedding-sekali-per-pesan.mjs"
-Cohesion: 0.22
-Nodes (4): AKAR, CB, RP, v768
+### Community 389 - "🔄 OUT-OF-BAND SYSTEM UPDATE (21 Juni 2026)"
+Cohesion: 0.17
+Nodes (12): 10. UI/UX DENSITY & FLEXBOX MIGRATION (25 Juni 2026), 11. ADVANCED RETRIEVAL STABILIZATION (v2.1.0 - 26 Juni 2026), 1. MAMETLITE LITE - ARCHITECTURE CHANGE, 2. TOOLS LOGIC UPDATE, 3. CRITICAL BUG FIXES, 4. ELECTRON / DESKTOP FIXES, 5. BACKEND RESILIENCE UPDATE, 6. MEMORY SYSTEM STATUS (+4 more)
 
 ### Community 390 - "Tabel DOCX Dibaca sebagai Tabel, dan Riset Jalur PDF untuk RAG"
 Cohesion: 0.12
@@ -2224,8 +2266,8 @@ Cohesion: 0.15
 Nodes (12): 2026-09-28 — Hakim bayangan per kalimat (T13, mode bayangan), Biaya, dan kenapa harus tercatat, Hasil live sebelum perbaikan ini (4 percakapan terpisah, 06:10–06:12), Kenapa hakim, bukan pengukuran lagi, Lanjutan — empat cacat alat ukur diperbaiki (2026-09-28), Perbaikan, Tabel `hakim_bayangan`, Terbukti (+4 more)
 
 ### Community 392 - ".runCommand"
-Cohesion: 0.11
-Nodes (16): 4 Oktober 2026 — Perintah yang jalan tanpa izin akhirnya punya saksi, Celahnya baru saja membesar, Jebakan yang akan membuatnya tersambung tetapi BUTA, Keluarannya TIDAK disimpan — hanya panjangnya, Lubang RLS — komentar yang berbohong, ketiga hari ini, Perlu RILIS KLIEN, tanpa deploy, Pertanyaan Owner, ✅ RLS TERBUKTI DI BASIS DATA NYATA (4 Okt, sesudah 4.2.11 terpasang) (+8 more)
+Cohesion: 0.06
+Nodes (27): 1. Format Manifest Skill (`frontend/src/skills/*.json`), 2. `SkillRegistry.js` (BARU), 3. `SkillGuardService.js` (BARU), 4. `Kernel.js` — Urutan Registrasi Phase 3, 5. `AssistantService.js` — Method Baru, 6. `RequestClassifierService.js` — Slot SKILL Diisi, Catatan untuk AI Berikutnya, Changelog: Skill Implementation (+19 more)
 
 ### Community 393 - "uji-komentar-jsx.mjs"
 Cohesion: 0.25
@@ -2256,24 +2298,24 @@ Cohesion: 0.14
 Nodes (13): 1. Vision Document vs Backend Implementation, 2. MAEF Framework vs Implementation, 3. ADR Registry Audit, 📊 ENGINEERING METRICS SNAPSHOT (Data Live), GAP 1: Roadmap Belum Mencerminkan Phase 6-8 dan ADR-0006/0007, GAP 2: Mantra Belum Mencerminkan Evolusi Terbaru, GAP 3: Vision Document — Confidence Contoh Belum Mencerminkan Two-Brain, GAP 4: MAEF v1.0 Belum Mengenal Two-Brain dan Engineering Metrics (+5 more)
 
 ### Community 400 - "1 Oktober 2026 — Sisipan konteks dipatok: peta repo berhenti dibuang diam-diam"
-Cohesion: 0.22
-Nodes (8): 1 Oktober 2026 — Sisipan konteks dipatok: peta repo berhenti dibuang diam-diam, Angka ujinya diukur, bukan ditaksir, Belum sampai ke aplikasi, Biayanya, disebut di muka, Satu keadaan yang sengaja tetap melepas patokan, Sebabnya diukur, bukan diduga, Uji, Yang dikerjakan
+Cohesion: 0.20
+Nodes (9): 1 Oktober 2026 — Sisipan konteks dipatok: peta repo berhenti dibuang diam-diam, Angka ujinya diukur, bukan ditaksir, Belum sampai ke aplikasi, Biayanya, disebut di muka, Dua cacat, satu akar, Satu keadaan yang sengaja tetap melepas patokan, Sebabnya diukur, bukan diduga, Uji (+1 more)
 
-### Community 401 - "uji-data-per-akun.mjs"
-Cohesion: 0.22
-Nodes (6): AKAR, APP, h, RIW_A, RIW_LAMA, s
+### Community 401 - "2026-06-27 - Vision Baseline And Engineering Foundation"
+Cohesion: 0.17
+Nodes (12): 2026-06-27 - Vision Baseline And Engineering Foundation, Agent Process Context Repair, Code Changes, Continuation Instruction, Current Known Architecture Gaps, Engineering Principle Saved, Files Added, MametLite Boundary (+4 more)
 
-### Community 402 - "uji-pesan-galat.mjs"
-Cohesion: 0.22
-Nodes (7): AKAR, APP, kasus, KODE, masuk, masukAneh, saldo
+### Community 402 - "uji-trace-kurung-terbuka.mjs"
+Cohesion: 0.17
+Nodes (9): AKAR_REPO, DIR_SEMENTARA, lamaTs, patchBerpagar, patchTelanjang, r, rLama, TMP (+1 more)
 
 ### Community 403 - "ROADMAP: ZERO-LEAKAGE RAG TENANT ISOLATION & MULTI-ACCOUNT AUDIT"
 Cohesion: 0.14
-Nodes (12): 1. Latar Belakang & Audit Kepemilikan Dokumen (Audit Accounting), 2. Analisis Akar Masalah (Root Cause: Kebocoran Antar-Akun), 3. Implementasi Solusi Teknis (Singkronisasi dengan Kode Nyata), 4. Hasil Verifikasi & Uji Lapangan, A. Automated Cross-Tenant Isolation Test (`scratch/test_ks_isolation.mjs`), Akun 1: `andreanastasya798@gmail.com`, Akun 2: `slametbro798@gmail.com`, Akun 3: `cecep.ceri@gmail.com` (+4 more)
+Nodes (12): 1. Latar Belakang & Audit Kepemilikan Dokumen (Audit Accounting), 2. Analisis Akar Masalah (Root Cause: Kebocoran Antar-Akun), 3. Implementasi Solusi Teknis (Singkronisasi dengan Kode Nyata), 4. Hasil Verifikasi & Uji Lapangan, A. Automated Cross-Tenant Isolation Test (`scratch/test_ks_isolation.mjs`), Akun 1 (Owner), Akun 2, Akun 3 (+4 more)
 
 ### Community 404 - "Changelog: Audit Dokumen RAG Multi-Akun & Penegakan Isolasi Tenant (Zero-Leakage)"
 Cohesion: 0.14
-Nodes (14): 1. Latar Belakang & Permintaan Owner, 2. Hasil Audit Kepemilikan Dokumen (45 Dokumen Supabase), 3. Analisis Akar Masalah Kebocoran RAG Antar-Akun, 4. Solusi & Perbaikan Komprehensif, 5. Hasil Verifikasi, A. Automated Cross-Tenant Isolation Test (`scratch/test_ks_isolation.mjs`), A. Hardening `KnowledgeService.js`, Akun 1: `andreanastasya798@gmail.com` (+6 more)
+Nodes (14): 1. Latar Belakang & Permintaan Owner, 2. Hasil Audit Kepemilikan Dokumen (45 Dokumen Supabase), 3. Analisis Akar Masalah Kebocoran RAG Antar-Akun, 4. Solusi & Perbaikan Komprehensif, 5. Hasil Verifikasi, A. Automated Cross-Tenant Isolation Test (`scratch/test_ks_isolation.mjs`), A. Hardening `KnowledgeService.js`, Akun 1 (Owner) (+6 more)
 
 ### Community 405 - "Apa yang Sudah Dipasang"
 Cohesion: 0.14
@@ -2291,21 +2333,21 @@ Nodes (13): 1. Purpose, 2. Scope, 3.1 Table: `project_memory_entries`, 3.2 Table
 Cohesion: 0.15
 Nodes (12): AKAR, berkas, DIKECUALIKAN, f, GARIS_DASAR, hitung(), POLA, semuaJsx() (+4 more)
 
-### Community 409 - "10. Tahap F — OAuth: server MCP jarak jauh yang meminta login — 🟡 F1 ✅ F2 ✅ 3 Nov 2026 (jawaban model dengan alat Notion menunggu saldo)"
-Cohesion: 0.22
-Nodes (9): 10. Tahap F — OAuth: server MCP jarak jauh yang meminta login — 🟡 F1 ✅ F2 ✅ 3 Nov 2026 (jawaban model dengan alat Notion menunggu saldo), Alur, Batas keamanan, GitHub lewat OAuth — tanpa `github-mcp-server.exe` (📋 diputuskan 3 Nov 2026), Kenapa OAuth membuat konektor fleksibel, Keputusan untuk Owner, Tahapan, Yang sudah diperiksa (3 Nov, metadata publik) (+1 more)
+### Community 409 - "5 Oktober 2026 — Konstitusi berhenti dibaca-lalu-dibuang"
+Cohesion: 0.18
+Nodes (10): 1. Perbaikan yang tidak bisa dijalankan uji, 2. Uji live-nya cuma satu pertanyaan — tanpa kendali, 5 Oktober 2026 — Konstitusi berhenti dibaca-lalu-dibuang, Biayanya, apa adanya, Dua asersi rapuh milik uji LAIN ikut jatuh — dan ini kali KEEMPAT hari ini, PERLU RILIS KLIEN — dan jalankan ulang, bukan muat ulang, Permintaan Owner, Tambahan sesudah Owner bertanya *"hanya menanyakan saja? tidak ada yang lain?"* (+2 more)
 
 ### Community 410 - "penilaiMutuRag.mjs"
 Cohesion: 0.28
-Nodes (12): Dua celah penilai yang meloloskan jawaban salah (`uji/lib/penilaiMutuRag.mjs`), hasilTerburuk(), labelJawaban(), lolosRegex(), memuat(), mengakuTidakAda(), nilaiJawaban(), normalisasi() (+4 more)
+Nodes (12): hasilTerburuk(), labelJawaban(), lolosRegex(), memuat(), mengakuTidakAda(), nilaiJawaban(), normalisasi(), periksaPasangan() (+4 more)
 
-### Community 411 - "uji-analysis-review-dihapus.mjs"
-Cohesion: 0.22
-Nodes (6): AKAR_REPO, blokTolak, ENG, IC, iTolak, TH
+### Community 411 - "izin_subagent.ts"
+Cohesion: 0.25
+Nodes (9): ALIAS_TOOLS, SUBAGEN, SUBAGEN_KHUSUS_PEMILIK, SUBAGEN_MAMETLITE, alasanTolakSubagent(), ALIAS_TOOLS, SUBAGENT_KHUSUS_PEMILIK, SUBAGENT_MAMETLITE (+1 more)
 
 ### Community 412 - "Mamet AI Architecture Gate Review (Post Wave 5.2E.2)"
-Cohesion: 0.17
-Nodes (11): 10. Extraction Priority (Rencana Eksekusi Lanjutan), 11. Final Score, 1. Dependency Graph Audit, 3. RuntimeContext Audit, 4. index.ts Responsibility Audit, 5. Verification Domain Audit, 6. RAG Domain Audit, 7. Remaining Monolith Analysis (+3 more)
+Cohesion: 0.18
+Nodes (10): 10. Extraction Priority (Rencana Eksekusi Lanjutan), 11. Final Score, 1. Dependency Graph Audit, 4. index.ts Responsibility Audit, 5. Verification Domain Audit, 6. RAG Domain Audit, 7. Remaining Monolith Analysis, 8. Technical Debt Audit (+2 more)
 
 ### Community 413 - "uji-saldo-plafon-token.mjs"
 Cohesion: 0.22
@@ -2331,9 +2373,9 @@ Nodes (21): BERKAS_AKAR, fs, indeksKonstitusi(), judulBerguna(), path, rapat(), 
 Cohesion: 0.15
 Nodes (13): 1. Ringkasan, 2.1 Konflik Otoritas Tertinggi (Kritis), 2.2 Dokumen Turunan yang Belum Tahu Constitution v3 Eksis, 2.3 `ENGINEERING_CONTRACT.md` Reading Order Tidak Lengkap, 2.4 `INIT.md` Tidak Mencantumkan Status MAEF V2/Vision V2, 2.5 Tiga Model "Engineer Lifecycle" Tanpa Saling Rujuk, 2.6 Referensi File Salah, 2.7 "Svelte Desktop" di RFC-014/015/016 — Resolved (Dikonfirmasi Owner: Istilah Keliru) (+5 more)
 
-### Community 419 - "Laporan Audit: Rutinitas Booting MAEF Kernel.js"
-Cohesion: 0.25
-Nodes (6): 2. Menjawab Pertanyaan Fokus Audit, 3. Akar Masalah: Kenapa Hasil Chat Tidak Sesuai Database?, 4. Rekomendasi, Gap Kritis (Harus Segera Diperbaiki), Gap Non-Kritis (Bisa Ditunda), Laporan Audit: Rutinitas Booting MAEF Kernel.js
+### Community 419 - "Inbox"
+Cohesion: 0.31
+Nodes (5): Inbox, _make(), _platform_for(), _read_csv(), _read_txt()
 
 ### Community 420 - "Tool Word ke PDF — Dua Word di Satu Mesin, dan Berkas yang "Sudah Ada" Padahal Belum Selesai"
 Cohesion: 0.15
@@ -2348,28 +2390,28 @@ Cohesion: 0.15
 Nodes (12): Batas yang ikut ketahuan dari jawabannya sendiri, Bukti, Dokumen bisa ditemukan lewat judulnya — 221 Kepbup yang selama ini tak terjangkau nomornya, Dua cacat pada uji saya sendiri, Kenapa RRF tidak bisa menolong, berapa pun bobotnya, Masalahnya, diukur sendiri — bukan dikutip, Perbaikan: minimal DUA kata cocok, Terbukti di database, bukan diperkirakan (+4 more)
 
 ### Community 423 - "1 Oktober 2026 — Jejak sisipan: mata untuk hilangnya konteks di kiriman lanjutan"
-Cohesion: 0.15
-Nodes (12): 1 Oktober 2026 — Jejak sisipan: mata untuk hilangnya konteks di kiriman lanjutan, Belum sampai ke aplikasi, Cara memakainya, Dicatat SEBELUM apa pun memotong, Ini bukan perbaikan, Kenapa `petaMentah` dipisah dari `peta`, `mulaiDari` ikut dicatat, Uji (+4 more)
+Cohesion: 0.17
+Nodes (11): 1 Oktober 2026 — Jejak sisipan: mata untuk hilangnya konteks di kiriman lanjutan, Belum sampai ke aplikasi, Cara memakainya, Ini bukan perbaikan, Kenapa `petaMentah` dipisah dari `peta`, `mulaiDari` ikut dicatat, Uji, Yang dicatat (+3 more)
 
 ### Community 424 - "5b. MENUNGGU RILIS BERIKUTNYA (per 2026-10-01)"
-Cohesion: 0.05
-Nodes (43): 1 Oktober 2026 — Perintah baca dijalankan sendiri; yang krusial tetap ditanyakan, Akarnya: gerbang yang menjaga sesuatu yang sudah dijaga, Belum sampai ke aplikasi, Garisnya, dan kenapa di situ, Keputusan Owner, Satu kiriman, bukan lima panggilan berbayar, Satu uji lama memerah — dan memang seharusnya, Uji (+35 more)
+Cohesion: 0.06
+Nodes (32): 1 Oktober 2026 — Perintah baca dijalankan sendiri; yang krusial tetap ditanyakan, Akarnya: gerbang yang menjaga sesuatu yang sudah dijaga, Belum sampai ke aplikasi, Garisnya, dan kenapa di situ, Keputusan Owner, Satu kiriman, bukan lima panggilan berbayar, Satu uji lama memerah — dan memang seharusnya, Uji (+24 more)
 
 ### Community 426 - "2 Oktober 2026 — Engineer diberi mata: lampiran gambar & dokumen (dan satu medan yang tak pernah cocok)"
-Cohesion: 0.06
-Nodes (34): Uji live & perbaikan, 1. `folder_run` — `frontend/electron/alatFolderJalan.cjs` (baru), 2. `.git` tak bisa diubah alat tulis (`alatFolderTulis.cjs`), 4. Label laporan tindakan, 5. Keamanan server — dua fungsi uji dihapus, Bukti live (percakapan `11ba4762…`), Catatan terbuka, Folder Kerja Assistant — Tahap 3: Jalankan Perintah + Kejujuran Laporan Tindakan (Item 85) (+26 more)
+Cohesion: 0.08
+Nodes (24): Catatan, Folder Kerja Assistant — Tahap 1: Baca Saja (Item 85), Uji live & perbaikan, Uji otomatis (di luar git, `frontend/node_modules/.uji-rag/`) — semua lulus, 1. `folder_run` — `frontend/electron/alatFolderJalan.cjs` (baru), 2. `.git` tak bisa diubah alat tulis (`alatFolderTulis.cjs`), 4. Label laporan tindakan, 5. Keamanan server — dua fungsi uji dihapus (+16 more)
 
-### Community 427 - "1. Temuan per File"
-Cohesion: 0.25
-Nodes (7): 1. Temuan per File, Audit Rantai Data: Widget Monitor (MaefExecutionMonitorWidget), `frontend/src/components/EngineerDashboard.jsx`, `frontend/src/components/widgets/MaefExecutionMonitorWidget.jsx`, `frontend/src/components/workbench/ConversationEngine.jsx`, `frontend/src/core/workspace/WorkspaceManager.js`, 💡 Rekomendasi Perbaikan (Patch Plan)
+### Community 427 - "5 Oktober 2026 — `finish_reason` akhirnya dibaca; lantai 512 turun ke 128"
+Cohesion: 0.20
+Nodes (9): 5 Oktober 2026 — `finish_reason` akhirnya dibaca; lantai 512 turun ke 128, Akarnya bukan angka lantainya, Hasil sampingan yang ikut terbukti dari log yang sama, Keamanan — diperiksa sebelum menurunkan lantai, Kenapa jalur itu berhenti menyala, PERLU DEPLOY, tanpa rilis klien, Uji, Yang jujur tentang M5 (+1 more)
 
 ### Community 428 - "Mamet AI Roadmap"
 Cohesion: 0.15
 Nodes (12): Mamet AI Roadmap, North Star, Phase 0: Governance Foundation, Phase 1: Stabilize Core Runtime, Phase 2: Mamet Engineer Foundation, Phase 3: Project Memory Service, Phase 4: Capability Separation, Phase 5: UI And Observability (+4 more)
 
 ### Community 429 - "Uji Mutu RAG Putaran 6–7: Pasangan Angka–Tahun di Kalimat Bebas, Sumber Parafrase Diterima"
-Cohesion: 0.25
-Nodes (7): Batas yang disadari (tidak dikejar), Keputusan Owner sesudah putaran 5, Putaran 6 (v435, 2026-09-14 15.01 UTC), Putaran 7 (v436, 2026-09-15 02.50 UTC), Uji, Uji Mutu RAG Putaran 6–7: Pasangan Angka–Tahun di Kalimat Bebas, Sumber Parafrase Diterima, parafraseDiIsi()
+Cohesion: 0.29
+Nodes (8): Batas yang disadari (tidak dikejar), Keputusan Owner sesudah putaran 5, Perubahan `label_sumber.ts`, Putaran 6 (v435, 2026-09-14 15.01 UTC), Putaran 7 (v436, 2026-09-15 02.50 UTC), Uji, Uji Mutu RAG Putaran 6–7: Pasangan Angka–Tahun di Kalimat Bebas, Sumber Parafrase Diterima, parafraseDiIsi()
 
 ### Community 430 - "uji-konektor-kata-kunci.mjs"
 Cohesion: 0.22
@@ -2379,9 +2421,9 @@ Nodes (7): AKAR, batasPrompt, batasPy, blok, mcp, panjangPrompt, teksPy
 Cohesion: 0.15
 Nodes (12): A.1 Kenapa status "DOWN" muncul padahal mayoritas komponen HEALTHY?, A.2 Verifikasi dugaan: apakah "DOWN" untuk Verification & Agent Process itu beneran gagal, atau cuma belum ada data?, A.3 Kenapa Execution Trace Timeline dan metrik menunjukkan 0 / "NO TELEMETRY AVAILABLE"?, B.1 Pisahkan status "Belum Ada Data" dari "Gagal", B.2 Status Agregat: Severity-Aware, Bukan Any-Down-Means-Down, B.3 Realtime Refresh, B.4 "Last Check" Timestamp, Bagian A — Investigasi Dulu (Sebelum Ubah Apa Pun) (+4 more)
 
-### Community 432 - "uji-ingatan-temuan-bersuara.mjs"
-Cohesion: 0.25
-Nodes (4): AKAR, BENAR, dir, MELENCENG
+### Community 432 - "7 Oktober 2026 — Mametlite berhenti menyuntikkan HTML"
+Cohesion: 0.20
+Nodes (10): 7 Oktober 2026 — Mametlite berhenti menyuntikkan HTML, Berkas, Bobotnya, apa adanya, Bukti, CSP yang teruji sebelum produksi, bukan sesudah, Lubangnya, Permintaan Owner, Satu uji yang GOYAH, dan ia bukan disebabkan pekerjaan ini (+2 more)
 
 ### Community 433 - "Laporan Audit Database: Memori Pengguna"
 Cohesion: 0.29
@@ -2403,9 +2445,9 @@ Nodes (6): 1. The Sun: Fixed Supabase Core, 2. The Planets: Primary Cluster Orbi
 Cohesion: 0.29
 Nodes (6): 1. Audit Metadata (`workspace.json`), 2026-07-15: Workspace Architecture Audit, 2. Audit Konsep Legacy (ws-owner & ws-agent-forge), 3. Peta Ketergantungan (3 Workspace Resmi), 4. Risiko Kerusakan (*Breaking Risk*), 5. Rencana Migrasi Minimum Risk
 
-### Community 438 - "Set Uji Pengambilan Buku Kepbup Penuh — recall@8 13/14 (Item 88)"
-Cohesion: 0.25
-Nodes (7): Catatan teknis, Hasil (2026-09-21, hybrid), Jebakan (NEG), Kenapa set baru, Set: 14 pertanyaan berbukti + 2 jebakan, Set Uji Pengambilan Buku Kepbup Penuh — recall@8 13/14 (Item 88), Temuan baru: BUKU-10 — potongan blok centang miskin kata (belum diperbaiki)
+### Community 438 - "ROADMAP-PENGAMBILAN-POTONGAN-RAG.md"
+Cohesion: 0.06
+Nodes (24): Aturan yang dipaksa data buku penuh, Batas yang disadari, Latar, Perubahan, Tabel Centang PDF — Kolom dari Koordinat pdf.js, Bukan dari OCR, Uji (lokal, skrip di luar git), Angka acuan (2026-09-17 07:00 UTC), Kunci jawaban diperiksa ke dokumen asli (bukan ke database) (+16 more)
 
 ### Community 439 - "🏢 MAMET AI FULL-STACK AUDIT REPORT"
 Cohesion: 0.17
@@ -2420,64 +2462,64 @@ Cohesion: 0.17
 Nodes (11): 10. Bio (Wajib diisi agar muncul di Halaman Utama), 1. Informasi Dasar (Basic Info), 2. Pengaturan (Settings), 3. Keahlian Utama (Primary Skills), 4. Keahlian Lainnya & Bahasa (Other Skills & Languages), 5. Gaji (Salary), 6. Lokasi (Locations), 7. Email Kontak (Contact Email) (+3 more)
 
 ### Community 442 - "Temuan Engineer"
-Cohesion: 0.25
+Cohesion: 0.20
 Nodes (8): Temuan Engineer, TMN-0001 — DITUTUP, TMN-0002 — DITUTUP, TMN-0003 — DITUTUP, TMN-0005 — DITUTUP, TMN-0007 — DITUTUP, TMN-0008 — DITUTUP, TMN-0009 — DITUTUP
 
-### Community 443 - "2. Rincian Perubahan Kode"
-Cohesion: 0.29
-Nodes (6): 1. Latar Belakang & Masalah Arsitektur, 2. Rincian Perubahan Kode, 3. Hasil Verifikasi, A. Penyempurnaan Behavioral Contract MemoryGovernorService.js, CHANGELOG — Integrasi MemoryGovernorService ke AssistantService & Observabilitas Konflik, D. Observabilitas Konflik di HomeDashboard
+### Community 443 - "28 Oktober 2026 — Electron 42.3.3 → 45.1.0 di repo; rilis 4.4.0 menunggu uji chat & PDF (T20)"
+Cohesion: 0.20
+Nodes (9): 28 Oktober 2026 — Electron 42.3.3 → 45.1.0 di repo; rilis 4.4.0 menunggu uji chat & PDF (T20), Analisis sebelum memasang, Bukti, Catatan untuk build berikutnya, Menunggu (rilis 4.4.0), Sesudah push: build rilis terpicu tanpa kenaikan versi — dibatalkan, lalu pemicunya diperbaiki, Yang dibuat, ambilWeb() (+1 more)
 
 ### Community 444 - "services/unggahBertahap.js"
 Cohesion: 0.24
 Nodes (8): bacaGalatFungsi(), bolehDiulang(), GagalUnggah, JEDA_DASAR_MS, JEDA_KUNCI_MS, TUNGGU_KUNCI_MAKS, ULANG_MAKS, unggahBertahap()
 
 ### Community 445 - "Changelog: Mekanisme Deteksi Deployment Drift (Edge Function vs Git HEAD)"
-Cohesion: 0.15
+Cohesion: 0.17
 Nodes (12): 1. Latar Belakang, 2. Solusi yang Diterapkan, 3.1 Sebelum Deploy (Sanity Check Graceful Fallback), 3.2 Deploy ke Production, 3.3 Setelah Deploy, 3. Verifikasi Live, 4. Batasan yang Diketahui (Known Limitation), 5. Daftar Berkas yang Dibuat & Dimodifikasi (+4 more)
 
 ### Community 446 - "._loadStaticKnowledge"
-Cohesion: 0.08
-Nodes (34): Fase 2 — Utilitas Deterministik Tanpa I/O (Risiko Sangat Rendah) ✅ SELESAI (2026-09-08), 4. Verifikasi, 3. Perubahan Lain, 1. Ringkasan, 3. Bug yang Ditemukan (Detail), 4. Perbaikan, 5. Verifikasi, 6. File yang Diubah (+26 more)
+Cohesion: 0.10
+Nodes (22): 4. Perbaikan, 5. Verifikasi, 7. Konteks Temuan, 8. Tidak Dikerjakan / Di Luar Scope, Changelog: Perbaikan Bug Core Protection Layer — 5 dari 12 Pattern Immutable Tidak Pernah Cocok, 1. Ringkasan, 2.1 6 Path Mati/Salah Dihapus, 2.2 24-27 Ditambahkan ke Brain 1 (+14 more)
 
 ### Community 447 - "Konversi Word → PDF dari Versi Web — Laptop sebagai Pekerja"
 Cohesion: 0.17
 Nodes (11): Bukti, Cara kerjanya, Keamanan, Konversi Word → PDF dari Versi Web — Laptop sebagai Pekerja, Koreksi di tengah jalan, Pertanyaan yang memulainya, Temuan sampingan: versi web tidak pernah punya tool, Terbukti dari HP (+3 more)
 
 ### Community 448 - "Buku Kepbup Dipecah per Jabatan + Unggah Banyak Berkas Sekaligus (Item 88 Keputusan 3)"
-Cohesion: 0.18
-Nodes (11): 1. Pecah PDF per jabatan (lokal, $0), 2. Unggah banyak berkas (`frontend/src/components/research/ResearchApp.jsx`), Batas yang disadari, Bukti live, Buku Kepbup Dipecah per Jabatan + Unggah Banyak Berkas Sekaligus (Item 88 Keputusan 3), Code freeze selama unggah Kepbup (kesepakatan Owner), Daftar dokumen: batas 50 menyembunyikan dokumen lama (perbaikan tampilan), Kenapa tidak satu berkas (+3 more)
+Cohesion: 0.17
+Nodes (12): 1. Pecah PDF per jabatan (lokal, $0), 2. Unggah banyak berkas (`frontend/src/components/research/ResearchApp.jsx`), 3. Identitas dari baris tabel OCR (`agent-process/lib/konteks_potongan.ts`), Batas yang disadari, Bukti live, Buku Kepbup Dipecah per Jabatan + Unggah Banyak Berkas Sekaligus (Item 88 Keputusan 3), Code freeze selama unggah Kepbup (kesepakatan Owner), Daftar dokumen: batas 50 menyembunyikan dokumen lama (perbaikan tampilan) (+4 more)
 
 ### Community 449 - "2 Oktober 2026 — Brain 1 dibersihkan, dan Engineer akhirnya bisa menambahnya"
 Cohesion: 0.17
 Nodes (11): 2 Oktober 2026 — Brain 1 dibersihkan, dan Engineer akhirnya bisa menambahnya, Jebakan yang tertangkap, dua-duanya hari ini juga, Kenapa di database, padahal temuan di berkas repo, Model DIBERI TAHU kemampuannya, Owner yang menunjuk ke sana, Perlu DEPLOY, Satu koreksi atas ucapan saya sendiri, Tahap 1 — dibersihkan (dinonaktifkan, bukan dihapus) (+3 more)
 
-### Community 450 - "CHANGELOG: Step 4 Implementation (Backend Persistence Adaptation) - Engineer Workspace"
-Cohesion: 0.29
-Nodes (6): 1. File yang Dibuat (Created Files), 2. File yang Diubah (Modified Files), 3. Kepatuhan Instruksi Mutlak (Non-Compliance Check), 4. Analisis Risiko, 5. Status Eksekusi, CHANGELOG: Step 4 Implementation (Backend Persistence Adaptation) - Engineer Workspace
+### Community 450 - "susunGrafHome"
+Cohesion: 0.24
+Nodes (10): 2 November 2026 — Item 130 Tahap A: tampilan Home rapi + celah K5 tooltip graf ditutup, Akar label bertumpuk (diukur, bukan ditebak), Bukti, Celah K5: tooltip graf menjalankan HTML, Penyusun graf dipindah ke modul murni, kemampuanPercakapan(), safeLink(), susunGrafHome() (+2 more)
 
-### Community 451 - "Potongan RAG Tidak Lagi Memenggal Daftar Bernomor"
-Cohesion: 0.29
-Nodes (6): Batas yang disadari, Cara membuktikan live, Latar, Potongan RAG Tidak Lagi Memenggal Daftar Bernomor, Sebab (bukti dari metadata pesan & isi potongan), Uji (lokal, di luar git)
+### Community 451 - "akhirTanpaDaftarTerpenggal"
+Cohesion: 0.21
+Nodes (11): Batas yang disadari, Cara membuktikan live, Latar, Perubahan, Potongan RAG Tidak Lagi Memenggal Daftar Bernomor, Sebab (bukti dari metadata pesan & isi potongan), Uji (lokal, di luar git), akhirTanpaDaftarTerpenggal() (+3 more)
 
 ### Community 452 - "ProsedurEngineer.js"
 Cohesion: 0.07
-Nodes (29): Berikutnya, Bug yang ditemukan lewat uji ini (semuanya diperbaiki), Hasil uji live TUGAS-02 (model `openai/gpt-4o-mini`), Latar, Prosedur Kerja Engineer — constitution, RULE 0, dan tiga penjaga kode, Uji otomatis (di luar git), Yang dikerjakan, 2026-09-28 — Engineer bisa membaca berkas besar: dua perintah, nol kode baru (+21 more)
+Nodes (39): Berikutnya, Bug yang ditemukan lewat uji ini (semuanya diperbaiki), Hasil uji live TUGAS-02 (model `openai/gpt-4o-mini`), Latar, Prosedur Kerja Engineer — constitution, RULE 0, dan tiga penjaga kode, Uji otomatis (di luar git), Yang dikerjakan, 2026-09-28 — Engineer bisa membaca berkas besar: dua perintah, nol kode baru (+31 more)
 
 ### Community 453 - "document_search.ts"
-Cohesion: 0.11
+Cohesion: 0.10
 Nodes (22): 5 Oktober 2026 — 45% korpus tak bisa dicari lewat nomornya, Asalnya: Owner menunjuk `engine-vector`, Dan pemuat `uji-cari-judul` ikut diganti, Diukur di korpus PENUH, dua arah, Item 93 Tahap 3 — tetap TERHALANG, dan bukan oleh keputusan, Perbaikannya, PERLU DEPLOY, tanpa rilis klien, Rantainya putus DUA kali (+14 more)
 
 ### Community 454 - "🔄 OUT-OF-BAND SYSTEM UPDATE (21 Juni 2026)"
-Cohesion: 0.05
-Nodes (41): 10. UI/UX DENSITY & FLEXBOX MIGRATION (25 Juni 2026), 11. ADVANCED RETRIEVAL STABILIZATION (v2.1.0 - 26 Juni 2026), 1. MAMETLITE LITE - ARCHITECTURE CHANGE, 2. TOOLS LOGIC UPDATE, 3. CRITICAL BUG FIXES, 4. ELECTRON / DESKTOP FIXES, 5. BACKEND RESILIENCE UPDATE, 6. MEMORY SYSTEM STATUS (+33 more)
+Cohesion: 0.07
+Nodes (29): 🔄 ALUR SISTEM (SINGKAT), 🏛️ ARSITEKTUR KOGNITIF (UPDATE JUNI 2026), Arsitektur Utama:, Backend & Edge Functions, Backend Resilience & Fallback Logic (12 Juni 2026), Bug Fixes, CI/CD & Desktop Auto-Updater, Desktop Edition (Electron) - Selesai (+21 more)
 
 ### Community 455 - "._phase3_AdapterRegistryInit"
-Cohesion: 0.05
-Nodes (44): PR#7 — Module Discovery Fase 1, 2. Rincian Perubahan Kode, A. Modul Baru `InternalKnowledgeFallbackService.js` (PR#9 Fase 2), B. Integrasi Transisi di `RetrievalOrchestrator.js`, C. Registrasi Runtime di `Kernel.js`, D. Penyelarasan Verification Engine (`CHECK_002B`), 2. Langkah-Langkah Pengerjaan Tahap 3, Langkah 2.1: Pembuatan Service Mandiri (+36 more)
+Cohesion: 0.08
+Nodes (31): 2. Langkah-Langkah Pengerjaan Tahap 3, Langkah 2.1: Pembuatan Service Mandiri, Langkah 2.2: Perluasan RetrievalOrchestrator.js, Langkah 2.3: Registrasi di Kernel.js Phase 3, 2. Rincian Fitur & Implementasi, A. `WebComparisonService.js` (Baru):, B. Perluasan `RetrievalOrchestrator.js`:, C. Registrasi `Kernel.js` Phase 3: (+23 more)
 
 ### Community 456 - "RetrievalOrchestrator"
 Cohesion: 0.06
-Nodes (34): 1. Ringkasan Eksekutif, 2. File yang Dibuat / Dimodifikasi, 3. Matriks Hasil Checkpoint (CP1 – CP9), 4. Temuan Penting Selama Audit & Implementasi, 5. Catatan Eksplisit Keterbatasan CP9 (Load Testing), 6. Status Berikutnya, Changelog: PR#9 — Retrieval Tier Architecture (Penyelesaian Fase 1), Batas yang disadari (+26 more)
+Nodes (39): 1. Ringkasan Eksekutif, 2. File yang Dibuat / Dimodifikasi, 3. Matriks Hasil Checkpoint (CP1 – CP9), 4. Temuan Penting Selama Audit & Implementasi, 5. Catatan Eksplisit Keterbatasan CP9 (Load Testing), 6. Status Berikutnya, Changelog: PR#9 — Retrieval Tier Architecture (Penyelesaian Fase 1), Batas yang disadari (+31 more)
 
 ### Community 457 - "lib/unggahBertahap.js"
 Cohesion: 0.24
@@ -2488,12 +2530,16 @@ Cohesion: 0.18
 Nodes (9): AKAR_REPO, blokEffect, blokUnduh, iEffect, iGalat, iUnduhSelesai, MAIN, r (+1 more)
 
 ### Community 459 - "5. Ecosystem — sisa temuan"
-Cohesion: 0.25
-Nodes (8): 5. Ecosystem — sisa temuan, E1 — CSP dicabut di rilis produksi, dan penjaga navigasi satu-satunya lapisan, E2 — Seluruh log renderer ditulis ke disk tanpa saringan, E4 — `backend/` 978 baris praktis tak terjangkau dari `.exe`, E5 — Penjaga `catch`-diam: hijau, tetapi cakupannya berlubang dan prosanya melenceng, E6 — Divergensi dependency, E7 — Satu-satunya TODO nyata, E9 — ✅ SELESAI 8 Okt — renderer mati tanpa suara, dan layar putih tanpa keterangan
+Cohesion: 0.22
+Nodes (9): 5. Ecosystem — sisa temuan, E1 — CSP dicabut di rilis produksi, dan penjaga navigasi satu-satunya lapisan, E2 — Seluruh log renderer ditulis ke disk tanpa saringan, E4 — `backend/` 978 baris praktis tak terjangkau dari `.exe`, E5 — Penjaga `catch`-diam: hijau, tetapi cakupannya berlubang dan prosanya melenceng, E6 — Divergensi dependency, E7 — Satu-satunya TODO nyata, E8 — ✅ SELESAI 8 Okt — galat ws-assistant memakai bahasa server, dan kalimat manusianya dibuang (+1 more)
+
+### Community 460 - "penyimpanKeadaan"
+Cohesion: 0.14
+Nodes (7): 19 Oktober 2026 — keadaan chat hidup di luar layarnya (Item 127 Tahap 1, langkah 1–4), Bukti, Ikut ketahuan, Kenapa, Langkah 5 diparkir — dan kenapa, Yang berubah, penyimpanKeadaan
 
 ### Community 461 - "Changelog: Memory Governor Addendum Fase 1 + PR#8 Tech-Spec"
-Cohesion: 0.20
-Nodes (9): Bagian 2 — Sinkronisasi Repository, Bagian 3 — PR#8 Tech-Spec, Catatan untuk AI Berikutnya, Changelog: Memory Governor Addendum Fase 1 + PR#8 Tech-Spec, Commit History Sesi Ini, Daftar File yang Dibuat / Dimodifikasi, git pull sebelum sesi dimulai, INDEX-ROADMAP.md (+1 more)
+Cohesion: 0.25
+Nodes (7): Bagian 2 — Sinkronisasi Repository, Catatan untuk AI Berikutnya, Changelog: Memory Governor Addendum Fase 1 + PR#8 Tech-Spec, Commit History Sesi Ini, Daftar File yang Dibuat / Dimodifikasi, git pull sebelum sesi dimulai, Ringkasan Eksekutif
 
 ### Community 462 - "21 Engineer Capability.md"
 Cohesion: 0.18
@@ -2508,16 +2554,16 @@ Cohesion: 0.18
 Nodes (11): Active Architecture Gaps, Architecture Rule, Capability Layers, Constitution Review, Current Runtime Surfaces, Hirarki Otoritas Dokumen, Konstitusi Tertinggi, Master Architecture Index (+3 more)
 
 ### Community 465 - "ToolDispatcher"
-Cohesion: 0.10
-Nodes (21): 1. Daftar Jalur Eksekusi Saat Ini (Execution Surface), 2. Final Threat Model & Bypass Matrix, 3. Daftar Integration Point Final (Hard Choke Points), Execution Surface Inventory & Bypass Audit, Kesimpulan Audit, 1. Latar Belakang & Architecture Gap (GAP-NEW-019), 2. Threat Model & Kemungkinan Bypass, 3. Daftar Seluruh Jalur Eksekusi Tool Saat Ini (As-Is) (+13 more)
+Cohesion: 0.11
+Nodes (19): 2. Final Threat Model & Bypass Matrix, 3. Daftar Integration Point Final (Hard Choke Points), Execution Surface Inventory & Bypass Audit, Kesimpulan Audit, 4.1 Diagram Alur Eksekusi Lama vs Baru, 4.2 Urutan Evaluasi Policy (Deterministic Order), 4.3 Standard Response Contract, 4. Arsitektur ToolDispatcher (To-Be) (+11 more)
 
 ### Community 466 - "2026-07-17 — Observability Instrumentation Critical-Path Testing Note"
 Cohesion: 0.20
 Nodes (9): 2026-07-17 — Observability Instrumentation Critical-Path Testing Note, Context, Critical-Path Testing Attempt (runtime backend), Dampak, Frontend, Implementasi yang sudah dilakukan, Keputusan saat ini, Next Step (recommended) (+1 more)
 
 ### Community 467 - "FileIndexService"
-Cohesion: 0.11
-Nodes (15): 1. Pembuatan Layanan Baru: `FileIndexService`, 2. Perbaikan `StorageManager.js` & `electron/main.cjs`, 3. Perbaikan Urutan Inisialisasi `engineer.js`, 4. Refactoring Ekstraksi Path & Logging, 📝 Changelog: FileIndexService & Engineer Boot Fix (2026-07-28), Langkah Selanjutnya, Perubahan File, Perubahan & Perbaikan (+7 more)
+Cohesion: 0.09
+Nodes (18): 1. Pembuatan Layanan Baru: `FileIndexService`, 2. Perbaikan `StorageManager.js` & `electron/main.cjs`, 3. Perbaikan Urutan Inisialisasi `engineer.js`, 4. Refactoring Ekstraksi Path & Logging, 📝 Changelog: FileIndexService & Engineer Boot Fix (2026-07-28), Langkah Selanjutnya, Perubahan File, Perubahan & Perbaikan (+10 more)
 
 ### Community 468 - "Root Cause (3 Titik)"
 Cohesion: 0.18
@@ -2531,9 +2577,9 @@ Nodes (10): 1. Konteks & Latar Belakang, 2. Rincian Perubahan yang Diimplementas
 Cohesion: 0.18
 Nodes (11): 1. Ringkasan, 2.1 Dua Sistem Penomoran Gap Tidak Pernah Disatukan (Grup 1), 2.2 `GAP-NEW-016` Berstatus Open Padahal Sudah Terjawab (Grup 2), 2.3 `RFC-013` Header Tidak Konsisten dengan Register Gap (Grup 3), 2.4 Tiga Dokumen Redesain UI/OS Tumpang Tindih (Grup 4), 2.5 Seri Audit Wave 5.2E.2 → 5.2F → 5.2G.1 (+FINAL) — Tidak Diubah, 2. Temuan & Resolusi, 3. File yang Diubah (+3 more)
 
-### Community 471 - "Mametlite: Layar Pengaturan Kunci + Label VERIFIED di Jalur Streaming (U8a Item 90)"
-Cohesion: 0.29
-Nodes (6): Bukti live (pertanyaan sama, prompt identik), Koreksi rumusan U8b, Mametlite: Layar Pengaturan Kunci + Label VERIFIED di Jalur Streaming (U8a Item 90), Temuan 1 — Mametlite buntu di `NO_API_KEY`, Temuan 2 — VERIFIED yang sah selalu diturunkan di dua jalur streaming, Temuan 3 — mode LITE tidak pernah aktif (dicatat, belum diubah)
+### Community 471 - "2026-06-29 — Constitution v2 Enforcement & Architecture Audit"
+Cohesion: 0.20
+Nodes (10): 2026-06-29 — Constitution v2 Enforcement & Architecture Audit, Constitution Review Report, Decision, Gaps Closed in Wave 1, Lessons Learned, Next Steps, Open Gaps Remaining, Process (+2 more)
 
 ### Community 472 - "Versi Web Kembali Ber-CSP"
 Cohesion: 0.18
@@ -2547,13 +2593,13 @@ Nodes (10): Aturan lama runtuh menjadi tautologi, Bermula dari satu tanda tanya,
 Cohesion: 0.18
 Nodes (10): Bukti akhir, Bukti dari server, bukan dari ingatan, Groq 404 Terbukti — Provider Ketiga yang Modelnya Dipensiunkan Diam-Diam, Kenapa 404 dan bukan 401 itu menentukan, Penggantinya, Provider ketiga pada pola yang sama, Tarif, dan kenapa itu bukan pelengkap, Temuan sampingan yang nyaris lolos (+2 more)
 
-### Community 475 - "8 Oktober 2026 — Mametlite bicara dalam bahasa penggunanya saat gagal"
-Cohesion: 0.29
-Nodes (7): 8 Oktober 2026 — Mametlite bicara dalam bahasa penggunanya saat gagal, Berkas, Bukti, Sisa blok M, Tiga perbaikan yang ikut, karena ada di jalur yang sama, Yang dibaca pengguna sebelum ini, Yang dikerjakan
+### Community 475 - "serverMcpTiruan.cjs"
+Cohesion: 0.20
+Nodes (8): { createRequire }, crypto, fs, { ListToolsRequestSchema, CallToolRequestSchema }, path, req, { Server }, { StdioServerTransport }
 
-### Community 476 - "19 Oktober 2026 — menu utama bergaya menu game: kotak melayang + tombol MENU (Item 127, K2)"
-Cohesion: 0.29
-Nodes (7): 19 Oktober 2026 — menu utama bergaya menu game: kotak melayang + tombol MENU (Item 127, K2), Bukti, Catatan yang ikut ketahuan, Empat putaran penilaian Owner, Hasil, Huruf — usul K4 dipakai SEMENTARA, Sisa
+### Community 476 - "4. Urutan Extraction yang Paling Aman"
+Cohesion: 0.22
+Nodes (9): 4. Urutan Extraction yang Paling Aman, Fase 1 — Stateless Utilities (Risiko Sangat Rendah), Fase 2 — LLM Callers (Risiko Rendah), Fase 3 — Streaming (Risiko Sedang), Fase 4 — Auth & Context (Risiko Sedang), Fase 5 — RAG Pipeline (Risiko Rendah), Fase 6 — Engineer Brain (Risiko Rendah), Fase 7 — Evidence Pipeline (Risiko Tinggi — Lakukan di akhir) (+1 more)
 
 ### Community 477 - "Panel Pembaruan di Pengaturan — jembatan yang tidak pernah dipakai"
 Cohesion: 0.18
@@ -2563,41 +2609,41 @@ Nodes (10): Berkas, Bukti, Cacat yang ikut ketahuan — dan ini yang terpenting,
 Cohesion: 0.17
 Nodes (10): 1 Oktober 2026 — Engineer tidak boleh pernah jatuh ke jalur ringan, Belum sampai ke aplikasi, Catatan: ini BUKAN sebab peta hilang, Jalan itu nyata — dua sumber kebenaran, Keputusan Owner, Koreksi atas laporan sebelumnya, Uji, Yang dikerjakan (+2 more)
 
-### Community 479 - "27 Oktober 2026 — Umpan balik 👍/👎 per jawaban (Item 126 Fase 0)"
-Cohesion: 0.29
-Nodes (7): 27 Oktober 2026 — Umpan balik 👍/👎 per jawaban (Item 126 Fase 0), Belum dibuktikan, Bukti, Keadaan Fase 0 yang diperiksa lebih dulu (platform, 27 Okt), Penilaian ikut dicadangkan (Item 93), Temuan sebelum membangun, Terbukti live (`npm run desktop`, uji Owner 27 Okt)
+### Community 479 - "Plumbing Parameter `thinking` dari Slot Tier sampai ke Provider"
+Cohesion: 0.22
+Nodes (9): 1. Masalah, 2. Nama Parameter — Diverifikasi dari Dokumentasi, Bukan Ingatan, 3. Keputusan Desain: Semantik Sengaja Asimetris, 5. Bukti Verifikasi Live, 6. Koreksi atas Klaim Saya Sendiri, 7. Efek Samping yang Menguntungkan: Log Baru Membongkar Cacat Lama, 8. Sengaja Tidak Dikerjakan, Konsekuensi yang Harus Dicatat Jujur (+1 more)
 
 ### Community 480 - "4 Oktober 2026 — TEMUAN-ENGINEER bersih: tiga komentar yang berbohong"
 Cohesion: 0.18
 Nodes (10): 4 Oktober 2026 — TEMUAN-ENGINEER bersih: tiga komentar yang berbohong, Apa yang ditutup, Mutasi, Tidak perlu deploy, tidak perlu rilis, TMN-0001 — lahir sudah tertutup, TMN-0002 — saya sendiri yang memperburuknya, TMN-0003 — dua hal salah, bukan satu, Uji: komentar yang membuat klaim faktual harus TETAP benar (+2 more)
 
 ### Community 481 - "ADR-CRW-0006: Crawler Dapat Dipakai Mandiri Sebelum Integrasi Mamet"
-Cohesion: 0.29
-Nodes (6): ADR-CRW-0006: Crawler Dapat Dipakai Mandiri Sebelum Integrasi Mamet, Alternatives, Consequences, Context, Impact Scope, Related Components
+Cohesion: 0.25
+Nodes (7): ADR-CRW-0006: Crawler Dapat Dipakai Mandiri Sebelum Integrasi Mamet, Alternatives, Consequences, Context, Decision, Impact Scope, Related Components
 
 ### Community 482 - "8 Oktober 2026 — jendela putih 4.2.15: renderer mati, dan aplikasi tak punya mulut untuk mengatakannya"
 Cohesion: 0.18
 Nodes (11): 1. Apa yang sebenarnya terjadi, 2. Yang disingkirkan dengan uji, bukan dengan dugaan, 3. Akarnya, dan ia di luar repo, 4. Yang diperbaiki di repo ini, 5. Bukti, 6. Penutupan ujung ke ujung — sore 8 Okt, 8 Oktober 2026 — jendela putih 4.2.15: renderer mati, dan aplikasi tak punya mulut untuk mengatakannya, Bukti aplikasinya hidup (+3 more)
 
-### Community 483 - "CHANGELOG: Final Metadata Audit - Engineer Workspace"
-Cohesion: 0.33
-Nodes (5): 1. Kecukupan Metadata Saat Ini, 2. Kebutuhan Field Tambahan, 3. Risiko Migrasi di Masa Depan, 4. Keputusan Audit, CHANGELOG: Final Metadata Audit - Engineer Workspace
+### Community 483 - "EngineeringState"
+Cohesion: 0.12
+Nodes (14): 4. Integration Points pada Orchestrator (`core_engine.ts`), 1. Latar Belakang & Architecture Gap (GAP-NEW-019), 2. Threat Model & Kemungkinan Bypass, 3. Daftar Seluruh Jalur Eksekusi Tool Saat Ini (As-Is), 5. Daftar Integration Point yang Harus Dimigrasikan, 6. Migration Strategy (Tanpa Breaking Change), RFC-015: Single Tool Dispatcher (Execution Guard Bridge), 1. Kecukupan Metadata Saat Ini (+6 more)
 
-### Community 484 - "INDEX-ROADMAP — Titik Masuk AI Coding"
-Cohesion: 0.29
-Nodes (7): 0. Peran Dokumen & Aturan, 1. Pekerjaan Terbuka (mulai dari sini), 2. Dokumen Roadmap, 3. Disambiguasi & Prinsip Payung, 5. Penyelarasan status 2026-09-28 — apa yang diubah dan kenapa, 6. Keputusan Owner 2026-09-28 — enam baris, SEMUANYA SUDAH DITUTUP (per 2026-09-29), INDEX-ROADMAP — Titik Masuk AI Coding
+### Community 484 - "TUGAS-04 selesai + pagar perintah dilonggarkan tepat sasaran"
+Cohesion: 0.22
+Nodes (8): 1. Peringatan palsu "tugas tidak diumumkan" (`ProsedurEngineer.js`), 2. Penyambung shell diperiksa hanya DI LUAR tanda kutip (`alatFolderJalan.cjs`), 3. Dialog izin membedah skrip sebaris (keputusan Owner: JANGAN dibatasi), Hasil uji Engineer TUGAS-04 (analisis, tanpa patch), Perbaikan kode, Temuan yang belum diperbaiki, TUGAS-04 selesai + pagar perintah dilonggarkan tepat sasaran, Uji otomatis (di luar git)
 
 ### Community 485 - "Audit Menyeluruh Arsitektur Memory Manager"
-Cohesion: 0.11
-Nodes (20): 1. KONDISI SAAT INI (THE AUDIT BYPASS), 2. RANCANGAN PENYELESAIAN (SECURITY HARDENING), ARCHITECTURE AUDIT: MEMORY AUDIT BYPASS (GAP-005), Langkah 1: Sentralisasi Memory Write via Event Bus, Langkah 2: Memory Verification Gate di dalam Worker, Langkah 3: Menghapus Plugin Sub-Agent yang Duplikat, 1. Lokasi Penulisan (*Write*) ke `user_memories`, 2. Lokasi Pembacaan (*Read*) dari `user_memories` (+12 more)
+Cohesion: 0.09
+Nodes (27): 1. KONDISI SAAT INI (THE AUDIT BYPASS), 2. RANCANGAN PENYELESAIAN (SECURITY HARDENING), ARCHITECTURE AUDIT: MEMORY AUDIT BYPASS (GAP-005), Langkah 1: Sentralisasi Memory Write via Event Bus, Langkah 2: Memory Verification Gate di dalam Worker, Langkah 3: Menghapus Plugin Sub-Agent yang Duplikat, 1. Lokasi Penulisan (*Write*) ke `user_memories`, 2. Lokasi Pembacaan (*Read*) dari `user_memories` (+19 more)
 
 ### Community 486 - "Data Tabel Rekonsiliasi ASN — Tahap 1: Pembaca Excel & Pratinjau (Item 92)"
-Cohesion: 0.06
-Nodes (27): Aturan yang ditambah selama Tahap 1 (masing-masing karena satu berkas nyata), Catatan kerja, Data Tabel Rekonsiliasi ASN — Tahap 1: Pembaca Excel & Pratinjau (Item 92), Kejanggalan baru yang tampil di pratinjau (bahan rekonsiliasi), Keputusan terkait (belum dikerjakan), Koreksi kunci: 130/154 → 131/155, Pustaka: SheetJS 0.20.3, bukan 0.18.5, Uji (`frontend/node_modules/.uji-rag/uji-data-tabel-asn.mjs`, di luar git) — SEMUA LULUS (+19 more)
+Cohesion: 0.22
+Nodes (9): Aturan yang ditambah selama Tahap 1 (masing-masing karena satu berkas nyata), Catatan kerja, Data Tabel Rekonsiliasi ASN — Tahap 1: Pembaca Excel & Pratinjau (Item 92), Kejanggalan baru yang tampil di pratinjau (bahan rekonsiliasi), Keputusan terkait (belum dikerjakan), Koreksi kunci: 130/154 → 131/155, Pustaka: SheetJS 0.20.3, bukan 0.18.5, Uji (`frontend/node_modules/.uji-rag/uji-data-tabel-asn.mjs`, di luar git) — SEMUA LULUS (+1 more)
 
-### Community 487 - "📋 ROADMAP PENGEMBANGAN MAMET OS ECOSYSTEM"
-Cohesion: 0.29
-Nodes (6): ✅ FASE 2: Penyempurnaan UI `MemoryContextPanel`, ✅ FASE 3: Optimasi Biaya AI (Strategi Model Bertingkat), ✅ FASE 4: Integrasi RAG Dokumen Eksternal & Deep Research (Jangka Panjang), ✅ FASE 5: Dokumentasi & Changelog, 📋 ROADMAP PENGEMBANGAN MAMET OS ECOSYSTEM, 🎯 Status Saat Ini (Sudah Selesai):
+### Community 487 - "Bagian 2 — Cacat yang hanya bisa muncul setelah uji kendali"
+Cohesion: 0.22
+Nodes (8): 1 Oktober 2026 — Tahap 6 terbukti dua arah, dan spanduk yang membantah laporannya dibuang, Bagian 1 — Uji kendali: penjaga yang meloloskan patch yang benar, Bagian 2 — Cacat yang hanya bisa muncul setelah uji kendali, Dicatat terpisah, tidak dikerjakan di sini, Dua jebakan yang tertangkap saat membuat ujinya, TERBUKTI LIVE di 4.2.3 (1 Oktober 2026), Uji, Yang dikerjakan
 
 ### Community 488 - "uji-cari-judul-nomor.mjs"
 Cohesion: 0.33
@@ -2615,21 +2661,21 @@ Nodes (5): 1. Analisis Arsitektur, 2. Proposal Desain, 3. Rencana Implementasi, 
 Cohesion: 0.20
 Nodes (9): 1. Context & Motivation, 2. Target Architecture, 3.1. Mekanisme SET, 3.2. Penyesuaian Desktop Bridge (Frontend), 3. Proposal Implementasi: Signed Execution Token (SET), 4. Keuntungan Arsitektur Ini, 5. Rencana Transisi (Migration Plan), 6. Open Questions / Kesimpulan untuk Review (+1 more)
 
-### Community 493 - "Penyaring Kategori di Tahap 1 — Akar Sebenarnya di Balik "AI Lupa Terus""
-Cohesion: 0.22
-Nodes (9): 1. Bagaimana Ini Ketahuan, 3. Kenapa Ini Menjelaskan Semua Gejala Sebelumnya, 4. Perbaikan, 5. Bukti Verifikasi Live, 6. Catatan Jujur — Yang Terlihat Mencurigakan Tapi Bukan Masalah, 7. Pelajaran, Kontrak Addendum Fase 1 Tetap Utuh, Penyaring Kategori di Tahap 1 — Akar Sebenarnya di Balik "AI Lupa Terus" (+1 more)
+### Community 493 - "MemoryService"
+Cohesion: 0.06
+Nodes (29): 1. Letak Ketidaksesuaian antara Frontend dan Backend, A. Bypass Arsitektur Layer 2 (Frontend), B. Payload Mode Ignored (Backend), 2. Analisis Temuan (Gap Analysis), 3. Rekomendasi Urutan Perbaikan (Roadmap), Laporan Audit: Analisis Kesenjangan (Gap Analysis) Arsitektur MAEF, 📅 CHANGE LOG TAMBAHAN (CONVERSATION ENGINE MEMORY INTEGRATION) - 2026-07-02, 📅 CHANGE LOG TAMBAHAN (FIX MEMORY & SOURCE TRACE ANOMALY) - 2026-07-02 (+21 more)
 
 ### Community 494 - "CHANGELOG: Post Implementation Audit - Engineer Workspace"
-Cohesion: 0.20
-Nodes (9): 1. File yang Benar-Benar Dibuat, 2. File yang Dimodifikasi, 3. Keselarasan dengan Blueprint, 4. Deviasi Arsitektur (Architectural Deviation), 5. Technical Debt Baru, 6. Risiko Terhadap MAEF Core, 7. Ketergantungan Tersembunyi (Hidden Dependencies), 8. Kesiapan Integration Testing (+1 more)
+Cohesion: 0.22
+Nodes (8): 1. File yang Benar-Benar Dibuat, 2. File yang Dimodifikasi, 3. Keselarasan dengan Blueprint, 4. Deviasi Arsitektur (Architectural Deviation), 5. Technical Debt Baru, 6. Risiko Terhadap MAEF Core, 7. Ketergantungan Tersembunyi (Hidden Dependencies), CHANGELOG: Post Implementation Audit - Engineer Workspace
 
 ### Community 495 - "2026-07-23: Fix Verification Engine — Audit Forensik Double Source of Truth"
 Cohesion: 0.20
 Nodes (9): 1. `verification/universal_contract.ts`, 2026-07-23: Fix Verification Engine — Audit Forensik Double Source of Truth, 2. `verification/verification_engine.ts`, 3. `orchestration/handlers/synthesis_handler.ts`, 4. `coordinator/trace_parser.ts`, Changes, Deployment Protocol, Problem (+1 more)
 
-### Community 496 - "Tabel Centang PDF — Kolom dari Koordinat pdf.js, Bukan dari OCR"
-Cohesion: 0.33
-Nodes (6): Aturan yang dipaksa data buku penuh, Batas yang disadari, Latar, Perubahan, Tabel Centang PDF — Kolom dari Koordinat pdf.js, Bukan dari OCR, Uji (lokal, skrip di luar git)
+### Community 496 - "3 November 2026 — Item 130 Tahap F: graf Home menjadi tata surya"
+Cohesion: 0.28
+Nodes (9): 3 November 2026 — Item 130 Tahap F: graf Home menjadi tata surya, Bukti, Gratis & aman, Hasil terukur (data tiruan setara Owner: 229 dokumen, 135 percakapan, 94 memori), Jaring & seretan (koreksi Owner sesudah pratinjau pertama), Mengapa, keturunanSistem(), mulaiSeret() (+1 more)
 
 ### Community 497 - "Changelog: Security Hardening — Supabase (BrainBox AI)"
 Cohesion: 0.20
@@ -2644,19 +2690,19 @@ Cohesion: 0.20
 Nodes (10): 1. Ringkasan Eksekutif, 2. Insiden Token Sesi Sub B & Tindakan Remediasi, 3. Hasil Audit & Retest Live Sub A, 4. Kebijakan Standarisasi Pengujian Live (Mandatory Directive), 5. Kesimpulan Penutupan Tahap 1, A. Kronologi Insiden:, A. Temuan Awal Audit Sub A:, B. Retest Live Sub A dengan Kredensial Resmi: (+2 more)
 
 ### Community 500 - "ROADMAP: Siap Disajikan ke Pengguna"
-Cohesion: 0.11
-Nodes (18): 0. Apa yang sebenarnya ditemukan, 10 tabel yang DITULIS klien, 13 tabel yang WAJIB punya SELECT, atau cadangan 13/13 patah, 14 tabel tanpa SATU PUN rujukan klien, 3. Permukaan serangan platform — diperiksa di platform, bukan di repo, 4. Hak 39 tabel — artefak prasyarat T11, sekarang lengkap, 6. Penghalang yang bukan kode, dan pengaruhnya ke rencana, 7. Sisa pekerjaan — urutan yang diusulkan (+10 more)
+Cohesion: 0.17
+Nodes (12): 0. Apa yang sebenarnya ditemukan, 3. Permukaan serangan platform — diperiksa di platform, bukan di repo, 6. Penghalang yang bukan kode, dan pengaruhnya ke rencana, 7. Sisa pekerjaan — urutan yang diusulkan, 8. Dua keberatan atas urutan di atas, dicatat supaya bisa dikoreksi, P1 — `cron-agent`: ter-deploy, nol pemanggil, memegang token kirim-pesan Owner ⏳ **keputusan Owner**, P2 — `knowledge-health`: ter-deploy, nol pemanggil, P3 — `test-suite` masih terdaftar di `config.toml` meski tak ter-deploy (+4 more)
 
 ### Community 501 - "Changelog: Fix Tier 3 Web Search Chrome/Vercel — Static Import Supabase Client"
 Cohesion: 0.20
 Nodes (10): 1. Latar Belakang, 2. Akar Masalah (Ringkasan), 3. Solusi yang Diterapkan, 4.1 Build Production (Local), 4.2 Live Test Browser Chrome (Post-Deploy Vercel), 4.3 Checklist Kriteria Verifikasi (dari dokumen PENDING), 4. Verifikasi, 5. Catatan Terpisah (Tidak Ditindaklanjuti dalam Sesi Ini) (+2 more)
 
 ### Community 502 - "2. Rincian Perubahan Kode"
-Cohesion: 0.50
-Nodes (4): 1. `MemoryGovernorService.js` (Tahap B.1 Backend & Observabilitas):, 2. `MemoryContextPanel.jsx` (Tahap B.2 & B.3 UI):, 2. Rincian Perubahan Kode, 3. `ConversationEngine.jsx`:
+Cohesion: 0.29
+Nodes (7): 1. Konteks & Latar Belakang, 1. `MemoryGovernorService.js` (Tahap B.1 Backend & Observabilitas):, 2. `MemoryContextPanel.jsx` (Tahap B.2 & B.3 UI):, 2. Rincian Perubahan Kode, 3. `ConversationEngine.jsx`:, 3. Hasil Validasi, Changelog: Tahap 1 Sub B — UI Purge Lifecycle & Conflict Resolution (CP4b)
 
 ### Community 503 - "Changelog: Verifikasi Silang Menyeluruh — Tabrakan Hierarki di Dokumen Sendiri"
-Cohesion: 0.18
+Cohesion: 0.20
 Nodes (10): 1. Ringkasan, 2.1 Tiga Salinan Hierarki Otoritas yang Saling Beda (Ditemukan Sendiri), 2.2 `MASTER-ARCHITECTURE-INDEX.md` §Architecture Rule Masih Menunjuk File yang Sudah Dihapus, 2.3 Ketidakcocokan Kecil "27 dokumen" vs "28 dokumen", 2.4 GAP-NEW-018 Sebagian Sudah Terjawab, 2. Temuan & Resolusi, 3. Verifikasi Tambahan yang Dilakukan (Tidak Ditemukan Masalah), 4. File yang Diubah (+2 more)
 
 ### Community 504 - "Changelog: Implementasi Knowledge Galaxy — Cosmic Orbits & Live Thought Pulse"
@@ -2664,8 +2710,8 @@ Cohesion: 0.29
 Nodes (7): 1. Ringkasan, 2. Audit Sebelum Eksekusi — Pilar A Sebagian Sudah Ada, 3. Pilar B — Live Thought Pulsing, 4. Bug Ditemukan & Diperbaiki Saat Verifikasi Live, 5. Verifikasi, 6. Tidak Dikerjakan / Di Luar Scope, Changelog: Implementasi Knowledge Galaxy — Cosmic Orbits & Live Thought Pulse
 
 ### Community 505 - "2026-09-28 — Model diberi tahu akar repo-nya (sisa Tahap 5)"
-Cohesion: 0.33
-Nodes (5): 2026-09-28 — Model diberi tahu akar repo-nya (sisa Tahap 5), Belum diuji live, Masalah (live, 28 September), Perbaikan, Uji
+Cohesion: 0.40
+Nodes (4): 2026-09-28 — Model diberi tahu akar repo-nya (sisa Tahap 5), Belum diuji live, Masalah (live, 28 September), Uji
 
 ### Community 506 - "Cache Hasil Konversi — Tidak Memproses Hal yang Sama Dua Kali"
 Cohesion: 0.20
@@ -2675,9 +2721,9 @@ Nodes (9): Bukti, Cache Hasil Konversi — Tidak Memproses Hal yang Sama Dua Kal
 Cohesion: 0.20
 Nodes (9): Berikutnya, Embedding Pindah ke OpenRouter — Hasil Uji, Keputusan Owner, Pertanyaannya, Tidak ada jalur unggah PDF yang benar, Uji dokumen HCDP lewat OpenRouter, Uji unggah: gagal karena jatah Gemini, Ukuran ditentukan jumlah huruf (+1 more)
 
-### Community 508 - "19 Oktober 2026 — keadaan chat hidup di luar layarnya (Item 127 Tahap 1, langkah 1–4)"
-Cohesion: 0.33
-Nodes (6): 19 Oktober 2026 — keadaan chat hidup di luar layarnya (Item 127 Tahap 1, langkah 1–4), Bukti, Ikut ketahuan, Kenapa, Langkah 5 diparkir — dan kenapa, Yang berubah
+### Community 508 - "uji-audit-perintah.mjs"
+Cohesion: 0.22
+Nodes (5): AKAR, ALS, AS, FJ, MIG
 
 ### Community 509 - "Jalur Upload RAG yang Tak Pernah Memvektorkan, dan Satu Policy RLS `USING (true)`"
 Cohesion: 0.20
@@ -2691,9 +2737,9 @@ Nodes (4): 1. File yang Diubah (Modified Files), 2. Kepatuhan Instruksi Mutlak (
 Cohesion: 0.20
 Nodes (6): AKAR, halamanPdf, ocr177, sumberOcr, tanda177, tc
 
-### Community 512 - "ROADMAP-TEMUAN-TERBUKA.md"
-Cohesion: 0.04
-Nodes (35): Catatan, Hapus Dokumen RAG: Cek Baris yang Benar-Benar Terhapus (Item 91), Masalah (terbukti di edge_logs Supabase, 2026-09-17), Perubahan, Verifikasi, Alasan, Pemeriksaan, T2: Enam Komponen Dasbor Yatim Dihapus (+27 more)
+### Community 512 - "T14 — nama penyedia hulu disimpan per pesan"
+Cohesion: 0.20
+Nodes (10): Batas yang jujur: "penyedia terakhir sebelum jawaban dirakit", Bukti, Cacat yang paling mungkin, dan penjaganya, Catatan: jalur stream dulu tidak pernah membawa metadata, Empat hal yang dijaga, Kenapa, T14 — nama penyedia hulu disimpan per pesan, Uji live 29 September — satu jalur terbukti, satu belum (+2 more)
 
 ### Community 513 - "1 Oktober 2026 — Engineer berhenti menulis memori pribadi Owner"
 Cohesion: 0.20
@@ -2701,7 +2747,7 @@ Nodes (9): 1 Oktober 2026 — Engineer berhenti menulis memori pribadi Owner, Be
 
 ### Community 514 - "ConversationEngine"
 Cohesion: 0.03
-Nodes (111): Tiga cacat yang terlihat live, semuanya kesalahan saya, Perbaikan, Perbaikan, Dua cacat, satu akar, Catatan: dua temuan lain dari sesi yang sama, 1. Keluaran perintah tidak punya anggaran, Kepala DAN ekor, bukan potong-di-ujung, Satu titik rakit (+103 more)
+Nodes (113): Architecture Improvements, Layout Engine & Scroll Isolation (Native Desktop Feel), UI Constitution Amendment, Layout Engine & Scroll Isolation (Native Desktop Feel), Mamet AI v4.0.0 - Layout Engine & UI Constitution Amendment, Overview, UI Constitution Amendment, Perbaikan (+105 more)
 
 ### Community 515 - "20 Oktober 2026 — satu set ikon; cabang desktop Sidebar dihapus (sisa Item 127, di Item 128)"
 Cohesion: 0.33
@@ -2715,33 +2761,33 @@ Nodes (9): 1. OpenAI adalah penyedia yang TERLEWAT saat BYOK ditutup, 2. Komenta
 Cohesion: 0.22
 Nodes (8): 4 Oktober 2026 — Satu pesan = satu percobaan embedding, Buktinya dari log produksi, bukan dari dugaan, Ini bukan kebijakan ulang-coba yang dihapus, Penjaga yang paling mudah salah, Perlu DEPLOY, Uji, Yang dikerjakan, Yang TIDAK dibungkam
 
-### Community 518 - "8 Oktober 2026 — Mametlite akhirnya bisa dipakai dari HP"
-Cohesion: 0.29
-Nodes (7): 8 Oktober 2026 — Mametlite akhirnya bisa dipakai dari HP, Berkas, Bukti, Keadaan sebelum, Kenapa ini dikerjakan, dan siapa yang jadi ukurannya, Sisa blok M, Yang dikerjakan
+### Community 518 - "uji-catatan-akar-repo.mjs"
+Cohesion: 0.22
+Nodes (7): AKAR_REPO, blokKirim, c, CE, iAkar, iHistory, iSisipan
 
-### Community 519 - "ROADMAP-TAMPILAN-MENU-GAME.md"
-Cohesion: 0.04
-Nodes (33): 19 Oktober 2026 — pemeriksaan "error tersembunyi": empat temuan diperbaiki (Item 127, Tahap 3), Dicatat, tidak diperbaiki, Empat temuan — diperbaiki (Owner: "ya setuju, 1 A"), Penjaga baru, Yang bersih, 19 Oktober 2026 — huruf & angka nyaman dibaca lama, kolom chat diperlebar (Item 127, K4), Keputusan Owner yang membalik pedoman, Uji (+25 more)
+### Community 519 - "INDEX-ROADMAP.md"
+Cohesion: 0.05
+Nodes (16): 19 Oktober 2026 — huruf & angka nyaman dibaca lama, kolom chat diperlebar (Item 127, K4), Keputusan Owner yang membalik pedoman, Uji, 20 Oktober 2026 — kartu jawaban chat = kartu Settings (Item 127, Tahap 3), Hasil, Jalan menuju keputusan, Uji, 20 Oktober 2026 — tema aplikasi Tahap A: token palet menjadi variabel CSS (Item 128) (+8 more)
 
 ### Community 520 - "31 Oktober 2026 — K4: setiap akun punya ruang pengetahuan inti (CORE) sejak dibuat (ADR-0022)"
 Cohesion: 0.33
 Nodes (6): 31 Oktober 2026 — K4: setiap akun punya ruang pengetahuan inti (CORE) sejak dibuat (ADR-0022), Bukti, Tautan undangan Supabase (type=invite) → layar buat kata sandi, Temuan, Terbukti live (Owner, 31 Okt — undangan sungguhan), Yang dibuat
 
-### Community 521 - "1. Skenario Pengujian & Hasil Eksekusi"
-Cohesion: 0.18
-Nodes (10): 1. Skenario Pengujian & Hasil Eksekusi, 2. Papan Skor Kesiapan Produksi (0-10), 3. Kesimpulan Auditor, 🚀 E2E Web3 Production Readiness Audit, Step 1: Membuat Project Baru, Step 2: Manajemen Tugas (Task Creation), Step 3: Penetapan Tenggat Waktu (Deadline), Step 4: Knowledge Base Riset Harian (+2 more)
+### Community 521 - "uji-jejak-prompt-t0.js"
+Cohesion: 0.15
+Nodes (18): 1. Skenario Pengujian & Hasil Eksekusi, 2. Papan Skor Kesiapan Produksi (0-10), 3. Kesimpulan Auditor, 🚀 E2E Web3 Production Readiness Audit, Step 1: Membuat Project Baru, Step 2: Manajemen Tugas (Task Creation), Step 3: Penetapan Tenggat Waktu (Deadline), Step 4: Knowledge Base Riset Harian (+10 more)
 
-### Community 522 - "dataPerAkun.js"
-Cohesion: 0.17
-Nodes (15): 29 Oktober 2026 — K4: uji isolasi data antar-akun — database & server terisolasi, peramban Mametlite bocor lalu diperbaiki, Bukti, Ketahuan (K5 — menunggu keputusan Owner, belum dikerjakan), Lapis 1 — database (RLS): ✅ terisolasi, Lapis 2 — server: ✅ terisolasi, Lapis 3 — peramban Mametlite: ❌ BOCOR → diperbaiki, Uji nyata Owner — 30 Okt 2026 (mametlite.vercel.app, satu Chrome) ✅, ambil() (+7 more)
+### Community 522 - "29 Oktober 2026 — K4: uji isolasi data antar-akun — database & server terisolasi, peramban Mametlite bocor lalu diperbaiki"
+Cohesion: 0.29
+Nodes (7): 29 Oktober 2026 — K4: uji isolasi data antar-akun — database & server terisolasi, peramban Mametlite bocor lalu diperbaiki, Bukti, Ketahuan (K5 — menunggu keputusan Owner, belum dikerjakan), Lapis 1 — database (RLS): ✅ terisolasi, Lapis 2 — server: ✅ terisolasi, Lapis 3 — peramban Mametlite: ❌ BOCOR → diperbaiki, Uji nyata Owner — 30 Okt 2026 (mametlite.vercel.app, satu Chrome) ✅
 
-### Community 523 - "31 Oktober 2026 — K5/K6: pendaftaran publik ditutup; menghapus akun = menghapus seluruh datanya (ADR-0022)"
-Cohesion: 0.33
-Nodes (6): 1. K5 — pendaftaran publik ditutup (Owner), 2. Regresi pemicu CORE: semua akun tak bisa dihapus, 31 Oktober 2026 — K5/K6: pendaftaran publik ditutup; menghapus akun = menghapus seluruh datanya (ADR-0022), 3. K6 — hapus akun = hapus seluruh datanya (pilihan A Owner), Terbukti live (Owner menghapus dua akun undangan uji dari dashboard), Uji
+### Community 523 - "uji-jejak-prompt.mjs"
+Cohesion: 0.28
+Nodes (5): AKAR, panjang(), percakapan(), susunJejakPipeline(), terimaParser()
 
-### Community 524 - "2 November 2026 — Bersih-bersih Parkir: kode mati, sampah uji di basis data, `.gitignore` folder terlarang"
-Cohesion: 0.33
-Nodes (5): 1. Kode mati dihapus, 2 November 2026 — Bersih-bersih Parkir: kode mati, sampah uji di basis data, `.gitignore` folder terlarang, 2. Sampah uji di `api_usage` dihapus, 3. `.gitignore`: `.venv/`, `/data/`, `hasil/`, Bukti
+### Community 524 - "uji-penyimpan-keadaan.mjs"
+Cohesion: 0.22
+Nodes (4): AKAR, app, hook, kernel
 
 ### Community 525 - "Deprecated: Legacy Cognition Layer + api/memory routes"
 Cohesion: 0.20
@@ -2767,13 +2813,13 @@ Nodes (9): 1. System Logs, 2. Event Logs, 3. Orchestrator Logs, 4. Adapter Logs,
 Cohesion: 0.22
 Nodes (8): ADR-0006: Two-Brain Context Model for Engineer, Alur Pengambilan Konteks, Consequences, Context, Decision, DYNAMIC ENGINEERING CONTEXT, Lazy-Loading Rule, STATIC ENGINEERING KNOWLEDGE
 
-### Community 531 - "K1 Langkah 1 — Tanda Centang Ditulis sebagai Kata saat Unggah"
-Cohesion: 0.33
-Nodes (6): Bahan ukur: OCR nyata 217 halaman ($0,43), Hasil di korpus (221 berkas; 000 = pindaian), K1 Langkah 1 — Tanda Centang Ditulis sebagai Kata saat Unggah, Masalah, Uji, Yang dipasang (tanpa LLM — keputusan Owner)
+### Community 531 - "2. Peta Tanggung Jawab `index.ts`"
+Cohesion: 0.25
+Nodes (8): 2.1 Kelompok A — Infrastruktur & Konfigurasi, 2.2 Kelompok B — LLM Provider Calls, 2.3 Kelompok C — Streaming, 2.5 Kelompok E — RAG Pipeline, 2.6 Kelompok F — Memory, 2.7 Kelompok G — Engineer Context (Two-Brain), 2.9 Kelompok I — Intent Router & Orchestrator, 2. Peta Tanggung Jawab `index.ts`
 
-### Community 532 - "Handoff: Next Session (MAEF Execution Monitor & Dependency Map)"
-Cohesion: 0.33
-Nodes (5): Current Bug (PR / Homework), Current Status, Handoff: Next Session (MAEF Execution Monitor & Dependency Map), Next Session Tasks, Suspected Root Causes for Next Debugging:
+### Community 532 - "Laporan Audit: ConversationEngine vs MemoryService"
+Cohesion: 0.25
+Nodes (7): 1. Analisis Alur Pengiriman Chat Saat Ini, 2. Kesenjangan (Gap) dengan Arsitektur Layer 2, 3. Analisis Parameter Payload ke Backend, 4. Rekomendasi Perbaikan Konkret, Apa yang Cukup?, Apa yang Kurang / Salah?, Laporan Audit: ConversationEngine vs MemoryService
 
 ### Community 533 - "3. Definisi Status Artefak"
 Cohesion: 0.40
@@ -2823,29 +2869,29 @@ Nodes (8): 1. Global Shell Restructuring, 2026-07-14 UI Migration: Obsidian Deep
 Cohesion: 0.20
 Nodes (9): 1. Error 400 Bad Request pada `BrainService.js` (`executeLLM`), 2. Batas Ukuran Prompt File (Payload Terlalu Besar), 3. Kegagalan Parsing Respons LLM di `BrainService.js`, 4. Crash Akibat Nilai `null` pada Patch Generator (`engineer.js`), 5. Double-JSON Unwrapping (`engineer.js`), 6. Bug Kritis: Blank Screen Akibat File Terpotong (Truncation), 7. Bug Kritis: UI Chat Tidak Memperbarui Status Patch, Changelog: Engineer Service Debugging & Fixes (+1 more)
 
-### Community 545 - "Mamet AI v4.0.0 - Layout Engine & UI Constitution Amendment"
-Cohesion: 0.40
-Nodes (4): Layout Engine & Scroll Isolation (Native Desktop Feel), Mamet AI v4.0.0 - Layout Engine & UI Constitution Amendment, Overview, UI Constitution Amendment
+### Community 545 - "Laporan Audit: Kegagalan Pembacaan User Memory (RAG)"
+Cohesion: 0.25
+Nodes (7): 1. Lokasi Eksekusi Query, 2. Pengecekan Akses dan Mode, 3. Akar Masalah (Root Causes), 4. Rekomendasi Perbaikan Konkret, Laporan Audit: Kegagalan Pembacaan User Memory (RAG), Masalah A: Logika "Buta" (The Limit-15 Flaw), Masalah B: Risiko Crash Kolom `workspace_id` (PGRST204)
 
-### Community 546 - "Changelog: Fitur Baru — Toggle Preferensi Tool (RAG & Web Search)"
-Cohesion: 0.40
-Nodes (4): 1. Latar Belakang, 3. Catatan Penting untuk Owner (soal ekspektasi RAG), 4. File yang Diubah/Ditambah, Changelog: Fitur Baru — Toggle Preferensi Tool (RAG & Web Search)
+### Community 546 - "A. Tangga Eskalasi 4 Level (Bagian 3.2):"
+Cohesion: 0.29
+Nodes (5): 2. Langkah-Langkah Pengerjaan Tahap 2, Langkah 2.1: Pembuatan Service Mandiri, Langkah 2.2: Registrasi di Kernel.js Phase 3, Langkah 2.3: Integrasi Session Digest ke UI Observability, A. Tangga Eskalasi 4 Level (Bagian 3.2):
 
 ### Community 547 - "Changelog: PR#6 — Token Efficiency Implementation"
 Cohesion: 0.25
 Nodes (6): 2. `supabase/functions/agent-process/lib/orchestration/handlers/context_builder.ts`, Catatan Teknis, Changelog: PR#6 — Token Efficiency Implementation, Exit Criteria Status, Perubahan Kode, Ringkasan
 
 ### Community 548 - "memory_manager_v1.ts"
-Cohesion: 0.06
-Nodes (38): 3. Rencana Implementasi, 2. Kenapa Memori Gagal Ditarik oleh Backend?, A. Schema Mismatch & The "Null Crash" (Kritis), B. The V2 Fallback Trap (Kritis), 1. Lokasi Eksekusi Query, 2. Pengecekan Akses dan Mode, 3. Akar Masalah (Root Causes), 4. Rekomendasi Perbaikan Konkret (+30 more)
+Cohesion: 0.12
+Nodes (19): 3. Rencana Implementasi, 2. Kenapa Memori Gagal Ditarik oleh Backend?, 3. Rekomendasi Perbaikan Konkret, A. Schema Mismatch & The "Null Crash" (Kritis), B. The V2 Fallback Trap (Kritis), Laporan Audit: Kesenjangan Alur Chat & Sinkronisasi Memori, bindCognitiveExecution(), CognitiveExecutionContract (+11 more)
 
-### Community 549 - "T4 Hak `anon` pada `match_documents` Dicabut · T6 Kueri `verification_audit_logs.metadata` Dihapus"
-Cohesion: 0.40
-Nodes (4): Batas yang disadari, T4 Hak `anon` pada `match_documents` Dicabut · T6 Kueri `verification_audit_logs.metadata` Dihapus, T4 — `match_documents` bisa dieksekusi `anon`, T6 — `fetchExecutionTrace` meminta kolom yang tidak ada
+### Community 549 - "2026-09-08-backlog-11-13-system-logs-archive-history-prompt-rules.md"
+Cohesion: 0.25
+Nodes (5): Changelog: Fix Cross-App `appSource` Override — Mamet Lite Ditolak `ENGINEER_NO_API_KEY`, Daftar Berkas, Metodologi Investigasi (dicatat karena berbeda dari sesi sebelumnya), Perbaikan, Ringkasan
 
 ### Community 550 - "AssistantService"
-Cohesion: 0.05
-Nodes (50): File Baru, File Dimodifikasi, PR#3 — Ekstraksi `AssistantService`, Sebab (bukti, bukan dugaan), 1. Batas jendela model, Masalah, Sumber angkanya, Yang dikerjakan (+42 more)
+Cohesion: 0.06
+Nodes (48): File Baru, File Dimodifikasi, PR#3 — Ekstraksi `AssistantService`, `_handleResponseStream()` — BARU (shared), File yang Dibuat / Dimodifikasi, 1. Batas jendela model, Masalah, Sumber angkanya (+40 more)
 
 ### Community 551 - "Database 238 MB → 32 MB"
 Cohesion: 0.22
@@ -2856,20 +2902,20 @@ Cohesion: 0.40
 Nodes (4): 2. Penghapusan Duplikasi Arsitektur, 3. Komponen Non-Compliance (Kepatuhan Isolasi), 4. Potensi Risiko, CHANGELOG: Step 3 Implementation - Engineer Workspace
 
 ### Community 553 - "Folder Kerja Assistant — Tahap 2: Tulis & Perbarui (Item 85)"
-Cohesion: 0.29
+Cohesion: 0.33
 Nodes (6): Bukti live, Catatan, Folder Kerja Assistant — Tahap 2: Tulis & Perbarui (Item 85), Penyimpangan dari roadmap (keputusan Owner), Uji otomatis (di luar git, `frontend/node_modules/.uji-rag/`) — semua lulus, Yang dibuat
 
 ### Community 554 - "Tabel Centang PDF — Kontrak Jawaban & Penurunan Label VERIFIED"
 Cohesion: 0.40
 Nodes (5): Batas yang disadari, Latar, Susulan — uji live v453 & perbaikan per kalimat (v454), Tabel Centang PDF — Kontrak Jawaban & Penurunan Label VERIFIED, Uji (lokal, skrip di luar git) — 15/15
 
-### Community 555 - "T8 — Perintah Engineer Tanpa Shell, Profil Peran, dan Pesan Hasil Mesin Bukan Kueri"
-Cohesion: 0.33
-Nodes (5): Bukti live, Catatan terbuka, T8 — Perintah Engineer Tanpa Shell, Profil Peran, dan Pesan Hasil Mesin Bukan Kueri, Temuan saat diperiksa ulang (hasil baca kode, lalu dibuktikan live), Uji otomatis (di luar git, `frontend/node_modules/.uji-rag/`) — semua lulus
+### Community 555 - "loadProjectMemory"
+Cohesion: 0.29
+Nodes (8): 1. Ringkasan, 2. Audit — Status Ketiga Temuan Sebelum Perbaikan Ini, 3. Perbaikan, 4. Verifikasi Jalur Kedua yang Mungkin Bocor, 5. Deploy & Verifikasi Live, 6. Status Akhir, Changelog: Perbaikan Kebocoran Memori Personal ke Mametlite (Temuan #1), loadProjectMemory()
 
 ### Community 556 - "2026-09-28 — Lapisan per-klaim dimatikan sesudah uji live (T13)"
-Cohesion: 0.11
-Nodes (18): 2026-09-28 — Lapisan per-klaim dimatikan sesudah uji live (T13), Akar salahnya, Apa yang dibuktikan uji live, Arah berikutnya, Dua kegagalan, keduanya terukur pada data nyata, Kenapa korpus uji paginya tidak menangkap ini, Yang berubah, Yang tetap didapat hari ini (+10 more)
+Cohesion: 0.25
+Nodes (7): 2026-09-28 — Lapisan per-klaim dimatikan sesudah uji live (T13), Akar salahnya, Apa yang dibuktikan uji live, Arah berikutnya, Dua kegagalan, keduanya terukur pada data nyata, Kenapa korpus uji paginya tidak menangkap ini, Yang tetap didapat hari ini
 
 ### Community 557 - "3 November 2026 — Menuju 5.0.0: penguji mutu jawaban K1/K2 dibangun ulang, `raw_memory_content` ikut dicadangkan (K6)"
 Cohesion: 0.25
@@ -2879,9 +2925,9 @@ Nodes (8): 3 November 2026 — Menuju 5.0.0: penguji mutu jawaban K1/K2 dibangun
 Cohesion: 0.22
 Nodes (8): Bukti, Diukur dulu, bukan diperdebatkan, Dua kalimat yang paling menentukan di catatannya, Keberatan Owner, Kenapa jumlah barisnya ikut — bukan hiasan, Peta repo untuk Engineer — dari "bisa mencari" menjadi "tahu apa yang ada", Yang dikerjakan (nomor 1 dari tiga arahan Owner), Yang TIDAK dikerjakan hari ini
 
-### Community 559 - "Set Uji Pengambilan Potongan & Angka Acuan (Item 90 Tahap A)"
-Cohesion: 0.40
-Nodes (5): Angka acuan (2026-09-17 07:00 UTC), Kunci jawaban diperiksa ke dokumen asli (bukan ke database), Set Uji Pengambilan Potongan & Angka Acuan (Item 90 Tahap A), Temuan, Yang dibuat (di luar git, `frontend/node_modules/.uji-rag/`)
+### Community 559 - "28 Oktober 2026 — Rilis 4.3.2: paket keamanan "Black October" (T20) + bundel crawler ber-hash"
+Cohesion: 0.25
+Nodes (8): 28 Oktober 2026 — Rilis 4.3.2: paket keamanan "Black October" (T20) + bundel crawler ber-hash, Belum dibuktikan, Build & terbit (diperiksa di platform), Bukti, Isi rilis 4.3.2, Jabat tangan pertama 11–13 s — diselidiki, bukan dari pembaruan, Temuan baru (diukur di `.venv` crawler), Yang dibuat
 
 ### Community 560 - "9 November 2026 — Item 131 Tahap J: pekerjaan 6 Nov diperiksa ulang dan dilengkapi"
 Cohesion: 0.40
@@ -2907,21 +2953,21 @@ Nodes (8): BEFORE YOU START, ENGINEERING PRINCIPLE, FOR AI ENGINEERS, MAMET ECOS
 Cohesion: 0.50
 Nodes (4): 4. Konsekuensi, Mitigasi, Positif, Risiko / Negatif
 
-### Community 566 - "kirim"
-Cohesion: 0.40
-Nodes (6): Satu mutasi yang TIDAK menggigit, dan itu benar, Uji, bersuara(), denganFetch(), diam(), kirim()
+### Community 566 - "[SELESAI] Architectural Decoupling & Memory Isolation for Mametlite"
+Cohesion: 0.25
+Nodes (8): 1. Modifikasi Payload Frontend (`callAgentSimple.js`), 2. Modifikasi Bypass Memori di Backend (`agent-process/index.ts`), 3. Pemisahan Ruang RAG (Opsional tapi Direkomendasikan), 📌 Deskripsi Masalah (Berdasarkan Audit Arsitektur), ✅ Kriteria Penerimaan (Acceptance Criteria) — Status per 2026-09-08, [SELESAI] Architectural Decoupling & Memory Isolation for Mametlite, 🛠️ Solusi & Proposal Perbaikan (Refactoring Plan), 🚨 Temuan Kritis (Kebocoran Memori)
 
 ### Community 567 - "Laporan Kebugaran Fondasi (Infrastructure Health Check)"
 Cohesion: 0.50
 Nodes (3): 🖥️ BUILD EXECUTION LOG, 🚨 CATATAN INTEGRASI, Laporan Kebugaran Fondasi (Infrastructure Health Check)
 
-### Community 568 - "FASE 2 — State Layer (Sebelum Bikin Shell)"
-Cohesion: 0.50
-Nodes (4): 2.1 Buat `DeviceContext` (React Context), 2.2 Audit state yang ada sekarang di komponen UI, FASE 2 — State Layer (Sebelum Bikin Shell), Kriteria Selesai Fase 2
+### Community 568 - "uji-penjaga-lamplogin.mjs"
+Cohesion: 0.25
+Nodes (3): AKAR, app, asli
 
-### Community 569 - "PR#1 — Safe Command Execution"
-Cohesion: 0.33
-Nodes (6): Catatan Desain (Bertahap, Anti Over-Engineering), Desain yang Disepakati, Exit Criteria, Masalah, PR#1 — Safe Command Execution, Tujuan
+### Community 569 - "Roadmap: Mamet AI — Assistant Capability Hardening & Modularization"
+Cohesion: 0.08
+Nodes (24): 0.1 Prinsip Payung — Linux-Inspired Architecture, 0.2 Prinsip Owner Sovereignty, 0.3 Daftar Ringkas PR, 0. Latar Belakang, Akar Masalah, Catatan Desain (Bertahap, Anti Over-Engineering), Desain yang Disepakati, Exit Criteria (+16 more)
 
 ### Community 570 - "ADR-CRW-0003: Misi Terstruktur dari MAEF, Crawler Tanpa LLM"
 Cohesion: 0.22
@@ -2936,8 +2982,8 @@ Cohesion: 0.20
 Nodes (9): ADR-CRW-0002: Gudang Data Mentah Milik Crawler, Ditarik oleh Mamet, Alternatives, Consequences, Context, Decision, Impact Scope, Related Components, judul() (+1 more)
 
 ### Community 573 - "ModuleLoader"
-Cohesion: 0.17
-Nodes (8): 2.4. Siapa yang membaca Metadata?, Exit Criteria (Fase 1 saja — Fase 2 tidak memiliki exit criteria sampai resmi dimulai), Fase 1 (Prioritas Sekarang) — Modul Lokal, Fase 2 (Ditunda — Dikerjakan Hanya Jika Benar-Benar Dibutuhkan) — Modul Terunduh, Latar Belakang, PR#7 — Module Discovery Bertahap, Tujuan, ModuleLoader
+Cohesion: 0.10
+Nodes (14): 2.4. Siapa yang membaca Metadata?, 2. Menjawab Pertanyaan Fokus Audit, 3. Akar Masalah: Kenapa Hasil Chat Tidak Sesuai Database?, 4. Rekomendasi, Gap Kritis (Harus Segera Diperbaiki), Gap Non-Kritis (Bisa Ditunda), Laporan Audit: Rutinitas Booting MAEF Kernel.js, Exit Criteria (Fase 1 saja — Fase 2 tidak memiliki exit criteria sampai resmi dimulai) (+6 more)
 
 ### Community 574 - "ADR-CRW-0007: Memakai Tool Asli dari GitHub dengan Pembungkus, Bukan Membangun Ulang"
 Cohesion: 0.25
@@ -2959,25 +3005,33 @@ Nodes (7): ADR-CRW-0010: Fork Tool ke Akun Owner dan Mengaktifkan Fitur Bypass A
 Cohesion: 0.25
 Nodes (7): ⚠️ Disclaimer / Tanggung jawab pemakai, Ecosystem Crawler, Hasil, Pakai, Pasang (cukup sekali), Uji, detik()
 
-### Community 579 - "✅ TERBUKTI LIVE — 1 Oktober 2026, 14.46–14.48"
-Cohesion: 0.67
-Nodes (3): Dua tahap, dan angka `0` yang menyelamatkan dari salah kesimpulan, Kiriman ketiga membuktikan hal kedua, ✅ TERBUKTI LIVE — 1 Oktober 2026, 14.46–14.48
+### Community 579 - "uji-folder-klaim-palsu.mjs"
+Cohesion: 0.25
+Nodes (6): AKAR_REPO, bersih, jujur, k, kosong, p
 
-### Community 580 - "MemoryService"
-Cohesion: 0.05
-Nodes (36): 1. Letak Ketidaksesuaian antara Frontend dan Backend, 3. Rekomendasi Perbaikan Konkret, A. Bypass Arsitektur Layer 2 (Frontend), B. Payload Mode Ignored (Backend), Laporan Audit: Kesenjangan Alur Chat & Sinkronisasi Memori, 1. Analisis Alur Pengiriman Chat Saat Ini, 2. Kesenjangan (Gap) dengan Arsitektur Layer 2, 3. Analisis Parameter Payload ke Backend (+28 more)
+### Community 580 - "WidgetRegistry"
+Cohesion: 0.04
+Nodes (34): 11. IMPLEMENTATION ROADMAP, Phase 1: Core Registry & Workspace Manager, Phase 2: Workbench Engine, Phase 3: Extraction & Refactoring, Phase 4: Conversation Engine Upgrade, Phase 5: Production Rollout & Layout Persistence, 1. Pemetaan per Layer, Layer 1: MAEF Kernel & Core (+26 more)
 
-### Community 581 - "Uji Mutu RAG Putaran 4–5: Label Menilai Jawaban Akhir Saja, Sumber Tanpa Kutip Diterima"
-Cohesion: 0.29
-Nodes (6): Belum dikerjakan, Graf kode (graphify), Keputusan Owner B dan perbaikan, Putaran 4 (v434, Thinking menyala → jalur hybrid, 14.32 UTC), Putaran 5 (v435, 14.46 UTC) — hanya 17 dari 26 terjawab, Uji Mutu RAG Putaran 4–5: Label Menilai Jawaban Akhir Saja, Sumber Tanpa Kutip Diterima
+### Community 581 - "uji-kacamata-kuda-engineer.mjs"
+Cohesion: 0.25
+Nodes (6): AKAR_REPO, ENG, iEng, iLite, KODE, S
 
 ### Community 582 - "RFC-014: Self Engineering Lifecycle (SEL)"
 Cohesion: 0.29
 Nodes (6): 1. Latar Belakang & Architecture Gap, 2.1 Explicit Command Routing (Deterministic Intent), 2. Engineering State Machine (Minimalis & Runtime First), 3. Capability Groups & Tool Interceptor Matrix, Matrix Izin (Execution Guard), RFC-014: Self Engineering Lifecycle (SEL)
 
+### Community 583 - "9 November 2026 — Item 131 Tahap C + H: riwayat sampai utuh ke model, kegagalan disebut apa adanya"
+Cohesion: 0.29
+Nodes (6): 9 November 2026 — Item 131 Tahap C + H: riwayat sampai utuh ke model, kegagalan disebut apa adanya, Belum selesai, Bukti, Galat klien (ditemukan saat skenario), Tahap H — kegagalan disebut apa adanya, Yang diubah
+
 ### Community 584 - "ADR-0001: Adopt MAEF As Highest Engineering Authority"
 Cohesion: 0.25
 Nodes (4): ADR-0001: Adopt MAEF As Highest Engineering Authority, Consequences, Context, Decision
+
+### Community 585 - "3. RANCANGAN TRANSISI EVENT-DRIVEN (PHASE 1)"
+Cohesion: 0.29
+Nodes (6): 2. DILEMA TEKNIS EDGE FUNCTION, 3. RANCANGAN TRANSISI EVENT-DRIVEN (PHASE 1), ARCHITECTURE AUDIT: RAG PIPELINE MONOLITH (GAP-004), Langkah 1: Penguraian Monolith Menjadi Service Independen, Langkah 2: Mekanisme Scatter-Gather, Rencana Aksi (Action Plan):
 
 ### Community 586 - "CHANGELOG: Production Validation Audit - Backup & Restore"
 Cohesion: 0.25
@@ -2991,17 +3045,21 @@ Nodes (7): 1. Referensi Konstitusi, 2. Definisi Resmi Mamet Engineer, 3. Desain 
 Cohesion: 0.25
 Nodes (7): 1. Artefak Minimum MVP, 2. Modifikasi / Pembuatan File Backend, 3. Modifikasi / Pembuatan File Frontend, 4. Kebutuhan Perubahan Schema Supabase, 5. Dependency / Blocker Implementasi, 6. Estimasi Kompleksitas Implementasi, CHANGELOG: Implementation Readiness Assessment - Engineer Workspace
 
-### Community 589 - "CHANGELOG: Integration Validation - Engineer Workspace Backend"
-Cohesion: 0.25
-Nodes (7): 1. LifecycleManager Validation, 2. EventBus Validation, 3. ToolDispatcher Validation, 4. Owner Approval Validation, 5. Audit Logging Validation, 6. Rollback Validation, CHANGELOG: Integration Validation - Engineer Workspace Backend
+### Community 589 - "EngineeringLifecycleManager"
+Cohesion: 0.08
+Nodes (23): GAP-NEW-009: Self Engineering Lifecycle Belum Memiliki Implementasi Nyata, 1. Daftar Jalur Eksekusi Saat Ini (Execution Surface), 1. Kesiapan Sistem (Apa yang Sudah Siap), 2. Defisit Sistem (Apa yang Belum Siap), 3. Dependensi (Blockers), 4. Urutan Implementasi (The Most Efficient Path), 5. Keputusan, CHANGELOG: Audit & Rencana Implementasi - Engineer Workspace (+15 more)
+
+### Community 590 - "📋 Changelog Engineer — Mamet OS"
+Cohesion: 0.29
+Nodes (6): 2.1. Patch Gagal Verifikasi — "Verification Failed" di Supabase, 2. Status Terakhir (Belum Selesai), 3. Ringkasan, 4. Catatan untuk Engineer (Pengetahuan Tambahan), 📋 Changelog Engineer — Mamet OS, Pelajaran Penting dari Proses Ini:
 
 ### Community 591 - "Animated Knowledge Flow - Home Dashboard Upgrade"
 Cohesion: 0.25
 Nodes (7): 1. Directional Thought Particles, 2. Context-Aware Particle Chromatics, Animated Knowledge Flow - Home Dashboard Upgrade, Conclusion, Core Implementations, Overview, Strict Conformance
 
 ### Community 592 - "AppShell"
-Cohesion: 0.06
-Nodes (30): 4. Window Manager Foundation, Architecture Improvements, Layout Engine & Scroll Isolation (Native Desktop Feel), UI Constitution Amendment, 1. Validasi & Dekopling Metadata Parser (100% Valid), 2. Penambahan Disaster Recovery Widget, CHANGELOG: UI Compliance & Metadata Parser Refactoring (Priority 4), FILES MODIFIED: (+22 more)
+Cohesion: 0.08
+Nodes (21): 1. Kernel Boot Sequence, 2. Runtime Layer & EventBus, 3. Application Manager (App Isolation), 4. Window Manager Foundation, 5. Performance Context, **CERTIFIED**, FINAL STATUS, MAMET OS ARCHITECTURE V2.0 ACCEPTANCE TEST (+13 more)
 
 ### Community 593 - "2026-07-15: Architecture Realignment Execution"
 Cohesion: 0.25
@@ -3015,13 +3073,45 @@ Nodes (7): 2026-07-16 — Execution Trace Upgrade / Phase 0 — Trace Propagatio
 Cohesion: 0.25
 Nodes (7): 1) Fix Link Visibility, 2026-07-23 — Activity Graph Visibility & Orphan Node Enhancement, 2) Orphan Nodes Neon White Pulsing, 3) Legend UI Update, Detail Perubahan, Ringkasan, Target File
 
+### Community 596 - "Changelog: Tahap 2 — Pembangunan SystemGovernorService.js (Opsi B)"
+Cohesion: 0.29
+Nodes (6): 1. Konteks & Rasional Arsitektur (SPESIFIKASI-TEKNIS-MAMET-OS-v2.md Bagian 0), 2. Rincian Fitur & Implementasi, 3. Hasil Pengujian & Verifikasi Menyeluruh, 4. Status Integrasi Kernel & UI, B. Notification Strategy 3 Mode (Bagian 6):, Changelog: Tahap 2 — Pembangunan SystemGovernorService.js (Opsi B)
+
 ### Community 597 - "Changelog: Deprecation of `cron-agent` (Legacy Shopee Ninja / Task Executor)"
 Cohesion: 0.25
 Nodes (7): 1. Summary, 2. Findings (Audit Trigger), 3. Root Cause, 4. Actions Taken, 5. Not Yet Done (Owner Follow-up Required), 6. Compliance Note, Changelog: Deprecation of `cron-agent` (Legacy Shopee Ninja / Task Executor)
 
-### Community 601 - "📝 Changelog: Perbaikan Sistem Memori, Filter Chat, & Cleanup Database (2026-07-25)"
-Cohesion: 0.14
-Nodes (13): 1. Memori Lintas Percakapan Tidak Berfungsi, 2. Chat Baru Otomatis Terbuka Saat Refresh/Idle, 3. Error 400 Bad Request Saat Menyimpan Memori, 4. Duplikasi Teks pada Memori, 5. Riwayat Chat Tercampur Antar Mode, Catatan untuk Kedepannya, 📝 Changelog: Perbaikan Sistem Memori, Filter Chat, & Cleanup Database (2026-07-25), Daftar Masalah yang Ditemukan & Diperbaiki (+5 more)
+### Community 598 - "2 Oktober 2026 — Dua hal yang membuat Engineer salah membaca buktinya sendiri"
+Cohesion: 0.29
+Nodes (6): 2 Oktober 2026 — Dua hal yang membuat Engineer salah membaca buktinya sendiri, B. Satu gembok, dua arti — dan yang satu berbohong, Belum sampai ke aplikasi, Uji, Yang diperbaiki, Yang TIDAK dikerjakan, atas pilihan Owner
+
+### Community 599 - "FASE 1 — Device & Capability Detection (Fondasi)"
+Cohesion: 0.29
+Nodes (6): 1.1 Perluas `DiscoveryManager.js` dengan validasi silang, 1.2 Tambah deteksi orientasi sebagai bagian dari device classification, 1.3 Buat deteksi reaktif (bukan cuma sekali di `initialize()`), 1.4 Tambah override manual (mutlak, persisten), FASE 1 — Device & Capability Detection (Fondasi), Kriteria Selesai Fase 1
+
+### Community 600 - "ROADMAP-GRAF-HOME-PETA-SISTEM — Item 130: Graf Home menjadi peta sistem Mamet"
+Cohesion: 0.29
+Nodes (7): 1. Masalah (diperiksa 2 Nov di kode + platform), 2. Keputusan Owner (2 Nov), 3. Syarat wajib (berlaku di setiap tahap), 4. Tahap, 5. Uji, 6. Sisa / catatan, ROADMAP-GRAF-HOME-PETA-SISTEM — Item 130: Graf Home menjadi peta sistem Mamet
+
+### Community 601 - "TASK-0002: Repair Agent Process Execution Context"
+Cohesion: 0.29
+Nodes (6): Acceptance Criteria, Goal, Problem, Progress, TASK-0002: Repair Agent Process Execution Context, Verification
+
+### Community 602 - "cadanganData.js"
+Cohesion: 0.38
+Nodes (6): ambilSemuaBaris(), buatCadangan(), FORMAT_CADANGAN, hitungBaris(), TABEL_CADANGAN, VERSI_CADANGAN
+
+### Community 603 - "simulasiGrafHome.mjs"
+Cohesion: 0.38
+Nodes (6): AKAR, barisTiruan(), LAYAR_OWNER, lebarTeks(), SEBARAN_OWNER, simulasikan()
+
+### Community 604 - "uji-anggaran-keluaran.mjs"
+Cohesion: 0.33
+Nodes (4): AKAR, baca(), dir, muat()
+
+### Community 605 - "uji-memori-engineer-bersih.mjs"
+Cohesion: 0.29
+Nodes (3): AKAR_REPO, ENG, PA
 
 ### Community 606 - "Fallback Embedding OpenAI Dihapus"
 Cohesion: 0.25
@@ -3048,16 +3138,32 @@ Cohesion: 0.25
 Nodes (7): Dua temuan di luar dugaan, Masalahnya, Perbaikannya, Unggah RAG Menerima PDF dan Word, Yang menyelamatkan satu bug, Yang tersisa, Yang terukur
 
 ### Community 612 - "Uji Mutu RAG Putaran 1: Angka Awal, Bug Sub-Agent, dan Label yang Keliru Turun"
-Cohesion: 0.22
+Cohesion: 0.25
 Nodes (8): Belum terbukti / sisa, Hasil putaran 1 (2026-09-14 11.56 UTC, `agent-process` v426), Kenapa, Perbaikan, Set uji, Temuan, Uji, Uji Mutu RAG Putaran 1: Angka Awal, Bug Sub-Agent, dan Label yang Keliru Turun
 
+### Community 613 - "uji-salinan-mametlite.mjs"
+Cohesion: 0.33
+Nodes (5): AKAR, blokEkspor(), butuh, normalkan(), PASANGAN
+
 ### Community 614 - "K1/K2 Uji Penuh Pertama + Penilai Membaca Pasangan Baris → Nilai"
-Cohesion: 0.21
-Nodes (8): Diagnosis BUKU-10 (diukur di seluruh korpus Kepbup, hanya hitungan), K1/K2 Uji Penuh Pertama + Penilai Membaca Pasangan Baris → Nilai, Keputusan Owner (5 Nov), Uji penuh pertama (saldo terisi), Arti, Hasil, K1/K2 Uji Ulang sesudah Centang Ditulis saat Unggah — Lulus di Korpus Pecahan, Yang dilakukan Owner
+Cohesion: 0.40
+Nodes (5): Diagnosis BUKU-10 (diukur di seluruh korpus Kepbup, hanya hitungan), Dua celah penilai yang meloloskan jawaban salah (`uji/lib/penilaiMutuRag.mjs`), K1/K2 Uji Penuh Pertama + Penilai Membaca Pasangan Baris → Nilai, Keputusan Owner (5 Nov), Uji penuh pertama (saldo terisi)
+
+### Community 615 - "2. Decision"
+Cohesion: 0.33
+Nodes (6): 2.1 Separation of Concerns via Multi-Profile Verification, 2.2 Frontend-First Delegation untuk Engineer Mode, 2.3 Multi-Layer Protection Architecture, 2.4 Desktop-First Infrastructure, 2.5 Owner-First Economics (Amendment 28 Juli 2026), 2. Decision
 
 ### Community 616 - "Pencarian Potongan Gabungan Vektor + Kata Kunci (Item 90 Tahap B)"
 Cohesion: 0.33
 Nodes (6): Batas yang disadari, Bukti, Kamus bahasa Indonesia — diukur, tidak dipakai, Masalah, Pencarian Potongan Gabungan Vektor + Kata Kunci (Item 90 Tahap B), Pengukuran sebelum mengubah apa pun (SQL baca-saja + skrip konsol, $0 < 0,001)
+
+### Community 617 - "Changelog: Adaptive Model Tiering (Kecil/Sedang/Thinking) + Batas Biaya Harian Per-User"
+Cohesion: 0.33
+Nodes (6): 2. `TierClassifierService` (Baru), 4. Wiring & UI, 5. Batas Biaya Harian Per-User (Muncul dari Live Test), 6. Verifikasi Live, 7. Yang Sengaja TIDAK Dikerjakan, Changelog: Adaptive Model Tiering (Kecil/Sedang/Thinking) + Batas Biaya Harian Per-User
+
+### Community 618 - "Hapus Dokumen RAG: Cek Baris yang Benar-Benar Terhapus (Item 91)"
+Cohesion: 0.33
+Nodes (6): Catatan, Hapus Dokumen RAG: Cek Baris yang Benar-Benar Terhapus (Item 91), Masalah (terbukti di edge_logs Supabase, 2026-09-17), Perubahan, Verifikasi, formatDate()
 
 ### Community 619 - "T11 — `check-keys` dihapus"
 Cohesion: 0.25
@@ -3067,21 +3173,49 @@ Nodes (7): Bukti, Kenapa, Langkah kedua — ✅ selesai hari yang sama, Pemeriks
 Cohesion: 0.25
 Nodes (7): Alur rilis yang berlaku, Bukti, Keputusan Owner 29 September: tetap MANUAL, Sisa kecil, Temuan yang lebih penting daripada angkanya, Versi 4.2.0 — dan kenapa rilisnya sengaja tetap draf, Yang berubah
 
+### Community 621 - "Data Tabel Rekonsiliasi ASN — Tahap 2: Simpan & Versi (Item 92)"
+Cohesion: 0.33
+Nodes (6): Bug yang ditemukan Owner & diperbaiki, Data Tabel Rekonsiliasi ASN — Tahap 2: Simpan & Versi (Item 92), Database (migrasi `20260921090000_data_tabel_asn.sql`, dijalankan atas izin Owner), Ditunda, Kenapa tiga pilihan, bukan dua, Uji
+
+### Community 622 - "Data Tabel Rekonsiliasi ASN — Tahap 3: Tanya-Jawab di Chat (Item 92)"
+Cohesion: 0.33
+Nodes (6): Bukti putaran 3 (chat baru, chip RAG + Data Tabel menyala), Data Tabel Rekonsiliasi ASN — Tahap 3: Tanya-Jawab di Chat (Item 92), Perbaikan (di KODE — putaran 1 membuktikan perintah ke model tidak cukup), T9 — `knowledge_manager` dicabut dari Coordinator (keputusan Owner), Uji live putaran 1 — gagal, dan kenapa (dilaporkan apa adanya), Uji otomatis (di luar git, `frontend/node_modules/.uji-rag/`) — SEMUA LULUS
+
+### Community 623 - "T3: Rute Mati `/api/agent/process` Dihapus dari Backend"
+Cohesion: 0.33
+Nodes (5): Belum diuji live, Pemeriksaan sebelum hapus, Rujukan yang dibetulkan, T3: Rute Mati `/api/agent/process` Dihapus dari Backend, Yang dihapus
+
+### Community 624 - "19 Oktober 2026 — "tidak ada fungsi yang hilang" kini diuji, bukan dijanjikan (Item 127 Tahap 2, langkah 2c)"
+Cohesion: 0.33
+Nodes (5): 19 Oktober 2026 — "tidak ada fungsi yang hilang" kini diuji, bukan dijanjikan (Item 127 Tahap 2, langkah 2c), Bukti, Kenapa, Tahap 2 selesai, Yang dibuat — `uji/uji-inventaris-fungsi.mjs`
+
 ### Community 625 - "ROADMAP-KONEKTOR-MCP.md"
 Cohesion: 0.04
-Nodes (35): 23 Oktober 2026 — Konektor MCP Tahap A: Ecosystem Crawler disalin ke `capability/ecosystem-crawler/` (Item 129), Bukti, Jebakan penyalinan `.venv`, Uji, Yang disalin, 23 Oktober 2026 — Konektor MCP Tahap C: Settings › Konektor, setelan di perangkat (Item 129), Bukti, Uji (+27 more)
+Nodes (32): 23 Oktober 2026 — Konektor MCP Tahap A: Ecosystem Crawler disalin ke `capability/ecosystem-crawler/` (Item 129), Bukti, Jebakan penyalinan `.venv`, Uji, Yang disalin, 23 Oktober 2026 — Konektor MCP Tahap C: Settings › Konektor, setelan di perangkat (Item 129), Bukti, Uji (+24 more)
 
 ### Community 626 - "Implementation Plan: CHECK_P02 JSON Patch Schema Alignment & Defensive Unwrap"
 Cohesion: 0.25
 Nodes (7): 1. Latar Belakang & Gejala, 2. Akar Masalah (Root Cause), 3. Solusi yang Diterapkan, 4. Hasil Verifikasi & Unit Test, A. Defensive Unwrap Layer di Verification Engine (`verification_engine.ts`), B. Standardisasi Prompt Engineer (`request_pipeline.ts`), Implementation Plan: CHECK_P02 JSON Patch Schema Alignment & Defensive Unwrap
 
 ### Community 627 - "Tombol Memory Memutus Lima Jalur Memori"
-Cohesion: 0.25
+Cohesion: 0.29
 Nodes (7): Batas yang disadari, Bukti live (15 Sep, WIB), Latar, Perubahan, Tombol Memory Memutus Lima Jalur Memori, Uji (lokal, di luar git), Yang tetap ada saat Memory mati
+
+### Community 628 - "2 November 2026 — Item 130 Tahap E: percakapan berekor pesan + label graf tak pernah saling tindih"
+Cohesion: 0.33
+Nodes (6): 2 November 2026 — Item 130 Tahap E: percakapan berekor pesan + label graf tak pernah saling tindih, Bukti, Ditemukan & dicatat, Klien, Migrasi `20261102000000_graf_home_hitungan_pesan.sql` (tercatat platform: `20261102085252`), simpulAlat()
+
+### Community 629 - "9 November 2026 — Item 131 Tahap A (bagian 1): RAG yang sudah ketemu tidak dibuang lagi"
+Cohesion: 0.33
+Nodes (6): 9 November 2026 — Item 131 Tahap A (bagian 1): RAG yang sudah ketemu tidak dibuang lagi, Belum selesai (sisa Tahap A), Bukti, Temuan: lambatnya bukan di tempat yang diduga roadmap, Yang diubah, catatRagGagal()
 
 ### Community 630 - "Changelog: Audit `ROADMAP-DASHBOARD-OBSERVABILITY-REALTIME.md` — Ternyata Sudah Terimplementasi"
 Cohesion: 0.12
 Nodes (14): 1. Ringkasan, 2. Temuan, 3. Verifikasi Item per Item (§3 Dokumen), 4. Catatan Path yang Sudah Berubah, 5. Tindakan, Changelog: Audit `ROADMAP-DASHBOARD-OBSERVABILITY-REALTIME.md` — Ternyata Sudah Terimplementasi, 1. Latar Belakang & Masalah (Root Causes), 2. Prinsip Arsitektur: Zero-Token & Zero-Cost Realtime (+6 more)
+
+### Community 631 - "11 November 2026 — Item 131 Tahap I, E, F, G: prompt ramping, batas dari anggaran, web utuh, isi konektor sampai"
+Cohesion: 0.33
+Nodes (5): 11 November 2026 — Item 131 Tahap I, E, F, G: prompt ramping, batas dari anggaran, web utuh, isi konektor sampai, Belum selesai / temuan, Bukti, Tahap E — batas kerja dari anggaran, Tahap I — prompt sistem
 
 ### Community 632 - "🛡️ MAMET AI — SECURITY AUDIT FINAL REPORT"
 Cohesion: 0.25
@@ -3091,6 +3225,10 @@ Nodes (7): 1. BUKTI PERBAIKAN — [HIGH] CAPABILITY SPOOFING RESOLVED, 2. BUKTI 
 Cohesion: 0.25
 Nodes (7): Acceptance Criteria, Goal, Problem, Resolution, TASK-0004: Repair Windows Build Pipeline, Verification, Verification Commands
 
+### Community 634 - "4. Hak 39 tabel — artefak prasyarat T11, sekarang lengkap"
+Cohesion: 0.33
+Nodes (6): 10 tabel yang DITULIS klien, 13 tabel yang WAJIB punya SELECT, atau cadangan 13/13 patah, 14 tabel tanpa SATU PUN rujukan klien, 4. Hak 39 tabel — artefak prasyarat T11, sekarang lengkap, ⚠️ Arah yang tertulis di T11 TIDAK bisa dijalankan apa adanya, Aturan pencabutan yang sah, karena itu
+
 ### Community 635 - "OWNER CONTROL DOMAIN"
 Cohesion: 0.29
 Nodes (7): Automation Level, Capability, Governance Rules, Identity, Knowledge, Memory, OWNER CONTROL DOMAIN
@@ -3099,13 +3237,37 @@ Nodes (7): Automation Level, Capability, Governance Rules, Identity, Knowledge, 
 Cohesion: 0.29
 Nodes (7): 1. Hypothesis, 2. In Progress, 3. Verified, 4. Active Knowledge, 5. Deprecated, 6. Rejected, KNOWLEDGE LIFECYCLE
 
-### Community 640 - "Laporan Audit Forensik: Jejak Asal Usul Nama "Slamet""
-Cohesion: 0.17
-Nodes (9): 1. Analisis `MemoryService` & Injeksi Frontend, 2. Investigasi Storage Lokal (`BrainService`), 3. Asal Muasal Misteri Nama "Slamet", 4. Rekomendasi Perbaikan Konkret, Bagaimana Kejadiannya di Mata LLM?, Laporan Audit Forensik: Jejak Asal Usul Nama "Slamet", Modul Frontend: Owner Workspace & Dashboard, ✅ PASCA-EKSEKUSI (+1 more)
+### Community 637 - "gerbangJejak.mjs"
+Cohesion: 0.40
+Nodes (4): LAPIS_DIIZINKAN, nilaiGiliran(), periksaPasangan(), VERSI_GERBANG
 
-### Community 643 - "EngineeringLifecycleManager"
-Cohesion: 0.20
-Nodes (11): GAP-NEW-009: Self Engineering Lifecycle Belum Memiliki Implementasi Nyata, 4. Integration Points pada Orchestrator (`core_engine.ts`), 1. Pemetaan File Frontend (UI), 2. Pemetaan File Backend (MAEF Kernel), 3. Struktur Folder Final (Engineer Workspace), 4. Peta Dependensi (Dependencies & Data Flow), 5. Safest Execution Plan (Urutan Implementasi), CHANGELOG: Implementation Preparation & Execution Plan - Engineer Workspace (+3 more)
+### Community 638 - "Changelog: Perbaikan Tabrakan Nomor ADR-008 & Index PROJECT-MEMORY.md"
+Cohesion: 0.40
+Nodes (4): 1. Ringkasan, 3. File yang Diubah, 4. Tidak Dikerjakan / Di Luar Scope, Changelog: Perbaikan Tabrakan Nomor ADR-008 & Index PROJECT-MEMORY.md
+
+### Community 639 - "Data Tabel Rekonsiliasi ASN — Tahap 5: PDF Pindaian lewat OCR (Item 92)"
+Cohesion: 0.40
+Nodes (5): Bukti, Catatan, Data Tabel Rekonsiliasi ASN — Tahap 5: PDF Pindaian lewat OCR (Item 92), Pembaca Excel ikut diperbaiki (ditemukan saat membandingkan), Pengukuran (sebelum membangun)
+
+### Community 640 - "Laporan Audit Forensik: Jejak Asal Usul Nama "Slamet""
+Cohesion: 0.29
+Nodes (6): 1. Analisis `MemoryService` & Injeksi Frontend, 2. Investigasi Storage Lokal (`BrainService`), 3. Asal Muasal Misteri Nama "Slamet", 4. Rekomendasi Perbaikan Konkret, Bagaimana Kejadiannya di Mata LLM?, Laporan Audit Forensik: Jejak Asal Usul Nama "Slamet"
+
+### Community 641 - "T2: Enam Komponen Dasbor Yatim Dihapus"
+Cohesion: 0.40
+Nodes (4): Alasan, Pemeriksaan, T2: Enam Komponen Dasbor Yatim Dihapus, Yang dihapus (`frontend/src/components/`, 1.364 baris)
+
+### Community 642 - "Cadangan Data Lengkap dari Aplikasi (Item 93 Tahap 1)"
+Cohesion: 0.40
+Nodes (5): Bukti, Cadangan Data Lengkap dari Aplikasi (Item 93 Tahap 1), Catatan, Kenapa cadangan lama dibuang, Yang dibuat
+
+### Community 643 - "CHANGELOG: Implementation Preparation & Execution Plan - Engineer Workspace"
+Cohesion: 0.29
+Nodes (6): 1. Pemetaan File Frontend (UI), 2. Pemetaan File Backend (MAEF Kernel), 3. Struktur Folder Final (Engineer Workspace), 4. Peta Dependensi (Dependencies & Data Flow), 5. Safest Execution Plan (Urutan Implementasi), CHANGELOG: Implementation Preparation & Execution Plan - Engineer Workspace
+
+### Community 644 - "RLS — Aturan "Baca Semua" & "Tulis Publik" Ditutup (temuan Item 93)"
+Cohesion: 0.40
+Nodes (5): Bukti (SET ROLE di transaksi yang di-ROLLBACK), Perubahan (migrasi), RLS — Aturan "Baca Semua" & "Tulis Publik" Ditutup (temuan Item 93), Sisa, Temuan
 
 ### Community 645 - "CHANGELOG: Metadata Design - Engineer Workspace"
 Cohesion: 0.29
@@ -3119,6 +3281,10 @@ Nodes (6): 1. File yang Dibuat (Created Files), 2. File yang Diubah (Modified Fi
 Cohesion: 0.25
 Nodes (7): 1. File yang Dibuat (Created Files), 2. File yang Diubah (Modified Files), 3. Komponen Non-Compliance (Yang Tidak Disentuh), 4. Potensi Risiko, 5. Status Keberlanjutan, CHANGELOG: Step 2 Implementation - Engineer Workspace, EventType
 
+### Community 648 - "19 Oktober 2026 — pemeriksaan "error tersembunyi": empat temuan diperbaiki (Item 127, Tahap 3)"
+Cohesion: 0.40
+Nodes (5): 19 Oktober 2026 — pemeriksaan "error tersembunyi": empat temuan diperbaiki (Item 127, Tahap 3), Dicatat, tidak diperbaiki, Empat temuan — diperbaiki (Owner: "ya setuju, 1 A"), Penjaga baru, Yang bersih
+
 ### Community 649 - "CHANGELOG: Architecture Design - Ephemeral Approval Mechanism"
 Cohesion: 0.20
 Nodes (8): 1. Identifikasi Masalah (Root Cause), 2. Solusi Arsitektur: Ephemeral Execution Object, 3. Pemenuhan 5 Pilar Persetujuan Ephemeral, 4. Perubahan Alur Kerja (Workflow) di Masa Depan, 5. Dampak Arsitektural & Persyaratan, CHANGELOG: Architecture Design - Ephemeral Approval Mechanism, CHANGELOG: Implementation Iteration 1 - Security Enforcement, EphemeralApproval
@@ -3126,6 +3292,10 @@ Nodes (8): 1. Identifikasi Masalah (Root Cause), 2. Solusi Arsitektur: Ephemeral
 ### Community 650 - "Home Dashboard - Full Brain Observation Context"
 Cohesion: 0.29
 Nodes (6): 1. Disabling Auto-Zoom & Camera Centering, 2. Synergy with Active Thought Highlight, Engineering Strictness, Home Dashboard - Full Brain Observation Context, Overview, UX & Behavioral Changes
+
+### Community 651 - "19 Oktober 2026 — kenyamanan mata: Markdown & kode di chat, latar dinding LampLogin (Item 127, Tahap 3)"
+Cohesion: 0.40
+Nodes (4): 19 Oktober 2026 — kenyamanan mata: Markdown & kode di chat, latar dinding LampLogin (Item 127, Tahap 3), Putaran 1 — susunan chat meniru gambar rujukan Owner, Uji, Utang K5
 
 ### Community 652 - "Ecosystem Health - Node Interconnectivity Counters"
 Cohesion: 0.29
@@ -3135,9 +3305,37 @@ Nodes (6): 1. Orphan Nodes Counter, 2. Connected Nodes Counter, Ecosystem Health
 Cohesion: 0.29
 Nodes (6): 1. Overall System Status, 2. Live Last Check Timestamp, Adherence to Engineering Directives, Core Features, Ecosystem Health - Overall System Status & Live Timestamp, Overview
 
+### Community 654 - "23 Oktober 2026 — Pesan galat: saldo OpenRouter tidak lagi dilaporkan sebagai "batas biaya harian""
+Cohesion: 0.40
+Nodes (4): 23 Oktober 2026 — Pesan galat: saldo OpenRouter tidak lagi dilaporkan sebagai "batas biaya harian", Perbaikan (`frontend/src/core/runtime/services/pesanGalat.js`, v2), Uji, Yang terjadi (log `function_logs` Supabase)
+
+### Community 655 - "26 Oktober 2026 — Konektor MCP Tahap E: pemasang membawa Python + crawler (Item 129)"
+Cohesion: 0.40
+Nodes (5): 26 Oktober 2026 — Konektor MCP Tahap E: pemasang membawa Python + crawler (Item 129), Bukti, Sisa (E2), Uji, Yang dibuat
+
+### Community 656 - "27 Oktober 2026 — "Black October": pengambil web pindah ke jaringan Chromium, CI naik ke Node 24 (T20)"
+Cohesion: 0.40
+Nodes (5): 27 Oktober 2026 — "Black October": pengambil web pindah ke jaringan Chromium, CI naik ke Node 24 (T20), Batas yang diketahui, Bukti, Yang dibuat, Yang terkena
+
 ### Community 657 - "2026-09-03-cleanup-deadcode-tokensaver-orchestrator.md"
 Cohesion: 0.29
 Nodes (6): 1. Frontend Utama (`frontend/`), 2. Mametlite (`mametlite/`), Daftar File yang Dihapus (6 File), Modifikasi File Terkait, Ringkasan, Validasi Build & Integritas
+
+### Community 658 - "3 November 2026 — Konektor MCP Tahap G1: pipa konektor umum ("banyak tangan") di proses utama"
+Cohesion: 0.40
+Nodes (5): 3 November 2026 — Konektor MCP Tahap G1: pipa konektor umum ("banyak tangan") di proses utama, Bukti, Keputusan Owner (3 Nov), Penelusuran graf sebelum menyambung, Yang dibangun — `frontend/electron/konektor/`
+
+### Community 659 - "10 November 2026 — Item 131 sisa Tahap A: prafilter biner dicoba, lalu dibatalkan"
+Cohesion: 0.40
+Nodes (4): 10 November 2026 — Item 131 sisa Tahap A: prafilter biner dicoba, lalu dibatalkan, Akar lambat: CPU Nano, bukan disk dan bukan rumus, Kesimpulan & sisa, Yang dicoba (semua dengan migrasi, semua sudah dibatalkan)
+
+### Community 660 - "gudangCrawler.mjs"
+Cohesion: 0.60
+Nodes (3): berkasGudang(), idMisi(), potretGudang()
+
+### Community 662 - "🚀 Changelog: Phase 3 Metadata-Driven UI"
+Cohesion: 0.50
+Nodes (3): 🚀 Changelog: Phase 3 Metadata-Driven UI, ✨ Fitur Baru (New Features), 🧹 Perbaikan & Pembersihan (Fixes & Chore)
 
 ### Community 663 - "Changelog: Eksekusi Trilogi Cleanup Dead-Code (PR-01, PR-02, PR-04)"
 Cohesion: 0.25
@@ -3175,9 +3373,33 @@ Nodes (7): 1. Penyedia hulu OpenRouter dicatat, 2. Thinking yang dimatikan kini 
 Cohesion: 0.29
 Nodes (7): Belum terbukti / sisa, Hasil putaran 2 (2026-09-14 12.16 UTC, `agent-process` v427), Penilaian otomatis yang keliru (bukan kesalahan RAG), Perbaikan, Temuan: `<think>` bukan bocoran — sengaja ditampilkan, Uji, Uji Mutu RAG Putaran 2: Label Tak Lagi Keliru Turun; Label & Sumber Wajib di Luar Nalar
 
+### Community 672 - "CHANGELOG: UI Compliance & Metadata Parser Refactoring (Priority 4)"
+Cohesion: 0.50
+Nodes (3): CHANGELOG: UI Compliance & Metadata Parser Refactoring (Priority 4), FILES MODIFIED:, NEXT BLOCKER / PRIORITY:
+
+### Community 673 - "Data Tabel Rekonsiliasi ASN — Tahap 4: Laporan Kejanggalan per OPD (Item 92)"
+Cohesion: 0.50
+Nodes (4): Belum, Bukti, Cacat pembaca yang ditemukan saat mengukur — diperbaiki, Data Tabel Rekonsiliasi ASN — Tahap 4: Laporan Kejanggalan per OPD (Item 92)
+
+### Community 674 - "✅ UJI LIVE KEDUA — kendalanya PINDAH, dan membuka temuan yang lebih besar"
+Cohesion: 0.50
+Nodes (4): Apa artinya untuk saldo setipis ini, Dari mana 14.250 token itu — diukur, bukan ditebak, Dua temuan yang sebenarnya, dan keduanya besar, ✅ UJI LIVE KEDUA — kendalanya PINDAH, dan membuka temuan yang lebih besar
+
+### Community 675 - "✅ DIUJI LIVE — separuh berhasil, separuh gagal, dan gagalnya mengajari"
+Cohesion: 0.50
+Nodes (4): Badan 402 yang nyata itu kini jadi data uji, ✅ DIUJI LIVE — separuh berhasil, separuh gagal, dan gagalnya mengajari, Dua cacat di implementasi pertama, keduanya terbaca dari badan 402 yang nyata, Yang masih mungkin: saldonya memang terlalu tipis
+
+### Community 676 - "29 Oktober 2026 — T16: modul konsol uji RAG dirapikan & tersambung lagi"
+Cohesion: 0.50
+Nodes (4): 29 Oktober 2026 — T16: modul konsol uji RAG dirapikan & tersambung lagi, Bukti, Yang dibuat (pilihan 1 Owner), Yang ketahuan saat diperiksa
+
+### Community 677 - "Research App — Pilih Banyak Dokumen untuk Dihapus + Daftar Tak Lagi Berlomba"
+Cohesion: 0.50
+Nodes (4): Bukti live, Kenapa, Research App — Pilih Banyak Dokumen untuk Dihapus + Daftar Tak Lagi Berlomba, Uji
+
 ### Community 679 - "ROADMAP-SIAP-PENGGUNA.md"
-Cohesion: 0.06
-Nodes (21): Changelog: Fix Cross-App `appSource` Override — Mamet Lite Ditolak `ENGINEER_NO_API_KEY`, Daftar Berkas, Metodologi Investigasi (dicatat karena berbeda dari sesi sebelumnya), Perbaikan, Ringkasan, 8 Oktober 2026 — pdf.js bisa menjalankan JavaScript dari PDF yang diunggah, Bukti — dan kenapa buildnya saja tidak cukup, Temuannya (+13 more)
+Cohesion: 0.04
+Nodes (41): 8 Oktober 2026 — Mametlite bicara dalam bahasa penggunanya saat gagal, Berkas, Bukti, Sisa blok M, Yang dibaca pengguna sebelum ini, 8 Oktober 2026 — Mametlite akhirnya bisa dipakai dari HP, Berkas, Bukti (+33 more)
 
 ### Community 681 - "Diskusi dengan Instruktur — 2 Juli 2026"
 Cohesion: 0.29
@@ -3239,10 +3461,6 @@ Nodes (5): 1. Latar Belakang & Architecture Gap, 2. Confidence Domain, 3. Spesif
 Cohesion: 0.17
 Nodes (11): 10. Rekomendasi Prioritas Pengembangan (6 Bulan ke Depan), 1. Struktur Folder (Kedalaman Level 3), 2. Daftar Modul Inti & Status Implementasi, 3. Dependency Graph Antar Modul Utama, 4. Workflow Main Orchestrator Saat Ini, 5. Ketersediaan Tool (Capability Plugins), 6. Statistik Codebase, 7. Bottleneck Performa yang Ditemukan (+3 more)
 
-### Community 711 - "Mamet OS Engineering Changelog & RCA"
-Cohesion: 0.33
-Nodes (5): 🚀 1. Tool Dispatcher (RFC-015) - Shadow Mode (Phase 1-3), 🛠️ 2. Security Hardening & Risk Gate Expansion, 📈 3. Engineering Metrics & Architecture Alignment (GAP-NEW-007), 🛡️ 4. Perancangan RFC-016 (Backend Authoritative Execution Architecture), Mamet OS Engineering Changelog & RCA
-
 ### Community 713 - "CHANGELOG: Audit Eksekutif (RFC-015, RFC-016, GAP-NEW-009)"
 Cohesion: 0.33
 Nodes (5): 1. Current State (Status Saat Ini), 2. Risk (Risiko Terukur), 3. Recommendation (Rekomendasi Arsitektural), 4. Next Action (Tindakan Selanjutnya), CHANGELOG: Audit Eksekutif (RFC-015, RFC-016, GAP-NEW-009)
@@ -3250,10 +3468,6 @@ Nodes (5): 1. Current State (Status Saat Ini), 2. Risk (Risiko Terukur), 3. Reco
 ### Community 716 - "2026-07-15: Finalisasi Policy Workspace (Phase 4)"
 Cohesion: 0.33
 Nodes (5): 1. `ws-lite` (Mode Cepat & Hemat), 2026-07-15: Finalisasi Policy Workspace (Phase 4), 2. `ws-assistant` (Pusat Kendali Kesadaran), 3. `ws-engineer` (Mode Kerja Terisolasi), Matriks Kebijakan Mutlak
-
-### Community 724 - "Changelog: Anotasi Status Implementasi di `SPESIFIKASI-TEKNIS-MAMET-OS-v2.md`"
-Cohesion: 0.29
-Nodes (6): 1. Temuan, 2. Resolusi, 3. File yang Diubah, 4. Verifikasi, 5. Cakupan Audit `docs/roadmap/`, Changelog: Anotasi Status Implementasi di `SPESIFIKASI-TEKNIS-MAMET-OS-v2.md`
 
 ### Community 725 - "Riwayat Percakapan Dipangkas Tanpa AI — Jeda 36 Detik Hilang"
 Cohesion: 0.33
@@ -3272,8 +3486,8 @@ Cohesion: 0.33
 Nodes (5): Goal, Out Of Scope, Scope, TASK-0001: Establish MAEF Documentation Baseline, Verification
 
 ### Community 738 - "Bagian 1 — Tahap 3b: ingatan temuan"
-Cohesion: 0.15
-Nodes (12): Akar pemicu yang disadari: muat ulang di mode pengembangan, Bagian 1 — Tahap 3b: ingatan temuan, Belum terbukti live, Bukti live, Cacat saya sendiri di fitur ini, Empat keputusan rancangan, dengan alasannya, Keputusan: berkas markdown di repo, bukan tabel database, Masalah (+4 more)
+Cohesion: 0.11
+Nodes (17): 1. `trace_parser` membelah patch JSON, 3. CRLF melawan `\n` pada cari-ganti multi-baris, 4. Pemeriksa aturan diblokir oleh aturannya sendiri, 5–7. Laporan hasil patch tidak sampai, Akar pemicu yang disadari: muat ulang di mode pengembangan, Bagian 1 — Tahap 3b: ingatan temuan, Bagian 2 — Tujuh cacat jalur patch, Belum terbukti live (+9 more)
 
 ### Community 743 - "KNOWLEDGE TYPES"
 Cohesion: 0.40
@@ -3349,23 +3563,23 @@ Nodes (8): CORE BELIEF, FINAL PRINCIPLE, FULL CUSTOM CONTROL, LLM PHILOSOPHY, LO
 
 ## Knowledge Gaps
 - **4 isolated node(s):** `ecosystem-crawler`, `ADR-0022`, `ADR-0022`, `ADR-0022`
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 7598 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 7710 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **31 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Audit Menyeluruh Kernel→UI (2026-09-10)` connect `context_builder.ts` to `label_sumber.ts`, `RuntimeContext`, `periksaLabelSumber`, `BrainService`, `request_pipeline.ts`, `ROADMAP-MAKSIMALKAN-MODEL — Item 131: Mamet Memaksimalkan Model, Bukan Membatasinya`, `CapabilityRegistry`, `chunkText`, `AssistantService.js`, `ROADMAP: KONTEKS POTONGAN RAG — BAGIAN TIDAK TERCAMPUR & JUDUL KONTEKS DI SETIAP POTONGAN`, `uji-unggah-bertahap.mjs`, `MemoryGovernorService`, `.storeGoldenMemory`, `embedding.ts`, `runtime_context.ts`, `AssistantService`, `Uji Mutu RAG Putaran 6–7: Pasangan Angka–Tahun di Kalimat Bebas, Sumber Parafrase Diterima`, `ai_adapter.ts`, `Audit Menyeluruh Kernel→UI (2026-09-10)`, `Ecosystem Crawler`, `MemoryService`, `._phase3_AdapterRegistryInit`, `RetrievalOrchestrator`, `RepositoryReaderService`, `Kernel.js`, `AppShell`, `ToolDispatcher`, `Label VERIFIED Ikut Memeriksa Angka dan Pasangan Label–Angka`, `RemoteConversionWorkerService`, `Audit Menyeluruh Arsitektur Memory Manager`, `RequestClassifierService`, `._handleConversation`, `FileExplorer.jsx`?**
-  _High betweenness centrality (0.158) - this node is a cross-community bridge._
+- **Why does `Audit Menyeluruh Kernel→UI (2026-09-10)` connect `Audit Menyeluruh Kernel→UI (2026-09-10)` to `label_sumber.ts`, `periksaLabelSumber`, `request_pipeline.ts`, `ROADMAP-MAKSIMALKAN-MODEL — Item 131: Mamet Memaksimalkan Model, Bukan Membatasinya`, `CapabilityRegistry`, `chunkText`, `AssistantService.js`, `uji-unggah-bertahap.mjs`, `embedding.ts`, `agent-process/index.ts`, `AssistantService`, `loadProjectMemory`, `Uji Mutu RAG Putaran 6–7: Pasangan Angka–Tahun di Kalimat Bebas, Sumber Parafrase Diterima`, `context_builder.ts`, `ai_adapter.ts`, `Audit Menyeluruh Kernel→UI (2026-09-10)`, `Ecosystem Crawler`, `._phase3_AdapterRegistryInit`, `RetrievalOrchestrator`, `RepositoryReaderService`, `Kernel.js`, `AppShell`, `ToolDispatcher`, `Label VERIFIED Ikut Memeriksa Angka dan Pasangan Label–Angka`, `RemoteConversionWorkerService`, `BrainService`, `Riset Web di Server, Tombol Deep Research, Penjaga Batas Waktu & "Lanjutkan"`, `Audit Menyeluruh Arsitektur Memory Manager`, `RequestClassifierService`, `ROADMAP — Adaptive Model Tiering (Kecil / Sedang / Thinking)`, `MemoryService`, `FileExplorer.jsx`?**
+  _High betweenness centrality (0.155) - this node is a cross-community bridge._
 - **Are the 32 inferred relationships involving `ConversationEngine()` (e.g. with `4. Window Manager Foundation` and `3. Rekomendasi Perbaikan Konkret`) actually correct?**
   _`ConversationEngine()` has 32 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `ecosystem-crawler`, `ADR-0022`, `ADR-0022` to the rest of the system?**
   _4 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `label_sumber.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.13709677419354838 - nodes in this community are weakly interconnected._
-- **Why does `6. Item Backlog & Temuan Pending (Menunggu Penjadwalan Owner)` connect `._loadStaticKnowledge` to `ConversationEngine`, `WorkspaceManager`, `BrainService`, `CapabilityRegistry`, `kernel`, `MemoryGovernorService`, `.storeGoldenMemory`, `StorageManager`, `memory_manager_v1.ts`, `runtime_context.ts`, `AssistantService`, `engineer.js`, `WidgetRegistry`, `metadata`, `ai_adapter.ts`, `MemoryService`, `._phase3_AdapterRegistryInit`, `2. Urutan Pengerjaan & Status Eksekusi`, `FileIndexService`, `ToolPreferencesService`, `EventBus`, `RequestClassifierService`, `ChatHistory`?**
-  _High betweenness centrality (0.080) - this node is a cross-community bridge._
+  _Cohesion score 0.1265597147950089 - nodes in this community are weakly interconnected._
+- **Why does `6. Item Backlog & Temuan Pending (Menunggu Penjadwalan Owner)` connect `WorkspaceManager` to `ConversationEngine`, `TierClassifierService`, `CapabilityRegistry`, `kernel`, `Audit Menyeluruh Kernel→UI (2026-09-10)`, `metadata`, `StorageManager`, `memory_manager_v1.ts`, `AssistantService`, `engineer.js`, `context_builder.ts`, `ai_adapter.ts`, `._loadStaticKnowledge`, `WidgetRegistry`, `._phase3_AdapterRegistryInit`, `FileIndexService`, `BrainService`, `ToolPreferencesService`, `EventBus`, `MemoryService`, `ChatHistory`, `PatchApplier.js`?**
+  _High betweenness centrality (0.087) - this node is a cross-community bridge._
 - **Are the 7 inferred relationships involving `Misi` (e.g. with `EcosystemCrawler` and `Gudang`) actually correct?**
   _`Misi` has 7 INFERRED edges - model-reasoned connections that need verification._
 - **Should `main.cjs` be split into smaller, more focused modules?**
-  _Cohesion score 0.046171829339567504 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.05782312925170068 - nodes in this community are weakly interconnected._

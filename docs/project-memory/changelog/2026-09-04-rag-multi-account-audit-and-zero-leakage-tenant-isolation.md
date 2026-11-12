@@ -27,7 +27,7 @@ Owner sempat menggunakan dua akun berbeda untuk mengunggah dokumen ke Supabase R
 
 Audit komprehensif pada Supabase Auth dan tabel `documents` mendapati rincian kepemilikan sebagai berikut:
 
-### Akun 1: `andreanastasya798@gmail.com`
+### Akun 1 (Owner)
 - **User ID**: `3841e124-15c1-44bb-9034-bde61410882d` (Sesi login desktop aktif saat ini)
 - **Total Dokumen**: 29 dokumen (Topik Teknis IT, AI/ML, Security, QA, Matematika, dan Data Science):
   - `Panduan_Teknis_Keamanan_Sistem.txt`
@@ -59,7 +59,7 @@ Audit komprehensif pada Supabase Auth dan tabel `documents` mendapati rincian ke
   - `2026-06-24_AI.txt`
   - `2026-06-24_VirtualAssistant.txt`
 
-### Akun 2: `slametbro798@gmail.com`
+### Akun 2
 - **User ID**: `52e37376-94fd-41dd-a679-810020ad0b70`
 - **Total Dokumen**: 16 dokumen (Topik Pemerintahan Daerah, Dinas & OPD):
   - `diinas pendidikan.txt`
@@ -79,7 +79,7 @@ Audit komprehensif pada Supabase Auth dan tabel `documents` mendapati rincian ke
   - `kel kemelak bindung langit.txt`
   - `KELURAHAN SEKARJAYA.txt`
 
-### Akun 3: `cecep.ceri@gmail.com`
+### Akun 3
 - **User ID**: `23a39918-8c45-4c08-b9f9-b0c514f3cb6f`: 0 dokumen.
 
 ---
@@ -91,7 +91,7 @@ Audit komprehensif pada Supabase Auth dan tabel `documents` mendapati rincian ke
    - Tabel anak `document_chunks` menyimpan `id, document_id, content, embedding, source_url, source_type`. Kolom `user_id` **tidak ada** pada tabel `document_chunks`.
 2. **Klausa Query Tidak Efektif & Tidak Terisolasi:**
    - Pada implementasi sebelumnya di `KnowledgeService.js`, terdapat klausa `.eq('user_id', options.userId)` yang langsung ditujukan ke tabel `document_chunks`. Karena kolom tersebut tidak ada pada tabel fisik, PostgREST menghasilkan error atau mengabaikannya.
-   - Pada Tahap 3 (Content Search Fallback), kueri tidak menyertakan join relasi ke tabel `documents`. Akibatnya, saat kueri fallback dijalankan, semua chunk dari seluruh akun di database Supabase (termasuk `diinas pendidikan.txt` milik `slametbro798@gmail.com`) terambil secara global ketika akun `andreanastasya798@gmail.com` melakukan pencarian.
+   - Pada Tahap 3 (Content Search Fallback), kueri tidak menyertakan join relasi ke tabel `documents`. Akibatnya, saat kueri fallback dijalankan, semua chunk dari seluruh akun di database Supabase (termasuk `diinas pendidikan.txt` milik Akun 2) terambil secara global ketika Akun 1 melakukan pencarian.
 3. **Penyampaian Parameter `userId` Terputus:**
    - `AssistantService.js`: Tidak meneruskan `userId` ke `retrievalOrchestrator.retrieve()`.
    - `RetrievalOrchestrator.js`: Tidak meneruskan `userId` ke `ks.queryKnowledge()`.

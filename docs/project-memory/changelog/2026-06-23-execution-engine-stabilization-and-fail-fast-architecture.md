@@ -53,7 +53,7 @@ Mamet AI Execution Engine telah diubah dari model *silent failure* (menelan erro
 
 ## ✅ Verifikasi Runtime Aktual (Runtime Test Harness)
 Perbaikan ini tidak sekadar klaim teoritis, melainkan **Telah Lulus Validasi Runtime Eksternal** yang dijalankan di *production environment*:
-- **[PASS] UUID Gate**: Payload non-UUID (`test@gmail.com`) divalidasi langsung ditolak (HTTP 400) tanpa mengeksekusi RAG/LLM.
+- **[PASS] UUID Gate**: Payload non-UUID (sebuah alamat email) divalidasi langsung ditolak (HTTP 400) tanpa mengeksekusi RAG/LLM.
 - **[PASS] Invalid Model Guard**: Model LLM fiktif memicu pesan stream eksplisit `[SYSTEM HALTED] Client Error: FATAL_CLIENT_ERROR` ke UI tanpa beban komputasi tambahan.
 - **[PASS] SSE Completion**: Sinyal terminasi stream terbaca sempurna dan *asynchronous logging* berhasil dikirim tanpa memblokir siklus permintaan HTTP.
 

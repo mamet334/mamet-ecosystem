@@ -11,7 +11,7 @@
 
 Owner sebelumnya mengunggah dokumen ke Supabase RAG menggunakan dua akun berbeda dalam ekosistem Mamet. Berdasarkan audit menyeluruh terhadap Supabase Auth dan tabel `documents` (total 45 dokumen terindeks):
 
-### Akun 1: `andreanastasya798@gmail.com`
+### Akun 1 (Owner)
 - **User ID**: `3841e124-15c1-44bb-9034-bde61410882d` (Sesi login desktop aktif saat ini)
 - **Total Dokumen**: 29 dokumen (Domain IT, Artificial Intelligence, Machine Learning, Security & QA):
   - `Panduan_Teknis_Keamanan_Sistem.txt`
@@ -28,7 +28,7 @@ Owner sebelumnya mengunggah dokumen ke Supabase RAG menggunakan dua akun berbeda
   - `2026-06-24_Excel.txt`, `2026-06-24_DataEntry.txt`, `2026-06-24_GooglesSheet.txt`
   - `2026-06-24_QA.txt`, `2026-06-24_Testing.txt`, `2026-06-24_Chatbot.txt`, `2026-06-24_AI.txt`, `2026-06-24_VirtualAssistant.txt`
 
-### Akun 2: `slametbro798@gmail.com`
+### Akun 2
 - **User ID**: `52e37376-94fd-41dd-a679-810020ad0b70`
 - **Total Dokumen**: 16 dokumen (Domain Pemerintahan Daerah, Dinas & OPD):
   - `diinas pendidikan.txt`
@@ -42,7 +42,7 @@ Owner sebelumnya mengunggah dokumen ke Supabase RAG menggunakan dua akun berbeda
   - `kec baturaja timur.txt`, `kec semidang aji.txt`, `kec muara jaya.txt`, `kec pengandonan.txt`
   - `kel air gading.txt`, `kel baturaja permai.txt`, `kel kemelak bindung langit.txt`, `KELURAHAN SEKARJAYA.txt`
 
-### Akun 3: `cecep.ceri@gmail.com`
+### Akun 3
 - **User ID**: `23a39918-8c45-4c08-b9f9-b0c514f3cb6f`
 - **Total Dokumen**: 0 dokumen.
 
@@ -55,7 +55,7 @@ Owner sebelumnya mengunggah dokumen ke Supabase RAG menggunakan dua akun berbeda
    - Tabel anak `document_chunks` **TIDAK MEMILIKI** kolom `user_id`, melainkan berelasi melalui foreign key `document_id`.
 2. **Kegagalan Query Langsung:**
    - `KnowledgeService.js` sebelumnya mencoba memfilter `document_chunks` dengan `.eq('user_id', options.userId)`. PostgREST mengabaikan/menolak klausa ini karena kolom `user_id` tidak ada pada tabel fisik `document_chunks`.
-   - Pada pencarian fallback konten (Tahap 3), query tidak melakukan inner join ke tabel `documents`, sehingga chunk dari seluruh akun di database Supabase (termasuk OPD milik `slametbro798@gmail.com`) terambil secara global ketika akun `andreanastasya798@gmail.com` melakukan pencarian.
+   - Pada pencarian fallback konten (Tahap 3), query tidak melakukan inner join ke tabel `documents`, sehingga chunk dari seluruh akun di database Supabase (termasuk OPD milik Akun 2) terambil secara global ketika Akun 1 melakukan pencarian.
 3. **Penyampaian Parameter Terputus di Seluruh Pipeline:**
    - `AssistantService.js:698`: Tidak meneruskan parameter `userId` ke `retrievalOrchestrator.retrieve()`.
    - `RetrievalOrchestrator.js:117`: Tidak meneruskan parameter `userId` ke `ks.queryKnowledge()`.

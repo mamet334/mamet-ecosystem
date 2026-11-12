@@ -12,7 +12,7 @@
 
 User `mametlite.vercel.app` (produk publik untuk user eksternal) mendapat error `ENGINEER_NO_API_KEY` (HTTP 403) saat mengirim pertanyaan biasa. Root cause ditemukan lewat query langsung ke `function_logs` Supabase (bukan tebakan dari kode statis): akun user tersebut punya `user_metadata.app_source = "engineer"` tersisa dari sesi lama, dan `request_parser.ts` memberi prioritas metadata akun **di atas** `appSource` yang benar-benar dikirim aplikasi pemanggil — sehingga Mamet Lite dipaksa terklasifikasi sebagai Engineer walau mengirim `appSource: 'mametlite'` dengan benar.
 
-Investigasi mengungkap bahkan **akun Owner sendiri** (`andreanastasya798@gmail.com`) punya tag stale yang sama — bug ini berpotensi memengaruhi trafik Assistant biasa milik Owner juga, tersamarkan karena Owner biasanya sudah punya BYOK key terkonfigurasi.
+Investigasi mengungkap bahkan **akun Owner sendiri** punya tag stale yang sama — bug ini berpotensi memengaruhi trafik Assistant biasa milik Owner juga, tersamarkan karena Owner biasanya sudah punya BYOK key terkonfigurasi.
 
 Investigasi lanjutan juga menemukan masalah kedua (independen, ditemukan bersamaan): payload Mamet Lite tidak pernah mengirim field `provider`, sehingga backend default ke `'openrouter'` — user tanpa BYOK key diam-diam memakai `OPENROUTER_API_KEY` milik Owner, bukan kuota gratis Gemini yang dimaksud.
 

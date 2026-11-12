@@ -38,9 +38,9 @@ console.log(`[SECURITY] appSource resolved: client='${clientAppSource}' jwt='${j
 
 | email | app_source |
 |---|---|
-| `slametbro798@gmail.com` | `engineer` |
-| `andreanastasya798@gmail.com` | `engineer` |
-| `cecep.ceri@gmail.com` | `null` → default `assistant` |
+| Akun 2 | `engineer` |
+| Akun 1 (Owner) | `engineer` |
+| Akun 3 | `null` → default `assistant` |
 
 **Logika resolusi yang berlaku sekarang:**
 
@@ -51,7 +51,7 @@ ELSE → paksa ke 'assistant'
 ```
 
 **Skenario serangan yang SEKARANG GAGAL:**
-- User `cecep.ceri@gmail.com` mengirim `{"appSource": "engineer"}` → sistem OVERRIDE ke `assistant` (metadata JWT = null)
+- User Akun 3 mengirim `{"appSource": "engineer"}` → sistem OVERRIDE ke `assistant` (metadata JWT = null)
 - User manapun mengirim `{"appSource": "unknown_mode"}` → sistem paksa ke `assistant`
 
 **Status: ✅ RESOLVED**

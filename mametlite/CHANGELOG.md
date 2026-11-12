@@ -95,7 +95,7 @@ sengaja — bukan sekadar lulus.
 **Status:** ✅ Diperbaiki & Diverifikasi via log Supabase live
 
 ### Gejala
-User Mamet Lite (`slametbro798@gmail.com`) mengirim pertanyaan biasa ("siapa nama panggilan saya?") dan mendapat:
+User Mamet Lite mengirim pertanyaan biasa ("siapa nama panggilan saya?") dan mendapat:
 ```
 Error: ENGINEER_NO_API_KEY
 POST .../functions/v1/agent-process → 403 (Forbidden)
@@ -109,7 +109,7 @@ Sudah dicoba logout–login ulang (memastikan sesi fresh), error tetap muncul se
    ```json
    "user_metadata": { "app_source": "engineer", ... }
    ```
-   Akun ini (dan bahkan akun Owner sendiri, `andreanastasya798@gmail.com`) tersimpan tag `app_source: "engineer"` di level Supabase Auth — kemungkinan tersisa dari sesi testing lama, tidak pernah dibersihkan.
+   Akun ini (dan bahkan akun Owner sendiri) tersimpan tag `app_source: "engineer"` di level Supabase Auth — kemungkinan tersisa dari sesi testing lama, tidak pernah dibersihkan.
 
 ### Root Cause
 `supabase/functions/agent-process/lib/request/request_parser.ts` (kode bersama, dipakai semua aplikasi — Assistant, Engineer, Mamet Lite) punya urutan prioritas terbalik:
