@@ -105,6 +105,8 @@ console.log('\n-- isi nalar tidak pernah dijalankan / disimpan sebagai perintah,
   cek(F.perintahDariJawaban('<think>\nsedang berpikir [MAMET_CMD: git push]').length === 0, 'nalar yang belum ditutup (masih mengalir) juga tidak menghasilkan perintah');
   cek(JSON.stringify(F.perintahDariJawaban('[MAMET_CMD: git diff]')) === '["git diff"]', 'tanpa nalar: perilaku lama tetap');
   cek(F.blokKodeKeMametCmd('```bash\ngit status\n```') === '[MAMET_CMD: git status]', 'blok perintah tanpa nalar tetap diubah');
+  const sudut = F.blokKodeKeMametCmd('Cari dulu.\n<MAMET_CMD: git ls-files -- "*AssistantService.js">\n<think><MAMET_CMD: git push></think>');
+  cek(sudut === 'Cari dulu.\n[MAMET_CMD: git ls-files -- "*AssistantService.js"]\n<think><MAMET_CMD: git push></think>' && JSON.stringify(F.perintahDariJawaban(sudut)) === '["git ls-files -- \\"*AssistantService.js\\""]', 'perintah berkurung sudut (temuan live 12 Nov) dinormalkan ke [MAMET_CMD: …] dan jalan; di nalar tetap tidak', sudut);
   cek(F.blokKodeKeMametCmd('<think>\n```bash\nrm -rf x\n```\n</think>\n\n```bash\ngit status\n```\n<think>lagi ```bash\ngit push\n```</think>') === '<think>\n```bash\nrm -rf x\n```\n</think>\n\n[MAMET_CMD: git status]\n<think>lagi ```bash\ngit push\n```</think>', 'beberapa blok nalar: semuanya dibiarkan, hanya jawaban yang diubah');
 
   const U = await imp('frontend/src/core/runtime/services/engineer/UsulanPatch.js');

@@ -31,6 +31,7 @@ cek(/WITHOUT explanatory comments \(Owner rule\)/.test(blok), 'aturan komentar m
 cek(!/python, py, pip, node, npm, npx, git, go/.test(blok) && !/git is READ-ONLY: status, log/.test(blok), 'daftar program & git TIDAK lagi disalin tangan di prompt server');
 cek(!/permission dialog for every command/.test(blok), 'klaim basi "dialog untuk setiap perintah" dicabut (git baca jalan tanpa dialog)');
 cek(!/`/.test(blok) && !/\$\{/.test(blok), 'tanpa backtick/interpolasi di teks instruksi');
+cek(/SQUARE brackets/.test(blok) && (blok.match(/^  \[MAMET_CMD: git [^\]<]+\]$/gm) || []).length >= 4 && !/\[MAMET_CMD: <[^\]]*\]/.test(blok), 'perintah diajarkan dengan contoh konkret berkurung siku, tanpa penampung <…> (temuan live: model menulis <MAMET_CMD: …>)', (blok.match(/.*MAMET_CMD.*/g) || []));
 
 const RP = baca('supabase/functions/agent-process/lib/request/request_pipeline.ts');
 const em = RP.slice(RP.indexOf('[ENGINEER MODE — INSTRUKSI WAJIB]'), RP.indexOf('`;', RP.indexOf('[ENGINEER MODE — INSTRUKSI WAJIB]')));

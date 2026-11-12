@@ -231,7 +231,7 @@ export function potongKeluaranUntukModel(keluaran, batas = BATAS_KELUARAN_MODEL)
 
   const catatan = [
     '',
-    `… [KELUARAN DIPOTONG SISTEM] keluaran aslinya ${teks.length.toLocaleString('id-ID')} huruf (${baris.length.toLocaleString('id-ID')} baris); ${dibuang.toLocaleString('id-ID')} baris di TENGAH dibuang agar prompt tidak kebesaran.`,
+    `… [KELUARAN DIPOTONG SISTEM] keluaran aslinya ${teks.length.toLocaleString('id-ID')} huruf (${baris.length.toLocaleString('id-ID')} baris); ${dibuang.toLocaleString('id-ID')} baris di TENGAH dibuang karena melebihi batas ${batas.toLocaleString('id-ID')} huruf per keluaran (anggaran konteks Settings).`,
     'Awal dan AKHIR keluaran tetap utuh, jadi jangan simpulkan bahwa kecocokan berhenti di sini.',
     'Bila yang Anda cari ada di bagian yang dibuang, PERSEMPIT pencariannya — jangan ulangi perintah yang sama:',
     '  • batasi foldernya: tambahkan `-- <folder>` yang lebih sempit',
@@ -243,8 +243,8 @@ export function potongKeluaranUntukModel(keluaran, batas = BATAS_KELUARAN_MODEL)
   return { teks: kepala.join('\n') + '\n' + catatan + ekor.join('\n'), dipotong: true, asli: teks.length };
 }
 
-export function pesanKeluaranPerintah(perintah, keluaran) {
-  const { teks } = potongKeluaranUntukModel(keluaran);
+export function pesanKeluaranPerintah(perintah, keluaran, { batas } = {}) {
+  const { teks } = potongKeluaranUntukModel(keluaran, Number.isInteger(batas) && batas > 0 ? Math.max(batas, BATAS_KELUARAN_MODEL) : BATAS_KELUARAN_MODEL);
   return `[TERMINAL OUTPUT for: ${perintah}]\n${teks}`;
 }
 

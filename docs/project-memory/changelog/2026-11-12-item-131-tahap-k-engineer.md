@@ -64,8 +64,26 @@ Riwayat percakapan di sesi yang sama: 4.800–11.400 huruf.
 - **Platform:** `agent-process` **v565** — 116 berkas = 110 identik, 0 berbeda, 6 berkas tipe dikosongkan platform.
 - **Live:** Owner deploy + jalankan ulang `npm run desktop` + percakapan Engineer (12 Nov); angka log di atas.
 
+## Lanjutan (12–13 Nov) — dua temuan dari uji live K.2
+
+1. **Pemotong kedua 8.000 huruf.** Owner meminta Engineer membaca `AssistantService.js` (±75 KB) utuh; log server:
+   pesan hasil perintah **8.589 huruf**. Sebab: `BATAS_KELUARAN_MODEL = 8000` di `pesanKeluaranPerintah`
+   (`ProsedurEngineer.js`) memotong lagi keluaran (kepala + ekor) sebelum dikirim ke model — K.2 baru setengah.
+   Perbaikan: `runCommand` memakai SATU anggaran untuk proses dan pesan ke model (`batasKeluaran` dikembalikan), kedua
+   jalur (klik Jalankan & otomatis) meneruskannya; 8.000 hanya bila anggaran tak diketahui/lebih kecil; catatan potong
+   menyebut batasnya. Uji: keluaran 75 ribu huruf utuh dengan anggaran 240 ribu; mutasi 6/6 mati.
+2. **Model menulis `<MAMET_CMD: …>` berkurung sudut** (jawaban live: perintah tak jalan, percakapan berhenti; sebelumnya
+   tag alat RAG tak sah dikembalikan ke model). Kemungkinan dari K.3: prompt kini memuat tiga alat bergaya `<alat_…>` dan
+   contoh `[MAMET_CMD]` tinggal satu berisi penampung `<…>`. Perbaikan: prompt memberi 4 contoh konkret berkurung siku
+   ("not an alat tag"), tanpa penampung; klien menormalkan `<MAMET_CMD: …>` → `[MAMET_CMD: …]` di luar nalar (perintah
+   tetap lewat pagar & dialog yang sama). Mutasi 3/3 mati.
+
+Suite **169/169**, `vite build` berhasil. **Platform:** `agent-process` **v566** — 116 berkas = 110 identik, 0 berbeda,
+6 berkas tipe dikosongkan platform (memuat contoh perintah baru & `shared/folderKerjaAlat.js` dengan normalisasi).
+
 ## Belum dibuktikan / sisa
 
-- Pembacaan berkas besar utuh (K.2) belum terlihat di log: pesan hasil perintah di sesi itu 8.589 huruf.
+- Pembacaan berkas besar utuh (K.2) belum terlihat di log sesudah kedua perbaikan di atas — perlu satu percakapan
+  Engineer lagi (muat ulang halaman `npm run desktop`).
 - **Konektor umum 13.890 huruf** (daftar & skema alat GitHub MCP) dikirim di setiap pesan — kini penyumbang terbesar.
 - `.exe` 4.5.0 mendapat K.2–K.4 & sakelar nalar di rilis berikutnya.

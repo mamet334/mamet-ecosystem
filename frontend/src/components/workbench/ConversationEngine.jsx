@@ -1135,7 +1135,7 @@ export default function ConversationEngine({ sessionId }) {
 
     setEngineerCmdStates(prev => ({ ...prev, [cmdKey]: { status: 'running', output: '' } }));
 
-    const { output, success, ditolakOwner, ditolakAturan, ditolakProsedur } =
+    const { output, success, batasKeluaran, ditolakOwner, ditolakAturan, ditolakProsedur } =
       await assistantService.runCommand(cmd, riwayatPerintahDariPesan(messages));
 
     setEngineerCmdStates(prev => ({
@@ -1146,7 +1146,7 @@ export default function ConversationEngine({ sessionId }) {
     if (ditolakAturan) return;
 
 
-    setTimeout(() => handleSend(null, pesanKeluaranPerintah(cmd, output)), 300);
+    setTimeout(() => handleSend(null, pesanKeluaranPerintah(cmd, output, { batas: batasKeluaran })), 300);
   };
 
   const chatOtomatisRef = useRef(null);
@@ -1190,7 +1190,7 @@ export default function ConversationEngine({ sessionId }) {
           ...prev,
           [cmdKey]: { status: (r.ditolakAturan || r.ditolakProsedur) ? 'blocked' : r.ditolakOwner ? 'skipped' : r.success ? 'done' : 'error', output: r.output },
         }));
-        if (!r.ditolakAturan) hasil.push(pesanKeluaranPerintah(cmd, r.output));
+        if (!r.ditolakAturan) hasil.push(pesanKeluaranPerintah(cmd, r.output, { batas: r.batasKeluaran }));
       }
       if (!batal && hasil.length) handleSend(null, hasil.join('\n\n'));
     })();

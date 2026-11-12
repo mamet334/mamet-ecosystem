@@ -1640,7 +1640,8 @@ export class AssistantService {
       return { output: berulang.pesan, success: false, ditolakOwner: false, ditolakAturan: false, ditolakProsedur: true };
     }
     let h;
-    try { h = await window.electronAPI.engineer.jalankan(String(perintah || ''), { keluaranMaksByte: await this._batasBacaFolderHuruf() }); }
+    const batasKeluaran = await this._batasBacaFolderHuruf();
+    try { h = await window.electronAPI.engineer.jalankan(String(perintah || ''), { keluaranMaksByte: batasKeluaran }); }
     catch (err) { return { output: err?.message || String(err), success: false }; }
 
     let output;
@@ -1690,7 +1691,7 @@ export class AssistantService {
     } catch (err) {
       console.warn('[AssistantService] Jejak audit perintah gagal disimpan:', err?.message || err);
     }
-    return { output, success, ditolakOwner: !!h?.ditolakOwner, ditolakAturan: !h?.ok && !h?.ditolakOwner };
+    return { output, success, batasKeluaran, ditolakOwner: !!h?.ditolakOwner, ditolakAturan: !h?.ok && !h?.ditolakOwner };
   }
 
   async rollback(checkpointRef) {

@@ -29,7 +29,23 @@ try {
   const { potongKeluaranUntukModel, pesanKeluaranPerintah, BATAS_KELUARAN_MODEL, riwayatPerintahDariPesan } = P;
 
   cek(BATAS_KELUARAN_MODEL < 15671,
-    `anggarannya (${BATAS_KELUARAN_MODEL}) di bawah keluaran yang mematahkan sesi nyata (15.671)`, BATAS_KELUARAN_MODEL);
+    `batas bawaan (${BATAS_KELUARAN_MODEL}, hanya bila anggaran tak diketahui) di bawah keluaran yang mematahkan sesi nyata (15.671)`, BATAS_KELUARAN_MODEL);
+
+  {
+    const besar = 'b'.repeat(75000);
+    const dgnAnggaran = pesanKeluaranPerintah('git show HEAD:x.js', besar, { batas: 240000 });
+    cek(dgnAnggaran === `[TERMINAL OUTPUT for: git show HEAD:x.js]\n${besar}`, 'Tahap K.2: dengan anggaran konteks, keluaran 75 ribu huruf sampai UTUH ke model (dulu dipotong 8.000)');
+    const lebih = pesanKeluaranPerintah('git show HEAD:x.js', 'c\n'.repeat(150000), { batas: 240000 });
+    cek(/melebihi batas 240\.000 huruf per keluaran \(anggaran konteks Settings\)/.test(lebih) && lebih.length < 250000, 'di atas anggaran: dipotong di anggaran, batasnya disebut ke model');
+    cek(pesanKeluaranPerintah('x', 'd'.repeat(9000), { batas: 100 }).length < 9000 && /melebihi batas 8\.000/.test(pesanKeluaranPerintah('x', 'd\n'.repeat(9000), { batas: 100 })), 'anggaran lebih kecil dari batas bawaan → batas bawaan (satu keluaran tetap berguna)');
+    cek(/melebihi batas 8\.000/.test(pesanKeluaranPerintah('x', 'e\n'.repeat(9000))), 'tanpa anggaran (pemanggil lama) → batas bawaan 8.000');
+  }
+  {
+    const CE = baca('frontend/src/components/workbench/ConversationEngine.jsx');
+    const AS = baca('frontend/src/core/runtime/services/AssistantService.js');
+    cek(/pesanKeluaranPerintah\(cmd, output, \{ batas: batasKeluaran \}\)/.test(CE) && /pesanKeluaranPerintah\(cmd, r\.output, \{ batas: r\.batasKeluaran \}\)/.test(CE), 'kedua jalur (klik Jalankan & otomatis) meneruskan anggaran');
+    cek(/return \{ output, success, batasKeluaran,/.test(AS) && /const batasKeluaran = await this\._batasBacaFolderHuruf\(\);/.test(AS), 'runCommand memakai SATU anggaran untuk proses & pesan ke model');
+  }
 
   {
     const kecil = 'a\nb\nc';

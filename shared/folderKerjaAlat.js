@@ -200,10 +200,12 @@ const PROGRAM_DIKENAL = new Set(['python', 'py', 'pip', 'node', 'npm', 'npx', 'g
 const POLA_BLOK_PERINTAH = /```(?:bash|sh|shell|console|cmd|powershell|ps|pwsh|terminal)?[ \t]*\n[ \t]*(?:\$|>|PS>)?[ \t]*([^\n`]+?)[ \t]*\n[ \t]*```/gi;
 
 export function blokKodeKeMametCmd(teks) {
-  return String(teks ?? '').split(/(<think>[\s\S]*?<\/think>)/i).map((bagian, i) => (i % 2 ? bagian : bagian.replace(POLA_BLOK_PERINTAH, (blok, baris) => {
-    const program = baris.trim().split(/\s+/)[0].toLowerCase().replace(/\.exe$/, '');
-    return PROGRAM_DIKENAL.has(program) ? `[MAMET_CMD: ${baris.trim()}]` : blok;
-  }))).join('');
+  return String(teks ?? '').split(/(<think>[\s\S]*?<\/think>)/i).map((bagian, i) => (i % 2 ? bagian : bagian
+    .replace(/<MAMET_CMD:\s*([^>\n]+?)\s*>/g, (_m, perintah) => `[MAMET_CMD: ${perintah}]`)
+    .replace(POLA_BLOK_PERINTAH, (blok, baris) => {
+      const program = baris.trim().split(/\s+/)[0].toLowerCase().replace(/\.exe$/, '');
+      return PROGRAM_DIKENAL.has(program) ? `[MAMET_CMD: ${baris.trim()}]` : blok;
+    }))).join('');
 }
 
 export function perintahDariJawaban(teks) {
