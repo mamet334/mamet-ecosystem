@@ -17,9 +17,10 @@ export function berkasDariUsulan(teks) {
   return hasil;
 }
 
-export function tugasDariUsulan({ pesanAsli, jawaban }) {
+export function tugasDariUsulan({ pesanAsli, jawaban: jawabanMentah }) {
+  const jawaban = String(jawabanMentah || '').replace(/<think>[\s\S]*?(<\/think>|$)/gi, '').trim();
   const files = berkasDariUsulan(jawaban);
-  const usulan = String(jawaban || '');
+  const usulan = jawaban;
   const potong = usulan.length > BATAS_USULAN_HURUF ? `${usulan.slice(0, BATAS_USULAN_HURUF)}\n… (usulan dipotong)` : usulan;
   return {
     id: `TASK-${Date.now()}`,

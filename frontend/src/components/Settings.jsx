@@ -73,6 +73,12 @@ export default function Settings() {
   const brainServiceRef = kernel.serviceManager?.get('BrainService');
   const modelTiers = brainServiceRef?.getTiers?.() || {};
 
+  const [nalarUtama, setNalarUtama] = useState(true);
+  const handleNalarUtama = (nyala) => {
+    brainServiceRef?.setThinkingUtama?.(nyala);
+    setNalarUtama(nyala);
+  };
+
   const handleTierChange = (tierName, field, value) => {
     if (!brainServiceRef?.setTier) return;
     brainServiceRef.setTier(tierName, { [field]: value });
@@ -153,6 +159,7 @@ export default function Settings() {
       const config = brainService.getBrainConfig();
       setAiProvider(config.provider);
       setAiModel(config.model);
+      setNalarUtama(config.thinking !== false);
     }
     if (vaultService && brainService) {
       const key = vaultService.getKey(brainService.getBrainConfig().provider) || '';
@@ -355,6 +362,21 @@ export default function Settings() {
                   className="w-full bg-surface-container-lowest border border-outline-variant px-5 py-4 rounded-lg text-on-surface font-body-base focus:border-primary focus:ring-0 pulse-focus transition-all"
                 />
               </div>
+
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={nalarUtama}
+                  onChange={(e) => handleNalarUtama(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-outline-variant bg-surface-container-lowest text-primary focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                />
+                <span className="text-[12px] leading-relaxed">
+                  <span className="text-on-surface font-medium group-hover:text-primary transition-colors">Nalar (reasoning) untuk model utama</span>
+                  <span className="block text-on-surface-variant mt-0.5">
+                    Dipakai Engineer (Assistant memakai sakelar per tingkat di Tingkat Model). Model berpikir dulu dan nalarnya tampil; token nalar dibayar sebagai keluaran, jadi jawaban lebih mahal &amp; lebih lambat. Berlaku langsung, tersimpan di perangkat ini.
+                  </span>
+                </span>
+              </label>
 
               <div className="grid grid-cols-3 gap-4 mt-4">
                 <div className="bg-surface-container-low border border-outline-variant/50 p-4 rounded-lg flex flex-col items-center gap-2 text-center group/card hover:border-primary/50 transition-colors">

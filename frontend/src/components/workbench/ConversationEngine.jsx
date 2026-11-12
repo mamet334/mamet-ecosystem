@@ -11,6 +11,7 @@ import AkarRepoTombol from './AkarRepoTombol';
 import ChatHistory from './ChatHistory';
 import MemoryContextPanel from './MemoryContextPanel';
 import { tugasDariUsulan } from '../../core/runtime/services/engineer/UsulanPatch.js';
+import { perintahDariJawaban } from '../../../../shared/folderKerjaAlat.js';
 import { laporanSetelahMuatUlang, hapusCatatanPatch } from '../../core/runtime/services/engineer/CatatanPatch.js';
 import { putusanPemulihan, bolehSimpanChat, kunciSimpan } from './pemulihanChat.js';
 import { buatPenandaKiriman, tujuanTulis, pesanTerlantar, layakSimpanTerlantar } from './pengirimanChat.js';
@@ -1147,15 +1148,15 @@ export default function ConversationEngine({ sessionId }) {
     if (chatOtomatisRef.current !== currentChatId) {
       chatOtomatisRef.current = currentChatId;
       if (typeof pesanAkhir?.content === 'string') {
-        for (const m of pesanAkhir.content.matchAll(/\[MAMET_CMD:([^\]]+)\]/g)) {
-          cmdOtomatisRef.current.add(`${idx}_${m[1].trim()}`);
+        for (const cmd of perintahDariJawaban(pesanAkhir.content)) {
+          cmdOtomatisRef.current.add(`${idx}_${cmd}`);
         }
       }
       return;
     }
 
     if (!pesanAkhir || pesanAkhir.role !== 'model' || typeof pesanAkhir.content !== 'string') return;
-    const daftar = [...pesanAkhir.content.matchAll(/\[MAMET_CMD:([^\]]+)\]/g)].map((m) => m[1].trim());
+    const daftar = perintahDariJawaban(pesanAkhir.content);
     if (!daftar.length) return;
 
     let batal = false;

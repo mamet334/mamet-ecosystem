@@ -22,7 +22,7 @@ export function kunciTemuan({ berkas, ringkasan }) {
 export function ambilBlokTemuan(teks) {
   const temuan = [];
   const galat = [];
-  const isi = String(teks || '');
+  const isi = String(teks || '').replace(/<think>[\s\S]*?(<\/think>|$)/gi, '');
   POLA_BLOK.lastIndex = 0;
   let m;
   while ((m = POLA_BLOK.exec(isi)) !== null) {

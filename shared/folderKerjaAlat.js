@@ -200,10 +200,15 @@ const PROGRAM_DIKENAL = new Set(['python', 'py', 'pip', 'node', 'npm', 'npx', 'g
 const POLA_BLOK_PERINTAH = /```(?:bash|sh|shell|console|cmd|powershell|ps|pwsh|terminal)?[ \t]*\n[ \t]*(?:\$|>|PS>)?[ \t]*([^\n`]+?)[ \t]*\n[ \t]*```/gi;
 
 export function blokKodeKeMametCmd(teks) {
-  return String(teks ?? '').replace(POLA_BLOK_PERINTAH, (blok, baris) => {
+  return String(teks ?? '').split(/(<think>[\s\S]*?<\/think>)/i).map((bagian, i) => (i % 2 ? bagian : bagian.replace(POLA_BLOK_PERINTAH, (blok, baris) => {
     const program = baris.trim().split(/\s+/)[0].toLowerCase().replace(/\.exe$/, '');
     return PROGRAM_DIKENAL.has(program) ? `[MAMET_CMD: ${baris.trim()}]` : blok;
-  });
+  }))).join('');
+}
+
+export function perintahDariJawaban(teks) {
+  const tanpaNalar = String(teks ?? '').replace(/<think>[\s\S]*?(<\/think>|$)/gi, '');
+  return [...tanpaNalar.matchAll(/\[MAMET_CMD:([^\]]+)\]/g)].map((m) => m[1].trim());
 }
 
 export function peringatanKlaimEngineer(teks, pesanDijawab) {

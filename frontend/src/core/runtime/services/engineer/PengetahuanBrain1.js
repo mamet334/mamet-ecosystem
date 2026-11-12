@@ -14,7 +14,7 @@ function normalkanJenis(nilai) {
 }
 
 export function ambilBlokPengetahuan(teks) {
-  const isi = rapikan(teks);
+  const isi = rapikan(String(teks ?? '').replace(/<think>[\s\S]*?(<\/think>|$)/gi, ''));
   const pengetahuan = [];
   const dilewati = [];
   if (!isi) return { pengetahuan, dilewati };

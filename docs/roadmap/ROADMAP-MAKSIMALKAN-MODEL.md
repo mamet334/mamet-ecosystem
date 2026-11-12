@@ -311,6 +311,21 @@ sebagai konstanta string. Penjaga sesudahnya: `uji/uji-kode-tanpa-komentar.mjs`.
 **Selesai bila:** 0 komentar penjelas di cakupan (dihitung pemindai), 0 berkas dengan keluaran build berbeda, suite &
 build hijau, server ter-deploy sama dengan repo.
 
+## Tahap K — Engineer ikut dimaksimalkan 📝 🖥🔧
+
+**Perintah Owner (12 Nov):** *"catat, commit, push, lakukan k1-k4 otonom"* — atas pertanyaan *"apakah roadmap memaksimalkan
+model juga sama untuk engineer?"*. Penomoran **K.1–K.4** (bukan kriteria hardening K1–K7).
+
+**Kenapa.** Tahap 0–J sampai ke Engineer lewat jalur bersama (riwayat, RAG, blokir kata, kegagalan jujur, anggaran alat),
+tetapi Engineer punya pembatas sendiri: nalar dimatikan (✅ 12 Nov — [log](../project-memory/changelog/2026-11-12-nalar-model-utama-engineer.md)),
+prompt Engineer sengaja tak disentuh Tahap I, keluaran perintah dipotong 20 KB (sejenis "baca folder 150 KB" yang
+dicabut Tahap E untuk Assistant), dan daftar perintah yang boleh tidak diberitahukan ke model.
+
+- **K.1** Ukur apa yang sampai ke model di Engineer (Tahap 0 versi Engineer): ukuran tiap bagian prompt & sisipan klien.
+- **K.2** Batas keluaran perintah mengikuti anggaran konteks Settings, bukan 20 KB tersembunyi.
+- **K.3** Rampingkan prompt Engineer; cabut aturan/peringatan tambalan yang penyebabnya sudah diperbaiki.
+- **K.4** Daftar perintah (git & program) yang boleh dijalankan masuk ke prompt.
+
 ## Urutan (disetujui Owner 6 Nov)
 
 0. **Tahap 0** (ukur ujung-ke-ujung) — gerbang semua tahap; tanpa alat ukur ini kesalahan yang sama bisa terulang diam-diam.

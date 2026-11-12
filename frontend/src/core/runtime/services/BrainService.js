@@ -3,6 +3,7 @@ import { supabase } from '../../../supabase';
 const TIER_NAMES = ['KECIL', 'SEDANG', 'THINKING'];
 const TIERS_STORAGE_KEY = 'maef_model_tiers';
 const TIERS_METADATA_KEY = 'model_tiers';
+const NALAR_UTAMA_KEY = 'maef_ai_thinking';
 
 class BrainService {
   constructor(serviceManager) {
@@ -11,6 +12,7 @@ class BrainService {
     this.state = {
       provider: 'gemini',
       model: 'gemini-2.5-flash',
+      thinking: true,
       tiers: null
     };
   }
@@ -18,8 +20,10 @@ class BrainService {
   async initialize() {
     const savedProvider = localStorage.getItem('maef_ai_provider');
     const savedModel = localStorage.getItem('maef_ai_model');
+    const savedNalar = localStorage.getItem(NALAR_UTAMA_KEY);
     if (savedProvider) this.state.provider = savedProvider;
     if (savedModel) this.state.model = savedModel;
+    if (savedNalar !== null) this.state.thinking = savedNalar !== '0';
 
     this.state.tiers = this._loadTiersFromLocalStorage() || this._seedTiersFromMainModel();
     console.log(`[BrainService] Initialized with provider: ${this.state.provider}, model: ${this.state.model}`);
@@ -126,6 +130,14 @@ class BrainService {
     }
   }
 
+  setThinkingUtama(nyala) {
+    this.state.thinking = nyala === true;
+    localStorage.setItem(NALAR_UTAMA_KEY, this.state.thinking ? '1' : '0');
+    if (this.eventBus) {
+      this.eventBus.emit('Brain:ConfigUpdated', { ...this.state });
+    }
+  }
+
   getBrainConfig() {
     return { ...this.state };
   }
@@ -143,7 +155,7 @@ class BrainService {
       model,
       key,
       tier: slot ? tierName : null,
-      thinking: slot?.thinking === true
+      thinking: slot ? slot.thinking === true : this.state.thinking !== false
     };
   }
 

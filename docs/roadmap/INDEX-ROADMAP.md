@@ -3,7 +3,7 @@
 **Untuk siapa:** AI coding (bukan Engineer — Engineer memakai `INIT.md`). Baca dokumen ini utuh lebih dulu,
 lalu buka **hanya** dokumen yang ditunjuk.
 **Aturan kerja praktis AI coding** (git, urutan deploy → catat → push, uji, privasi): [`CLAUDE.md`](../../CLAUDE.md) di akar repo.
-**Update terakhir:** 2026-11-12 (K1–K7 semua ✅: K5 email dihapus dari dokumen publik, K6 pulih 16/16, 4.5.0 terbit; berikutnya keputusan Owner rilis 5.0.0 "nanti"; T10 Tahap 2 ✅ alat web teknis Engineer — [log](../project-memory/changelog/2026-11-12-t10-alat-web-teknis-engineer.md)); 
+**Update terakhir:** 2026-11-12 (K1–K7 semua ✅: K5 email dihapus dari dokumen publik, K6 pulih 16/16, 4.5.0 terbit; berikutnya keputusan Owner rilis 5.0.0 "nanti"; T10 Tahap 2 ✅ alat web teknis Engineer — [log](../project-memory/changelog/2026-11-12-t10-alat-web-teknis-engineer.md); Engineer bernalar (sakelar nalar model utama, bawaan nyala) — [log](../project-memory/changelog/2026-11-12-nalar-model-utama-engineer.md); Item 131 Tahap K (Engineer) 📝); 
 riwayat detail lama: [`INDEX-ROADMAP-ARSIP-2026-09-17.md`](./INDEX-ROADMAP-ARSIP-2026-09-17.md))
 
 ## 0. Peran Dokumen & Aturan
