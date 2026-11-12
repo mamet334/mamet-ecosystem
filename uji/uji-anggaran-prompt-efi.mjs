@@ -56,9 +56,9 @@ console.log('\n-- E1/E2: satu anggaran putaran alat dari Settings --');
   cek(/dipotong 60000 huruf dari 90000/.test(pot) && !/kursor/.test(pot), 'pemotongan hasil konektor umum menyebut ukuran asli, tanpa menjanjikan kursor yang tak ada', pot.slice(-200));
 
   const AS = baca('frontend/src/core/runtime/services/AssistantService.js');
-  cek(/const putaranAlatTerpakai = _folderPutaran \+ _konektorPutaran \+ _ragPutaran;\n\s*const sisaPutaranAlat = Math\.max\(0, maksPutaranAlat - putaranAlatTerpakai\);/.test(AS), 'klien: sisa = setelan − putaran semua jenis alat');
+  cek(/const putaranAlatTerpakai = _folderPutaran \+ _konektorPutaran \+ _ragPutaran \+ _webPutaran;\n\s*const sisaPutaranAlat = Math\.max\(0, maksPutaranAlat - putaranAlatTerpakai\);/.test(AS), 'klien: sisa = setelan − putaran semua jenis alat');
   cek((AS.match(/sisaPutaranAlat > 0\) \{/g) || []).length === 4 && !/MAKS_PUTARAN/.test(AS), 'klien: keempat gerbang putaran (konektor, folder, koreksi, RAG) memakai sisa bersama');
-  cek((AS.match(/onDone: onDoneAwal,/g) || []).length === 4 && (AS.match(/_ragPutaran, _ragPertanyaan, _ragCatatan: catatanRag,/g) || []).length === 3 && (AS.match(/_konektorPutaran, _konektorPertanyaan, _konektorCatatan,/g) || []).length === 3, 'klien: setiap putaran membawa hitungan semua jenis alat (anggaran tidak ter-reset saat berganti alat)');
+  cek((AS.match(/onDone: onDoneAwal,/g) || []).length === 5 && (AS.match(/_ragPutaran, _ragPertanyaan, _ragCatatan: catatanRag,/g) || []).length === 4 && (AS.match(/_konektorPutaran, _konektorPertanyaan, _konektorCatatan,/g) || []).length === 4 && (AS.match(/_webPutaran, _webPertanyaan, _webCatatan: catatanWeb,/g) || []).length === 4,'klien: setiap putaran membawa hitungan semua jenis alat (anggaran tidak ter-reset saat berganti alat)');
   cek(/user\?\.user_metadata\?\.putaran_alat/.test(AS) && /putaranAlatAman\(/.test(AS), 'klien membaca setelan putaran alat pengguna');
   cek(!/FOLDER_BATAS_BACA_BYTE/.test(AS) && /byte >= batasBacaHuruf/.test(AS) && /anggaranKonteks\(await this\.bahanAnggaranKonteks\(cfg\.model \|\| ''\)\)\.token \* 4/.test(AS), 'batas baca folder per pertanyaan = anggaran konteks Settings (bukan 150 KB tersembunyi)');
   const ST = baca('frontend/src/components/Settings.jsx');

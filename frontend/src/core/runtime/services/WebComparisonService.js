@@ -2,6 +2,7 @@
 import { supabase } from '../../../supabase.js';
 import { ringkasKueri } from '../../../../../shared/kueri_pencarian.js';
 import { entitas, tanpaTag, urlAsliBing } from '../../../../../shared/teks_rss.js';
+import { uraiHasilDdg } from '../../../../../shared/webAlat.js';
 
 export const WEB_SEARCH_TIMEOUT_MS = 8000;
 export const WEB_SUFFICIENCY_SCORE = 0.7;
@@ -178,10 +179,11 @@ export class WebComparisonService {
       console.log(`[WebComparisonService] 🌐 Menjalankan pencarian web (Timeout: ${timeoutMs}ms) untuk: "${kueriDicari.substring(0, 60)}"`);
 
       const isTemporal = Boolean(options.isTemporal);
-      let rawResults = await this._executeFetch(kueriDicari, abortController.signal, { isTemporal });
+      const sumberWeb = options.sumberWeb;
+      let rawResults = await this._executeFetch(kueriDicari, abortController.signal, { isTemporal, sumberWeb });
       if ((!rawResults || rawResults.length === 0) && kueriDicari !== query.trim() && !abortController.signal.aborted) {
         kueriDicari = query.trim();
-        rawResults = await this._executeFetch(kueriDicari, abortController.signal, { isTemporal });
+        rawResults = await this._executeFetch(kueriDicari, abortController.signal, { isTemporal, sumberWeb });
       }
       clearTimeout(timeoutId);
 
@@ -285,6 +287,7 @@ export class WebComparisonService {
   }
 
   async _safeFetch(url, options = {}) {
+    let gagalDesktop = null;
     if (typeof window !== 'undefined' && window.electronAPI && typeof window.electronAPI.fetchWeb === 'function') {
       try {
         const res = await window.electronAPI.fetchWeb(url, options);
@@ -296,8 +299,10 @@ export class WebComparisonService {
             json: async () => JSON.parse(res.data || '{}')
           };
         }
+        gagalDesktop = { status: res?.status || 0, error: res?.error || '' };
         console.warn(`[WebComparisonService] IPC fetchWeb non-ok: ${res?.status} (${res?.error || ''}) for ${url}`);
       } catch (ipcErr) {
+        gagalDesktop = { status: 0, error: ipcErr.message };
         console.warn('[WebComparisonService] IPC fetchWeb exception:', ipcErr.message);
       }
     }
@@ -336,7 +341,7 @@ export class WebComparisonService {
       }
 
       if (!url.includes('origin=*')) {
-        return { ok: false, status: 403, text: async () => '', json: async () => ({}) };
+        return { ok: false, status: gagalDesktop?.status || 403, text: async () => '', json: async () => ({}) };
       }
     }
 
@@ -355,6 +360,7 @@ export class WebComparisonService {
     }
 
     const isTemporal = Boolean(options.isTemporal);
+    if (options.sumberWeb === 'umum') return this._cariWebUmum(query, signal);
 
     try {
       const bingUrl = `https://www.bing.com/news/search?q=${encodeURIComponent(query)}&format=rss`;
@@ -474,6 +480,14 @@ export class WebComparisonService {
     return [];
   }
 
+  async _cariWebUmum(query, signal) {
+    const response = await this._safeFetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, { headers: { Accept: 'text/html' }, signal });
+    if (!response?.ok) throw new Error(`DuckDuckGo HTTP ${response?.status || 'tanpa status'}`);
+    const hasil = this._parseHtmlResults(await response.text());
+    console.log(`[WebComparisonService] DuckDuckGo (web umum, mode Engineer) returned ${hasil.length} results`);
+    return hasil;
+  }
+
   _parseRssResults(xml) {
     const results = [];
     const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
@@ -501,40 +515,7 @@ export class WebComparisonService {
   }
 
   _parseHtmlResults(html) {
-    const results = [];
-    const linkRegex = /<a[^>]+class="[^"]*result__url[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
-    const snippetRegex = /<a[^>]+class="[^"]*result__snippet[^"]*"[^>]*>([\s\S]*?)<\/a>/gi;
-
-    const urls = [];
-    let match;
-    while ((match = linkRegex.exec(html)) !== null && urls.length < 5) {
-      let rawUrl = match[1];
-      if (rawUrl.includes('uddg=')) {
-        try {
-          const urlParam = new URL('https://duckduckgo.com' + rawUrl).searchParams.get('uddg');
-          if (urlParam) rawUrl = decodeURIComponent(urlParam);
-        } catch (_) {}
-      }
-      urls.push({
-        url: rawUrl,
-        title: match[2].replace(/<[^>]+>/g, '').trim()
-      });
-    }
-
-    const snippets = [];
-    while ((match = snippetRegex.exec(html)) !== null && snippets.length < 5) {
-      snippets.push(match[1].replace(/<[^>]+>/g, '').trim());
-    }
-
-    for (let i = 0; i < urls.length; i++) {
-      results.push({
-        title: urls[i].title || `Web Result #${i + 1}`,
-        link: urls[i].url,
-        snippet: snippets[i] || 'No snippet available'
-      });
-    }
-
-    return results;
+    return uraiHasilDdg(html, 5).map((h, i) => ({ title: h.judul || `Web Result #${i + 1}`, link: h.url, snippet: h.cuplikan || h.judul || '' }));
   }
 }
 

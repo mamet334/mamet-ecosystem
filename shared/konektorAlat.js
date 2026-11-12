@@ -119,7 +119,7 @@ export function uraiHasilKonektor(h) {
   }
   let isi = String(h.teks || '')
     .split(TUTUP_DATA).join('<<<akhir data (dinetralkan)>>>')
-    .replace(/<(\/?)alat_(konektor|folder)>/gi, '‹$1alat_$2›');
+    .replace(/<(\/?)alat_(konektor|folder|rag|web)>/gi, '‹$1alat_$2›');
   const terpotong = isi.length > BATAS_HASIL_KONEKTOR_HURUF || h.terpotong;
   if (isi.length > BATAS_HASIL_KONEKTOR_HURUF) isi = isi.slice(0, BATAS_HASIL_KONEKTOR_HURUF);
   return [

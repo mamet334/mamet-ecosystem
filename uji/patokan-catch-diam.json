@@ -1,7 +1,7 @@
 {
   "catatan": "Patokan catch DIAM per berkas. HANYA BOLEH TURUN. Perbarui dengan: node uji/uji-catch-diam.mjs --perbarui",
-  "diperbarui": "2026-11-09",
-  "total": 171,
+  "diperbarui": "2026-11-12",
+  "total": 170,
   "berkas": {
     "frontend/src/components/BagianKonektor.jsx": 1,
     "frontend/src/components/dashboard/ActivityGraph.jsx": 1,
@@ -42,7 +42,6 @@
     "frontend/src/core/runtime/services/TemaService.js": 2,
     "frontend/src/core/runtime/services/unduhAplikasi.js": 1,
     "frontend/src/core/runtime/services/unggahBertahap.js": 2,
-    "frontend/src/core/runtime/services/WebComparisonService.js": 1,
     "frontend/src/core/runtime/StorageManager.js": 3,
     "frontend/src/core/workspaces/WorkspaceManager.js": 2,
     "supabase/functions/agent-process/index.ts": 4,
@@ -52,7 +51,6 @@
     "supabase/functions/agent-process/lib/stream_handler.ts": 1,
     "supabase/functions/agent-process/lib/verification/hakim_bayangan.ts": 1,
     "supabase/functions/agent-process/lib/verification/verification_engine.ts": 5,
-    "supabase/functions/agent-process/lib/web/alamat_publik.ts": 1,
     "supabase/functions/agent-process/lib/web/pencarian_berita.ts": 1,
     "supabase/functions/agent-process/plugins/coder.ts": 1,
     "frontend/electron/akarRepo.cjs": 1,
@@ -76,6 +74,7 @@
     "frontend/electron/pagarFolder.cjs": 1,
     "frontend/electron/preload.cjs": 1,
     "frontend/electron/stealthKonektor.cjs": 4,
+    "shared/alamatPublik.js": 1,
     "shared/folderKerjaAlat.js": 1,
     "shared/KnowledgeService.js": 1,
     "shared/konektorAlat.js": 1,

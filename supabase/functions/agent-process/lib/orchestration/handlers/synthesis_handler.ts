@@ -8,6 +8,7 @@ import { koreksiLabel, catatanRagTurun } from '../../verification/label_sumber.t
 import { jalankanHakimBayangan } from '../../verification/hakim_bayangan.ts';
 import { sumberDariHasilAlat, sumberDariKeluaranTerminal } from '../../../../../../shared/folderKerjaAlat.js';
 import { sumberDariHasilRag } from '../../../../../../shared/ragAlat.js';
+import { sumberDariHasilWeb } from '../../../../../../shared/webAlat.js';
 import { tutupJawabanDataTabel } from '../../data_tabel/data_tabel.ts';
 import { sisipkanNalar } from '../../adapters/reasoning_openrouter.ts';
 import { CATATAN_TERPOTONG, susunBahanLanjutan, susunPromptLanjutan, tenggatJawaban } from '../../streaming/batas_waktu.ts';
@@ -83,6 +84,15 @@ export const SynthesisHandler = {
         judulDokumen.push(...sumberTerminal.judul);
         isiDokumen.push(...sumberTerminal.isi);
         ctx.state.processingSteps.push(`⌨️ Sumber keluaran perintah untuk pemeriksa label: ${sumberTerminal.judul.length} perintah`);
+      }
+      const sumberWeb = sumberDariHasilWeb([
+        ctx.request.originalMessage || ctx.request.finalMessage,
+        ...(history || []).filter((h: any) => h?.role === 'user').map((h: any) => String(h.content || '')),
+      ]);
+      if (sumberWeb.judul.length) {
+        judulDokumen.push(...sumberWeb.judul);
+        isiDokumen.push(...sumberWeb.isi);
+        ctx.state.processingSteps.push(`🌐 Sumber alat web untuk pemeriksa label: ${sumberWeb.judul.length} alamat/paket`);
       }
     }
     let replyMessage = 'Gagal memproses jawaban.';

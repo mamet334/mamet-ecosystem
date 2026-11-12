@@ -15,7 +15,7 @@ Sisa daftar terbuka di bawah (T1, T10, T12, T13, T14) adalah keadaan **28 Septem
 diaudit ulang pada 18 Okt; baca tiap bagiannya, jangan percaya hitungan di baris ini.
 **28 September 2026: T11, T12, T13, T14 sudah DIPUTUSKAN Owner** (🟢 di masing-masing bagian) tetapi
 **belum dikerjakan**; tiap keputusan disertai cara mengoreksinya bila kenyataan berbeda. T1 menunggu Owner
-mengganti token Apify; T10 menunggu Tahap 2–3 `ROADMAP-ENGINEER-MANDIRI.md`.
+mengganti token Apify; T10: Tahap 2 ✅ 12 Nov, Tahap 3 dilampaui; sisa Undo live.
 **Tanggal:** 2026-09-17 (dipindah dari INDEX-ROADMAP Item 33, 44, 48, 49, 50 saat perampingan)
 **Aturan:** temuan yang dikerjakan dan tumbuh besar pindah ke dokumen roadmap sendiri; yang selesai dicatat di
 changelog lalu barisnya diberi ✅ di sini.
@@ -200,8 +200,11 @@ Semua temuan di bawah **diperiksa ulang terhadap kode/database 2026-09-17**. Riw
 - **Lanjutan jangka panjang:** rancangan [`ROADMAP-ENGINEER-MANDIRI.md`](./ROADMAP-ENGINEER-MANDIRI.md) (disetujui
   Owner 23 September): lingkaran baca-saja beranggaran, mesin uji klaim, ingatan temuan, antrean kerja, dan Engineer
   di aplikasi terpasang.
-- **Sisa:** tombol Undo belum teruji live sesudah perbaikan · perbaikan `IntentClassifier` sesuai temuan Engineer
-  belum dikerjakan · Tahap 2 (web teknis) & Tahap 3 (isi space) belum.
+- **12 Nov 2026 (keputusan Owner):** **Tahap 2 ✅ live** — alat `<alat_web>` (web_cari, web_baca, paket_npm, paket_pypi,
+  rilis_github) dipanggil model sendiri; pencarian otomatis Engineer = DuckDuckGo, bukan sumber berita (agent-process
+  v564 — [log](../project-memory/changelog/2026-11-12-t10-alat-web-teknis-engineer.md)). **Tahap 3 dilampaui** oleh `git grep` di repo (salinan RAG
+  basi). **`IntentClassifier` dilampaui** — tak lagi di jalur hidup, sengaja dipertahankan sebagai bahan uji.
+- **Sisa:** tombol Undo belum teruji live (jalur kodenya teruji, `uji-checkpoint-engineer`) · `web_baca` belum terlihat live.
 
 ## T11 — `check-keys` bisa dipanggil dengan kunci anon (asal Item 85 Tahap 3, 2026-09-22)
 

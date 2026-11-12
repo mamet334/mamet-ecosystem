@@ -18,6 +18,7 @@ import { blokPromptFolder } from '../../../../../shared/folderKerjaAlat.js';
 import { blokPromptKonektor } from '../../../../../shared/konektorAlat.js';
 import { blokPromptKonektorUmum } from '../../../../../shared/konektorUmum.js';
 import { blokPromptRag } from '../../../../../shared/ragAlat.js';
+import { blokPromptWeb } from '../../../../../shared/webAlat.js';
 import { susunPromptDasar, petunjukZip } from './prompt_dasar.ts';
 
 
@@ -269,6 +270,11 @@ export async function executeRequestPipeline(
     (ctx.request as any).alatRagAktif = true;
     ctx.request.agentIdentityPrompt += blokPromptRag({ putaran: parsed.alatRag.putaran, maks: parsed.alatRag.maks, sisa: parsed.alatRag.sisa, engineer });
     console.log(`[AlatRag] aktif · putaran alat ${parsed.alatRag.putaran}${engineer ? ' · Engineer' : ''}`);
+  }
+
+  if (parsed.alatWeb && ctx.policy.mode === 'ENGINEER') {
+    ctx.request.agentIdentityPrompt += blokPromptWeb({ putaran: parsed.alatWeb.putaran, maks: parsed.alatWeb.maks, sisa: parsed.alatWeb.sisa });
+    console.log(`[AlatWeb] aktif · putaran alat ${parsed.alatWeb.putaran}`);
   }
 
   if (parsed.konektor) {

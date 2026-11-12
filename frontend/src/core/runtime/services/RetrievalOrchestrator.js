@@ -89,6 +89,7 @@ export class RetrievalOrchestrator {
           traceId: options.traceId,
           autoConfirm: options.autoConfirmWebSearch || false,
           isTemporal,
+          sumberWeb: options.sumberWeb,
           reason: options.webComparisonReason || (isTemporal ? 'Pertanyaan memerlukan berita/informasi terkini yang tidak ada di dokumen lokal.' : 'Konteks lokal belum memadai dan perbandingan web dibutuhkan.')
         };
 

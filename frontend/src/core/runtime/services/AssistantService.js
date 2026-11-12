@@ -7,6 +7,7 @@ import { ambilPermintaanAlat, susunPesanHasil, susunPesanKoreksi, namaFolderAman
 import { ambilPermintaanKonektor, susunPesanHasilKonektor, catatanHasilKonektor } from '../../../../../shared/konektorAlat.js';
 import { ambilPermintaanRag, susunPesanHasilRag, catatanHasilRag } from '../../../../../shared/ragAlat.js';
 import { putaranAlatAman } from '../../../../../shared/anggaranAlat.js';
+import { ambilPermintaanWeb, susunPesanHasilWeb, catatanHasilWeb, jalankanAlatWeb } from '../../../../../shared/webAlat.js';
 import { bacaKonektorAktif, petaAlatAktif, muatanKonektor, panggilKonektor, labelAlat } from './konektorAktif.js';
 import { cekPerintahBerulang, petunjukHasilKosong, petunjukKeluaranTerpotong, petunjukGrepSebagian, peringatanTugasTakDiumumkan, adaPenandaPatch, buangPenandaPatch } from './engineer/ProsedurEngineer.js';
 import { peringatanKlaimTakTeruji } from './engineer/UjiKlaim.js';
@@ -278,6 +279,27 @@ export class AssistantService {
     return aktif ? { aktif: true } : null;
   }
 
+  _statusAlatWeb(workspaceId, resolvedMode) {
+    if (resolvedMode !== 'ENGINEER') return null;
+    const preferensi = this.serviceManager?.has?.('ToolPreferencesService') ? this.serviceManager.get('ToolPreferencesService') : null;
+    const aktif = preferensi ? preferensi.getEffective(workspaceId, 'web_search') : true;
+    return aktif ? { aktif: true } : null;
+  }
+
+  async _ambilAlatWeb(url, { lewatServer = false, headers } = {}) {
+    if (!lewatServer && typeof window !== 'undefined' && window.electronAPI?.fetchWeb) {
+      const r = await window.electronAPI.fetchWeb(url, { headers, timeoutMs: 20000 });
+      return { ok: r?.ok === true, status: r?.status || 0, teks: r?.data || '', galat: r?.ok ? undefined : r?.error };
+    }
+    const { data, error } = await supabase.functions.invoke('agent-process', { body: { action: 'proxy_fetch', url } });
+    if (error) {
+      let rinci = '';
+      try { rinci = (await error.context?.json?.())?.error || ''; } catch (e) { console.warn('[AlatWeb] badan galat proxy_fetch tak terbaca:', e.message); }
+      return { ok: false, status: error.context?.status || 0, galat: `pengambil di server: ${rinci || error.message}` };
+    }
+    return { ok: data?.ok === true, status: data?.status || 0, teks: data?.data || '', galat: data?.ok ? undefined : data?.error };
+  }
+
   async _jalankanAlatRag(permintaan, { token, mode, signal }) {
     const brain = this.serviceManager?.has?.('BrainService') ? this.serviceManager.get('BrainService') : null;
     const cfg = (await brain?.getActiveBrainContext?.()) || {};
@@ -327,7 +349,10 @@ export class AssistantService {
     _konektorCatatan = null,
     _ragPutaran = 0,
     _ragPertanyaan = null,
-    _ragCatatan = null
+    _ragCatatan = null,
+    _webPutaran = 0,
+    _webPertanyaan = null,
+    _webCatatan = null
   }) {
     if (!userMsg || !token) {
       onError?.({ kode: 'PESAN_KOSONG', teknis: !userMsg ? 'pesan kosong' : 'token tidak ada' });
@@ -342,7 +367,7 @@ export class AssistantService {
 
     const onDoneAwal = onDone;
     const maksPutaranAlat = await this._anggaranPutaranAlat();
-    const putaranAlatTerpakai = _folderPutaran + _konektorPutaran + _ragPutaran;
+    const putaranAlatTerpakai = _folderPutaran + _konektorPutaran + _ragPutaran + _webPutaran;
     const sisaPutaranAlat = Math.max(0, maksPutaranAlat - putaranAlatTerpakai);
     const nomorPutaranAlat = putaranAlatTerpakai + 1;
     const anggaranPutaran = { maks: maksPutaranAlat, sisa: sisaPutaranAlat };
@@ -355,6 +380,18 @@ export class AssistantService {
       onDone = (finalText, ...sisa) => onDoneTerakhir?.(
         catatanRag.length && typeof finalText === 'string'
           ? `${finalText}\n\n---\n📚 _RAG (dicatat dari proses utama, bukan dari kata model): ${catatanRag.join(' · ')}_`
+          : finalText,
+        ...sisa,
+      );
+    }
+    const alatWeb = this._statusAlatWeb(workspaceId, resolvedMode);
+    const infoAlatWeb = alatWeb ? { putaran: _webPutaran, ...anggaranPutaran, tingkat: null } : null;
+    const catatanWeb = _webCatatan || [];
+    if (alatWeb) {
+      const onDoneKakiWeb = onDone;
+      onDone = (finalText, ...sisa) => onDoneKakiWeb?.(
+        catatanWeb.length && typeof finalText === 'string'
+          ? `${finalText}\n\n---\n🌐 _Web (dicatat dari proses utama, bukan dari kata model): ${catatanWeb.join(' · ')}_`
           : finalText,
         ...sisa,
       );
@@ -390,6 +427,7 @@ export class AssistantService {
             _folderPutaran, _folderPertanyaan: pertanyaanAsli, _folderDibaca: dibaca, _folderDiubah: diubah, _folderByte, _folderKoreksi,
             _konektorPutaran: _konektorPutaran + 1, _konektorPertanyaan: pertanyaanKonektor, _konektorCatatan: catatanKonektor,
             _ragPutaran, _ragPertanyaan, _ragCatatan: catatanRag,
+            _webPutaran, _webPertanyaan, _webCatatan: catatanWeb,
           });
         }
         let teks = permintaan.length ? teksTanpaTag : finalText;
@@ -456,6 +494,7 @@ export class AssistantService {
             _folderKoreksi,
             _konektorPutaran, _konektorPertanyaan, _konektorCatatan,
             _ragPutaran, _ragPertanyaan, _ragCatatan: catatanRag,
+            _webPutaran, _webPertanyaan, _webCatatan: catatanWeb,
           });
         }
         let teks = buangKakiTiruan(permintaan.length ? ambilPermintaanAlat(finalText).teksTanpaTag : finalText);
@@ -478,6 +517,7 @@ export class AssistantService {
             _folderKoreksi: true,
             _konektorPutaran, _konektorPertanyaan, _konektorCatatan,
             _ragPutaran, _ragPertanyaan, _ragCatatan: catatanRag,
+            _webPutaran, _webPertanyaan, _webCatatan: catatanWeb,
           });
         }
         if (peringatan) teks += `\n\n${peringatan}`;
@@ -530,6 +570,7 @@ export class AssistantService {
             _folderPutaran, _folderPertanyaan, _folderDibaca: dibaca, _folderDiubah: diubah, _folderByte, _folderKoreksi,
             _konektorPutaran, _konektorPertanyaan, _konektorCatatan,
             _ragPutaran: _ragPutaran + 1, _ragPertanyaan: pertanyaanRag, _ragCatatan: catatanRag,
+            _webPutaran, _webPertanyaan, _webCatatan: catatanWeb,
           });
         }
         let teks = adaTag || permintaan.length ? teksTanpaTag : finalText;
@@ -539,10 +580,41 @@ export class AssistantService {
       };
     }
 
+    if (alatWeb) {
+      const onDoneSesudahWeb = onDone;
+      const pertanyaanWeb = _webPertanyaan || userMsg;
+      onDone = async (finalText, steps, jsonMetadata, extras = {}) => {
+        const { permintaan, galat, teksTanpaTag, adaTag } = ambilPermintaanWeb(finalText);
+        const perluPutaran = permintaan.length > 0 || (adaTag && galat.length > 0);
+        if (perluPutaran && sisaPutaranAlat > 0 && !signal?.aborted) {
+          onChunk?.('🌐 alat web…', `_🌐 alat web (${permintaan.map((p) => p.alat).join(', ') || 'permintaan tidak sah — dikembalikan ke model'}) — putaran alat ${nomorPutaranAlat}/${maksPutaranAlat}…_`, steps || []);
+          const hasil = await Promise.all(permintaan.map((p) => jalankanAlatWeb(p, (url, opsi) => this._ambilAlatWeb(url, opsi))));
+          for (const h of hasil) catatanWeb.push(catatanHasilWeb(h));
+          if (!permintaan.length) catatanWeb.push(`⚠️ permintaan alat web tidak sah dikembalikan ke model (${galat.length} catatan)`);
+          const pesanHasil = susunPesanHasilWeb(hasil, { putaran: nomorPutaranAlat, pertanyaanAsli: pertanyaanWeb, galat, maks: maksPutaranAlat });
+          return this.processMessage({
+            userMsg: pesanHasil,
+            history: [...(history || []), { role: 'model', content: finalText }, { role: 'user', content: pesanHasil }],
+            workspaceId, userId, token, signal, attachedFile: null, workspaceManager, chatId,
+            onChunk, onDone: onDoneAwal, onError, onNalar,
+            modelTierOverride: modelTierOverride || infoAlatWeb.tingkat || null,
+            _folderPutaran, _folderPertanyaan, _folderDibaca: dibaca, _folderDiubah: diubah, _folderByte, _folderKoreksi,
+            _konektorPutaran, _konektorPertanyaan, _konektorCatatan,
+            _ragPutaran, _ragPertanyaan, _ragCatatan: catatanRag,
+            _webPutaran: _webPutaran + 1, _webPertanyaan: pertanyaanWeb, _webCatatan: catatanWeb,
+          });
+        }
+        let teks = adaTag ? teksTanpaTag : finalText;
+        if (perluPutaran) teks += `\n\n${catatanHabisPutaran}${galat.length ? `\n_(catatan alat web: ${galat.join('; ').slice(0, 300)})_` : ''}`;
+        if (_webPutaran > 0 && typeof teks === 'string') teks = buangKakiTiruan(teks);
+        return onDoneSesudahWeb?.(teks, steps, jsonMetadata, extras);
+      };
+    }
+
     const classifier = this.serviceManager.has('RequestClassifierService')
       ? this.serviceManager.get('RequestClassifierService')
       : null;
-    const classifiedResult = _folderPutaran > 0 || _konektorPutaran > 0 || _ragPutaran > 0
+    const classifiedResult = _folderPutaran > 0 || _konektorPutaran > 0 || _ragPutaran > 0 || _webPutaran > 0
       ? { type: 'CONVERSATION', metadata: {} }
       : (classifier?.classify(userMsg, history, resolvedMode) || { type: 'CONVERSATION', metadata: {} });
     const requestType = classifiedResult.type;
@@ -555,7 +627,8 @@ export class AssistantService {
       _isPostHocWebRetry, _injectedKnowledgeContext,
       _folderKerja: infoFolder,
       _konektor: infoKonektor,
-      _alatRag: infoAlatRag
+      _alatRag: infoAlatRag,
+      _alatWeb: infoAlatWeb
     };
 
     const jalurRinganTerlarang = resolvedMode === 'ENGINEER';
@@ -1032,10 +1105,10 @@ export class AssistantService {
     attachedFile, workspaceManager, resolvedMode, resolvedAppSource,
     onChunk, onDone, onError, onNalar, modelTierOverride = null,
     chatId = null,
-    _isPostHocWebRetry = false, _injectedKnowledgeContext = '', _folderKerja = null, _konektor = null, _alatRag = null
+    _isPostHocWebRetry = false, _injectedKnowledgeContext = '', _folderKerja = null, _konektor = null, _alatRag = null, _alatWeb = null
   }) {
     const isEngineerMode = resolvedMode === 'ENGINEER';
-    const folderLanjutan = (_folderKerja?.putaran || 0) > 0 || (_konektor?.putaran || 0) > 0 || (_alatRag?.putaran || 0) > 0;
+    const folderLanjutan = (_folderKerja?.putaran || 0) > 0 || (_konektor?.putaran || 0) > 0 || (_alatRag?.putaran || 0) > 0 || (_alatWeb?.putaran || 0) > 0;
     const isLiteMode = resolvedMode === 'LITE';
 
     console.log(`[AssistantService] Mode check: workspace=${workspaceId}, resolvedMode=${resolvedMode}`);
@@ -1089,7 +1162,7 @@ export class AssistantService {
     const toolPreferencesService = this.serviceManager?.get('ToolPreferencesService');
     const memoryToolEnabled = toolPreferencesService ? toolPreferencesService.getEffective(workspaceId, 'memory_manager') : true;
 
-    const pesanHasilMesin = folderLanjutan || /^\s*\[(TERMINAL OUTPUT for: |HASIL ALAT FOLDER\]|HASIL ALAT KONEKTOR\]|HASIL ALAT RAG\])/.test(userMsg || '');
+    const pesanHasilMesin = folderLanjutan || /^\s*\[(TERMINAL OUTPUT for: |HASIL ALAT FOLDER\]|HASIL ALAT KONEKTOR\]|HASIL ALAT RAG\]|HASIL ALAT WEB\])/.test(userMsg || '');
     const memoryAktif = memoryToolEnabled && !pesanHasilMesin;
 
     const { localContext, semanticContext } = await this.buildContextInjection(
@@ -1117,7 +1190,8 @@ export class AssistantService {
           skipLocalKnowledge: true,
           skipInternalFallback: ragToolEnabled,
           enableWebComparison: webSearchToolEnabled,
-          autoConfirmWebSearch: webSearchToolEnabled
+          autoConfirmWebSearch: webSearchToolEnabled,
+          sumberWeb: isEngineerMode ? 'umum' : undefined
         });
         if (retrievalResult && retrievalResult.formattedContext) {
           knowledgeContext = retrievalResult.formattedContext;
@@ -1193,6 +1267,7 @@ export class AssistantService {
       dataTabel: dataTabelToolEnabled && !isLiteMode && !isEngineerMode && !folderLanjutan ? true : undefined,
       folderKerja: _folderKerja || undefined,
       alatRag: _alatRag ? { putaran: _alatRag.putaran, maks: _alatRag.maks, sisa: _alatRag.sisa } : undefined,
+      alatWeb: _alatWeb ? { putaran: _alatWeb.putaran, maks: _alatWeb.maks, sisa: _alatWeb.sisa } : undefined,
       ...muatanKonektor(_konektor),
       cache_hint: true,
       _token_meta: { estimated_before: tokensBefore, estimated_after: tokensAfter, saved: tokensSaved },

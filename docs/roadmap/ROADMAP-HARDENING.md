@@ -132,7 +132,9 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
   regresi CORE (semua akun tak bisa dihapus) diperbaiki ([log](../project-memory/changelog/2026-10-31-k6-hapus-akun-dan-daftar-tertutup.md)).
 - ✅ **`raw_memory_content` ikut dicadangkan** (3 Nov, keputusan Owner): sumber asli memori (22 baris) dulu tak tercadang —
   hanya ringkasannya di `user_memories`. Cadangan & skema pulih kini 16 tabel; uji 4/4 mutasi.
-- ⏳ **VACUUM FULL `document_chunks`** (pengingat Owner 5 Nov, juga di INDEX §1) sesudah dokumen besar dihapus —
+- ➖ **Keputusan Owner 12 Nov: tidak dijalankan sekarang** ("jangan karena akan menghapus semua isi database"). Catatan
+  fakta: VACUUM FULL tidak menghapus baris yang ada — ia menulis ulang tabel tanpa ruang bekas baris terhapus; risikonya
+  kunci tabel beberapa menit. Ditinjau bila pemakaian mendekati 500 MB. **VACUUM FULL `document_chunks`** (pengingat Owner 5 Nov, juga di INDEX §1) sesudah dokumen besar dihapus —
   pertama sesudah 221 Kepbup pecahan dihapus di K1 langkah 3. Paket Supabase gratis 500 MB; DELETE tidak menurunkan
   pemakaian kuota sampai VACUUM FULL (kunci eksklusif sebentar → jalankan saat tak ada unggahan/chat). Ukur
   `pg_database_size` sebelum & sesudah. Batas volume K5 per akun dinaikkan 10.000 → 25.000 (5 Nov, total tetap 45.000).
@@ -187,7 +189,7 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 - T18 kelas Tailwind tak dibuat · retensi tabel log lain (`verification_audit_logs`, `evidence_audit_logs`, `memory_audit_logs`)
 - Graf Home → peta sistem Mamet: **terdaftar sebagai Item 130** ([rancangan](./ROADMAP-GRAF-HOME-PETA-SISTEM.md)) ·
   `graf-bercahaya` (graphify) terpisah, belum ditanggapi
-- Engineer: T10 Tahap 2–3, Engineer Mandiri Tahap 1 & 4
+- Engineer: ~~T10 Tahap 2–3~~ (✅/dilampaui 12 Nov — [log](../project-memory/changelog/2026-11-12-t10-alat-web-teknis-engineer.md); sisa Undo live), Engineer Mandiri Tahap 1 & 4
 - **Cloudflare di depan Supabase memblokir (HTTP 403) kiriman yang memuat pola path traversal** seperti
   `../../etc/passwd` — terbukti 9 Nov dengan kiriman uji (SQL injection, `<script>`, perintah shell lolos; base64 lolos
   semua). Satu jawaban model tentang keamanan cukup mematikan sisa percakapan karena ikut di setiap riwayat; membaca

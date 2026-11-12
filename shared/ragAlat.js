@@ -102,7 +102,7 @@ export function netralkanIsi(teks) {
   return String(teks ?? '')
     .split(TUTUP_ISI).join('<<<akhir isi (dinetralkan)>>>')
     .split(BUKA_ISI).join('<<<isi (dinetralkan)>>>')
-    .replace(/<(\/?)alat_(rag|folder|konektor)>/gi, '‹$1alat_$2›');
+    .replace(/<(\/?)alat_(rag|folder|konektor|web)>/gi, '‹$1alat_$2›');
 }
 
 const tanggal = (iso) => {

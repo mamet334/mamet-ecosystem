@@ -3,7 +3,7 @@
 **Untuk siapa:** AI coding (bukan Engineer — Engineer memakai `INIT.md`). Baca dokumen ini utuh lebih dulu,
 lalu buka **hanya** dokumen yang ditunjuk.
 **Aturan kerja praktis AI coding** (git, urutan deploy → catat → push, uji, privasi): [`CLAUDE.md`](../../CLAUDE.md) di akar repo.
-**Update terakhir:** 2026-11-12 (K1–K7 semua ✅: K5 email dihapus dari dokumen publik, K6 pulih 16/16, 4.5.0 terbit; berikutnya keputusan Owner rilis 5.0.0); 
+**Update terakhir:** 2026-11-12 (K1–K7 semua ✅: K5 email dihapus dari dokumen publik, K6 pulih 16/16, 4.5.0 terbit; berikutnya keputusan Owner rilis 5.0.0 "nanti"; T10 Tahap 2 ✅ alat web teknis Engineer — [log](../project-memory/changelog/2026-11-12-t10-alat-web-teknis-engineer.md)); 
 riwayat detail lama: [`INDEX-ROADMAP-ARSIP-2026-09-17.md`](./INDEX-ROADMAP-ARSIP-2026-09-17.md))
 
 ## 0. Peran Dokumen & Aturan
@@ -29,7 +29,7 @@ Legenda: ✅ selesai · 🟡 sebagian live · 📝 rencana disetujui/berjalan ·
 > ukur apa yang benar-benar sampai ke model. Aturan lengkap: `CLAUDE.md` "Memaksimalkan model" · kerja:
 > [Item 131](./ROADMAP-MAKSIMALKAN-MODEL.md): **J ✅ · 0 ✅ · A 📝** (sisa: CPU Nano — prafilter biner dicoba & dibatalkan 10 Nov; tinggal compute atau uji mutu) · **C 📝** (terbukti di Ecosystem & Mametlite) · **H 📝** sebagian · **D ✅** · **B ✅** · **E/F/I 📝 · G ✅** (11 Nov: anggaran putaran alat di Settings, web utuh, prompt ramping, isi konektor sampai). **Mametlite tidak rusak — terbukti 11 Nov (v562).** **K1/K2 ✅ 11 Nov** dengan batas yang diketahui (pencarian bisa gagal di CPU paket gratis) — [log](../project-memory/changelog/2026-11-11-k1-k2-uji-mutu-sesudah-item-131.md).
 
-> ⚠️ **Pengingat Owner (5 Nov): VACUUM FULL `document_chunks`** sesudah dokumen besar dihapus (mis. 221 Kepbup pecahan di
+> ⚠️ **Pengingat Owner (5 Nov): VACUUM FULL `document_chunks`** (12 Nov: Owner memutuskan belum dijalankan) sesudah dokumen besar dihapus (mis. 221 Kepbup pecahan di
 > K1 langkah 3). Paket Supabase gratis 500 MB; DELETE tidak menurunkan pemakaian kuota sampai VACUUM FULL —
 > [`ROADMAP-HARDENING.md`](./ROADMAP-HARDENING.md) K6.
 

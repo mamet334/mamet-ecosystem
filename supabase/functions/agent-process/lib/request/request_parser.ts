@@ -2,6 +2,7 @@ import { WorkspaceGuardian } from '../workspace_guardian.ts';
 import { infoKonektorAman } from '../../../../../shared/konektorAlat.js';
 import { muatanKonektorUmumAman } from '../../../../../shared/konektorUmum.js';
 import { alatRagAman } from '../../../../../shared/ragAlat.js';
+import { alatWebAman } from '../../../../../shared/webAlat.js';
 import { anggaranAlatAman } from '../../../../../shared/anggaranAlat.js';
 import { MAKS_PUTARAN } from '../../../../../shared/folderKerjaAlat.js';
 import { jumlahDilewatiAman } from '../catatan_jujur.ts';
@@ -13,7 +14,7 @@ export async function parseRequestParams(req: Request, user: any) {
   } catch(e) {
     reqJson = {};
   }
-  let { message, tools, model, userId: _clientUserId, userName, file, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource: clientAppSource = 'assistant', workspaceTarget = 'AUTO', auditMode = 'OFF', mode: clientMode, provider, thinking, traceId: clientTraceId, requestId, clientTimezone, streamNalar, memoryEnabled, dataTabel, folderKerja, konektor, konektorUmum, pemilihModel, riwayatDilewati, alatRag } = reqJson;
+  let { message, tools, model, userId: _clientUserId, userName, file, history, globalMemory, semanticContext, stream, desktopOSMode, ragEnabled, appSource: clientAppSource = 'assistant', workspaceTarget = 'AUTO', auditMode = 'OFF', mode: clientMode, provider, thinking, traceId: clientTraceId, requestId, clientTimezone, streamNalar, memoryEnabled, dataTabel, folderKerja, konektor, konektorUmum, pemilihModel, riwayatDilewati, alatRag, alatWeb } = reqJson;
   const traceId = clientTraceId || requestId || null;
   const mode = clientMode || 'ASSISTANT';
   console.log('[RequestParser] Mode diterima:', mode);
@@ -79,7 +80,8 @@ export async function parseRequestParams(req: Request, user: any) {
     folderKerja: folderKerjaAman(folderKerja),
     konektor: infoKonektorAman(konektor),
     konektorUmum: muatanKonektorUmumAman(konektorUmum),
-    alatRag: alatRagAman(alatRag)
+    alatRag: alatRagAman(alatRag),
+    alatWeb: alatWebAman(alatWeb)
   };
 }
 
