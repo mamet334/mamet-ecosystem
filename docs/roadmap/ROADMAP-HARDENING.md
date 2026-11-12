@@ -8,9 +8,9 @@ di Mamet Ecosystem dan Mametlite. Sesudah tercapai Mamet tetap berevolusi; perub
 Lainnya → **Parkir** (bukan utang). Fitur baru boleh jalan, asal uji yang menjaga K1–K7 tetap hijau.
 **Laporan ditutup dengan status K1–K7**, bukan "sisa roadmap".
 
-Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter · 👤 tindakan Owner
+Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter · 👤 tindakan Owner · ➖ dilampaui (tak lagi syarat) · 🔧 terbukti sebagian
 
-## Status K1–K7 (6 Nov 2026)
+## Status K1–K7 (12 Nov 2026) — semua ✅
 
 | # | Kriteria | Status | Sisa |
 |---|---|---|---|
@@ -26,7 +26,7 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 
 ### K1 — RAG menemukan & menjawab benar
 - ✅ Pengambilan: recall@8 **14/14** (Item 90 Tahap A–C).
-- ⏳💳 **Set uji mutu jawaban yang sah** dibangun ulang (set lama 13 pertanyaan tak sah — dokumennya terhapus) dan lulus
+- ✅ **Set uji mutu jawaban yang sah** (lulus 11 Nov dengan batas yang diketahui — [log](../project-memory/changelog/2026-11-11-k1-k2-uji-mutu-sesudah-item-131.md)) dibangun ulang (set lama 13 pertanyaan tak sah — dokumennya terhapus) dan lulus
   ambang: **semua pertanyaan pokok benar + sumber benar**; "tidak ditemukan" yang jujur boleh, mengarang tidak.
   ✅ **Set & penguji siap (3 Nov):** `set-uji-mutu-k1.json` (22 pokok HCDP-01..08 + BUKU-01..14, 4 tidak_ada — susunan
   disetujui Owner; KEP-01..06 dibuang, dokumennya tak ada lagi), penilai `uji/lib/penilaiMutuRag.mjs` (mutasi 23/23),
@@ -53,7 +53,7 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
      dengan buku umum Owner (gagal di 1.856/1.986 potongan, 105 s) dan unggah massal 385 changelog — ikut dirancang:
      ulang kelompok yang ditolak sesaat (503 gerbang Supabase, penolakan lokasi Google), bersihkan karakter NUL —
      [log](../project-memory/changelog/2026-11-05-unggah-buku-besar-dan-sejarah-aplikasi.md).
-  3. ⏳💳 Unggah ulang **buku asli utuh** (sekali, sesudah 1 & 2 — OCR tidak dibayar dua kali) → BUKU-10 ×5 → K1/K2 penuh.
+  3. ➖ **Tidak lagi menahan K1** (K1 ✅ 11 Nov); tetap pilihan Owner (💳). Unggah ulang **buku asli utuh** (sekali, sesudah 1 & 2 — OCR tidak dibayar dua kali) → BUKU-10 ×5 → K1/K2 penuh.
      5 Nov: buku masuk "kepbup oku" (2.880 potongan) tetapi saldo habis di halaman ±442 → 522 halaman tanpa OCR (tak
      sah untuk uji). ✅ **Perbarui dokumen + OCR berhenti saat 402** (live 6 Nov: migrasi `perbarui_dokumen`,
      rag-process v84; uji SQL live) — nama sama di workspace yang sama → versi baru dibangun, potongan tak berubah
@@ -66,7 +66,7 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
 
 ### K2 — RAG jujur saat gagal
 - ✅ RAG turun bersuara (2 Okt).
-- ⏳💳 **U8b** (Item 90): cadangan pencocokan kata saat embedding gagal. ✅ **Pengguna kini diberi tahu di jawaban**
+- 🔧 **U8b** (Item 90; sisa bukti live, bukan syarat K2 — K2 ✅ 11 Nov): cadangan pencocokan kata saat embedding gagal. ✅ **Pengguna kini diberi tahu di jawaban**
   (30 Okt, v542): satu baris "Catatan sistem" tampil di kotak label Mametlite & Ecosystem — dulu hanya di langkah proses
   yang tak ditampilkan Mametlite ([log](../project-memory/changelog/2026-10-30-k5-batas-rag-j3b-u8b.md)). Sisa: bukti
   live (0 dari 278 pesan RAG pernah turun) — butuh chat yang menjawab sementara embedding gagal.
@@ -136,7 +136,7 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
   pertama sesudah 221 Kepbup pecahan dihapus di K1 langkah 3. Paket Supabase gratis 500 MB; DELETE tidak menurunkan
   pemakaian kuota sampai VACUUM FULL (kunci eksklusif sebentar → jalankan saat tak ada unggahan/chat). Ukur
   `pg_database_size` sebelum & sesudah. Batas volume K5 per akun dinaikkan 10.000 → 25.000 (5 Nov, total tetap 45.000).
-- ⏳👤 **Sekali tepat sebelum rilis** (keputusan Owner 3 Nov): "Cadangkan data" (16 tabel) → uji pulih ke Postgres lokal.
+- ✅ **12 Nov: pulih 16/16 dari cadangan Owner 11 Nov** ([log](../project-memory/changelog/2026-11-11-rilis-4.5.0.md)). **Sekali tepat sebelum rilis** (keputusan Owner 3 Nov): "Cadangkan data" (16 tabel) → uji pulih ke Postgres lokal.
   Uji pulih terakhir 27 Okt (15/15); cadangan 2 Nov hanya pengaman sebelum chat dirampingkan, belum memuat tabel baru.
 
 ### K7 — Stabil & sampai ke aplikasi terpasang
@@ -153,12 +153,12 @@ Legenda: ✅ terbukti · ⏳ dikerjakan/menunggu · 💳 butuh saldo OpenRouter 
   hardening klien sejak 4.4.0. Build GitHub hijau, `latest.yml` cocok dengan aset; aplikasi terpasang Owner sudah
   diperbarui ke 4.4.1, termasuk di PC kedua (Windows 10) dengan crawler menyala di percobaan pertama
   ([log](../project-memory/changelog/2026-11-03-rilis-4.4.1.md)).
-- ⏳👤 **Rilis 4.4.2** (perintah Owner 6 Nov, bukan 5.0.0): konektor umum (Item 129 G1–G5, F1–F2, GH2–GH3) + K1 unggah
+- ➖ **Rilis 4.4.2 dilampaui** — isinya termasuk di 4.5.0 (terbit 11 Nov), draf tidak diterbitkan ([log](../project-memory/changelog/2026-11-11-rilis-4.5.0.md)). **Rilis 4.4.2** (perintah Owner 6 Nov, bukan 5.0.0): konektor umum (Item 129 G1–G5, F1–F2, GH2–GH3) + K1 unggah
   bertahap, hapus banyak, perbarui dokumen, OCR berhenti saat 402. Build lokal & suite 158/158 hijau; build GitHub
   `e5dcd87a` ✅ (gerbang uji + build), draf `v4.4.2` berisi `.exe`, `.blockmap`, `latest.yml` (API 6 Nov); sisa:
   Publish (Owner) → bukti `latest.yml` & `releases/latest` ([log](../project-memory/changelog/2026-11-06-rilis-4.4.2.md)).
   Belum membawa Item 131.
-- ⏳💳👤 **Rilis garis dasar 5.0.0** — hanya bila K1–K7 semuanya ✅.
+- ⏳👤 **Rilis garis dasar 5.0.0** — hanya bila K1–K7 semuanya ✅. **Syarat terpenuhi 12 Nov**; waktunya keputusan Owner.
 
 ## Parkir (bukan utang — Owner boleh mengambil kapan saja)
 
