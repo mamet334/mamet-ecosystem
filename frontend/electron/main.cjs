@@ -696,7 +696,8 @@ ipcMain.handle('folder:alat', async (_event, permintaan) => {
   return hasil;
 });
 
-const { pecahPerintah, PROFIL, tanpaPersetujuan } = require('./alatFolderJalan.cjs');
+const { pecahPerintah, PROFIL, tanpaPersetujuan, kebijakanPerintah } = require('./alatFolderJalan.cjs');
+ipcMain.handle('engineer:kebijakan-perintah', () => kebijakanPerintah(PROFIL.engineer));
 const depsEngineer = {
   profil: PROFIL.engineer,
   mintaIzin: async ({ judul, rincian, pratinjau }) => {
@@ -865,7 +866,7 @@ ipcMain.handle('eng:verifikasi-patch', async (_event, { checkpointRef } = {}) =>
   return { sesudahPatch, sesudahPulih, dipulihkan: true };
 });
 
-ipcMain.handle('engineer:jalankan', async (_event, perintah) => {
+ipcMain.handle('engineer:jalankan', async (_event, perintah, opsi = {}) => {
   const belum = butuhAkarRepo();
   if (belum) return { ok: false, alat: 'folder_run', perintah: String(perintah || ''), alasan: belum.error };
   const teks = typeof perintah === 'string' ? perintah : '';
@@ -874,7 +875,7 @@ ipcMain.handle('engineer:jalankan', async (_event, perintah) => {
   if (p.galat) {
     hasil = { ok: false, alat: 'folder_run', perintah: teks, alasan: p.galat };
   } else {
-    try { hasil = await jalankanAlatJalan(akarRepo(), { alat: 'folder_run', program: p.program, argumen: p.argumen }, depsEngineer); }
+    try { hasil = await jalankanAlatJalan(akarRepo(), { alat: 'folder_run', program: p.program, argumen: p.argumen, keluaranMaksByte: opsi?.keluaranMaksByte }, depsEngineer); }
     catch (e) { hasil = { ok: false, alat: 'folder_run', perintah: teks, alasan: `galat: ${e.code || e.message}` }; }
   }
   const status = hasil.ok

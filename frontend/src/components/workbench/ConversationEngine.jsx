@@ -15,7 +15,7 @@ import { perintahDariJawaban } from '../../../../shared/folderKerjaAlat.js';
 import { laporanSetelahMuatUlang, hapusCatatanPatch } from '../../core/runtime/services/engineer/CatatanPatch.js';
 import { putusanPemulihan, bolehSimpanChat, kunciSimpan } from './pemulihanChat.js';
 import { buatPenandaKiriman, tujuanTulis, pesanTerlantar, layakSimpanTerlantar } from './pengirimanChat.js';
-import { riwayatPerintahDariPesan, catatanAkarRepo, catatanPetaRepo, pesanKeluaranPerintah, catatanKonstitusi } from '../../core/runtime/services/engineer/ProsedurEngineer.js';
+import { riwayatPerintahDariPesan, catatanAkarRepo, catatanPetaRepo, catatanKebijakanPerintah, pesanKeluaranPerintah, catatanKonstitusi } from '../../core/runtime/services/engineer/ProsedurEngineer.js';
 import { ambilBlokKlaim, susunSkripUji, susunLaporanKlaim } from '../../core/runtime/services/engineer/UjiKlaim.js';
 import { ambilBlokTemuan, bacaBerkasTemuan, susunBerkasTemuan, gabungTemuan, laporanTemuan, ringkasanUntukKonteks, keutuhanTemuan, ALAMAT_BERKAS as ALAMAT_TEMUAN } from '../../core/runtime/services/engineer/IngatanTemuan.js';
 import { ambilBlokPengetahuan, pengetahuanBaru, barisBrain1 } from '../../core/runtime/services/engineer/PengetahuanBrain1.js';
@@ -969,14 +969,25 @@ export default function ConversationEngine({ sessionId }) {
     const peta = akarRepoSekarang
       ? await (window.electronAPI?.engineer?.petaRepo?.() ?? Promise.resolve('')).catch(() => '')
       : '';
-    const catatanPeta = catatanPetaRepo(peta);
+    let keluaranMaksByte;
+    if (akarRepoSekarang) {
+      try { keluaranMaksByte = await assistantService._batasBacaFolderHuruf(); }
+      catch (e) { console.warn('[Engineer] anggaran keluaran perintah tak terbaca, memakai batas bawaan:', e.message); }
+    }
+    const catatanPeta = catatanPetaRepo(peta, { keluaranMaksByte });
+
+    let catatanPerintah = '';
+    if (akarRepoSekarang && window.electronAPI?.engineer?.kebijakanPerintah) {
+      try { catatanPerintah = catatanKebijakanPerintah(await window.electronAPI.engineer.kebijakanPerintah(), { keluaranMaksByte }); }
+      catch (e) { console.warn('[Engineer] daftar perintah yang boleh tak terbaca:', e.message); }
+    }
 
     const daftarKonstitusi = akarRepoSekarang
       ? await (window.electronAPI?.engineer?.indeksKonstitusi?.() ?? Promise.resolve([])).catch(() => [])
       : [];
     const catatanKons = catatanKonstitusi(daftarKonstitusi);
 
-    const sisipan = [catatanAkar, catatanKons, catatanPeta, ringkasanTemuan].filter(Boolean).map((content) => ({ role: 'user', content, [PATOK]: true }));
+    const sisipan = [catatanAkar, catatanKons, catatanPeta, catatanPerintah, ringkasanTemuan].filter(Boolean).map((content) => ({ role: 'user', content, [PATOK]: true }));
     const historyKirim = sisipan.length ? [...sisipan, ...newMessages] : newMessages;
 
     {
@@ -984,7 +995,7 @@ export default function ConversationEngine({ sessionId }) {
         engineer: isEngineerWorkspace,
         akarRepo: akarRepoSekarang,
         petaMentah: peta,
-        catatanAkar, catatanPeta, ringkasanTemuan,
+        catatanAkar, catatanPeta, catatanPerintah, catatanKons, ringkasanTemuan,
         mulaiDari: bacaMulaiDari(currentChatId),
         jumlahPesan: newMessages.length,
       });

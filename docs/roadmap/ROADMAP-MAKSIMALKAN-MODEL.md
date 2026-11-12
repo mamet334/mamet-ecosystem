@@ -311,7 +311,11 @@ sebagai konstanta string. Penjaga sesudahnya: `uji/uji-kode-tanpa-komentar.mjs`.
 **Selesai bila:** 0 komentar penjelas di cakupan (dihitung pemindai), 0 berkas dengan keluaran build berbeda, suite &
 build hijau, server ter-deploy sama dengan repo.
 
-## Tahap K — Engineer ikut dimaksimalkan 📝 🖥🔧
+## Tahap K — Engineer ikut dimaksimalkan ✅ 🖥🔧
+
+**Status: K.1–K.4 selesai 12 Nov** (agent-process v565 — [log](../project-memory/changelog/2026-11-12-item-131-tahap-k-engineer.md)): prompt sistem Engineer 45.946 → 35.919 huruf;
+keluaran perintah = anggaran konteks; daftar perintah dari pagar sungguhan. **Sisa:** konektor umum (alat GitHub MCP)
+13.890 huruf tiap pesan — kini blok terbesar; bukti live baca berkas besar utuh.
 
 **Perintah Owner (12 Nov):** *"catat, commit, push, lakukan k1-k4 otonom"* — atas pertanyaan *"apakah roadmap memaksimalkan
 model juga sama untuk engineer?"*. Penomoran **K.1–K.4** (bukan kriteria hardening K1–K7).

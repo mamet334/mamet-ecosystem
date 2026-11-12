@@ -289,33 +289,20 @@ export async function executeRequestPipeline(
 
   if (parsed.mode === 'ENGINEER' || parsed.appSource === 'engineer') {
     ctx.request.agentIdentityPrompt += `\n\n[ENGINEER MODE — INSTRUKSI WAJIB]
-Anda adalah Mamet Engineer, AI yang membantu merencanakan dan mengeksekusi perubahan kode.
+Anda PUNYA akses tulis berkas nyata lewat patch: aplikasi desktop Owner menerapkannya ke disk setelah Owner
+menyetujui. Jangan menjawab "tidak punya akses ke file". Permintaan mengubah berkas (walau singkat: "tambahkan",
+"ubah", "hapus", "ganti", "perbaiki", "buat") adalah permintaan patch.
 
-AKSES FILE (WAJIB DIPAHAMI — SUMBER KEGAGALAN UMUM):
-Anda PUNYA akses tulis file nyata lewat mekanisme patch di bawah ini — Owner mengoperasikan aplikasi desktop
-yang benar-benar menerapkan patch ke file di disk setelah disetujui. JANGAN PERNAH menjawab "saya tidak
-memiliki akses langsung ke file" atau semacamnya — itu salah dan menyesatkan Owner. Kalau permintaan Owner
-adalah modifikasi file (walau ditulis singkat/sopan, misal "tolong tambahkan...", "ubah...", "hapus..."),
-anggap itu permintaan patch, bukan sekadar pertanyaan informasi.
-
-ATURAN RESPONS DI MODE ENGINEER:
-1. Analisis permintaan user dengan cermat.
-2. Jelaskan perubahan yang akan dilakukan secara singkat (file mana, apa yang diubah, mengapa).
-3. Jika user meminta modifikasi/patch kode (termasuk permintaan singkat/kasual sekalipun — kata kerja seperti
-   "tambah(kan)", "ubah", "hapus", "ganti", "perbaiki", "buat" semua menandakan ini):
-   - Jika Anda menyertakan blok kode JSON patch, WAJIB gunakan format JSON flat (key = relative path file, value = POTONGAN PERUBAHAN dalam bentuk "SEBELUM: <teks lama persis> SESUDAH: <teks baru>", BUKAN isi berkas lengkap). Setelah Owner klik Apply, sistem membaca berkas asli dari disk dan menerapkan perubahan sebagai cari-ganti — baris lain tidak disentuh. JANGAN menulis potongan kecil seolah-olah itu seluruh isi berkas:
+PATCH:
+1. Jelaskan singkat berkas mana, apa yang diubah, mengapa.
+2. Blok JSON patch WAJIB format JSON flat (key = relative path file, value = POTONGAN PERUBAHAN dalam bentuk "SEBELUM: <teks lama persis> SESUDAH: <teks baru>", BUKAN isi berkas lengkap). Setelah Owner klik Apply, sistem membaca berkas asli dari disk dan menerapkan perubahan sebagai cari-ganti — baris lain tidak disentuh. JANGAN menulis potongan kecil seolah-olah itu seluruh isi berkas:
 \`\`\`json
 {
   "frontend/src/utils/example.js": "SEBELUM: return a + b; SESUDAH: return Number(a) + Number(b);"
 }
 \`\`\`
-   - JANGAN membungkus dengan object bersarang tambahan (seperti "patch": { ... } atau "files": [ ... ]).
-   - WAJIB tambahkan teks: [MAMET_PATCH_READY] di baris PALING AKHIR respons Anda jika patch siap di-apply.
-4. Jika user hanya bertanya atau meminta analisis (tanpa modifikasi): JANGAN tambahkan [MAMET_PATCH_READY]
-5. JANGAN menulis teks non-JSON di dalam blok code json.
-
-Catatan: ini satu-satunya sumber kebenaran untuk aturan marker [MAMET_PATCH_READY] dan format JSON patch.
-Instruksi ENGINEER lain (RULE 1-6 di konteks Two-Brain) merujuk ke sini, tidak mengulang aturan ini.`;
+   Tanpa objek bersarang ("patch": {…}, "files": […]) dan tanpa teks non-JSON di dalam blok json.
+3. Patch siap di-apply → tulis [MAMET_PATCH_READY] di baris PALING AKHIR. Hanya bertanya/analisis → JANGAN tulis.`;
   }
 
   ctx.request.userContextPrompt = userContextPrompt;

@@ -57,9 +57,9 @@ console.log('\n-- keluaran tidak disimpan --');
 
 console.log('\n-- sumber kebenaran tanpaIzin --');
 {
-  cek(/return jalankanSesudahIzin\(akar, \{ program, argumen, teks, s, r, env, waktuS, profil, tanpaIzin: true \}\)/.test(FJ),
+  cek(/return jalankanSesudahIzin\(akar, \{ program, argumen, teks, s, r, env, waktuS, profil, keluaranMaksByte, tanpaIzin: true \}\)/.test(FJ),
     'jalur tanpa dialog menandai dirinya tanpaIzin: true');
-  cek(/profil, tanpaIzin: false \}\)/.test(FJ), 'jalur yang DITANYAKAN menandai dirinya tanpaIzin: false');
+  cek(/profil, keluaranMaksByte, tanpaIzin: false \}\)/.test(FJ), 'jalur yang DITANYAKAN menandai dirinya tanpaIzin: false');
   cek(/\.\.\.h, tanpaIzin \}/.test(FJ),
     'tanpaIzin ditaruh SESUDAH ...h sehingga tak bisa tertimpa hasil proses', (FJ.match(/.*waktuBatasS: waktuS.*/g) || []));
   cek(/tanpaPersetujuan: h\?\.tanpaIzin === true/.test(AS),

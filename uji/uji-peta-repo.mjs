@@ -87,7 +87,12 @@ console.log('\n-- terpasang --');
 const CE = readFileSync(`${AKAR}/frontend/src/components/workbench/ConversationEngine.jsx`, 'utf8');
 cek(/import \{[^}]*\bcatatanPetaRepo\b[^}]*\} from '[^']*ProsedurEngineer\.js'/.test(CE),
   'catatanPetaRepo diimpor dari ProsedurEngineer');
-cek(/const catatanPeta = catatanPetaRepo\(peta\);/.test(CE), 'dipanggil di handleSend');
+cek(/const catatanPeta = catatanPetaRepo\(peta, \{ keluaranMaksByte \}\);/.test(CE) && /keluaranMaksByte = await assistantService\._batasBacaFolderHuruf\(\)/.test(CE), 'dipanggil di handleSend dengan batas keluaran dari anggaran konteks');
+{
+  const besar = P.catatanPetaRepo(PETA_NYATA, { keluaranMaksByte: 240 * 1024 });
+  cek(/240 KB/.test(besar) && !/20 KB/.test(besar), 'Tahap K.2: angka batas yang disebut = anggaran yang dikirim, bukan 20 KB', besar.slice(-400));
+  cek(!besar.includes('ConversationEngine.jsx 2195'), 'berkas yang muat dalam anggaran tidak lagi dicap "tak muat"', besar.slice(-300));
+}
 cek(/engineer\?\.petaRepo\?\.\(\)/.test(CE), 'petanya dibaca dari proses utama, bukan disusun di layar');
 cek(/const sisipan = \[[^\]]*\bcatatanPeta\b[^\]]*\]/.test(CE),
   'ikut ke dalam larik sisipan', (CE.match(/const sisipan = [^\n]*/g) || []));

@@ -38,13 +38,16 @@ export function catatanAkarRepo(akar) {
 }
 
 
-export const BARIS_BERKAS_BESAR = 600;
+export const BYTE_PER_BARIS_PERKIRAAN = 43;
+export const KELUARAN_BAWAAN_BYTE = 20 * 1024;
 
 export const DALAM_INDEKS = 3;
 
-export function catatanPetaRepo(peta) {
+export function catatanPetaRepo(peta, { keluaranMaksByte = KELUARAN_BAWAAN_BYTE } = {}) {
   const isi = String(peta || '').trim();
   if (!isi) return '';
+  const BARIS_BERKAS_BESAR = Math.floor(keluaranMaksByte / BYTE_PER_BARIS_PERKIRAAN);
+  const kb = Math.round(keluaranMaksByte / 1024).toLocaleString('id-ID');
 
   const baris = isi.split('\n').filter(Boolean);
   const berkas = baris.map((b) => {
@@ -73,8 +76,8 @@ export function catatanPetaRepo(peta) {
     '[PETA REPO — SELURUH BERKAS KODE, dengan jumlah barisnya]',
     `${berkas.length} berkas. Bentuk tiap baris: alamat:jumlah_baris`,
     'Daftar LENGKAP: bila sebuah berkas tidak ada di sini, ia memang tidak ada.',
-    `Berkas >${BARIS_BERKAS_BESAR} baris TIDAK muat lewat \`git show\` (keluaran dipotong 20 KB) —`,
-    'pakai `git grep -n -B2 -A4 <kata>` atau `git blame -L <awal>,<akhir> -- <alamat>`.',
+    `Keluaran tiap perintah maksimal ${kb} KB (anggaran konteks Settings). Berkas >${BARIS_BERKAS_BESAR} baris (perkiraan) kemungkinan`,
+    'tidak muat dalam satu `git show` — pakai `git grep -n -B2 -A4 <kata>` atau `git blame -L <awal>,<akhir> -- <alamat>`.',
     '',
     isi,
   ].join('\n');
@@ -88,12 +91,13 @@ export function catatanPetaRepo(peta) {
     '  mencari isi               : git grep -n -B2 -A4 <kata> -- <folder>',
     'JANGAN menebak alamat berkas dan JANGAN menyimpulkan sebuah berkas tidak ada — indeks ini',
     'hanya menyebut folder. Ambil daftarnya dulu dengan perintah di atas.',
+    `Keluaran tiap perintah maksimal ${kb} KB (anggaran konteks Settings); lebih dari itu terpotong dan sistem memberi tahu.`,
     '',
     'FOLDER (jumlah berkas):',
     ...daftarFolder,
     ...(besar.length ? [
       '',
-      `BERKAS >${BARIS_BERKAS_BESAR} BARIS — \`git show\` pasti terpotong (20 KB). Pakai \`git grep -n\` atau \`git blame -L\`:`,
+      `BERKAS >${BARIS_BERKAS_BESAR} BARIS (perkiraan) — kemungkinan melebihi ${kb} KB keluaran satu \`git show\`. Pakai \`git grep -n\` atau \`git blame -L\`:`,
       ...besar,
     ] : []),
   ].join('\n');
@@ -101,7 +105,26 @@ export function catatanPetaRepo(peta) {
   return indeks.length < petaUtuh.length ? indeks : petaUtuh;
 }
 
-const POLA_BACA_UTUH = /^git\s+show\s+[^\s:]*:(\S+)\s*$/i;
+export function catatanKebijakanPerintah(kebijakan, { keluaranMaksByte = KELUARAN_BAWAAN_BYTE } = {}) {
+  const daftar = Array.isArray(kebijakan?.program) ? kebijakan.program : [];
+  if (!daftar.length) return '';
+  const git = daftar.find((p) => p.nama === 'git');
+  const lain = daftar.filter((p) => p.nama !== 'git');
+  const internet = lain.filter((p) => p.internetDitolak).map((p) => `${p.nama} ${p.internet.join('|')}`);
+  const tolak = lain.filter((p) => p.tolak.length).map((p) => `${p.nama} ${p.tolak.join('|')}`);
+  return [
+    '[PERINTAH YANG BISA DIJALANKAN — dibaca dari aturan aplikasi, bukan perkiraan]',
+    `Satu program per [MAMET_CMD: …], dijalankan di ${kebijakan.tempat || 'repo'} TANPA shell: ${(kebijakan.tanpaShell || []).join(' ')} di luar tanda kutip ditolak. Alamat relatif repo saja.`,
+    kebijakan.tanpaDialog?.length ? `Jalan langsung tanpa dialog izin: ${kebijakan.tanpaDialog.join(', ')}.` : '',
+    git ? `git HANYA: ${git.sub.join(', ')} (branch hanya melihat daftar). Selain itu (add, commit, push, pull, reset, checkout, …) ditolak — perubahan lewat patch, Owner yang commit & push.` : '',
+    `Program lain (dengan dialog izin Owner): ${lain.map((p) => p.nama).join(', ')}.`,
+    internet.length ? `Ditolak karena mengunduh dari internet: ${internet.join('; ')} — tulis sebagai teks biasa agar Owner menjalankannya sendiri.` : '',
+    tolak.length ? `Ditolak (menerbitkan/akun/pengaturan global): ${tolak.join('; ')}.` : '',
+    `Batas waktu bawaan ${kebijakan.waktuBawaanS} detik (maks ${kebijakan.waktuMaksS}); keluaran maks ${Math.round(keluaranMaksByte / 1024).toLocaleString('id-ID')} KB (anggaran konteks Settings).`,
+  ].filter(Boolean).join('\n');
+}
+
+const POLA_BACA_UTUH =/^git\s+show\s+[^\s:]*:(\S+)\s*$/i;
 
 export function petunjukKeluaranTerpotong(perintah, hasil) {
   if (!hasil?.terpotong) return null;

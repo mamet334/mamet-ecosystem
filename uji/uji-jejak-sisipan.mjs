@@ -23,14 +23,14 @@ console.log('\n-- keadaan sehat --');
 {
   const t = jejakSisipan({
     engineer: true, akarRepo: 'D:/repo', petaMentah: 'p'.repeat(15493),
-    catatanAkar: 'a'.repeat(1180), catatanPeta: 'q'.repeat(15742), ringkasanTemuan: 't'.repeat(300),
+    catatanAkar: 'a'.repeat(1180), catatanKons: 'k'.repeat(900), catatanPeta: 'q'.repeat(15742), catatanPerintah: 'c'.repeat(1400), ringkasanTemuan: 't'.repeat(300),
     mulaiDari: 0, jumlahPesan: 4,
   });
   cek(t.startsWith('[Sisipan]'), 'berawalan penanda yang mudah dicari di konsol', t);
   cek(/akarRepo=ADA/.test(t), 'menyebut akar repo ada');
   cek(/petaMentah=15493/.test(t), 'menyebut ukuran peta MENTAH dari proses utama');
-  cek(/akar=1180 peta=15742 temuan=300/.test(t), 'ukuran tiap sisipan disebut terpisah', t);
-  cek(/3 sisipan \/ 17222 huruf/.test(t), 'jumlah & total huruf dihitung', t);
+  cek(/akar=1180 konstitusi=900 peta=15742 perintah=1400 temuan=300/.test(t), 'ukuran tiap sisipan disebut terpisah', t);
+  cek(/5 sisipan \/ 19522 huruf/.test(t), 'jumlah & total huruf dihitung', t);
   cek(!/KOSONG/.test(t), 'tidak ada peringatan kosong saat semuanya ada', t);
 }
 
@@ -48,7 +48,7 @@ console.log('\n-- membedakan dua kerusakan --');
 console.log('\n-- menyebut yang hilang --');
 {
   const t = jejakSisipan({ engineer: true, akarRepo: 'D:/repo', catatanAkar: 'a'.repeat(100), catatanPeta: '', ringkasanTemuan: '' });
-  cek(/KOSONG: peta, temuan/.test(t), 'menyebut nama sisipan yang kosong, bukan sekadar jumlahnya', t);
+  cek(/KOSONG: konstitusi, peta, perintah, temuan/.test(t), 'menyebut nama sisipan yang kosong, bukan sekadar jumlahnya', t);
   cek(/1 sisipan/.test(t), 'jumlah sisipan ikut benar', t);
 }
 

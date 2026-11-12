@@ -61,10 +61,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   engineer: {
-    jalankan: (perintah) => ipcRenderer.invoke('engineer:jalankan', perintah),
+    jalankan: (perintah, opsi) => ipcRenderer.invoke('engineer:jalankan', perintah, opsi),
     ujiKlaim: (permintaan) => ipcRenderer.invoke('engineer:uji-klaim', permintaan),
     akarRepo: () => ipcRenderer.invoke('engineer:akar-repo'),
     petaRepo: () => ipcRenderer.invoke('engineer:peta-repo'),
+    kebijakanPerintah: () => ipcRenderer.invoke('engineer:kebijakan-perintah'),
     indeksKonstitusi: () => ipcRenderer.invoke('engineer:indeks-konstitusi'),
     perintahAman: (teks) => ipcRenderer.invoke('engineer:perintah-aman', teks),
     statusAkarRepo: () => ipcRenderer.invoke('engineer:status-akar-repo'),

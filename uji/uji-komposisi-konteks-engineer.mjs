@@ -64,6 +64,30 @@ try {
   cek(Object.values(ukuran).reduce((a, b) => a + b, 0) === sistem.length,
     'jumlah seluruh segmen = panjang prompt sistem — tak ada huruf yang hilang atau dihitung dua kali',
     { jumlah: Object.values(ukuran).reduce((a, b) => a + b, 0), sistem: sistem.length });
+
+  console.log('\n-- Tahap K.1: blok-blok Engineer terukur sendiri-sendiri --');
+  const BLOK = [
+    ['alat_rag', '[ALAT RAG AKTIF]\n', 2300],
+    ['alat_web', '[ALAT WEB TEKNIS AKTIF]\n', 2400],
+    ['konektor_umum', '[KONEKTOR UMUM AKTIF]\n', 7000],
+    ['engineer_mode', '[ENGINEER MODE — INSTRUKSI WAJIB]\n', 2100],
+  ];
+  const sistemK = 'DASAR'.padEnd(1600, '.')
+    + BLOK.map(([, kepala, n]) => kepala + 'z'.repeat(n)).join('')
+    + '[MAMET ENGINEER CONTEXT — Two-Brain Model]\n' + 'b'.repeat(2500)
+    + '[ENGINEER IDENTITY & CONVERSATION MODE]\n' + 'i'.repeat(14000)
+    + '\n[UNIVERSAL EVIDENCE CONTRACT v1]\n' + 'k'.repeat(500);
+  let barisK = '';
+  console.log = (t) => { barisK += String(t); };
+  try { catatKomposisiPrompt('q', sistemK, []); }
+  finally { console.log = asli; }
+  const uk = JSON.parse(barisK.match(/\{.*?\}/)[0]);
+  for (const [nama, kepala, n] of BLOK) {
+    cek(uk[nama] === kepala.length + n, `${nama} terukur tepat (${uk[nama]})`, uk);
+  }
+  cek(uk.dasar_identitas_panduan === 1600, 'dasar tidak lagi menelan blok alat & ENGINEER MODE', uk);
+  cek(uk.engineer_identitas_aturan > 14000 && uk.konteks_engineer < 2700, 'aturan identitas Engineer terpisah dari Brain 1/2', uk);
+  cek(Object.values(uk).reduce((a, b) => a + b, 0) === sistemK.length, 'jumlah segmen tetap = panjang prompt sistem', uk);
 } finally {
   rmSync(dir, { recursive: true, force: true });
 }

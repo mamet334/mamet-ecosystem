@@ -94,7 +94,7 @@ console.log('\n-- terpasang --');
 
   cek(/ipcMain\.handle\('engineer:perintah-aman'/.test(MAIN), 'penentu dibuka lewat IPC');
   cek(/perintahAman: \(teks\) => ipcRenderer\.invoke\('engineer:perintah-aman', teks\)/.test(PRELOAD), 'dijembatani preload');
-  cek(/tanpaPersetujuan \}\s*=\s*require\('\.\/alatFolderJalan\.cjs'\)/.test(MAIN), 'proses utama memakai penentu yang sama');
+  cek(/\btanpaPersetujuan\b[^}]*\}\s*=\s*require\('\.\/alatFolderJalan\.cjs'\)/.test(MAIN), 'proses utama memakai penentu yang sama');
 
   const JALAN = readFileSync(`${AKAR}/frontend/electron/alatFolderJalan.cjs`, 'utf8').replace(/\r\n/g, '\n');
   cek(/if \(tanpaPersetujuan\(\{ program, argumen, profil \}\)\) \{/.test(JALAN),

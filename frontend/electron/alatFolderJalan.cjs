@@ -12,6 +12,11 @@ const BATAS_JALAN = {
   argumenHurufMaks: 4000,
   pratinjauHuruf: 1200,
 };
+const PAGAR_KELUARAN_BYTE = 4 * 1024 * 1024;
+
+function batasKeluaranAman(n) {
+  return Number.isInteger(n) && n > 0 ? Math.min(Math.max(n, BATAS_JALAN.keluaranByte), PAGAR_KELUARAN_BYTE) : BATAS_JALAN.keluaranByte;
+}
 
 const PROGRAM = {
   python: { exe: 'python' },
@@ -208,7 +213,7 @@ function matikanPohon(pid) {
   try { execFile(taskkill, ['/PID', String(pid), '/T', '/F'], { windowsHide: true }, () => {}); } catch {  }
 }
 
-function jalankanProses(exe, argumen, { cwd, env, waktuS }) {
+function jalankanProses(exe, argumen, { cwd, env, waktuS, keluaranMaksByte = BATAS_JALAN.keluaranByte }) {
   return new Promise((selesai) => {
     const mulai = Date.now();
     const potongan = [];
@@ -223,8 +228,8 @@ function jalankanProses(exe, argumen, { cwd, env, waktuS }) {
     }
     const terima = (buf) => {
       total += buf.length;
-      if (byte >= BATAS_JALAN.keluaranByte) return;
-      const sisa = BATAS_JALAN.keluaranByte - byte;
+      if (byte >= keluaranMaksByte) return;
+      const sisa = keluaranMaksByte - byte;
       const ambil = buf.length > sisa ? buf.subarray(0, sisa) : buf;
       potongan.push(ambil);
       byte += ambil.length;
@@ -237,7 +242,7 @@ function jalankanProses(exe, argumen, { cwd, env, waktuS }) {
       clearTimeout(pengatur);
       selesai({
         kodeKeluar: kode, sinyal: sinyal || null, habisWaktu, waktuMs: Date.now() - mulai,
-        keluaran: Buffer.concat(potongan).toString('utf8'), terpotong: total > byte, byteKeluaran: total,
+        keluaran: Buffer.concat(potongan).toString('utf8'), terpotong: total > byte, byteKeluaran: total, keluaranMaksByte,
       });
     });
   });
@@ -266,13 +271,35 @@ async function jalankanAlatJalan(akar, permintaan = {}, deps) {
   const r = rakitProgram(program, akar, env);
   if (r.galat) return gagal(teks, r.galat);
   const waktuS = Math.min(BATAS_JALAN.waktuMaksS, Math.max(1, Number.isInteger(permintaan.waktu) ? permintaan.waktu : profil.waktuBawaanS));
+  const keluaranMaksByte = batasKeluaranAman(permintaan.keluaranMaksByte);
   if (sedangJalan) return gagal(teks, 'perintah lain masih berjalan — tunggu selesai');
   sedangJalan = true;
   try {
-    return await izinLaluJalankan(akar, { program, argumen, teks, s, r, env, waktuS, profil }, deps);
+    return await izinLaluJalankan(akar, { program, argumen, teks, s, r, env, waktuS, profil, keluaranMaksByte }, deps);
   } finally {
     sedangJalan = false;
   }
+}
+
+function kebijakanPerintah(profil = PROFIL.engineer) {
+  return {
+    tempat: profil.tempat,
+    program: DAFTAR_PROGRAM.map((nama) => {
+      const def = PROGRAM[nama];
+      const internet = def.internetSelalu ? ['(semua)'] : (def.internet || []);
+      return {
+        nama,
+        sub: nama === 'git' ? profil.gitSub : (def.izinSub || null),
+        tolak: def.tolak || [],
+        internet,
+        internetDitolak: profil.tanpaInternet && internet.length > 0,
+      };
+    }),
+    tanpaDialog: profil.nama === 'engineer' ? GIT_BACA.map((s) => `git ${s}`) : [],
+    waktuBawaanS: profil.waktuBawaanS,
+    waktuMaksS: BATAS_JALAN.waktuMaksS,
+    tanpaShell: ['&', '|', ';', '<', '>', '`'],
+  };
 }
 
 function tanpaPersetujuan({ program, argumen, profil }) {
@@ -290,9 +317,9 @@ function tanpaPersetujuan({ program, argumen, profil }) {
   return true;
 }
 
-async function izinLaluJalankan(akar, { program, argumen, teks, s, r, env, waktuS, profil }, deps) {
+async function izinLaluJalankan(akar, { program, argumen, teks, s, r, env, waktuS, profil, keluaranMaksByte }, deps) {
   if (tanpaPersetujuan({ program, argumen, profil })) {
-    return jalankanSesudahIzin(akar, { program, argumen, teks, s, r, env, waktuS, profil, tanpaIzin: true });
+    return jalankanSesudahIzin(akar, { program, argumen, teks, s, r, env, waktuS, profil, keluaranMaksByte, tanpaIzin: true });
   }
   const setuju = await (async () => {
     try {
@@ -301,7 +328,7 @@ async function izinLaluJalankan(akar, { program, argumen, teks, s, r, env, waktu
         judul: `Jalankan perintah ini di ${profil.tempat}?\n\n${teks}`,
         rincian: [
           `Program: ${r.exe}`,
-          `Folder asal: ${profil.tempat} · batas waktu ${waktuS} detik · keluaran maks ${BATAS_JALAN.keluaranByte / 1024} KB`,
+          `Folder asal: ${profil.tempat} · batas waktu ${waktuS} detik · keluaran maks ${Math.round(keluaranMaksByte / 1024).toLocaleString('id-ID')} KB (anggaran konteks Settings)`,
           'PERHATIAN: program yang dijalankan TIDAK dibatasi pagar folder — ia bisa membaca/mengubah berkas di mana pun di laptop. Izinkan hanya bila Anda paham perintah ini.',
           s.internet ? '🌐 Perintah ini bisa MENGUNDUH dan menjalankan paket dari internet.' : '',
           peringatanSkripSebaris(argumen),
@@ -312,11 +339,11 @@ async function izinLaluJalankan(akar, { program, argumen, teks, s, r, env, waktu
   })();
   if (!setuju) return { ok: false, alat: 'folder_run', alamat: teks, perintah: teks, ditolakOwner: true, alasan: 'ditolak Owner di dialog izin — tidak ada yang dijalankan' };
 
-  return jalankanSesudahIzin(akar, { program, argumen, teks, s, r, env, waktuS, profil, tanpaIzin: false });
+  return jalankanSesudahIzin(akar, { program, argumen, teks, s, r, env, waktuS, profil, keluaranMaksByte, tanpaIzin: false });
 }
 
-async function jalankanSesudahIzin(akar, { argumen, teks, r, env, waktuS, tanpaIzin = false }) {
-  const h = await jalankanProses(r.exe, [...r.awal, ...argumen], { cwd: akar, env, waktuS });
+async function jalankanSesudahIzin(akar, { argumen, teks, r, env, waktuS, keluaranMaksByte, tanpaIzin = false }) {
+  const h = await jalankanProses(r.exe, [...r.awal, ...argumen], { cwd: akar, env, waktuS, keluaranMaksByte });
   if (h.galat) return gagal(teks, h.galat);
   return { ok: true, alat: 'folder_run', alamat: teks, perintah: teks, waktuBatasS: waktuS, ...h, tanpaIzin };
 }
@@ -352,4 +379,4 @@ function pecahPerintah(teks) {
   return { program, argumen };
 }
 
-module.exports = { jalankanAlatJalan, pecahPerintah, PROFIL, DAFTAR_PROGRAM, BATAS_JALAN, cariExe, envBersih, periksaArgumen, jalankanProses, tanpaPersetujuan };
+module.exports = { jalankanAlatJalan, pecahPerintah, PROFIL, DAFTAR_PROGRAM, GIT_BACA, BATAS_JALAN, PAGAR_KELUARAN_BYTE, batasKeluaranAman, kebijakanPerintah, cariExe, envBersih, periksaArgumen, jalankanProses, tanpaPersetujuan };

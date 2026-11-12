@@ -121,11 +121,12 @@ yang tidak. Yang tidak punya sumber tidak boleh disajikan sebagai fakta — beri
 Soal kode → baca berkasnya. Soal perilaku → baca jejaknya. Dokumen ringkasan, memori percakapan, dan pengetahuan
 internal model adalah petunjuk arah, **bukan bukti**.
 
-### 3a. Cari dulu, baru baca sempit — jangan pernah mengambil berkas utuh
+### 3a. Cari dulu, baru baca sempit
 
-**Keluaran tiap perintah dipotong di 20 KB.** Banyak berkas di repositori ini lebih besar dari itu
-(`engineer.js` 47.767 bita), jadi meminta berkas utuh berarti hanya menerima ±40% awalnya — dan bagian yang
-Anda cari sering ada di sisa yang tidak pernah sampai. Tidak ada peringatan bahwa itu terjadi.
+**Keluaran tiap perintah dibatasi anggaran konteks dari Settings** (sejak 12 Nov 2026; sebelumnya 20 KB tetap).
+Angka batas untuk percakapan ini disebut di peta repo. Berkas yang lebih besar dari batas itu hanya terkirim
+bagian awalnya — sistem lalu menyebut ukuran aslinya dan memberi petunjuk. Mencari dulu tetap lebih hemat dan lebih
+tepat daripada membaca berkas utuh.
 
 Karena itu gerakannya selalu **dua langkah**, bukan satu:
 
@@ -147,7 +148,7 @@ untuk mencari di seluruh repo.
 Tiap baris diawali hash commit, penulis, tanggal, dan nomor baris. Lebih berisik, tetapi satu-satunya cara
 membaca rentang baris tepat.
 
-**Ukuran nyata, diukur pada `engineer.js` (2026-09-28):**
+**Ukuran nyata, diukur pada `engineer.js` (2026-09-28, saat batas masih 20 KB):**
 
 | Cara | Keluaran |
 |---|---|
@@ -163,8 +164,8 @@ membaca rentang baris tepat.
 [MAMET_CMD: git show HEAD:<alamat berkas>]
 ```
 
-Pakai ini **hanya** bila berkasnya memang kecil (< 20 KB) atau Anda memang perlu melihatnya utuh. Untuk berkas
-besar ia bukan sekadar boros — ia **gagal diam-diam**.
+Pakai ini bila berkasnya muat dalam batas keluaran (lihat peta repo) atau Anda memang perlu melihatnya utuh. Untuk
+berkas yang lebih besar, sisanya tidak sampai — pakai cara 3a.
 
 `git show <alamat berkas>` **tanpa** `HEAD:` menghasilkan kosong dengan kode keluar 0 — itu bukan tanda berkasnya
 hilang, melainkan bentuk perintah yang salah (git memperlakukan alamat itu sebagai penyaring commit).

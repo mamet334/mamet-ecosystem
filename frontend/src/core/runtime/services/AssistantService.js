@@ -469,7 +469,7 @@ export class AssistantService {
             if (p.alat === 'folder_read' && byte >= batasBacaHuruf) {
               h = { ok: false, alat: p.alat, alamat: p.alamat, alasan: `bacaan pertanyaan ini (${byte.toLocaleString('id-ID')} huruf) sudah memenuhi anggaran konteks dari Settings (${batasBacaHuruf.toLocaleString('id-ID')} huruf) — jawab dari yang sudah dibaca, atau minta pengguna menaikkan batas biaya harian bila perlu membaca lebih banyak` };
             } else {
-              try { h = await window.electronAPI.folderKerja.alat(p); }
+              try { h = await window.electronAPI.folderKerja.alat(p.alat === 'folder_run' ? { ...p, keluaranMaksByte: Math.max(1, batasBacaHuruf - byte) } : p); }
               catch (e) { h = { ok: false, alat: p.alat, alamat: p.alamat, alasan: `alat gagal: ${e.message || e}` }; }
             }
             if (h?.ok && h.alat === 'folder_read') { byte += (h.isi || '').length; if (!dibaca.includes(h.alamat)) dibaca.push(h.alamat); }
@@ -1640,14 +1640,14 @@ export class AssistantService {
       return { output: berulang.pesan, success: false, ditolakOwner: false, ditolakAturan: false, ditolakProsedur: true };
     }
     let h;
-    try { h = await window.electronAPI.engineer.jalankan(String(perintah || '')); }
+    try { h = await window.electronAPI.engineer.jalankan(String(perintah || ''), { keluaranMaksByte: await this._batasBacaFolderHuruf() }); }
     catch (err) { return { output: err?.message || String(err), success: false }; }
 
     let output;
     if (h?.ok) {
       const kaki = h.habisWaktu
         ? `⏱️ Dihentikan — melewati batas waktu ${h.waktuBatasS} detik.`
-        : `Kode keluar ${h.kodeKeluar} (${((h.waktuMs || 0) / 1000).toFixed(1).replace('.', ',')} s)${h.terpotong ? ` — keluaran dipotong dari ${h.byteKeluaran} byte` : ''}.`;
+        : `Kode keluar ${h.kodeKeluar} (${((h.waktuMs || 0) / 1000).toFixed(1).replace('.', ',')} s)${h.terpotong ? ` — keluaran dipotong dari ${h.byteKeluaran} byte menjadi ${h.keluaranMaksByte ?? '?'} byte (anggaran konteks Settings)` : ''}.`;
       output = `${h.keluaran || '(tanpa keluaran)'}\n\n${kaki}`;
       const petunjuk = petunjukHasilKosong(perintah, output);
       if (petunjuk) output += `\n\n${petunjuk}`;

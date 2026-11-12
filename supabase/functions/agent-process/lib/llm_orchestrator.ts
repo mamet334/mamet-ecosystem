@@ -179,8 +179,15 @@ export function catatKomposisiPrompt(promptText: string, systemPromptText: strin
   const blok4 = cari('[BLOK 4:');
   const segmen = ([
     ['dasar_identitas_panduan', 0],
+    ['alat_folder', s.indexOf('[FOLDER KERJA AKTIF')],
+    ['alat_rag', s.indexOf('[ALAT RAG AKTIF]')],
+    ['alat_web', s.indexOf('[ALAT WEB TEKNIS AKTIF]')],
+    ['konektor_crawler', s.indexOf('[KONEKTOR AKTIF:')],
+    ['konektor_umum', s.indexOf('[KONEKTOR UMUM AKTIF]')],
+    ['engineer_mode', s.indexOf('[ENGINEER MODE')],
     ['memori_personal_klien', s.search(/\[MEMORI & (PREFERENSI PERSONAL|KONTEKS SISTEM)\]/)],
     ['konteks_engineer', s.indexOf('[MAMET ENGINEER CONTEXT')],
+    ['engineer_identitas_aturan', s.indexOf('[ENGINEER IDENTITY')],
     ['kontrak_blok1_2', awalKontrak],
     ['blok3_memori', cari('[BLOK 3:')],
     ['blok4_brain', blok4],

@@ -7,6 +7,8 @@ export function jejakSisipan({
   petaMentah = '',
   catatanAkar = '',
   catatanPeta = '',
+  catatanPerintah = '',
+  catatanKons = '',
   ringkasanTemuan = '',
   mulaiDari = 0,
   jumlahPesan = 0,
@@ -15,7 +17,9 @@ export function jejakSisipan({
 
   const bagian = [
     ['akar', panjang(catatanAkar)],
+    ['konstitusi', panjang(catatanKons)],
     ['peta', panjang(catatanPeta)],
+    ['perintah', panjang(catatanPerintah)],
     ['temuan', panjang(ringkasanTemuan)],
   ];
   const terpasang = bagian.filter(([, n]) => n > 0);
